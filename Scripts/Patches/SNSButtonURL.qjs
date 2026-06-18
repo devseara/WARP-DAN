@@ -1,0 +1,332 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 CrazyBebop                                          *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : CrazyBebop                                             *
+*   Created Date  : 2026-05-24                                             *
+*   Last Modified : 2026-05-24                                             *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief Reuse the Basic Info "SNS" button by opening a custom URL in the
+///        user's default browser while preserving related new-UI button behavior.
+///
+SNSButtonURL = function(_)
+{
+	$$(_, 1.1, `Get URL from user`)
+	const varName = '$snsBtnURL';
+	const url = Exe.GetUserInput(
+		varName,
+		D_Text,
+		"SNS Button URL",
+		"Enter the URL to open when SNS button is clicked",
+		"https://example.com/",
+		{minLen: 8, maxLen: 255, saveDefault: true}
+	);
+	if (url === false)
+		Cancel("No URL entered");
+
+	$$(_, 1.2, `Add URL string`)
+	const [, urlAddr] = Exe.AddFromVar(varName);
+	const [, openAddr] = Exe.AddText("open");
+
+	$$(_, 2.1, `Find ShellExecuteA import`)
+	const shellExecIA = Exe.FindFunc("ShellExecuteA", "SHELL32.dll");
+	if (shellExecIA < 0)
+		throw Error("ShellExecuteA import not found");
+
+	$$(_, 3.1, `Find New Basic button ID table anchor`)
+	const strNavigation = Exe.FindText("navigation");
+	if (strNavigation < 0)
+		throw Error("'navigation' string not found");
+
+	const addrNavigation = Exe.FindHex(PUSH(strNavigation));
+	if (addrNavigation < 0)
+		throw Error("'navigation' PUSH reference not found");
+
+	$$(_, 3.2, `Find MOVAPS blocks that load the button-ID table`)
+	let code =
+		MOVAPS(XMM0, XMMWORD_PTR, [POS4WC])  // movaps xmm0, xmmword ptr [ListButtonsID]
+	+	MOV(EAX, [POS3WC]);                  // mov eax, dword ptr [dword]
+
+	let addr = Exe.FindHex(code, addrNavigation - 0x5000, addrNavigation);
+	if (addr < 0)
+		throw Error("Button-ID MOVAPS pattern not found");
+
+	const movAps = MOVAPS(XMM0, XMMWORD_PTR, [POS4WC]);
+	let listAddrRefs = [];
+	for (let i = 0; i < 6; ++i)
+	{
+		addr = Exe.FindHex(movAps, addr, addr + 0x20);
+		if (addr < 0)
+			throw Error("Button-ID MOVAPS block not found at index " + i);
+
+		listAddrRefs.push(Exe.GetUint32(addr + 3));
+		addr += movAps.byteCount();
+	}
+
+	listAddrRefs.sort();
+	const listVir = listAddrRefs[0];
+	const listPhy = Exe.Vir2Phy(listVir);
+	if (listPhy < 0)
+		throw Error("Button-ID table conversion failed");
+
+	$$(_, 3.3, `Resolve SNS and Battleground button IDs`)
+	// New Basic button table order:
+	// quest, map, navigation, option, status, equip, item, skill, booking, ..., sns
+	const TargetButtonIdx = 19;
+	const BattlegroundButtonIdx = 11;
+	const targetID = Exe.GetUint32(listPhy + (TargetButtonIdx * 4));
+	const battlegroundID = Exe.GetUint32(listPhy + (BattlegroundButtonIdx * 4));
+	if (targetID <= 0)
+		throw Error("SNS button ID is invalid");
+	if (battlegroundID <= 0)
+		throw Error("Battleground button ID is invalid");
+
+	$$(_, 3.4, `Keep SNS button visible`)
+	const swPrefix = MOVZX(EAX, BYTE_PTR, [EAX, POS4WC]); // movzx eax, byte ptr [eax + switchTbl]
+	const swSuffix = JMP([4, EAX, POS4WC]);               // jmp dword ptr [eax*4 + jumpTbl]
+	const swPattern = swPrefix + swSuffix;
+
+	let swRefs = Exe.FindHexN(swPattern, addrNavigation - 0x3000, addrNavigation + 0x7000);
+	if (swRefs.isEmpty())
+		swRefs = Exe.FindHexN(swPattern);
+
+	if (!swRefs.isEmpty())
+	{
+		for (const swAddr of swRefs)
+		{
+			const switchTblVir = Exe.GetUint32(swAddr + 3);
+			let switchTblPhy = Exe.Vir2Phy(switchTblVir, CODE);
+			if (switchTblPhy < 0)
+				switchTblPhy = Exe.Vir2Phy(switchTblVir);
+
+			let minLimit = null;
+			let range = null;
+
+			// Variant A: lea eax, [ebx - limitL] ; cmp eax, range
+			let limPrefix = LEA(EAX, [EBX, NEG2WC]);
+			let limAddr = Exe.FindLastHex(limPrefix + CMP(EAX, POS1WC), swAddr, swAddr - 0x80);
+			if (limAddr > 0)
+			{
+				const cmpAddr = limAddr + limPrefix.byteCount();
+				minLimit = -Exe.GetInt32(cmpAddr - 4);
+				range = Exe.GetInt32(cmpAddr + 1);
+			}
+
+			// Variant B: add eax, -limitL ; cmp eax, range
+			if (minLimit === null)
+			{
+				limPrefix = ADD(EAX, NEG2WC);
+				limAddr = Exe.FindLastHex(limPrefix + CMP(EAX, POS1WC), swAddr, swAddr - 0x80);
+				if (limAddr > 0)
+				{
+					const cmpAddr = limAddr + limPrefix.byteCount();
+					minLimit = -Exe.GetInt32(cmpAddr - 4);
+					range = Exe.GetInt32(cmpAddr + 1);
+				}
+			}
+
+			if (switchTblPhy < 0 || minLimit === null || range === null)
+				continue;
+
+			if (targetID < minLimit || targetID > minLimit + range)
+				continue;
+
+			const visFlagAddr = switchTblPhy + targetID - minLimit;
+			if (Exe.GetInt8(visFlagAddr) === 0)
+				Exe.SetInt8(visFlagAddr, 1);
+
+			break;
+		}
+	}
+
+	$$(_, 4.1, `Find a stable anchor near UINewBasicWnd::SendMsg`)
+	const strRecEnd = Exe.FindText("REC End please");
+	if (strRecEnd < 0)
+		throw Error("'REC End please' string not found");
+
+	const addrRecEnd = Exe.FindHex(PUSH(strRecEnd));
+	if (addrRecEnd < 0)
+		throw Error("'REC End please' PUSH reference not found");
+
+	$$(_, 4.2, `Find CALL to UIWindow::SendMsg and capture original target`)
+	code =
+		PUSH([EBP, 0x1C])  // push dword ptr [ebp+1Ch]
+	+	MOV(ECX, EDI)      // mov ecx, edi
+	+	PUSH([EBP, 0x18])  // push dword ptr [ebp+18h]
+	+	PUSH([EBP, 0x14])  // push dword ptr [ebp+14h]
+	+	PUSH(EBX)          // push ebx
+	+	PUSH([EBP, 0xC])   // push dword ptr [ebp+0Ch]
+	+	PUSH([EBP, 0x8])   // push dword ptr [ebp+8]
+	+	CALL(POS3WC);      // call UIWindow::SendMsg
+
+	addr = Exe.FindHex(code, addrRecEnd - 0x300, addrRecEnd + 0x200);
+	if (addr < 0)
+		throw Error("UIWindow::SendMsg call-site pattern not found");
+
+	const detourCall = addr + code.byteCount() - 5;
+	const origSendMsg = Exe.GetTgtAddr(detourCall + 1);
+	if (origSendMsg < 0)
+		throw Error("Original UIWindow::SendMsg target not found");
+
+	$$(_, 4.3, `Prepare Battleground chain if no existing detour is active`)
+	const origInCode = Exe.Vir2Phy(origSendMsg, CODE) >= 0;
+	let bgRestore = null;
+	if (origInCode)
+	{
+		code =
+			PUSH(0x9B)      // push WID_REPLAYRECCONTROLWND
+		+	MOV(ECX, EDI)  // mov ecx, edi
+		+	CALL(ALLWC);   // call UIWindow::OpenMenuWindow-like helper
+
+		let bgAddr = Exe.FindHex(code, addrRecEnd - 0x40, addrRecEnd + 0x20);
+		if (bgAddr < 0)
+			throw Error("Battleground window helper pattern not found");
+
+		const addrOpenMenuWindow = Exe.GetTgtAddr(bgAddr + code.byteCount() - 4);
+
+		code = MOV(R32, 0x90A); // mov r32, 90Ah
+		bgAddr = Exe.FindHex(code);
+		if (bgAddr < 0)
+			throw Error("Battleground entry packet marker not found");
+
+		code =
+			PUSH(EBP)
+		+	MOV(EBP, ESP);
+
+		bgAddr = Exe.FindLastHex(code, bgAddr, bgAddr - 0x40);
+		if (bgAddr < 0)
+			throw Error("Battleground entry packet function start not found");
+
+		const addrSendEntryPacket = Exe.Phy2Vir(bgAddr, CODE);
+		if (addrSendEntryPacket < 0)
+			throw Error("Battleground entry packet function address conversion failed");
+
+		code =
+			MOV(EAX, [POS4WC])
+		+	MOV(EDI, [EAX, 0x34]);
+
+		bgAddr = Exe.FindHex(code);
+		if (bgAddr < 0)
+			throw Error("Battleground entry queue pointer not found");
+
+		const addrEntryQueue = Exe.GetUint32(bgAddr + 1);
+		bgRestore = { addrOpenMenuWindow, addrSendEntryPacket, addrEntryQueue };
+	}
+
+	$$(_, 5.1, `Build detour stub`)
+	const urlBlock =
+		PUSHAD
+	+	PUSH(1)             // SW_SHOWNORMAL
+	+	PUSH_0              // lpDirectory
+	+	PUSH_0              // lpParameters
+	+	PUSH(urlAddr)       // lpFile
+	+	PUSH(openAddr)      // lpOperation ("open")
+	+	PUSH_0              // hwnd
+	+	CALL([shellExecIA]) // call dword ptr [<&SHELL32.ShellExecuteA>]
+	+	POPAD
+	+	RETN(0x18);         // consume the original UIWindow::SendMsg arguments
+
+	let parts = [];
+	let targets = {
+		start: 0,
+		7: origSendMsg
+	};
+
+	if (bgRestore)
+	{
+		parts.push(
+			CMP([EBP, 0x10], battlegroundID)
+		+	JNE(Filler(1, 1))
+		);
+
+		parts.push(
+			PUSH(ECX)
+		+	MOV(ECX, [bgRestore.addrEntryQueue])
+		+	CMP(BYTE_PTR, [ECX, 0x3C], 1)
+		+	JNE(Filler(2, 1))
+		);
+
+		parts.push(
+			CALL(Filler(3))
+		);
+
+		parts.push(
+			POP(ECX)
+		+	PUSH(0x9D)
+		+	CALL(Filler(4))
+		+	JMP(Filler(7))
+		);
+
+		parts[0] = SwapFillers(parts[0], {'1,1': parts[1].byteCount() + parts[2].byteCount() + parts[3].byteCount()});
+		parts[1] = SwapFillers(parts[1], {'2,1': parts[2].byteCount()});
+
+		targets[3] = bgRestore.addrSendEntryPacket;
+		targets[4] = bgRestore.addrOpenMenuWindow;
+	}
+
+	const targetCheckIdx = parts.length;
+	parts.push(
+		CMP([EBP, 0x10], targetID)
+	+	JNE(Filler(6, 1))
+	);
+
+	parts.push(urlBlock);
+	parts.push(
+		JMP(Filler(7))
+	);
+
+	parts[targetCheckIdx] = SwapFillers(parts[targetCheckIdx], {'6,1': urlBlock.byteCount()});
+
+	let detourCode = "";
+	for (const p of parts)
+		detourCode += p;
+
+	$$(_, 5.2, `Allocate and write detour`)
+	const [stubPhy, stubVir] = Exe.Allocate(detourCode.byteCount(), 0x10);
+	targets.start = stubVir;
+	detourCode = SetFillTargets(detourCode, targets);
+	Exe.SetHex(stubPhy, detourCode);
+
+	$$(_, 5.3, `Redirect call-site to detour`)
+	Exe.SetCALL(detourCall, stubVir);
+
+	return true;
+};
+
+///
+/// \brief Disable for unsupported clients.
+///
+SNSButtonURL.validate = function()
+{
+	if (Exe.BuildDate <= 20170000)
+		return false;
+
+	if (Exe.FindText("navigation") < 0)
+		return false;
+
+	if (Exe.FindText("REC End please") < 0)
+		return false;
+
+	return Exe.FindFunc("ShellExecuteA", "SHELL32.dll") > 0;
+};

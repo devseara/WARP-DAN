@@ -32,11 +32,23 @@ CustomSpecials:
     color : deeppink
     
     patches:
+        - PatchDiagnostics:
+            title : Write patch diagnostics log
+            recommend : no
+            author : Louis T Steinhil
+            desc : Writes a patch-time diagnostic log to Outputs, including selected core/custom patches, GRF mode, custom DLL import specs, slash-command registrations, and important GameSettings/UI string markers. This patch does not modify the executable.
+
         - CustomShields:
             title : Enable Custom Shields
             recommend : no
             author : Neo-Mind , CrazyBebop
             desc : Enables custom shield sprites beyond the default set by loading shield definitions from lua files (similar to the Xray system). Required for servers with custom shield graphics.
+
+        - AllowDualCustomWeaponSprites:
+            title : Trace dual-wield weapon sprite lookup
+            recommend : no
+            author : Louis T Steinhil
+            desc : Enhanced diagnostic v3 - captures the CALLER address of ReqWeaponName. When dual-wielding custom weapons, filter DebugView for [DualWeaponSprites] ReqWeaponName arg=25..30. The caller= field is the virtual address of the dual-wield sprite code path we need to patch. Also logs combiner output, visual check, and ReqWeaponNameByClassNum lookups.
         
         - CustomJobs:
             title : Enable Custom Jobs (Reforged)
@@ -92,3 +104,14 @@ CustomSkills:
             author : Unknown
             desc : Enables custom mercenary skills beyond the official list by loading definitions from lua files. Required for servers that add new mercenary abilities. Experimental.
 
+        - CustomExtName:
+            title : Enable Custom Name Packets (dispatcher transport)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Approved dispatcher-table shared-block path for custom extended names. Routes extended-name packet 0x0BB7 to EXTN after the stock packet reader has consumed the full packet, then adds the shared startup visual DLL import (recommended single file: boh.dll). No runtime ws2_32.recv hook and no legacy RecvStrip0BB6 recv/read-path patch."
+
+        - CustomColoredItemName:
+            title : Enable Custom Color Packets (dispatcher transport)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Approved dispatcher-table shared-block path for custom item name colors. Routes variable item-color packet 0x0BDD to ICOL after the stock packet reader has consumed the full packet, then adds the shared startup visual DLL import (recommended single file: boh.dll). No runtime ws2_32.recv hook and no legacy RecvStrip0BB6 recv/read-path patch."

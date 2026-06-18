@@ -1,0 +1,70 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2025-07-16                                             *
+*   Last Modified : 2026-06-05                                             *
+*                                                                          *
+*   Description   : Dispatcher-table extended-name patch. Routes packet    *
+*                   0x0BB7 (with packetLength + EXTN magic) to the EXTN    *
+*                   shared block after the stock client reader has         *
+*                   consumed the full packet. Avoids runtime ws2_32.recv   *
+*                   hooks and the legacy RecvStrip0BB6 recv/read-path      *
+*                   patch. The visual layer is a renameable normal startup *
+*                   import, matching CustomRuneSystem.                     *
+*                                                                          *
+\**************************************************************************/
+
+CustomExtName = function(_)
+{
+    $$(_, 1, `Install dispatcher-table transport for extended-name packets`);
+
+    if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.install !== "function")
+        throw Error("CustomPacketDispatch.install helper is unavailable");
+
+    CustomPacketDispatch.install(`${_}.Dispatch`, ['EXTN']);
+
+    $$(_, 2, `Add renameable extended-name visual DLL as startup import`);
+    CustomExtName.addVisualDll(`${_}.CustomDLL`);
+
+    $$(_, 3, `Custom extended-name dispatcher transport + visual DLL import are enabled`);
+    return true;
+};
+
+CustomExtName.addVisualDll = function(_)
+{
+    if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.addVisualDll !== "function")
+        throw Error("CustomPacketDispatch.addVisualDll helper is unavailable");
+
+    return CustomPacketDispatch.addVisualDll(_, {
+        inputKey: '$extNameVisualDLLName',
+        title: "Extended Name Visual DLL",
+        exportName: "ExtNameVisualInit",
+        defaultName: "boh.dll",
+        dedicatedName: "boh_text.dll"
+    });
+};
+
+CustomExtName.validate = function()
+{
+    return Exe.BuildDate >= 20250700;
+};

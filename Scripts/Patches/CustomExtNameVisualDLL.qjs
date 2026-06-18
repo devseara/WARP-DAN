@@ -1,0 +1,61 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2025-07-16                                             *
+*   Last Modified : 2026-06-05                                             *
+*                                                                          *
+*   Description   : One-click companion for custom extended names. WARP    *
+*                   loads the chosen visual DLL as a normal startup import,*
+*                   just like CustomRuneSystem does. Packet transport is   *
+*                   controlled by the DLL config: recv for no-Gepard,      *
+*                   shared/static-stub for Gepard.                         *
+*                   HISTORICAL / DEBUG ONLY -- use CustomExtName instead.  *
+*                                                                          *
+\**************************************************************************/
+
+CustomExtNameVisualDLL = function(_)
+{
+    $$(_, 1, `Add named visual DLL as startup import`);
+
+    return CustomExtNameVisualDLL.addVisualDll(`${_}.CustomDLL`);
+};
+
+CustomExtNameVisualDLL.addVisualDll = function(_)
+{
+    if (typeof CustomPacketDispatch === "undefined" ||
+        typeof CustomPacketDispatch.addVisualDll !== "function")
+        throw Error("CustomPacketDispatch.addVisualDll helper is unavailable");
+
+    return CustomPacketDispatch.addVisualDll(_, {
+        inputKey: '$extNameVisualDLLName',
+        title: "Extended Name Visual DLL",
+        exportName: "ExtNameVisualInit",
+        defaultName: "boh.dll",
+        dedicatedName: "boh_text.dll"
+    });
+};
+
+CustomExtNameVisualDLL.validate = function()
+{
+    return Exe.BuildDate >= 20250700;
+};

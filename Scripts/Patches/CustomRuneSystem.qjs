@@ -1,0 +1,119 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief One-click Rune System client support for Banquet of Heroes.
+///
+/// This patch keeps the only EXE-side code change tiny:
+///   1. Skip the stock "Please remove the equipped Rune Set." client guard.
+///   2. Add the rune visual DLL as a normal startup import using CustomDLL's
+///      import-table builder. The DLL handles the multi-row visual stack.
+///
+CustomRuneSystem = function(_)
+{
+	CustomRuneSystem.patchEquipGuard(_);
+	CustomRuneSystem.addVisualDll(_);
+
+	return true;
+};
+
+CustomRuneSystem.patchEquipGuard = function(_)
+{
+	$$(_, 1.1, `Find the Rune System equipped-set message branch`);
+	const tail =
+		PUSH_0
+	+	PUSH(0x78)
+	+	PUSH(0x118)
+	+	PUSH(POS4WC)
+	+	PUSH_0
+	+	PUSH_0
+	+	PUSH_1
+	+	PUSH_0
+	+	PUSH(0xFD4)      // MSI_RUNESYSTEM_EQUIP_PUTERR on 2025-07-16 Ragexe
+	+	JMP()
+	;
+	const code =
+		TEST(EAX, EAX)   // test eax, eax ; existing equipped Rune Set?
+	+	JZ(WCp)          // jz short _continue ; no equipped set
+	+	tail
+	;
+	const patchedCode =
+		TEST(EAX, EAX)
+	+	JMP(WCp)
+	+	tail
+	;
+
+	let addr = Exe.FindHex(code);
+	if (addr < 0 && Exe.FindHex(patchedCode) > 0)
+	{
+		$$(_, 1.2, `Rune System equipped-set guard is already patched`);
+		return;
+	}
+
+	if (addr < 0)
+	{
+		$$(_, 1.3, `Fallback: find the message push and scan back to its guard`);
+		const msgAddr = Exe.FindHex(PUSH(0xFD4) + JMP());
+		if (msgAddr < 0)
+			throw Error("Rune System equip error message branch not found");
+
+		addr = Exe.FindHex(TEST(EAX, EAX) + JZ(WCp), msgAddr - 0x40, msgAddr);
+		if (addr < 0 && Exe.FindHex(TEST(EAX, EAX) + JMP(WCp), msgAddr - 0x40, msgAddr) > 0)
+		{
+			$$(_, 1.4, `Rune System equipped-set guard is already patched`);
+			return;
+		}
+		if (addr < 0)
+			throw Error("Rune System equipped-set guard not found");
+	}
+
+	$$(_, 2, `Change JZ to JMP so the equip request can continue`);
+	Exe.SetJMP(addr + 2);
+};
+
+CustomRuneSystem.addVisualDll = function(_)
+{
+	if (typeof CustomDLL === "undefined" || typeof CustomDLL.applySpec !== "function")
+		throw Error("CustomDLL.applySpec helper is unavailable");
+
+	const dllName = CustomDLL.getDllName(
+		'$runeVisualDLLName',
+		"Rune Visual DLL",
+		"Enter the Rune visual DLL filename. Use boh.dll for the combined build or boh_rune.dll for the dedicated build. Place it beside the patched EXE.",
+		"boh.dll",
+		"boh_rune.dll"
+	);
+
+	$$(_, 3, `Add Rune visual DLL through the CustomDLL import-table builder`);
+	return CustomDLL.applySpec(`${_}.CustomDLL`, [
+		{
+			Name: dllName,
+			Funcs: [
+				{Name: "RuneVisualInit"}
+			]
+		}
+	]);
+};
+
+CustomRuneSystem.validate = () =>
+	Exe.BuildDate === 20250716 &&
+	Exe.FindText("MSI_RUNESYSTEM_EQUIP_PUTERR", CASE_INSENSITIVE, false) > 0 &&
+	Exe.FindText("bg_runeequip.bmp", CASE_INSENSITIVE, false) > 0;

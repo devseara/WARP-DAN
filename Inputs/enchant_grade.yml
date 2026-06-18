@@ -1,0 +1,31 @@
+############################################################################
+#                                                                          #
+#   Custom enchant grade labels.                                           #
+#                                                                          #
+#   Format:                                                                #
+#     - Grade: <number>                                                    #
+#       Label: <text without brackets>                                     #
+#                                                                          #
+#   The client adds the brackets, so Label: Rare displays as              #
+#   "[Rare] Item Name".                                                    #
+#                                                                          #
+#   You can add future grades here if your client/server starts            #
+#   using them:                                                            #
+#     - Grade: 5                                                           #
+#       Label: Ancient                                                     #
+#     - Grade: 6                                                           #
+#       Label: Divine                                                      #
+#                                                                          #
+############################################################################
+
+- Grade: 1
+  Label: Rare
+
+- Grade: 2
+  Label: Epic
+
+- Grade: 3
+  Label: Mythic
+
+- Grade: 4
+  Label: Legendary

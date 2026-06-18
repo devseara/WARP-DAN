@@ -189,6 +189,18 @@ ShowButton:
             author : Neo-Mind
             desc : Shows a Register button on the login screen for all langtypes. Clicking it opens the registration URL defined in clientinfo.xml's &lt;registrationweb&gt; tag and closes the client. Useful for directing new players to your registration page.
 
+        - SNSButtonURL:
+            title : Open URL from SNS button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info SNS button (new UI) to open a custom URL in the default browser.
+
+        - BookingButtonGuide:
+            title : Open In-Game Settings from Booking button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info Booking button from Show Buttons (New UI) to send the custom in-game guide/settings packet 0x0BB2.
+
 NoLetterLimit:
     title : 4/6 LETTER LIMIT REMOVAL
     mutex : false

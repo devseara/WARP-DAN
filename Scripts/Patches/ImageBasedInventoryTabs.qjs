@@ -1,0 +1,66 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-06-14                                             *
+*                                                                          *
+*   Description   : Image-based inventory tabs. Loads a chosen DLL, which  *
+*                   patches the inventory window vtable[20] (0x00946DA0)   *
+*                   and overlays tab_pri_%02d.bmp through the game's own   *
+*                   image-draw pipeline (mirrors the storage tab loader    *
+*                   0x008262E0). No EXE byte patches — all runtime memory  *
+*                   work is done by the DLL, so .rdata vtables are fine.   *
+*                                                                          *
+\**************************************************************************/
+
+ImageBasedInventoryTabs = function(_)
+{
+	$$(_, 1, `Add the inventory-tabs DLL to startup imports`);
+	if (typeof CustomDLL === 'undefined' || typeof CustomDLL.applySpec !== 'function')
+		throw new Error("CustomDLL module not available — load CustomDLL patch first");
+
+	const dllName = CustomDLL.getDllName(
+		'$inventoryTabsDLLName',
+		"Inventory Tabs DLL",
+		"Enter the inventory-tabs DLL filename. Use boh.dll for the combined build or boh_inventory_tabs.dll for the dedicated build. Place it beside the patched EXE.",
+		"boh.dll",
+		"boh_inventory_tabs.dll"
+	);
+
+	CustomDLL.applySpec(`${_}.CustomDLL`, [
+		{ Name: dllName, Funcs: [{Name: 'InventoryTabsInit'}] }
+	]);
+
+	$$(_, 2, `Image-based inventory tabs DLL import enabled`);
+	return true;
+};
+
+///
+/// \brief Only valid for the 2025-07-16+ Ragexe family this DLL targets.
+///        The DLL hard-codes 2025-07-16 client offsets and self-aborts at
+///        runtime if the inventory vtable slot does not match, so guard the
+///        build date here as a first line of defence.
+///
+ImageBasedInventoryTabs.validate = function()
+{
+	return Exe.BuildDate >= 20250700;
+};

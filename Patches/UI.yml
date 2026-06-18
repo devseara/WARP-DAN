@@ -38,6 +38,24 @@ CustomUI:
             author : Demonbytes (NoxaraRO)
             desc : Adds a configurable slash command (default /greyworld) that loads a specified GRF archive at runtime via CFileMgr::AddPak. Typing the command toggles the GRF on/off with chat feedback. The state persists across sessions via the registry. Assets become available on the next map change.
 
+        - FpsOverlay:
+            title : FPS Overlay Slash Commands (/fps)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds /fps through the shared custom slash-command dispatcher and imports only the selected FPS DLL exports.
+
+        - PingOverlay:
+            title : Ping Overlay Slash Commands (/ping)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds /ping through the shared custom slash-command dispatcher and imports only the selected ping DLL exports.
+
+        - ImageBasedInventoryTabs:
+            title : Image-based inventory tabs
+            recommend : no
+            author : Louis T Steinhil
+            desc : Loads the selected inventory-tabs DLL, which replaces inventory tab text labels with tab_pri_%02d.bmp images through the game's own image-draw pipeline.
+
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]
             recommend : no
@@ -211,6 +229,24 @@ CustomUI:
             recommend : no
             author : X-EcutiOnner
             desc : Removes the equipment preview button from item description windows. Use if the preview feature causes issues or is not desired on your server.
+
+        - CustomEnchantGradeLabels:
+            title : Custom enchant grade labels
+            recommend : no
+            author : Louis T Steinhil
+            desc : Replaces the hardcoded item name grade marks like [D], [C], [B], and [A] with labels from Inputs/enchant_grade.INI.
+
+        - DisableExpensiveCharRender:
+            title : Disable heavy 3D character rendering in ALL UI windows
+            recommend : no
+            author : Louis T Steinhil
+            desc : Eliminates FPS lag from the expensive per-instance 3D character mini-render-pass in UI windows by patching UIDisplayCharacter::Draw to return immediately.
+
+        - DisableSkillTreeCharRender:
+            title : Disable character rendering in Skill Tree (ALT+S)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Prevents UIDisplayCharacter child widgets from being added to the skill tree window's child list. Use together with DisableExpensiveCharRender for complete skill tree FPS relief.
         
         - HideZeroDateInGuildWin:
             title : Hide Zero Date in Guild Window
@@ -394,6 +430,18 @@ CustomFont:
             recommend : no
             author : Neo-Mind
             desc : Overrides the character set (charset) used for all fonts to a custom value. Use to force a specific encoding like ANSI (0), Baltic (186), or UTF-8 when the default charset causes display issues.
+
+RuneSystem:
+    title : RUNE SYSTEM
+    mutex : false
+    color : mediumseagreen
+
+    patches:
+        - CustomRuneSystem:
+            title : Custom Rune System
+            recommend : no
+            author : Louis T Steinhil
+            desc : One-click Rune System client support for the 2025-07-16 Ragexe. Skips the stock equipped Rune Set guard and imports only the selected Rune visual DLL export.
 
 IgnoreErrors:
     title : IGNORE ERRORS

@@ -1,0 +1,172 @@
+/**************************************************************************\
+*                                                                          *
+*   Patch-time diagnostics for profile, GRF, custom DLL, and UI state.      *
+*                                                                          *
+\**************************************************************************/
+
+PatchDiagnostics = function(_)
+{
+	return PatchDiagnostics.write(_);
+};
+
+PatchDiagnostics.add = function(topic, value)
+{
+	try
+	{
+		const key = 'PatchDiagnostics.Events';
+		const events = CACHE.get(key) ?? [];
+		events.push({
+			topic,
+			value,
+			activePatch: Exe.ActivePatch
+		});
+		CACHE.put(key, events);
+	}
+	catch (e)
+	{
+		// Diagnostics must never break the patch that is being inspected.
+	}
+};
+
+PatchDiagnostics.safeJson = function(value)
+{
+	try
+	{
+		return JSON.stringify(value, null, 2);
+	}
+	catch (e)
+	{
+		return String(value);
+	}
+};
+
+PatchDiagnostics.findText = function(text)
+{
+	try
+	{
+		const addr = Exe.FindText(text, CASE_INSENSITIVE, false);
+		return addr < 0 ? 'not found' : '0x' + addr.toHex(true);
+	}
+	catch (e)
+	{
+		return 'error: ' + e.message;
+	}
+};
+
+PatchDiagnostics.patchState = function(name)
+{
+	try
+	{
+		return (Warp.GetPatchState(name) || Exe.ActivePatch === name) ? 'ON' : 'off';
+	}
+	catch (e)
+	{
+		return 'unknown';
+	}
+};
+
+PatchDiagnostics.write = function(_)
+{
+	const fileName = OUTDIR + 'PatchDiagnostics_' + ROC.BaseName + '.txt';
+	const fp = new TextFile(fileName, 'w');
+	if (!fp.Valid)
+		throw Error('PatchDiagnostics: unable to create log file');
+
+	const line = text => fp.WriteLine(String(text));
+	const section = title =>
+	{
+		line('');
+		line('[' + title + ']');
+	};
+
+	line('PatchDiagnostics');
+	line('Generated: ' + System.LocalTime.toISOString());
+	line('Source EXE: ' + Exe.FilePath);
+	line('Output dir: ' + OUTDIR);
+	line('BuildDate: ' + Exe.BuildDate);
+	line('Version: ' + Exe.Version);
+	line('ImageBase: 0x' + Exe.ImageBase.toHex(true));
+	line('ActivePatch: ' + Exe.ActivePatch);
+	line('ROC.BaseName: ' + ROC.BaseName);
+	line('ROC.IsRenewal: ' + ROC.IsRenewal);
+	line('ROC.IsZero: ' + ROC.IsZero);
+	line('ROC.IsMain: ' + ROC.IsMain);
+	line('ROC.FullVer: ' + ROC.FullVer);
+	line('ROC.ClientInfo: ' + ROC.ClientInfo);
+
+	section('Patch States');
+	[
+		'DataFolderFirst',
+		'GRFsFromIni',
+		'GRFsEmbedded',
+		'LoadKrExtSettings',
+		'CallKoreaClientInfo',
+		'TranslateClient',
+		'CustomDLL',
+		'CustomColoredItemName',
+		'CustomEnchantGradeLabels',
+		'CustomExtName',
+		'AlwaysShowNpcName',
+		'FpsOverlay',
+		'PingOverlay',
+		'CustomRuneSystem',
+		'ImageBasedInventoryTabs',
+		'PatchDiagnostics'
+	].forEach(name => line(name + ': ' + PatchDiagnostics.patchState(name)));
+
+	section('GRF Loader');
+	line('DGRF.Name: ' + (typeof DGRF !== 'undefined' ? DGRF.Name : 'unavailable'));
+	line('MultiGRFs.Mode: ' + PatchDiagnostics.safeJson(CACHE.get('MultiGRFs.Mode')));
+	line('MultiGRFs.INI: ' + PatchDiagnostics.safeJson(CACHE.get('MultiGRFs.INI')));
+	line('MultiGRFs.InputFile: ' + PatchDiagnostics.safeJson(CACHE.get('MultiGRFs.InputFile')));
+	line('MultiGRFs.Names: ' + PatchDiagnostics.safeJson(CACHE.get('MultiGRFs.Names')));
+
+	section('Important EXE Text Markers');
+	[
+		'GameSettingsUI.lub',
+		'LuaFiles514\\Lua Files\\OptionInfo\\GameSettings.lub',
+		'LuaFiles514\\Lua Files\\OptionInfo\\OptionInfo.lub',
+		'OptionTbl',
+		'OptionTbl[ {} ].ID',
+		'/shownpcname',
+		'TT_SHOWNPCNAME',
+		'MSI_SHOWNPCNAME',
+		'boh.dll',
+		'boh_text.dll',
+		'boh_npc_names.dll',
+		'boh_fps.dll',
+		'boh_rune.dll',
+		'boh_inventory_tabs.dll',
+		'cps.dll'
+	].forEach(text => line(text + ': ' + PatchDiagnostics.findText(text)));
+
+	section('Import Directory');
+	try
+	{
+		line('Current DirAddr(PHY): 0x' + Exe.GetDirAddr(D_Import, PHYSICAL).toHex(true));
+		line('Current DirAddr(VIR): 0x' + Exe.GetDirAddr(D_Import).toHex(true));
+		line('Current DirSize: 0x' + Exe.GetDirSize(D_Import).toHex(true));
+	}
+	catch (e)
+	{
+		line('Import directory read error: ' + e.message);
+	}
+	line('ImpInfo: ' + PatchDiagnostics.safeJson(CACHE.get('ImpInfo')));
+	line('ImpInfo.OldDir: ' + PatchDiagnostics.safeJson(CACHE.get('ImpInfo.OldDir')));
+	line('CustomDLL.ImportRequests: ' + PatchDiagnostics.safeJson(CACHE.get('CustomDLL.ImportRequests')));
+	line('CustomDLL.IAT: ' + PatchDiagnostics.safeJson(CACHE.get('CustomDLL.IAT')));
+	line('CustomDLL.MergedSpecByOwner: ' + PatchDiagnostics.safeJson(CACHE.get('CustomDLL.MergedSpecByOwner')));
+
+	section('Slash Commands');
+	line('RegistryByOwner: ' + PatchDiagnostics.safeJson(CACHE.get('CustomSlashCommand.RegistryByOwner')));
+	line('RefreshHooksByName: ' + PatchDiagnostics.safeJson(CACHE.get('CustomSlashCommand.RefreshHooksByName')));
+
+	section('Events');
+	const events = CACHE.get('PatchDiagnostics.Events') ?? [];
+	for (let i = 0; i < events.length; ++i)
+		line(i + ': ' + PatchDiagnostics.safeJson(events[i]));
+
+	fp.Close();
+	console.info('PatchDiagnostics wrote ' + fileName);
+	return true;
+};

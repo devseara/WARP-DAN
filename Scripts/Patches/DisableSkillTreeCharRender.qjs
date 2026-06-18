@@ -1,0 +1,59 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-06-10                                             *
+*   Last Modified : 2026-06-10                                             *
+*                                                                          *
+*   Description   : Prevents FPS lag in the ALT+S skill tree window by     *
+*                   NOPing the AddChild calls inside both UIDisplayChar    *
+*                   factory functions (0x00893DF0 and 0x00893FA0).         *
+*                                                                          *
+*                   Combine with DisableExpensiveCharRender for full fix.  *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief NOP the AddChild call (push esi; mov ecx,edi/ebx; call) inside
+///        each UIDisplayCharacter factory function. 8 bytes each.
+///
+DisableSkillTreeCharRender = function(_)
+{
+	$$(_, 1, `NOP AddChild in factory #1 (0x00893E94)`);
+	Exe.SetNOPs(0x00893E94, 8);
+
+	$$(_, 2, `NOP AddChild in factory #2 (0x00894069)`);
+	Exe.SetNOPs(0x00894069, 8);
+
+	return true;
+};
+
+///
+/// \brief Validate both AddChild sites: first byte is 0x56 (push esi) or
+///        already 0x90 (NOP'd from prior run).
+///
+DisableSkillTreeCharRender.validate = function()
+{
+	const b1 = Exe.GetUint8(0x00893E94);
+	const b2 = Exe.GetUint8(0x00894069);
+	return (b1 === 0x56 || b1 === 0x90) && (b2 === 0x56 || b2 === 0x90);
+};

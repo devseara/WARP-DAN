@@ -1,0 +1,71 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2025-07-16                                             *
+*   Last Modified : 2026-06-05                                             *
+*                                                                          *
+*   Description   : Dispatcher-table item-color patch. Routes variable-    *
+*                   length packet 0x0BDD to the ICOL shared block after    *
+*                   the stock client reader has consumed the full packet.  *
+*                   Avoids runtime ws2_32.recv hooks and the legacy        *
+*                   RecvStrip0BB6 recv/read-path patch. The visual layer   *
+*                   is a renameable normal startup import. The combined   *
+*                   build is boh.dll; the dedicated build is boh_text.dll.*
+*                                                                          *
+\**************************************************************************/
+
+CustomColoredItemName = function(_)
+{
+    $$(_, 1, `Install dispatcher-table transport for item-color packets`);
+
+    if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.install !== "function")
+        throw Error("CustomPacketDispatch.install helper is unavailable");
+
+    CustomPacketDispatch.install(`${_}.Dispatch`, ['ICOL']);
+
+    $$(_, 2, `Add renameable item-color visual DLL as startup import`);
+    CustomColoredItemName.addVisualDll(`${_}.CustomDLL`);
+
+    $$(_, 3, `Custom item-color dispatcher transport + visual DLL import are enabled`);
+    return true;
+};
+
+CustomColoredItemName.addVisualDll = function(_)
+{
+    if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.addVisualDll !== "function")
+        throw Error("CustomPacketDispatch.addVisualDll helper is unavailable");
+
+    return CustomPacketDispatch.addVisualDll(_, {
+        inputKey: '$itemColorVisualDLLName',
+        title: "Colored Item Name Visual DLL",
+        exportName: "ColoredItemNameVisualInit",
+        defaultName: "boh.dll",
+        dedicatedName: "boh_text.dll",
+        description: "Enter the DLL filename for item-color rendering. Use boh.dll for the combined build or boh_text.dll for the dedicated text build. Item colors and extended names intentionally share one GDI-hook DLL."
+    });
+};
+
+CustomColoredItemName.validate = function()
+{
+    return Exe.BuildDate >= 20250700;
+};

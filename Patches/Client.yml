@@ -100,7 +100,13 @@ EnableSlashCmd:
             recommend : yes
             author : Neo-Mind
             desc : Enables the <b>/showname</b> command on all langtypes, allowing players to toggle the display of character names, party names, and guild names above sprites.
-        
+
+        - AlwaysShowNpcName:
+            title : Always show NPC names (hook-based)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Always renders NPC names above their heads at correct screen positions, even without mouse hover. Uses a runtime hook in the selected BOH DLL and adds the /shownpcname client-side toggle. Game Settings support requires matching option Lua data; keep that data out of base profiles that do not patch AlwaysShowNpcName.
+
         - EnableUnknCmds:
             title : Allow unknown '/command's [Experimental]
             recommend : no

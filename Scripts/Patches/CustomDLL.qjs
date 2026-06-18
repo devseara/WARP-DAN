@@ -24,6 +24,19 @@
 *   Created Date  : 2020-11-19                                             *
 *   Last Modified : 2023-08-26                                             *
 *                                                                          *
+*   Description   : Rebuilds the PE import table to add custom DLLs and    *
+*                   their exported functions. Extracts existing imports via *
+*                   GetImpTable, merges new DLL specs via mergeSpec (CACHE- *
+*                   based dedup across multiple callers), allocates space   *
+*                   for strings/entries/table, then replaces the PE import  *
+*                   directory entry via SetDirAddr/SetDirSize.              *
+*                   RISK: Full import table replacement; any error in the   *
+*                   new table makes the EXE unlaunchable. Patches using     *
+*                   this: CustomExtName, CustomColoredItemName, FpsOverlay, *
+*                   CustomRuneSystem, GenMapEffect.                         *
+*                   Target: Ragexe clients 2014-2025 (excluding 2014-2017   *
+*                   import-table bugs).                                     *
+*                                                                          *
 \**************************************************************************/
 
 // TODO - Need to find an alternative for clients with repetitive imports
@@ -34,18 +47,59 @@
 ///
 CustomDLL = function(_)
 {
-	$$(_, 1.1, `Extract the import table (if HShield patch is enabled then skip aossdk entry while extracting)`)
-	const dirEntries = GetImpTable(Warp.GetPatchState("NoHShield") ? "aossdk.dll" : null);
-
-	$$(_, 1.2, `Get the list file containing the dlls and functions to add`)
+	$$(_, 1.1, `Get the list file containing the dlls and functions to add`)
 	const inFile = Exe.GetUserInput('$customDLL', D_InFile, "DLL Spec", "Enter the DLL specification file", "Inputs/DLLSpec.yml", {filters: YMLFILTER});
 	if (inFile === false)
 		Cancel("No file specified");
 
-	$$(_, 1.3, `Retrieve the specification`)
+	$$(_, 1.2, `Retrieve the specification`)
 	const dllSpec = Warp.LoadYaml(inFile);
+
+	return CustomDLL.applySpec(_, dllSpec);
+};
+
+///
+/// \brief Add the supplied DLL spec to the import table.
+///
+/// This helper lets dedicated one-click patches reuse the CustomDLL import
+/// table builder without requiring the user to select the generic CustomDLL
+/// patch separately.
+///
+CustomDLL.applySpec = function(_, dllSpec)
+{
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add('CustomDLL.applySpec.input', {
+			owner: _,
+			spec: dllSpec
+		});
+
+	$$(_, 1.3, `Validate the DLL specification`)
 	if (!Array.isArray(dllSpec))
-		Cancel("Improper/Non-existent file specified");
+		Cancel("Improper/Non-existent DLL specification");
+
+	CustomDLL.rememberRequest(_, dllSpec);
+
+	dllSpec = CustomDLL.mergeSpec(_, dllSpec);
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add('CustomDLL.applySpec.merged', {
+			owner: _,
+			spec: dllSpec
+		});
+
+	// Every caller rebuilds the same PE import directory fields. Keep those
+	// shared header writes under one global tag so the latest cumulative table
+	// replaces the previous one instead of competing with the feature patch
+	// that happened to request imports first.
+	const callerPatch = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag('CustomDLL.ImportTable'), true);
+
+	try
+	{
+	$$(_, 1.4, `Extract the import table (if HShield patch is enabled then skip aossdk entry while extracting)`)
+	const dirEntries = GetImpTable(Warp.GetPatchState("NoHShield") ? "aossdk.dll" : null);
 
 	$$(_, 2, `Construct list of strings of all the names as well as compute the relative offsets for all the new entries`)
 	let dirSize = dirEntries.byteCount(); //Holds the size of Import Table
@@ -110,6 +164,7 @@ CustomDLL = function(_)
 	let dirEntryData = "";
 	let dirTableData = "";
 	let entryPtr = 0;
+	const customIat = {};
 
 	dllSpec.forEach( (hash, idx) =>
 	{
@@ -124,6 +179,12 @@ CustomDLL = function(_)
 
 		for (const func of hash.Funcs)
 		{
+			if ('Name' in func)
+			{
+				const iatKey = (hash.Name + '!' + func.Name).toLowerCase();
+				customIat[iatKey] = baseRVA + Exe.ImageBase + entryPtr;
+			}
+
 			if ('Ordinal' in func)
 				dirEntryData += func.Offset.toHex();
 			else if ('Offset' in func)
@@ -156,11 +217,206 @@ CustomDLL = function(_)
 		TblAddr : baseRVA + Exe.ImageBase + dirEntryData.byteCount(),
 		TblSize : dirTableData.byteCount() - 20
 	});
+	CACHE.put('CustomDLL.IAT', customIat);
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add('CustomDLL.applySpec.iat', customIat);
+
+	// Snapshot old import directory address for diagnostics (read-only, safe)
+	CACHE.put('ImpInfo.OldDir', { addr: Exe.GetDirAddr(D_Import, PHYSICAL) });
 
 	$$(_, 4.2, `Call the helper function to setup the new Import table in the client`)
-	this.stage();
+	CustomDLL.stage();
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = callerPatch;
+	}
+
+	// Imported thunks move whenever the cumulative import table is rebuilt.
+	// Refresh the shared slash-command cave so it calls the current IAT.
+	if (typeof CustomSlashCommand !== "undefined" &&
+	    typeof CustomSlashCommand.refresh === "function")
+		CustomSlashCommand.refresh(`${_}.CustomSlashCommand`);
 
 	return true;
+};
+
+CustomDLL.rememberRequest = function(ownerName, dllSpec)
+{
+	const key = 'CustomDLL.ImportRequests';
+	const requests = CACHE.get(key) ?? [];
+	let spec = null;
+	try
+	{
+		spec = JSON.parse(JSON.stringify(dllSpec));
+	}
+	catch (e)
+	{
+		spec = String(dllSpec);
+	}
+
+	requests.push({
+		owner: ownerName,
+		ownerPatch: CustomDLL.ownerPatchName(ownerName),
+		spec
+	});
+	CACHE.put(key, requests);
+};
+
+///
+/// \brief Merge every CustomDLL user into one cumulative import spec.
+///
+/// WARP can run the generic CustomDLL patch and dedicated patches that reuse
+/// CustomDLL.applySpec in the same session. Without merging, whichever patch
+/// runs last rebuilds the import table with only its own DLL list and silently
+/// drops earlier DLLs.
+///
+CustomDLL.mergeSpec = function(ownerName, dllSpec)
+{
+	const key = 'CustomDLL.MergedSpecByOwner';
+	const ownerSpecs = CACHE.get(key) ?? {};
+	const ownerPatch = CustomDLL.ownerPatchName(ownerName);
+
+	const cloneFunc = func =>
+	{
+		if ('Ordinal' in func)
+			return {Ordinal: func.Ordinal};
+		if ('Name' in func && IsStr(func.Name))
+			return {Name: func.Name};
+		return null;
+	};
+
+	const cloneHash = hash =>
+	{
+		if ('Name' in hash === false || !Array.isArray(hash.Funcs))
+			return null;
+		return {
+			Name: hash.Name,
+			Funcs: hash.Funcs.map(cloneFunc).filter(func => func !== null)
+		};
+	};
+	const cloneSpec = spec => spec.map(cloneHash).filter(hash => hash !== null);
+
+	ownerSpecs[ownerPatch] = cloneSpec(dllSpec);
+	CACHE.put(key, ownerSpecs);
+
+	const merged = [];
+	const mergeOne = hash =>
+	{
+		if ('Name' in hash === false || !Array.isArray(hash.Funcs))
+			return;
+
+		let target = merged.find(entry => entry.Name.toLowerCase() === hash.Name.toLowerCase());
+		if (!target)
+		{
+			target = {Name: hash.Name, Funcs: []};
+			merged.push(target);
+		}
+
+		for (const func of hash.Funcs)
+		{
+			const clean = cloneFunc(func);
+			if (!clean)
+				continue;
+
+			const exists = target.Funcs.some(old =>
+				('Ordinal' in clean && 'Ordinal' in old && clean.Ordinal === old.Ordinal) ||
+				('Name' in clean && 'Name' in old && clean.Name === old.Name)
+			);
+
+			if (!exists)
+				target.Funcs.push(clean);
+		}
+	};
+
+	for (const patchName in ownerSpecs)
+	{
+		if (patchName !== ownerPatch && !Warp.GetPatchState(patchName))
+			continue;
+		for (const hash of ownerSpecs[patchName])
+			mergeOne(hash);
+	}
+
+	// Dedicated helper calls can run before WARP has marked the owner patch as
+	// selected. Keep the current caller's import request even in that case.
+	for (const hash of dllSpec)
+		mergeOne(hash);
+
+	return cloneSpec(merged);
+};
+
+CustomDLL.ownerPatchName = function(name)
+{
+	if (!IsStr(name) || name.isEmpty())
+		return Exe.ActivePatch;
+
+	const dot = name.indexOf('.');
+	if (dot > 0)
+		return name.substring(0, dot);
+
+	const bracket = name.indexOf(' ');
+	if (bracket > 0)
+		return name.substring(0, bracket);
+
+	return name;
+};
+
+CustomDLL.getDllName = function(inputKey, title, description, defaultName, dedicatedName)
+{
+	const cacheKey = 'CustomDLL.Input.' + inputKey;
+	const cached = CACHE.get(cacheKey);
+	if (IsStr(cached) && !cached.isEmpty())
+		return cached;
+
+	const dllName = Exe.GetUserInput(
+		inputKey,
+		D_Text,
+		title,
+		description,
+		defaultName,
+		{minLen: 5, maxLen: 64}
+	);
+	if (dllName === false)
+		Cancel(`No ${title} name specified`);
+	if (!/^[A-Za-z0-9_.-]+\.dll$/i.test(dllName))
+		throw Error(`${title} must be a filename only, for example ${dedicatedName || defaultName}`);
+
+	CACHE.put(cacheKey, dllName);
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add('CustomDLL.getDllName', {
+			inputKey,
+			title,
+			dllName
+		});
+
+	// WARP keeps GetUserInput values around in the GUI process. DLL names must
+	// come from the active profile/build, so do not let one uploaded profile
+	// pin old import names until warp.exe restarts.
+	if (typeof Exe.ClearSavedInput === "function")
+		Exe.ClearSavedInput(inputKey);
+
+	return dllName;
+};
+
+CustomDLL.findIat = function(exportName, dllName)
+{
+	const iatMap = CACHE.get('CustomDLL.IAT') ?? {};
+
+	if (IsStr(dllName) && !dllName.isEmpty())
+	{
+		const exactKey = (dllName + '!' + exportName).toLowerCase();
+		if (exactKey in iatMap)
+			return iatMap[exactKey];
+
+		const exactIat = Exe.FindFunc(exportName, dllName);
+		if (exactIat >= 0)
+			return exactIat;
+	}
+
+	return -1;
 };
 
 /*

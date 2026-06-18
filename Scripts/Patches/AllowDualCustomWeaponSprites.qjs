@@ -1,0 +1,102 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 CrazyBebop                                          *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief ISOLATION TEST — Only hook the combiner at 0x00D72D9C.
+///        NO slot stubs, NO ReqWeaponName entry hook.
+///        Purpose: verify dualStub doesn't crash at character select.
+///        If this works, the crash is from the slot stubs.
+///
+
+function AllowDualCustomWeaponSpritesCallTarget(vir)
+{
+	const phy = Exe.Vir2Phy(vir);
+	if (phy < 0 || Exe.GetUint8(phy) !== 0xE8)
+		return -1;
+	return Exe.GetTgtAddr(phy + 1);
+}
+
+function AllowDualCustomWeaponSpritesRequireCall(vir, expected, name)
+{
+	const phy = Exe.Vir2Phy(vir);
+	if (phy < 0 || Exe.GetUint8(phy) !== 0xE8)
+		throw Error(`${name} call site not found`);
+	const target = Exe.GetTgtAddr(phy + 1);
+	const expectedPhy = Exe.Vir2Phy(expected);
+	if (target !== expected && target !== expectedPhy)
+		throw Error(`${name} call target mismatch: expected 0x${expected.toString(16)}, found 0x${target.toString(16)}`);
+	return phy;
+}
+
+AllowDualCustomWeaponSprites = function(_)
+{
+	ROC.findImports();
+
+	const dualCombinerCallPhy = AllowDualCustomWeaponSpritesRequireCall(
+		0x00D72D9C, 0x00D95500, "combiner");
+
+	// Format
+	const [, dualFmt] = Exe.AddText("[DualWeaponSprites] combiner main=%u off=%u combined=%u\r\n");
+	const [bufPhy, bufVir] = Exe.Allocate(0x100, 0x10);
+	Exe.SetHex(bufPhy, NOPs(0x100));
+
+	// dualStub — wraps combiner, logs item IDs (NO cache writes, NO slot hooks)
+	let dualStub =
+		MOV(EAX, [ESP, 0x08])
+	+	PUSH(EAX)
+	+	MOV(EAX, [ESP, 0x08])
+	+	PUSH(EAX)
+	+	CALL(Filler(1))             // original combiner, RET 8
+	+	PUSHAD
+	+	MOV(EBX, [ESP, 0x1C])       // combined type
+	+	MOV(ECX, [ESP, 0x24])       // main item ID
+	+	MOV(EDX, [ESP, 0x28])       // offhand item ID
+	+	PUSH(EBX)
+	+	PUSH(EDX)
+	+	PUSH(ECX)
+	+	PUSH(dualFmt)
+	+	PUSH(bufVir)
+	+	CALL([ROC.SprintF])
+	+	ADD(ESP, 0x14)
+	+	PUSH(bufVir)
+	+	CALL([ROC.OutDbgStrA])
+	+	POPAD
+	+	RETN(8)
+	;
+
+	const [dualStubPhy, dualStubVir] = Exe.Allocate(dualStub.byteCount(), 0x10);
+	dualStub = SetFillTargets(dualStub, {
+		start: dualStubVir,
+		1: 0x00D95500
+	});
+	Exe.SetHex(dualStubPhy, dualStub);
+
+	$$(_, 1.1, `ISOLATION TEST: combiner hook only (no slot stubs)`);
+	Exe.SetCALL(dualCombinerCallPhy, dualStubVir);
+
+	return true;
+};
+
+AllowDualCustomWeaponSprites.validate = function()
+{
+	return AllowDualCustomWeaponSpritesCallTarget(0x00D72D9C) >= 0 &&
+		AllowDualCustomWeaponSpritesCallTarget(0x00D81D31) >= 0;
+};

@@ -8,3 +8,16 @@
 
 # Ignore Skipped Patches logs
 SkippedPatches.log
+
+# Ignore DLL build artifacts
+/CustomDLL/src/*.dll
+/CustomDLL/src/*.exp
+/CustomDLL/src/*.lib
+/CustomDLL/src/*.obj
+
+# Ignore files copied by local console profile smoke tests
+/SystemEN/
+
+# Ignore local client source/extract folders
+/2025-*_Ragexe_*_clientinfo/
+/2025-*_Ragexe_*_clientinfo.zip

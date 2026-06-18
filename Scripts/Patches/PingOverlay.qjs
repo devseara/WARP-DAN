@@ -1,0 +1,60 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-06-07                                             *
+*                                                                          *
+*   Description   : Loads the ping overlay command independently from FPS. *
+*                                                                          *
+\**************************************************************************/
+
+PingOverlay = function(_)
+{
+	if (typeof CustomDLL === "undefined" ||
+	    typeof CustomDLL.applySpec !== "function")
+		throw Error("PingOverlay: CustomDLL.applySpec helper unavailable");
+	if (typeof FpsOverlay === "undefined" ||
+	    typeof FpsOverlay.getDllName !== "function")
+		throw Error("PingOverlay: FpsOverlay helper unavailable");
+
+	const dllName = FpsOverlay.getDllName();
+
+	$$(_, 1, 'Register ping visual DLL');
+	CustomDLL.applySpec(`${_}.CustomDLL`, [{
+		Name: dllName,
+		Funcs: [
+			{Name: "FpsPingOverlayInit"},
+			{Name: "TogglePingOverlay"}
+		]
+	}]);
+
+	FpsOverlay.installSlashCmd(`${_}.SlashCommands`, dllName, {
+		command: "/ping",
+		exportName: "TogglePingOverlay"
+	});
+	return true;
+};
+
+PingOverlay.validate = function()
+{
+	return Exe.BuildDate > 0;
+};

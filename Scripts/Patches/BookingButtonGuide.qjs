@@ -1,0 +1,268 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-05-25                                             *
+*   Last Modified : 2026-05-25                                             *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief Reuse the Basic Info "Booking" button to send the custom in-game
+///        guide/settings packet. The hover label is wired through
+///        an unused SNS failure entry in msgstringtable.csv.
+///
+BookingButtonGuide = function(_)
+{
+	const BookingButtonIdx = 8;
+	const BookingTooltipMsgID = 0x0CA2; // msgstringtable.csv key: MSI_CONNECT_SNS_FAIL_CUZ_NOT_CONNECTING
+	const GuidePacketID = 0x0BB2;
+	const NoHotkeyBehaviorID = 0x2732;
+
+	$$(_, 3.1, `Find New Basic button ID table anchor`)
+	const strNavigation = Exe.FindText("navigation");
+	if (strNavigation < 0)
+		throw Error("'navigation' string not found");
+
+	const addrNavigation = Exe.FindHex(PUSH(strNavigation));
+	if (addrNavigation < 0)
+		throw Error("'navigation' PUSH reference not found");
+
+	$$(_, 3.2, `Find MOVAPS blocks that load the button-ID table`)
+	let code =
+		MOVAPS(XMM0, XMMWORD_PTR, [POS4WC])  // movaps xmm0, xmmword ptr [ListButtonsID]
+	+	MOV(EAX, [POS3WC]);                  // mov eax, dword ptr [dword]
+
+	let addr = Exe.FindHex(code, addrNavigation - 0x5000, addrNavigation);
+	if (addr < 0)
+		throw Error("Button-ID MOVAPS pattern not found");
+
+	const movAps = MOVAPS(XMM0, XMMWORD_PTR, [POS4WC]);
+	let listAddrRefs = [];
+	for (let i = 0; i < 6; ++i)
+	{
+		addr = Exe.FindHex(movAps, addr, addr + 0x20);
+		if (addr < 0)
+			throw Error("Button-ID MOVAPS block not found at index " + i);
+
+		listAddrRefs.push(Exe.GetUint32(addr + 3));
+		addr += movAps.byteCount();
+	}
+
+	listAddrRefs.sort();
+	const listVir = listAddrRefs[0];
+	const listPhy = Exe.Vir2Phy(listVir);
+	if (listPhy < 0)
+		throw Error("Button-ID table conversion failed");
+
+	$$(_, 3.3, `Resolve Booking button ID`)
+	// New Basic button table order:
+	// quest, map, navigation, option, status, equip, item, skill, booking, ...
+	const targetID = Exe.GetUint32(listPhy + (BookingButtonIdx * 4));
+	if (targetID <= 0)
+		throw Error("Booking button ID is invalid");
+
+	$$(_, 4.1, `Wire Booking hover label to msgstringtable.csv`)
+	code =
+		MOV(EAX, [EAX, 0x2C]) // mov eax, dword ptr [button + button_id]
+	+	MOV(EDX, NoHotkeyBehaviorID)
+	+	MOV(EDI, 0x1103)
+	+	CMP(EAX, 0x1CD);
+
+	addr = Exe.FindHex(code);
+	if (addr < 0)
+		throw Error("New Basic hover mapper start not found");
+
+	const subId =
+		SUB(EAX, 0xC0)
+	+	CMP(EAX, 0xEE)
+	+	JA(POS4WC);
+
+	const subAddr = Exe.FindHex(subId, addr, addr + 0x80);
+	if (subAddr < 0)
+		throw Error("New Basic hover mapper switch not found");
+
+	const hookAddr = subAddr + SUB(EAX, 0xC0).byteCount();
+	const defaultAddr = Exe.GetTgtAddr(hookAddr + CMP(EAX, 0xEE).byteCount() + 2);
+	const tableAddr = Exe.Phy2Vir(subAddr + subId.byteCount(), CODE);
+
+	const assignAddr = Exe.FindHex("8D 45 D0 C7 45 D0 00 00 00 00", hookAddr, hookAddr + 0x180);
+	if (assignAddr < 0)
+		throw Error("New Basic hover label assignment path not found");
+	const assignVir = Exe.Phy2Vir(assignAddr, CODE);
+
+	let hoverHook =
+		CMP(EAX, targetID - 0xC0)
+	+	JNE(Filler(1, 1))
+	+	MOV(EDX, NoHotkeyBehaviorID)
+	+	MOV(EDI, BookingTooltipMsgID)
+	+	JMP(Filler(2))
+	+	CMP(EAX, 0xEE)
+	+	JA(Filler(3))
+	+	JMP(Filler(4));
+
+	const customBlockLen =
+		MOV(EDX, NoHotkeyBehaviorID).byteCount()
+	+	MOV(EDI, BookingTooltipMsgID).byteCount()
+	+	JMP(Filler(2)).byteCount();
+
+	hoverHook = SwapFillers(hoverHook, {'1,1': customBlockLen});
+	AutoHook(hookAddr, [hoverHook], {
+		targets: {
+			2: assignVir,
+			3: defaultAddr,
+			4: tableAddr
+		}
+	});
+
+	$$(_, 4.2, `Find packet send helper calls`)
+	const packetTemplate =
+		MOV(EAX, 0x0844)  // mov eax, CZ_SE_CASHSHOP_OPEN1
+	+	PUSH(ESI)
+	+	MOV([EBP, 0x8], AX);
+
+	const packetTemplateAddrs = Exe.FindHexN(packetTemplate);
+	if (packetTemplateAddrs.isEmpty())
+		throw Error("Packet sender template not found");
+
+	const senderCandidates = packetTemplateAddrs.filter(addr =>
+		Exe.FindLastHex(PUSH(0x13E), addr, addr - 0x80) > 0
+	);
+	if (senderCandidates.length !== 1)
+		throw Error("Expected one packet sender template, found " + senderCandidates.length);
+
+	const packetSender = senderCandidates[0];
+	const packetCtorA = Exe.GetTgtAddr(packetSender + 0x0A + 1);
+	const packetCtorB = Exe.GetTgtAddr(packetSender + 0x11 + 1);
+	const packetLookup = Exe.GetTgtAddr(packetSender + 0x1D + 1);
+	const packetSend = Exe.GetTgtAddr(packetSender + 0x29 + 1);
+
+	$$(_, 4.3, `Build custom guide packet sender`)
+	let packetSenderCode =
+		PUSH(EBP)
+	+	MOV(EBP, ESP)
+	+	SUB(ESP, 4)
+	+	PUSH(ESI)
+	+	MOV(EAX, GuidePacketID)
+	+	" 66 89 45 FC"       // mov word ptr [ebp-4], ax
+	+	CALL(Filler(1))
+	+	MOV(ESI, EAX)
+	+	CALL(Filler(2))
+	+	" 0F BF 4D FC"       // movsx ecx, word ptr [ebp-4]
+	+	PUSH(ECX)
+	+	MOV(ECX, EAX)
+	+	CALL(Filler(3))
+	+	" 8D 4D FC"          // lea ecx, [ebp-4]
+	+	PUSH(ECX)
+	+	PUSH(EAX)
+	+	MOV(ECX, ESI)
+	+	CALL(Filler(4))
+	+	POP(ESI)
+	+	MOV(ESP, EBP)
+	+	POP(EBP)
+	+	RETN();
+
+	const [packetStubPhy, packetStubVir] = Exe.Allocate(packetSenderCode.byteCount(), 0x10);
+	packetSenderCode = SetFillTargets(packetSenderCode, {
+		start: packetStubVir,
+		1: packetCtorA,
+		2: packetCtorB,
+		3: packetLookup,
+		4: packetSend
+	});
+	Exe.SetHex(packetStubPhy, packetSenderCode);
+
+	$$(_, 5.1, `Find New Basic click switch`)
+	const strRecEnd = Exe.FindText("REC End please");
+	if (strRecEnd < 0)
+		throw Error("'REC End please' string not found");
+
+	const addrRecEnd = Exe.FindHex(PUSH(strRecEnd));
+	if (addrRecEnd < 0)
+		throw Error("'REC End please' PUSH reference not found");
+
+	const clickSwitchPrefix = "8B 5D 10 8B C8 53 E8 ?? ?? ?? ?? 84 C0 75 ?? ";
+	code =
+		clickSwitchPrefix
+	+	CMP(EBX, 0x1CD);       // cmp ebx, 1CDh ; start of the click switch
+
+	addr = Exe.FindHex(code, addrRecEnd - 0x300, addrRecEnd + 0x200);
+	if (addr < 0)
+		throw Error("New Basic click switch not found");
+
+	const cmpSwitch = CMP(EBX, 0x1CD);
+	const cmpAddr = addr + 15; // byte length of clickSwitchPrefix
+	const jneAddr = cmpAddr - 2; // short JNE immediately before the CMP is 2 bytes
+	let shortJump = Exe.GetUint8(jneAddr + 1);
+	if (shortJump > 0x7F)
+		shortJump -= 0x100;
+	const forwardPhy = jneAddr + 2 + shortJump;
+	const forwardVir = Exe.Phy2Vir(forwardPhy, CODE);
+	const cmpContinueVir = Exe.Phy2Vir(cmpAddr + cmpSwitch.byteCount(), CODE);
+	if (forwardVir < 0 || cmpContinueVir < 0)
+		throw Error("New Basic click switch target conversion failed");
+
+	$$(_, 5.2, `Hook Booking click inside the New Basic switch`)
+	const sendBlock =
+		PUSHAD
+	+	CALL(Filler(1))
+	+	POPAD
+	+	JMP(Filler(2));
+
+	let clickHook =
+		CMP(EBX, targetID)
+	+	JNE(Filler(4, 1))
+	+	sendBlock
+	+	cmpSwitch
+	+	JMP(Filler(3));
+
+	clickHook = SwapFillers(clickHook, {'4,1': sendBlock.byteCount()});
+	AutoHook(cmpAddr, [clickHook], {
+		targets: {
+			1: packetStubVir,
+			2: forwardVir,
+			3: cmpContinueVir
+		},
+		nops: 1
+	});
+
+	return true;
+};
+
+///
+/// \brief Disable for unsupported clients.
+///
+BookingButtonGuide.validate = function()
+{
+	if (Exe.BuildDate <= 20170000)
+		return false;
+
+	if (Exe.FindText("navigation") < 0)
+		return false;
+
+	const packetTemplate =
+		MOV(EAX, 0x0844)
+	+	PUSH(ESI)
+	+	MOV([EBP, 0x8], AX);
+
+	return Exe.FindHex(packetTemplate) > 0;
+};

@@ -1,0 +1,160 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker                                          *
+*   Created Date  : 2026-06-11                                             *
+*   Last Modified : 2026-06-12                                             *
+*                                                                          *
+*   Description   : Loads the NPC name overlay DLL and adds the            *
+*                   /shownpcname client-side toggle.                       *
+*                                                                          *
+*                   Target: 2025-07-16 Ragexe.                             *
+*                                                                          *
+\**************************************************************************/
+
+AlwaysShowNpcName = function(_)
+{
+	if (typeof CustomDLL === "undefined" ||
+	    typeof CustomDLL.applySpec !== "function")
+		throw Error("AlwaysShowNpcName: CustomDLL.applySpec helper unavailable");
+	if (typeof CustomSlashCommand === "undefined" ||
+	    typeof CustomSlashCommand.register !== "function")
+		throw Error("AlwaysShowNpcName: CustomSlashCommand helper unavailable");
+
+	$$(_, 1, 'Register NPC name overlay DLL');
+	const dllName = CustomDLL.getDllName(
+		'$npcNameOverlayDLLName',
+		"NPC Name Overlay DLL",
+		"Enter the NPC overlay DLL filename. Use boh.dll for the combined build or boh_npc_names.dll for the dedicated build.",
+		"boh.dll",
+		"boh_npc_names.dll"
+	);
+	CACHE.put('AlwaysShowNpcName.DLL', dllName);
+
+	CustomDLL.applySpec(`${_}.CustomDLL`, [{
+		Name: dllName,
+		Funcs: [
+			{Name: "NpcNameOverlayInit"},
+			{Name: "ToggleNpcNameOverlay"},
+			{Name: "SetNpcNameOverlayOption"}
+		]
+	}]);
+
+	CustomSlashCommand.addRefreshHook(
+		'AlwaysShowNpcName.GameSettings',
+		{type: 'AlwaysShowNpcName.GameSettings'}
+	);
+
+	$$(_, 2, 'Register /shownpcname command');
+	CustomSlashCommand.register(`${_}.SlashCommand`, {
+		command: "/shownpcname",
+		dllName,
+		exportName: "ToggleNpcNameOverlay",
+		optionId: 10001
+	});
+
+	$$(_, 3, 'Game Settings ON/OFF rows connected');
+
+	try
+	{
+		const fp = new TextFile(OUTDIR + 'AlwaysShowNpcName_result.txt', 'w');
+		if (fp.Valid)
+		{
+			fp.WriteLine('AlwaysShowNpcName patch result (v5):');
+			fp.WriteLine('  Build date: ' + Exe.BuildDate);
+			fp.WriteLine('  Hook target: 0xC77820 (per-frame balloon updater)');
+			fp.WriteLine('  Toggle command: /shownpcname (default off)');
+			fp.WriteLine('  Game Settings: /shownpcname bridged; /font remains native');
+			fp.WriteLine('  Rendering: game-native 3D projection via UpdateBalloonPos');
+			fp.WriteLine('  Command dispatch: direct DLL export call; no file polling');
+			fp.Close();
+		}
+	}
+	catch (e)
+	{
+		// Result-file output is best effort.
+	}
+
+	return true;
+};
+
+AlwaysShowNpcName.installSettingsBridge = function()
+{
+	const dllName = CACHE.get('AlwaysShowNpcName.DLL');
+	if (!IsStr(dllName) || dllName.isEmpty())
+		throw Error('AlwaysShowNpcName: active DLL name is unavailable');
+
+	const optionIat = (
+		typeof CustomDLL !== "undefined" &&
+		typeof CustomDLL.findIat === "function"
+	)
+		? CustomDLL.findIat('SetNpcNameOverlayOption', dllName)
+		: Exe.FindFunc('SetNpcNameOverlayOption', dllName);
+	if (optionIat < 0)
+		throw Error(
+			'AlwaysShowNpcName: SetNpcNameOverlayOption import not found'
+		);
+
+	// CUIOptionItem's generic ON/OFF callback. EDI is the option item,
+	// [EDI+F8] is its TALKTYPE ID, and [EBP+8] is the new boolean state.
+	// Call the DLL only for our synthetic ID; native options such as /font
+	// must continue without an intervening DLL call.
+	const callbackPattern =
+		'8B F9 8B 35 7C EE 31 01 85 F6 75 33';
+	const callbackAddr = Exe.FindHex(callbackPattern);
+	if (callbackAddr < 0)
+		throw Error(
+			'AlwaysShowNpcName: Game Settings ON/OFF callback not found'
+		);
+
+	const returnVir = Exe.Phy2Vir(callbackAddr + 8, CODE);
+	const originalGlobal = Exe.GetUint32(callbackAddr + 4);
+	const [bridgePhy, bridgeVir] = Exe.Allocate(0x40, 0x10);
+	const bridge =
+		' 8B F9'                         // MOV EDI,ECX
+		+ ' 8B 35 ' + originalGlobal.toHex() // MOV ESI,[global]
+		+ ' 81 BF F8 00 00 00 11 27 00 00' // CMP [EDI+F8],10001
+		+ ' 75 12'                       // JNE native callback
+		+ ' FF 75 08'                    // PUSH [EBP+8]
+		+ ' FF B7 F8 00 00 00'           // PUSH [EDI+F8]
+		+ ' FF 15 ' + optionIat.toHex()  // CALL [iat]
+		+ ' 83 C4 08'                    // ADD ESP,8
+		+ JMP(returnVir, bridgeVir + 38);
+
+	Exe.SetHex(bridgePhy, bridge);
+	Exe.SetJMP(callbackAddr, bridgeVir, 0);
+	Exe.SetHex(callbackAddr + 5, NOPs(3));
+	return true;
+};
+
+AlwaysShowNpcName.validate = function()
+{
+	if (Exe.BuildDate !== 20250716)
+	{
+		console.warn(
+			'AlwaysShowNpcName: Expected build 20250716, loaded ' +
+			Exe.BuildDate + '. Hook addresses are build-specific.'
+		);
+		return false;
+	}
+	return true;
+};

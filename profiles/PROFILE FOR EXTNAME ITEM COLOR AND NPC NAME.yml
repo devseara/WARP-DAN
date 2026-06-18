@@ -1,0 +1,379 @@
+from: "D:/Programs/Games/Ragnarok/01_github/WARP0716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
+to: "D:/Programs/Games/Ragnarok/01_github/WARP0716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo_patched.exe"
+inputs:
+    $fontCopyTtf:
+        data: ''
+        display: "true"
+        type: 10
+    
+    $newAchieveList:
+        data: '53797374656d454e2f416368696576656d656e74735f454e2e6c756200'
+        display: "SystemEN/Achievements_EN.lub"
+        type: 10
+    
+    $snsBtnHover:
+        data: '446973636f7264204368616e6e656c00'
+        display: "Discord Channel"
+        type: 10
+    
+    $warpFadeOutDelay:
+        data: '00000000'
+        display: 0
+        type: 2
+    
+    $npcNameOverlayDLLName:
+        data: '626f685f6e70635f6e616d65732e646c6c00'
+        display: "boh_npc_names.dll"
+        type: 10
+    
+    $translationFile:
+        data: ''
+        display: "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP0716-main\\Inputs\\Translations_EN.yml"
+        type: 10
+    
+    $fontClientDir:
+        data: '53797374656d454e5c466f6e7400'
+        display: "SystemEN\\Font"
+        type: 10
+    
+    $copyCJLub:
+        data: ''
+        display: "true"
+        type: 10
+    
+    $itemColorVisualDLLName:
+        data: '626f685f746578742e646c6c00'
+        display: "boh_text.dll"
+        type: 10
+    
+    $npcBoxLength:
+        data: '00100000'
+        display: 4096
+        type: 2
+    
+    $snsBtnURL:
+        data: '68747470733a2f2f646973636f72642e636f6d2f6368616e6e656c732f313437333039343334343535373732373836322f3134373330393433343536313037353631323800'
+        display: "https://discord.com/channels/1473094344557727862/1473094345610756128"
+        type: 10
+    
+    $maxEmblemSize:
+        data: 'ffffff7f'
+        display: 2147483647
+        type: 2
+    
+    $newTipBox:
+        data: '53797374656d454e2f746970626f785f454e2e6c756200'
+        display: "SystemEN/tipbox_EN.lub"
+        type: 10
+    
+    $luaOvrdFile:
+        data: ''
+        display: "Inputs/LuaOvrdSpec.yml"
+        type: 10
+    
+    $newShownButtons:
+        data: ''
+        display: 
+            - type: 10
+              value: "Battleground"
+            - type: 10
+              value: "Booking"
+            - type: 10
+              value: "Twitter (SNS)"
+    
+    $maxShield:
+        data: '7f'
+        display: 127
+        type: 2
+    
+    $extNameVisualDLLName:
+        data: '626f685f746578742e646c6c00'
+        display: "boh_text.dll"
+        type: 10
+    
+    $newTownInfo:
+        data: '53797374656d454e2f546f776e696e666f5f454e2e6c756200'
+        display: "SystemEN/Towninfo_EN.lub"
+        type: 10
+    
+    $newQuestQuali:
+        data: '53797374656d454e2f5175657374436c617373696669636174696f6e496e666f5f454e2e6c756200'
+        display: "SystemEN/QuestClassificationInfo_EN.lub"
+        type: 10
+    
+    $captchaDcSize:
+        data: 'a0860100'
+        display: 100000
+        type: 2
+    
+    $inpMultGRF:
+        data: ''
+        display: "Inputs/Sample_DATA.INI"
+        type: 10
+    
+    $newFontCharset:
+        data: '414e534900'
+        display: "ANSI"
+        type: 10
+    
+    $MaxHair:
+        data: '2b00'
+        display: 43
+        type: 2
+    
+    $newPrivAirplane:
+        data: '53797374656d454e5c50726976617465416972706c616e655f454e2e6c756200'
+        display: "SystemEN\\PrivateAirplane_EN.lub"
+        type: 10
+    
+    $bookingList:
+        data: ''
+        display: "Inputs/BookSkipList.yml"
+        type: 10
+    
+    $customWindowTitle:
+        data: '42616e71756574206f66204865726f65733a205261676e61726f6b204f6e6c696e6500'
+        display: "Banquet of Heroes: Ragnarok Online"
+        type: 10
+    
+    $newPetEvoCln:
+        data: '73797374656d454e5c50657445766f6c7574696f6e5f454e2e6c756200'
+        display: "systemEN\\PetEvolution_EN.lub"
+        type: 10
+    
+    $customDLL:
+        data: ''
+        display: "Inputs/DLLSpec.yml"
+        type: 10
+    
+    $newSleepDelay1:
+        data: '0000'
+        display: 0
+        type: 2
+    
+    $AllianceChatHotkey:
+        data: '5e095b307835455d2020285265636f6d6d656e6465642900'
+        display: "^	[0x5E]  (Recommended)"
+        type: 10
+    
+    $greyWorldRestoreGrf:
+        data: '6d61696e646174612e6772662c6d6170646174612e6772662c70616c65747465646174612e6772662c737072697465646174612e6772662c646174612e6772662c67726579776f726c642e67726600'
+        display: "maindata.grf,mapdata.grf,palettedata.grf,spritedata.grf,data.grf,greyworld.grf"
+        type: 10
+    
+    $GoldPCMaxPoints:
+        data: '9f860100'
+        display: 99999
+        type: 2
+    
+    $newchangemat:
+        data: '53797374656d454e5c4368616e67654d6174657269616c5f454e2e6c756200'
+        display: "SystemEN\\ChangeMaterial_EN.lub"
+        type: 10
+    
+    $newCheckAtt:
+        data: '53797374656d454e5c436865636b417474656e64616e63655f454e2e6c756200'
+        display: "SystemEN\\CheckAttendance_EN.lub"
+        type: 10
+    
+    $InventoryExpandMax:
+        data: '3f420f00'
+        display: 999999
+        type: 2
+    
+    $newMonSizeEffect:
+        data: '53797374656d454e5c4d6f6e737465725f53697a655f4566666563745f454e2e6c756200'
+        display: "SystemEN\\Monster_Size_Effect_EN.lub"
+        type: 10
+    
+    $dataINI:
+        data: '444154412e494e4900'
+        display: "DATA.INI"
+        type: 10
+    
+    $viewIDLimit:
+        data: '007d0000'
+        display: 32000
+        type: 2
+    
+    $maxHomun:
+        data: '581b'
+        display: 7000
+        type: 2
+    
+    $greyWorldGrf:
+        data: '67726579776f726c642e67726600'
+        display: "greyworld.grf"
+        type: 10
+    
+    $greyWorldCmd:
+        data: '2f67726579776f726c6400'
+        display: "/greyworld"
+        type: 10
+    
+    $newspopup:
+        data: '53797374656d454e2f53706f7075705f454e2e6c756200'
+        display: "SystemEN/Spopup_EN.lub"
+        type: 10
+    
+    $newOngQInfoList:
+        data: '53797374656d454e2f4f6e676f696e675175657374735f454e00'
+        display: "SystemEN/OngoingQuests_EN"
+        type: 10
+    
+    $inpFlag:
+        data: ''
+        display: "Inputs/FlagSpec.yml"
+        type: 10
+    
+    $ssQuality:
+        data: '64'
+        display: 100
+        type: 2
+    
+    $chatBoxLen:
+        data: 'ff000000'
+        display: 255
+        type: 2
+    
+    $pmBoxLen:
+        data: 'ff000000'
+        display: 255
+        type: 2
+    
+    $fontDeleteEot:
+        data: ''
+        display: "true"
+        type: 10
+    
+    $copyCSLub:
+        data: ''
+        display: "true"
+        type: 10
+    
+    $chatRoomBoxLen:
+        data: 'ff000000'
+        display: 255
+        type: 2
+    
+    $newItemInfo:
+        data: '53797374656d454e2f6974656d496e666f5f454e2e6c756200'
+        display: "SystemEN/itemInfo_EN.lub"
+        type: 10
+    
+    $newRcmdQInfoList:
+        data: '53797374656d454e2f5265636f6d6d656e6465645175657374735f454e00'
+        display: "SystemEN/RecommendedQuests_EN"
+        type: 10
+    
+    $enchantGradeMap:
+        data: ''
+        display: "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP0716-main\\Inputs\\enchant_grade.yml"
+        type: 10
+    
+    $newMapInfo:
+        data: '53797374656d454e2f4d6170496e666f5f454e2e6c756200'
+        display: "SystemEN/MapInfo_EN.lub"
+        type: 10
+    
+patches:
+    - AllowPL2Leave
+    - AllowGuildInClan
+    - AllianceChatHotkeySelector
+    - RestoreSongsEffect
+    - EnableWho
+    - EnableShowName
+    - AlwaysShowNpcName
+    - ResizePMBox
+    - ResizeNpcBox
+    - ZeroCinShop
+    - PreviewInShop
+    - PreviewInTrader
+    - HideCashShop
+    - MediumCamAngle
+    - UseOldLogin
+    - UnlimitedChatRepeat
+    - CustomGameLoopDelay
+    - EnableCustomFonts
+    - FixFontsCharset
+    - AlwaysAscii
+    - CallKoreaClientInfo
+    - PlainTextDesc
+    - LoadKrExtSettings
+    - IncrViewID
+    - IncrMapQuality
+    - EnableEffectTool
+    - CustomDLL
+    - HideBuildInfo
+    - NoCameraLock
+    - FixArrowsCharset
+    - TranslateClient
+    - RestoreCpsDll
+    - NoGGuard
+    - CustomItemInfoLub
+    - CustomAchieveLub
+    - CustomMonSizeEffLub
+    - CustomTownInfoLub
+    - CustomPetEvoClnLub
+    - CustomTipboxLub
+    - CustomCheckAttLub
+    - CustomPrivAirplaneLub
+    - CustomMapInfoLub
+    - CustomOngQuestInfoLub
+    - CustomRcmdQuestInfoLub
+    - CustomspopupLub
+    - CustomChangeMatLub
+    - CustomQuestQualiLub
+    - BodyPalUnisex
+    - HeadPalUnisex
+    - GRFsEmbedded
+    - EnableSysMenu
+    - CustomWinTitle
+    - No1and1Arg
+    - RestoreIcon
+    - Normal2HighPriority
+    - NoNagle
+    - EnableProxy
+    - SendClientFlags
+    - NoPassEncr
+    - Enable44kHzAudio
+    - CustomShields
+    - CustomJobs
+    - AddLuaOverrides
+    - AllowAPBarforAllJobs
+    - RemoveMaxNumbersLimit
+    - CustomExtName
+    - CustomColoredItemName
+    - TildeForMatk
+    - OpenToServiceSelect
+    - GuildBrackets
+    - FixChatAt
+    - NoHourly
+    - EnableFlagEmotes
+    - AllowSpaceInGName
+    - CustomInventoryExpandingLimit
+    - DeleteCharWithEmail
+    - NoHelpMsg
+    - EnableNpcDialogueScrolling
+    - MoveUpItemCount
+    - CustomFadeDelay
+    - DisableExpensiveCharRender
+    - HideZeroDateInGuildWin
+    - ShortcutForAll
+    - EnableFlagAnimation
+    - RestoreBattlegroundUI
+    - FixSelectMenuReset
+    - FixSelectMenuWidthExpansion
+    - FixSkillbarReset
+    - ChangeGoldPCMaxPoints
+    - CustomBarterZenySep
+    - InsensitiveStorageSearch
+    - InsensitiveShopSearch
+    - NoGravityAds
+    - NoGravityLogo
+    - ShowNewButtons
+    - FixLatestNCWin
+    - DisConnToLogin
+    - DisableTraitStatusButton
+    - HideTraitStatusButton
+    - PatchDiagnostics

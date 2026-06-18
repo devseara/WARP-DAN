@@ -1,0 +1,86 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-06-07                                             *
+*                                                                          *
+*   Description   : Loads the FPS/ping visual DLL and registers /fps and   *
+*                   /ping with the shared custom slash-command dispatcher. *
+*                                                                          *
+\**************************************************************************/
+
+FpsOverlay = function(_)
+{
+	if (typeof CustomDLL === "undefined" ||
+	    typeof CustomDLL.applySpec !== "function")
+		throw Error("FpsOverlay: CustomDLL.applySpec helper unavailable");
+
+	const dllName = FpsOverlay.getDllName();
+
+	$$(_, 1, 'Register FPS visual DLL');
+	CustomDLL.applySpec(`${_}.CustomDLL`, [{
+		Name: dllName,
+		Funcs: [
+			{Name: "FpsPingOverlayInit"},
+			{Name: "ToggleFpsOverlay"}
+		]
+	}]);
+
+	FpsOverlay.installSlashCmd(`${_}.SlashCommands`, dllName, {
+		command: "/fps",
+		exportName: "ToggleFpsOverlay"
+	});
+	return true;
+};
+
+FpsOverlay.getDllName = function()
+{
+	return CustomDLL.getDllName(
+		'$fpsOverlayDLLName',
+		"FPS/Ping Overlay DLL",
+		"Enter the FPS/ping DLL filename. Use boh.dll for the combined build or boh_fps.dll for the dedicated build. Place it beside the patched EXE.",
+		"boh.dll",
+		"boh_fps.dll"
+	);
+};
+
+FpsOverlay.installSlashCmd = function(_, dllName, spec)
+{
+	if (typeof CustomSlashCommand === "undefined" ||
+	    typeof CustomSlashCommand.register !== "function")
+		throw Error("FpsOverlay: CustomSlashCommand helper unavailable");
+
+	dllName = dllName ?? FpsOverlay.getDllName();
+
+	$$(_, 2, `Register ${spec.command} command`);
+	CustomSlashCommand.register(_, {
+		command: spec.command,
+		dllName,
+		exportName: spec.exportName
+	});
+	return true;
+};
+
+FpsOverlay.validate = function()
+{
+	return Exe.BuildDate > 0;
+};

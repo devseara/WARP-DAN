@@ -1,0 +1,101 @@
+@echo off
+setlocal
+echo ============================================================
+echo  BOH Dedicated Feature DLL Build
+echo ============================================================
+echo.
+echo  TextOut hooks are intentionally shared by item colors and
+echo  extended names in boh_text.dll. Other features are isolated.
+echo.
+
+set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
+if exist "%VSWHERE%" (
+    for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do (
+        set "VSINSTALLPATH=%%i"
+    )
+)
+
+if defined VSINSTALLPATH (
+    call "%VSINSTALLPATH%\VC\Auxiliary\Build\vcvars32.bat" >nul 2>&1
+) else (
+    if exist "%VS140COMNTOOLS%" call "%VS140COMNTOOLS%\vsvars32.bat" >nul 2>&1
+    if exist "%VS120COMNTOOLS%" call "%VS120COMNTOOLS%\vsvars32.bat" >nul 2>&1
+)
+
+echo [1/10] Cleaning dedicated outputs...
+del /q split_*.obj boh_text.dll boh_text.exp boh_text.lib ^
+    boh_npc_names.dll boh_npc_names.exp boh_npc_names.lib ^
+    boh_rune.dll boh_rune.exp boh_rune.lib ^
+    boh_fps.dll boh_fps.exp boh_fps.lib ^
+    boh_inventory_tabs.dll boh_inventory_tabs.exp boh_inventory_tabs.lib >nul 2>&1
+
+echo [2/10] Extended-name state...
+cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
+    extended_name\extended_name.cpp /Fo:split_extended_name.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [3/10] Shared text hooks + item colors...
+cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
+    item_color\colored_itemname.cpp /Fo:split_item_color.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [4/10] Text visual entry point...
+cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
+    text_visual\text_visual_proxy.cpp /Fo:split_text_proxy.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [5/10] Link boh_text.dll...
+link.exe /nologo /DLL /OUT:boh_text.dll ^
+    split_text_proxy.obj split_item_color.obj split_extended_name.obj ^
+    kernel32.lib user32.lib gdi32.lib ws2_32.lib
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [6/10] Build boh_npc_names.dll...
+cl.exe /nologo /LD /O2 /MT /EHa /I"./" ^
+    /DNpcNameOverlayDllMain=DllMain ^
+    npc_name_overlay\npc_name_overlay.cpp ^
+    /Fe:boh_npc_names.dll /Fo:split_npc_name_overlay.obj ^
+    /link kernel32.lib user32.lib
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [7/10] Build boh_rune.dll...
+cl.exe /nologo /LD /O2 /MT /EHsc /I"./" ^
+    rune_visual\boh_rune_visual.cpp ^
+    /Fe:boh_rune.dll /Fo:split_rune_visual.obj ^
+    /link kernel32.lib user32.lib gdi32.lib d3d9.lib
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [8/10] Compile FPS/ping...
+cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
+    fps_ping\fps_ping_overlay.cpp /Fo:split_fps_overlay.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
+cl.exe /nologo /c /O2 /MT /I"./" ^
+    fps_ping\ping.cpp /Fo:split_ping.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [9/10] Link boh_fps.dll...
+link.exe /nologo /DLL /OUT:boh_fps.dll ^
+    split_fps_overlay.obj split_ping.obj ^
+    kernel32.lib user32.lib gdi32.lib d3d9.lib iphlpapi.lib ws2_32.lib
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [10/10] Build boh_inventory_tabs.dll...
+cl.exe /nologo /LD /O2 /MT /EHa /I"./" ^
+    inventory_tabs\inventory_tabs.cpp ^
+    /Fe:boh_inventory_tabs.dll /Fo:split_inventory_tabs.obj ^
+    /link kernel32.lib user32.lib
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo.
+echo ============================================================
+echo  Dedicated DLL build successful
+echo    boh_text.dll           item colors + extended names
+echo    boh_npc_names.dll      always-show NPC names
+echo    boh_rune.dll           rune visuals
+echo    boh_fps.dll            FPS + ping
+echo    boh_inventory_tabs.dll inventory tabs
+echo.
+echo  These files may be renamed. Enter the matching filename in
+echo  the corresponding WARP patch prompt.
+echo ============================================================
+endlocal

@@ -1,0 +1,123 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2025-07-16                                             *
+*   Last Modified : 2026-06-10                                             *
+*                                                                          *
+*   Description   : Targeted patch that prevents the Skill Tree window     *
+*                   (UINewSkillListWnd) from creating UIDisplayCharacter   *
+*                   child widgets, which stops all character rendering     *
+*                   (both 3D draw pass AND 2D sprite composite) only in    *
+*                   the ALT+S skill tree UI.                               *
+*                   Other UI windows (Equipment, etc.) are unaffected.     *
+*                                                                          *
+*                   Addresses match 2025-07-16 base client and the         *
+*                   -0x1000 shifted build used by Banquet of Heroes.       *
+*                   The relative call displacement is identical in both.   *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief NOP out UIDisplayCharacter creation in UINewSkillListWnd::OnCreate.
+///        UINewSkillListWnd::OnCreate calls two factory functions:
+///          - 0x00893DF0 / 0x00894DF0 at call site #1
+///          - 0x00893FA0 / 0x00894FA0 at call site #2
+///        We replace both 5-byte CALLs with 5 NOPs.
+///
+///        Builds supported:
+///          - 2025-07-16 client:  calls at 0x00976E5B, 0x00976E86
+///          - Banquet of Heroes:  calls at 0x00975E5B, 0x00975E86
+///
+DisableSkillTreeCharTargeted = function(_)
+{
+	$$(_, 1, `Find UINewSkillListWnd::OnCreate UIDisplayCharacter creation calls`);
+
+	/// call 0x00893DF0 (or 0x00894DF0):
+	///   e8 90 df f1 ff  (displacement is identical regardless of base shift)
+	const pattern1 = "e8 90 df f1 ff";
+	let addr1 = Exe.FindHex(pattern1);
+	if (addr1 < 0)
+	{
+		/// Try alternative displacement for different build
+		addr1 = 0x00975E5B;
+		$$(_, 1.1, `Pattern not found, using hardcoded address 0x${addr1.toString(16).toUpperCase()}`);
+	}
+	else
+	{
+		$$(_, 1.1, `Found call #1 at 0x${addr1.toString(16).toUpperCase()}`);
+	}
+
+	/// call 0x00893FA0 (or 0x00894FA0):
+	///   e8 15 e1 f1 ff  (displacement is identical regardless of base shift)
+	const pattern2 = "e8 15 e1 f1 ff";
+	let addr2 = Exe.FindHex(pattern2);
+	if (addr2 < 0)
+	{
+		addr2 = 0x00975E86;
+		$$(_, 1.2, `Pattern not found, using hardcoded address 0x${addr2.toString(16).toUpperCase()}`);
+	}
+	else
+	{
+		$$(_, 1.2, `Found call #2 at 0x${addr2.toString(16).toUpperCase()}`);
+	}
+
+	$$(_, 2, `NOP out both calls (5 NOPs each)`);
+	Exe.SetHex(addr1, "90 90 90 90 90");
+	Exe.SetHex(addr2, "90 90 90 90 90");
+
+	return true;
+};
+
+///
+/// \brief Validate that the call instructions are present (or already NOP'd).
+///        NOTE: Exe.GetHex returns lowercase strings; compare against lowercase.
+///
+DisableSkillTreeCharTargeted.validate = function()
+{
+	const addr1 = 0x00975E5B;
+	const addr2 = 0x00975E86;
+
+	/// Try to find via pattern first
+	const pattern1 = "e8 90 df f1 ff";
+	let found1 = Exe.FindHex(pattern1);
+	if (found1 < 0 && addr1 > 0)
+		found1 = addr1;
+
+	const pattern2 = "e8 15 e1 f1 ff";
+	let found2 = Exe.FindHex(pattern2);
+	if (found2 < 0 && addr2 > 0)
+		found2 = addr2;
+
+	const bytes1 = Exe.GetHex(found1, 5);
+	const bytes2 = Exe.GetHex(found2, 5);
+
+	/// Exe.GetHex returns lowercase — compare accordingly (fixes validation bug)
+	const expected1 = "e8 90 df f1 ff";
+	const expected2 = "e8 15 e1 f1 ff";
+	const nops = "90 90 90 90 90";
+
+	return (
+		(bytes1 === expected1 || bytes1 === nops) &&
+		(bytes2 === expected2 || bytes2 === nops)
+	);
+};

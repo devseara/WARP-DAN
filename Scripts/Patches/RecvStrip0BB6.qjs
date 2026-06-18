@@ -1,0 +1,149 @@
+/**************************************************************************\
+*                                                                          *
+*   RecvStrip0BB6 -- legacy static recv stub for packet interception        *
+*                                                                          *
+*   Replaces the runtime ws2_32.recv hook with a WARP static patch that    *
+*   intercepts recv at the EXE level. This still touches the recv/read     *
+*   path and should not be called Gepard-safe unless approved by the       *
+*   anti-cheat owner.                                                     *
+*                                                                          *
+*   Intercepts custom packets 0x0BB6 (item colors) and 0x0BB7 (extended    *
+*   names), copies their payloads to ICOL/EXTN shared memory blocks, and     *
+*   strips them from the TCP buffer so the client never sees unknown IDs.  *
+*                                                                          *
+*   The ddraw.dll proxy polls these shared blocks via FindSharedBlock()    *
+*   instead of hooking recv() directly.                                    *
+*                                                                          *
+\**************************************************************************/
+
+RecvStrip0BB6 = function(_)
+{
+    return RecvStrip0BB6.install(_);
+};
+
+RecvStrip0BB6.install = function(_)
+{
+    const cacheKey = 'RecvStrip0BB6.Installed';
+    const existing = CACHE.get(cacheKey);
+    if (existing)
+    {
+        $$(_, 0.5, `Static recv stub already installed at ${existing.stubVir.toHex(true)}`);
+        return true;
+    }
+
+    $$(_, 1, `Validate client version`);
+    if (Exe.BuildDate < 20250700)
+        Cancel("RecvStrip0BB6 requires 2025-07-16 or newer client");
+
+    $$(_, 1.1, `Resolve ws2_32.recv import address`);
+    let {funcAddr : recvIat} = GetImpRefs("recv", "ws2_32.dll", 16);
+    if (recvIat < 0)
+        ({funcAddr : recvIat} = GetImpRefs("recv", "ws2_32.dll"));
+    if (recvIat < 0)
+        Cancel("Could not resolve ws2_32.recv import");
+
+    $$(_, 1.2, `Resolve cached recv pointer used by CRagConnection`);
+    const recvCacheVir = RecvStrip0BB6.findRecvCache(recvIat);
+    if (recvCacheVir <= 0)
+        Cancel("Could not find cached recv function pointer");
+
+    $$(_, 2, `Allocate space for stub + ICOL block + EXTN block`);
+    const stubSize = 512;
+    const blockSize = 4096;
+    const totalSize = stubSize + blockSize + blockSize;
+    const [free, freeVir] = Exe.Allocate(totalSize, 0x10);
+
+    const stubVir = freeVir;
+    const icolVir = freeVir + stubSize;
+    const extnVir = freeVir + stubSize + blockSize;
+
+    $$(_, 3, `Pre-initialize ICOL block header (magic + ready=0 + length=0)`);
+    Exe.SetUint32(free + stubSize, 0x49434F4C);     // 'ICOL'
+    Exe.SetUint32(free + stubSize + 4, 0);            // ready = 0
+    Exe.SetUint32(free + stubSize + 8, 0);            // length = 0
+
+    $$(_, 4, `Pre-initialize EXTN block header (magic + ready=0 + length=0)`);
+    Exe.SetUint32(free + stubSize + blockSize, 0x4558544E); // 'EXTN'
+    Exe.SetUint32(free + stubSize + blockSize + 4, 0);       // ready = 0
+    Exe.SetUint32(free + stubSize + blockSize + 8, 0);       // length = 0
+
+    // MASM-generated stdcall stub. It preserves EBX/ESI/EDI like ws2_32.recv,
+    // and treats 0x0BB7 as the fixed 233-byte length+EXTN custom packet.
+    $$(_, 5, `Write stub machine code (333 bytes)`);
+    const stubHex =
+        "558bec83ec1c5356578b45088b4d0c8b55108b7514894dfc8955f8" +
+        "56525150ff15aaaaca0f8945f483f8000f8e100100008b4dfc" +
+        "8b55f433f633ffc745ec00000000c745e8000000003bf20f8d" +
+        "ed0000008bda2bde83fb040f8cd3000000668b1c316681fbb6" +
+        "0b740c6681fbb70b7405e9bc00000066895de46681fbb60b74" +
+        "07bbe9000000eb08668b5c31020fb7db895df083fb040f8296" +
+        "0000005303de3bda5b0f878a00000066817de4b60b7402eb3d" +
+        "837dec007572c745ec01000000609cb8efbeaddec7004c4f43" +
+        "49c74004000000008b7df08978088d34318d780c8b4df0f3a4" +
+        "c74004010000009d61eb3b837de8007535c745e80100000060" +
+        "9cb8bebafecac7004e545845c74004000000008b7df0897808" +
+        "8d34318d780c8b4df0f3a4c74004010000009d610375f0e918" +
+        "ffffff8a04318804394647e90bffffff897df48b45f45f5e5b" +
+        "8be55dc21000";
+
+    Exe.SetHex(free, stubHex);
+
+    $$(_, 5.1, `Patch ws2_32.recv IAT address in stub`);
+    Exe.SetUint32(free + 33, recvIat);
+
+    $$(_, 6, `Patch ICOL address in stub (offset 193)`);
+    Exe.SetUint32(free + 193, icolVir);
+
+    $$(_, 7, `Patch EXTN address in stub (offset 254)`);
+    Exe.SetUint32(free + 254, extnVir);
+
+    $$(_, 8, `Patch recv call-site loads to route through stub`);
+    const pattern = MOV(EAX, [recvCacheVir]);
+    let addrs = Exe.FindHexN(pattern).filter(addr =>
+        Exe.FindHex(CALL(EAX), addr + pattern.byteCount(), addr + 0x40) > 0
+    );
+
+    // Fallback to the old broad behavior if the call-site filter misses a
+    // client variant. This still only touches loads of the resolved recv cache.
+    if (addrs.length === 0)
+        addrs = Exe.FindHexN(pattern);
+
+    let count = 0;
+    for (const addr of addrs)
+    {
+        Exe.SetHex(addr, "B8" + stubVir.toHex());
+        count++;
+    }
+
+    if (count === 0)
+        Cancel("Could not find recv call-site pointer load");
+
+    $$(_, 9, `Patched ${count} recv call sites to route through stub`);
+    CACHE.put(cacheKey, {stubVir, icolVir, extnVir, recvIat, recvCacheVir});
+
+    return true;
+};
+
+RecvStrip0BB6.findRecvCache = function(recvIat)
+{
+    // 2025-07-16 initializes a cached recv pointer by loading ws2_32.recv from
+    // the IAT and storing it into a global used by the hot recv call path.
+    const initLoad = Exe.FindHex(MOV(EAX, [recvIat]));
+    if (initLoad > 0)
+    {
+        const store = Exe.FindHex("89 05 ?? ?? ?? ??", initLoad, initLoad + 0x40);
+        if (store > 0)
+            return Exe.GetUint32(store + 2);
+    }
+
+    // Known 2025-07-16 Ragexe fallback, kept only as a safety net.
+    if (Exe.BuildDate === 20250716)
+        return 0x015C5A18;
+
+    return -1;
+};
+
+RecvStrip0BB6.validate = function()
+{
+    return Exe.BuildDate >= 20250700;
+};
