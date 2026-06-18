@@ -1,0 +1,101 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026                                                     *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Stingor, Claude Sonnet                                 *
+*   Created Date  : 2026-06-13                                             *
+*   Last Modified : 2026-06-13                                             *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief Patches the ARGB color constant used for the chat window background.
+///
+///        The chat window initialization stores 0x66000000 (ARGB: A=40%,
+///        R=0, G=0, B=0) at this+0xD8.  The renderer multiplies the white
+///        background tile (sysbox_bg.bmp) by this color, producing a
+///        semi-transparent dark overlay.
+///
+///        OpaqueChatBg        - Forces fully opaque black (A=0xFF, RGB=black).
+///        CustomChatBgOpacity - Lets the user choose any RGB color and alpha.
+///
+ChatBgOpacity = function(_)
+{
+	$$(_, 1.1, `Find the chat window background ARGB color initialization`)
+	// MOV dword ptr [reg+0D8h], 66000000h
+	// Pattern: C7 <ModRM> D8 00 00 00 | 00 00 00 66
+	//          ^^^^^^^^^^^^^^^^^^^^^^^^  ^---------^
+	//          field offset 0xD8          ARGB value (little-endian: B G R A)
+	// The 4-byte ARGB value starts at pattern offset +6.
+	const addr = Exe.FindHex("C7 ?? D8 00 00 00 00 00 00 66");
+	if (addr < 0)
+		throw Error("Chat background color pattern not found");
+
+	const ARGB_OFF = 6; // offset of the 4-byte ARGB value within the pattern
+
+	if (_ === "OpaqueChatBg")
+	{
+		$$(_, 2.1, `Set to fully opaque black: ARGB = 0xFF000000`)
+		// Little-endian byte order: B=00 G=00 R=00 A=FF
+		Exe.SetHex(addr + ARGB_OFF, "00 00 00 FF");
+	}
+	else
+	{
+		$$(_, 2.1, `Get the desired opacity (alpha) from the user`)
+		const alphaVar = "$chatBgAlpha";
+		const alpha = Exe.GetUserInput(
+			alphaVar, D_Uint8,
+			"Chat Background Opacity",
+			"Enter opacity (0 = fully transparent, 255 = fully opaque)",
+			0xFF,
+			{ min: 0, max: 255 }
+		);
+		if (alpha === false)
+			Cancel("Opacity", 255);
+
+		$$(_, 2.2, `Get the desired RGB color from the user`)
+		const colorVar = "$chatBgColor";
+		const color = Exe.GetUserInput(
+			colorVar, D_Color,
+			"Chat Background Color",
+			"Select the background color",
+			0x000000,
+			ROC.ClrSettings
+		);
+		if (color === false)
+			Cancel("Color", "#000000");
+
+		$$(_, 2.3, `Combine alpha + RGB and write as little-endian ARGB DWORD`)
+		// D_Color returns 0xRRGGBB; memory layout for ARGB little-endian is B G R A
+		const r = (color >> 16) & 0xFF;
+		const g = (color >>  8) & 0xFF;
+		const b =  color        & 0xFF;
+		const hx = [b, g, r, alpha]
+			.map(v => v.toString(16).toUpperCase().padStart(2, "0"))
+			.join(" ");
+		Exe.SetHex(addr + ARGB_OFF, hx);
+	}
+
+	return true;
+};
+
+OpaqueChatBg        = ChatBgOpacity;
+CustomChatBgOpacity = ChatBgOpacity;

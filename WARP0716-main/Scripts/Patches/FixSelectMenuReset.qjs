@@ -1,0 +1,33 @@
+FixSelectMenuReset = function(_)
+{
+  const pat1 = "6A 00 6A 00 6A 00 8B 01 6A 00 6A 13 6A 00 FF 90 ?? ?? ?? ?? 33 C0 E9 ?? ?? ?? ?? 8B CF 89 BB ?? ?? ?? ?? E8 ?? ?? ?? ?? 85 C0 75 0B";
+  const pos1 = Exe.FindHex(pat1);
+
+  if (pos1 < 0)
+    throw Error("FixSelectMenuReset pattern1 not found");
+
+  Exe.SetHex(pos1 + pat1.split(" ").length - 2, "EB 0B");
+
+  const pat2 = "85 C0 75 0B 8B 8B ?? ?? ?? ?? E8 ?? ?? ?? ?? 8B 83 ?? ?? ?? ?? 8B CB 8B 13 FF 70 ?? FF 30 FF 52 ?? 33 C0";
+
+  let pos = Exe.FindHex(pat2);
+  if (pos < 0)
+    throw Error("FixSelectMenuReset pattern2 not found");
+
+  let last = pos;
+
+  while (true)
+  {
+    const next = Exe.FindHex(pat2, last + 1);
+    if (next < 0)
+      break;
+
+    last = next;
+  }
+
+  Exe.SetHex(last + 2, "EB 0B");
+
+  return true;
+};
+
+FixSelectMenuReset .validate = () => Exe.BuildDate >= 20230800;

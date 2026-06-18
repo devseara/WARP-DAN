@@ -1,0 +1,72 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) ?-2015 Shinryo                                           *
+*   Copyright (C) 2017-2020 *Unknown*                                      *
+*   Copyright (C) 2015-2023 Neo-Mind                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Shinryo, Neo-Mind                                      *
+*   Created Date  : 2020-11-10                                             *
+*   Last Modified : 2023-08-26                                             *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief NOP out the conditional jump / change conditional move to MOV
+///        This ensures g_hideAccountList is always set to 1
+///
+SkipServiceSelect = function(_)
+{
+    const tag = "SkipServiceSelect : ";
+
+    let straddr = Exe.FindText("passwordencrypt");
+    if (straddr < 0)
+        straddr = Exe.FindText("extendedslot");
+
+    if (straddr < 0)
+        throw Error("Could not find 'passwordencrypt' or 'extendedslot' string");
+
+    $$(tag + "Found string at 0x" + straddr.toString(16));
+
+    let code, repl;
+    if (Exe.Version < 11) {
+        code =
+            JZ(0x07)                     // jz short _skip
+        +   MOV(BYTE_PTR, [POS3WC], 1)   // mov byte ptr [g_hideAccountList], 1
+        +   PUSH(straddr);               // push offset "passwordencrypt"
+        repl = 0x9090; // jz short → nop+nop
+    } else {
+        code =
+            CMOVNZ(R32, R32)             // cmovnz regA, regB
+        +   MOV([POS4WC], R8)            // mov [g_hideAccountList], reg8
+        +   (Exe.Version > 11.0 ?
+             MOV(R32, R32) : "")         // 
+        +   PUSH(straddr);               // push offset "extendedslot"
+        repl = 0x8B90; // cmovnz → nop+mov
+    }
+
+    let addr = Exe.FindHex(code);
+    if (addr < 0)
+        throw Error("Could not find SkipServiceSelect pattern");
+
+    Exe.SetUint16(addr, repl);
+
+    return true;
+};
