@@ -239,5 +239,4 @@
 364 : DisableExpensiveCharRender
 365 : FpsPingOverlay
 366 : DisableSkillTreeCharRender
-367 : AllowDualCustomWeaponSprites
-368 : PatchDiagnostics
+367 : PatchDiagnostics
