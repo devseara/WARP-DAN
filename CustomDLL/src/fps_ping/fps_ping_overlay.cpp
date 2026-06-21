@@ -132,6 +132,9 @@ static void DpupFrameEnd()
 
 static void Log(const char* fmt, ...)
 {
+    (void)fmt;
+    return;
+
     char buf[512];
     va_list args;
     va_start(args, fmt);

@@ -41,6 +41,9 @@ static void LogMsg(const char* fmt, ...);
 
 static void PerfTick()
 {
+	if (!g_debugLogEnabled)
+		return;
+
 	// Throttle: only check clock every 256 calls
 	if ((++g_perfThrottle & 0xFF) != 0)
 		return;
