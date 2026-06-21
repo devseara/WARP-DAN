@@ -130,6 +130,10 @@ Windows system. `CreateFontW` fails on ANSI builds — use `CreateFontA`.
   The DLL opens a small Win32 PIN keypad, encrypts the PIN using the native
   shuffle seed, and calls WARP-allocated native packet sender stubs for
   `0x08B8`, `0x08BA`, or `0x08BE`.
+- Pincode BMPs are loaded through the client's native `CFile::Open` path first,
+  so loose data, `DATA.INI`, and embedded-GRF ordering are inherited from the
+  mounted client file system. Extracted client-folder file search remains only
+  as a fallback.
 
 ## Next Steps
 
@@ -142,5 +146,5 @@ Windows system. `CreateFontW` fails on ANSI builds — use `CreateFontA`.
   `debugPincodeRoute` in `Scripts/Patches/InGamePincodeUI.qjs` only for a new
   investigation.
 - If this is ported to another client date, first re-check packet table
-  availability for `0x0BEF`, packet sender helper addresses, and the UI asset
-  paths before reusing the patch.
+  availability for `0x0BEF`, packet sender helper addresses, native `CFile`
+  addresses, and the UI asset paths before reusing the patch.

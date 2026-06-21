@@ -178,6 +178,182 @@ static bool FileExistsA(const char* path)
     return attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY) == 0;
 }
 
+struct NativeFileBytes
+{
+    unsigned char* data;
+    size_t size;
+};
+
+#pragma pack(push, 1)
+struct BmpFileHeader
+{
+    uint16_t type;
+    uint32_t size;
+    uint16_t reserved1;
+    uint16_t reserved2;
+    uint32_t offBits;
+};
+#pragma pack(pop)
+
+static const uintptr_t kClientCFileVtable = 0x00FD3074;
+static const uintptr_t kClientCFileOpen = 0x00573750;
+static const uintptr_t kClientCFileRead = 0x00573980;
+static const uintptr_t kClientCFileClose = 0x00573060;
+
+typedef bool (__thiscall *ClientCFileOpenFn)(void* self, const char* path, int mode, int fromPak, int flags);
+typedef void (__thiscall *ClientCFileReadFn)(void* self, void* buffer, int size);
+typedef void (__thiscall *ClientCFileCloseFn)(void* self);
+
+static void InitClientCFile(unsigned char file[0x2C])
+{
+    memset(file, 0, 0x2C);
+    *reinterpret_cast<uint32_t*>(file + 0x00) = static_cast<uint32_t>(kClientCFileVtable);
+    *reinterpret_cast<int32_t*>(file + 0x04) = -1;
+    *reinterpret_cast<uint32_t*>(file + 0x24) = 0;
+    *reinterpret_cast<uint32_t*>(file + 0x28) = 0x0F;
+    file[0x14] = '\0';
+}
+
+static void FreeNativeFileBytes(NativeFileBytes* bytes)
+{
+    if (!bytes)
+        return;
+    if (bytes->data)
+        HeapFree(GetProcessHeap(), 0, bytes->data);
+    bytes->data = nullptr;
+    bytes->size = 0;
+}
+
+static bool ReadClientFileNative(const char* relativePath, NativeFileBytes* out)
+{
+    if (!relativePath || !out)
+        return false;
+
+    out->data = nullptr;
+    out->size = 0;
+
+    unsigned char file[0x2C];
+    InitClientCFile(file);
+
+    bool opened = false;
+    __try
+    {
+        ClientCFileOpenFn openFn = reinterpret_cast<ClientCFileOpenFn>(kClientCFileOpen);
+        ClientCFileReadFn readFn = reinterpret_cast<ClientCFileReadFn>(kClientCFileRead);
+        ClientCFileCloseFn closeFn = reinterpret_cast<ClientCFileCloseFn>(kClientCFileClose);
+
+        opened = openFn(file, relativePath, 0, 1, 0);
+        if (!opened)
+        {
+            closeFn(file);
+            return false;
+        }
+
+        uint32_t fileSize = *reinterpret_cast<uint32_t*>(file + 0x10);
+        if (fileSize == 0 || fileSize > 16 * 1024 * 1024)
+        {
+            closeFn(file);
+            return false;
+        }
+
+        unsigned char* buffer = reinterpret_cast<unsigned char*>(
+            HeapAlloc(GetProcessHeap(), 0, fileSize));
+        if (!buffer)
+        {
+            closeFn(file);
+            return false;
+        }
+
+        readFn(file, buffer, static_cast<int>(fileSize));
+        closeFn(file);
+
+        out->data = buffer;
+        out->size = static_cast<size_t>(fileSize);
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        if (opened)
+        {
+            __try
+            {
+                reinterpret_cast<ClientCFileCloseFn>(kClientCFileClose)(file);
+            }
+            __except (EXCEPTION_EXECUTE_HANDLER)
+            {
+            }
+        }
+        FreeNativeFileBytes(out);
+        return false;
+    }
+}
+
+static bool TryNativeAssetPath(const char* dir, const char* fileName, NativeFileBytes* out)
+{
+    char relativePath[MAX_PATH];
+    JoinPath(relativePath, sizeof(relativePath), dir, fileName);
+    return ReadClientFileNative(relativePath, out);
+}
+
+static bool LoadClientAssetBytes(const char* fileName, NativeFileBytes* out)
+{
+    if (!fileName || !out)
+        return false;
+
+    static const char kBasicInterfaceDir[] =
+        "texture\\"
+        "\xC0\xAF\xC0\xFA\xC0\xCE\xC5\xCD\xC6\xE4\xC0\xCC\xBD\xBA"
+        "\\basic_interface";
+    static const char kUiTextureDir[] =
+        "texture\\"
+        "\xC0\xAF\xC0\xFA\xC0\xCE\xC5\xCD\xC6\xE4\xC0\xCC\xBD\xBA";
+    static const char kDataBasicInterfaceDir[] =
+        "data\\texture\\"
+        "\xC0\xAF\xC0\xFA\xC0\xCE\xC5\xCD\xC6\xE4\xC0\xCC\xBD\xBA"
+        "\\basic_interface";
+
+    if (TryNativeAssetPath(kBasicInterfaceDir, fileName, out) ||
+        TryNativeAssetPath(kUiTextureDir, fileName, out) ||
+        TryNativeAssetPath(kDataBasicInterfaceDir, fileName, out) ||
+        ReadClientFileNative(fileName, out))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+static HBITMAP CreateBitmapFromBmpBytes(const unsigned char* bytes, size_t size)
+{
+    if (!bytes || size < sizeof(BmpFileHeader) + sizeof(BITMAPINFOHEADER))
+        return nullptr;
+
+    const BmpFileHeader* header = reinterpret_cast<const BmpFileHeader*>(bytes);
+    if (header->type != 0x4D42 || header->offBits >= size)
+        return nullptr;
+
+    const BITMAPINFO* info = reinterpret_cast<const BITMAPINFO*>(bytes + sizeof(BmpFileHeader));
+    if (info->bmiHeader.biSize < sizeof(BITMAPINFOHEADER) ||
+        sizeof(BmpFileHeader) + info->bmiHeader.biSize > size)
+    {
+        return nullptr;
+    }
+
+    HDC dc = GetDC(nullptr);
+    if (!dc)
+        return nullptr;
+
+    HBITMAP bitmap = CreateDIBitmap(
+        dc,
+        &info->bmiHeader,
+        CBM_INIT,
+        bytes + header->offBits,
+        info,
+        DIB_RGB_COLORS);
+    ReleaseDC(nullptr, dc);
+    return bitmap;
+}
+
 static bool TryAssetPath(const char* dir, const char* fileName, char* out, size_t outSize)
 {
     char candidate[MAX_PATH];
@@ -295,6 +471,17 @@ static bool FindClientAsset(const char* fileName, char* out, size_t outSize)
 
 static HBITMAP LoadClientBitmap(const char* fileName)
 {
+    NativeFileBytes bytes = {};
+    if (LoadClientAssetBytes(fileName, &bytes))
+    {
+        HBITMAP nativeBitmap = CreateBitmapFromBmpBytes(bytes.data, bytes.size);
+        FreeNativeFileBytes(&bytes);
+        if (nativeBitmap)
+            return nativeBitmap;
+
+        PincodeDebug("native asset decode failed: %s", fileName);
+    }
+
     char path[MAX_PATH];
     if (!FindClientAsset(fileName, path, sizeof(path)))
     {
@@ -340,18 +527,18 @@ static void EnsureSharedBitmaps()
 
     g_bgBitmap = LoadClientBitmap("2ndpassword_bg.bmp");
     g_confirmBitmap = LoadClientBitmap("btn_big_ok.bmp");
-    g_changeBitmap = LoadClientBitmap("btn_big_change.bmp");
-    g_cancelBitmap = LoadClientBitmap("btn_big_cancel.bmp");
+    g_changeBitmap = LoadClientBitmap("btn_e_change_a.bmp");
+    g_cancelBitmap = LoadClientBitmap("btn_cancel2_normal.bmp");
     g_resetBitmap = LoadClientBitmap("reset-a.bmp");
     int confirmAssets = LoadBitmapTriplet(g_confirmBitmaps, "btn_big_ok.bmp", nullptr, nullptr);
-    int changeAssets = LoadBitmapTriplet(g_changeBitmaps, "btn_big_change.bmp", "btn_big_change_b.bmp", "btn_big_change_c.bmp");
+    int changeAssets = LoadBitmapTriplet(g_changeBitmaps, "btn_e_change_a.bmp", "btn_e_change_b.bmp", "btn_e_change_c.bmp");
     if (!g_changeBitmaps[0])
     {
         g_changeBitmaps[0] = g_changeBitmap;
         g_changeBitmaps[1] = g_changeBitmap;
         g_changeBitmaps[2] = g_changeBitmap;
     }
-    int cancelAssets = LoadBitmapTriplet(g_cancelBitmaps, "btn_big_cancel.bmp", "btn_big_cancel_a.bmp", "btn_big_cancel_b.bmp");
+    int cancelAssets = LoadBitmapTriplet(g_cancelBitmaps, "btn_cancel2_normal.bmp", "btn_cancel2_over.bmp", "btn_cancel2_press.bmp");
     if (!g_cancelBitmaps[0])
     {
         g_cancelBitmaps[0] = g_cancelBitmap;

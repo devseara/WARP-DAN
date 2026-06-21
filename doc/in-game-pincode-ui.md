@@ -12,8 +12,8 @@ the player is already in-game. It is paired with the BanquetOfHeroes
 2. `Scripts/Patches/InGamePincodeUI.qjs` routes that packet to
    `bohcustoms.dll!PincodeUIShow`.
 3. `CustomDLL/src/pincode_ui/pincode_ui.cpp` creates a child window inside the
-   Ragnarok game window, using the native pincode art from
-   `data/texture/.../basic_interface`.
+   Ragnarok game window, using the native pincode art from the client's
+   GRF-aware file system.
 4. The user enters PIN digits with the mouse.
 5. The DLL encrypts the PIN with the same seed shuffle used by the client and
    sends normal pincode reply packets through WARP-allocated sender stubs:
@@ -31,7 +31,29 @@ the player is already in-game. It is paired with the BanquetOfHeroes
 
 ## Assets
 
-The keypad loads loose BMP files through the normal client data tree:
+The keypad first loads BMPs through the client's native `CFile::Open` path,
+using GRF-relative paths under:
+
+`texture/<user interface>/basic_interface`
+
+That means it follows the GRFs already mounted by the client. With
+`GRFsFromIni`, the order comes from the live `DATA.INI`; with `GRFsEmbedded`,
+the order comes from the embedded list baked into the patched EXE. The expected
+Banquet order is:
+
+```ini
+[Data]
+0=update.grf
+1=maindata.grf
+2=mapdata.grf
+3=palettedata.grf
+4=spritedata.grf
+5=data.grf
+6=greyworld.grf
+```
+
+If native loading fails, the DLL falls back to the older extracted-file search
+under the client folder. The assets used are:
 
 - Background: `2ndpassword_bg.bmp`
 - Digits: `%d-a.bmp`, `%d-b.bmp`, `%d-c.bmp`
