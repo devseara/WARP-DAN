@@ -7,12 +7,13 @@ Trigger the native mouse-driven PIN pad from in-game (map-server connection) ins
 
 | Address | RVA | Name | Description |
 |---------|-----|------|-------------|
-| `0x00D21210` | `0x00921210` | `HandlePincodePacket` | Native `0x08B9` handler — `__thiscall` (ecx=session, stack=pkt) |
+| `0x00D221E0` | `0x009221E0` | `HandlePincodePacket` | Native `0x08B9` handler, reached from char-dispatch label `0x00D28354`; `__thiscall` (ecx=session, stack=pkt) |
+| `0x00D21210` | `0x00921210` | `Handle0828Packet` | Native pincode window opener reached by the `0x0828` branch; reads `[seed:4][state:4]` after the packet id |
 | `0x00D21464` | `0x00921464` | `PincodeJumpTable` | State dispatch table: 8 DWORDs for states 0-7 |
-| `0x00D28193` | `0x00928193` | `DispatchCall` | `call 0xD21210` after `mov ecx, edi` |
+| `0x00D2835B` | `0x0092835B` | `PincodeDispatchCall` | `call 0xD221E0` after `mov ecx, edi` for `0x08B9` |
 | `0x00D27190` | `0x00927190` | `CharDispatchFunc` | Char-server packet dispatch function entry |
-| `0x00D271C6` | `0x009271C6` | `ContextLoad` | `mov edi, [0xFC1628]` — loads session from global |
-| `0x00FC1628` | `0x00BC1628` | `g_pCharSession` | **Global pointer** to char-server session object |
+| `0x00D271C6` | `0x009271C6` | `ImportLoad` | `mov edi, [0xFC1628]` inside another char-loop helper; this is not the pincode session object |
+| `0x00FC1628` | `0x00BC1628` | Import/IAT slot | Not a char-session pointer in this 2025-07-16 client; live value resolved to a system DLL address |
 | `0x0131F4E8` | `0x00F1F4E8` | `g_pUIManager` | Global UI manager — used by all pincode UI creation |
 | `0x00CAA2E0` | `0x008AA2E0` | `MapSwitchTable` | Map-server packet dispatch switch table |
 | `0x00CAA2B7` | `0x008AA2B7` | `DefaultHandler` | Sentinel for unhandled packets |
@@ -87,10 +88,11 @@ Handler creates UI, game's main loop crashes rendering it. The handler
 writes result to `[ctx+0xC]` — heap buffer handles this. But the created
 window integrates with game's UI system and crashes the render loop.
 
-### 8. Calling native handler with REAL context from global (CRASH - THREADING)
-Reading `*(void**)0x00FC1628` gives valid char-server session. But calling
-handler from our thread creates windows on wrong thread. Game's main loop
-crashes asynchronously when trying to render them.
+### 8. Calling native handler with `*(void**)0x00FC1628` (CRASH)
+`0x00FC1628` is not the char-session pointer in this client. Live test resolved
+it to `0x76087F60`, and `0x00D221E0` crashed at `0x00D223E3`
+(`mov dword ptr [esi+0xC], 7`) because that address is not a writable session
+object.
 
 ### 9. Standalone custom UI with Windows buttons (NOT SHOWN)
 Standard `CreateWindowExW` + `BS_PUSHBUTTON` controls should render on any
@@ -99,12 +101,12 @@ Windows system. `CreateFontW` fails on ANSI builds — use `CreateFontA`.
 
 ## Critical Findings
 
-1. **Global session pointer**: `*(void**)0x00FC1628` contains the char-server session.
-   Readable from DLL at any time after char-server connection is established.
+1. **No confirmed global char-session pointer yet**: `0x00FC1628` was a false
+   positive. Do not use it as a pincode/session context.
 
-2. **Threading is the core problem**: The native handler MUST be called from the
-   game's main thread. Window creation on foreign threads causes async crashes
-   in the game's render loop (`0x00dbd288` → `0x00a757e4` → ... → CRASH).
+2. **The packet handler is not the UI opener**: For states such as NEW/EXPIRED,
+   `0x00D221E0` stores globals and writes `[session+0xC]=7`; it does not create
+   the PIN pad directly.
 
 3. **Map-server dispatch ignores pincode packets**: `0x08B9` is not in the
    map-server packet dispatch table. Custom packet IDs within range (`0x0BD0`)
@@ -113,9 +115,32 @@ Windows system. `CreateFontW` fails on ANSI builds — use `CreateFontA`.
 4. **Encryption is fully reverse-engineered**: Same algorithm confirmed working
    between client and server via the `char_pincode_decrypt` source.
 
+## Implementation Update - 2026-06-21
+
+- `0x08B9` resolves through the compressed char-dispatch switch to `0x00D221E0`.
+- `0x00D21210` is the direct pincode window opener reached by the `0x0828` branch.
+- `0x0BD0` is registered by this client as a fixed-length 8-byte packet, so it is not suitable for the map trigger.
+- Implemented trigger packet: default-unhandled variable-length `0x0BEF` with magic `PINC`, routed by `Scripts/Patches/InGamePincodeUI.qjs`.
+- Initial DebugView trace proved the map trigger works and the native handler is called, but calling `0x00D221E0` with the live map-session object returns without opening UI.
+- Live char-session-global test crashed because `0x00FC1628` is not the session.
+- Direct `0x00D21210` opener call returned without showing UI in-game.
+- Direct native UI creator call (`0x00A31A30`, callback `0x00FDA1A0`) returned
+  without showing UI in-game.
+- The current bridge routes `0x0BEF/PINC` to `bohcustoms.dll!PincodeUIShow`.
+  The DLL opens a small Win32 PIN keypad, encrypts the PIN using the native
+  shuffle seed, and calls WARP-allocated native packet sender stubs for
+  `0x08B8`, `0x08BA`, or `0x08BE`.
+
 ## Next Steps
 
-- Use the standalone UI approach with proper Windows controls (buttons)
-- OR: Find a way to dispatch the handler call to the game's main thread
-  (e.g., via `PostMessage` to the game window with a custom message,
-  hooking the game's WndProc, or using a CBT hook)
+- Final implementation uses the custom `bohcustoms.dll` keypad path rather
+  than native pincode handler calls. Native calls were either no-ops or crashed
+  because the char-server UI/session context is not valid from the map-server
+  session.
+- Client debug logging is disabled by default. Re-enable
+  `PINCODE_UI_DEBUG` in `CustomDLL/src/pincode_ui/pincode_ui.cpp` or
+  `debugPincodeRoute` in `Scripts/Patches/InGamePincodeUI.qjs` only for a new
+  investigation.
+- If this is ported to another client date, first re-check packet table
+  availability for `0x0BEF`, packet sender helper addresses, and the UI asset
+  paths before reusing the patch.

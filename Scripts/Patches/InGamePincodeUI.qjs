@@ -1,0 +1,502 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-06-21                                             *
+*                                                                          *
+*   Description   : Routes BOH map packet 0x0BEF/PINC into a small         *
+*                   CustomDLL PIN keypad, then sends the normal client     *
+*                   PIN packets through the native packet sender path.      *
+*                                                                          *
+\**************************************************************************/
+
+InGamePincodeUI = function(_)
+{
+    if (typeof CustomDLL === "undefined" ||
+        typeof CustomDLL.applySpec !== "function" ||
+        typeof CustomDLL.findIat !== "function")
+        throw Error("InGamePincodeUI: CustomDLL helper unavailable");
+
+    ROC.findImports();
+
+    $$(_, 1, `Validate supported in-game pincode client`);
+    if (Exe.BuildDate !== 20250716)
+        Cancel("InGamePincodeUI currently supports only the 2025-07-16 client");
+    const debugPincodeRoute = false;
+    if (debugPincodeRoute && ROC.OutDbgStrA < 0)
+        throw Error("InGamePincodeUI: OutputDebugStringA import missing");
+    if (ROC.GetModHandle < 0 || ROC.GetProcAddr < 0)
+        throw Error("InGamePincodeUI: GetModuleHandleA/GetProcAddress imports missing");
+
+    const dllName = "bohcustoms.dll";
+    CustomDLL.applySpec(`${_}.CustomDLL`, [{
+        Name: dllName,
+        Funcs: [
+            {Name: "PincodeUIInit"},
+            {Name: "PincodeUIShow"}
+        ]
+    }]);
+
+    const packetId = 0x0BEF;
+    const packetMinLen = 18;
+    const packetMagic = 0x434E4950; // 'PINC'
+    const packetBufferVir = 0x015E8198;
+    const switchTableVir = 0x00CAA2E0;
+    const defaultHandlerVir = 0x00CAA2B7;
+    const mainLoopReturnVir = 0x00C9E1DD;
+    const addDebugText = text => debugPincodeRoute ? Exe.AddText(text)[1] : 0;
+    const outDbgStrAVir = debugPincodeRoute ? ROC.OutDbgStrA : 0;
+    const logEntryVir = addDebugText("[PincodeUI] trigger 0x0BEF received\r\n");
+    const logValidVir = addDebugText("[PincodeUI] trigger validated\r\n");
+    const logNoSessionVir = addDebugText("[PincodeUI] abort: map session register is null\r\n");
+    const logCallVir = addDebugText("[PincodeUI] calling custom PIN UI\r\n");
+    const logReturnVir = addDebugText("[PincodeUI] custom PIN UI returned\r\n");
+    const logResolveFailVir = addDebugText("[PincodeUI] abort: PincodeUIShow resolve failed\r\n");
+    const [, dllNameVir] = Exe.AddText(dllName);
+    const [, showFuncNameVir] = Exe.AddText("PincodeUIShow");
+
+    const entryVir = InGamePincodeUI.tableEntryVir(switchTableVir, packetId);
+    const entryPhy = Exe.Vir2Phy(entryVir, CODE);
+    if (entryPhy < 0)
+        throw Error("InGamePincodeUI: could not resolve packet dispatcher entry");
+
+    const stateKey = 'InGamePincodeUI.State.CustomDll.v1';
+    const state = CACHE.get(stateKey);
+    const legacyState = CACHE.get('InGamePincodeUI.State');
+    const current = Exe.GetUint32(entryPhy);
+
+    if (state && state.entryVir === entryVir && current === state.handlerVir) {
+        $$(_, 1.1, `In-game pincode custom DLL route already installed`);
+        return true;
+    }
+
+    const ownsCurrent =
+        (state && state.handlerVir === current) ||
+        (legacyState && legacyState.handlerVir === current);
+    if (current !== defaultHandlerVir && !ownsCurrent)
+        throw Error(`InGamePincodeUI: packet 0x${packetId.toString(16).toUpperCase()} dispatcher entry is ${current.toHex(true)}, expected default ${defaultHandlerVir.toHex(true)}`);
+
+    $$(_, 2, `Locate native packet sender helpers`);
+    const senderHelpers = InGamePincodeUI.findPacketSenderHelpers();
+
+    $$(_, 3, `Allocate PIN reply packet sender stubs`);
+    const senderStubs = InGamePincodeUI.allocatePacketSenderStubs(senderHelpers);
+
+    $$(_, 4, `Allocate pincode UI dispatcher stub`);
+    let stubBytes = InGamePincodeUI.makeMainStub({
+        packetId,
+        packetMinLen,
+        packetMagic,
+        packetBufferVir,
+        getModuleHandleAVir: ROC.GetModHandle,
+        getProcAddressVir: ROC.GetProcAddr,
+        dllNameVir,
+        showFuncNameVir,
+        sendCheckVir: senderStubs.checkVir,
+        sendSetVir: senderStubs.setVir,
+        sendChangeVir: senderStubs.changeVir,
+        mainLoopReturnVir,
+        outDbgStrAVir,
+        logEntryVir,
+        logValidVir,
+        logNoSessionVir,
+        logCallVir,
+        logReturnVir,
+        logResolveFailVir,
+        stubVir: 0
+    });
+    const [stubPhy, stubVir] = Exe.Allocate(stubBytes.length, 0x10);
+    stubBytes = InGamePincodeUI.makeMainStub({
+        packetId,
+        packetMinLen,
+        packetMagic,
+        packetBufferVir,
+        getModuleHandleAVir: ROC.GetModHandle,
+        getProcAddressVir: ROC.GetProcAddr,
+        dllNameVir,
+        showFuncNameVir,
+        sendCheckVir: senderStubs.checkVir,
+        sendSetVir: senderStubs.setVir,
+        sendChangeVir: senderStubs.changeVir,
+        mainLoopReturnVir,
+        outDbgStrAVir,
+        logEntryVir,
+        logValidVir,
+        logNoSessionVir,
+        logCallVir,
+        logReturnVir,
+        logResolveFailVir,
+        stubVir
+    });
+    Exe.SetHex(stubPhy, InGamePincodeUI.bytesToHex(stubBytes));
+
+    $$(_, 5, `Patch pincode dispatcher table entry`);
+    Exe.SetUint32(entryPhy, stubVir);
+
+    CACHE.put(stateKey, {
+        version: 1,
+        packetId,
+        entryVir,
+        handlerVir: stubVir,
+        sendCheckVir: senderStubs.checkVir,
+        sendSetVir: senderStubs.setVir,
+        sendChangeVir: senderStubs.changeVir
+    });
+
+    return true;
+};
+
+InGamePincodeUI.findPacketSenderHelpers = function()
+{
+    const packetTemplate =
+        MOV(EAX, 0x0844)
+    +   PUSH(ESI)
+    +   MOV([EBP, 0x8], AX);
+
+    const packetTemplateAddrs = Exe.FindHexN(packetTemplate);
+    if (packetTemplateAddrs.isEmpty())
+        throw Error("InGamePincodeUI: packet sender template not found");
+
+    const senderCandidates = packetTemplateAddrs.filter(addr =>
+        Exe.FindLastHex(PUSH(0x13E), addr, addr - 0x80) > 0
+    );
+    if (senderCandidates.length !== 1)
+        throw Error("InGamePincodeUI: expected one packet sender template, found " + senderCandidates.length);
+
+    const packetSender = senderCandidates[0];
+    return {
+        packetCtorA: Exe.GetTgtAddr(packetSender + 0x0A + 1),
+        packetCtorB: Exe.GetTgtAddr(packetSender + 0x11 + 1),
+        packetLookup: Exe.GetTgtAddr(packetSender + 0x1D + 1),
+        packetSend: Exe.GetTgtAddr(packetSender + 0x29 + 1)
+    };
+};
+
+InGamePincodeUI.allocatePacketSenderStubs = function(helpers)
+{
+    return {
+        checkVir: InGamePincodeUI.allocatePacketSenderStub({
+            packetId: 0x08B8,
+            kind: "single",
+            helpers
+        }),
+        setVir: InGamePincodeUI.allocatePacketSenderStub({
+            packetId: 0x08BA,
+            kind: "single",
+            helpers
+        }),
+        changeVir: InGamePincodeUI.allocatePacketSenderStub({
+            packetId: 0x08BE,
+            kind: "change",
+            helpers
+        })
+    };
+};
+
+InGamePincodeUI.allocatePacketSenderStub = function(options)
+{
+    let bytes = InGamePincodeUI.makePacketSenderStub({
+        packetId: options.packetId,
+        kind: options.kind,
+        helpers: options.helpers,
+        stubVir: 0
+    });
+    const [phy, vir] = Exe.Allocate(bytes.length, 0x10);
+    bytes = InGamePincodeUI.makePacketSenderStub({
+        packetId: options.packetId,
+        kind: options.kind,
+        helpers: options.helpers,
+        stubVir: vir
+    });
+    Exe.SetHex(phy, InGamePincodeUI.bytesToHex(bytes));
+    return vir;
+};
+
+InGamePincodeUI.makePacketSenderStub = function(options)
+{
+    const bytes = [];
+    const relCalls = [];
+    const localSize = options.kind === "change" ? 0x14 : 0x10;
+    const packetBase = -localSize;
+
+    function emit()
+    {
+        for (let i = 0; i < arguments.length; ++i)
+            bytes.push(arguments[i] & 0xFF);
+    }
+
+    function put32(pos, value)
+    {
+        value = value >>> 0;
+        bytes[pos] = value & 0xFF;
+        bytes[pos + 1] = (value >>> 8) & 0xFF;
+        bytes[pos + 2] = (value >>> 16) & 0xFF;
+        bytes[pos + 3] = (value >>> 24) & 0xFF;
+    }
+
+    function emit32(value)
+    {
+        const pos = bytes.length;
+        emit(0, 0, 0, 0);
+        put32(pos, value);
+        return pos;
+    }
+
+    function disp(value)
+    {
+        return value & 0xFF;
+    }
+
+    function emitCall(target)
+    {
+        emit(0xE8);
+        const pos = emit32(0);
+        relCalls.push({pos, target});
+    }
+
+    function copyPinArg(argDisp, packetDisp)
+    {
+        emit(0x8B, 0x45, argDisp);         // mov eax, [ebp+arg]
+        emit(0x8B, 0x00);                  // mov eax, [eax]
+        emit(0x89, 0x45, disp(packetDisp)); // mov [ebp+packet], eax
+    }
+
+    emit(0x55);                            // push ebp
+    emit(0x8B, 0xEC);                      // mov ebp, esp
+    emit(0x83, 0xEC, localSize);           // sub esp, localSize
+    emit(0x56);                            // push esi
+
+    emit(0xB8); emit32(options.packetId);  // mov eax, packetId
+    emit(0x66, 0x89, 0x45, disp(packetBase)); // mov [packet], ax
+    emit(0x8B, 0x45, 0x08);                // mov eax, [ebp+8] ; aid
+    emit(0x89, 0x45, disp(packetBase + 2)); // mov [packet+2], eax
+
+    if (options.kind === "change") {
+        copyPinArg(0x0C, packetBase + 6);   // old pin
+        copyPinArg(0x10, packetBase + 10);  // new pin
+    } else {
+        copyPinArg(0x0C, packetBase + 6);   // pin
+    }
+
+    emitCall(options.helpers.packetCtorA);
+    emit(0x8B, 0xF0);                      // mov esi, eax
+    emitCall(options.helpers.packetCtorB);
+    emit(0x0F, 0xBF, 0x4D, disp(packetBase)); // movsx ecx, word [packet]
+    emit(0x51);                            // push ecx
+    emit(0x8B, 0xC8);                      // mov ecx, eax
+    emitCall(options.helpers.packetLookup);
+    emit(0x8D, 0x4D, disp(packetBase));    // lea ecx, [packet]
+    emit(0x51);                            // push ecx
+    emit(0x50);                            // push eax
+    emit(0x8B, 0xCE);                      // mov ecx, esi
+    emitCall(options.helpers.packetSend);
+
+    emit(0x5E);                            // pop esi
+    emit(0x8B, 0xE5);                      // mov esp, ebp
+    emit(0x5D);                            // pop ebp
+    emit(0xC3);                            // ret
+
+    if (options.stubVir) {
+        for (let i = 0; i < relCalls.length; ++i) {
+            const call = relCalls[i];
+            const rel = call.target - (options.stubVir + call.pos + 4);
+            put32(call.pos, rel);
+        }
+    }
+
+    return bytes;
+};
+
+InGamePincodeUI.makeMainStub = function(options)
+{
+    const bytes = [];
+    const doneJumps = [];
+    const resolveFailJumps = [];
+    let hasSessionRelPos = 0;
+    let hasSessionOffset = 0;
+
+    function emit()
+    {
+        for (let i = 0; i < arguments.length; ++i)
+            bytes.push(arguments[i] & 0xFF);
+    }
+
+    function put16(pos, value)
+    {
+        value = value & 0xFFFF;
+        bytes[pos] = value & 0xFF;
+        bytes[pos + 1] = (value >>> 8) & 0xFF;
+    }
+
+    function put32(pos, value)
+    {
+        value = value >>> 0;
+        bytes[pos] = value & 0xFF;
+        bytes[pos + 1] = (value >>> 8) & 0xFF;
+        bytes[pos + 2] = (value >>> 16) & 0xFF;
+        bytes[pos + 3] = (value >>> 24) & 0xFF;
+    }
+
+    function emit16(value)
+    {
+        const pos = bytes.length;
+        emit(0, 0);
+        put16(pos, value);
+    }
+
+    function emit32(value)
+    {
+        const pos = bytes.length;
+        emit(0, 0, 0, 0);
+        put32(pos, value);
+        return pos;
+    }
+
+    function emitDoneJcc(op)
+    {
+        emit(0x0F, op);
+        const pos = emit32(0);
+        doneJumps.push(pos);
+    }
+
+    function emitDoneJmp()
+    {
+        emit(0xE9);
+        const pos = emit32(0);
+        doneJumps.push(pos);
+    }
+
+    function emitResolveFailJcc(op)
+    {
+        emit(0x0F, op);
+        const pos = emit32(0);
+        resolveFailJumps.push(pos);
+    }
+
+    function emitDebug(textVir)
+    {
+        if (!textVir || !options.outDbgStrAVir)
+            return;
+
+        emit(0x68); emit32(textVir);       // push text
+        emit(0xFF, 0x15); emit32(options.outDbgStrAVir); // call [OutputDebugStringA]
+    }
+
+    emit(0x9C);                            // pushfd
+    emit(0x60);                            // pushad
+    emitDebug(options.logEntryVir);
+    emit(0x8B, 0xD7);                      // mov edx, edi ; live map session
+    emit(0xBE); emit32(options.packetBufferVir); // mov esi, packet buffer
+
+    emit(0x66, 0x81, 0x3E); emit16(options.packetId); // cmp word [esi], packetId
+    emitDoneJcc(0x85);                     // jne done
+
+    emit(0x66, 0x83, 0x7E, 0x02, options.packetMinLen); // cmp word [esi+2], minLen
+    emitDoneJcc(0x82);                     // jb done
+
+    emit(0x81, 0x7E, 0x04); emit32(options.packetMagic); // cmp dword [esi+4], 'PINC'
+    emitDoneJcc(0x85);                     // jne done
+
+    emitDebug(options.logValidVir);
+    emit(0x8B, 0xD7);                      // mov edx, edi ; restore after debug call
+    emit(0xBE); emit32(options.packetBufferVir); // mov esi, packet buffer
+
+    emit(0x85, 0xD2);                      // test edx, edx
+    emit(0x0F, 0x85);                      // jnz hasSession
+    hasSessionRelPos = emit32(0);
+
+    emitDebug(options.logNoSessionVir);
+    emitDoneJmp();                         // jmp done
+
+    hasSessionOffset = bytes.length;
+    emitDebug(options.logCallVir);
+
+    emit(0x68); emit32(options.dllNameVir);      // push "bohcustoms.dll"
+    emit(0xFF, 0x15); emit32(options.getModuleHandleAVir); // call [GetModuleHandleA]
+    emit(0x85, 0xC0);                            // test eax, eax
+    emitResolveFailJcc(0x84);                    // jz resolveFail
+
+    emit(0x68); emit32(options.showFuncNameVir); // push "PincodeUIShow"
+    emit(0x50);                                  // push eax ; hModule
+    emit(0xFF, 0x15); emit32(options.getProcAddressVir); // call [GetProcAddress]
+    emit(0x85, 0xC0);                            // test eax, eax
+    emitResolveFailJcc(0x84);                    // jz resolveFail
+
+    emit(0x8B, 0xD8);                            // mov ebx, eax ; PincodeUIShow
+
+    emit(0xBE); emit32(options.packetBufferVir); // mov esi, packet buffer
+    emit(0x68); emit32(options.sendChangeVir); // push sendChange
+    emit(0x68); emit32(options.sendSetVir);    // push sendSet
+    emit(0x68); emit32(options.sendCheckVir);  // push sendCheck
+    emit(0x0F, 0xB7, 0x46, 0x10);         // movzx eax, word [esi+16] ; state
+    emit(0x50);                           // push eax
+    emit(0xFF, 0x76, 0x0C);               // push dword [esi+12] ; aid
+    emit(0xFF, 0x76, 0x08);               // push dword [esi+8] ; seed
+    emit(0xFF, 0xD3);                     // call ebx ; PincodeUIShow
+    emit(0x83, 0xC4, 0x18);               // add esp, 24
+    emitDebug(options.logReturnVir);
+    emitDoneJmp();                         // jmp done
+
+    const resolveFailOffset = bytes.length;
+    emitDebug(options.logResolveFailVir);
+    emitDoneJmp();                         // jmp done
+
+    const doneOffset = bytes.length;
+    emit(0x61);                            // popad
+    emit(0x9D);                            // popfd
+    emit(0xB8); emit32(options.mainLoopReturnVir); // mov eax, mainLoopReturn
+    emit(0xFF, 0xE0);                      // jmp eax
+
+    if (options.stubVir) {
+        for (let i = 0; i < doneJumps.length; ++i) {
+            const pos = doneJumps[i];
+            const rel = options.stubVir + doneOffset - (options.stubVir + pos + 4);
+            put32(pos, rel);
+        }
+
+        const hasSessionRel = options.stubVir + hasSessionOffset - (options.stubVir + hasSessionRelPos + 4);
+        put32(hasSessionRelPos, hasSessionRel);
+
+        for (let i = 0; i < resolveFailJumps.length; ++i) {
+            const pos = resolveFailJumps[i];
+            const rel = options.stubVir + resolveFailOffset - (options.stubVir + pos + 4);
+            put32(pos, rel);
+        }
+    }
+
+    return bytes;
+};
+
+InGamePincodeUI.bytesToHex = function(bytes)
+{
+    return bytes.map(byte => (byte & 0xFF).toHex(1)).join(' ');
+};
+
+InGamePincodeUI.tableEntryVir = function(switchTableVir, packetId)
+{
+    return switchTableVir + (packetId - 0x73) * 4;
+};
+
+InGamePincodeUI.validate = function()
+{
+    return Exe.BuildDate === 20250716;
+};

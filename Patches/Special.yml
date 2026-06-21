@@ -109,3 +109,9 @@ CustomSkills:
             recommend : no
             author : Louis T Steinhil
             desc : "Approved dispatcher-table shared-block path for custom item name colors. Routes variable item-color packet 0x0BDD to ICOL after the stock packet reader has consumed the full packet, then adds the shared startup visual DLL import (recommended single file: boh.dll). No runtime ws2_32.recv hook and no legacy RecvStrip0BB6 recv/read-path patch."
+
+        - InGamePincodeUI:
+            title : Enable In-Game PIN Pad
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Routes BOH map packet 0x0BEF/PINC to bohcustoms.dll's PIN keypad, then submits the normal client PIN reply packets through the native packet sender path. Requires matching map-server pincode_open support."

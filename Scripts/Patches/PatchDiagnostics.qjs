@@ -106,6 +106,7 @@ PatchDiagnostics.write = function(_)
 		'CustomColoredItemName',
 		'CustomEnchantGradeLabels',
 		'CustomExtName',
+		'InGamePincodeUI',
 		'AlwaysShowNpcName',
 		'FpsOverlay',
 		'PingOverlay',
