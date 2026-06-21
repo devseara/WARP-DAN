@@ -20,83 +20,98 @@
 \**************************************************************************/
 
 ///
-/// \brief ISOLATION TEST — Only hook the combiner at 0x00D72D9C.
-///        NO slot stubs, NO ReqWeaponName entry hook.
-///        Purpose: verify dualStub doesn't crash at character select.
-///        If this works, the crash is from the slot stubs.
+/// \brief Imports the dedicated dual-wield weapon sprite DLL
+///        (boh_weapon_sprite.dll, export WeaponSpriteInit) into the client so
+///        its render-pipeline
+///        tracer + experiments load at startup. The DLL installs its own
+///        inline hooks at runtime (DYNAMICBASE/ASLR is OFF on this build, so
+///        hardcoded VAs are safe); this patch only adds the PE import-table
+///        entry via the shared CustomDLL builder.
 ///
-
-function AllowDualCustomWeaponSpritesCallTarget(vir)
-{
-	const phy = Exe.Vir2Phy(vir);
-	if (phy < 0 || Exe.GetUint8(phy) !== 0xE8)
-		return -1;
-	return Exe.GetTgtAddr(phy + 1);
-}
-
-function AllowDualCustomWeaponSpritesRequireCall(vir, expected, name)
-{
-	const phy = Exe.Vir2Phy(vir);
-	if (phy < 0 || Exe.GetUint8(phy) !== 0xE8)
-		throw Error(`${name} call site not found`);
-	const target = Exe.GetTgtAddr(phy + 1);
-	const expectedPhy = Exe.Vir2Phy(expected);
-	if (target !== expected && target !== expectedPhy)
-		throw Error(`${name} call target mismatch: expected 0x${expected.toString(16)}, found 0x${target.toString(16)}`);
-	return phy;
-}
+///        Original behavior: dual-wielding shows the client's generic combined
+///        weapon sprite (types 25..30) and never draws the off-hand weapon.
+///        This DLL traces the native render pipeline so we can determine, from
+///        DebugView output, whether per-hand original sprites are feasible, and
+///        provides gated experiments toward that goal. Runtime behavior is
+///        controlled by environment variables read by the DLL (see
+///        CustomDLL/src/weapon_sprite/weapon_sprite.cpp):
+///          BOH_DUALWPN_LOG       (default 1) trace pipeline to DebugView
+///          BOH_DUALWPN_REPLACE   (default 0) combined type 25..30 -> individual
+///          BOH_DUALWPN_OFFHAND   (default 0) synthetic second DrawWeapon pass
+///          BOH_DUALWPN_LOG_EVERY (default 0) periodic DrawWeapon heartbeat
+///          BOH_DUALWPN_FORCE_SINGLE_LAYER (default 0) mode 9 layer 0x58 -> 0x50
+///          BOH_DUALWPN_FORCE_SINGLE_MODE  (default 0) mode 9 dispatch -> mode 2
+///          BOH_DUALWPN_TRACE_ACTOR_PATHS  (default 1) trace matching actor
+///                                          resource path-builder calls
+///          BOH_DUALWPN_TRACE_RESOURCE_KEYS (default 1) trace resource-cache
+///                                           hits for generic/specific keys
+///          BOH_DUALWPN_TRACE_WEAPON_PATHS  (default 1) trace native weapon
+///                                           path-builder output
+///          BOH_DUALWPN_PRELOAD_WEAPON_PATHS (default 1) load matching
+///                                            item-specific ACT paths early
+///          BOH_DUALWPN_ALIAS_RESOURCE_KEYS (default 1) return preloaded
+///                                           objects for missed type keys
+///          BOH_DUALWPN_SYNTH_WEAPON_PATHS (default 1) synthesize ACT paths
+///                                          from the actor body path
+///          BOH_DUALWPN_AUTO_SYNTH_VISUAL (default 0) auto-enable the skipped
+///                                         resource branch, but only force a
+///                                         synthesized key after it loads
+///          BOH_DUALWPN_SUPPRESS_NATIVE_SUBMIT (default 0) suppress native
+///                                               id 80/88 weapon actor submit
+///                                               after originals are cached
+///          BOH_DUALWPN_SYNTH_DRAW (default 0) draw cached originals through
+///                                        the recovered DrawWeapon contract
+///          BOH_DUALWPN_FORCE_RESOURCE_BRANCH (default 0) let mode 2/9 use the
+///                                             skipped [char+0x24C] branch
+///          BOH_DUALWPN_FORCE_RESOURCE_KEY (default 0) temporarily submit the
+///                                        specific view key through +0x24C
+///
+///        Target: 2025-07-16 Ragexe 175220998 (render pipeline at 0x00D42286,
+///        DrawWeapon 0x00C6D9D0, WeaponTypeFunc 0x00D72D30, image base
+///        0x00400000).
+///
 
 AllowDualCustomWeaponSprites = function(_)
 {
-	ROC.findImports();
+	if (typeof CustomDLL === "undefined" || typeof CustomDLL.applySpec !== "function")
+		throw Error("CustomDLL.applySpec helper is unavailable");
 
-	const dualCombinerCallPhy = AllowDualCustomWeaponSpritesRequireCall(
-		0x00D72D9C, 0x00D95500, "combiner");
+	$$(_, 1.1, `Resolve the weapon sprite DLL filename`)
+	const dllName = CustomDLL.getDllName(
+		'$weaponSpriteDLLName',
+		"Weapon Sprite DLL",
+		"Enter the dual-wield weapon sprite DLL filename. Use the dedicated build, boh_weapon_sprite.dll, and place it beside the patched EXE.",
+		"boh_weapon.dll",
+		"boh_weapon.dll"
+	);
 
-	// Format
-	const [, dualFmt] = Exe.AddText("[DualWeaponSprites] combiner main=%u off=%u combined=%u\r\n");
-	const [bufPhy, bufVir] = Exe.Allocate(0x100, 0x10);
-	Exe.SetHex(bufPhy, NOPs(0x100));
-
-	// dualStub — wraps combiner, logs item IDs (NO cache writes, NO slot hooks)
-	let dualStub =
-		MOV(EAX, [ESP, 0x08])
-	+	PUSH(EAX)
-	+	MOV(EAX, [ESP, 0x08])
-	+	PUSH(EAX)
-	+	CALL(Filler(1))             // original combiner, RET 8
-	+	PUSHAD
-	+	MOV(EBX, [ESP, 0x1C])       // combined type
-	+	MOV(ECX, [ESP, 0x24])       // main item ID
-	+	MOV(EDX, [ESP, 0x28])       // offhand item ID
-	+	PUSH(EBX)
-	+	PUSH(EDX)
-	+	PUSH(ECX)
-	+	PUSH(dualFmt)
-	+	PUSH(bufVir)
-	+	CALL([ROC.SprintF])
-	+	ADD(ESP, 0x14)
-	+	PUSH(bufVir)
-	+	CALL([ROC.OutDbgStrA])
-	+	POPAD
-	+	RETN(8)
-	;
-
-	const [dualStubPhy, dualStubVir] = Exe.Allocate(dualStub.byteCount(), 0x10);
-	dualStub = SetFillTargets(dualStub, {
-		start: dualStubVir,
-		1: 0x00D95500
-	});
-	Exe.SetHex(dualStubPhy, dualStub);
-
-	$$(_, 1.1, `ISOLATION TEST: combiner hook only (no slot stubs)`);
-	Exe.SetCALL(dualCombinerCallPhy, dualStubVir);
-
-	return true;
+	$$(_, 1.2, `Add the DLL + WeaponSpriteInit export through the CustomDLL import-table builder`)
+	return CustomDLL.applySpec(`${_}.CustomDLL`, [
+		{
+			Name: dllName,
+			Funcs: [
+				{Name: "WeaponSpriteInit"}
+			]
+		}
+	]);
 };
 
+///
+/// \brief Only valid for the client build this DLL was reverse-engineered
+///        against. Verifies the unique DrawWeapon prologue at 0x00C6D9D0
+///        (55 8B EC 6A FF 68 A7 FB F1 00).
+///
 AllowDualCustomWeaponSprites.validate = function()
 {
-	return AllowDualCustomWeaponSpritesCallTarget(0x00D72D9C) >= 0 &&
-		AllowDualCustomWeaponSpritesCallTarget(0x00D81D31) >= 0;
+	const phy = Exe.Vir2Phy(0x00C6D9D0);
+	if (phy < 0)
+		return false;
+
+	const sig = [0x55, 0x8B, 0xEC, 0x6A, 0xFF, 0x68, 0xA7, 0xFB, 0xF1, 0x00];
+	for (let i = 0; i < sig.length; i++)
+	{
+		if (Exe.GetUint8(phy + i) !== sig[i])
+			return false;
+	}
+	return true;
 };

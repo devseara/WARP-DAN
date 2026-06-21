@@ -43,6 +43,12 @@ CustomSpecials:
             recommend : no
             author : Neo-Mind , CrazyBebop
             desc : Enables custom shield sprites beyond the default set by loading shield definitions from lua files (similar to the Xray system). Required for servers with custom shield graphics.
+
+        - AllowDualCustomWeaponSprites:
+            title : Dual-Wield Per-Hand Weapon Sprites [Tracer/Experimental]
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Imports the dedicated weapon-sprite DLL (boh_weapon_sprite.dll) which traces the live actor weapon pipeline to DebugView (prefix [DualWeaponSprites]). Force probes are opt-in only: BOH_DUALWPN_FORCE_SINGLE_LAYER maps dual-wield layer 0x58 to single-weapon layer 0x50, and BOH_DUALWPN_FORCE_SINGLE_MODE dispatches mode 9 as mode 2. Target: 2025-07-16 Ragexe 175220998. Place boh_weapon_sprite.dll beside the patched EXE."
         
         - CustomJobs:
             title : Enable Custom Jobs (Reforged)

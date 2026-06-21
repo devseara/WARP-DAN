@@ -31,150 +31,117 @@ EXTN transport and substitution state live in `extended_name/`.
 
 ## Dual-wield weapon sprite debug
 
-`WeaponSpriteInit` only exists to make WARP load the DLL. Runtime setup happens
-from `DllMain`, and logs use the `[DualWeaponSprites]` DebugView prefix.
-
-Useful environment toggles:
+Use the dedicated build for this hook:
 
 ```bat
-set BOH_DUALWEAPON_REPLACE=1
-set BOH_DUALWEAPON_SOURCE=auto
-set BOH_DUALWEAPON_RENDER_OVERRIDE=1
-set BOH_DUALWEAPON_EXTRA_RENDER=0
-set BOH_DUALWEAPON_SUPPRESS_NATIVE=0
-set BOH_DUALWEAPON_FORCE_SPECIFIC_TYPEKEY=1
-set BOH_DUALWEAPON_FORCE_OFFHAND_VISUAL_SLOT=1
-set BOH_DUALWEAPON_PATH_TRACE=1
-set BOH_DUALWEAPON_RESOURCE_TRACE=1
-set BOH_DUALWEAPON_RESOURCE_TRACE_ALL=0
-set BOH_DUALWEAPON_RESOURCE_REDIRECT=1
-set BOH_DUALWEAPON_RESOURCE_KEY_ALIAS=1
-set BOH_DUALWEAPON_NATIVE_EQUIP_REFRESH=0
-set BOH_DUALWEAPON_ACTIVE_RESOURCE_SWAP=1
-set BOH_DUALWEAPON_DRAW_KEY=typekey
-set BOH_DUALWEAPON_CUSTOM_ALIASES=0
-set BOH_DUALWEAPON_PROBE=1
-set BOH_DUALWEAPON_LOG_EVERY=120
-set BOH_DUALWEAPON_ACTION_OFFSET=0x40
-set BOH_DUALWEAPON_SKIP_ACTIONS=4,5
+build_split.bat
 ```
 
-Keep `BOH_DUALWEAPON_REPLACE=1` while testing normal/default weapon IDs. The
-weapon-type hook now feeds the real body/equipment pipeline with a specific
-weapon view ID when one is available, such as `45` for Twin Edge B / suffix
-`_13412`, instead of preserving the patched client's generic `1`/`2` result.
-`auto` prefers a specific main-hand type, then a specific offhand type, then
-generic fallbacks.
+Then select `boh_weapon_sprite.dll` in WARP's **Dual-Wield Per-Hand Weapon
+Sprites** prompt and place that DLL beside the patched EXE. The combined
+`boh.dll` build does not currently export or initialize this hook.
 
-`BOH_DUALWEAPON_SOURCE` accepts `auto`, `main`, or `off` when replacement is
-enabled. `auto` starts with the main-hand lookup type so default client weapon
-IDs can be validated without custom Lua aliases hijacking values like `1102`.
-DebugView decision logs include `source=...` so the chosen path is visible
-during testing.
+`WeaponSpriteInit` is only an import-table anchor that makes the client load
+the DLL. Normal PE import resolution does not call the function. The first
+DebugView lines to expect are:
 
-Leave `BOH_DUALWEAPON_CUSTOM_ALIASES=0` while testing normal/default weapon
-IDs. Set it to `1` only when intentionally testing high custom weapon type
-aliases from `weapontable.lub`; the weapon-type hook's caller stores the
-returned type in `AL`, so custom aliases still must fit in one byte.
+```text
+[DualWeaponSprites] boh_weapon_sprite.dll attach
+[DualWeaponSprites] installer start ...
+[DualWeaponSprites] installer done ...
+```
 
-`BOH_DUALWEAPON_RENDER_OVERRIDE` enables render-layer intervention for dual
-wielding. `BOH_DUALWEAPON_EXTRA_RENDER=0` and
-`BOH_DUALWEAPON_SUPPRESS_NATIVE=0` are the safe defaults. Keep the manual
-extra-render path opt-in only: the `weapon_16` run showed that submitting
-separate `0xC6D9D0` draw calls can surface arrow/effect visuals during attack
-stance instead of weapon sprites. When explicitly enabled, DebugView shows
-`reason=suppress-native-dual`, followed by `main-render` and `offhand-render`
-or `extra-render` draw decisions.
+Current environment toggles:
 
-`BOH_DUALWEAPON_FORCE_SPECIFIC_TYPEKEY=1` makes specific weapon lookup results
-such as `45` draw as `45000000` instead of reusing the generic-looking native
-resource key observed in the actor. This is enabled by default for default
-weapon IDs because `weapontable.lub` maps item IDs through weapon view IDs; for
-example `13412` is the item suffix for `WEAPONTYPE_Twin_Edge_B`, whose view ID
-is `45`.
+```bat
+set BOH_DUALWPN_LOG=1
+set BOH_DUALWPN_REPLACE=1
+set BOH_DUALWPN_OFFHAND=1
+set BOH_DUALWPN_LOG_EVERY=120
+set BOH_DUALWPN_FORCE_SINGLE_LAYER=0
+set BOH_DUALWPN_FORCE_SINGLE_MODE=0
+set BOH_DUALWPN_TRACE_ACTOR_PATHS=1
+set BOH_DUALWPN_TRACE_RESOURCE_KEYS=1
+set BOH_DUALWPN_TRACE_WEAPON_PATHS=1
+set BOH_DUALWPN_PRELOAD_WEAPON_PATHS=1
+set BOH_DUALWPN_ALIAS_RESOURCE_KEYS=1
+set BOH_DUALWPN_SYNTH_WEAPON_PATHS=1
+set BOH_DUALWPN_AUTO_SYNTH_VISUAL=0
+set BOH_DUALWPN_SUPPRESS_NATIVE_SUBMIT=0
+set BOH_DUALWPN_SYNTH_DRAW=0
+set BOH_DUALWPN_FORCE_RESOURCE_BRANCH=0
+set BOH_DUALWPN_FORCE_RESOURCE_KEY=0
+```
 
-`BOH_DUALWEAPON_FORCE_OFFHAND_VISUAL_SLOT=1` patches the equipment update at
-`0xD3E8B1` from `cmovs ecx, ebx` to `cmovg ecx, ebx`. Native code only fills
-the visual slot at actor `+0x454` when the offhand item lookup fails; this patch
-fills it for normal positive weapon types too, so the client gets a chance to
-load the real offhand visual resource through the native equipment layer.
+`BOH_DUALWPN_LOG` is on by default. `BOH_DUALWPN_REPLACE` swaps combined
+dual-wield types `25..30` for an individual main/offhand view when available.
+`BOH_DUALWPN_OFFHAND` is a stability probe that issues a second `DrawWeapon`
+call after the native draw. Leave both experiment toggles off until the attach
+and installer lines are visible.
 
-`BOH_DUALWEAPON_PATH_TRACE=1` hooks the native path builders at `0xD5A480` and
-`0xD58FF0`. DebugView should show `path phase=main-path ...` and
-`path phase=offhand-path ...` lines with the actual resource path handed to the
-sprite loader. Current investigation showed these builders can also be reached
-by body/accessory paths, so use them as context rather than final proof. The
-render-side call through `0xA9A7D0` at `0xD42406` was identified as the
-`IsItemUsingArrow` Lua-wrapper flag check, not a weapon resource path builder.
+The current live-render trace point is the actor-part layer helper, not
+`DrawWeapon`. DebugView should show `LayerIdB` lines. In this client, mode 2
+submits layer id `80` (`0x50`) and mode 9 submits layer id `88` (`0x58`).
+`BOH_DUALWPN_FORCE_SINGLE_LAYER` and `BOH_DUALWPN_FORCE_SINGLE_MODE` are off by
+default. The force-layer probe did not change the generic visual, and the
+force-mode probe made the main/dual-hand sprite disappear while the offhand
+remained. Keep both off unless intentionally reproducing those proofs.
 
-`BOH_DUALWEAPON_RESOURCE_TRACE=1` hooks the global resource loader at
-`0xA8D4A0` and the tiny sprite resource setter at `0x556780`. DebugView
-`res-load` lines show the exact GRF-relative path requested at runtime, stamped
-with the most recent weapon actor/item context. `res-set` lines show which
-object receives the render resource key at `+0x24C`. Set
-`BOH_DUALWEAPON_RESOURCE_TRACE_ALL=1` only for short launches when the filtered
-trace does not catch the needed path.
+`BOH_DUALWPN_TRACE_ACTOR_PATHS=1` is on by default. It logs filtered
+`ActorPath` lines from the native actor resource path builder (`0x00D5B8E0`)
+when the builder inputs match the current weapon actor's `+260/+4C8` fields.
+These lines are meant to separate real weapon paths from the noisy accessory
+and head paths seen in earlier global loader probes.
 
-`BOH_DUALWEAPON_RESOURCE_REDIRECT=1` is enabled by default. When a dual-wield
-context asks the ACT/SPR loader at the observed equipment return site
-`0x0070C448` for a generic actor weapon path, the DLL rewrites
-`job_gender_generic...spr/.act` to the known default item-specific suffix from
-`weapontable.lub`, such as item `13412` -> `job_gender_13412.spr/.act`. The
-redirect rejects numeric head/body-style prefixes and falls back to the original
-generic file if the specific file is missing. DebugView reports this as
-`path-redirect ... from="..." to="..."`.
+`BOH_DUALWPN_TRACE_RESOURCE_KEYS=1` is on by default. It logs the native
+resource-cache results for the current generic key at `[char+0x24C]` and the
+item-specific keys derived from the resolved weapon views, such as `45 ->
+45000000`.
 
-`BOH_DUALWEAPON_RESOURCE_KEY_ALIAS=1` is enabled by default. If the native
-resource manager later asks for a specific resource key such as `45000000` and
-the direct lookup misses, the DLL can return the cached object from the targeted
-redirect instead. DebugView should show `resource-lookup ... alias-cached-object`
-when this path succeeds.
+`BOH_DUALWPN_TRACE_WEAPON_PATHS=1` is on by default. It hooks the native weapon
+path builders (`0x00D5A480` and `0x00D58FF0`) and logs lines such as
+`WeaponPathMain` / `WeaponPathOff` when a builder output has an item suffix or
+matches the current main/offhand view. `BOH_DUALWPN_PRELOAD_WEAPON_PATHS=1`
+loads matching item-specific ACT paths immediately via `ConvPath` +
+`LoadSurface`. `BOH_DUALWPN_ALIAS_RESOURCE_KEYS=1` lets the renderer resource
+lookup return that preloaded object for the specific type key if the native
+lookup returns null.
 
-`BOH_DUALWEAPON_NATIVE_EQUIP_REFRESH=0` is disabled by default. During the first
-dual-wield render context for an actor/item pair, the DLL calls the client's
-native main-hand and offhand equipment resource loaders with the resolved
-weapon visual IDs. While those loaders run, redirects are side-specific: the
-main loader may redirect to the main item suffix, and the offhand loader may
-redirect to the offhand item suffix. The client then stores the loaded resource
-objects through its own table writes at `[actor+0x4AC]+4` and `[actor+0x4AC]+0xC`.
-DebugView reports this as `native-equip-refresh`, including old/new table slots
-and `calledMain`/`calledOff`. Keep this opt-in only: the `weapon_15` run proved
-these loaders do change visible resources, but they target the actor visual table
-instead of the weapon-only draw slot.
+`weapon_7.log` showed the native weapon path builders do not fire in the live
+mode 2/9 actor-part route: there were no `WeaponPathMain`, `WeaponPathOff`, or
+`ResourceAlias` lines. `BOH_DUALWPN_SYNTH_WEAPON_PATHS=1` is now on by default
+to synthesize an item ACT path from the actor body path, using the actor's root
+and gender plus known Assassin-family fallbacks that exist in `spritedata.grf`.
+`BOH_DUALWPN_AUTO_SYNTH_VISUAL=1` patches the skipped mode 2/9 resource branch,
+but it only submits a specific key through `[char+0x24C]` after a synthesized
+ACT path has loaded into a non-null object.
 
-`BOH_DUALWEAPON_ACTIVE_RESOURCE_SWAP=1` is enabled by default. When a redirected
-item-specific `.act` load succeeds, the DLL caches the returned resource object
-by item ID and writes it into the actor's active resource table during the
-dual-wield render context: slot `+4` for main hand and slot `+0xC` for offhand.
-DebugView reports the observed table as `active-slots` and the write attempt as
-`active-swap`. This is the current test path for cases where `_13412` loads
-successfully but the visible actor still renders the older generic resource.
+`weapon_8.log` proved the synthesized ACT objects and resource aliases work,
+but the visible sprite still stayed generic. That means `[char+0x24C]` is too
+late for this actor-part route. `weapon_9.log` proved the direct-draw fallback
+is unsafe: `BOH_DUALWPN_SUPPRESS_NATIVE_SUBMIT=1` plus
+`BOH_DUALWPN_SYNTH_DRAW=1` produced `Submit1C ... suppress=1` followed by
+`SYNTH_DRAW main/off ...`, and the live client regressed to arrow artifacts,
+missing character frames while attacking, and post-attack movement lock. Leave
+both flags off unless intentionally reproducing that failure.
 
-`BOH_DUALWEAPON_NATIVE_RESOURCE_OVERRIDE=1` is enabled by default. During the
-native dual-wield draw window, known default item-specific main-hand sprites
-temporarily replace the actor resource key at `+0x24C`; for example
-Twin Edge B view `45` is submitted as `45000000` instead of the generic
-`2000000`. The original resource key is restored in the render tail hook.
-DebugView reports this as `reason=native-resource-override`.
+`BOH_DUALWPN_FORCE_RESOURCE_BRANCH=1` and `BOH_DUALWPN_FORCE_RESOURCE_KEY=1`
+are off by default. Together they are the next visual probe: let mode 2/9 fall
+through the resource branch the stock handler normally skips, and temporarily
+submit a specific view key through `[char+0x24C]`. Do not enable them unless
+the `ResourceKeys` trace shows the specific key already resolves, or a
+`ResourceAlias key=... -> ...` / nonzero `SynthPath load=...` line proves this
+build has supplied the missing object. The auto-synth path already performs the
+same visual probe in a guarded way, so leave the manual force flags off unless
+intentionally reproducing the old failure mode.
 
-`BOH_DUALWEAPON_DRAW_KEY` accepts `typekey`, `item`, or `type`. The default
-`typekey` mode mirrors the observed native resource key format, so an offhand
-weapon type of `2` draws with resource key `2000000`. During replacement draws
-the DLL keeps the actor's real main/offhand item slots, switches the hand flag
-for the submitted pass, then restores the actor fields immediately after the
-draw call. DebugView `draw-context` lines show the submitted item slots and hand
-flag. The replacement calls mirror native argument usage: main-hand draws use
-job argument `0`, and offhand draws use the client's `C43230(-1)` result.
-
-The DLL also caches native main-hand resource keys observed during normal
-renders. For example, if item `13412` renders alone with resource `2000000`,
-that cached native resource is preferred when `13412` later appears as the
-offhand. DebugView will report this as
-`reason=offhand-sideflag-offslot-cache-context`.
-
-Leave `BOH_DUALWEAPON_ACTION_OFFSET` unset while probing. Once an action offset
-and attack values are identified from DebugView, set them so attack frames keep
-the client's combined sprite and idle/walk frames use the selected source type.
+`weapon_5.log` showed that `ActorPath` is only building the body ACT path for
+the current actor, while `+440/+444` hold the main/offhand item IDs and `+24C`
+stays at `001E8480` across main-only, dual-wield, and offhand-only states.
+`weapon_6.log` then showed the derived specific keys are still null in the
+native renderer cache (`45 -> 45000000`, `34 -> 34000000`), so this build adds
+the narrower weapon-path preload/cache probe before any forced visual branch is
+enabled.
 
 ## Extended-name behavior
 
