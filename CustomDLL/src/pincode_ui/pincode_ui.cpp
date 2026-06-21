@@ -527,18 +527,18 @@ static void EnsureSharedBitmaps()
 
     g_bgBitmap = LoadClientBitmap("2ndpassword_bg.bmp");
     g_confirmBitmap = LoadClientBitmap("btn_big_ok.bmp");
-    g_changeBitmap = LoadClientBitmap("btn_e_change_a.bmp");
-    g_cancelBitmap = LoadClientBitmap("btn_cancel2_normal.bmp");
+    g_changeBitmap = LoadClientBitmap("btn_big_change.bmp");
+    g_cancelBitmap = LoadClientBitmap("btn_big_cancel.bmp");
     g_resetBitmap = LoadClientBitmap("reset-a.bmp");
-    int confirmAssets = LoadBitmapTriplet(g_confirmBitmaps, "btn_big_ok.bmp", nullptr, nullptr);
-    int changeAssets = LoadBitmapTriplet(g_changeBitmaps, "btn_e_change_a.bmp", "btn_e_change_b.bmp", "btn_e_change_c.bmp");
+    int confirmAssets = LoadBitmapTriplet(g_confirmBitmaps, "btn_big_ok.bmp", "btn_big_ok_a.bmp", "btn_big_ok_b.bmp");
+    int changeAssets = LoadBitmapTriplet(g_changeBitmaps, "btn_big_change.bmp", "btn_big_change_a.bmp", "btn_big_change_b.bmp");
     if (!g_changeBitmaps[0])
     {
         g_changeBitmaps[0] = g_changeBitmap;
         g_changeBitmaps[1] = g_changeBitmap;
         g_changeBitmaps[2] = g_changeBitmap;
     }
-    int cancelAssets = LoadBitmapTriplet(g_cancelBitmaps, "btn_cancel2_normal.bmp", "btn_cancel2_over.bmp", "btn_cancel2_press.bmp");
+    int cancelAssets = LoadBitmapTriplet(g_cancelBitmaps, "btn_big_cancel.bmp", "btn_big_cancel_a.bmp", "btn_big_cancel_b.bmp");
     if (!g_cancelBitmaps[0])
     {
         g_cancelBitmaps[0] = g_cancelBitmap;
@@ -1193,9 +1193,9 @@ static void DrawPincodeWindow(PincodeDialog* dlg, HDC hdc)
 
     if (dlg->statusText[0] != '\0')
     {
-        RECT status = RectFromXYWH(212, kTitleHeight + 300, 310, 16);
+        RECT status = RectFromXYWH(418, kTitleHeight + 236, 114, 36);
         DrawTextInRect(hdc, dlg->statusText, status, dlg->smallFont, RGB(148, 52, 52),
-            DT_CENTER | DT_SINGLELINE);
+            DT_CENTER | DT_WORDBREAK);
     }
 
     HPEN border = CreatePen(PS_SOLID, 1, RGB(132, 143, 170));
