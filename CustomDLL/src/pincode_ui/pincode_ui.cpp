@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "boh_features.h"
+
 #ifndef PINCODE_UI_DEBUG
 #define PINCODE_UI_DEBUG 0
 #endif
@@ -1656,6 +1658,9 @@ extern "C" __declspec(dllexport) void PincodeUIShow(
     PincodeSendSetFn sendSet,
     PincodeSendChangeFn sendChange)
 {
+    if (!BohLicense::CheckAndLog(FEATURE_PINCODE_UI, L"pincode_ui"))
+        return;
+
     PincodeDebug("show request state=%u aid=%u seed=%u", state, aid, seed);
 
     if (state == PINCODE_PASSED || state == PINCODE_WRONG || state == PINCODE_ILLEGAL)

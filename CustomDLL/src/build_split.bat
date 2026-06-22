@@ -22,12 +22,14 @@ if defined VSINSTALLPATH (
     if exist "%VS120COMNTOOLS%" call "%VS120COMNTOOLS%\vsvars32.bat" >nul 2>&1
 )
 
-echo [1/10] Cleaning dedicated outputs...
+echo [1/12] Cleaning dedicated outputs...
 del /q split_*.obj boh_text.dll boh_text.exp boh_text.lib ^
     boh_npc_names.dll boh_npc_names.exp boh_npc_names.lib ^
     boh_rune.dll boh_rune.exp boh_rune.lib ^
     boh_fps.dll boh_fps.exp boh_fps.lib ^
-    boh_inventory_tabs.dll boh_inventory_tabs.exp boh_inventory_tabs.lib >nul 2>&1
+    boh_inventory_tabs.dll boh_inventory_tabs.exp boh_inventory_tabs.lib ^
+    boh_weapon_sprite.dll boh_weapon_sprite.exp boh_weapon_sprite.lib ^
+    boh_pincode_ui.dll boh_pincode_ui.exp boh_pincode_ui.lib >nul 2>&1
 
 echo [2/10] Extended-name state...
 cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
@@ -79,11 +81,28 @@ link.exe /nologo /DLL /OUT:boh_fps.dll ^
     kernel32.lib user32.lib gdi32.lib d3d9.lib iphlpapi.lib ws2_32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [10/10] Build boh_inventory_tabs.dll...
+echo [10/12] Build boh_inventory_tabs.dll...
 cl.exe /nologo /LD /O2 /MT /EHa /I"./" ^
     inventory_tabs\inventory_tabs.cpp ^
     /Fe:boh_inventory_tabs.dll /Fo:split_inventory_tabs.obj ^
     /link kernel32.lib user32.lib
+echo [11/12] Build boh_weapon_sprite.dll...
+cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
+    weapon_sprite\weapon_sprite.cpp /Fo:split_weapon_sprite.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
+cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
+    weapon_sprite\weapon_overlay.cpp /Fo:split_weapon_overlay.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
+link.exe /nologo /DLL /OUT:boh_weapon_sprite.dll ^
+    split_weapon_sprite.obj split_weapon_overlay.obj ^
+    kernel32.lib user32.lib gdi32.lib
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [12/12] Build boh_pincode_ui.dll...
+cl.exe /nologo /LD /O2 /MT /EHsc /I"./" ^
+    pincode_ui\pincode_ui.cpp ^
+    /Fe:boh_pincode_ui.dll /Fo:split_pincode_ui.obj ^
+    /link kernel32.lib user32.lib gdi32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo.
@@ -94,6 +113,8 @@ echo    boh_npc_names.dll      always-show NPC names
 echo    boh_rune.dll           rune visuals
 echo    boh_fps.dll            FPS + ping
 echo    boh_inventory_tabs.dll inventory tabs
+echo    boh_weapon_sprite.dll  dual-wield custom renderer host
+echo    boh_pincode_ui.dll     in-game PIN keypad
 echo.
 echo  These files may be renamed. Enter the matching filename in
 echo  the corresponding WARP patch prompt.

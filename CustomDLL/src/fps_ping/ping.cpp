@@ -17,7 +17,7 @@ static bool   g_pingValid = false;    // true if we have a real ping measurement
 static DWORD  g_pingResult = 0;       // last RTT in ms (0 on localhost is valid!)
 static DWORD  g_lastPingTime = 0;
 static DWORD  g_startupTick = 0;
-static char   g_pingHost[256] = "45.139.226.188";
+static char   g_pingHost[256] = "45.139.226.125";
 
 void PingSetHost(const char* host)
 {

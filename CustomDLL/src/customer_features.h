@@ -11,3 +11,4 @@
 #define BOH_PING_OVERLAY    1
 #define BOH_NPC_NAME_OVERLAY 1
 #define BOH_INVENTORY_TABS   1
+#define BOH_PINCODE_UI      1

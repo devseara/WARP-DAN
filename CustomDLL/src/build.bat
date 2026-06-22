@@ -22,62 +22,69 @@ if defined VSINSTALLPATH (
     if exist "%VS120COMNTOOLS%" call "%VS120COMNTOOLS%\vsvars32.bat" >nul 2>&1
 )
 
-echo [1/10] Cleaning...
+echo [1/12] Cleaning...
 del /q *.obj boh.dll boh.exp boh.lib >nul 2>&1
 
-echo [2/10] main_proxy - DllMain + DDRAW forwarding...
+echo [2/12] main_proxy - DllMain + DDRAW forwarding...
 cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
     main_proxy\main_proxy.cpp
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [3/10] extended_name - EXTN transport + substitution state...
+echo [3/12] extended_name - EXTN transport + substitution state...
 cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
     extended_name\extended_name.cpp /Fo:extended_name.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [4/10] item_color - GDI hooks + item colors...
+echo [4/12] item_color - GDI hooks + item colors...
 cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
     item_color\colored_itemname.cpp
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [5/10] rune_visual - Rune system rendering...
+echo [5/12] rune_visual - Rune system rendering...
 cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
     /DDllMain=RuneVisualDllMain ^
     rune_visual\boh_rune_visual.cpp /Fo:rune_visual.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [6/10] fps_ping - FPS/Ping overlay...
+echo [6/12] fps_ping - FPS/Ping overlay...
 cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
     /DDllMain=FpsOverlayDllMain ^
     fps_ping\fps_ping_overlay.cpp /Fo:fps_ping.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [7/10] npc_name_overlay - NPC name overlay...
+echo [7/12] npc_name_overlay - NPC name overlay...
 cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
     /DDllMain=NpcNameOverlayDllMain ^
     npc_name_overlay\npc_name_overlay.cpp /Fo:npc_name_overlay.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [8/10] ping - Ping measurement...
+echo [8/12] ping - Ping measurement...
 cl.exe /nologo /c /O2 /MT /I"./" ^
     fps_ping\ping.cpp /Fo:ping.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [9/10] inventory_tabs - Image-based inventory tabs...
+echo [9/12] inventory_tabs - Image-based inventory tabs...
 cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
     /DDllMain=InvTabsDllMain ^
     inventory_tabs\inventory_tabs.cpp /Fo:inventory_tabs.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [10/10] pincode_ui - In-game PIN keypad...
+echo [10/12] pincode_ui - In-game PIN keypad...
 cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
     pincode_ui\pincode_ui.cpp /Fo:pincode_ui.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
+
+echo [11/12] weapon_sprite - Dual-wield custom renderer host...
+cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
+    /DDllMain=WeaponSpriteDllMain ^
+    weapon_sprite\weapon_sprite.cpp /Fo:weapon_sprite.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo [LINK] boh.dll...
 link.exe /nologo /DLL /OUT:boh.dll ^
     main_proxy.obj colored_itemname.obj extended_name.obj rune_visual.obj ^
     fps_ping.obj ping.obj npc_name_overlay.obj inventory_tabs.obj pincode_ui.obj ^
+    weapon_sprite.obj ^
     kernel32.lib user32.lib gdi32.lib d3d9.lib iphlpapi.lib ws2_32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
