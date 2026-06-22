@@ -152,7 +152,9 @@ static int g_lastSequenceX = 0;
 static int g_lastSequenceY = 0;
 static ULONGLONG g_lastSequenceTick = 0;
 static const ULONGLONG g_sequenceWindowMs = 200;
-static __declspec(thread) int g_textOutPassthroughDepth = 0;
+// TLS slot (TlsAlloc) instead of __declspec(thread) — avoids .tls PE section
+// and the _dyn_tls_dtor callback chain that crashes during process termination.
+static DWORD g_tlsPassthroughDepth = TLS_OUT_OF_INDEXES;
 
 // Grade-label continuation: when "[Rare]" or "[Epic]" etc. is colored,
 // subsequent text rendered nearby (same item name continuation, or
@@ -1621,9 +1623,9 @@ skip_item_processing:
         SIZE sz = {};
         GetTextExtentPoint32W(hdc, outString, outCount, &sz);
         RECT bigRect = { x, y, x + sz.cx + 50, y + sz.cy };
-        ++g_textOutPassthroughDepth;
+        TlsSetValue(g_tlsPassthroughDepth, (LPVOID)((DWORD_PTR)TlsGetValue(g_tlsPassthroughDepth) + 1));
         BOOL result = ExtTextOutW(hdc, x, y, 0, &bigRect, outString, outCount, nullptr);
-        --g_textOutPassthroughDepth;
+        TlsSetValue(g_tlsPassthroughDepth, (LPVOID)((DWORD_PTR)TlsGetValue(g_tlsPassthroughDepth) - 1));
 
         RestoreDC(hdc, savedDC);
 
@@ -1633,7 +1635,7 @@ skip_item_processing:
     }
 
     // Capture non-item text with position for NPC name overlay
-    if (g_textOutPassthroughDepth == 0 && outCount > 0 && outCount < 50 &&
+    if ((DWORD_PTR)TlsGetValue(g_tlsPassthroughDepth) == 0 && outCount > 0 && outCount < 50 &&
         outString && wcsstr(outString, L"^") == nullptr && outString[0] != L'[')
     {
         LONG idx = InterlockedIncrement(&g_npcNamePosWrite) - 1;
@@ -1645,9 +1647,9 @@ skip_item_processing:
         cap.tick = GetTickCount();
     }
 
-    ++g_textOutPassthroughDepth;
+    TlsSetValue(g_tlsPassthroughDepth, (LPVOID)((DWORD_PTR)TlsGetValue(g_tlsPassthroughDepth) + 1));
     BOOL result = ((TextOutW_t)g_origTextOutW)(hdc, x, y, outString, outCount);
-    --g_textOutPassthroughDepth;
+    TlsSetValue(g_tlsPassthroughDepth, (LPVOID)((DWORD_PTR)TlsGetValue(g_tlsPassthroughDepth) - 1));
 
     if (oldColor != CLR_INVALID)
         SetTextColor(hdc, oldColor);
@@ -1661,7 +1663,7 @@ static BOOL WINAPI HookExtTextOutW(HDC hdc, int x, int y, UINT options, const RE
     if (IsTextHooksShuttingDown())
         return ((ExtTextOutW_t)g_origExtTextOutW)(hdc, x, y, options, lprc, lpString, cchString, lpDx);
 
-    if (g_textOutPassthroughDepth > 0)
+    if ((DWORD_PTR)TlsGetValue(g_tlsPassthroughDepth) > 0)
         return ((ExtTextOutW_t)g_origExtTextOutW)(hdc, x, y, options, lprc, lpString, cchString, lpDx);
 
     COLORREF customColor = CLR_INVALID;
@@ -2296,6 +2298,8 @@ static bool InstallGetTextExtentPoint32WHook()
 
 void ItemColorExtNameInit(HMODULE hModule)
 {
+    if (g_tlsPassthroughDepth == TLS_OUT_OF_INDEXES)
+        g_tlsPassthroughDepth = TlsAlloc();
     InterlockedExchange(&g_textHooksShuttingDown, 0);
     ConfigureDebugLogging();
 
@@ -2371,17 +2375,29 @@ void ItemColorExtNameInit(HMODULE hModule)
     }
 }
 
-void ItemColorExtNameCleanup()
+void ItemColorExtNameCleanup(bool isProcessTermination)
 {
     InterlockedExchange(&g_textHooksShuttingDown, 1);
-    RestorePatchedBytes(g_recvAddr, g_origRecv, g_stolenBytesRecv);
-    RestorePatchedBytes(g_getTextExtentPoint32WAddr, g_origGetTextExtentPoint32W, g_stolenBytesGTEP);
-    RestorePatchedBytes(g_drawTextExWAddr, g_origDrawTextExW, g_stolenBytesDrawEx);
-    RestorePatchedBytes(g_drawTextWAddr, g_origDrawTextW, g_stolenBytesDraw);
-    RestorePatchedBytes(g_extTextOutWAddr, g_origExtTextOutW, g_stolenBytesExt);
-    RestorePatchedBytes(g_textOutWAddr, g_origTextOutW, g_stolenBytes);
+
+    // During process termination, target DLLs (gdi32, ws2_32) may already
+    // be unloaded — skip hook restoration; the OS reclaims everything.
+    if (!isProcessTermination)
+    {
+        RestorePatchedBytes(g_recvAddr, g_origRecv, g_stolenBytesRecv);
+        RestorePatchedBytes(g_getTextExtentPoint32WAddr, g_origGetTextExtentPoint32W, g_stolenBytesGTEP);
+        RestorePatchedBytes(g_drawTextExWAddr, g_origDrawTextExW, g_stolenBytesDrawEx);
+        RestorePatchedBytes(g_drawTextWAddr, g_origDrawTextW, g_stolenBytesDraw);
+        RestorePatchedBytes(g_extTextOutWAddr, g_origExtTextOutW, g_stolenBytesExt);
+        RestorePatchedBytes(g_textOutWAddr, g_origTextOutW, g_stolenBytes);
+    }
 
     ExtendedNameCleanup();
+
+    if (g_tlsPassthroughDepth != TLS_OUT_OF_INDEXES)
+    {
+        TlsFree(g_tlsPassthroughDepth);
+        g_tlsPassthroughDepth = TLS_OUT_OF_INDEXES;
+    }
 
     if (g_sharedPollStopEvent)
         SetEvent(g_sharedPollStopEvent);

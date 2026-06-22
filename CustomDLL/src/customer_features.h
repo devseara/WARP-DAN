@@ -12,3 +12,4 @@
 #define BOH_NPC_NAME_OVERLAY 1
 #define BOH_INVENTORY_TABS   1
 #define BOH_PINCODE_UI      1
+#define BOH_WEAPON_SPRITE   0

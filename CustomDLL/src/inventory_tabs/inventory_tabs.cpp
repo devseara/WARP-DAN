@@ -138,6 +138,7 @@ static LONG  g_draw_log_budget = 40;
 static LONG  g_change_log_budget = 40;
 static LONG  g_draw_depth = 0;
 static int   g_last_idx = -2;
+static volatile LONG g_shutdown = 0;
 
 static DWORD va(DWORD address)
 {
@@ -347,6 +348,7 @@ static void blank_tab_labels(BYTE* s)
 // apart from other controls sharing class 0x0102DD44), then runs original.
 extern "C" void __fastcall inv_window_draw_hook(void* self, void* /*edx*/)
 {
+    if (g_shutdown) return;
     if (self) {
         g_inv_wnd = reinterpret_cast<DWORD>(self);
         __try {
@@ -363,6 +365,7 @@ extern "C" void __fastcall inv_window_draw_hook(void* self, void* /*edx*/)
 // the INVENTORY tab control only, at the control's own origin.
 extern "C" void __fastcall tabctrl_draw_hook(void* self, void* /*edx*/)
 {
+    if (g_shutdown) return;
     LONG depth = InterlockedIncrement(&g_draw_depth);
 
     if (!g_skip_original && g_orig_tab_draw)
@@ -445,6 +448,7 @@ extern "C" void __fastcall tabctrl_draw_hook(void* self, void* /*edx*/)
 // strip the box sticks to the window top. We re-show the tooltip at the cursor.
 extern "C" void __fastcall tabctrl_mousemove_hook(void* self, void* /*edx*/, int x, int y)
 {
+    if (g_shutdown) return;
     if (self && reinterpret_cast<DWORD>(self) == g_inv_tabctrl) {
         if (g_tooltips) {
             __try {
@@ -544,6 +548,7 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
 {
     (void)reserved;
     if (reason == DLL_PROCESS_ATTACH) {
+        g_shutdown = 0;
         g_module = module;
         DisableThreadLibraryCalls(module);
         g_logging_enabled = env_truthy("BOH_INVTABS_LOG", false);
@@ -569,6 +574,9 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
         HANDLE thread = CreateThread(nullptr, 0, install_thread, nullptr, 0, nullptr);
         if (thread)
             CloseHandle(thread);
+    }
+    if (reason == DLL_PROCESS_DETACH) {
+        g_shutdown = 1;
     }
     return TRUE;
 }

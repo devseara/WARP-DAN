@@ -68,6 +68,7 @@ static LONG g_trace_draw_budget = 30;
 static LONG g_trace_cache_budget = 40;
 static LONG g_draw_log_budget = 40;
 static LONG g_overlay_log_budget = 20;
+static volatile LONG g_shutdown = 0;
 static LONG g_image_log_budget = 20;
 static LONG g_text_log_budget = 20;
 static LONG g_interact_log_budget = 40;
@@ -549,6 +550,7 @@ static DWORD call_original_refresh(void* mgr, DWORD tag, DWORD set, DWORD arg3, 
 
 extern "C" DWORD __fastcall rune_refresh_hook(void* mgr, void*, DWORD tag, DWORD set, DWORD arg3, DWORD arg4)
 {
+    if (g_shutdown) return 0;
     write_tracef("refresh enter mgr=%08X tag=%u set=%u", reinterpret_cast<DWORD>(mgr), tag, set);
     DWORD ret = call_original_refresh(mgr, tag, set, arg3, arg4);
     cache_update(tag, set, reinterpret_cast<DWORD>(mgr));
@@ -558,6 +560,7 @@ extern "C" DWORD __fastcall rune_refresh_hook(void* mgr, void*, DWORD tag, DWORD
 
 extern "C" DWORD __fastcall selected_equipped_getter_hook(void* mgr, void*)
 {
+    if (g_shutdown) return 0;
     write_tracef("selected_getter mgr=%08X interact=%08X row=%u", reinterpret_cast<DWORD>(mgr), g_interact_ptr, g_interact_row);
     if (g_interact_ptr != 0 && is_active_ptr(g_interact_ptr))
         return g_interact_ptr;
@@ -594,6 +597,7 @@ static void record_interaction(void* self, DWORD y, const char* source, DWORD* a
 
 extern "C" void __fastcall equip_pane_click_hook(void* self, void*, DWORD x, DWORD y)
 {
+    if (g_shutdown) return;
     DWORD local_y = y;
     DWORD mgr = *reinterpret_cast<DWORD*>(va(kGlobalRuneMgr));
     DWORD original_ptr = mgr != 0 ? *reinterpret_cast<DWORD*>(mgr + 0x14) : 0;
@@ -611,6 +615,7 @@ extern "C" void __fastcall equip_pane_click_hook(void* self, void*, DWORD x, DWO
 
 extern "C" void __fastcall equip_pane_tooltip_hook(void* self, void*, DWORD x, DWORD y)
 {
+    if (g_shutdown) return;
     DWORD local_y = y;
     DWORD mgr = *reinterpret_cast<DWORD*>(va(kGlobalRuneMgr));
     DWORD original_ptr = mgr != 0 ? *reinterpret_cast<DWORD*>(mgr + 0x14) : 0;
@@ -628,6 +633,7 @@ extern "C" void __fastcall equip_pane_tooltip_hook(void* self, void*, DWORD x, D
 
 extern "C" void __fastcall image_draw_hook(void* self, void*, DWORD x, DWORD y, DWORD image, DWORD arg4)
 {
+    if (g_shutdown) return;
     DWORD original_y = y;
     if (reinterpret_cast<DWORD>(self) == g_current_draw_pane && g_draw_y_offset != 0) {
         y += g_draw_y_offset;
@@ -643,6 +649,7 @@ extern "C" void __fastcall image_draw_hook(void* self, void*, DWORD x, DWORD y, 
 
 extern "C" void __fastcall text_draw_hook(void* self, void*, DWORD x, DWORD y, DWORD text, DWORD arg4, DWORD arg5, DWORD arg6, DWORD arg7, DWORD arg8, DWORD arg9)
 {
+    if (g_shutdown) return;
     DWORD original_y = y;
     if (reinterpret_cast<DWORD>(self) == g_current_draw_pane && g_draw_y_offset != 0) {
         y += g_draw_y_offset;
@@ -658,6 +665,7 @@ extern "C" void __fastcall text_draw_hook(void* self, void*, DWORD x, DWORD y, D
 
 extern "C" void __fastcall surface_overlay_draw_hook(void* self, void*, DWORD x, DWORD y, DWORD width, DWORD height, DWORD alpha)
 {
+    if (g_shutdown) return;
     DWORD original_y = y;
     if (reinterpret_cast<DWORD>(self) == g_current_draw_surface && g_draw_y_offset != 0) {
         y += g_draw_y_offset;
@@ -674,6 +682,7 @@ extern "C" void __fastcall surface_overlay_draw_hook(void* self, void*, DWORD x,
 
 extern "C" void __fastcall equip_pane_draw_hook(void* self, void*)
 {
+    if (g_shutdown) return;
     auto original_draw = reinterpret_cast<EquipPaneDrawFn>(g_draw_trampoline);
     if (!original_draw || !self) {
         write_tracef("draw skip original=%08X self=%08X", reinterpret_cast<DWORD>(original_draw), reinterpret_cast<DWORD>(self));
@@ -829,6 +838,9 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
         HANDLE thread = CreateThread(nullptr, 0, install_thread, nullptr, 0, nullptr);
         if (thread)
             CloseHandle(thread);
+    }
+    if (reason == DLL_PROCESS_DETACH) {
+        g_shutdown = 1;
     }
 
     return TRUE;

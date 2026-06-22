@@ -80,17 +80,21 @@ cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
     weapon_sprite\weapon_sprite.cpp /Fo:weapon_sprite.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
+echo [12/12] weapon_overlay - Layered renderer harness...
+cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
+    weapon_sprite\weapon_overlay.cpp /Fo:weapon_overlay.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
 echo [LINK] boh.dll...
 link.exe /nologo /DLL /OUT:boh.dll ^
     main_proxy.obj colored_itemname.obj extended_name.obj rune_visual.obj ^
     fps_ping.obj ping.obj npc_name_overlay.obj inventory_tabs.obj pincode_ui.obj ^
-    weapon_sprite.obj ^
+    weapon_sprite.obj weapon_overlay.obj ^
     kernel32.lib user32.lib gdi32.lib d3d9.lib iphlpapi.lib ws2_32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo.
 echo ============================================================
 echo  Build successful: boh.dll
-echo  Deploy: just copy boh.dll to the game folder. Done.
+echo  Deploy: copy/rename boh.dll to the game folder, e.g. bohcustoms.dll.
 echo ============================================================
 endlocal

@@ -1,9 +1,9 @@
 #include <windows.h>
 
 void ItemColorExtNameInit(HMODULE module);
-void ItemColorExtNameCleanup();
+void ItemColorExtNameCleanup(bool isProcessTermination);
 
-BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
+BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID lpReserved)
 {
     switch (reason)
     {
@@ -12,7 +12,7 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID)
         ItemColorExtNameInit(module);
         break;
     case DLL_PROCESS_DETACH:
-        ItemColorExtNameCleanup();
+        ItemColorExtNameCleanup(lpReserved != nullptr);
         break;
     }
     return TRUE;

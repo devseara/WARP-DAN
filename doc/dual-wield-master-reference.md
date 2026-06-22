@@ -17,7 +17,16 @@ Render per-item weapon sprites when dual-wielding, instead of generic combined s
 
 # 2. ROOT CAUSE
 
-Body ACT `어쌔신크로스_남.act` has no individual weapon layers. Weapon sprites are baked into the body ACT — no separate weapon ACT files exist in this client.
+Body ACT `어쌔신크로스_남.act` has no individual weapon layers, so the native
+body renderer cannot reveal item-specific dagger layers just by changing weapon
+type IDs. However, the separate item-specific weapon ACT/SPR files do exist in
+`spritedata.grf`; they are not loose under the client `data` folder.
+
+`GrfCL.exe` extraction into `tmp/dual_weapon_exact` found 142 `.act` and 142
+`.spr` files for the target IDs: 172 files matching `1238` and 112 files
+matching `13412`. The implementation blocker is therefore not missing assets;
+it is selecting the correct job/gender ACT+SPR pair, parsing ACT frame/layer
+metadata, and binding that to live actor state safely.
 
 ## WeaponNameTable (weapontable.lub)
 
@@ -27,8 +36,8 @@ Types 1-24 are base weapon categories. Types 25-30 are combined dual-wield. Type
 |--------|------|--------|:---:|
 | SHORTSWORD (generic) | 1 | `_단검` | YES |
 | SHORTSWORD_SHORTSWORD | 25 | `_단검_단검` | YES |
-| Zeny_Knife | 34 | `_1238` | NO |
-| Naght Sieger (Twin Edge B) | 45 | `_13412` | NO |
+| Zeny_Knife | 34 | `_1238` | Exists in `spritedata.grf`, not body ACT |
+| Naght Sieger (Twin Edge B) | 45 | `_13412` | Exists in `spritedata.grf`, not body ACT |
 
 D72D30 returns base type 1 for dagger+dagger instead of specific 34/45.
 
@@ -117,7 +126,7 @@ Never called for daggers natively. Manual calls create wrong render commands.
 | # | Approach | Result |
 |---|----------|--------|
 | 1 | Mode remap 9→2 | Attack frames vanish |
-| 2 | Type replace 1→34/45 | No visual change (ACT lacks layers) |
+| 2 | Type replace 1→34/45 | No visual change because body ACT lacks those layers; separate weapon ACT/SPR assets exist but are not reached by this native route |
 | 3 | Offhand slot zero ([char+0x444]=0) | No change |
 | 4 | Mode + type combined | Generic stance, vanish on attack |
 | 5 | SYNTH_DRAW (DrawWeapon) | Arrow-only opcode, ignored |
@@ -154,14 +163,15 @@ SYNTH_DRAW calls fire but sprites invisible — DrawWeapon is arrow-only.
 | File | Purpose |
 |------|---------|
 | `CustomDLL/src/weapon_sprite/weapon_sprite.cpp` | 11 EXE inline hooks + tracer |
-| `CustomDLL/src/weapon_sprite/weapon_overlay.cpp` | GDI layered window test |
+| `CustomDLL/src/weapon_sprite/weapon_overlay.cpp` | GDI layered custom renderer; decodes loose SPR and pre-composes loose ACT+SPR actions 32..39 |
 | `Scripts/Patches/AllowDualCustomWeaponSprites.qjs` | QJS DLL import shim |
+| `tools/dual_weapon_act_preview.py` | Offline ACT+SPR contact-sheet renderer for extracted weapon assets |
 | `tmp/build_wpn.bat` | Standalone DLL build script |
 
 ---
 
 # 8. REMAINING OPTIONS
 
-1. **Modify body ACT** — add `_1238` / `_13412` weapon layers
-2. **Fix GDI overlay** — crash fix + game-window binding
-3. **Accept limitation** — this client bakes weapon sprites into body ACT
+1. **Custom renderer** — current path. Exact weapon ACT/SPR files render offline from `tmp/dual_weapon_exact`, and the DLL overlay can pre-compose loose ACT+SPR frames. Remaining work is safe live actor state: screen position, action/direction/frame, and loose/extracted asset availability.
+2. **Modify body ACT** — inject `_1238` / `_13412` layers into the body ACT route
+3. **Accept limitation** — stock native dual-wield route uses generic body/actor layers

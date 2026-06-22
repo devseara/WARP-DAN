@@ -31,28 +31,28 @@ del /q split_*.obj boh_text.dll boh_text.exp boh_text.lib ^
     boh_weapon_sprite.dll boh_weapon_sprite.exp boh_weapon_sprite.lib ^
     boh_pincode_ui.dll boh_pincode_ui.exp boh_pincode_ui.lib >nul 2>&1
 
-echo [2/10] Extended-name state...
+echo [2/12] Extended-name state...
 cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
     extended_name\extended_name.cpp /Fo:split_extended_name.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [3/10] Shared text hooks + item colors...
+echo [3/12] Shared text hooks + item colors...
 cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
     item_color\colored_itemname.cpp /Fo:split_item_color.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [4/10] Text visual entry point...
+echo [4/12] Text visual entry point...
 cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
     text_visual\text_visual_proxy.cpp /Fo:split_text_proxy.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [5/10] Link boh_text.dll...
+echo [5/12] Link boh_text.dll...
 link.exe /nologo /DLL /OUT:boh_text.dll ^
     split_text_proxy.obj split_item_color.obj split_extended_name.obj ^
     kernel32.lib user32.lib gdi32.lib ws2_32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [6/10] Build boh_npc_names.dll...
+echo [6/12] Build boh_npc_names.dll...
 cl.exe /nologo /LD /O2 /MT /EHa /I"./" ^
     /DNpcNameOverlayDllMain=DllMain ^
     npc_name_overlay\npc_name_overlay.cpp ^
@@ -60,14 +60,14 @@ cl.exe /nologo /LD /O2 /MT /EHa /I"./" ^
     /link kernel32.lib user32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [7/10] Build boh_rune.dll...
+echo [7/12] Build boh_rune.dll...
 cl.exe /nologo /LD /O2 /MT /EHsc /I"./" ^
     rune_visual\boh_rune_visual.cpp ^
     /Fe:boh_rune.dll /Fo:split_rune_visual.obj ^
     /link kernel32.lib user32.lib gdi32.lib d3d9.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [8/10] Compile FPS/ping...
+echo [8/12] Compile FPS/ping...
 cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
     fps_ping\fps_ping_overlay.cpp /Fo:split_fps_overlay.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
@@ -75,7 +75,7 @@ cl.exe /nologo /c /O2 /MT /I"./" ^
     fps_ping\ping.cpp /Fo:split_ping.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [9/10] Link boh_fps.dll...
+echo [9/12] Link boh_fps.dll...
 link.exe /nologo /DLL /OUT:boh_fps.dll ^
     split_fps_overlay.obj split_ping.obj ^
     kernel32.lib user32.lib gdi32.lib d3d9.lib iphlpapi.lib ws2_32.lib
@@ -86,6 +86,8 @@ cl.exe /nologo /LD /O2 /MT /EHa /I"./" ^
     inventory_tabs\inventory_tabs.cpp ^
     /Fe:boh_inventory_tabs.dll /Fo:split_inventory_tabs.obj ^
     /link kernel32.lib user32.lib
+if errorlevel 1 (echo FAILED & exit /b 1)
+
 echo [11/12] Build boh_weapon_sprite.dll...
 cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
     weapon_sprite\weapon_sprite.cpp /Fo:split_weapon_sprite.obj

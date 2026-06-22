@@ -22,6 +22,7 @@ ALL_FEATURES = {
     "NpcNameOverlay":   ("BOH_NPC_NAME_OVERLAY",  "Always-show NPC names"),
     "InventoryTabs":    ("BOH_INVENTORY_TABS",    "Image-based inventory tabs"),
     "PincodeUI":        ("BOH_PINCODE_UI",        "In-game PIN keypad"),
+    "WeaponSprite":     ("BOH_WEAPON_SPRITE",     "Dual-wield weapon sprite renderer"),
 }
 
 def main():
