@@ -33,7 +33,7 @@ FARPROC g_pDirectDrawEnumerateExA = nullptr;
 
 // colored_itemname.cpp - GDI hooks + item colors
 void ItemColorExtNameInit(HMODULE hModule);
-void ItemColorExtNameCleanup();
+void ItemColorExtNameCleanup(bool isProcessTermination);
 
 // rune_visual.cpp (RuneVisualDLL/boh_rune_visual.cpp)
 BOOL APIENTRY RuneVisualDllMain(HMODULE module, DWORD reason, LPVOID reserved);
@@ -46,6 +46,7 @@ BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID reserve
 
 // inventory_tabs.cpp (inventory_tabs/inventory_tabs.cpp)
 BOOL APIENTRY InvTabsDllMain(HMODULE module, DWORD reason, LPVOID reserved);
+BOOL APIENTRY WeaponSpriteDllMain(HMODULE module, DWORD reason, LPVOID reserved);
 
 // ============================================================================
 //  DllMain — sole entry point, chains to all feature modules
@@ -55,7 +56,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 {
     // Stop the EXTN drain worker before feature modules tear down.
     if (reason == DLL_PROCESS_DETACH)
-        ItemColorExtNameCleanup();
+        ItemColorExtNameCleanup(lpReserved != nullptr);
     // License is compile-time via customer_features.h — no runtime init needed
 
     // Chain to each feature module
@@ -63,6 +64,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
     FpsOverlayDllMain(hModule, reason, lpReserved);
     NpcNameOverlayDllMain(hModule, reason, lpReserved);
     InvTabsDllMain(hModule, reason, lpReserved);
+    WeaponSpriteDllMain(hModule, reason, lpReserved);
 
     switch (reason)
     {
@@ -88,7 +90,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
     case DLL_PROCESS_DETACH:
     {
-        if (g_hRealDDraw)
+        // During process termination the OS reclaims everything.
+        // Do NOT FreeLibrary or restore hooks — target DLLs may be gone.
+        if (lpReserved == nullptr && g_hRealDDraw)
         {
             FreeLibrary(g_hRealDDraw);
             g_hRealDDraw = nullptr;
@@ -132,3 +136,4 @@ extern "C" __declspec(dllexport) void ColoredItemNameVisualInit(void) {}
 // FpsPingOverlayInit is exported by fps_ping.obj (fps_ping_overlay.cpp)
 // NpcNameOverlayInit is exported by npc_name_overlay.obj (npc_name_overlay.cpp)
 // InventoryTabsInit is exported by inventory_tabs.obj (inventory_tabs.cpp)
+// WeaponSpriteInit is exported by weapon_sprite.obj (weapon_sprite.cpp)
