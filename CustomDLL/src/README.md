@@ -4,8 +4,9 @@ Two packaging modes are supported.
 
 ## Combined build
 
-Run `build.bat` to produce `boh.dll`. Select the default `boh.dll` value in
-every WARP feature prompt.
+Run `build.bat` to produce `boh.dll`. If your client imports
+`bohcustoms.dll`, copy or rename the output DLL to `bohcustoms.dll` and enter
+`bohcustoms.dll` in every WARP feature prompt.
 
 ## Dedicated builds
 
@@ -18,7 +19,7 @@ Run `build_split.bat` to produce:
 | `boh_rune.dll` | Rune visuals | `RuneVisualInit` |
 | `boh_fps.dll` | FPS and ping overlays | `FpsPingOverlayInit` |
 | `boh_inventory_tabs.dll` | Image inventory tabs | `InventoryTabsInit` |
-| `boh_weapon_sprite.dll` | Dual-wield weapon sprite hook | `WeaponSpriteInit` |
+| `boh_weapon_sprite.dll` | Dual-wield custom renderer host | `WeaponSpriteInit` |
 
 Each WARP patch has its own saved DLL-name prompt. The output files may be
 renamed as long as the matching filename is entered when patching the client.
@@ -31,22 +32,56 @@ EXTN transport and substitution state live in `extended_name/`.
 
 ## Dual-wield weapon sprite debug
 
-Use the dedicated build for this hook:
+For this setup, `bohcustoms.dll` is already used by the combined build for the
+other BOH features. Keep the weapon renderer in a dedicated DLL with a unique
+import name, for example `rename.dll`:
 
 ```bat
 build_split.bat
+copy /y boh_weapon_sprite.dll "...\rename.dll"
 ```
 
-Then select `boh_weapon_sprite.dll` in WARP's **Dual-Wield Per-Hand Weapon
-Sprites** prompt and place that DLL beside the patched EXE. The combined
-`boh.dll` build does not currently export or initialize this hook.
+Then select `rename.dll` in WARP's **Dual-Wield Per-Hand Weapon Sprites**
+prompt and place that DLL beside the patched EXE. The combined build has
+`BOH_WEAPON_SPRITE=0` so `bohcustoms.dll` does not also start a second weapon
+overlay/state-hook owner.
+
+If you intentionally want one combined DLL to own the weapon renderer too, set
+`BOH_WEAPON_SPRITE=1` in `customer_features.h`, rebuild `boh.dll`, and use the
+same combined DLL name in the WARP prompt.
+
+The native hook route is no longer the default. `doc/dual-wield-master-reference.md`
+records the current finding: this client's dagger weapon visuals are baked into
+body ACT layers, item-specific `_1238` / `_13412` weapon layers are absent for
+the tested Assassin Cross body, and `DrawWeapon` is an arrow/projectile path for
+this case. The DLL now starts as a custom-renderer host:
+
+```bat
+set BOH_DUALWPN_NO_HOOKS=1
+set BOH_DUALWPN_OVERLAY=1
+set BOH_DUALWPN_STATE_HOOKS=1
+set BOH_DUALWPN_PLACEMENT_TRACE=1
+```
+
+`BOH_DUALWPN_NO_HOOKS=1` is the default and skips the old native
+replacement/draw/resource experiments.
+`BOH_DUALWPN_OVERLAY=1` starts the layered-window renderer. The overlay window
+is owned by the game window, hides while the game is inactive or minimized, and
+stays hidden until the read-only state hooks report an in-game dual/offhand
+actor render. It decodes loose ACT+SPR pairs, pre-composes ACT actions 32..39
+into ARGB weapon frames, and can still decode loose SPR frames as a raw fallback.
+`BOH_DUALWPN_PLACEMENT_TRACE=1` also traces the native generic weapon holder so
+DebugView can show the correctly placed generic layer's caller, part id, frame
+arg, and position/scale fields. Until actor screen coordinates are fed in, the
+overlay still draws the exact main/offhand weapon pair from the current actor
+state with configurable anchor offsets.
 
 `WeaponSpriteInit` is only an import-table anchor that makes the client load
 the DLL. Normal PE import resolution does not call the function. The first
 DebugView lines to expect are:
 
 ```text
-[DualWeaponSprites] boh_weapon_sprite.dll attach
+[DualWeaponSprites] attach
 [DualWeaponSprites] installer start ...
 [DualWeaponSprites] installer done ...
 ```
@@ -54,26 +89,66 @@ DebugView lines to expect are:
 Current environment toggles:
 
 ```bat
-set BOH_DUALWPN_LOG=1
-set BOH_DUALWPN_REPLACE=1
-set BOH_DUALWPN_OFFHAND=1
+set BOH_DUALWPN_NO_HOOKS=1
+set BOH_DUALWPN_OVERLAY=1
+set BOH_DUALWPN_STATE_HOOKS=1
+set BOH_DUALWPN_PLACEMENT_TRACE=1
+set BOH_DUALWPN_LOG=0
+set BOH_DUALWPN_REPLACE=0
+set BOH_DUALWPN_OFFHAND=0
 set BOH_DUALWPN_LOG_EVERY=120
 set BOH_DUALWPN_FORCE_SINGLE_LAYER=0
 set BOH_DUALWPN_FORCE_SINGLE_MODE=0
-set BOH_DUALWPN_TRACE_ACTOR_PATHS=1
-set BOH_DUALWPN_TRACE_RESOURCE_KEYS=1
-set BOH_DUALWPN_TRACE_WEAPON_PATHS=1
-set BOH_DUALWPN_PRELOAD_WEAPON_PATHS=1
-set BOH_DUALWPN_ALIAS_RESOURCE_KEYS=1
-set BOH_DUALWPN_SYNTH_WEAPON_PATHS=1
+set BOH_DUALWPN_TRACE_ACTOR_PATHS=0
+set BOH_DUALWPN_TRACE_RESOURCE_KEYS=0
+set BOH_DUALWPN_TRACE_WEAPON_PATHS=0
+set BOH_DUALWPN_PRELOAD_WEAPON_PATHS=0
+set BOH_DUALWPN_ALIAS_RESOURCE_KEYS=0
+set BOH_DUALWPN_SYNTH_WEAPON_PATHS=0
 set BOH_DUALWPN_AUTO_SYNTH_VISUAL=0
 set BOH_DUALWPN_SUPPRESS_NATIVE_SUBMIT=0
 set BOH_DUALWPN_SYNTH_DRAW=0
 set BOH_DUALWPN_FORCE_RESOURCE_BRANCH=0
 set BOH_DUALWPN_FORCE_RESOURCE_KEY=0
+set BOH_DUALWPN_HIDE_INACTIVE=1
+set BOH_DUALWPN_STATE_TTL_MS=120000
+set BOH_DUALWPN_SPR_SCALE=1
+set BOH_DUALWPN_FRAME_MS=180
+set BOH_DUALWPN_ANCHOR_X=0
+set BOH_DUALWPN_ANCHOR_Y=30
+set BOH_DUALWPN_HAND_GAP=24
+set BOH_DUALWPN_ACT_START=32
+set BOH_DUALWPN_ACT_END=39
+set BOH_DUALWPN_MAIN_ACT=
+set BOH_DUALWPN_OFF_ACT=
+set BOH_DUALWPN_MAIN_SPR=
+set BOH_DUALWPN_OFF_SPR=
+set BOH_DUALWPN_ALLOW_FALLBACK_SPR=0
 ```
 
-`BOH_DUALWPN_LOG` is on by default. `BOH_DUALWPN_REPLACE` swaps combined
+`BOH_DUALWPN_MAIN_ACT` and `BOH_DUALWPN_OFF_ACT` may point to absolute or
+client-folder-relative loose `.act` files; the renderer loads the matching
+`.spr` beside each ACT. If unset, it reads `DATA.INI` or embedded GRF names,
+walks GRFs in priority order, finds matching `_13412` / `_1238` ACT+SPR pairs,
+and decompresses them in memory before falling back to loose `data\sprite`
+searches. `BOH_DUALWPN_ACT_START` and `BOH_DUALWPN_ACT_END` choose the ACT
+action band to pre-compose; `32..39` is the first verified weapon-bearing range
+from the offline preview.
+`BOH_DUALWPN_STATE_TTL_MS` controls how long the overlay keeps the last valid
+dual/offhand actor state alive; this defaults to `120000` so short render-state
+bursts do not look like flicker. `BOH_DUALWPN_FRAME_MS` controls the proof
+animation cadence.
+Unrelated Drake fallback sprites are disabled by default; enable them only with
+`BOH_DUALWPN_ALLOW_FALLBACK_SPR=1` when deliberately testing the overlay layer.
+`BOH_DUALWPN_STATE_HOOKS=1` installs only the minimal read-only WeaponType and
+RenderMode hooks required to feed actor item state into the overlay.
+`BOH_DUALWPN_PLACEMENT_TRACE=1` adds the read-only `C55C30` native generic
+weapon holder trace. The old native replacement/draw/resource experiments still
+remain off by default. Set state hooks to `0` only when proving the overlay
+thread starts without any EXE hooks; with state hooks off, heartbeats are
+expected but weapon drawing cannot work.
+
+Native probe flags are opt-in. `BOH_DUALWPN_REPLACE` swaps combined
 dual-wield types `25..30` for an individual main/offhand view when available.
 `BOH_DUALWPN_OFFHAND` is a stability probe that issues a second `DrawWeapon`
 call after the native draw. Leave both experiment toggles off until the attach
@@ -87,18 +162,18 @@ default. The force-layer probe did not change the generic visual, and the
 force-mode probe made the main/dual-hand sprite disappear while the offhand
 remained. Keep both off unless intentionally reproducing those proofs.
 
-`BOH_DUALWPN_TRACE_ACTOR_PATHS=1` is on by default. It logs filtered
+`BOH_DUALWPN_TRACE_ACTOR_PATHS=1` logs filtered
 `ActorPath` lines from the native actor resource path builder (`0x00D5B8E0`)
 when the builder inputs match the current weapon actor's `+260/+4C8` fields.
 These lines are meant to separate real weapon paths from the noisy accessory
 and head paths seen in earlier global loader probes.
 
-`BOH_DUALWPN_TRACE_RESOURCE_KEYS=1` is on by default. It logs the native
+`BOH_DUALWPN_TRACE_RESOURCE_KEYS=1` logs the native
 resource-cache results for the current generic key at `[char+0x24C]` and the
 item-specific keys derived from the resolved weapon views, such as `45 ->
 45000000`.
 
-`BOH_DUALWPN_TRACE_WEAPON_PATHS=1` is on by default. It hooks the native weapon
+`BOH_DUALWPN_TRACE_WEAPON_PATHS=1` hooks the native weapon
 path builders (`0x00D5A480` and `0x00D58FF0`) and logs lines such as
 `WeaponPathMain` / `WeaponPathOff` when a builder output has an item suffix or
 matches the current main/offhand view. `BOH_DUALWPN_PRELOAD_WEAPON_PATHS=1`
@@ -109,7 +184,7 @@ lookup returns null.
 
 `weapon_7.log` showed the native weapon path builders do not fire in the live
 mode 2/9 actor-part route: there were no `WeaponPathMain`, `WeaponPathOff`, or
-`ResourceAlias` lines. `BOH_DUALWPN_SYNTH_WEAPON_PATHS=1` is now on by default
+`ResourceAlias` lines. `BOH_DUALWPN_SYNTH_WEAPON_PATHS=1` can be used
 to synthesize an item ACT path from the actor body path, using the actor's root
 and gender plus known Assassin-family fallbacks that exist in `spritedata.grf`.
 `BOH_DUALWPN_AUTO_SYNTH_VISUAL=1` patches the skipped mode 2/9 resource branch,

@@ -48,7 +48,7 @@ CustomSpecials:
             title : Dual-Wield Per-Hand Weapon Sprites [Tracer/Experimental]
             recommend : no
             author : Louis T Steinhil
-            desc : "Imports the dedicated weapon-sprite DLL (boh_weapon_sprite.dll) which traces the live actor weapon pipeline to DebugView (prefix [DualWeaponSprites]). Force probes are opt-in only: BOH_DUALWPN_FORCE_SINGLE_LAYER maps dual-wield layer 0x58 to single-weapon layer 0x50, and BOH_DUALWPN_FORCE_SINGLE_MODE dispatches mode 9 as mode 2. Target: 2025-07-16 Ragexe 175220998. Place boh_weapon_sprite.dll beside the patched EXE."
+            desc : "Imports the weapon-sprite renderer DLL. Use a unique DLL name such as rename.dll when bohcustoms.dll is already used by the combined build, or rename the dedicated split output boh_weapon_sprite.dll. Current default is custom-renderer host mode: BOH_DUALWPN_NO_HOOKS=1 skips old mutating experiment hooks, BOH_DUALWPN_STATE_HOOKS=1 feeds read-only actor state, BOH_DUALWPN_PLACEMENT_TRACE=1 traces the native generic weapon holder/caller, and BOH_DUALWPN_OVERLAY=1 starts the game-owned layered renderer with ACT+SPR decode. Native replacement/draw probes remain opt-in for investigation only. Target: 2025-07-16 Ragexe 175220998. Place the selected DLL beside the patched EXE."
         
         - CustomJobs:
             title : Enable Custom Jobs (Reforged)

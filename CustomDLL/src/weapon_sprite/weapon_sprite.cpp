@@ -24,7 +24,7 @@
 //                         arg4 = 0 (native main hand) | c43230() result)
 //
 // PHASES (env-gated; safe defaults)
-//   BOH_DUALWPN_LOG      (default ON)  : trace pipeline to DebugView
+//   BOH_DUALWPN_LOG      (default off) : trace pipeline to DebugView
 //   BOH_DUALWPN_REPLACE  (default off) : if WeaponTypeFunc returns a combined
 //                                        type 25..30, replace with the main /
 //                                        off individual view via d8a1d0.
@@ -37,21 +37,21 @@
 //                                        mode 9 layer 0x58 -> single layer 0x50.
 //   BOH_DUALWPN_FORCE_SINGLE_MODE (default off):
 //                                        dispatch mode 9 through mode 2 path.
-//   BOH_DUALWPN_TRACE_ACTOR_PATHS (default ON):
+//   BOH_DUALWPN_TRACE_ACTOR_PATHS (default off):
 //                                        trace actor path-builder calls that
 //                                        match the current weapon actor.
-//   BOH_DUALWPN_TRACE_RESOURCE_KEYS (default ON):
+//   BOH_DUALWPN_TRACE_RESOURCE_KEYS (default off):
 //                                        trace native resource-cache lookup
 //                                        results for generic/specific keys.
-//   BOH_DUALWPN_TRACE_WEAPON_PATHS (default ON):
+//   BOH_DUALWPN_TRACE_WEAPON_PATHS (default off):
 //                                        trace native weapon path-builder output.
-//   BOH_DUALWPN_PRELOAD_WEAPON_PATHS (default ON):
+//   BOH_DUALWPN_PRELOAD_WEAPON_PATHS (default off):
 //                                        load matching item-specific ACT paths
 //                                        as soon as native builders produce them.
-//   BOH_DUALWPN_ALIAS_RESOURCE_KEYS (default ON):
+//   BOH_DUALWPN_ALIAS_RESOURCE_KEYS (default off):
 //                                        if native cache lookup misses a specific
 //                                        weapon key, return the preloaded object.
-//   BOH_DUALWPN_SYNTH_WEAPON_PATHS (default ON):
+//   BOH_DUALWPN_SYNTH_WEAPON_PATHS (default off):
 //                                        synthesize item ACT paths from the
 //                                        actor body path when native weapon
 //                                        builders do not fire.
@@ -72,6 +72,12 @@
 //   BOH_DUALWPN_FORCE_RESOURCE_KEY (default off):
 //                                        temporarily submit a specific view key
 //                                        through [char+0x24C] during mode 2/9.
+//   BOH_DUALWPN_NO_HOOKS (default ON):
+//                                        skip all EXE inline hooks; use the DLL
+//                                        as a custom renderer host only.
+//   BOH_DUALWPN_OVERLAY (default ON):
+//                                        start the layered-window renderer
+//                                        harness from weapon_overlay.cpp.
 // ============================================================================
 //
 // GHIDRA REVERSE-ENGINEERING FINDINGS (2026-06-22)
@@ -104,7 +110,7 @@
 //   Our g_force_resource_branch NOPs both JEs, letting modes 2/9 enter the
 //   resource lookup + DrawWeapon path that stock code skips.
 //
-// WORKING FLAG COMBINATION (verified weapon_9.log):
+// DEAD-END FLAG COMBINATION (verified weapon_9.log):
 //   BOH_DUALWPN_AUTO_SYNTH_VISUAL=1        <- NOPs JEs + injects weapon key
 //   BOH_DUALWPN_SUPPRESS_NATIVE_SUBMIT=1   <- blocks C55C30 for mode 9
 //   BOH_DUALWPN_SYNTH_DRAW=1               <- manual DrawWeapon post-trampoline
@@ -113,9 +119,9 @@
 //   Frame 2: SynthPath loads ACT, alias created, suppress=1, SYNTH_DRAW fires
 //   Frame 3+: both main/off cached, suppress=1, SYNTH_DRAW main+off every frame
 //
-// KNOWN ISSUE: SYNTH_DRAW calls fire but sprites may be invisible. Possible
-//   causes: wrong renderer pointer, wrong body coords, layer interference
-//   (mode 9 layer 88 vs mode 2 layer 80), or synthetic path loads wrong ACT.
+// Result: SYNTH_DRAW calls fire, but C6D9D0 is an arrow/projectile path for
+// this case. It creates the wrong render command and regressed attack/movement
+// state. Do not use this route as a fix.
 //
 // GHIDRA FULL RENDER PIPELINE (2026-06-22)
 // ============================================================================
@@ -146,9 +152,10 @@
 // overlay layer within the actor's ACT. Overwriting it with an individual
 // weapon key BEFORE the render batch runs may be the correct approach.
 //
-// CORRECT APPROACH (hypothesis): instead of suppressing C55C30 + calling
-// DrawWeapon, overwrite [char+0x24C] with the individual weapon resource key
-// and let the native renderer draw it through the actor ACT pipeline.
+// Renderer pivot: keep native hooks opt-in for read-only investigation, and use
+// this DLL as the host for a custom renderer. The current harness is a layered
+// window; the next renderer step is decoding SPR/ACT frames and positioning
+// them from actor screen coordinates.
 //
 // ============================================================================
 
@@ -157,9 +164,15 @@
 #include <intrin.h>
 #include <stdint.h>
 
+#include "boh_features.h"
+
 // Forward: weapon_overlay.cpp
 extern "C" bool WeaponOverlayStart(HMODULE);
 extern "C" void WeaponOverlayStop();
+extern "C" void WeaponOverlayUpdateState(DWORD charObj, DWORD mode,
+                                          DWORD mainItem, DWORD offItem,
+                                          DWORD mainView, DWORD offView);
+extern "C" void WeaponOverlayClearState();
 
 namespace {
 
@@ -173,8 +186,8 @@ static constexpr DWORD kActorSubmit1C    = 0x00C55C30; // actor-part submit vfun
 static constexpr DWORD kLayerIdA         = 0x00C430F0; // layer id helper, active state
 static constexpr DWORD kLayerIdB         = 0x00C42C90; // layer id helper, normal state
 static constexpr DWORD kActorPathBuilder = 0x00D5B8E0; // actor resource path builder
-static constexpr DWORD kMainWeaponPathBuilder = 0x00D5A480; // native weapon path builder
-static constexpr DWORD kOffWeaponPathBuilder  = 0x00D58FF0; // native offhand path builder
+static constexpr DWORD kMainWeaponPathBuilder = 0x00D5A480; // GetJobName (MISLABELED: job/body-name helper, NOT a weapon path builder; verified vs 07-16 fn table)
+static constexpr DWORD kOffWeaponPathBuilder  = 0x00D58FF0; // adjacent job/name helper (MISLABELED: NOT an offhand path builder)
 static constexpr DWORD kGetRenderer      = 0x00A75340; // renderer singleton getter
 static constexpr DWORD kGetTexMgr        = 0x00A90350; // texture manager getter
 static constexpr DWORD kConvPath         = 0x00A9F030; // path -> engine token
@@ -185,6 +198,14 @@ static constexpr DWORD kSkipResourceJe2  = 0x00C5917F; // JE over [char+0x24C] p
 static constexpr DWORD kD8A1D0           = 0x00D8A1D0; // item id -> view id
 static constexpr DWORD kGlobalObj        = 0x015FA3C0; // 'this' for weapon fns
 static constexpr DWORD kRendererGlobal   = 0x01213338; // 'this' for renderer getter
+static constexpr DWORD kWeaponLoader     = 0x00D3F4F0; // weapon sprite loader (vtable +0x58)
+static constexpr DWORD kWeaponSetup      = 0x00D3E850; // weapon setup (vtable +0x50, calls D3F4F0)
+static constexpr DWORD kWeaponLoaderSlots[5] = { // .rdata vtable +0x58 slots holding D3F4F0
+    0x01093BA0, 0x01093C9C, 0x01093D98, 0x01094400, 0x01094868
+};
+static constexpr DWORD kWeaponSetupSlots[5] = { // .rdata vtable +0x50 slots holding D3E850
+    0x01093B98, 0x01093C94, 0x01093D90, 0x010943F8, 0x01094860
+};
 
 // stolen-byte lengths (whole instructions, >=5) for each entry trampoline
 static constexpr SIZE_T kStolenWTF   = 6; // 55 / 8B EC / 83 EC 08
@@ -219,7 +240,11 @@ static bool  g_suppress_native_submit = false; // BOH_DUALWPN_SUPPRESS_NATIVE_SU
 static bool  g_synth_draw = false; // BOH_DUALWPN_SYNTH_DRAW
 static bool  g_force_resource_branch = false; // BOH_DUALWPN_FORCE_RESOURCE_BRANCH
 static bool  g_force_resource_key = false; // BOH_DUALWPN_FORCE_RESOURCE_KEY
+static bool  g_overlay_renderer = true; // BOH_DUALWPN_OVERLAY
+static bool  g_state_hooks = true; // BOH_DUALWPN_STATE_HOOKS
+static bool  g_placement_trace = true; // BOH_DUALWPN_PLACEMENT_TRACE
 static DWORD g_log_every = 0;      // BOH_DUALWPN_LOG_EVERY
+static bool  g_native_bind = false; // BOH_DUALWPN_NATIVE_BIND (D3F4F0 per-hand swap)
 
 static BYTE  g_wtf_stolen[16]  = {};
 static BYTE  g_draw_stolen[16] = {};
@@ -243,6 +268,17 @@ static void* g_path_tramp = nullptr;
 static void* g_main_path_tramp = nullptr;
 static void* g_off_path_tramp = nullptr;
 static void* g_res_lookup_tramp = nullptr;
+
+static bool g_wtf_hooked = false, g_draw_hooked = false, g_set_hooked = false;
+static bool g_mode_hooked = false, g_submit_hooked = false;
+static bool g_layer_a_hooked = false, g_layer_b_hooked = false;
+static bool g_path_hooked = false, g_main_path_hooked = false;
+static bool g_off_path_hooked = false, g_res_lookup_hooked = false;
+static DWORD g_wloader_slot_old[5] = {}; // original D3F4F0 vtable slot values
+static DWORD g_wsetup_slot_old[5] = {};  // original D3E850 vtable slot values
+static bool  g_wloader_hooked = false;
+static bool  g_wsetup_hooked  = false;
+static DWORD g_last_bind_char = 0xFFFFFFFF, g_last_bind_main = 0xFFFFFFFF, g_last_bind_off = 0xFFFFFFFF, g_last_bind_type = 0xFFFFFFFF;
 
 // last-seen values for de-duplicating high-frequency log lines
 static DWORD g_last_wtf_main = 0xFFFFFFFF, g_last_wtf_off = 0xFFFFFFFF, g_last_wtf_ret = 0xFFFFFFFF;
@@ -271,6 +307,12 @@ static DWORD g_last_synth_item = 0xFFFFFFFF, g_last_synth_obj = 0xFFFFFFFF;
 static char  g_last_synth_path[260] = {};
 static DWORD g_last_submit_char = 0xFFFFFFFF, g_last_submit_id = 0xFFFFFFFF;
 static DWORD g_last_submit_suppressed = 0xFFFFFFFF;
+static DWORD g_last_submit_mode = 0xFFFFFFFF, g_last_submit_a2 = 0xFFFFFFFF;
+static DWORD g_last_submit_a3 = 0xFFFFFFFF, g_last_submit_x = 0xFFFFFFFF;
+static DWORD g_last_submit_y = 0xFFFFFFFF, g_last_submit_z = 0xFFFFFFFF;
+static DWORD g_last_submit_frame = 0xFFFFFFFF, g_last_submit_scale = 0xFFFFFFFF;
+static DWORD g_last_submit_caller = 0xFFFFFFFF, g_last_submit_part = 0xFFFFFFFF;
+static DWORD g_last_submit_part2 = 0xFFFFFFFF;
 static DWORD g_last_synth_draw_char = 0xFFFFFFFF, g_last_synth_draw_item = 0xFFFFFFFF;
 static DWORD g_last_synth_draw_obj = 0xFFFFFFFF;
 static volatile LONG g_draw_count = 0;
@@ -280,6 +322,8 @@ static volatile LONG g_synth_draw_depth = 0;
 
 // most recent dual-wield context captured at WeaponTypeFunc
 static DWORD g_ctx_main = 0, g_ctx_off = 0, g_ctx_mainView = 0, g_ctx_offView = 0;
+static void* g_bind_charObj = nullptr;   // cached by D3F4F0_VHook, used by WeaponTypeHook for deferred remap
+static bool  g_bind_done = false;        // dedup: only fire deferred remap once per equip
 static DWORD g_focus_char = 0, g_focus_mode = 0, g_focus_f260 = 0, g_focus_f4c8 = 0;
 static DWORD g_active_char = 0, g_active_mode = 0;
 static DWORD g_body_path_char = 0;
@@ -339,6 +383,15 @@ static void logf(const char* fmt,
     out_line(msg);
 }
 
+static void log_alwaysf(const char* fmt,
+                        DWORD a = 0, DWORD b = 0, DWORD c = 0,
+                        DWORD d = 0, DWORD e = 0, DWORD f = 0)
+{
+    char msg[560];
+    wsprintfA(msg, fmt, a, b, c, d, e, f);
+    out_line(msg);
+}
+
 static bool env_flag(const char* name, bool dflt)
 {
     char v[16] = {};
@@ -381,7 +434,10 @@ static bool patch_jmp(DWORD hook_va, void* target, BYTE* stolen,
 
     DWORD old = 0;
     if (!VirtualProtect(site, stolen_len, PAGE_EXECUTE_READWRITE, &old))
+    {
+        VirtualFree(gate, 0, MEM_RELEASE);
         return false;
+    }
     site[0] = 0xE9;
     *reinterpret_cast<int32_t*>(site + 1) =
         static_cast<int32_t>(reinterpret_cast<BYTE*>(target) - (site + 5));
@@ -392,6 +448,39 @@ static bool patch_jmp(DWORD hook_va, void* target, BYTE* stolen,
 
     *trampoline = gate;
     return true;
+}
+
+static void restore_patch(DWORD hook_va, const BYTE* stolen,
+                          SIZE_T stolen_len, bool hooked)
+{
+    if (!hooked || !stolen || stolen_len == 0)
+        return;
+
+    BYTE* site = reinterpret_cast<BYTE*>(va(hook_va));
+    DWORD old = 0;
+    if (!VirtualProtect(site, stolen_len, PAGE_EXECUTE_READWRITE, &old))
+        return;
+    CopyMemory(site, stolen, stolen_len);
+    FlushInstructionCache(GetCurrentProcess(), site, stolen_len);
+    VirtualProtect(site, stolen_len, old, &old);
+}
+
+static void restore_all_patches()
+{
+    restore_patch(kWeaponTypeFunc, g_wtf_stolen, kStolenWTF, g_wtf_hooked);
+    restore_patch(kDrawWeapon, g_draw_stolen, kStolenDraw, g_draw_hooked);
+    restore_patch(kSpriteResSetter, g_set_stolen, kStolenSet, g_set_hooked);
+    restore_patch(kRenderModeSetter, g_mode_stolen, kStolenMode, g_mode_hooked);
+    restore_patch(kActorSubmit1C, g_submit_stolen, kStolenSubmit1C, g_submit_hooked);
+    restore_patch(kLayerIdA, g_layer_a_stolen, kStolenLayerA, g_layer_a_hooked);
+    restore_patch(kLayerIdB, g_layer_b_stolen, kStolenLayerB, g_layer_b_hooked);
+    restore_patch(kActorPathBuilder, g_path_stolen, kStolenPathBuilder, g_path_hooked);
+    restore_patch(kMainWeaponPathBuilder, g_main_path_stolen,
+                  kStolenWeaponPathBuilder, g_main_path_hooked);
+    restore_patch(kOffWeaponPathBuilder, g_off_path_stolen,
+                  kStolenWeaponPathBuilder, g_off_path_hooked);
+    restore_patch(kResourceKeyLookup, g_res_lookup_stolen,
+                  kStolenResourceLookup, g_res_lookup_hooked);
 }
 
 static bool patch_nop2(DWORD target_va, BYTE expected0, BYTE expected1)
@@ -1015,12 +1104,15 @@ static void* __fastcall ResourceKeyLookupHook(void* manager, void* /*edx*/, DWOR
     return reinterpret_cast<void*>(cached->object);
 }
 
+// forward decl for deferred remap (defined later in native-bind section)
+static void call_real_weapon_loader(void* charObj, int weaponType);
+
 static DWORD __fastcall WeaponTypeHook(void* glob, void* /*edx*/,
                                        DWORD a1, DWORD a2,
                                        DWORD mainItem, DWORD offItem)
 {
     if (g_unloading)
-        return reinterpret_cast<WeaponTypeFn>(g_wtf_tramp)(glob, a1, a2, mainItem, offItem);
+        return 0;  // process exiting — bail, don't touch trampoline
 
     DWORD ret = reinterpret_cast<WeaponTypeFn>(g_wtf_tramp)(
         glob, a1, a2, mainItem, offItem);
@@ -1029,6 +1121,11 @@ static DWORD __fastcall WeaponTypeHook(void* glob, void* /*edx*/,
     int offView  = (offItem != 0) ? d8a1d0(offItem) : -1;
     g_ctx_main = mainItem; g_ctx_off = offItem;
     g_ctx_mainView = (DWORD)mainView; g_ctx_offView = (DWORD)offView;
+
+    // Forward to overlay renderer (zero-charObj, D72D30 doesn't have charObj)
+    if (mainItem != g_last_wtf_main || offItem != g_last_wtf_off) {
+        WeaponOverlayUpdateState(0, 9, mainItem, offItem, (DWORD)mainView, (DWORD)offView);
+    }
 
     bool changed = (mainItem != g_last_wtf_main) ||
                    (offItem != g_last_wtf_off) ||
@@ -1040,6 +1137,10 @@ static DWORD __fastcall WeaponTypeHook(void* glob, void* /*edx*/,
         logf("WeaponType main=%u off=%u -> type=%u  mainView=%d offView=%d combined=%u",
              mainItem, offItem, ret & 0xFF, (DWORD)mainView, (DWORD)offView,
              ((ret & 0xFF) >= 25 && (ret & 0xFF) <= 30) ? 1u : 0u);
+        // a1/a2 diagnostic: does either carry the actor (loader charObj)? If so we
+        // can key the per-hand views per-character instead of a flaky global.
+        logf("WeaponType glob=%08X a1=%08X a2=%08X",
+             reinterpret_cast<DWORD>(glob), a1, a2);
     }
 
     if (g_replace)
@@ -1121,21 +1222,35 @@ static void __fastcall Submit1CHook(void* charObj, void* /*edx*/,
         reinterpret_cast<Submit1CFn>(g_submit_tramp)(charObj, id, a2, a3);
         return;
     }
+    DWORD activeMode = (g_render_depth > 0 &&
+                        g_active_char == reinterpret_cast<DWORD>(charObj))
+        ? g_active_mode
+        : g_focus_mode;
     bool weaponMode = (g_render_depth > 0 &&
                        g_active_char == reinterpret_cast<DWORD>(charObj) &&
                        (g_active_mode == 9) &&
                        (id == 0x50 || id == 0x58));
+    bool tracePlacement = g_placement_trace &&
+                           (activeMode == 2 || activeMode == 9) &&
+                           (id == 0x50 || id == 0x58);
+    DWORD caller = reinterpret_cast<DWORD>(_ReturnAddress()) - 5;
     bool suppress = g_suppress_native_submit && weaponMode && has_cached_current_weapon();
 
     if (reinterpret_cast<DWORD>(charObj) != g_last_submit_char ||
+        activeMode != g_last_submit_mode ||
         id != g_last_submit_id ||
+        a2 != g_last_submit_a2 ||
+        a3 != g_last_submit_a3 ||
         (suppress ? 1u : 0u) != g_last_submit_suppressed)
     {
         g_last_submit_char = reinterpret_cast<DWORD>(charObj);
+        g_last_submit_mode = activeMode;
         g_last_submit_id = id;
+        g_last_submit_a2 = a2;
+        g_last_submit_a3 = a3;
         g_last_submit_suppressed = suppress ? 1u : 0u;
         logf("Submit1C char=%08X mode=%u id=%u a2=%u a3=%u suppress=%u",
-             reinterpret_cast<DWORD>(charObj), g_active_mode,
+             reinterpret_cast<DWORD>(charObj), activeMode,
              id, a2, a3, suppress ? 1u : 0u);
     }
 
@@ -1143,6 +1258,48 @@ static void __fastcall Submit1CHook(void* charObj, void* /*edx*/,
         return;
 
     reinterpret_cast<Submit1CFn>(g_submit_tramp)(charObj, id, a2, a3);
+
+    if (tracePlacement)
+    {
+        DWORD x = field32(charObj, 0x10);
+        DWORD y = field32(charObj, 0x14);
+        DWORD z = field32(charObj, 0x18);
+        DWORD partId = field32(charObj, 0x34);
+        DWORD partId2 = field32(charObj, 0x38);
+        DWORD frameOrArg = field32(charObj, 0x6C);
+        DWORD scale = field32(charObj, 0x58);
+        if (reinterpret_cast<DWORD>(charObj) != g_last_submit_char ||
+            activeMode != g_last_submit_mode ||
+            id != g_last_submit_id ||
+            caller != g_last_submit_caller ||
+            x != g_last_submit_x ||
+            y != g_last_submit_y ||
+            z != g_last_submit_z ||
+            partId != g_last_submit_part ||
+            partId2 != g_last_submit_part2 ||
+            frameOrArg != g_last_submit_frame ||
+            scale != g_last_submit_scale)
+        {
+            g_last_submit_char = reinterpret_cast<DWORD>(charObj);
+            g_last_submit_mode = activeMode;
+            g_last_submit_id = id;
+            g_last_submit_caller = caller;
+            g_last_submit_x = x;
+            g_last_submit_y = y;
+            g_last_submit_z = z;
+            g_last_submit_part = partId;
+            g_last_submit_part2 = partId2;
+            g_last_submit_frame = frameOrArg;
+            g_last_submit_scale = scale;
+            char msg[640];
+            wsprintfA(msg,
+                      "NativeWeaponPart caller=%08X char=%08X mode=%u submitId=%u a2=%u a3=%u part=%u/%u frameArg=%u pos=%08X,%08X,%08X scale=%08X main=%u off=%u",
+                      caller, reinterpret_cast<DWORD>(charObj), activeMode, id,
+                      a2, a3, partId, partId2, frameOrArg, x, y, z, scale,
+                      g_ctx_main, g_ctx_off);
+            out_line(msg);
+        }
+    }
 }
 
 static void __fastcall RenderModeHook(void* charObj, void* /*edx*/,
@@ -1165,6 +1322,10 @@ static void __fastcall RenderModeHook(void* charObj, void* /*edx*/,
     DWORD slot24c = field32(charObj, 0x24C);
     DWORD f260 = field32(charObj, 0x260);
     DWORD f4c8 = field32(charObj, 0x4C8);
+    DWORD overlayMain = slot440;
+    DWORD overlayOff = slot444;
+    DWORD overlayMainView = overlayMain ? (DWORD)d8a1d0(overlayMain) : 0;
+    DWORD overlayOffView = overlayOff ? (DWORD)d8a1d0(overlayOff) : 0;
     DWORD mainKey = type_key_for_view(g_ctx_mainView);
     DWORD offKey = type_key_for_view(g_ctx_offView);
     DWORD forcedKey = 0;
@@ -1172,6 +1333,12 @@ static void __fastcall RenderModeHook(void* charObj, void* /*edx*/,
 
     if (mode == 2 || mode == 9)
     {
+        if (g_overlay_renderer && g_state_hooks)
+        {
+            WeaponOverlayUpdateState((DWORD)charObj, mode, overlayMain,
+                                     overlayOff, overlayMainView,
+                                     overlayOffView);
+        }
         g_focus_char = (DWORD)charObj;
         g_focus_mode = mode;
         g_focus_f260 = f260;
@@ -1377,27 +1544,333 @@ static void* __fastcall OffWeaponPathHook(void* glob, void* /*edx*/,
     return ret;
 }
 
+// ---- native per-hand weapon bind (D3F4F0 vtable hook) ---------------------
+// D3F4F0 (__thiscall: ecx=charObj, stack=weaponType, ret 4) loads the weapon
+// sprite handles into the char object, using ONE type for BOTH hands -> dual
+// wield shows the combined sprite. We swap the 5 actor vtable slots (+0x58)
+// for a shim that re-drives the native loader twice so each hand resolves to
+// its own item's sprite. Equip-time only, never per frame.
+//   main handle  = *( *(char+0x4AC) + 4 )
+//   offhand slot = (*(int**)(char+0x4B8))[1]
+//   type [char+0x438]   main item [char+0x440]   off item [char+0x444]
+typedef void (__thiscall* WeaponLoaderFn)(void* charObj, int weaponType);
+
+static void call_real_weapon_loader(void* charObj, int weaponType)
+{
+    reinterpret_cast<WeaponLoaderFn>(va(kWeaponLoader))(charObj, weaponType);
+}
+
+// ---- D3E850 vtable hook (weapon setup, +0x50) ----------------------------
+// D3E850(charObj, jobCode, p3, weaponType, p5, itemId, p7..p11, p12)
+// It writes [char+0x438]=weaponType, [char+0x444]=itemId, then calls D3F4F0.
+// This hook fires BEFORE D3F4F0 and populates g_ctx from the real item IDs
+// so the D3F4F0_VHook 2-pass remap has the per-hand types ready.
+typedef void (__thiscall* WeaponSetupFn)(void* charObj,
+    int jobCode, void* p3, int weaponType, int p5,
+    int itemId, int p7, int p8, int p9, int p10, int p11, void* p12);
+
+static void call_real_weapon_setup(void* charObj,
+    int jobCode, void* p3, int weaponType, int p5,
+    int itemId, int p7, int p8, int p9, int p10, int p11, void* p12)
+{
+    reinterpret_cast<WeaponSetupFn>(va(kWeaponSetup))(
+        charObj, jobCode, p3, weaponType, p5,
+        itemId, p7, p8, p9, p10, p11, p12);
+}
+
+static void __fastcall D3E850_VHook(void* charObj, void* /*edx*/,
+    int jobCode, void* p3, int weaponType, int p5,
+    int itemId, int p7, int p8, int p9, int p10, int p11, void* p12)
+{
+    if (g_unloading) return;
+    if (!g_unloading && g_native_bind && charObj) {
+        DWORD mainItem = field32(charObj, 0x440);
+        DWORD offItem  = static_cast<DWORD>(itemId);
+        g_ctx_main = mainItem;
+        g_ctx_off  = offItem;
+        g_ctx_mainView = mainItem ? static_cast<DWORD>(d8a1d0(mainItem)) : 0;
+        g_ctx_offView  = offItem  ? static_cast<DWORD>(d8a1d0(offItem))  : 0;
+    }
+    call_real_weapon_setup(charObj, jobCode, p3, weaponType, p5,
+                           itemId, p7, p8, p9, p10, p11, p12);
+}
+
+// ---- D3F4F0 vtable hook (weapon loader, +0x58) ---------------------------
+static void __fastcall D3F4F0_VHook(void* charObj, void* /*edx*/, int weaponType)
+{
+    DWORD vhookCaller = reinterpret_cast<DWORD>(_ReturnAddress());
+    void* vhookRetSlot = _AddressOfReturnAddress();
+    if (g_unloading || !g_native_bind || charObj == nullptr) {
+        if (!g_unloading)
+            call_real_weapon_loader(charObj, weaponType);
+        return;
+    }
+
+    // Cache the FIRST charObj only — D3F4F0 fires on multiple actor parts
+    // (weapon, body, head).  Only the first one seen in a session is the
+    // weapon loader; caching later ones would target body/head and corrupt
+    // hairstyle/appearance.
+    if (!g_bind_charObj) {
+       g_bind_charObj = charObj;
+       g_bind_done = false;
+    }
+
+    // Per-hand TYPES. Primary source = the views captured at WeaponTypeFunc
+    // (D72D30), which runs with the live main/off items right before this
+    // loader. Fallback = char item fields (frequently 0 on the loader object).
+    DWORD ctxMain = g_ctx_main, ctxOff = g_ctx_off;
+    int   mainType = static_cast<int>(g_ctx_mainView);
+    int   offType  = static_cast<int>(g_ctx_offView);
+    if (mainType <= 0) { DWORD it = field32(charObj, 0x440); mainType = it ? d8a1d0(it) : 0; }
+    if (offType  <= 0) { DWORD it = field32(charObj, 0x444); offType  = it ? d8a1d0(it) : 0; }
+    // Dual = both hands have distinct individual types.  g_ctx is now
+    // populated by D3E850_VHook (vtable +0x50) which fires BEFORE us,
+    // so the WeaponType combined-range gate is unnecessary.
+    bool  dual = mainType > 0 && offType > 0 && mainType != offType;
+
+    // Decision lines (deduped vs per-frame spam): source values, resolved types,
+    // and a loader-object field window to locate items if g_ctx is unavailable.
+    bool logNow = g_log &&
+        (reinterpret_cast<DWORD>(charObj) != g_last_bind_char ||
+         ctxMain != g_last_bind_main || ctxOff != g_last_bind_off ||
+         static_cast<DWORD>(weaponType) != g_last_bind_type);
+    if (logNow) {
+        g_last_bind_char = reinterpret_cast<DWORD>(charObj);
+        g_last_bind_main = ctxMain;
+        g_last_bind_off  = ctxOff;
+        g_last_bind_type = static_cast<DWORD>(weaponType);
+        logf("VHook char=%08X type=%u ctxM=%u ctxO=%u mT=%u oT=%u",
+             reinterpret_cast<DWORD>(charObj), static_cast<DWORD>(weaponType),
+             ctxMain, ctxOff, static_cast<DWORD>(mainType),
+             static_cast<DWORD>(offType));
+        logf("VHook f440=%u f444=%u f448=%u f44C=%u dual=%u",
+             field32(charObj, 0x440), field32(charObj, 0x444),
+             field32(charObj, 0x448), field32(charObj, 0x44C),
+             dual ? 1u : 0u);
+        // Scan the loader object for the test items (13412 main / 1238 off) to
+        // locate their offset here. If neither appears, the per-hand items are
+        // NOT on this object and must come from the combiner/per-char capture.
+        __try {
+            for (DWORD off = 0; off <= 0x600; off += 4) {
+                DWORD v = field32(charObj, off);
+                if (v == 13412u || v == 1238u)
+                    logf("VHook scan char=%08X off=%03X val=%u",
+                         reinterpret_cast<DWORD>(charObj), off, v);
+            }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {}
+    }
+
+    // Unconditional caller capture — identify upstream combiner
+    {
+        static DWORD lastCaller = 0;
+        if (vhookCaller != lastCaller) {
+            lastCaller = vhookCaller;
+            logf("VHook caller=%08X", vhookCaller);
+            __try {
+                DWORD* sp = reinterpret_cast<DWORD*>(vhookRetSlot);
+                for (int i = 0; i < 200; ++i)
+                    if (sp[i] == 13412u || sp[i] == 1238u)
+                        logf("VHook stk[+%03X]=%u", i * 4, sp[i]);
+            } __except (EXCEPTION_EXECUTE_HANDLER) {}
+        }
+    }
+
+    if (!dual) {
+        call_real_weapon_loader(charObj, weaponType);
+        return;
+    }
+
+    // 2-pass remap. SEH-guarded purely as insurance against an unexpected
+    // object layout; the gate above already makes a fault improbable.
+    bool  ok = false;
+    int   phase = 0;
+    DWORD offHandle = 0;
+    __try {
+        call_real_weapon_loader(charObj, offType);          // PASS 1: off-hand
+        phase = 1;
+        DWORD* offArr = *reinterpret_cast<DWORD**>(
+            reinterpret_cast<BYTE*>(charObj) + 0x4B8);
+        if (offArr != nullptr) {
+            offHandle = offArr[1];
+            offArr[1] = 0;                                   // shield keeper
+            call_real_weapon_loader(charObj, mainType);      // PASS 2: main
+            phase = 2;
+            offArr = *reinterpret_cast<DWORD**>(
+                reinterpret_cast<BYTE*>(charObj) + 0x4B8);
+            if (offArr != nullptr)
+                offArr[1] = offHandle;                       // restore keeper
+            write_field32(charObj, 0x438, static_cast<DWORD>(weaponType));
+            ok = true;
+        }
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        ok = false;
+    }
+
+    if (!ok) {
+        if (phase >= 1)
+            call_real_weapon_loader(charObj, weaponType);
+        if (logNow)
+            logf("VHook remap FAILED phase=%u", static_cast<DWORD>(phase));
+        return;
+    }
+
+    if (logNow)
+        logf("VHook remap OK char=%08X mainT=%u offT=%u offHandle=%08X",
+             reinterpret_cast<DWORD>(charObj), static_cast<DWORD>(mainType),
+             static_cast<DWORD>(offType), offHandle);
+}
+
+// ---- D3E850 vtable slot swapper ------------------------------------------
+static void install_weapon_setup_vhook()
+{
+    DWORD expected = va(kWeaponSetup);
+    int patched = 0;
+    for (int i = 0; i < 5; ++i) {
+        DWORD* slot = reinterpret_cast<DWORD*>(va(kWeaponSetupSlots[i]));
+        DWORD oldProt = 0;
+        if (!VirtualProtect(slot, sizeof(DWORD), PAGE_READWRITE, &oldProt)) {
+            log_alwaysf("NativeBind: Setup VirtualProtect failed slot=%08X",
+                        reinterpret_cast<DWORD>(slot));
+            continue;
+        }
+        if (*slot != expected) {
+            log_alwaysf("NativeBind: Setup slot=%08X holds %08X != expected %08X, SKIP",
+                        reinterpret_cast<DWORD>(slot), *slot, expected);
+            VirtualProtect(slot, sizeof(DWORD), oldProt, &oldProt);
+            continue;
+        }
+        g_wsetup_slot_old[i] = *slot;
+        *slot = reinterpret_cast<DWORD>(&D3E850_VHook);
+        VirtualProtect(slot, sizeof(DWORD), oldProt, &oldProt);
+        FlushInstructionCache(GetCurrentProcess(), slot, sizeof(DWORD));
+        ++patched;
+    }
+    g_wsetup_hooked = (patched > 0);
+    log_alwaysf("NativeBind: installed setup vhook on %u/5 slots -> %08X",
+                static_cast<DWORD>(patched),
+                reinterpret_cast<DWORD>(&D3E850_VHook));
+}
+
+static void restore_weapon_setup_vhook()
+{
+    if (!g_wsetup_hooked) return;
+    DWORD hookAddr = reinterpret_cast<DWORD>(&D3E850_VHook);
+    for (int i = 0; i < 5; ++i) {
+        if (g_wsetup_slot_old[i] == 0) continue;
+        DWORD* slot = reinterpret_cast<DWORD*>(va(kWeaponSetupSlots[i]));
+        DWORD oldProt = 0;
+        if (!VirtualProtect(slot, sizeof(DWORD), PAGE_READWRITE, &oldProt)) continue;
+        if (*slot == hookAddr) *slot = g_wsetup_slot_old[i];
+        VirtualProtect(slot, sizeof(DWORD), oldProt, &oldProt);
+        FlushInstructionCache(GetCurrentProcess(), slot, sizeof(DWORD));
+        g_wsetup_slot_old[i] = 0;
+    }
+    g_wsetup_hooked = false;
+}
+
+// ---- D3F4F0 vtable slot swapper ------------------------------------------
+static void install_weapon_loader_vhook()
+{
+    DWORD expected = va(kWeaponLoader);
+    int patched = 0;
+    for (int i = 0; i < 5; ++i) {
+        DWORD* slot = reinterpret_cast<DWORD*>(va(kWeaponLoaderSlots[i]));
+        DWORD oldProt = 0;
+        if (!VirtualProtect(slot, sizeof(DWORD), PAGE_READWRITE, &oldProt)) {
+            log_alwaysf("NativeBind: VirtualProtect failed slot=%08X",
+                        reinterpret_cast<DWORD>(slot));
+            continue;
+        }
+        if (*slot != expected) {
+            log_alwaysf("NativeBind: slot=%08X holds %08X != expected %08X, SKIP",
+                        reinterpret_cast<DWORD>(slot), *slot, expected);
+            VirtualProtect(slot, sizeof(DWORD), oldProt, &oldProt);
+            continue;
+        }
+        g_wloader_slot_old[i] = *slot;
+        *slot = reinterpret_cast<DWORD>(&D3F4F0_VHook);
+        VirtualProtect(slot, sizeof(DWORD), oldProt, &oldProt);
+        FlushInstructionCache(GetCurrentProcess(), slot, sizeof(DWORD));
+        ++patched;
+    }
+    g_wloader_hooked = (patched > 0);
+    log_alwaysf("NativeBind: installed vtable hook on %u/5 slots -> %08X",
+                static_cast<DWORD>(patched),
+                reinterpret_cast<DWORD>(&D3F4F0_VHook));
+}
+
+static void restore_weapon_loader_vhook()
+{
+    if (!g_wloader_hooked)
+        return;
+    DWORD hookAddr = reinterpret_cast<DWORD>(&D3F4F0_VHook);
+    for (int i = 0; i < 5; ++i) {
+        if (g_wloader_slot_old[i] == 0)
+            continue;
+        DWORD* slot = reinterpret_cast<DWORD*>(va(kWeaponLoaderSlots[i]));
+        DWORD oldProt = 0;
+        if (!VirtualProtect(slot, sizeof(DWORD), PAGE_READWRITE, &oldProt))
+            continue;
+        if (*slot == hookAddr)                   // only undo our own write
+            *slot = g_wloader_slot_old[i];
+        VirtualProtect(slot, sizeof(DWORD), oldProt, &oldProt);
+        FlushInstructionCache(GetCurrentProcess(), slot, sizeof(DWORD));
+        g_wloader_slot_old[i] = 0;
+    }
+    g_wloader_hooked = false;
+}
+
 // ---- installer ------------------------------------------------------------
 static DWORD WINAPI install_thread(LPVOID)
 {
     Sleep(150);
     g_base = reinterpret_cast<DWORD>(GetModuleHandleA(nullptr));
 
-    logf("installer start base=%08X log=%u replace=%u offhand=%u every=%u",
-         g_base, g_log ? 1 : 0, g_replace ? 1 : 0, g_offhand ? 1 : 0, g_log_every);
+    log_alwaysf("installer start base=%08X log=%u replace=%u offhand=%u every=%u",
+                g_base, g_log ? 1 : 0, g_replace ? 1 : 0,
+                g_offhand ? 1 : 0, g_log_every);
     logf("installer flags forceSingleLayer=%u",
          g_force_single_layer ? 1 : 0);
     logf("installer flags forceSingleMode=%u",
          g_force_single_mode ? 1 : 0);
     logf("installer flags traceActorPaths=%u",
          g_trace_actor_paths ? 1 : 0);
+    log_alwaysf("installer flags placementTrace=%u",
+                g_placement_trace ? 1 : 0);
 
-    // Skip EXE patching — GDI overlay does not need render hooks.
-    // Inline JMPs crash on process exit because the DLL unloads before
-    // the EXE's patched code stops executing. Re-enable with caution.
+    // Skip old mutating native experiments. The overlay still needs the
+    // read-only state feed, and placement trace can hook C55C30 for evidence.
     bool skipHooks = env_flag("BOH_DUALWPN_NO_HOOKS", true);
+    bool stateHooks = g_overlay_renderer && g_state_hooks;
+    log_alwaysf("installer flags noHooks=%u overlay=%u stateHooks=%u",
+                skipHooks ? 1 : 0, g_overlay_renderer ? 1 : 0,
+                stateHooks ? 1 : 0);
+    if (g_overlay_renderer && !stateHooks)
+        log_alwaysf("state feed OFF: BOH_DUALWPN_STATE_HOOKS=0; overlay can heartbeat but cannot draw actor weapons");
     if (skipHooks) {
-        logf("installer: EXE hooks SKIPPED (BOH_DUALWPN_NO_HOOKS=1)");
+        log_alwaysf("installer: experiment hooks SKIPPED (BOH_DUALWPN_NO_HOOKS=1)");
+        if (stateHooks)
+        {
+            bool ok1 = patch_jmp(kWeaponTypeFunc,
+                                 reinterpret_cast<void*>(&WeaponTypeHook),
+                                 g_wtf_stolen, kStolenWTF, &g_wtf_tramp);
+            bool ok4 = patch_jmp(kRenderModeSetter,
+                                  reinterpret_cast<void*>(&RenderModeHook),
+                                  g_mode_stolen, kStolenMode, &g_mode_tramp);
+            bool ok5 = true;
+            if (g_placement_trace)
+                ok5 = patch_jmp(kActorSubmit1C,
+                                reinterpret_cast<void*>(&Submit1CHook),
+                                g_submit_stolen, kStolenSubmit1C,
+                                &g_submit_tramp);
+            g_wtf_hooked = ok1;
+            g_mode_hooked = ok4;
+            g_submit_hooked = g_placement_trace && ok5;
+            log_alwaysf("installer done StateWeaponType=%u StateRenderMode=%u StateSubmit1C=%u",
+                        ok1 ? 1 : 0, ok4 ? 1 : 0,
+                        g_submit_hooked ? 1 : 0);
+        }
     } else {
     logf("installer flags traceResourceKeys=%u forceResourceBranch=%u forceResourceKey=%u",
          g_trace_resource_keys ? 1 : 0,
@@ -1414,7 +1887,7 @@ static DWORD WINAPI install_thread(LPVOID)
          g_suppress_native_submit ? 1 : 0,
          g_synth_draw ? 1 : 0);
     logf("installer flags submitHook=%u",
-         g_suppress_native_submit ? 1 : 0);
+         (g_suppress_native_submit || g_placement_trace) ? 1 : 0);
 
     bool ok1 = patch_jmp(kWeaponTypeFunc, reinterpret_cast<void*>(&WeaponTypeHook),
                          g_wtf_stolen, kStolenWTF, &g_wtf_tramp);
@@ -1425,7 +1898,7 @@ static DWORD WINAPI install_thread(LPVOID)
     bool ok4 = patch_jmp(kRenderModeSetter, reinterpret_cast<void*>(&RenderModeHook),
                          g_mode_stolen, kStolenMode, &g_mode_tramp);
     bool ok5 = true;
-    bool submitHook = g_suppress_native_submit;
+    bool submitHook = g_suppress_native_submit || g_placement_trace;
     if (submitHook)
         ok5 = patch_jmp(kActorSubmit1C, reinterpret_cast<void*>(&Submit1CHook),
                         g_submit_stolen, kStolenSubmit1C, &g_submit_tramp);
@@ -1451,6 +1924,18 @@ static DWORD WINAPI install_thread(LPVOID)
              ok12 ? 1 : 0, ok13 ? 1 : 0);
     }
 
+    g_wtf_hooked = ok1;
+    g_draw_hooked = ok2;
+    g_set_hooked = ok3;
+    g_mode_hooked = ok4;
+    g_submit_hooked = submitHook && ok5;
+    g_layer_a_hooked = ok6;
+    g_layer_b_hooked = ok7;
+    g_path_hooked = ok8;
+    g_main_path_hooked = ok9;
+    g_off_path_hooked = ok10;
+    g_res_lookup_hooked = ok11;
+
     logf("installer done WeaponType=%u DrawWeapon=%u SetRes=%u RenderMode=%u Submit1C=%u LayerA=%u",
          ok1 ? 1 : 0, ok2 ? 1 : 0, ok3 ? 1 : 0,
          ok4 ? 1 : 0, (submitHook && ok5) ? 1 : 0, ok6 ? 1 : 0);
@@ -1460,7 +1945,22 @@ static DWORD WINAPI install_thread(LPVOID)
 
     } // else (!skipHooks)
 
-    WeaponOverlayStart(g_module);
+    // All EXE hooks (inline + vtable) permanently removed.
+    // But WeaponTypeHook is safe — it returns 0 on g_unloading and
+    // its inline patch is restored by the OS on process exit.
+    // It populates g_ctx which the overlay reads for per-hand items.
+
+    if (!g_wtf_hooked) {
+        g_wtf_hooked = patch_jmp(kWeaponTypeFunc,
+                                 reinterpret_cast<void*>(&WeaponTypeHook),
+                                 g_wtf_stolen, kStolenWTF, &g_wtf_tramp);
+        log_alwaysf("WeaponType feed hook=%u", g_wtf_hooked ? 1u : 0u);
+    }
+
+    if (g_overlay_renderer)
+        WeaponOverlayStart(g_module);
+    else
+        log_alwaysf("installer: overlay renderer disabled");
 
     return 0;
 }
@@ -1469,39 +1969,135 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
 {
     if (reason == DLL_PROCESS_ATTACH)
     {
+        if (!BohLicense::CheckAndLog(FEATURE_WEAPON_SPRITE, L"weapon_sprite"))
+            return FALSE;
+
         g_module = module;
         DisableThreadLibraryCalls(module);
-        g_log       = env_flag("BOH_DUALWPN_LOG", false);
-        g_replace   = env_flag("BOH_DUALWPN_REPLACE", false);
-        g_offhand   = env_flag("BOH_DUALWPN_OFFHAND", false);
-        g_force_single_layer = env_flag("BOH_DUALWPN_FORCE_SINGLE_LAYER", false);
-        g_force_single_mode = env_flag("BOH_DUALWPN_FORCE_SINGLE_MODE", false);
-        g_trace_actor_paths = env_flag("BOH_DUALWPN_TRACE_ACTOR_PATHS", false);
-        g_trace_resource_keys = env_flag("BOH_DUALWPN_TRACE_RESOURCE_KEYS", false);
-        g_trace_weapon_paths = env_flag("BOH_DUALWPN_TRACE_WEAPON_PATHS", false);
-        g_preload_weapon_paths = env_flag("BOH_DUALWPN_PRELOAD_WEAPON_PATHS", false);
-        g_alias_resource_keys = env_flag("BOH_DUALWPN_ALIAS_RESOURCE_KEYS", false);
-        g_synth_weapon_paths = env_flag("BOH_DUALWPN_SYNTH_WEAPON_PATHS", false);
-        g_auto_synth_visual = env_flag("BOH_DUALWPN_AUTO_SYNTH_VISUAL", false);
-        g_suppress_native_submit = env_flag("BOH_DUALWPN_SUPPRESS_NATIVE_SUBMIT", false);
-        g_synth_draw = env_flag("BOH_DUALWPN_SYNTH_DRAW", false);
-        g_force_resource_branch = env_flag("BOH_DUALWPN_FORCE_RESOURCE_BRANCH", false);
-        g_force_resource_key = env_flag("BOH_DUALWPN_FORCE_RESOURCE_KEY", false);
-        g_log_every = env_num("BOH_DUALWPN_LOG_EVERY", 0);
+        out_line("attach");
+        g_log       = true;   // env_flag("BOH_DUALWPN_LOG", false);
+        g_replace   = false;  // env_flag("BOH_DUALWPN_REPLACE", false);
+        g_offhand   = false;  // env_flag("BOH_DUALWPN_OFFHAND", false);
+        g_force_single_layer = false;
+        g_force_single_mode = false;
+        g_trace_actor_paths = false;
+        g_trace_resource_keys = false;
+        g_trace_weapon_paths = false;
+        g_preload_weapon_paths = false;
+        g_alias_resource_keys = false;
+        g_synth_weapon_paths = false;
+        g_auto_synth_visual = false;
+        g_suppress_native_submit = false;
+        g_synth_draw = false;
+        g_force_resource_branch = false;
+        g_force_resource_key = false;
+        g_overlay_renderer = true;   // HARDCODED — env vars broken
+        g_state_hooks = false;       // no inline hooks → no crash
+        g_placement_trace = false;
+        g_log_every = 0;
+        g_native_bind = false;       // no vtable hooks → no crash
         HANDLE t = CreateThread(nullptr, 0, install_thread, nullptr, 0, nullptr);
         if (t)
             CloseHandle(t);
     }
     if (reason == DLL_PROCESS_DETACH)
     {
-        g_unloading = true;  // neutralize all hooks immediately
-        if (reserved == nullptr)
-            WeaponOverlayStop();
+        g_unloading = true;
+        WeaponOverlayStop();
+        WeaponOverlayClearState();
+        // No hooks to restore — zero patching, zero crashes.
+        return TRUE;
     }
     return TRUE;
 }
 
 } // namespace
+
+// State poller called from overlay thread.  Reads weapon state directly
+// from game memory — no hooks, no crashes.
+extern "C" DWORD poll_weapon_state()
+{
+    // Quick re-read of cached character
+    static DWORD lastChar = 0;
+    static DWORD lastItems[2] = {0, 0};
+
+    if (lastChar) {
+        __try {
+            DWORD m = *reinterpret_cast<DWORD*>(lastChar + 0x440);
+            DWORD o = *reinterpret_cast<DWORD*>(lastChar + 0x444);
+            DWORD mode = *reinterpret_cast<DWORD*>(lastChar + 0x1C);
+            if (m != lastItems[0] || o != lastItems[1]) {
+                lastItems[0] = m; lastItems[1] = o;
+                char buf[128];
+                sprintf_s(buf, "poll: char=%08X mode=%u items=%u/%u", lastChar, mode, m, o);
+                OutputDebugStringA(buf);
+                WeaponOverlayUpdateState(lastChar, mode, m, o,
+                    m ? static_cast<int>(reinterpret_cast<int(*)(DWORD)>(0x00D8A1D0)(m)) : 0,
+                    o ? static_cast<int>(reinterpret_cast<int(*)(DWORD)>(0x00D8A1D0)(o)) : 0);
+            }
+        } __except(EXCEPTION_EXECUTE_HANDLER) {
+            lastChar = 0;
+        }
+        return 1;
+    }
+
+    // Approach: read the global object used by D72D30 (0x015FA3C0).
+    // D72D30 is called with (glob, a1, a2, mainItem, offItem) — the items
+    // are passed from the character render dispatch.  Try to find a char*
+    // in the global's nearby fields, then read items from there.
+    // Fallback: try well-known Ragnarok globals for player character.
+    DWORD glob = 0x015FA3C0;
+    DWORD found = 0;
+    __try {
+        // Try offsets 0x00-0x200 in the global for something that looks
+        // like a character pointer (heap address in 0x0C000000-0x60000000)
+        DWORD* g = reinterpret_cast<DWORD*>(glob);
+        for (int off = 0; off < 0x200; off += 4) {
+            DWORD candidate = g[off/4];
+            if (candidate < 0x0C000000 || candidate > 0x60000000) continue;
+            __try {
+                DWORD v0 = *reinterpret_cast<DWORD*>(candidate + 0x440);
+                DWORD v1 = *reinterpret_cast<DWORD*>(candidate + 0x444);
+                if ((v0 == 13412 && v1 == 1238) || (v0 == 1238 && v1 == 13412)) {
+                    lastChar = candidate;
+                    lastItems[0] = v0; lastItems[1] = v1;
+                    found = candidate;
+                    break;
+                }
+            } __except(EXCEPTION_EXECUTE_HANDLER) {}
+        }
+    } __except(EXCEPTION_EXECUTE_HANDLER) {}
+
+    if (!found) {
+        // Fallback: try reading the player object from a known Ragnarok global.
+        // In many clients, the local player pointer is near the renderer globals.
+        // Try 0x015FA3C0 + 0x?? as direct player pointer.
+        static const DWORD knownGlobs[] = {
+            0x015FA3C0, 0x01213338, 0x012291C0, 0x015FB9A4,
+            0x015FB9C8, 0x015FFD78, 0x015FF9BC, 0x015FFA54
+        };
+        for (int gidx = 0; gidx < 8 && !found; ++gidx) {
+            __try {
+                DWORD candidate = *reinterpret_cast<DWORD*>(knownGlobs[gidx]);
+                if (candidate < 0x0C000000 || candidate > 0x60000000) continue;
+                DWORD v0 = *reinterpret_cast<DWORD*>(candidate + 0x440);
+                DWORD v1 = *reinterpret_cast<DWORD*>(candidate + 0x444);
+                if ((v0 == 13412 && v1 == 1238) || (v0 == 1238 && v1 == 13412)) {
+                    lastChar = candidate;
+                    lastItems[0] = v0; lastItems[1] = v1;
+                    found = candidate;
+                }
+            } __except(EXCEPTION_EXECUTE_HANDLER) {}
+        }
+    }
+
+    if (found) {
+        char buf[128];
+        sprintf_s(buf, "poll: FOUND char at %08X items=%u/%u", found, lastItems[0], lastItems[1]);
+        OutputDebugStringA(buf);
+    }
+    return found ? 1 : 0;
+}
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved)
 {

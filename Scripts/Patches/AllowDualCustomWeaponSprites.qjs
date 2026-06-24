@@ -20,13 +20,14 @@
 \**************************************************************************/
 
 ///
-/// \brief Imports the dedicated dual-wield weapon sprite DLL
-///        (boh_weapon_sprite.dll, export WeaponSpriteInit) into the client so
-///        its render-pipeline
-///        tracer + experiments load at startup. The DLL installs its own
-///        inline hooks at runtime (DYNAMICBASE/ASLR is OFF on this build, so
-///        hardcoded VAs are safe); this patch only adds the PE import-table
-///        entry via the shared CustomDLL builder.
+/// \brief Imports the dual-wield weapon sprite DLL
+///        (a unique DLL name such as rename.dll, or boh_weapon_sprite.dll,
+///        export WeaponSpriteInit)
+///        into the client.
+///        The DLL now defaults to custom-renderer host mode:
+///        BOH_DUALWPN_NO_HOOKS=1 skips old native replacement/draw hooks, and
+///        BOH_DUALWPN_OVERLAY=1 starts the layered-window renderer harness.
+///        Native render-pipeline probes remain available as opt-in diagnostics.
 ///
 ///        Original behavior: dual-wielding shows the client's generic combined
 ///        weapon sprite (types 25..30) and never draws the off-hand weapon.
@@ -35,23 +36,23 @@
 ///        provides gated experiments toward that goal. Runtime behavior is
 ///        controlled by environment variables read by the DLL (see
 ///        CustomDLL/src/weapon_sprite/weapon_sprite.cpp):
-///          BOH_DUALWPN_LOG       (default 1) trace pipeline to DebugView
+///          BOH_DUALWPN_LOG       (default 0) trace pipeline to DebugView
 ///          BOH_DUALWPN_REPLACE   (default 0) combined type 25..30 -> individual
 ///          BOH_DUALWPN_OFFHAND   (default 0) synthetic second DrawWeapon pass
 ///          BOH_DUALWPN_LOG_EVERY (default 0) periodic DrawWeapon heartbeat
 ///          BOH_DUALWPN_FORCE_SINGLE_LAYER (default 0) mode 9 layer 0x58 -> 0x50
 ///          BOH_DUALWPN_FORCE_SINGLE_MODE  (default 0) mode 9 dispatch -> mode 2
-///          BOH_DUALWPN_TRACE_ACTOR_PATHS  (default 1) trace matching actor
+///          BOH_DUALWPN_TRACE_ACTOR_PATHS  (default 0) trace matching actor
 ///                                          resource path-builder calls
-///          BOH_DUALWPN_TRACE_RESOURCE_KEYS (default 1) trace resource-cache
+///          BOH_DUALWPN_TRACE_RESOURCE_KEYS (default 0) trace resource-cache
 ///                                           hits for generic/specific keys
-///          BOH_DUALWPN_TRACE_WEAPON_PATHS  (default 1) trace native weapon
+///          BOH_DUALWPN_TRACE_WEAPON_PATHS  (default 0) trace native weapon
 ///                                           path-builder output
-///          BOH_DUALWPN_PRELOAD_WEAPON_PATHS (default 1) load matching
+///          BOH_DUALWPN_PRELOAD_WEAPON_PATHS (default 0) load matching
 ///                                            item-specific ACT paths early
-///          BOH_DUALWPN_ALIAS_RESOURCE_KEYS (default 1) return preloaded
+///          BOH_DUALWPN_ALIAS_RESOURCE_KEYS (default 0) return preloaded
 ///                                           objects for missed type keys
-///          BOH_DUALWPN_SYNTH_WEAPON_PATHS (default 1) synthesize ACT paths
+///          BOH_DUALWPN_SYNTH_WEAPON_PATHS (default 0) synthesize ACT paths
 ///                                          from the actor body path
 ///          BOH_DUALWPN_AUTO_SYNTH_VISUAL (default 0) auto-enable the skipped
 ///                                         resource branch, but only force a
@@ -65,6 +66,35 @@
 ///                                             skipped [char+0x24C] branch
 ///          BOH_DUALWPN_FORCE_RESOURCE_KEY (default 0) temporarily submit the
 ///                                        specific view key through +0x24C
+///          BOH_DUALWPN_NO_HOOKS (default 1) skip old native experiment hooks
+///          BOH_DUALWPN_OVERLAY (default 1) start custom renderer harness
+///          BOH_DUALWPN_STATE_HOOKS (default 1) install read-only weapon
+///                                             item/render-mode state hooks
+///          BOH_DUALWPN_PLACEMENT_TRACE (default 1) trace the native generic
+///                                             weapon holder caller/part state
+///          BOH_DUALWPN_STATE_TTL_MS (default 120000) hold last valid actor
+///                                             state to avoid short popups
+///          BOH_DUALWPN_HIDE_INACTIVE (default 1) hide overlay when game is
+///                                             not foreground/minimized
+///          BOH_DUALWPN_SPR_SCALE (default 1) nearest-neighbor SPR scale
+///          BOH_DUALWPN_FRAME_MS (default 180) proof animation cadence
+///          BOH_DUALWPN_ANCHOR_X / BOH_DUALWPN_ANCHOR_Y actor-anchor offset
+///                                             from overlay center, default 0/30
+///          BOH_DUALWPN_HAND_GAP (default 24) horizontal per-hand spacing
+///          BOH_DUALWPN_MAIN_X/Y and BOH_DUALWPN_OFF_X/Y optional per-hand
+///                                             anchor overrides/offsets
+///          BOH_DUALWPN_ACT_START / BOH_DUALWPN_ACT_END action range to
+///                                             pre-compose (default 32..39)
+///          BOH_DUALWPN_MAIN_ACT / BOH_DUALWPN_OFF_ACT optional loose ACT
+///                                                   file overrides
+///          BOH_DUALWPN_MAIN_SPR / BOH_DUALWPN_OFF_SPR optional loose SPR
+///                                                   file overrides
+///          BOH_DUALWPN_GRF_PREF optional comma/semicolon path preference
+///                                           tokens for direct GRF asset choice
+///          BOH_DUALWPN_GRF_GENDER optional gender preference, set female for
+///                                           female weapon ACT/SPR pairs
+///          BOH_DUALWPN_ALLOW_FALLBACK_SPR (default 0) opt-in unrelated Drake
+///                                                  fallback test sprites
 ///
 ///        Target: 2025-07-16 Ragexe 175220998 (render pipeline at 0x00D42286,
 ///        DrawWeapon 0x00C6D9D0, WeaponTypeFunc 0x00D72D30, image base
@@ -80,9 +110,9 @@ AllowDualCustomWeaponSprites = function(_)
 	const dllName = CustomDLL.getDllName(
 		'$weaponSpriteDLLName',
 		"Weapon Sprite DLL",
-		"Enter the dual-wield weapon sprite DLL filename. Use the dedicated build, boh_weapon_sprite.dll, and place it beside the patched EXE.",
-		"boh_weapon.dll",
-		"boh_weapon.dll"
+		"Enter the DLL filename exporting WeaponSpriteInit. Use a unique name such as rename.dll when bohcustoms.dll is already used by the combined build.",
+		"rename.dll",
+		"rename.dll"
 	);
 
 	$$(_, 1.2, `Add the DLL + WeaponSpriteInit export through the CustomDLL import-table builder`)
