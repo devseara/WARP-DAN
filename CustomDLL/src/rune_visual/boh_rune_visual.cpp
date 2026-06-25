@@ -34,6 +34,12 @@ static BYTE g_image_draw_stolen[8] = {};
 static BYTE g_text_draw_stolen[5] = {};
 static BYTE g_click_stolen[6] = {};
 static BYTE g_tooltip_stolen[6] = {};
+static BYTE g_refresh_call1_stolen[5] = {};
+static BYTE g_refresh_call2_stolen[5] = {};
+static BYTE g_preview_call_stolen[5] = {};
+static BYTE g_button_call1_stolen[5] = {};
+static BYTE g_button_call2_stolen[5] = {};
+static BYTE g_button_call3_stolen[5] = {};
 static void* g_draw_trampoline = nullptr;
 static void* g_image_draw_trampoline = nullptr;
 static void* g_text_draw_trampoline = nullptr;
@@ -264,13 +270,17 @@ static bool env_refresh_hooks_enabled()
         value[0] == 'o' || value[0] == 'O');
 }
 
-static bool patch_call(DWORD call_va, void* target)
+static bool patch_call(DWORD call_va, void* target, BYTE* stolen_out = nullptr)
 {
     BYTE* site = reinterpret_cast<BYTE*>(va(call_va));
     if (site[0] != 0xE8) {
         write_logf("patch_call refused: VA=%08X opcode=%02X", call_va, site[0]);
         return false;
     }
+
+    // Save original 5-byte CALL instruction for later restoration
+    if (stolen_out)
+        CopyMemory(stolen_out, site, 5);
 
     DWORD old_protect = 0;
     if (!VirtualProtect(site, 5, PAGE_EXECUTE_READWRITE, &old_protect))
@@ -283,6 +293,38 @@ static bool patch_call(DWORD call_va, void* target)
     FlushInstructionCache(GetCurrentProcess(), site, 5);
     VirtualProtect(site, 5, old_protect, &old_protect);
     return true;
+}
+
+// Restore bytes at a patch_jmp site (reverse of patch_jmp)
+static void restore_patch_jmp(DWORD hook_va, const BYTE* stolen, SIZE_T stolen_len)
+{
+    if (!stolen || stolen_len < 5)
+        return;
+
+    BYTE* site = reinterpret_cast<BYTE*>(va(hook_va));
+    DWORD old_protect = 0;
+    if (!VirtualProtect(site, stolen_len, PAGE_EXECUTE_READWRITE, &old_protect))
+        return;
+
+    CopyMemory(site, stolen, stolen_len);
+    FlushInstructionCache(GetCurrentProcess(), site, stolen_len);
+    VirtualProtect(site, stolen_len, old_protect, &old_protect);
+}
+
+// Restore bytes at a patch_call site (reverse of patch_call)
+static void restore_patch_call(DWORD call_va, const BYTE* stolen)
+{
+    if (!stolen)
+        return;
+
+    BYTE* site = reinterpret_cast<BYTE*>(va(call_va));
+    DWORD old_protect = 0;
+    if (!VirtualProtect(site, 5, PAGE_EXECUTE_READWRITE, &old_protect))
+        return;
+
+    CopyMemory(site, stolen, 5);
+    FlushInstructionCache(GetCurrentProcess(), site, 5);
+    VirtualProtect(site, 5, old_protect, &old_protect);
 }
 
 static bool patch_jmp(DWORD hook_va, void* target, BYTE* stolen, SIZE_T stolen_len, void** trampoline)
@@ -789,8 +831,8 @@ static DWORD WINAPI install_thread(LPVOID)
 
     if (g_refresh_hooks_enabled)
     {
-        ok1 = patch_call(kRuneRefreshCall1, reinterpret_cast<void*>(&rune_refresh_hook));
-        ok2 = patch_call(kRuneRefreshCall2, reinterpret_cast<void*>(&rune_refresh_hook));
+        ok1 = patch_call(kRuneRefreshCall1, reinterpret_cast<void*>(&rune_refresh_hook), g_refresh_call1_stolen);
+        ok2 = patch_call(kRuneRefreshCall2, reinterpret_cast<void*>(&rune_refresh_hook), g_refresh_call2_stolen);
     }
     else
     {
@@ -804,10 +846,10 @@ static DWORD WINAPI install_thread(LPVOID)
         ok5 = patch_jmp(kTextDraw, reinterpret_cast<void*>(&text_draw_hook), g_text_draw_stolen, 5, &g_text_draw_trampoline);
         ok6 = patch_jmp(kEquipPaneClick, reinterpret_cast<void*>(&equip_pane_click_hook), g_click_stolen, 6, &g_click_trampoline);
         ok7 = patch_jmp(kEquipPaneTooltip, reinterpret_cast<void*>(&equip_pane_tooltip_hook), g_tooltip_stolen, 6, &g_tooltip_trampoline);
-        ok8 = patch_call(kPreviewEquippedGetterCall, reinterpret_cast<void*>(&selected_equipped_getter_hook));
-        ok9 = patch_call(kButtonEquippedGetterCall1, reinterpret_cast<void*>(&selected_equipped_getter_hook));
-        ok10 = patch_call(kButtonEquippedGetterCall2, reinterpret_cast<void*>(&selected_equipped_getter_hook));
-        ok11 = patch_call(kButtonEquippedGetterCall3, reinterpret_cast<void*>(&selected_equipped_getter_hook));
+        ok8 = patch_call(kPreviewEquippedGetterCall, reinterpret_cast<void*>(&selected_equipped_getter_hook), g_preview_call_stolen);
+        ok9 = patch_call(kButtonEquippedGetterCall1, reinterpret_cast<void*>(&selected_equipped_getter_hook), g_button_call1_stolen);
+        ok10 = patch_call(kButtonEquippedGetterCall2, reinterpret_cast<void*>(&selected_equipped_getter_hook), g_button_call2_stolen);
+        ok11 = patch_call(kButtonEquippedGetterCall3, reinterpret_cast<void*>(&selected_equipped_getter_hook), g_button_call3_stolen);
     }
     else
     {
@@ -825,8 +867,6 @@ static DWORD WINAPI install_thread(LPVOID)
 
 static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
 {
-    (void)reserved;
-
     if (reason == DLL_PROCESS_ATTACH) {
         g_module = module;
         DisableThreadLibraryCalls(module);
@@ -841,6 +881,31 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
     }
     if (reason == DLL_PROCESS_DETACH) {
         g_shutdown = 1;
+
+        // During process termination the OS reclaims everything — do NOT
+        // restore hooks (target memory may be unmapped).  During explicit
+        // DLL unload we MUST restore the original bytes.
+        const bool isProcessTerm = (reserved != nullptr);
+        if (!isProcessTerm) {
+            write_trace_line("boh_rune_visual.dll detach — restoring hooks");
+
+            // Restore JMP patches (code hooks)
+            restore_patch_jmp(kEquipPaneDraw,    g_draw_stolen,       5);
+            restore_patch_jmp(kImageDraw,         g_image_draw_stolen, 7);
+            restore_patch_jmp(kTextDraw,          g_text_draw_stolen,  5);
+            restore_patch_jmp(kEquipPaneClick,    g_click_stolen,      6);
+            restore_patch_jmp(kEquipPaneTooltip,  g_tooltip_stolen,    6);
+
+            // Restore CALL patches
+            restore_patch_call(kRuneRefreshCall1,          g_refresh_call1_stolen);
+            restore_patch_call(kRuneRefreshCall2,          g_refresh_call2_stolen);
+            restore_patch_call(kPreviewEquippedGetterCall, g_preview_call_stolen);
+            restore_patch_call(kButtonEquippedGetterCall1, g_button_call1_stolen);
+            restore_patch_call(kButtonEquippedGetterCall2, g_button_call2_stolen);
+            restore_patch_call(kButtonEquippedGetterCall3, g_button_call3_stolen);
+        } else {
+            write_trace_line("boh_rune_visual.dll detach — process termination, skipping hook restore");
+        }
     }
 
     return TRUE;

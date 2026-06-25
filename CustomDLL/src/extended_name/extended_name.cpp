@@ -528,6 +528,16 @@ void ExtendedNameCleanup()
         CloseHandle(g_stopEvent);
         g_stopEvent = nullptr;
     }
+
+    // Drain C++ containers while CRT heap is intact — see
+    // ItemColorExtNameCleanup for the full explanation.
+    // NO LOCK: all other threads are dead during DETACH.
+    g_extNameMap.clear();
+    g_extPartyMap.clear();
+    g_extGuildMap.clear();
+    g_extPositionMap.clear();
+    g_extTypeMap.clear();
+    g_pendingNpcNames.clear();
 }
 
 static bool IsChatNameMatch(

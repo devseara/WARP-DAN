@@ -490,6 +490,22 @@ static bool patch_vtable_entry(DWORD vtable_va, int slot, void* target, void** o
     return true;
 }
 
+// Restore a single vtable entry to its original value
+static void restore_vtable_entry(DWORD vtable_va, int slot, void* original)
+{
+    if (!original)
+        return;
+
+    DWORD* entry = reinterpret_cast<DWORD*>(va(vtable_va) + slot * sizeof(DWORD));
+    DWORD old_protect = 0;
+    if (!VirtualProtect(entry, sizeof(DWORD), PAGE_EXECUTE_READWRITE, &old_protect))
+        return;
+
+    *entry = reinterpret_cast<DWORD>(original);
+    FlushInstructionCache(GetCurrentProcess(), entry, sizeof(DWORD));
+    VirtualProtect(entry, sizeof(DWORD), old_protect, &old_protect);
+}
+
 static DWORD WINAPI install_thread(LPVOID)
 {
     Sleep(150);
@@ -546,7 +562,6 @@ static DWORD WINAPI install_thread(LPVOID)
 
 static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
 {
-    (void)reserved;
     if (reason == DLL_PROCESS_ATTACH) {
         g_shutdown = 0;
         g_module = module;
@@ -577,6 +592,19 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
     }
     if (reason == DLL_PROCESS_DETACH) {
         g_shutdown = 1;
+
+        // During process termination the OS reclaims everything — do NOT
+        // restore vtable entries (target memory may be unmapped).  During
+        // explicit DLL unload we MUST restore the original entries.
+        const bool isProcessTerm = (reserved != nullptr);
+        if (!isProcessTerm) {
+            write_log_line("inventory_tabs.dll detach — restoring vtable entries");
+            restore_vtable_entry(kInvWndVtable, kInvWndSlot,   g_orig_wnd_draw);
+            restore_vtable_entry(kTabVtable,    kTabSlot,       g_orig_tab_draw);
+            restore_vtable_entry(kTabVtable,    kTabMouseSlot,  g_orig_mousemove);
+        } else {
+            write_log_line("inventory_tabs.dll detach — process termination, skipping vtable restore");
+        }
     }
     return TRUE;
 }

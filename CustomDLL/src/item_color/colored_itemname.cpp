@@ -2426,4 +2426,20 @@ void ItemColorExtNameCleanup(bool isProcessTermination)
         DeleteCriticalSection(&g_sharedBlockCS);
         g_sharedBlockCSInitialized = false;
     }
+
+    // Drain all C++ containers NOW while the CRT heap is still intact.
+    // During process termination, other threads may have been killed
+    // mid-allocation — leaving the heap inconsistent.  If we let the
+    // CRT destructors free map nodes on a corrupted heap the resulting
+    // access violation triggers the VEH (_CxxFrameHandler4) which itself
+    // crashes (null this pointer).  Clearing here while the heap is
+    // still known-good prevents the destructors from doing any work.
+    //
+    // NO LOCK: during DLL_PROCESS_DETACH all other threads are dead.
+    // Grabbing g_mutex here could hang (if a killed thread held it) or
+    // crash (undefined behavior on orphaned critical section).
+    g_colorMap.clear();
+    g_gradeColorMap.clear();
+    g_gradeLabels.clear();
+    g_lastDescItemName.clear();
 }

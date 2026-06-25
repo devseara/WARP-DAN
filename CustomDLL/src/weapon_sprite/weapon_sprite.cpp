@@ -1975,7 +1975,7 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
         g_module = module;
         DisableThreadLibraryCalls(module);
         out_line("attach");
-        g_log       = true;   // env_flag("BOH_DUALWPN_LOG", false);
+        g_log       = env_flag("BOH_DUALWPN_LOG", false);
         g_replace   = false;  // env_flag("BOH_DUALWPN_REPLACE", false);
         g_offhand   = false;  // env_flag("BOH_DUALWPN_OFFHAND", false);
         g_force_single_layer = false;
@@ -2003,7 +2003,12 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
     if (reason == DLL_PROCESS_DETACH)
     {
         g_unloading = true;
-        WeaponOverlayStop();
+        // During process termination the OS kills all threads — do NOT
+        // wait on handles (they are already signaled, but the wait is
+        // unnecessary and adds shutdown latency).
+        const bool isProcessTerm = (reserved != nullptr);
+        if (!isProcessTerm)
+            WeaponOverlayStop();
         WeaponOverlayClearState();
         // No hooks to restore — zero patching, zero crashes.
         return TRUE;

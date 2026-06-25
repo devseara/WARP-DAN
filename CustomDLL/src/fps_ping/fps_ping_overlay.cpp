@@ -81,6 +81,7 @@ static void* g_origDrawPrimitiveUP = nullptr;
 
 // IAT hook state
 static void* g_origDirect3DCreate9Ex = nullptr;
+static void** g_iatDirect3DCreate9ExEntry = nullptr; // IAT slot we patched
 static void* g_origCreateDevice = nullptr;
 
 // DPUP position capture — per-frame buffer, read by npc_name_overlay.cpp
@@ -227,6 +228,22 @@ static bool CreateOverlayResources(IDirect3DDevice9* dev)
 
 typedef HRESULT (WINAPI *EndScene_t)(IDirect3DDevice9*);
 typedef HRESULT (WINAPI *Reset_t)(IDirect3DDevice9*, D3DPRESENT_PARAMETERS*);
+
+static void RestoreIat()
+{
+    if (!g_iatDirect3DCreate9ExEntry || !g_origDirect3DCreate9Ex)
+        return;
+
+    DWORD old;
+    if (VirtualProtect(g_iatDirect3DCreate9ExEntry, sizeof(void*), PAGE_READWRITE, &old))
+    {
+        *g_iatDirect3DCreate9ExEntry = g_origDirect3DCreate9Ex;
+        VirtualProtect(g_iatDirect3DCreate9ExEntry, sizeof(void*), old, &old);
+        Log("IAT restored");
+    }
+    g_iatDirect3DCreate9ExEntry = nullptr;
+    g_origDirect3DCreate9Ex = nullptr;
+}
 
 static void RestoreVtable()
 {
@@ -473,6 +490,7 @@ static bool PatchIAT()
             {
                 Log("Found Direct3DCreate9Ex IAT entry at %p", &iatTable[j]);
                 g_origDirect3DCreate9Ex = iatTable[j];
+                g_iatDirect3DCreate9ExEntry = &iatTable[j];
                 DWORD old;
                 if (VirtualProtect(&iatTable[j], sizeof(void*), PAGE_READWRITE, &old))
                 {
@@ -786,12 +804,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID)
                 // Thread may still be running.  Do NOT destroy g_overlayWnd
                 // or restore the vtable — the thread could be using them.
                 // The OS will reclaim everything on process exit.
+                RestoreIat();
                 DestroyOverlayResources();
                 break;
             }
             CloseHandle(g_thread);
             g_thread = nullptr;
         }
+        RestoreIat();
         RestoreVtable();
         DestroyOverlayResources();
         if (g_overlayWnd && IsWindow(g_overlayWnd))

@@ -436,6 +436,14 @@ BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID)
 		}
 		if (InterlockedExchange(&g_hookInstalled, 0) != 0)
 			RestorePatchedBytes(kHook, g_stolen, sizeof(g_stolen));
+
+		// Drain C++ containers while CRT heap is intact — see
+		// ItemColorExtNameCleanup for the full explanation.
+		// NO LOCK: all other threads are dead during DETACH.
+		g_knownNpcs.clear();
+		g_knownSnapshot.clear();
+		g_balloons.clear();
+		g_missingSince.clear();
 		break;
 	}
 	return TRUE;

@@ -54,10 +54,21 @@ BOOL APIENTRY WeaponSpriteDllMain(HMODULE module, DWORD reason, LPVOID reserved)
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 {
-    // Stop the EXTN drain worker before feature modules tear down.
+    // =======================================================================
+    //  DLL_PROCESS_DETACH during process termination (lpReserved != nullptr):
+    //  The EXE's _cexit() is already in progress.  ANY call we make that
+    //  touches CRT state (heap, mutexes, TLS, std:: containers) can trigger
+    //  an exception that the C++ VEH (_CxxFrameHandler4) tries to handle —
+    //  and the VEH itself crashes with a null this pointer because the CRT
+    //  is mid-teardown.  The ONLY safe action is to return immediately.
+    //  The OS will reclaim all memory, handles, and threads.
+    // =======================================================================
+    if (reason == DLL_PROCESS_DETACH && lpReserved != nullptr)
+        return TRUE;
+
+    // Explicit DLL unload — safe to run cleanup.
     if (reason == DLL_PROCESS_DETACH)
-        ItemColorExtNameCleanup(lpReserved != nullptr);
-    // License is compile-time via customer_features.h — no runtime init needed
+        ItemColorExtNameCleanup(false);
 
     // Chain to each feature module
     RuneVisualDllMain(hModule, reason, lpReserved);
@@ -90,9 +101,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
     case DLL_PROCESS_DETACH:
     {
-        // During process termination the OS reclaims everything.
-        // Do NOT FreeLibrary or restore hooks — target DLLs may be gone.
-        if (lpReserved == nullptr && g_hRealDDraw)
+        // During process termination we already returned above.
+        // This path only runs for explicit DLL unload.
+        if (g_hRealDDraw)
         {
             FreeLibrary(g_hRealDDraw);
             g_hRealDDraw = nullptr;
