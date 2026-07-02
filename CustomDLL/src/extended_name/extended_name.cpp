@@ -16,6 +16,9 @@ static const uint32_t EXT_NAME_RING_HEADER_SIZE = 16;
 static const uint32_t EXT_NAME_RING_SLOT_SIZE = 256;
 static const uint32_t EXT_NAME_RING_PAYLOAD_SIZE =
     EXT_NAME_RING_SLOT_SIZE - sizeof(uint32_t);
+static const uintptr_t RO_IMAGE_BASE = 0x00400000;
+static const uintptr_t PACKET_DISPATCH_TABLE = 0x00CAA2E0;
+static const uint16_t PACKET_DISPATCH_FIRST_ID = 0x0073;
 
 static std::unordered_map<std::wstring, std::wstring> g_extNameMap;
 static std::unordered_map<std::wstring, std::wstring> g_extPartyMap;
@@ -67,6 +70,70 @@ static void LogMsg(const char* fmt, ...)
     CloseHandle(file);
 }
 
+static bool IsValidSharedBlock(BYTE* candidate)
+{
+    if (!candidate)
+        return false;
+
+    uint32_t magic = *reinterpret_cast<uint32_t*>(candidate);
+    if (magic != EXT_NAME_PACKET_MAGIC)
+        return false;
+
+    uint32_t readyOrSequence = *reinterpret_cast<uint32_t*>(candidate + 4);
+    uint32_t lengthOrFormat = *reinterpret_cast<uint32_t*>(candidate + 8);
+    uint32_t capacity = *reinterpret_cast<uint32_t*>(candidate + 12);
+    if (lengthOrFormat == EXT_NAME_RING_MAGIC &&
+        capacity == EXT_NAME_RING_CAPACITY)
+        return true;
+
+    return (readyOrSequence == 0 || readyOrSequence == 1) &&
+        lengthOrFormat <= 4092;
+}
+
+static BYTE* NormalizeExeVa(BYTE* exe, uintptr_t value)
+{
+    const uintptr_t exeBase = reinterpret_cast<uintptr_t>(exe);
+    const uintptr_t scanEnd = exeBase + 64 * 1024 * 1024;
+    if (value >= exeBase && value < scanEnd)
+        return reinterpret_cast<BYTE*>(value);
+    if (value >= RO_IMAGE_BASE && value < RO_IMAGE_BASE + 64 * 1024 * 1024)
+        return exe + (value - RO_IMAGE_BASE);
+    return nullptr;
+}
+
+static LPVOID FindActiveDispatcherBlock()
+{
+    HMODULE exeModule = GetModuleHandleW(nullptr);
+    if (!exeModule)
+        return nullptr;
+
+    BYTE* exe = reinterpret_cast<BYTE*>(exeModule);
+    __try
+    {
+        const uintptr_t entryOffset =
+            PACKET_DISPATCH_TABLE - RO_IMAGE_BASE +
+            (EXT_NAME_PACKET_ID - PACKET_DISPATCH_FIRST_ID) * sizeof(uint32_t);
+        DWORD handlerVa = *reinterpret_cast<DWORD*>(exe + entryOffset);
+        BYTE* handler = NormalizeExeVa(exe, handlerVa);
+        if (!handler)
+            return nullptr;
+
+        if (handler[0] != 0x9C || handler[1] != 0x60 ||
+            handler[2] != 0xBE)
+            return nullptr;
+        if (*reinterpret_cast<uint16_t*>(handler + 10) != EXT_NAME_PACKET_ID)
+            return nullptr;
+
+        DWORD blockVa = *reinterpret_cast<DWORD*>(handler + 35);
+        BYTE* block = NormalizeExeVa(exe, blockVa);
+        return IsValidSharedBlock(block) ? block : nullptr;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return nullptr;
+    }
+}
+
 static std::wstring Utf8ToWide(const char* value)
 {
     if (!value || !value[0])
@@ -103,6 +170,10 @@ static std::string WidePreview(const std::wstring& value, size_t maxChars = 80)
 
 static LPVOID FindSharedBlock()
 {
+    LPVOID active = FindActiveDispatcherBlock();
+    if (active)
+        return active;
+
     HMODULE exe = GetModuleHandleW(nullptr);
     if (!exe)
         return nullptr;
@@ -117,14 +188,7 @@ static LPVOID FindSharedBlock()
             if (*reinterpret_cast<uint32_t*>(candidate) != EXT_NAME_PACKET_MAGIC)
                 continue;
 
-            uint32_t readyOrSequence = *reinterpret_cast<uint32_t*>(candidate + 4);
-            uint32_t lengthOrFormat = *reinterpret_cast<uint32_t*>(candidate + 8);
-            uint32_t capacity = *reinterpret_cast<uint32_t*>(candidate + 12);
-            if (lengthOrFormat == EXT_NAME_RING_MAGIC &&
-                capacity == EXT_NAME_RING_CAPACITY)
-                return candidate;
-            if ((readyOrSequence == 0 || readyOrSequence == 1) &&
-                lengthOrFormat <= 4092)
+            if (IsValidSharedBlock(candidate))
                 return candidate;
         }
     }

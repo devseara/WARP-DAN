@@ -80,7 +80,10 @@ CustomSlashCommand.register = function(_, spec)
 		command,
 		dllName: spec.dllName,
 		exportName: spec.exportName,
-		optionId: Number.isInteger(spec.optionId) ? spec.optionId : null
+		optionId: Number.isInteger(spec.optionId) ? spec.optionId : null,
+		settingsExportName: IsStr(spec.settingsExportName)
+			? spec.settingsExportName
+			: null
 	};
 
 	const owner = CustomSlashCommand.ownerPatchName(_);
@@ -94,6 +97,7 @@ CustomSlashCommand.register = function(_, spec)
 		existing.dllName = clean.dllName;
 		existing.exportName = clean.exportName;
 		existing.optionId = clean.optionId;
+		existing.settingsExportName = clean.settingsExportName;
 	}
 	else
 	{
@@ -109,14 +113,24 @@ CustomSlashCommand.register = function(_, spec)
 			command: clean.command,
 			dllName: clean.dllName,
 			exportName: clean.exportName,
-			optionId: clean.optionId
+			optionId: clean.optionId,
+			settingsExportName: clean.settingsExportName
 		});
+
+	if (clean.optionId !== null && clean.settingsExportName !== null)
+	{
+		CustomSlashCommand.addRefreshHook(
+			`${owner}.GameSettings`,
+			{type: 'CustomSlashCommand.GameSettings'}
+		);
+	}
 	return CustomSlashCommand.refresh(_);
 };
 
 CustomSlashCommand.refresh = function(_)
 {
 	const currentOwner = CustomSlashCommand.ownerPatchName(_);
+	CACHE.put('CustomSlashCommand.CurrentRefreshOwner', currentOwner);
 	const registryByOwner = CACHE.get('CustomSlashCommand.RegistryByOwner') ?? {};
 	const registry = [];
 	for (const owner in registryByOwner)
@@ -349,8 +363,137 @@ CustomSlashCommand.refresh = function(_)
 	}
 };
 
+CustomSlashCommand.installSettingsBridge = function()
+{
+	const currentOwner =
+		CACHE.get('CustomSlashCommand.CurrentRefreshOwner') ??
+		CustomSlashCommand.ownerPatchName(Exe.ActivePatch);
+	const registryByOwner =
+		CACHE.get('CustomSlashCommand.RegistryByOwner') ?? {};
+	const setters = [];
+	const seen = {};
+	for (const owner in registryByOwner)
+	{
+		if (!CustomSlashCommand.ownerIsActive(owner, currentOwner))
+			continue;
+
+		for (const entry of registryByOwner[owner])
+		{
+			if (entry.optionId === null ||
+			    !Number.isInteger(entry.optionId) ||
+			    !IsStr(entry.settingsExportName) ||
+			    entry.settingsExportName.length === 0)
+				continue;
+
+			const key = entry.optionId.toString();
+			if (seen[key])
+				continue;
+			seen[key] = true;
+
+			const iat = (
+				typeof CustomDLL !== "undefined" &&
+				typeof CustomDLL.findIat === "function"
+			)
+				? CustomDLL.findIat(entry.settingsExportName, entry.dllName)
+				: Exe.FindFunc(entry.settingsExportName, entry.dllName);
+			if (iat < 0)
+				throw Error(
+					`CustomSlashCommand: settings import not found: ` +
+					`${entry.dllName}!${entry.settingsExportName}`
+				);
+
+			setters.push({
+				optionId: entry.optionId,
+				iat,
+				command: entry.command
+			});
+		}
+	}
+
+	if (setters.isEmpty())
+		return true;
+
+	const cacheKey = 'CustomSlashCommand.SettingsBridge';
+	let state = CACHE.get(cacheKey);
+	if (state && typeof state.callbackAddr === "number" &&
+	    typeof state.bridgeVir === "number")
+	{
+		const currentTarget = Exe.GetUint8(state.callbackAddr) === 0xE9
+			? Exe.GetTgtAddr(state.callbackAddr + 1)
+			: -1;
+		if (currentTarget !== state.bridgeVir)
+			state = null;
+	}
+
+	const bridgeSize = 0x20 + setters.length * 0x30;
+	if (!state || typeof state.bridgePhy !== "number")
+	{
+		const callbackPattern =
+			'8B F9 8B 35 7C EE 31 01 85 F6 75 33';
+		const callbackAddr = Exe.FindHex(callbackPattern);
+		if (callbackAddr < 0)
+			throw Error(
+				'CustomSlashCommand: Game Settings ON/OFF callback not found'
+			);
+
+		const returnVir = Exe.Phy2Vir(callbackAddr + 8, CODE);
+		const originalGlobal = Exe.GetUint32(callbackAddr + 4);
+		const [bridgePhy, bridgeVir] = Exe.Allocate(bridgeSize, 0x10);
+		state = {
+			callbackAddr,
+			returnVir,
+			originalGlobal,
+			bridgePhy,
+			bridgeVir,
+			bridgeCapacity: bridgeSize
+		};
+	}
+	else if (typeof state.bridgeCapacity !== "number" ||
+	    state.bridgeCapacity < bridgeSize)
+	{
+		const [bridgePhy, bridgeVir] = Exe.Allocate(bridgeSize, 0x10);
+		state.bridgePhy = bridgePhy;
+		state.bridgeVir = bridgeVir;
+		state.bridgeCapacity = bridgeSize;
+	}
+
+	let bridge =
+		' 8B F9' +
+		' 8B 35 ' + state.originalGlobal.toHex();
+	const appendReturn = function()
+	{
+		bridge += JMP(
+			state.returnVir,
+			state.bridgeVir + bridge.byteCount()
+		);
+	};
+
+	for (const setter of setters)
+	{
+		bridge +=
+			' 81 BF F8 00 00 00 ' + setter.optionId.toHex() +
+			' 75 17' +
+			' FF 75 08' +
+			' FF B7 F8 00 00 00' +
+			' FF 15 ' + setter.iat.toHex() +
+			' 83 C4 08';
+		appendReturn();
+	}
+	appendReturn();
+
+	Exe.SetHex(state.bridgePhy, bridge);
+	Exe.SetJMP(state.callbackAddr, state.bridgeVir, 0);
+	Exe.SetHex(state.callbackAddr + 5, NOPs(3));
+	state.setters = setters;
+	CACHE.put(cacheKey, state);
+	return true;
+};
+
 CustomSlashCommand.runRefreshHook = function(hook)
 {
+	if (hook.type === 'CustomSlashCommand.GameSettings')
+		return CustomSlashCommand.installSettingsBridge();
+
 	if (hook.type === 'AlwaysShowNpcName.GameSettings')
 	{
 		if (typeof AlwaysShowNpcName === "undefined" ||

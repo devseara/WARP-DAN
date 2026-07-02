@@ -52,16 +52,17 @@ CustomColoredItemName = function(_)
 
 CustomColoredItemName.addVisualDll = function(_)
 {
-    if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.addVisualDll !== "function")
-        throw Error("CustomPacketDispatch.addVisualDll helper is unavailable");
+    if (typeof CustomTextVisualStatic === "undefined" ||
+        typeof CustomTextVisualStatic.addVisualDll !== "function")
+        throw Error("CustomTextVisualStatic.addVisualDll helper is unavailable");
 
-    return CustomPacketDispatch.addVisualDll(_, {
+    return CustomTextVisualStatic.addVisualDll(_, {
         inputKey: '$itemColorVisualDLLName',
         title: "Colored Item Name Visual DLL",
         exportName: "ColoredItemNameVisualInit",
         defaultName: "boh.dll",
         dedicatedName: "boh_text.dll",
-        description: "Enter the DLL filename for item-color rendering. Use boh.dll for the combined build or boh_text.dll for the dedicated text build. Item colors and extended names intentionally share one GDI-hook DLL."
+        description: "Enter the DLL filename for item-color rendering. Use boh.dll for the combined build or boh_text.dll for the dedicated text build. Item colors and extended names intentionally share one static text-wrapper DLL."
     });
 };
 

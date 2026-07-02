@@ -52,10 +52,11 @@ CustomExtName = function(_)
 
 CustomExtName.addVisualDll = function(_)
 {
-    if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.addVisualDll !== "function")
-        throw Error("CustomPacketDispatch.addVisualDll helper is unavailable");
+    if (typeof CustomTextVisualStatic === "undefined" ||
+        typeof CustomTextVisualStatic.addVisualDll !== "function")
+        throw Error("CustomTextVisualStatic.addVisualDll helper is unavailable");
 
-    return CustomPacketDispatch.addVisualDll(_, {
+    return CustomTextVisualStatic.addVisualDll(_, {
         inputKey: '$extNameVisualDLLName',
         title: "Extended Name Visual DLL",
         exportName: "ExtNameVisualInit",

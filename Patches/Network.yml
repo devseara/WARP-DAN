@@ -42,13 +42,13 @@ CustomNW:
             title : Disable nagle algorithm
             recommend : yes
             author : Shinryo
-            desc : Disables TCP Nagle buffering so packets are sent immediately. Reduces input lag and improves responsiveness at the cost of slightly more network traffic. Recommended for most servers.
+            desc : Disables TCP Nagle buffering so packets are sent immediately. Reduces input lag and improves responsiveness at the cost of slightly more network traffic. This rewrites WS2_32.socket call sites and should be excluded from strict Gepard profiles unless approved.
         
         - EnableProxy:
             title : Enable proxy support
             recommend : no
             author : Ai4rei/AN , Neo-Mind,Skylove
-            desc : Ignores the IP addresses sent by the server when transitioning between login, char, and map servers. Keeps the client connecting to the address from clientinfo.xml instead. Required when playing through a proxy, VPN, or when the server reports internal LAN addresses.
+            desc : Ignores the IP addresses sent by the server when transitioning between login, char, and map servers. Keeps the client connecting to the address from clientinfo.xml instead. This rewrites WS2_32.connect flow and should be excluded from strict Gepard profiles unless approved.
             
 #        - NoHardCodedAddr:
 #            title : Remove hardcoded address/port

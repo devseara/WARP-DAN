@@ -2,6 +2,10 @@
 #include <windows.h>
 #include <stdint.h>
 
+#ifndef BOH_RUNE_STATIC_BRIDGES
+#define BOH_RUNE_STATIC_BRIDGES 1
+#endif
+
 namespace {
 
 static constexpr DWORD kImageBase = 0x00400000;
@@ -20,6 +24,9 @@ static constexpr DWORD kPreviewEquippedGetterCall = 0x007E69D6;
 static constexpr DWORD kButtonEquippedGetterCall1 = 0x007E5C12;
 static constexpr DWORD kButtonEquippedGetterCall2 = 0x007E5E47;
 static constexpr DWORD kButtonEquippedGetterCall3 = 0x007E5E56;
+static constexpr DWORD kSurfaceOverlayVtable = 0x00FD5CE4;
+static constexpr DWORD kSurfaceOverlayEntry = kSurfaceOverlayVtable + 0x40;
+static constexpr DWORD kSurfaceOverlayOrig = 0x0053F560;
 
 struct ActiveRuneSet {
     DWORD tag = 0;
@@ -270,6 +277,7 @@ static bool env_refresh_hooks_enabled()
         value[0] == 'o' || value[0] == 'O');
 }
 
+#if !BOH_RUNE_STATIC_BRIDGES
 static bool patch_call(DWORD call_va, void* target, BYTE* stolen_out = nullptr)
 {
     BYTE* site = reinterpret_cast<BYTE*>(va(call_va));
@@ -356,6 +364,7 @@ static bool patch_jmp(DWORD hook_va, void* target, BYTE* stolen, SIZE_T stolen_l
     *trampoline = gate;
     return true;
 }
+#endif
 
 static void cache_update(DWORD tag, DWORD set, DWORD mgr)
 {
@@ -477,6 +486,15 @@ extern "C" void __fastcall surface_overlay_draw_hook(void* self, void*, DWORD x,
 
 static bool hook_surface_overlay(DWORD surface)
 {
+#if BOH_RUNE_STATIC_BRIDGES
+    if (surface == 0)
+        return false;
+
+    if (g_surface_overlay_original == nullptr)
+        g_surface_overlay_original = reinterpret_cast<void*>(va(kSurfaceOverlayOrig));
+
+    return true;
+#else
     if (surface == 0)
         return false;
 
@@ -500,6 +518,7 @@ static bool hook_surface_overlay(DWORD surface)
     VirtualProtect(entry, sizeof(DWORD), old_protect, &old_protect);
     write_logf("surface overlay hook installed surface=%08X vtbl=%08X", surface, reinterpret_cast<DWORD>(vtable));
     return true;
+#endif
 }
 
 static DWORD get_surface_object(int index, DWORD width, DWORD height)
@@ -805,10 +824,68 @@ extern "C" void __fastcall equip_pane_draw_hook(void* self, void*)
 
     *reinterpret_cast<DWORD*>(mgr + 0x14) = original_ptr;
     if (drawBudget >= 0)
-        write_tracef("draw stacked exit self=%08X restored=%08X", reinterpret_cast<DWORD>(self), original_ptr);
+    write_tracef("draw stacked exit self=%08X restored=%08X", reinterpret_cast<DWORD>(self), original_ptr);
     InterlockedDecrement(&g_draw_depth);
 }
 
+#if defined(_M_IX86)
+#pragma comment(linker, "/EXPORT:RuneRefreshHook=@RuneRefreshHook@24")
+#pragma comment(linker, "/EXPORT:RuneSelectedEquippedGetter=@RuneSelectedEquippedGetter@8")
+#pragma comment(linker, "/EXPORT:RuneEquipPaneDrawBridge=@RuneEquipPaneDrawBridge@12")
+#pragma comment(linker, "/EXPORT:RuneImageDrawBridge=@RuneImageDrawBridge@28")
+#pragma comment(linker, "/EXPORT:RuneTextDrawBridge=@RuneTextDrawBridge@48")
+#pragma comment(linker, "/EXPORT:RuneEquipPaneClickBridge=@RuneEquipPaneClickBridge@20")
+#pragma comment(linker, "/EXPORT:RuneEquipPaneTooltipBridge=@RuneEquipPaneTooltipBridge@20")
+#pragma comment(linker, "/EXPORT:RuneSurfaceOverlayDraw=@RuneSurfaceOverlayDraw@28")
+#endif
+
+extern "C" __declspec(dllexport) DWORD __fastcall RuneRefreshHook(void* mgr, void* edx, DWORD tag, DWORD set, DWORD arg3, DWORD arg4)
+{
+    return rune_refresh_hook(mgr, edx, tag, set, arg3, arg4);
+}
+
+extern "C" __declspec(dllexport) DWORD __fastcall RuneSelectedEquippedGetter(void* mgr, void* edx)
+{
+    return selected_equipped_getter_hook(mgr, edx);
+}
+
+extern "C" __declspec(dllexport) void __fastcall RuneEquipPaneDrawBridge(void* self, void* edx, DWORD original)
+{
+    g_draw_trampoline = reinterpret_cast<void*>(original);
+    equip_pane_draw_hook(self, edx);
+}
+
+// Static prologue bridges insert the trampoline as the first stack argument.
+extern "C" __declspec(dllexport) void __fastcall RuneImageDrawBridge(void* self, void* edx, DWORD original, DWORD x, DWORD y, DWORD image, DWORD arg4)
+{
+    g_image_draw_trampoline = reinterpret_cast<void*>(original);
+    image_draw_hook(self, edx, x, y, image, arg4);
+}
+
+extern "C" __declspec(dllexport) void __fastcall RuneTextDrawBridge(void* self, void* edx, DWORD original, DWORD x, DWORD y, DWORD text, DWORD arg4, DWORD arg5, DWORD arg6, DWORD arg7, DWORD arg8, DWORD arg9)
+{
+    g_text_draw_trampoline = reinterpret_cast<void*>(original);
+    text_draw_hook(self, edx, x, y, text, arg4, arg5, arg6, arg7, arg8, arg9);
+}
+
+extern "C" __declspec(dllexport) void __fastcall RuneEquipPaneClickBridge(void* self, void* edx, DWORD original, DWORD x, DWORD y)
+{
+    g_click_trampoline = reinterpret_cast<void*>(original);
+    equip_pane_click_hook(self, edx, x, y);
+}
+
+extern "C" __declspec(dllexport) void __fastcall RuneEquipPaneTooltipBridge(void* self, void* edx, DWORD original, DWORD x, DWORD y)
+{
+    g_tooltip_trampoline = reinterpret_cast<void*>(original);
+    equip_pane_tooltip_hook(self, edx, x, y);
+}
+
+extern "C" __declspec(dllexport) void __fastcall RuneSurfaceOverlayDraw(void* self, void* edx, DWORD x, DWORD y, DWORD width, DWORD height, DWORD alpha)
+{
+    surface_overlay_draw_hook(self, edx, x, y, width, height, alpha);
+}
+
+#if !BOH_RUNE_STATIC_BRIDGES
 static DWORD WINAPI install_thread(LPVOID)
 {
     Sleep(100);
@@ -864,6 +941,7 @@ static DWORD WINAPI install_thread(LPVOID)
     write_tracef("installer done buttons=%u/%u/%u", ok9 ? 1 : 0, ok10 ? 1 : 0, ok11 ? 1 : 0);
     return 0;
 }
+#endif
 
 static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
 {
@@ -875,12 +953,22 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
         g_visual_hooks_enabled = env_visual_hooks_enabled();
         write_trace_line("boh_rune_visual.dll attach");
         write_module_loaded_log();
+#if BOH_RUNE_STATIC_BRIDGES
+        g_base = reinterpret_cast<DWORD>(GetModuleHandleA(nullptr));
+        g_surface_overlay_original = reinterpret_cast<void*>(va(kSurfaceOverlayOrig));
+        write_logf("static rune bridges ready base=%08X surface_entry=%08X original=%08X",
+            g_base, kSurfaceOverlayEntry, kSurfaceOverlayOrig);
+#else
         HANDLE thread = CreateThread(nullptr, 0, install_thread, nullptr, 0, nullptr);
         if (thread)
             CloseHandle(thread);
+#endif
     }
     if (reason == DLL_PROCESS_DETACH) {
         g_shutdown = 1;
+#if BOH_RUNE_STATIC_BRIDGES
+        write_trace_line("boh_rune_visual.dll detach - static bridges, no runtime hook restore");
+#else
 
         // During process termination the OS reclaims everything — do NOT
         // restore hooks (target memory may be unmapped).  During explicit
@@ -906,6 +994,7 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
         } else {
             write_trace_line("boh_rune_visual.dll detach — process termination, skipping hook restore");
         }
+#endif
     }
 
     return TRUE;

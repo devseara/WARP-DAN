@@ -1,0 +1,140 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   Description   : Copies the custom Game Settings / OptionInfo Lua files *
+*                   used by /shownpcname, /fps, and /ping, then seeds      *
+*                   existing savedata without overwriting player settings. *
+*                                                                          *
+\**************************************************************************/
+
+CustomGameSettingsOptions = function(_)
+{
+	$$(_, 1, 'Register custom Game Settings support files');
+	if (!Warp.TestMode)
+	{
+		Exe.GetUserInput(
+			'$copyCustomGameSettingsLua',
+			D_Bool,
+			"Copy Game Settings Lua",
+			"Copy custom OptionInfo/GameSettings Lua files to the target client's data folder when patching?",
+			true
+		);
+	}
+	return true;
+};
+
+CustomGameSettingsOptions.copyDirFiles = function(srcDir, tgtDir, files)
+{
+	const ready = System.MkDir(tgtDir);
+	if (!ready)
+		return false;
+
+	for (const file of files)
+		System.Copy(srcDir + "/" + file, tgtDir, true);
+	return true;
+};
+
+CustomGameSettingsOptions.readText = function(path)
+{
+	try
+	{
+		const fp = new TextFile(path, ASCII, 'r');
+		if (!fp.Valid)
+			return "";
+		const text = fp.Read(fp.Size);
+		fp.Close();
+		return text;
+	}
+	catch (e)
+	{
+		return "";
+	}
+};
+
+CustomGameSettingsOptions.writeText = function(path, text)
+{
+	const fp = new TextFile(path, ASCII, 'w');
+	if (!fp.Valid)
+		return false;
+	fp.Write(text);
+	fp.Close();
+	return true;
+};
+
+CustomGameSettingsOptions.seedSavedata = function(clientDir)
+{
+	const savedataDir = clientDir + "/savedata";
+	System.MkDir(savedataDir);
+
+	const path = savedataDir + "/OptionInfo.lua";
+	let text = CustomGameSettingsOptions.readText(path);
+	if (text.length > 0 && text.substring(text.length - 2) !== "\r\n")
+		text += "\r\n";
+
+	const lines = [
+		'CmdOnOffList["/shownpcname"] = 0',
+		'CmdOnOffList["/fps"] = 1',
+		'CmdOnOffList["/ping"] = 1'
+	];
+
+	let changed = false;
+	for (const line of lines)
+	{
+		const key = line.substring(0, line.indexOf("]") + 1);
+		if (text.indexOf(key) >= 0)
+			continue;
+		text += line + "\r\n";
+		changed = true;
+	}
+
+	return changed
+		? CustomGameSettingsOptions.writeText(path, text)
+		: true;
+};
+
+CustomGameSettingsOptions.onApplied = function()
+{
+	if (Warp.TestMode || !Exe.GetSavedInput('$copyCustomGameSettingsLua'))
+		return;
+
+	const _ = 'CustomGameSettingsOptions.onApplied';
+	const clientDir = System.DirPath(Warp.TgtExe);
+
+	$$(_, 1, 'Copy OptionInfo Lua overrides to data folder');
+	const srcOptionDir =
+		Warp.Path + "Inputs/Luafiles514/Lua Files/OptionInfo";
+	const tgtOptionDir =
+		clientDir + "/data/LuaFiles514/Lua Files/OptionInfo";
+	CustomGameSettingsOptions.copyDirFiles(
+		srcOptionDir,
+		tgtOptionDir,
+		[
+			"GameSettings.lub",
+			"OptionInfo.lub",
+			"cmdinfo.lub"
+		]
+	);
+
+	$$(_, 2, 'Copy System OptionInfo defaults');
+	const srcSystemDir = Warp.Path + "Inputs/System/LuaFiles514";
+	for (const folder of ["System", "SystemEN"])
+	{
+		const tgtSystemDir = clientDir + "/" + folder + "/LuaFiles514";
+		CustomGameSettingsOptions.copyDirFiles(
+			srcSystemDir,
+			tgtSystemDir,
+			["OptionInfo.lub"]
+		);
+	}
+
+	$$(_, 3, 'Seed savedata OptionInfo entries');
+	CustomGameSettingsOptions.seedSavedata(clientDir);
+};
+
+CustomGameSettingsOptions.validate = function()
+{
+	return Exe.BuildDate === 20250716;
+};

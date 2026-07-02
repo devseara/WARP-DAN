@@ -43,18 +43,25 @@ PingOverlay = function(_)
 		Name: dllName,
 		Funcs: [
 			{Name: "FpsPingOverlayInit"},
-			{Name: "TogglePingOverlay"}
+			{Name: "TogglePingOverlay"},
+			{Name: "SetFpsPingOverlayOption"},
+			{Name: "BohDirect3DCreate9Ex"}
 		]
 	}]);
 
+	FpsOverlay.installD3DBridge(`${_}.D3DBridge`, dllName);
+	FpsOverlay.addD3DRefreshHook(_, dllName);
+
 	FpsOverlay.installSlashCmd(`${_}.SlashCommands`, dllName, {
 		command: "/ping",
-		exportName: "TogglePingOverlay"
+		exportName: "TogglePingOverlay",
+		optionId: 10003,
+		settingsExportName: "SetFpsPingOverlayOption"
 	});
 	return true;
 };
 
 PingOverlay.validate = function()
 {
-	return Exe.BuildDate > 0;
+	return Exe.BuildDate === 20250716;
 };

@@ -1,0 +1,154 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker                                          *
+*   Created Date  : 2026-07-01                                             *
+*   Last Modified : 2026-07-01                                             *
+*                                                                          *
+*   Description   : Shared static text-visual bridge for the 2025-07-16    *
+*                   client. Adds the text DLL as a startup import and      *
+*                   redirects known TextOutW/GetTextExtentPoint32W import  *
+*                   call surfaces to passive DLL exports at WARP time.     *
+*                                                                          *
+\**************************************************************************/
+
+CustomTextVisualStatic = {};
+
+CustomTextVisualStatic.addVisualDll = function(_, options)
+{
+	if (typeof CustomDLL === "undefined" ||
+	    typeof CustomDLL.applySpec !== "function" ||
+	    typeof CustomDLL.getDllName !== "function")
+		throw Error("CustomTextVisualStatic: CustomDLL helper unavailable");
+
+	options = options || {};
+	const inputKey = options.inputKey || '$bohTextVisualDLLName';
+	const promptTitle = options.title || "BOH Text Visual DLL";
+	const exportName = options.exportName || "ExtNameVisualInit";
+	const defaultName = options.defaultName || "boh.dll";
+	const dedicatedName = options.dedicatedName || "boh_text.dll";
+	const description = options.description ||
+		`Enter the DLL filename for this text feature. Use boh.dll for the combined build or ${dedicatedName} for the dedicated build. Place it beside the patched EXE.`;
+
+	const dllName = CustomDLL.getDllName(
+		inputKey,
+		promptTitle,
+		description,
+		defaultName,
+		dedicatedName
+	);
+
+	const result = CustomDLL.applySpec(_, [
+		{
+			Name: dllName,
+			Funcs: [
+				{Name: exportName},
+				{Name: "BohTextOutW"},
+				{Name: "BohGetTextExtentPoint32W"}
+			]
+		}
+	]);
+
+	CustomTextVisualStatic.install(`${_}.Bridge`, dllName);
+	if (typeof CustomDLL.addRefreshHook === "function")
+	{
+		CustomDLL.addRefreshHook(
+			`${_}.TextVisualBridge.${inputKey}`,
+			function() { return CustomTextVisualStatic.install(`${_}.Bridge`, dllName); }
+		);
+	}
+
+	return result;
+};
+
+CustomTextVisualStatic.findIat = function(dllName, exportName)
+{
+	const iat = (
+		typeof CustomDLL !== "undefined" &&
+		typeof CustomDLL.findIat === "function"
+	)
+		? CustomDLL.findIat(exportName, dllName)
+		: Exe.FindFunc(exportName, dllName);
+	if (iat < 0)
+		throw Error(`CustomTextVisualStatic: import not found: ${dllName}!${exportName}`);
+	return iat;
+};
+
+CustomTextVisualStatic.patchImportOperand = function(label, virAddr, expectedModRM, iat)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`CustomTextVisualStatic: ${label} address is not mapped`);
+
+	const op = Exe.GetUint8(phyAddr);
+	const modrm = Exe.GetUint8(phyAddr + 1);
+	if (op !== 0xFF || modrm !== expectedModRM)
+		throw Error(
+			`CustomTextVisualStatic: ${label} opcode mismatch at 0x${virAddr.toString(16)}` +
+			`, got ${op.toString(16)} ${modrm.toString(16)}`
+		);
+
+	Exe.SetUint32(phyAddr + 2, iat);
+};
+
+CustomTextVisualStatic.install = function(_, dllName)
+{
+	if (Exe.BuildDate !== 20250716)
+		throw Error("CustomTextVisualStatic supports only the 2025-07-16 client");
+
+	const textOutIat = CustomTextVisualStatic.findIat(dllName, "BohTextOutW");
+	const extentIat = CustomTextVisualStatic.findIat(dllName, "BohGetTextExtentPoint32W");
+
+	CustomTextVisualStatic.patchImportOperand(
+		"TextOutW direct call",
+		0x005476C7,
+		0x15,
+		textOutIat
+	);
+	CustomTextVisualStatic.patchImportOperand(
+		"GetTextExtentPoint32W direct call",
+		0x0054758D,
+		0x15,
+		extentIat
+	);
+	CustomTextVisualStatic.patchImportOperand(
+		"TextOutW import thunk",
+		0x00DBA690,
+		0x25,
+		textOutIat
+	);
+	CustomTextVisualStatic.patchImportOperand(
+		"GetTextExtentPoint32W import thunk",
+		0x00DBA66C,
+		0x25,
+		extentIat
+	);
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add('CustomTextVisualStatic.install', {
+			dllName,
+			textOutIat,
+			extentIat
+		});
+
+	return true;
+};

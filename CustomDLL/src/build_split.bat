@@ -4,7 +4,7 @@ echo ============================================================
 echo  BOH Dedicated Feature DLL Build
 echo ============================================================
 echo.
-echo  TextOut hooks are intentionally shared by item colors and
+echo  Text wrappers are intentionally shared by item colors and
 echo  extended names in boh_text.dll. Other features are isolated.
 echo.
 
@@ -32,24 +32,24 @@ del /q split_*.obj boh_text.dll boh_text.exp boh_text.lib ^
     boh_pincode_ui.dll boh_pincode_ui.exp boh_pincode_ui.lib >nul 2>&1
 
 echo [2/12] Extended-name state...
-cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
+cl.exe /nologo /c /O2 /Gy /MT /EHa /I"./" ^
     extended_name\extended_name.cpp /Fo:split_extended_name.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [3/12] Shared text hooks + item colors...
-cl.exe /nologo /c /O2 /MT /EHa /I"./" ^
+echo [3/12] Shared static text wrappers + item colors...
+cl.exe /nologo /c /O2 /Gy /MT /EHa /I"./" ^
     item_color\colored_itemname.cpp /Fo:split_item_color.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo [4/12] Text visual entry point...
-cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
+cl.exe /nologo /c /O2 /Gy /MT /EHsc /I"./" ^
     text_visual\text_visual_proxy.cpp /Fo:split_text_proxy.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo [5/12] Link boh_text.dll...
-link.exe /nologo /DLL /OUT:boh_text.dll ^
+link.exe /nologo /DLL /OPT:REF /OUT:boh_text.dll ^
     split_text_proxy.obj split_item_color.obj split_extended_name.obj ^
-    kernel32.lib user32.lib gdi32.lib ws2_32.lib
+    kernel32.lib user32.lib gdi32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo [6/12] Build boh_npc_names.dll...
@@ -61,10 +61,11 @@ cl.exe /nologo /LD /O2 /MT /EHa /I"./" ^
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo [7/12] Build boh_rune.dll...
-cl.exe /nologo /LD /O2 /MT /EHsc /I"./" ^
-    rune_visual\boh_rune_visual.cpp ^
-    /Fe:boh_rune.dll /Fo:split_rune_visual.obj ^
-    /link kernel32.lib user32.lib gdi32.lib d3d9.lib
+cl.exe /nologo /c /O2 /GS- /GR- /I"./" ^
+    rune_visual\boh_rune_visual.cpp /Fo:split_rune_visual.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
+link.exe /nologo /DLL /ENTRY:DllMain /NODEFAULTLIB /OUT:boh_rune.dll ^
+    split_rune_visual.obj kernel32.lib user32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo [8/12] Compile FPS/ping...

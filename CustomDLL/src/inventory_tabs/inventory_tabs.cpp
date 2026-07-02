@@ -78,6 +78,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifndef BOH_INVENTORY_TABS_STATIC_BRIDGES
+#define BOH_INVENTORY_TABS_STATIC_BRIDGES 1
+#endif
+
 namespace {
 
 static constexpr DWORD kImageBase     = 0x00400000;
@@ -469,6 +473,28 @@ extern "C" void __fastcall tabctrl_mousemove_hook(void* self, void* /*edx*/, int
         reinterpret_cast<MouseMoveFn>(g_orig_mousemove)(self, x, y);
 }
 
+#if defined(_M_IX86)
+#pragma comment(linker, "/EXPORT:InventoryTabsWindowDraw=@InventoryTabsWindowDraw@8")
+#pragma comment(linker, "/EXPORT:InventoryTabsTabDraw=@InventoryTabsTabDraw@8")
+#pragma comment(linker, "/EXPORT:InventoryTabsTabMouseMove=@InventoryTabsTabMouseMove@16")
+#endif
+
+extern "C" __declspec(dllexport) void __fastcall InventoryTabsWindowDraw(void* self, void* edx)
+{
+    inv_window_draw_hook(self, edx);
+}
+
+extern "C" __declspec(dllexport) void __fastcall InventoryTabsTabDraw(void* self, void* edx)
+{
+    tabctrl_draw_hook(self, edx);
+}
+
+extern "C" __declspec(dllexport) void __fastcall InventoryTabsTabMouseMove(void* self, void* edx, int x, int y)
+{
+    tabctrl_mousemove_hook(self, edx, x, y);
+}
+
+#if !BOH_INVENTORY_TABS_STATIC_BRIDGES
 // Patch one vtable DWORD entry (vtable is in .rdata -> make writable).
 static bool patch_vtable_entry(DWORD vtable_va, int slot, void* target, void** out_original)
 {
@@ -559,6 +585,7 @@ static DWORD WINAPI install_thread(LPVOID)
         ok_mm ? 1 : 0, reinterpret_cast<DWORD>(g_orig_mousemove), g_inv_tabctrl);
     return 0;
 }
+#endif
 
 static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
 {
@@ -586,9 +613,20 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
         g_index_offset    = env_int("BOH_INVTABS_IDXOFF", 0x7C);
         g_force_index     = env_int("BOH_INVTABS_FORCEIDX", -1);
         write_log_line("inventory_tabs.dll attach");
+#if BOH_INVENTORY_TABS_STATIC_BRIDGES
+        g_base = reinterpret_cast<DWORD>(GetModuleHandleA(nullptr));
+        g_orig_wnd_draw = reinterpret_cast<void*>(va(kInvWndOrigDraw));
+        g_orig_tab_draw = reinterpret_cast<void*>(va(kTabOrigDraw));
+        g_orig_mousemove = reinterpret_cast<void*>(va(kTabMouseOrig));
+        build_format();
+        write_logf("static bridges ready base=%08X draw=%u skip_orig=%u x=%d y=%d idxoff=0x%X forceidx=%d",
+            g_base, g_draw_enabled ? 1 : 0, g_skip_original ? 1 : 0,
+            g_tab_x, g_tab_y, g_index_offset, g_force_index);
+#else
         HANDLE thread = CreateThread(nullptr, 0, install_thread, nullptr, 0, nullptr);
         if (thread)
             CloseHandle(thread);
+#endif
     }
     if (reason == DLL_PROCESS_DETACH) {
         g_shutdown = 1;
@@ -596,6 +634,7 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
         // During process termination the OS reclaims everything — do NOT
         // restore vtable entries (target memory may be unmapped).  During
         // explicit DLL unload we MUST restore the original entries.
+#if !BOH_INVENTORY_TABS_STATIC_BRIDGES
         const bool isProcessTerm = (reserved != nullptr);
         if (!isProcessTerm) {
             write_log_line("inventory_tabs.dll detach — restoring vtable entries");
@@ -605,6 +644,7 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
         } else {
             write_log_line("inventory_tabs.dll detach — process termination, skipping vtable restore");
         }
+#endif
     }
     return TRUE;
 }

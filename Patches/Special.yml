@@ -38,6 +38,12 @@ CustomSpecials:
             author : Louis T Steinhil
             desc : Writes a patch-time diagnostic log to Outputs, including selected core/custom patches, GRF mode, custom DLL import specs, slash-command registrations, and important GameSettings/UI string markers. This patch does not modify the executable.
 
+        - CustomGameSettingsOptions:
+            title : Provide Custom Game Settings Lua
+            recommend : no
+            author : Louis T Steinhil
+            desc : Copies the custom OptionInfo/GameSettings Lua files for /shownpcname, /fps, and /ping into the target client data folder, and seeds existing savedata without overwriting player settings.
+
         - CustomShields:
             title : Enable Custom Shields
             recommend : no
@@ -108,16 +114,16 @@ CustomSkills:
             title : Enable Custom Name Packets (dispatcher transport)
             recommend : no
             author : Louis T Steinhil
-            desc : "Approved dispatcher-table shared-block path for custom extended names. Routes extended-name packet 0x0BB7 to EXTN after the stock packet reader has consumed the full packet, then adds the shared startup visual DLL import (recommended single file: boh.dll). No runtime ws2_32.recv hook and no legacy RecvStrip0BB6 recv/read-path patch."
+            desc : "Dispatcher-table shared-block path for custom extended names. Routes extended-name packet 0x0BB7 to EXTN after the stock packet reader has consumed the full packet and avoids ws2_32.recv / RecvStrip0BB6. The dedicated boh_text.dll uses WARP-time TextOutW/GetTextExtentPoint32W wrapper bridges instead of runtime GDI hooks."
 
         - CustomColoredItemName:
             title : Enable Custom Color Packets (dispatcher transport)
             recommend : no
             author : Louis T Steinhil
-            desc : "Approved dispatcher-table shared-block path for custom item name colors. Routes variable item-color packet 0x0BDD to ICOL after the stock packet reader has consumed the full packet, then adds the shared startup visual DLL import (recommended single file: boh.dll). No runtime ws2_32.recv hook and no legacy RecvStrip0BB6 recv/read-path patch."
+            desc : "Dispatcher-table shared-block path for custom item name colors. Routes variable item-color packet 0x0BDD to ICOL after the stock packet reader has consumed the full packet and avoids ws2_32.recv / RecvStrip0BB6. The dedicated boh_text.dll uses WARP-time TextOutW/GetTextExtentPoint32W wrapper bridges instead of runtime GDI hooks."
 
         - InGamePincodeUI:
             title : Enable In-Game PIN Pad
             recommend : no
             author : Louis T Steinhil
-            desc : "Routes BOH map packet 0x0BEF/PINC to bohcustoms.dll's PIN keypad, then submits the normal client PIN reply packets through the native packet sender path. Requires matching map-server pincode_open support."
+            desc : "Routes BOH map packet 0x0BEF/PINC to the selected PIN keypad DLL, then submits the normal client PIN reply packets through the native packet sender path. Use the dedicated boh_pincode_ui.dll for Gepard builds; it owns its own Win32 UI and does not patch EXE code at runtime."

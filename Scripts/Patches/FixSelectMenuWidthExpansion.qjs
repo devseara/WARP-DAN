@@ -25,6 +25,8 @@ FixSelectMenuWidthExpansion = function(_)
 
 	code += "83FB64";
 	const offJgFbRel = markRel32After2();  code += "0F8F00000000";
+	code += "83FB0A";
+	const offJlFbRel = markRel32After2();  code += "0F8C00000000";
 
 	code += "8B4508";
 	code += "85C0";
@@ -41,28 +43,29 @@ FixSelectMenuWidthExpansion = function(_)
 
 	code += "56" + "57" + "8B7508";
 	const offLeaBufImm = markImm32After2(); code += "8D3D00000000";
-	code += "31C9";
+	code += "31C9" + "89DA";
 
-	code += "8A06" + "84C0" + "7412";
-	code += "3C5E" + "7409";
-	code += "8807" + "46" + "47" + "41" + "EBEF";
-	code += "90" + "90";
-	code += "83C607" + "EBE8";
+	// Copy at most EBX bytes. The original routine accepts pointer+length
+	// substrings, so scanning until NUL can read past the selected menu text.
+	code += "85D2" + "741B";
+	code += "8A06" + "3C5E" + "750D";
+	code += "83FA07" + "7C08";
+	code += "83C607" + "83EA07" + "EBE9";
+	code += "8807" + "46" + "47" + "41" + "4A" + "EBE1";
 	code += "C60700" + "5F" + "5E";
 
-	code += "FF7714" + "51";
+	code += "58" + "FF7714" + "51";
 	const offPushBufImm = markImm32After1(); code += "6800000000";
-	code += "8B44240C" + "50" + "89F9";
+	code += "50" + "89F9";
 
-	const offCallMainRel = markRel32After1(); code += "E800000000";
-	code += "58"; // pop eax (restore saved arg1)
-	const offJmpMainRel  = markRel32After1(); code += "E900000000";
+	const offRetMainImm = markImm32After1(); code += "6800000000";
+	const offJmpMainRel = markRel32After1(); code += "E900000000";
 
 	const offFallback = code.byteCount();
 
 	code += "58" + "FF7714" + "53" + "FF7508" + "50" + "89F9";
-	const offCallFbRel = markRel32After1(); code += "E800000000";
-	const offJmpFbRel  = markRel32After1(); code += "E900000000";
+	const offRetFbImm = markImm32After1(); code += "6800000000";
+	const offJmpFbRel = markRel32After1(); code += "E900000000";
 
 	const bufferSize = 0x1000;
 	const codeSize = code.byteCount();
@@ -111,19 +114,20 @@ FixSelectMenuWidthExpansion = function(_)
 
 			full = writeU32LE(full, baseOff + procArgs.offLeaBufImm,  bufferVir >>> 0);
 			full = writeU32LE(full, baseOff + procArgs.offPushBufImm, bufferVir >>> 0);
+			full = writeU32LE(full, baseOff + procArgs.offRetMainImm, procArgs.retnVir >>> 0);
+			full = writeU32LE(full, baseOff + procArgs.offRetFbImm,   procArgs.retnVir >>> 0);
 
 			const fallbackVir = codeVir + procArgs.offFallback;
 
 			patchRel32_JccNear(procArgs.offJgFbRel,   fallbackVir);
+			patchRel32_JccNear(procArgs.offJlFbRel,   fallbackVir);
 			patchRel32_JccNear(procArgs.offJeFbRel,   fallbackVir);
 			patchRel32_JccNear(procArgs.offJne1FbRel, fallbackVir);
 			patchRel32_JccNear(procArgs.offJne2FbRel, fallbackVir);
 			patchRel32_JccNear(procArgs.offJne3FbRel, fallbackVir);
 
-			patchRel32_E8E9(procArgs.offCallMainRel, procArgs.widthFuncVir);
-			patchRel32_E8E9(procArgs.offJmpMainRel,  procArgs.retnVir);
-			patchRel32_E8E9(procArgs.offCallFbRel,   procArgs.widthFuncVir);
-			patchRel32_E8E9(procArgs.offJmpFbRel,    procArgs.retnVir);
+			patchRel32_E8E9(procArgs.offJmpMainRel,  procArgs.widthFuncVir);
+			patchRel32_E8E9(procArgs.offJmpFbRel,    procArgs.widthFuncVir);
 
 			return full;
 		},
@@ -136,17 +140,18 @@ FixSelectMenuWidthExpansion = function(_)
 			// offsets
 			offLeaBufImm,
 			offPushBufImm,
+			offRetMainImm,
+			offRetFbImm,
 
 			offJgFbRel,
+			offJlFbRel,
 			offJeFbRel,
 			offJne1FbRel,
 			offJne2FbRel,
 			offJne3FbRel,
 
-			offCallMainRel,
 			offJmpMainRel,
 			offFallback,
-			offCallFbRel,
 			offJmpFbRel,
 
 			// targets

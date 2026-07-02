@@ -42,19 +42,19 @@ CustomUI:
             title : FPS Overlay Slash Commands (/fps)
             recommend : no
             author : Louis T Steinhil
-            desc : Adds /fps through the shared custom slash-command dispatcher and imports only the selected FPS DLL exports.
+            desc : Adds /fps through the shared custom slash-command dispatcher and imports the selected FPS DLL exports. The dedicated boh_fps.dll uses a passive Direct3DCreate9Ex COM proxy bridge installed at WARP patch time instead of runtime IAT/vtable patching.
 
         - PingOverlay:
             title : Ping Overlay Slash Commands (/ping)
             recommend : no
             author : Louis T Steinhil
-            desc : Adds /ping through the shared custom slash-command dispatcher and imports only the selected ping DLL exports.
+            desc : Adds /ping through the shared custom slash-command dispatcher and imports the selected ping DLL exports. It shares the dedicated boh_fps.dll static Direct3DCreate9Ex bridge and does not patch D3D IAT/vtables at runtime.
 
         - ImageBasedInventoryTabs:
             title : Image-based inventory tabs
             recommend : no
             author : Louis T Steinhil
-            desc : Loads the selected inventory-tabs DLL, which replaces inventory tab text labels with tab_pri_%02d.bmp images through the game's own image-draw pipeline.
+            desc : Loads the selected inventory-tabs DLL, which replaces inventory tab text labels with tab_pri_%02d.bmp images through the game's own image-draw pipeline. The dedicated boh_inventory_tabs.dll uses WARP-time vtable-entry bridges and does not swap vtables at runtime.
 
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]
@@ -441,7 +441,7 @@ RuneSystem:
             title : Custom Rune System
             recommend : no
             author : Louis T Steinhil
-            desc : One-click Rune System client support for the 2025-07-16 Ragexe. Skips the stock equipped Rune Set guard and imports only the selected Rune visual DLL export.
+            desc : One-click Rune System client support for the 2025-07-16 Ragexe. Skips the stock equipped Rune Set guard, imports the selected Rune visual DLL exports, and installs refresh/draw/click/surface bridges at WARP patch time so the dedicated boh_rune.dll does not patch calls/JMPs/vtables at runtime.
 
 IgnoreErrors:
     title : IGNORE ERRORS

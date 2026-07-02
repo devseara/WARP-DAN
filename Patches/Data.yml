@@ -152,7 +152,7 @@ CustomData:
             title : Add custom DLLs
             recommend : no
             author : Neo-Mind
-            desc : Injects custom DLL loading into the client at startup. Specify the DLL filename and exported functions to call. Used for adding custom functionality like anticheat, custom rendering, or server-specific features.
+            desc : Adds custom DLL imports to the client at startup. This is safe for Gepard only when the selected DLL is audited and does not patch EXE code, IAT entries, vtables, or system DLL exports at runtime. Do not use the generic CustomDLL patch in strict profiles; prefer dedicated no-hook patches such as InGamePincodeUI.
         
         - HideBuildInfo:
             title : Hide build info
@@ -200,7 +200,7 @@ CustomData:
             title : Restore Cps Dll
             recommend : no
             author : Andrei Karas (4144), Skylove
-            desc : Restores the loading of Cps.dll (Gravity's protection DLL) which was removed in newer clients. Only enable if your server requires this DLL. <b>WARNING:</b> Requires the 'Add custom DLLs' patch to be active; may crash without it.
+            desc : Restores the loading of Cps.dll (Gravity's protection DLL) which was removed in newer clients. Only enable if your server requires this DLL. Exclude from strict Gepard profiles unless the anti-cheat owner explicitly wants this compatibility path. <b>WARNING:</b> Requires the 'Add custom DLLs' patch to be active; may crash without it.
 
 DisableProtect:
     title : DISABLE PROTECTION
@@ -211,7 +211,7 @@ DisableProtect:
             title : Disable Game Guard
             recommend : yes
             author : Neo-Mind
-            desc : Disables nProtect GameGuard, Gravity's anti-cheat system built into Renewal clients. Required for servers since GameGuard expects Gravity's official servers and will block connections otherwise.
+            desc : Disables nProtect GameGuard, Gravity's anti-cheat system built into Renewal clients. Do not include this in strict Gepard profiles unless the Gepard owner explicitly approves replacing the stock protection path.
         
 SkipLub:
     title : SKIP LUB

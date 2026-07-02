@@ -239,6 +239,7 @@ CustomDLL.applySpec = function(_, dllSpec)
 	if (typeof CustomSlashCommand !== "undefined" &&
 	    typeof CustomSlashCommand.refresh === "function")
 		CustomSlashCommand.refresh(`${_}.CustomSlashCommand`);
+	CustomDLL.runRefreshHooks(_);
 
 	return true;
 };
@@ -363,6 +364,54 @@ CustomDLL.ownerPatchName = function(name)
 	return name;
 };
 
+CustomDLL.ownerIsActive = function(ownerName, currentOwner)
+{
+	return ownerName === currentOwner || Warp.GetPatchState(ownerName);
+};
+
+CustomDLL.addRefreshHook = function(name, hook)
+{
+	if (!IsStr(name) || !hook)
+		throw Error("CustomDLL.addRefreshHook requires a name and hook spec");
+
+	if (typeof hook === "function")
+		hook = {callback: hook};
+
+	const key = 'CustomDLL.RefreshHooksByName';
+	const hooks = CACHE.get(key) ?? {};
+	hooks[name] = Object.assign({}, hook, {
+		owner: CustomDLL.ownerPatchName(name),
+	});
+	CACHE.put(key, hooks);
+};
+
+CustomDLL.runRefreshHooks = function(_)
+{
+	const currentOwner = CustomDLL.ownerPatchName(_);
+	const hooks = CACHE.get('CustomDLL.RefreshHooksByName') ?? {};
+	const refreshed = [];
+
+	for (const name in hooks)
+	{
+		const hook = hooks[name];
+		if (typeof hook.callback === "function")
+		{
+			hook.callback();
+			refreshed.push(name);
+		}
+	}
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function" &&
+	    !refreshed.isEmpty())
+		PatchDiagnostics.add('CustomDLL.runRefreshHooks', {
+			owner: currentOwner,
+			refreshed
+		});
+
+	return true;
+};
+
 CustomDLL.getDllName = function(inputKey, title, description, defaultName, dedicatedName)
 {
 	const cacheKey = 'CustomDLL.Input.' + inputKey;
@@ -407,13 +456,13 @@ CustomDLL.findIat = function(exportName, dllName)
 
 	if (IsStr(dllName) && !dllName.isEmpty())
 	{
-		const exactKey = (dllName + '!' + exportName).toLowerCase();
-		if (exactKey in iatMap)
-			return iatMap[exactKey];
-
 		const exactIat = Exe.FindFunc(exportName, dllName);
 		if (exactIat >= 0)
 			return exactIat;
+
+		const exactKey = (dllName + '!' + exportName).toLowerCase();
+		if (exactKey in iatMap)
+			return iatMap[exactKey];
 	}
 
 	return -1;
@@ -432,7 +481,10 @@ CustomDLL.validate = () => Exe.BuildDate < 20140700 || Exe.BuildDate > 20170700 
 ///        so that it doesnt accomodate for Custom DLL
 ///
 CustomDLL.cleanup = () =>
+{
+	CustomDLL.runRefreshHooks('CustomDLL.cleanup');
 	ReloadPatch("NoHShield");
+};
 
 ///
 /// \brief Helper function which uses the data from ROC.ImpInfo hash

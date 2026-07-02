@@ -189,13 +189,13 @@ SkipCheatCheck:
             title : Skip Friend list cheat check
             recommend : no
             author : Ai4rei/AN
-            desc : Disables the "possible impersonation" warning when receiving a PM from someone whose name resembles a friend on your list. The warning is meant to detect name spoofing but causes false positives.
+            desc : Disables the "possible impersonation" warning when receiving a PM from someone whose name resembles a friend on your list. Exclude from strict Gepard profiles because it bypasses a client cheat/spoofing check.
         
         - SkipInGuildList:
             title : Skip Guild Member cheat check
             recommend : no
             author : Ai4rei/AN
-            desc : Disables the "possible impersonation" warning when receiving a PM from someone whose name resembles a guild member. Same as the friend list version but for guild members.
+            desc : Disables the "possible impersonation" warning when receiving a PM from someone whose name resembles a guild member. Exclude from strict Gepard profiles because it bypasses a client cheat/spoofing check.
 
 WalkDelay:
     title : WALK DELAY

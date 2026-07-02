@@ -24,8 +24,8 @@
 *   Created Date  : 2026-06-11                                             *
 *   Last Modified : 2026-06-12                                             *
 *                                                                          *
-*   Description   : Loads the NPC name overlay DLL and adds the            *
-*                   /shownpcname client-side toggle.                       *
+*   Description   : Installs a WARP-time static frame bridge for the NPC   *
+*                   name overlay DLL and adds the /shownpcname toggle.     *
 *                                                                          *
 *                   Target: 2025-07-16 Ragexe.                             *
 *                                                                          *
@@ -39,25 +39,41 @@ AlwaysShowNpcName = function(_)
 	if (typeof CustomSlashCommand === "undefined" ||
 	    typeof CustomSlashCommand.register !== "function")
 		throw Error("AlwaysShowNpcName: CustomSlashCommand helper unavailable");
+	if (typeof CustomPacketDispatch === "undefined" ||
+	    typeof CustomPacketDispatch.install !== "function")
+		throw Error("AlwaysShowNpcName: CustomPacketDispatch helper unavailable");
 
 	$$(_, 1, 'Register NPC name overlay DLL');
 	const dllName = CustomDLL.getDllName(
 		'$npcNameOverlayDLLName',
 		"NPC Name Overlay DLL",
-		"Enter the NPC overlay DLL filename. Use boh.dll for the combined build or boh_npc_names.dll for the dedicated build.",
-		"boh.dll",
+		"Enter the NPC overlay DLL filename. Use boh_npc_names.dll for the dedicated no-runtime-hook Gepard build.",
+		"boh_npc_names.dll",
 		"boh_npc_names.dll"
 	);
 	CACHE.put('AlwaysShowNpcName.DLL', dllName);
+
+	$$(_, 1.5, 'Install dispatcher-table EXTN transport for NPC discovery');
+	CustomPacketDispatch.install(`${_}.Dispatch`, ['EXTN']);
 
 	CustomDLL.applySpec(`${_}.CustomDLL`, [{
 		Name: dllName,
 		Funcs: [
 			{Name: "NpcNameOverlayInit"},
+			{Name: "NpcNameOverlayFrame"},
 			{Name: "ToggleNpcNameOverlay"},
 			{Name: "SetNpcNameOverlayOption"}
 		]
 	}]);
+
+	AlwaysShowNpcName.installFrameBridge(_, dllName);
+	if (typeof CustomDLL.addRefreshHook === "function")
+	{
+		CustomDLL.addRefreshHook(
+			`${_}.FrameBridge`,
+			function() { return AlwaysShowNpcName.installFrameBridge(_, dllName); }
+		);
+	}
 
 	CustomSlashCommand.addRefreshHook(
 		'AlwaysShowNpcName.GameSettings',
@@ -69,7 +85,8 @@ AlwaysShowNpcName = function(_)
 		command: "/shownpcname",
 		dllName,
 		exportName: "ToggleNpcNameOverlay",
-		optionId: 10001
+		optionId: 10001,
+		settingsExportName: "SetNpcNameOverlayOption"
 	});
 
 	$$(_, 3, 'Game Settings ON/OFF rows connected');
@@ -81,11 +98,13 @@ AlwaysShowNpcName = function(_)
 		{
 			fp.WriteLine('AlwaysShowNpcName patch result (v5):');
 			fp.WriteLine('  Build date: ' + Exe.BuildDate);
-			fp.WriteLine('  Hook target: 0xC77820 (per-frame balloon updater)');
+			fp.WriteLine('  Static frame bridge: call site 0xC7642D -> WARP cave');
+			fp.WriteLine('  Original updater: 0xC77820, called before DLL frame export');
+			fp.WriteLine('  NPC discovery: 0x0BB7 EXTN dispatcher ring');
 			fp.WriteLine('  Toggle command: /shownpcname (default off)');
 			fp.WriteLine('  Game Settings: /shownpcname bridged; /font remains native');
 			fp.WriteLine('  Rendering: game-native 3D projection via UpdateBalloonPos');
-			fp.WriteLine('  Command dispatch: direct DLL export call; no file polling');
+			fp.WriteLine('  Runtime: DLL does not patch EXE code or install hooks');
 			fp.Close();
 		}
 	}
@@ -97,8 +116,84 @@ AlwaysShowNpcName = function(_)
 	return true;
 };
 
+AlwaysShowNpcName.verifyBytes = function(phyAddr, expectedHex, label)
+{
+	const bytes = expectedHex.trim().split(/ +/g);
+	for (let i = 0; i < bytes.length; ++i)
+	{
+		const expected = parseInt(bytes[i], 16);
+		const actual = Exe.GetUint8(phyAddr + i);
+		if (actual !== expected)
+			throw Error(
+				label + ': byte mismatch at +' + i +
+				', expected 0x' + expected.toString(16) +
+				', got 0x' + actual.toString(16)
+			);
+	}
+};
+
+AlwaysShowNpcName.installFrameBridge = function(_, dllName)
+{
+	const frameIat = (
+		typeof CustomDLL !== "undefined" &&
+		typeof CustomDLL.findIat === "function"
+	)
+		? CustomDLL.findIat('NpcNameOverlayFrame', dllName)
+		: Exe.FindFunc('NpcNameOverlayFrame', dllName);
+	if (frameIat < 0)
+		throw Error('AlwaysShowNpcName: NpcNameOverlayFrame import not found');
+
+	const callerVir = 0x00C7642D;
+	const callerPhy = Exe.Vir2Phy(callerVir, CODE);
+	if (callerPhy < 0)
+		throw Error('AlwaysShowNpcName: frame caller address is not mapped');
+
+	const originalFrameVir = 0x00C77820;
+	const cacheKey = 'AlwaysShowNpcName.FrameBridge';
+	let state = CACHE.get(cacheKey);
+	if (state && typeof state.bridgeVir === "number")
+	{
+		const currentTarget = Exe.GetUint8(callerPhy) === 0xE8
+			? Exe.GetTgtAddr(callerPhy + 1)
+			: -1;
+		if (currentTarget !== state.bridgeVir)
+			state = null;
+	}
+	if (!state || typeof state.bridgePhy !== "number" ||
+	    typeof state.bridgeVir !== "number")
+	{
+		AlwaysShowNpcName.verifyBytes(
+			callerPhy - 2,
+			'8B CE E8 EE 13 00 00',
+			'AlwaysShowNpcName frame caller'
+		);
+
+		const [bridgePhy, bridgeVir] = Exe.Allocate(0x20, 0x10);
+		state = {callerVir, bridgePhy, bridgeVir};
+	}
+
+	const bridge =
+		' 51'                             // PUSH ECX ; save CGameMode*
+		+ CALL(originalFrameVir, state.bridgeVir + 1)
+		+ ' 59'                           // POP ECX
+		+ ' 51'                           // PUSH ECX ; cdecl arg
+		+ CALL([frameIat])
+		+ ' 83 C4 04'                     // ADD ESP,4
+		+ RETN();
+
+	Exe.SetHex(state.bridgePhy, bridge);
+	Exe.SetCALL(callerPhy, state.bridgeVir, 0);
+	state.frameIat = frameIat;
+	CACHE.put(cacheKey, state);
+	return true;
+};
+
 AlwaysShowNpcName.installSettingsBridge = function()
 {
+	if (typeof CustomSlashCommand !== "undefined" &&
+	    typeof CustomSlashCommand.installSettingsBridge === "function")
+		return CustomSlashCommand.installSettingsBridge();
+
 	const dllName = CACHE.get('AlwaysShowNpcName.DLL');
 	if (!IsStr(dllName) || dllName.isEmpty())
 		throw Error('AlwaysShowNpcName: active DLL name is unavailable');
@@ -114,35 +209,59 @@ AlwaysShowNpcName.installSettingsBridge = function()
 			'AlwaysShowNpcName: SetNpcNameOverlayOption import not found'
 		);
 
-	// CUIOptionItem's generic ON/OFF callback. EDI is the option item,
-	// [EDI+F8] is its TALKTYPE ID, and [EBP+8] is the new boolean state.
-	// Call the DLL only for our synthetic ID; native options such as /font
-	// must continue without an intervening DLL call.
-	const callbackPattern =
-		'8B F9 8B 35 7C EE 31 01 85 F6 75 33';
-	const callbackAddr = Exe.FindHex(callbackPattern);
-	if (callbackAddr < 0)
-		throw Error(
-			'AlwaysShowNpcName: Game Settings ON/OFF callback not found'
-		);
+	const cacheKey = 'AlwaysShowNpcName.SettingsBridge';
+	let state = CACHE.get(cacheKey);
+	if (state && typeof state.callbackAddr === "number" &&
+	    typeof state.bridgeVir === "number")
+	{
+		const currentTarget = Exe.GetUint8(state.callbackAddr) === 0xE9
+			? Exe.GetTgtAddr(state.callbackAddr + 1)
+			: -1;
+		if (currentTarget !== state.bridgeVir)
+			state = null;
+	}
+	if (!state || typeof state.bridgePhy !== "number")
+	{
+		// CUIOptionItem's generic ON/OFF callback. EDI is the option item,
+		// [EDI+F8] is its TALKTYPE ID, and [EBP+8] is the new boolean state.
+		// Call the DLL only for our synthetic ID; native options such as /font
+		// must continue without an intervening DLL call.
+		const callbackPattern =
+			'8B F9 8B 35 7C EE 31 01 85 F6 75 33';
+		const callbackAddr = Exe.FindHex(callbackPattern);
+		if (callbackAddr < 0)
+			throw Error(
+				'AlwaysShowNpcName: Game Settings ON/OFF callback not found'
+			);
 
-	const returnVir = Exe.Phy2Vir(callbackAddr + 8, CODE);
-	const originalGlobal = Exe.GetUint32(callbackAddr + 4);
-	const [bridgePhy, bridgeVir] = Exe.Allocate(0x40, 0x10);
+		const returnVir = Exe.Phy2Vir(callbackAddr + 8, CODE);
+		const originalGlobal = Exe.GetUint32(callbackAddr + 4);
+		const [bridgePhy, bridgeVir] = Exe.Allocate(0x40, 0x10);
+		state = {
+			callbackAddr,
+			returnVir,
+			originalGlobal,
+			bridgePhy,
+			bridgeVir
+		};
+	}
+
 	const bridge =
 		' 8B F9'                         // MOV EDI,ECX
-		+ ' 8B 35 ' + originalGlobal.toHex() // MOV ESI,[global]
+		+ ' 8B 35 ' + state.originalGlobal.toHex() // MOV ESI,[global]
 		+ ' 81 BF F8 00 00 00 11 27 00 00' // CMP [EDI+F8],10001
 		+ ' 75 12'                       // JNE native callback
 		+ ' FF 75 08'                    // PUSH [EBP+8]
 		+ ' FF B7 F8 00 00 00'           // PUSH [EDI+F8]
 		+ ' FF 15 ' + optionIat.toHex()  // CALL [iat]
 		+ ' 83 C4 08'                    // ADD ESP,8
-		+ JMP(returnVir, bridgeVir + 38);
+		+ JMP(state.returnVir, state.bridgeVir + 38);
 
-	Exe.SetHex(bridgePhy, bridge);
-	Exe.SetJMP(callbackAddr, bridgeVir, 0);
-	Exe.SetHex(callbackAddr + 5, NOPs(3));
+	Exe.SetHex(state.bridgePhy, bridge);
+	Exe.SetJMP(state.callbackAddr, state.bridgeVir, 0);
+	Exe.SetHex(state.callbackAddr + 5, NOPs(3));
+	state.optionIat = optionIat;
+	CACHE.put(cacheKey, state);
 	return true;
 };
 

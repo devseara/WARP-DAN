@@ -23,12 +23,10 @@
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-06-14                                             *
 *                                                                          *
-*   Description   : Image-based inventory tabs. Loads a chosen DLL, which  *
-*                   patches the inventory window vtable[20] (0x00946DA0)   *
-*                   and overlays tab_pri_%02d.bmp through the game's own   *
-*                   image-draw pipeline (mirrors the storage tab loader    *
-*                   0x008262E0). No EXE byte patches — all runtime memory  *
-*                   work is done by the DLL, so .rdata vtables are fine.   *
+*   Description   : Image-based inventory tabs. Imports a passive DLL and  *
+*                   installs WARP-time vtable bridges for the inventory    *
+*                   window and tab control draw/mouse handlers.            *
+*                                                                          *
 *                                                                          *
 \**************************************************************************/
 
@@ -47,10 +45,118 @@ ImageBasedInventoryTabs = function(_)
 	);
 
 	CustomDLL.applySpec(`${_}.CustomDLL`, [
-		{ Name: dllName, Funcs: [{Name: 'InventoryTabsInit'}] }
+		{
+			Name: dllName,
+			Funcs: [
+				{Name: 'InventoryTabsInit'},
+				{Name: 'InventoryTabsWindowDraw'},
+				{Name: 'InventoryTabsTabDraw'},
+				{Name: 'InventoryTabsTabMouseMove'}
+			]
+		}
 	]);
 
-	$$(_, 2, `Image-based inventory tabs DLL import enabled`);
+	ImageBasedInventoryTabs.installStaticVtableBridges(`${_}.Bridges`, dllName);
+	if (typeof CustomDLL.addRefreshHook === "function")
+	{
+		CustomDLL.addRefreshHook(
+			`${_}.Bridges`,
+			function() { return ImageBasedInventoryTabs.installStaticVtableBridges(`${_}.Bridges`, dllName); }
+		);
+	}
+
+	$$(_, 2, `Image-based inventory tab static bridges enabled`);
+	return true;
+};
+
+ImageBasedInventoryTabs.findIat = function(dllName, exportName)
+{
+	const iat = (
+		typeof CustomDLL !== "undefined" &&
+		typeof CustomDLL.findIat === "function"
+	)
+		? CustomDLL.findIat(exportName, dllName)
+		: Exe.FindFunc(exportName, dllName);
+	if (iat < 0)
+		throw Error(`ImageBasedInventoryTabs: import not found: ${dllName}!${exportName}`);
+	return iat;
+};
+
+ImageBasedInventoryTabs.installBridge = function(stateByLabel, spec, dllName)
+{
+	const entryPhy = Exe.Vir2Phy(spec.entryVir);
+	if (entryPhy < 0)
+		throw Error(`ImageBasedInventoryTabs: ${spec.label} vtable entry is not mapped`);
+
+	let state = stateByLabel[spec.label];
+	const current = Exe.GetUint32(entryPhy);
+	if (!state || typeof state.cavePhy !== "number" ||
+	    typeof state.caveVir !== "number")
+	{
+		if (current !== spec.originalVir)
+			throw Error(
+				`ImageBasedInventoryTabs: ${spec.label} expected 0x${spec.originalVir.toString(16)}` +
+				`, got 0x${current.toString(16)}`
+			);
+
+		const cave = Exe.Allocate(0x10, 0x10);
+		state = {
+			entryVir: spec.entryVir,
+			originalVir: spec.originalVir,
+			cavePhy: cave[0],
+			caveVir: cave[1]
+		};
+	}
+	else if (current !== state.caveVir && current !== spec.originalVir)
+	{
+		throw Error(
+			`ImageBasedInventoryTabs: ${spec.label} already points to 0x${current.toString(16)}`
+		);
+	}
+
+	const iat = ImageBasedInventoryTabs.findIat(dllName, spec.exportName);
+	Exe.SetHex(state.cavePhy, ' FF 25 ' + iat.toHex());
+	Exe.SetUint32(entryPhy, state.caveVir);
+	state.iat = iat;
+	stateByLabel[spec.label] = state;
+};
+
+ImageBasedInventoryTabs.installStaticVtableBridges = function(_, dllName)
+{
+	if (Exe.BuildDate !== 20250716)
+		throw Error("ImageBasedInventoryTabs supports only the 2025-07-16 client");
+
+	const specs = [
+		{
+			label: "inventory window draw",
+			entryVir: 0x0103D4B0,
+			originalVir: 0x00946DA0,
+			exportName: "InventoryTabsWindowDraw"
+		},
+		{
+			label: "tab control draw",
+			entryVir: 0x0102DD94,
+			originalVir: 0x00857910,
+			exportName: "InventoryTabsTabDraw"
+		},
+		{
+			label: "tab control mousemove",
+			entryVir: 0x0102DDB4,
+			originalVir: 0x0085A170,
+			exportName: "InventoryTabsTabMouseMove"
+		}
+	];
+
+	const cacheKey = 'ImageBasedInventoryTabs.StaticBridges';
+	const stateByLabel = CACHE.get(cacheKey) ?? {};
+	for (const spec of specs)
+		ImageBasedInventoryTabs.installBridge(stateByLabel, spec, dllName);
+	CACHE.put(cacheKey, stateByLabel);
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add('ImageBasedInventoryTabs.StaticBridges', stateByLabel);
+
 	return true;
 };
 
@@ -62,5 +168,5 @@ ImageBasedInventoryTabs = function(_)
 ///
 ImageBasedInventoryTabs.validate = function()
 {
-	return Exe.BuildDate >= 20250700;
+	return Exe.BuildDate === 20250716;
 };

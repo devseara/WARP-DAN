@@ -1,5 +1,5 @@
-from: "D:/Programs/Games/Ragnarok/01_github/WARP20250716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
-to: "D:/Programs/Games/Ragnarok/01_github/WARP20250716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo_patched.exe"
+from: "C:/Users/Administrator/Documents/GitHub/WARP20250716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
+to: "C:/Users/Administrator/Documents/GitHub/WARP20250716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo_patched.exe"
 inputs:
     $viewIDLimit:
         data: '007d0000'
@@ -81,6 +81,11 @@ inputs:
         display: "bohcustoms.dll"
         type: 10
 
+    $pincodeUiDLLName:
+        data: '626f68637573746f6d732e646c6c00'
+        display: "bohcustoms.dll"
+        type: 10
+
     $enchantGradeMap:
         data: ''
         display: "Inputs/enchant_grade.yml"
@@ -117,6 +122,11 @@ inputs:
         type: 10
 
     $copyCSLub:
+        data: ''
+        display: "true"
+        type: 10
+
+    $copyCustomGameSettingsLua:
         data: ''
         display: "true"
         type: 10
@@ -193,6 +203,7 @@ patches:
     - EnableWho
     - EnableShowName
     - AlwaysShowNpcName
+    - CustomGameSettingsOptions
     - ZeroCinShop
     - PreviewInShop
     - PreviewInTrader

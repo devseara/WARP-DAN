@@ -5,8 +5,13 @@ Two packaging modes are supported.
 ## Combined build
 
 Run `build.bat` to produce `boh.dll`. If your client imports
-`bohcustoms.dll`, copy or rename the output DLL to `bohcustoms.dll` and enter
-`bohcustoms.dll` in every WARP feature prompt.
+`bohcustoms.dll`, copy or rename the output DLL to `bohcustoms.dll`.
+
+For strict Gepard builds, keep the combined build limited to non-hook modules.
+The checked-in `customer_features.h` baseline enables the PIN UI and converted
+NPC name overlay only. Do not enable item colors, extended names, rune visuals,
+FPS/ping, inventory tabs, or other runtime-hook modules unless the anti-cheat
+owner has approved that specific runtime memory behavior.
 
 ## Dedicated builds
 
@@ -15,14 +20,22 @@ Run `build_split.bat` to produce:
 | DLL | Features | WARP export |
 |-----|----------|-------------|
 | `boh_text.dll` | Item colors and extended names | `ColoredItemNameVisualInit`, `ExtNameVisualInit` |
-| `boh_npc_names.dll` | Always-show NPC names | `NpcNameOverlayInit` |
+| `boh_npc_names.dll` | Always-show NPC names | `NpcNameOverlayInit`, `NpcNameOverlayFrame` |
 | `boh_rune.dll` | Rune visuals | `RuneVisualInit` |
 | `boh_fps.dll` | FPS and ping overlays | `FpsPingOverlayInit` |
 | `boh_inventory_tabs.dll` | Image inventory tabs | `InventoryTabsInit` |
 | `boh_weapon_sprite.dll` | Dual-wield custom renderer host | `WeaponSpriteInit` |
+| `boh_pincode_ui.dll` | In-game PIN keypad | `PincodeUIInit`, `PincodeUIShow` |
 
 Each WARP patch has its own saved DLL-name prompt. The output files may be
 renamed as long as the matching filename is entered when patching the client.
+
+Only `boh_npc_names.dll` and `boh_pincode_ui.dll` are currently part of the
+strict Gepard-safe runtime set. The NPC DLL depends on the WARP-time static
+frame bridge and EXTN dispatcher ring installed by `AlwaysShowNpcName`; it does
+not install a runtime trampoline. The other dedicated visual DLLs are isolated
+for debugging and deployment control, but they still perform runtime
+hooks/patches.
 
 Item colors and extended names intentionally remain together in
 `boh_text.dll`. Both features intercept the same GDI text APIs, so loading two

@@ -112,6 +112,7 @@ PatchDiagnostics.write = function(_)
 		'PingOverlay',
 		'CustomRuneSystem',
 		'ImageBasedInventoryTabs',
+		'CustomGameSettingsOptions',
 		'PatchDiagnostics'
 	].forEach(name => line(name + ': ' + PatchDiagnostics.patchState(name)));
 

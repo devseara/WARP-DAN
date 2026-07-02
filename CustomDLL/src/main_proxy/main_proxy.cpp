@@ -46,7 +46,9 @@ BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID reserve
 
 // inventory_tabs.cpp (inventory_tabs/inventory_tabs.cpp)
 BOOL APIENTRY InvTabsDllMain(HMODULE module, DWORD reason, LPVOID reserved);
+#if BOH_WEAPON_SPRITE
 BOOL APIENTRY WeaponSpriteDllMain(HMODULE module, DWORD reason, LPVOID reserved);
+#endif
 
 // ============================================================================
 //  DllMain — sole entry point, chains to all feature modules
@@ -66,16 +68,32 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
     if (reason == DLL_PROCESS_DETACH && lpReserved != nullptr)
         return TRUE;
 
+    const bool textFeaturesEnabled =
+        BohLicense::IsEnabled(FEATURE_ITEM_COLORS) ||
+        BohLicense::IsEnabled(FEATURE_EXTENDED_NAMES);
+    const bool fpsFeaturesEnabled =
+        BohLicense::IsEnabled(FEATURE_FPS_OVERLAY) ||
+        BohLicense::IsEnabled(FEATURE_PING_OVERLAY);
+
     // Explicit DLL unload — safe to run cleanup.
-    if (reason == DLL_PROCESS_DETACH)
+    if (reason == DLL_PROCESS_DETACH && textFeaturesEnabled)
         ItemColorExtNameCleanup(false);
 
-    // Chain to each feature module
-    RuneVisualDllMain(hModule, reason, lpReserved);
-    FpsOverlayDllMain(hModule, reason, lpReserved);
-    NpcNameOverlayDllMain(hModule, reason, lpReserved);
-    InvTabsDllMain(hModule, reason, lpReserved);
-    WeaponSpriteDllMain(hModule, reason, lpReserved);
+    // Chain only to compiled-in feature modules that are enabled for this build.
+    // This keeps a Gepard-safe combined DLL from running disabled modules that
+    // would otherwise patch EXE code, IAT entries, or vtables at runtime.
+    if (BohLicense::IsEnabled(FEATURE_RUNE_VISUAL))
+        RuneVisualDllMain(hModule, reason, lpReserved);
+    if (fpsFeaturesEnabled)
+        FpsOverlayDllMain(hModule, reason, lpReserved);
+    if (BohLicense::IsEnabled(FEATURE_NPC_NAME_OVERLAY))
+        NpcNameOverlayDllMain(hModule, reason, lpReserved);
+    if (BohLicense::IsEnabled(FEATURE_INVENTORY_TABS))
+        InvTabsDllMain(hModule, reason, lpReserved);
+#if BOH_WEAPON_SPRITE
+    if (BohLicense::IsEnabled(FEATURE_WEAPON_SPRITE))
+        WeaponSpriteDllMain(hModule, reason, lpReserved);
+#endif
 
     switch (reason)
     {
@@ -94,8 +112,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
             g_pDirectDrawEnumerateExA = GetProcAddress(g_hRealDDraw, "DirectDrawEnumerateExA");
         }
 
-        // Initialize item colors + extended names + hat trace
-        ItemColorExtNameInit(hModule);
+        // Initialize item colors + extended names only for builds that enable
+        // those text-hook features.
+        if (textFeaturesEnabled)
+            ItemColorExtNameInit(hModule);
         break;
     }
 

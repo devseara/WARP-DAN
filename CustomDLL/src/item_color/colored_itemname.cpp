@@ -15,6 +15,10 @@
 #include "boh_features.h"
 #include "extended_name/extended_name.h"
 
+#ifndef BOH_TEXT_STATIC_WRAPPERS
+#define BOH_TEXT_STATIC_WRAPPERS 1
+#endif
+
 #ifdef BOH_COMBINED_RUNE
 BOOL APIENTRY RuneVisualDllMain(HMODULE module, DWORD reason, LPVOID reserved);
 #endif
@@ -213,11 +217,13 @@ extern "C" NpcNamePosition* GetNpcNamePositionRing() { return g_npcNamePositions
 extern "C" LONG GetNpcNamePosWrite() { return InterlockedCompareExchange(&g_npcNamePosWrite, 0, 0); }
 extern "C" void ResetNpcNamePosRead(LONG v) { g_npcNamePosWrite = v; }
 
+static bool g_sharedBlockCSInitialized = false;
+
+#if !BOH_TEXT_STATIC_WRAPPERS
 // recv hook fallback
 static LPVOID g_origRecv = nullptr;
 static LPVOID g_recvAddr = nullptr;
 static SIZE_T g_stolenBytesRecv = 0;
-static bool g_sharedBlockCSInitialized = false;
 
 struct RecvStreamState
 {
@@ -227,6 +233,7 @@ struct RecvStreamState
 
 static std::unordered_map<SOCKET, RecvStreamState> g_recvStates;
 static std::mutex g_recvStateMutex;
+#endif
 
 enum class PacketSourceMode
 {
@@ -249,6 +256,7 @@ static bool IsTextHooksShuttingDown()
     return InterlockedCompareExchange(&g_textHooksShuttingDown, 0, 0) != 0;
 }
 
+#if !BOH_TEXT_STATIC_WRAPPERS
 static void RestorePatchedBytes(LPVOID target, LPVOID originalBytes, SIZE_T length)
 {
     if (!target || !originalBytes || length < 5)
@@ -262,6 +270,7 @@ static void RestorePatchedBytes(LPVOID target, LPVOID originalBytes, SIZE_T leng
     FlushInstructionCache(GetCurrentProcess(), target, length);
     VirtualProtect(target, length, oldProtect, &oldProtect);
 }
+#endif
 
 static bool IsShadowLayerColor(COLORREF color)
 {
@@ -629,9 +638,11 @@ static bool IsLikelyGepardClient()
 static PacketSourceMode ParsePacketSourceMode(const std::wstring& rawValue)
 {
     std::wstring value = ToLowerCopy(rawValue);
+#if !BOH_TEXT_STATIC_WRAPPERS
     if (value == L"both" || value == L"recv_shared" || value == L"hybrid" ||
         value == L"recv" || value == L"recv_only" || value == L"runtime")
         return PacketSourceMode::SharedOnly;
+#endif
     if (value == L"shared" || value == L"shared_only" || value == L"stub")
         return PacketSourceMode::SharedOnly;
     if (value == L"none" || value == L"off" || value == L"disabled")
@@ -643,8 +654,14 @@ static const char* PacketSourceModeToAnsi(PacketSourceMode mode)
 {
     switch (mode)
     {
+#if !BOH_TEXT_STATIC_WRAPPERS
     case PacketSourceMode::RecvAndShared: return "both";
     case PacketSourceMode::RecvOnly: return "recv";
+#else
+    case PacketSourceMode::RecvAndShared:
+    case PacketSourceMode::RecvOnly:
+        return "shared";
+#endif
     case PacketSourceMode::SharedOnly: return "shared";
     case PacketSourceMode::None: return "none";
     case PacketSourceMode::Auto:
@@ -1127,6 +1144,7 @@ static DWORD WINAPI SharedPollThreadProc(LPVOID)
 //  recv() hook fallback for server-side packets
 // ============================================================================
 
+#if !BOH_TEXT_STATIC_WRAPPERS
 // Extended-name packet parsing and state live in extended_name/.
 static bool LooksLikeItemColorPacket(const char* data, size_t length)
 {
@@ -1398,6 +1416,7 @@ static bool BuildTrampoline(LPVOID target)
 
     return true;
 }
+#endif
 
 // ============================================================================
 //  Client address helper
@@ -1410,6 +1429,29 @@ static LPVOID ClientAddress(DWORD va)
         return nullptr;
 
     return reinterpret_cast<LPVOID>(reinterpret_cast<DWORD>(exe) + (va - 0x00400000));
+}
+
+static bool ResolveRealTextApis()
+{
+    HMODULE gdi32 = GetModuleHandleA("gdi32.dll");
+    HMODULE user32 = GetModuleHandleA("user32.dll");
+    if (!gdi32 || !user32)
+        return false;
+
+    if (!g_origTextOutW)
+        g_origTextOutW = GetProcAddress(gdi32, "TextOutW");
+    if (!g_origExtTextOutW)
+        g_origExtTextOutW = GetProcAddress(gdi32, "ExtTextOutW");
+    if (!g_origGetTextExtentPoint32W)
+        g_origGetTextExtentPoint32W = GetProcAddress(gdi32, "GetTextExtentPoint32W");
+    if (!g_origDrawTextW)
+        g_origDrawTextW = GetProcAddress(user32, "DrawTextW");
+    if (!g_origDrawTextExW)
+        g_origDrawTextExW = GetProcAddress(user32, "DrawTextExW");
+
+    return g_origTextOutW && g_origExtTextOutW &&
+           g_origGetTextExtentPoint32W && g_origDrawTextW &&
+           g_origDrawTextExW;
 }
 
 static BOOL WINAPI HookTextOutW(HDC hdc, int x, int y, LPCWSTR lpString, int cchString)
@@ -2128,6 +2170,37 @@ static BOOL WINAPI HookGetTextExtentPoint32W(HDC hdc, LPCWSTR lpString, int cchS
     return result;
 }
 
+#if defined(_M_IX86)
+#pragma comment(linker, "/EXPORT:BohTextOutW=_BohTextOutW@20")
+#pragma comment(linker, "/EXPORT:BohGetTextExtentPoint32W=_BohGetTextExtentPoint32W@16")
+#endif
+
+extern "C" __declspec(dllexport) BOOL WINAPI BohTextOutW(
+    HDC hdc,
+    int x,
+    int y,
+    LPCWSTR lpString,
+    int cchString)
+{
+    if (!ResolveRealTextApis())
+        return FALSE;
+
+    return HookTextOutW(hdc, x, y, lpString, cchString);
+}
+
+extern "C" __declspec(dllexport) BOOL WINAPI BohGetTextExtentPoint32W(
+    HDC hdc,
+    LPCWSTR lpString,
+    int cchString,
+    LPSIZE lpSize)
+{
+    if (!ResolveRealTextApis())
+        return FALSE;
+
+    return HookGetTextExtentPoint32W(hdc, lpString, cchString, lpSize);
+}
+
+#if !BOH_TEXT_STATIC_WRAPPERS
 static bool InstallHook()
 {
     HMODULE gdi32 = GetModuleHandleA("gdi32.dll");
@@ -2292,6 +2365,7 @@ static bool InstallGetTextExtentPoint32WHook()
 
     return true;
 }
+#endif
 // ============================================================================
 //  ItemColorExtNameInit — called from main_proxy.cpp DllMain
 // ============================================================================
@@ -2302,6 +2376,7 @@ void ItemColorExtNameInit(HMODULE hModule)
         g_tlsPassthroughDepth = TlsAlloc();
     InterlockedExchange(&g_textHooksShuttingDown, 0);
     ConfigureDebugLogging();
+    ResolveRealTextApis();
 
     g_hookOwnerMutex = CreateMutexW(nullptr, TRUE, L"Local\\BOH_ExtNameVisual_HookOwner");
     g_ownsHookInstall = (g_hookOwnerMutex == nullptr || GetLastError() != ERROR_ALREADY_EXISTS);
@@ -2317,12 +2392,15 @@ void ItemColorExtNameInit(HMODULE hModule)
     bool hasWarpSharedBlocks = icolProbe != nullptr || extnProbe != nullptr;
     PacketSourceMode resolvedMode = ResolvePacketSourceMode(likelyGepard, hasWarpSharedBlocks);
     ApplyPacketSourceMode(resolvedMode);
+#if BOH_TEXT_STATIC_WRAPPERS
+    g_enableRecvHook = false;
+#endif
     if (g_enableSharedPolling)
     {
         g_icolBlock = icolProbe;
         g_checkedShared = true;
     }
-    LogMsg("[INIT] packet_source=%s likely_gepard=%s warp_shared=%s recv_hook=%s shared_poll=%s ICOL=%p EXTN=%p",
+    LogMsg("[INIT] packet_source=%s likely_gepard=%s warp_shared=%s static_bridge=%s shared_poll=%s ICOL=%p EXTN=%p",
         PacketSourceModeToAnsi(g_packetSourceMode),
         likelyGepard ? "yes" : "no",
         hasWarpSharedBlocks ? "yes" : "no",
@@ -2360,7 +2438,7 @@ void ItemColorExtNameInit(HMODULE hModule)
             g_lastFileTime = ((ULONGLONG)fad.ftLastWriteTime.dwHighDateTime << 32) | fad.ftLastWriteTime.dwLowDateTime;
     }
 
-#if BOH_ITEM_COLORS || BOH_EXTENDED_NAMES
+#if (BOH_ITEM_COLORS || BOH_EXTENDED_NAMES) && !BOH_TEXT_STATIC_WRAPPERS
     InstallHook();
     InstallExtTextOutWHook();
     InstallDrawTextWHook();
@@ -2368,11 +2446,13 @@ void ItemColorExtNameInit(HMODULE hModule)
     InstallGetTextExtentPoint32WHook();
 #endif
 
+#if !BOH_TEXT_STATIC_WRAPPERS
     if (g_enableRecvHook)
     {
         if (!InstallRecvHook())
             LogMsg("[WARN] InstallRecvHook failed");
     }
+#endif
 }
 
 void ItemColorExtNameCleanup(bool isProcessTermination)
@@ -2383,12 +2463,14 @@ void ItemColorExtNameCleanup(bool isProcessTermination)
     // be unloaded — skip hook restoration; the OS reclaims everything.
     if (!isProcessTermination)
     {
+#if !BOH_TEXT_STATIC_WRAPPERS
         RestorePatchedBytes(g_recvAddr, g_origRecv, g_stolenBytesRecv);
         RestorePatchedBytes(g_getTextExtentPoint32WAddr, g_origGetTextExtentPoint32W, g_stolenBytesGTEP);
         RestorePatchedBytes(g_drawTextExWAddr, g_origDrawTextExW, g_stolenBytesDrawEx);
         RestorePatchedBytes(g_drawTextWAddr, g_origDrawTextW, g_stolenBytesDraw);
         RestorePatchedBytes(g_extTextOutWAddr, g_origExtTextOutW, g_stolenBytesExt);
         RestorePatchedBytes(g_textOutWAddr, g_origTextOutW, g_stolenBytes);
+#endif
     }
 
     ExtendedNameCleanup();

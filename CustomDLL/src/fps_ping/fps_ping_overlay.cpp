@@ -8,7 +8,16 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <stdio.h>
+#include <stdint.h>
+#include <initguid.h>
 #include <d3d9.h>
+#include <new>
+
+#include "boh_features.h"
+
+#ifndef BOH_FPS_D3D_PROXY
+#define BOH_FPS_D3D_PROXY 1
+#endif
 
 // ICMP ping (implemented in ping.cpp — separate TU without LEAN_AND_MEAN)
 void PingInit();
@@ -58,6 +67,16 @@ static volatile LONG g_showFps = TRUE;
 static volatile LONG g_showFrameMs = TRUE;
 static int g_posX = 1725;
 static int g_posY = 50;
+static constexpr uint32_t kFpsOverlayOption = 10002;
+static constexpr uint32_t kPingOverlayOption = 10003;
+static constexpr uintptr_t kRoImageBase = 0x00400000;
+static constexpr uintptr_t kGetOption = 0x0068EA70;
+static constexpr uintptr_t kSetOption = 0x0068FD50;
+static bool g_fpsOptionSynced = false;
+static bool g_pingOptionSynced = false;
+
+using FnGetOption = bool (__cdecl*)(uint32_t);
+using FnSetOption = bool (__cdecl*)(uint32_t, int);
 
 // Real network latency — measured via D3D9 EndScene frame-time jitter.
 // When the server lags, the render thread stalls waiting for packets,
@@ -147,6 +166,11 @@ static void Log(const char* fmt, ...)
     OutputDebugStringA("\n");
 }
 
+static void SetFlag(volatile LONG* flag, bool enabled)
+{
+    InterlockedExchange(flag, enabled ? TRUE : FALSE);
+}
+
 static void LoadConfig()
 {
     // All configuration is hardcoded here — no INI file needed.
@@ -158,6 +182,75 @@ static void LoadConfig()
 
     Log("Overlay config: ShowFps=%d ShowFrameMs=%d PosX=%d PosY=%d",
         g_showFps, g_showFrameMs, g_posX, g_posY);
+}
+
+static uintptr_t RebaseExe(uintptr_t address)
+{
+    HMODULE exe = GetModuleHandleA(nullptr);
+    if (!exe)
+        return 0;
+    return reinterpret_cast<uintptr_t>(exe) + (address - kRoImageBase);
+}
+
+static bool WriteClientOption(uint32_t optionId, bool enabled)
+{
+    uintptr_t setAddr = RebaseExe(kSetOption);
+    if (!setAddr)
+        return false;
+
+    __try
+    {
+        auto setOption = reinterpret_cast<FnSetOption>(setAddr);
+        return setOption(optionId, enabled ? 1 : 0);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+static bool SyncClientOption(
+    uint32_t optionId,
+    volatile LONG* flag,
+    bool featureEnabled,
+    bool* synced)
+{
+    if (!featureEnabled || !synced || *synced)
+        return false;
+
+    uintptr_t getAddr = RebaseExe(kGetOption);
+    if (!getAddr)
+        return false;
+
+    __try
+    {
+        auto getOption = reinterpret_cast<FnGetOption>(getAddr);
+        const bool enabled = getOption(optionId);
+        if (!WriteClientOption(optionId, enabled))
+            return false;
+
+        SetFlag(flag, enabled);
+        *synced = true;
+        return true;
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER)
+    {
+        return false;
+    }
+}
+
+static void SyncClientOptions()
+{
+    SyncClientOption(
+        kFpsOverlayOption,
+        &g_showFps,
+        BohLicense::IsEnabled(FEATURE_FPS_OVERLAY),
+        &g_fpsOptionSynced);
+    SyncClientOption(
+        kPingOverlayOption,
+        &g_showFrameMs,
+        BohLicense::IsEnabled(FEATURE_PING_OVERLAY),
+        &g_pingOptionSynced);
 }
 
 // ============================================================================
@@ -229,6 +322,7 @@ static bool CreateOverlayResources(IDirect3DDevice9* dev)
 typedef HRESULT (WINAPI *EndScene_t)(IDirect3DDevice9*);
 typedef HRESULT (WINAPI *Reset_t)(IDirect3DDevice9*, D3DPRESENT_PARAMETERS*);
 
+#if !BOH_FPS_D3D_PROXY
 static void RestoreIat()
 {
     if (!g_iatDirect3DCreate9ExEntry || !g_origDirect3DCreate9Ex)
@@ -515,6 +609,421 @@ static void Initialize()
     else
         Log("IAT patch applied, waiting for game to create D3D device...");
 }
+#else
+static HRESULT ProxyDrawPrimitiveUP(
+    IDirect3DDevice9Ex* dev,
+    D3DPRIMITIVETYPE PrimitiveType,
+    UINT PrimitiveCount,
+    const void* pVertexStreamZeroData,
+    UINT VertexStreamZeroStride)
+{
+    if (PrimitiveType == D3DPT_TRIANGLESTRIP && PrimitiveCount == 2 &&
+        VertexStreamZeroStride == 32 && pVertexStreamZeroData)
+    {
+        __try {
+            const float* v = (const float*)pVertexStreamZeroData;
+            float sx = v[0], sy = v[1], rhw = v[3];
+            DWORD diffuse = *(const DWORD*)&v[4];
+            BYTE r = (diffuse >> 16) & 0xFF;
+            BYTE g = (diffuse >> 8) & 0xFF;
+            BYTE b = diffuse & 0xFF;
+            bool isWhite = (r > 200 && g > 200 && b > 200);
+            if (sx > 4.0f && sy > 4.0f && rhw > 0.5f && isWhite)
+                DpupAddPosition(sx, sy);
+        } __except (EXCEPTION_EXECUTE_HANDLER) {}
+    }
+
+    return dev->DrawPrimitiveUP(
+        PrimitiveType,
+        PrimitiveCount,
+        pVertexStreamZeroData,
+        VertexStreamZeroStride);
+}
+
+static HRESULT ProxyEndScene(IDirect3DDevice9Ex* dev)
+{
+    InterlockedIncrement(&g_inEndScene);
+    if (g_shutdown)
+    {
+        InterlockedDecrement(&g_inEndScene);
+        return dev->EndScene();
+    }
+
+    g_frameCount++;
+    DWORD now = GetTickCount();
+    if (!g_lastFpsTick) g_lastFpsTick = now;
+    if (now - g_lastFpsTick >= 1000)
+    {
+        g_fps = g_frameCount;
+        g_frameCount = 0;
+        g_lastFpsTick = now;
+    }
+
+    if (!g_qpcFreq.QuadPart)
+        QueryPerformanceFrequency(&g_qpcFreq);
+    LARGE_INTEGER qpcNow;
+    QueryPerformanceCounter(&qpcNow);
+    if (g_lastFrameQpc.QuadPart && g_qpcFreq.QuadPart)
+    {
+        g_frameMs = (float)((qpcNow.QuadPart - g_lastFrameQpc.QuadPart) * 1000.0 / g_qpcFreq.QuadPart);
+    }
+    g_lastFrameQpc = qpcNow;
+
+    DpupFrameEnd();
+    HRESULT hr = dev->EndScene();
+    DpupFrameBegin();
+    InterlockedDecrement(&g_inEndScene);
+    return hr;
+}
+
+static HRESULT ProxyReset(IDirect3DDevice9Ex* dev, D3DPRESENT_PARAMETERS* pp)
+{
+    DestroyOverlayResources();
+    return dev->Reset(pp);
+}
+
+static HRESULT ProxyResetEx(
+    IDirect3DDevice9Ex* dev,
+    D3DPRESENT_PARAMETERS* pp,
+    D3DDISPLAYMODEEX* mode)
+{
+    DestroyOverlayResources();
+    return dev->ResetEx(pp, mode);
+}
+
+class D3DDevice9ExProxy : public IDirect3DDevice9Ex
+{
+public:
+    explicit D3DDevice9ExProxy(IDirect3DDevice9Ex* real) : real_(real)
+    {
+        g_device = real_;
+    }
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObj) override
+    {
+        if (!ppvObj)
+            return E_POINTER;
+        if (IsEqualGUID(riid, IID_IUnknown) ||
+            IsEqualGUID(riid, IID_IDirect3DDevice9) ||
+            IsEqualGUID(riid, IID_IDirect3DDevice9Ex))
+        {
+            *ppvObj = static_cast<IDirect3DDevice9Ex*>(this);
+            AddRef();
+            return S_OK;
+        }
+        return real_->QueryInterface(riid, ppvObj);
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override { return real_->AddRef(); }
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG refs = real_->Release();
+        if (refs == 0)
+        {
+            if (g_device == real_)
+                g_device = nullptr;
+            delete this;
+        }
+        return refs;
+    }
+
+    HRESULT STDMETHODCALLTYPE TestCooperativeLevel() override { return real_->TestCooperativeLevel(); }
+    UINT STDMETHODCALLTYPE GetAvailableTextureMem() override { return real_->GetAvailableTextureMem(); }
+    HRESULT STDMETHODCALLTYPE EvictManagedResources() override { return real_->EvictManagedResources(); }
+    HRESULT STDMETHODCALLTYPE GetDirect3D(IDirect3D9** ppD3D9) override { return real_->GetDirect3D(ppD3D9); }
+    HRESULT STDMETHODCALLTYPE GetDeviceCaps(D3DCAPS9* pCaps) override { return real_->GetDeviceCaps(pCaps); }
+    HRESULT STDMETHODCALLTYPE GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) override { return real_->GetDisplayMode(iSwapChain, pMode); }
+    HRESULT STDMETHODCALLTYPE GetCreationParameters(D3DDEVICE_CREATION_PARAMETERS* pParameters) override { return real_->GetCreationParameters(pParameters); }
+    HRESULT STDMETHODCALLTYPE SetCursorProperties(UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap) override { return real_->SetCursorProperties(XHotSpot, YHotSpot, pCursorBitmap); }
+    void STDMETHODCALLTYPE SetCursorPosition(int X, int Y, DWORD Flags) override { real_->SetCursorPosition(X, Y, Flags); }
+    BOOL STDMETHODCALLTYPE ShowCursor(BOOL bShow) override { return real_->ShowCursor(bShow); }
+    HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** pSwapChain) override { return real_->CreateAdditionalSwapChain(pPresentationParameters, pSwapChain); }
+    HRESULT STDMETHODCALLTYPE GetSwapChain(UINT iSwapChain, IDirect3DSwapChain9** pSwapChain) override { return real_->GetSwapChain(iSwapChain, pSwapChain); }
+    UINT STDMETHODCALLTYPE GetNumberOfSwapChains() override { return real_->GetNumberOfSwapChains(); }
+    HRESULT STDMETHODCALLTYPE Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) override { return ProxyReset(real_, pPresentationParameters); }
+    HRESULT STDMETHODCALLTYPE Present(CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion) override { return real_->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion); }
+    HRESULT STDMETHODCALLTYPE GetBackBuffer(UINT iSwapChain, UINT iBackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface9** ppBackBuffer) override { return real_->GetBackBuffer(iSwapChain, iBackBuffer, Type, ppBackBuffer); }
+    HRESULT STDMETHODCALLTYPE GetRasterStatus(UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) override { return real_->GetRasterStatus(iSwapChain, pRasterStatus); }
+    HRESULT STDMETHODCALLTYPE SetDialogBoxMode(BOOL bEnableDialogs) override { return real_->SetDialogBoxMode(bEnableDialogs); }
+    void STDMETHODCALLTYPE SetGammaRamp(UINT iSwapChain, DWORD Flags, CONST D3DGAMMARAMP* pRamp) override { real_->SetGammaRamp(iSwapChain, Flags, pRamp); }
+    void STDMETHODCALLTYPE GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) override { real_->GetGammaRamp(iSwapChain, pRamp); }
+    HRESULT STDMETHODCALLTYPE CreateTexture(UINT Width, UINT Height, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle) override { return real_->CreateTexture(Width, Height, Levels, Usage, Format, Pool, ppTexture, pSharedHandle); }
+    HRESULT STDMETHODCALLTYPE CreateVolumeTexture(UINT Width, UINT Height, UINT Depth, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle) override { return real_->CreateVolumeTexture(Width, Height, Depth, Levels, Usage, Format, Pool, ppVolumeTexture, pSharedHandle); }
+    HRESULT STDMETHODCALLTYPE CreateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle) override { return real_->CreateCubeTexture(EdgeLength, Levels, Usage, Format, Pool, ppCubeTexture, pSharedHandle); }
+    HRESULT STDMETHODCALLTYPE CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool, IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle) override { return real_->CreateVertexBuffer(Length, Usage, FVF, Pool, ppVertexBuffer, pSharedHandle); }
+    HRESULT STDMETHODCALLTYPE CreateIndexBuffer(UINT Length, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool, IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle) override { return real_->CreateIndexBuffer(Length, Usage, Format, Pool, ppIndexBuffer, pSharedHandle); }
+    HRESULT STDMETHODCALLTYPE CreateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) override { return real_->CreateRenderTarget(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, ppSurface, pSharedHandle); }
+    HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) override { return real_->CreateDepthStencilSurface(Width, Height, Format, MultiSample, MultisampleQuality, Discard, ppSurface, pSharedHandle); }
+    HRESULT STDMETHODCALLTYPE UpdateSurface(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestinationSurface, CONST POINT* pDestPoint) override { return real_->UpdateSurface(pSourceSurface, pSourceRect, pDestinationSurface, pDestPoint); }
+    HRESULT STDMETHODCALLTYPE UpdateTexture(IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture) override { return real_->UpdateTexture(pSourceTexture, pDestinationTexture); }
+    HRESULT STDMETHODCALLTYPE GetRenderTargetData(IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface) override { return real_->GetRenderTargetData(pRenderTarget, pDestSurface); }
+    HRESULT STDMETHODCALLTYPE GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) override { return real_->GetFrontBufferData(iSwapChain, pDestSurface); }
+    HRESULT STDMETHODCALLTYPE StretchRect(IDirect3DSurface9* pSourceSurface, CONST RECT* pSourceRect, IDirect3DSurface9* pDestSurface, CONST RECT* pDestRect, D3DTEXTUREFILTERTYPE Filter) override { return real_->StretchRect(pSourceSurface, pSourceRect, pDestSurface, pDestRect, Filter); }
+    HRESULT STDMETHODCALLTYPE ColorFill(IDirect3DSurface9* pSurface, CONST RECT* pRect, D3DCOLOR color) override { return real_->ColorFill(pSurface, pRect, color); }
+    HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurface(UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) override { return real_->CreateOffscreenPlainSurface(Width, Height, Format, Pool, ppSurface, pSharedHandle); }
+    HRESULT STDMETHODCALLTYPE SetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget) override { return real_->SetRenderTarget(RenderTargetIndex, pRenderTarget); }
+    HRESULT STDMETHODCALLTYPE GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget) override { return real_->GetRenderTarget(RenderTargetIndex, ppRenderTarget); }
+    HRESULT STDMETHODCALLTYPE SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil) override { return real_->SetDepthStencilSurface(pNewZStencil); }
+    HRESULT STDMETHODCALLTYPE GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurface) override { return real_->GetDepthStencilSurface(ppZStencilSurface); }
+    HRESULT STDMETHODCALLTYPE BeginScene() override { return real_->BeginScene(); }
+    HRESULT STDMETHODCALLTYPE EndScene() override { return ProxyEndScene(real_); }
+    HRESULT STDMETHODCALLTYPE Clear(DWORD Count, CONST D3DRECT* pRects, DWORD Flags, D3DCOLOR Color, float Z, DWORD Stencil) override { return real_->Clear(Count, pRects, Flags, Color, Z, Stencil); }
+    HRESULT STDMETHODCALLTYPE SetTransform(D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix) override { return real_->SetTransform(State, pMatrix); }
+    HRESULT STDMETHODCALLTYPE GetTransform(D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix) override { return real_->GetTransform(State, pMatrix); }
+    HRESULT STDMETHODCALLTYPE MultiplyTransform(D3DTRANSFORMSTATETYPE State, CONST D3DMATRIX* pMatrix) override { return real_->MultiplyTransform(State, pMatrix); }
+    HRESULT STDMETHODCALLTYPE SetViewport(CONST D3DVIEWPORT9* pViewport) override { return real_->SetViewport(pViewport); }
+    HRESULT STDMETHODCALLTYPE GetViewport(D3DVIEWPORT9* pViewport) override { return real_->GetViewport(pViewport); }
+    HRESULT STDMETHODCALLTYPE SetMaterial(CONST D3DMATERIAL9* pMaterial) override { return real_->SetMaterial(pMaterial); }
+    HRESULT STDMETHODCALLTYPE GetMaterial(D3DMATERIAL9* pMaterial) override { return real_->GetMaterial(pMaterial); }
+    HRESULT STDMETHODCALLTYPE SetLight(DWORD Index, CONST D3DLIGHT9* pLight) override { return real_->SetLight(Index, pLight); }
+    HRESULT STDMETHODCALLTYPE GetLight(DWORD Index, D3DLIGHT9* pLight) override { return real_->GetLight(Index, pLight); }
+    HRESULT STDMETHODCALLTYPE LightEnable(DWORD Index, BOOL Enable) override { return real_->LightEnable(Index, Enable); }
+    HRESULT STDMETHODCALLTYPE GetLightEnable(DWORD Index, BOOL* pEnable) override { return real_->GetLightEnable(Index, pEnable); }
+    HRESULT STDMETHODCALLTYPE SetClipPlane(DWORD Index, CONST float* pPlane) override { return real_->SetClipPlane(Index, pPlane); }
+    HRESULT STDMETHODCALLTYPE GetClipPlane(DWORD Index, float* pPlane) override { return real_->GetClipPlane(Index, pPlane); }
+    HRESULT STDMETHODCALLTYPE SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) override { return real_->SetRenderState(State, Value); }
+    HRESULT STDMETHODCALLTYPE GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) override { return real_->GetRenderState(State, pValue); }
+    HRESULT STDMETHODCALLTYPE CreateStateBlock(D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB) override { return real_->CreateStateBlock(Type, ppSB); }
+    HRESULT STDMETHODCALLTYPE BeginStateBlock() override { return real_->BeginStateBlock(); }
+    HRESULT STDMETHODCALLTYPE EndStateBlock(IDirect3DStateBlock9** ppSB) override { return real_->EndStateBlock(ppSB); }
+    HRESULT STDMETHODCALLTYPE SetClipStatus(CONST D3DCLIPSTATUS9* pClipStatus) override { return real_->SetClipStatus(pClipStatus); }
+    HRESULT STDMETHODCALLTYPE GetClipStatus(D3DCLIPSTATUS9* pClipStatus) override { return real_->GetClipStatus(pClipStatus); }
+    HRESULT STDMETHODCALLTYPE GetTexture(DWORD Stage, IDirect3DBaseTexture9** ppTexture) override { return real_->GetTexture(Stage, ppTexture); }
+    HRESULT STDMETHODCALLTYPE SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture) override { return real_->SetTexture(Stage, pTexture); }
+    HRESULT STDMETHODCALLTYPE GetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue) override { return real_->GetTextureStageState(Stage, Type, pValue); }
+    HRESULT STDMETHODCALLTYPE SetTextureStageState(DWORD Stage, D3DTEXTURESTAGESTATETYPE Type, DWORD Value) override { return real_->SetTextureStageState(Stage, Type, Value); }
+    HRESULT STDMETHODCALLTYPE GetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD* pValue) override { return real_->GetSamplerState(Sampler, Type, pValue); }
+    HRESULT STDMETHODCALLTYPE SetSamplerState(DWORD Sampler, D3DSAMPLERSTATETYPE Type, DWORD Value) override { return real_->SetSamplerState(Sampler, Type, Value); }
+    HRESULT STDMETHODCALLTYPE ValidateDevice(DWORD* pNumPasses) override { return real_->ValidateDevice(pNumPasses); }
+    HRESULT STDMETHODCALLTYPE SetPaletteEntries(UINT PaletteNumber, CONST PALETTEENTRY* pEntries) override { return real_->SetPaletteEntries(PaletteNumber, pEntries); }
+    HRESULT STDMETHODCALLTYPE GetPaletteEntries(UINT PaletteNumber, PALETTEENTRY* pEntries) override { return real_->GetPaletteEntries(PaletteNumber, pEntries); }
+    HRESULT STDMETHODCALLTYPE SetCurrentTexturePalette(UINT PaletteNumber) override { return real_->SetCurrentTexturePalette(PaletteNumber); }
+    HRESULT STDMETHODCALLTYPE GetCurrentTexturePalette(UINT* PaletteNumber) override { return real_->GetCurrentTexturePalette(PaletteNumber); }
+    HRESULT STDMETHODCALLTYPE SetScissorRect(CONST RECT* pRect) override { return real_->SetScissorRect(pRect); }
+    HRESULT STDMETHODCALLTYPE GetScissorRect(RECT* pRect) override { return real_->GetScissorRect(pRect); }
+    HRESULT STDMETHODCALLTYPE SetSoftwareVertexProcessing(BOOL bSoftware) override { return real_->SetSoftwareVertexProcessing(bSoftware); }
+    BOOL STDMETHODCALLTYPE GetSoftwareVertexProcessing() override { return real_->GetSoftwareVertexProcessing(); }
+    HRESULT STDMETHODCALLTYPE SetNPatchMode(float nSegments) override { return real_->SetNPatchMode(nSegments); }
+    float STDMETHODCALLTYPE GetNPatchMode() override { return real_->GetNPatchMode(); }
+    HRESULT STDMETHODCALLTYPE DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount) override { return real_->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount); }
+    HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive(D3DPRIMITIVETYPE Type, INT BaseVertexIndex, UINT MinVertexIndex, UINT NumVertices, UINT startIndex, UINT primCount) override { return real_->DrawIndexedPrimitive(Type, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount); }
+    HRESULT STDMETHODCALLTYPE DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT PrimitiveCount, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride) override { return ProxyDrawPrimitiveUP(real_, PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride); }
+    HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType, UINT MinVertexIndex, UINT NumVertices, UINT PrimitiveCount, CONST void* pIndexData, D3DFORMAT IndexDataFormat, CONST void* pVertexStreamZeroData, UINT VertexStreamZeroStride) override { return real_->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride); }
+    HRESULT STDMETHODCALLTYPE ProcessVertices(UINT SrcStartIndex, UINT DestIndex, UINT VertexCount, IDirect3DVertexBuffer9* pDestBuffer, IDirect3DVertexDeclaration9* pVertexDecl, DWORD Flags) override { return real_->ProcessVertices(SrcStartIndex, DestIndex, VertexCount, pDestBuffer, pVertexDecl, Flags); }
+    HRESULT STDMETHODCALLTYPE CreateVertexDeclaration(CONST D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl) override { return real_->CreateVertexDeclaration(pVertexElements, ppDecl); }
+    HRESULT STDMETHODCALLTYPE SetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl) override { return real_->SetVertexDeclaration(pDecl); }
+    HRESULT STDMETHODCALLTYPE GetVertexDeclaration(IDirect3DVertexDeclaration9** ppDecl) override { return real_->GetVertexDeclaration(ppDecl); }
+    HRESULT STDMETHODCALLTYPE SetFVF(DWORD FVF) override { return real_->SetFVF(FVF); }
+    HRESULT STDMETHODCALLTYPE GetFVF(DWORD* pFVF) override { return real_->GetFVF(pFVF); }
+    HRESULT STDMETHODCALLTYPE CreateVertexShader(CONST DWORD* pFunction, IDirect3DVertexShader9** ppShader) override { return real_->CreateVertexShader(pFunction, ppShader); }
+    HRESULT STDMETHODCALLTYPE SetVertexShader(IDirect3DVertexShader9* pShader) override { return real_->SetVertexShader(pShader); }
+    HRESULT STDMETHODCALLTYPE GetVertexShader(IDirect3DVertexShader9** ppShader) override { return real_->GetVertexShader(ppShader); }
+    HRESULT STDMETHODCALLTYPE SetVertexShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount) override { return real_->SetVertexShaderConstantF(StartRegister, pConstantData, Vector4fCount); }
+    HRESULT STDMETHODCALLTYPE GetVertexShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount) override { return real_->GetVertexShaderConstantF(StartRegister, pConstantData, Vector4fCount); }
+    HRESULT STDMETHODCALLTYPE SetVertexShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount) override { return real_->SetVertexShaderConstantI(StartRegister, pConstantData, Vector4iCount); }
+    HRESULT STDMETHODCALLTYPE GetVertexShaderConstantI(UINT StartRegister, int* pConstantData, UINT Vector4iCount) override { return real_->GetVertexShaderConstantI(StartRegister, pConstantData, Vector4iCount); }
+    HRESULT STDMETHODCALLTYPE SetVertexShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount) override { return real_->SetVertexShaderConstantB(StartRegister, pConstantData, BoolCount); }
+    HRESULT STDMETHODCALLTYPE GetVertexShaderConstantB(UINT StartRegister, BOOL* pConstantData, UINT BoolCount) override { return real_->GetVertexShaderConstantB(StartRegister, pConstantData, BoolCount); }
+    HRESULT STDMETHODCALLTYPE SetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9* pStreamData, UINT OffsetInBytes, UINT Stride) override { return real_->SetStreamSource(StreamNumber, pStreamData, OffsetInBytes, Stride); }
+    HRESULT STDMETHODCALLTYPE GetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer9** ppStreamData, UINT* pOffsetInBytes, UINT* pStride) override { return real_->GetStreamSource(StreamNumber, ppStreamData, pOffsetInBytes, pStride); }
+    HRESULT STDMETHODCALLTYPE SetStreamSourceFreq(UINT StreamNumber, UINT Setting) override { return real_->SetStreamSourceFreq(StreamNumber, Setting); }
+    HRESULT STDMETHODCALLTYPE GetStreamSourceFreq(UINT StreamNumber, UINT* pSetting) override { return real_->GetStreamSourceFreq(StreamNumber, pSetting); }
+    HRESULT STDMETHODCALLTYPE SetIndices(IDirect3DIndexBuffer9* pIndexData) override { return real_->SetIndices(pIndexData); }
+    HRESULT STDMETHODCALLTYPE GetIndices(IDirect3DIndexBuffer9** ppIndexData) override { return real_->GetIndices(ppIndexData); }
+    HRESULT STDMETHODCALLTYPE CreatePixelShader(CONST DWORD* pFunction, IDirect3DPixelShader9** ppShader) override { return real_->CreatePixelShader(pFunction, ppShader); }
+    HRESULT STDMETHODCALLTYPE SetPixelShader(IDirect3DPixelShader9* pShader) override { return real_->SetPixelShader(pShader); }
+    HRESULT STDMETHODCALLTYPE GetPixelShader(IDirect3DPixelShader9** ppShader) override { return real_->GetPixelShader(ppShader); }
+    HRESULT STDMETHODCALLTYPE SetPixelShaderConstantF(UINT StartRegister, CONST float* pConstantData, UINT Vector4fCount) override { return real_->SetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount); }
+    HRESULT STDMETHODCALLTYPE GetPixelShaderConstantF(UINT StartRegister, float* pConstantData, UINT Vector4fCount) override { return real_->GetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount); }
+    HRESULT STDMETHODCALLTYPE SetPixelShaderConstantI(UINT StartRegister, CONST int* pConstantData, UINT Vector4iCount) override { return real_->SetPixelShaderConstantI(StartRegister, pConstantData, Vector4iCount); }
+    HRESULT STDMETHODCALLTYPE GetPixelShaderConstantI(UINT StartRegister, int* pConstantData, UINT Vector4iCount) override { return real_->GetPixelShaderConstantI(StartRegister, pConstantData, Vector4iCount); }
+    HRESULT STDMETHODCALLTYPE SetPixelShaderConstantB(UINT StartRegister, CONST BOOL* pConstantData, UINT BoolCount) override { return real_->SetPixelShaderConstantB(StartRegister, pConstantData, BoolCount); }
+    HRESULT STDMETHODCALLTYPE GetPixelShaderConstantB(UINT StartRegister, BOOL* pConstantData, UINT BoolCount) override { return real_->GetPixelShaderConstantB(StartRegister, pConstantData, BoolCount); }
+    HRESULT STDMETHODCALLTYPE DrawRectPatch(UINT Handle, CONST float* pNumSegs, CONST D3DRECTPATCH_INFO* pRectPatchInfo) override { return real_->DrawRectPatch(Handle, pNumSegs, pRectPatchInfo); }
+    HRESULT STDMETHODCALLTYPE DrawTriPatch(UINT Handle, CONST float* pNumSegs, CONST D3DTRIPATCH_INFO* pTriPatchInfo) override { return real_->DrawTriPatch(Handle, pNumSegs, pTriPatchInfo); }
+    HRESULT STDMETHODCALLTYPE DeletePatch(UINT Handle) override { return real_->DeletePatch(Handle); }
+    HRESULT STDMETHODCALLTYPE CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) override { return real_->CreateQuery(Type, ppQuery); }
+    HRESULT STDMETHODCALLTYPE SetConvolutionMonoKernel(UINT width, UINT height, float* rows, float* columns) override { return real_->SetConvolutionMonoKernel(width, height, rows, columns); }
+    HRESULT STDMETHODCALLTYPE ComposeRects(IDirect3DSurface9* pSrc, IDirect3DSurface9* pDst, IDirect3DVertexBuffer9* pSrcRectDescs, UINT NumRects, IDirect3DVertexBuffer9* pDstRectDescs, D3DCOMPOSERECTSOP Operation, int Xoffset, int Yoffset) override { return real_->ComposeRects(pSrc, pDst, pSrcRectDescs, NumRects, pDstRectDescs, Operation, Xoffset, Yoffset); }
+    HRESULT STDMETHODCALLTYPE PresentEx(CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion, DWORD dwFlags) override { return real_->PresentEx(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags); }
+    HRESULT STDMETHODCALLTYPE GetGPUThreadPriority(INT* pPriority) override { return real_->GetGPUThreadPriority(pPriority); }
+    HRESULT STDMETHODCALLTYPE SetGPUThreadPriority(INT Priority) override { return real_->SetGPUThreadPriority(Priority); }
+    HRESULT STDMETHODCALLTYPE WaitForVBlank(UINT iSwapChain) override { return real_->WaitForVBlank(iSwapChain); }
+    HRESULT STDMETHODCALLTYPE CheckResourceResidency(IDirect3DResource9** pResourceArray, UINT32 NumResources) override { return real_->CheckResourceResidency(pResourceArray, NumResources); }
+    HRESULT STDMETHODCALLTYPE SetMaximumFrameLatency(UINT MaxLatency) override { return real_->SetMaximumFrameLatency(MaxLatency); }
+    HRESULT STDMETHODCALLTYPE GetMaximumFrameLatency(UINT* pMaxLatency) override { return real_->GetMaximumFrameLatency(pMaxLatency); }
+    HRESULT STDMETHODCALLTYPE CheckDeviceState(HWND hDestinationWindow) override { return real_->CheckDeviceState(hDestinationWindow); }
+    HRESULT STDMETHODCALLTYPE CreateRenderTargetEx(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle, DWORD Usage) override { return real_->CreateRenderTargetEx(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, ppSurface, pSharedHandle, Usage); }
+    HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurfaceEx(UINT Width, UINT Height, D3DFORMAT Format, D3DPOOL Pool, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle, DWORD Usage) override { return real_->CreateOffscreenPlainSurfaceEx(Width, Height, Format, Pool, ppSurface, pSharedHandle, Usage); }
+    HRESULT STDMETHODCALLTYPE CreateDepthStencilSurfaceEx(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality, BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle, DWORD Usage) override { return real_->CreateDepthStencilSurfaceEx(Width, Height, Format, MultiSample, MultisampleQuality, Discard, ppSurface, pSharedHandle, Usage); }
+    HRESULT STDMETHODCALLTYPE ResetEx(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode) override { return ProxyResetEx(real_, pPresentationParameters, pFullscreenDisplayMode); }
+    HRESULT STDMETHODCALLTYPE GetDisplayModeEx(UINT iSwapChain, D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation) override { return real_->GetDisplayModeEx(iSwapChain, pMode, pRotation); }
+
+private:
+    IDirect3DDevice9Ex* real_;
+};
+
+static HRESULT WrapDeviceEx(IDirect3DDevice9Ex* real, IDirect3DDevice9Ex** out)
+{
+    if (!out)
+        return E_POINTER;
+    *out = nullptr;
+    if (!real)
+        return D3DERR_INVALIDCALL;
+
+    D3DDevice9ExProxy* proxy = new (std::nothrow) D3DDevice9ExProxy(real);
+    if (!proxy)
+    {
+        real->Release();
+        return E_OUTOFMEMORY;
+    }
+    *out = proxy;
+    Log("Created D3D device proxy: real=%p proxy=%p", real, proxy);
+    return S_OK;
+}
+
+static HRESULT WrapDevice9(IDirect3DDevice9* realBase, IDirect3DDevice9** out)
+{
+    if (!out)
+        return E_POINTER;
+    if (!realBase)
+        return D3DERR_INVALIDCALL;
+
+    IDirect3DDevice9Ex* realEx = nullptr;
+    if (SUCCEEDED(realBase->QueryInterface(IID_IDirect3DDevice9Ex, (void**)&realEx)) && realEx)
+    {
+        realBase->Release();
+        IDirect3DDevice9Ex* proxy = nullptr;
+        HRESULT wrapHr = WrapDeviceEx(realEx, &proxy);
+        *out = proxy;
+        return wrapHr;
+    }
+
+    *out = realBase;
+    return S_OK;
+}
+
+class D3D9ExProxy : public IDirect3D9Ex
+{
+public:
+    explicit D3D9ExProxy(IDirect3D9Ex* real) : real_(real) {}
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObj) override
+    {
+        if (!ppvObj)
+            return E_POINTER;
+        if (IsEqualGUID(riid, IID_IUnknown) ||
+            IsEqualGUID(riid, IID_IDirect3D9) ||
+            IsEqualGUID(riid, IID_IDirect3D9Ex))
+        {
+            *ppvObj = static_cast<IDirect3D9Ex*>(this);
+            AddRef();
+            return S_OK;
+        }
+        return real_->QueryInterface(riid, ppvObj);
+    }
+
+    ULONG STDMETHODCALLTYPE AddRef() override { return real_->AddRef(); }
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG refs = real_->Release();
+        if (refs == 0)
+            delete this;
+        return refs;
+    }
+
+    HRESULT STDMETHODCALLTYPE RegisterSoftwareDevice(void* pInitializeFunction) override { return real_->RegisterSoftwareDevice(pInitializeFunction); }
+    UINT STDMETHODCALLTYPE GetAdapterCount() override { return real_->GetAdapterCount(); }
+    HRESULT STDMETHODCALLTYPE GetAdapterIdentifier(UINT Adapter, DWORD Flags, D3DADAPTER_IDENTIFIER9* pIdentifier) override { return real_->GetAdapterIdentifier(Adapter, Flags, pIdentifier); }
+    UINT STDMETHODCALLTYPE GetAdapterModeCount(UINT Adapter, D3DFORMAT Format) override { return real_->GetAdapterModeCount(Adapter, Format); }
+    HRESULT STDMETHODCALLTYPE EnumAdapterModes(UINT Adapter, D3DFORMAT Format, UINT Mode, D3DDISPLAYMODE* pMode) override { return real_->EnumAdapterModes(Adapter, Format, Mode, pMode); }
+    HRESULT STDMETHODCALLTYPE GetAdapterDisplayMode(UINT Adapter, D3DDISPLAYMODE* pMode) override { return real_->GetAdapterDisplayMode(Adapter, pMode); }
+    HRESULT STDMETHODCALLTYPE CheckDeviceType(UINT Adapter, D3DDEVTYPE DevType, D3DFORMAT AdapterFormat, D3DFORMAT BackBufferFormat, BOOL bWindowed) override { return real_->CheckDeviceType(Adapter, DevType, AdapterFormat, BackBufferFormat, bWindowed); }
+    HRESULT STDMETHODCALLTYPE CheckDeviceFormat(UINT Adapter, D3DDEVTYPE DeviceType, D3DFORMAT AdapterFormat, DWORD Usage, D3DRESOURCETYPE RType, D3DFORMAT CheckFormat) override { return real_->CheckDeviceFormat(Adapter, DeviceType, AdapterFormat, Usage, RType, CheckFormat); }
+    HRESULT STDMETHODCALLTYPE CheckDeviceMultiSampleType(UINT Adapter, D3DDEVTYPE DeviceType, D3DFORMAT SurfaceFormat, BOOL Windowed, D3DMULTISAMPLE_TYPE MultiSampleType, DWORD* pQualityLevels) override { return real_->CheckDeviceMultiSampleType(Adapter, DeviceType, SurfaceFormat, Windowed, MultiSampleType, pQualityLevels); }
+    HRESULT STDMETHODCALLTYPE CheckDepthStencilMatch(UINT Adapter, D3DDEVTYPE DeviceType, D3DFORMAT AdapterFormat, D3DFORMAT RenderTargetFormat, D3DFORMAT DepthStencilFormat) override { return real_->CheckDepthStencilMatch(Adapter, DeviceType, AdapterFormat, RenderTargetFormat, DepthStencilFormat); }
+    HRESULT STDMETHODCALLTYPE CheckDeviceFormatConversion(UINT Adapter, D3DDEVTYPE DeviceType, D3DFORMAT SourceFormat, D3DFORMAT TargetFormat) override { return real_->CheckDeviceFormatConversion(Adapter, DeviceType, SourceFormat, TargetFormat); }
+    HRESULT STDMETHODCALLTYPE GetDeviceCaps(UINT Adapter, D3DDEVTYPE DeviceType, D3DCAPS9* pCaps) override { return real_->GetDeviceCaps(Adapter, DeviceType, pCaps); }
+    HMONITOR STDMETHODCALLTYPE GetAdapterMonitor(UINT Adapter) override { return real_->GetAdapterMonitor(Adapter); }
+    HRESULT STDMETHODCALLTYPE CreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface) override
+    {
+        HRESULT hr = real_->CreateDevice(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface);
+        if (SUCCEEDED(hr) && ppReturnedDeviceInterface && *ppReturnedDeviceInterface)
+            hr = WrapDevice9(*ppReturnedDeviceInterface, ppReturnedDeviceInterface);
+        return hr;
+    }
+    UINT STDMETHODCALLTYPE GetAdapterModeCountEx(UINT Adapter, CONST D3DDISPLAYMODEFILTER* pFilter) override { return real_->GetAdapterModeCountEx(Adapter, pFilter); }
+    HRESULT STDMETHODCALLTYPE EnumAdapterModesEx(UINT Adapter, CONST D3DDISPLAYMODEFILTER* pFilter, UINT Mode, D3DDISPLAYMODEEX* pMode) override { return real_->EnumAdapterModesEx(Adapter, pFilter, Mode, pMode); }
+    HRESULT STDMETHODCALLTYPE GetAdapterDisplayModeEx(UINT Adapter, D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation) override { return real_->GetAdapterDisplayModeEx(Adapter, pMode, pRotation); }
+    HRESULT STDMETHODCALLTYPE CreateDeviceEx(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode, IDirect3DDevice9Ex** ppReturnedDeviceInterface) override
+    {
+        HRESULT hr = real_->CreateDeviceEx(Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, pFullscreenDisplayMode, ppReturnedDeviceInterface);
+        if (SUCCEEDED(hr) && ppReturnedDeviceInterface && *ppReturnedDeviceInterface)
+            hr = WrapDeviceEx(*ppReturnedDeviceInterface, ppReturnedDeviceInterface);
+        return hr;
+    }
+    HRESULT STDMETHODCALLTYPE GetAdapterLUID(UINT Adapter, LUID* pLUID) override { return real_->GetAdapterLUID(Adapter, pLUID); }
+
+private:
+    IDirect3D9Ex* real_;
+};
+
+typedef HRESULT (WINAPI *Direct3DCreate9ExReal_t)(UINT, IDirect3D9Ex**);
+
+static Direct3DCreate9ExReal_t ResolveDirect3DCreate9Ex()
+{
+    static Direct3DCreate9ExReal_t fn = nullptr;
+    if (fn)
+        return fn;
+
+    HMODULE d3d9 = GetModuleHandleA("d3d9.dll");
+    if (!d3d9)
+        d3d9 = LoadLibraryA("d3d9.dll");
+    if (d3d9)
+        fn = (Direct3DCreate9ExReal_t)GetProcAddress(d3d9, "Direct3DCreate9Ex");
+    return fn;
+}
+
+#if defined(_M_IX86)
+#pragma comment(linker, "/EXPORT:BohDirect3DCreate9Ex=_BohDirect3DCreate9Ex@8")
+#endif
+
+extern "C" __declspec(dllexport) HRESULT WINAPI BohDirect3DCreate9Ex(
+    UINT SDKVersion,
+    IDirect3D9Ex** ppD3D)
+{
+    if (!ppD3D)
+        return E_POINTER;
+    *ppD3D = nullptr;
+
+    Direct3DCreate9ExReal_t realFn = ResolveDirect3DCreate9Ex();
+    if (!realFn)
+        return D3DERR_NOTAVAILABLE;
+
+    IDirect3D9Ex* real = nullptr;
+    HRESULT hr = realFn(SDKVersion, &real);
+    if (FAILED(hr) || !real)
+        return hr;
+
+    D3D9ExProxy* proxy = new (std::nothrow) D3D9ExProxy(real);
+    if (!proxy)
+    {
+        real->Release();
+        return E_OUTOFMEMORY;
+    }
+
+    *ppD3D = proxy;
+    Log("Created D3D9Ex proxy: real=%p proxy=%p", real, proxy);
+    return hr;
+}
+
+static void Initialize()
+{
+    LoadConfig();
+    ResolveDirect3DCreate9Ex();
+    Log("D3D proxy mode initialized; waiting for static WARP bridge call");
+}
+#endif
 
 // ============================================================================
 // Layered GDI window overlay — no D3D interaction, completely safe
@@ -719,6 +1228,7 @@ static DWORD WINAPI OverlayThread(LPVOID)
     while (!g_shutdown)
     {
         loopCount++;
+        SyncClientOptions();
         if (IsWindow(gameWnd) && IsWindow(g_overlayWnd))
         {
             // Real network ping via ICMP (once per second)
@@ -781,11 +1291,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID)
         g_hModule = hModule;
         DisableThreadLibraryCalls(hModule);
         Log("DLL_PROCESS_ATTACH: module=%p", hModule);
-        LoadConfig();
-        if (!PatchIAT())
-            Log("IAT patch failed, overlay will not work");
-        else
-            Log("IAT patch applied, waiting for game to create D3D device...");
+        Initialize();
         g_thread = CreateThread(nullptr, 0, OverlayThread, nullptr, 0, nullptr);
         break;
 
@@ -804,15 +1310,19 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID)
                 // Thread may still be running.  Do NOT destroy g_overlayWnd
                 // or restore the vtable — the thread could be using them.
                 // The OS will reclaim everything on process exit.
+#if !BOH_FPS_D3D_PROXY
                 RestoreIat();
+#endif
                 DestroyOverlayResources();
                 break;
             }
             CloseHandle(g_thread);
             g_thread = nullptr;
         }
+#if !BOH_FPS_D3D_PROXY
         RestoreIat();
         RestoreVtable();
+#endif
         DestroyOverlayResources();
         if (g_overlayWnd && IsWindow(g_overlayWnd))
             DestroyWindow(g_overlayWnd);
@@ -835,12 +1345,40 @@ static LONG ToggleFlag(volatile LONG* flag)
 
 extern "C" __declspec(dllexport) void ToggleFpsOverlay()
 {
-    ToggleFlag(&g_showFps);
+    if (!BohLicense::IsEnabled(FEATURE_FPS_OVERLAY))
+        return;
+    const LONG enabled = ToggleFlag(&g_showFps);
+    WriteClientOption(kFpsOverlayOption, enabled != FALSE);
 }
 
 extern "C" __declspec(dllexport) void TogglePingOverlay()
 {
-    ToggleFlag(&g_showFrameMs);
+    if (!BohLicense::IsEnabled(FEATURE_PING_OVERLAY))
+        return;
+    const LONG enabled = ToggleFlag(&g_showFrameMs);
+    WriteClientOption(kPingOverlayOption, enabled != FALSE);
+}
+
+extern "C" __declspec(dllexport) void SetFpsPingOverlayOption(
+    uint32_t optionId,
+    int enabled)
+{
+    if (optionId == kFpsOverlayOption &&
+        BohLicense::IsEnabled(FEATURE_FPS_OVERLAY))
+    {
+        SetFlag(&g_showFps, enabled != 0);
+        WriteClientOption(optionId, enabled != 0);
+        g_fpsOptionSynced = true;
+        return;
+    }
+
+    if (optionId == kPingOverlayOption &&
+        BohLicense::IsEnabled(FEATURE_PING_OVERLAY))
+    {
+        SetFlag(&g_showFrameMs, enabled != 0);
+        WriteClientOption(optionId, enabled != 0);
+        g_pingOptionSynced = true;
+    }
 }
 
 // Backward-compatible combined toggle for older import specs.

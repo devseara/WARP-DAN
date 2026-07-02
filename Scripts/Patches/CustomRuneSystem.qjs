@@ -25,7 +25,9 @@
 /// This patch keeps the only EXE-side code change tiny:
 ///   1. Skip the stock "Please remove the equipped Rune Set." client guard.
 ///   2. Add the rune visual DLL as a normal startup import using CustomDLL's
-///      import-table builder. The DLL handles the multi-row visual stack.
+///      import-table builder.
+///   3. Install all rune visual bridges at WARP patch time. The DLL is passive
+///      at runtime and does not write EXE code, IATs, or vtables.
 ///
 CustomRuneSystem = function(_)
 {
@@ -103,14 +105,246 @@ CustomRuneSystem.addVisualDll = function(_)
 	);
 
 	$$(_, 3, `Add Rune visual DLL through the CustomDLL import-table builder`);
-	return CustomDLL.applySpec(`${_}.CustomDLL`, [
+	const result = CustomDLL.applySpec(`${_}.CustomDLL`, [
 		{
 			Name: dllName,
 			Funcs: [
-				{Name: "RuneVisualInit"}
+				{Name: "RuneVisualInit"},
+				{Name: "RuneRefreshHook"},
+				{Name: "RuneSelectedEquippedGetter"},
+				{Name: "RuneEquipPaneDrawBridge"},
+				{Name: "RuneImageDrawBridge"},
+				{Name: "RuneTextDrawBridge"},
+				{Name: "RuneEquipPaneClickBridge"},
+				{Name: "RuneEquipPaneTooltipBridge"},
+				{Name: "RuneSurfaceOverlayDraw"}
 			]
 		}
 	]);
+
+	CustomRuneSystem.installStaticVisualBridges(`${_}.StaticVisual`, dllName);
+	if (typeof CustomDLL.addRefreshHook === "function")
+	{
+		CustomDLL.addRefreshHook(
+			`${_}.StaticVisual`,
+			function() { return CustomRuneSystem.installStaticVisualBridges(`${_}.StaticVisual`, dllName); }
+		);
+	}
+
+	return result;
+};
+
+CustomRuneSystem.findIat = function(dllName, exportName)
+{
+	const iat = (
+		typeof CustomDLL !== "undefined" &&
+		typeof CustomDLL.findIat === "function"
+	)
+		? CustomDLL.findIat(exportName, dllName)
+		: Exe.FindFunc(exportName, dllName);
+	if (iat < 0)
+		throw Error(`CustomRuneSystem: import not found: ${dllName}!${exportName}`);
+	return iat;
+};
+
+CustomRuneSystem.hexNorm = function(hex)
+{
+	return (hex || "").replace(/\s+/g, " ").trim().toUpperCase();
+};
+
+CustomRuneSystem.verifyRelativeCall = function(label, callPhy, expectedTarget, allowedTarget)
+{
+	if (Exe.GetUint8(callPhy) !== 0xE8)
+		throw Error(`CustomRuneSystem: ${label} is not a relative CALL`);
+
+	const target = Exe.GetTgtAddr(callPhy + 1);
+	if (target !== expectedTarget && target !== allowedTarget)
+		throw Error(
+			`CustomRuneSystem: ${label} expected 0x${expectedTarget.toString(16)}` +
+			`, got 0x${target.toString(16)}`
+		);
+
+	return target;
+};
+
+CustomRuneSystem.installCallBridge = function(stateByLabel, spec, dllName)
+{
+	const callPhy = Exe.Vir2Phy(spec.callVir, CODE);
+	if (callPhy < 0)
+		throw Error(`CustomRuneSystem: ${spec.label} call site is not mapped`);
+
+	let state = stateByLabel[spec.label];
+	const currentTarget = Exe.GetUint8(callPhy) === 0xE8
+		? Exe.GetTgtAddr(callPhy + 1)
+		: -1;
+	if (!state || typeof state.cavePhy !== "number" ||
+	    typeof state.caveVir !== "number")
+	{
+		CustomRuneSystem.verifyRelativeCall(
+			spec.label,
+			callPhy,
+			spec.expectedTarget,
+			spec.expectedTarget
+		);
+		const cave = Exe.Allocate(0x10, 0x10);
+		state = {
+			callVir: spec.callVir,
+			expectedTarget: spec.expectedTarget,
+			cavePhy: cave[0],
+			caveVir: cave[1]
+		};
+	}
+	else if (currentTarget !== state.caveVir && currentTarget !== spec.expectedTarget)
+	{
+		throw Error(
+			`CustomRuneSystem: ${spec.label} already calls 0x${currentTarget.toString(16)}`
+		);
+	}
+
+	const iat = CustomRuneSystem.findIat(dllName, spec.exportName);
+	Exe.SetHex(state.cavePhy, ' FF 25 ' + iat.toHex());
+	Exe.SetCALL(callPhy, state.caveVir, 0);
+	state.iat = iat;
+	stateByLabel[spec.label] = state;
+};
+
+CustomRuneSystem.installPrologueBridge = function(stateByLabel, spec, dllName)
+{
+	const sitePhy = Exe.Vir2Phy(spec.siteVir, CODE);
+	if (sitePhy < 0)
+		throw Error(`CustomRuneSystem: ${spec.label} entry is not mapped`);
+
+	let state = stateByLabel[spec.label];
+	const op = Exe.GetUint8(sitePhy);
+	const currentTarget = op === 0xE9 ? Exe.GetTgtAddr(sitePhy + 1) : -1;
+	if (!state || typeof state.bridgePhy !== "number" ||
+	    typeof state.bridgeVir !== "number" ||
+	    typeof state.trampolinePhy !== "number" ||
+	    typeof state.trampolineVir !== "number")
+	{
+		const actual = CustomRuneSystem.hexNorm(Exe.GetHex(sitePhy, spec.stolenLen));
+		const expected = CustomRuneSystem.hexNorm(spec.expectedHex);
+		if (actual !== expected)
+			throw Error(
+				`CustomRuneSystem: ${spec.label} prologue mismatch, got ${actual}`
+			);
+
+		const trampoline = Exe.Allocate(spec.stolenLen + 5, 0x10);
+		const bridge = Exe.Allocate(0x20, 0x10);
+		state = {
+			siteVir: spec.siteVir,
+			stolenLen: spec.stolenLen,
+			stolenHex: actual,
+			trampolinePhy: trampoline[0],
+			trampolineVir: trampoline[1],
+			bridgePhy: bridge[0],
+			bridgeVir: bridge[1]
+		};
+	}
+	else if (currentTarget !== state.bridgeVir &&
+	         CustomRuneSystem.hexNorm(Exe.GetHex(sitePhy, spec.stolenLen)) !== state.stolenHex)
+	{
+		throw Error(
+			`CustomRuneSystem: ${spec.label} already starts with unsupported bytes`
+		);
+	}
+
+	const iat = CustomRuneSystem.findIat(dllName, spec.exportName);
+	Exe.SetHex(
+		state.trampolinePhy,
+		state.stolenHex + JMP(spec.siteVir + spec.stolenLen, state.trampolineVir + spec.stolenLen)
+	);
+	Exe.SetHex(
+		state.bridgePhy,
+		' FF 34 24'                       // PUSH DWORD PTR [ESP] ; duplicate return address
+		+ ' C7 44 24 04 ' + state.trampolineVir.toHex() // MOV [ESP+4], trampoline
+		+ ' FF 25 ' + iat.toHex()
+	);
+	Exe.SetJMP(sitePhy, state.bridgeVir, spec.stolenLen - 5);
+	state.iat = iat;
+	stateByLabel[spec.label] = state;
+};
+
+CustomRuneSystem.installSurfaceBridge = function(stateByLabel, spec, dllName)
+{
+	const entryPhy = Exe.Vir2Phy(spec.entryVir);
+	if (entryPhy < 0)
+		throw Error(`CustomRuneSystem: ${spec.label} vtable entry is not mapped`);
+
+	let state = stateByLabel[spec.label];
+	const current = Exe.GetUint32(entryPhy);
+	if (!state || typeof state.cavePhy !== "number" ||
+	    typeof state.caveVir !== "number")
+	{
+		if (current !== spec.originalVir)
+			throw Error(
+				`CustomRuneSystem: ${spec.label} expected 0x${spec.originalVir.toString(16)}` +
+				`, got 0x${current.toString(16)}`
+			);
+
+		const cave = Exe.Allocate(0x10, 0x10);
+		state = {
+			entryVir: spec.entryVir,
+			originalVir: spec.originalVir,
+			cavePhy: cave[0],
+			caveVir: cave[1]
+		};
+	}
+	else if (current !== state.caveVir && current !== spec.originalVir)
+	{
+		throw Error(
+			`CustomRuneSystem: ${spec.label} already points to 0x${current.toString(16)}`
+		);
+	}
+
+	const iat = CustomRuneSystem.findIat(dllName, spec.exportName);
+	Exe.SetHex(state.cavePhy, ' FF 25 ' + iat.toHex());
+	Exe.SetUint32(entryPhy, state.caveVir);
+	state.iat = iat;
+	stateByLabel[spec.label] = state;
+};
+
+CustomRuneSystem.installStaticVisualBridges = function(_, dllName)
+{
+	if (Exe.BuildDate !== 20250716)
+		throw Error("CustomRuneSystem static visual bridges support only the 2025-07-16 client");
+
+	const callSpecs = [
+		{label: "rune refresh call 1", callVir: 0x00CF953F, expectedTarget: 0x00730B40, exportName: "RuneRefreshHook"},
+		{label: "rune refresh call 2", callVir: 0x00CF9591, expectedTarget: 0x00730B40, exportName: "RuneRefreshHook"},
+		{label: "preview selected getter", callVir: 0x007E69D6, expectedTarget: 0x0072F140, exportName: "RuneSelectedEquippedGetter"},
+		{label: "button selected getter 1", callVir: 0x007E5C12, expectedTarget: 0x0072F140, exportName: "RuneSelectedEquippedGetter"},
+		{label: "button selected getter 2", callVir: 0x007E5E47, expectedTarget: 0x0072F140, exportName: "RuneSelectedEquippedGetter"},
+		{label: "button selected getter 3", callVir: 0x007E5E56, expectedTarget: 0x0072F140, exportName: "RuneSelectedEquippedGetter"}
+	];
+	const prologueSpecs = [
+		{label: "equip pane draw", siteVir: 0x007E1610, stolenLen: 5, expectedHex: "55 8B EC 6A FF", exportName: "RuneEquipPaneDrawBridge"},
+		{label: "image draw", siteVir: 0x00A1D260, stolenLen: 7, expectedHex: "55 8B EC 56 8B 71 24", exportName: "RuneImageDrawBridge"},
+		{label: "text draw", siteVir: 0x00A25A70, stolenLen: 5, expectedHex: "55 8B EC 6A FF", exportName: "RuneTextDrawBridge"},
+		{label: "equip pane click", siteVir: 0x007E4B70, stolenLen: 6, expectedHex: "55 8B EC 57 8B F9", exportName: "RuneEquipPaneClickBridge"},
+		{label: "equip pane tooltip", siteVir: 0x007E4CC0, stolenLen: 6, expectedHex: "55 8B EC 83 EC 10", exportName: "RuneEquipPaneTooltipBridge"}
+	];
+	const surfaceSpec = {
+		label: "surface overlay draw",
+		entryVir: 0x00FD5D24,
+		originalVir: 0x0053F560,
+		exportName: "RuneSurfaceOverlayDraw"
+	};
+
+	const cacheKey = 'CustomRuneSystem.StaticVisualBridges';
+	const stateByLabel = CACHE.get(cacheKey) ?? {};
+	for (const spec of callSpecs)
+		CustomRuneSystem.installCallBridge(stateByLabel, spec, dllName);
+	for (const spec of prologueSpecs)
+		CustomRuneSystem.installPrologueBridge(stateByLabel, spec, dllName);
+	CustomRuneSystem.installSurfaceBridge(stateByLabel, surfaceSpec, dllName);
+	CACHE.put(cacheKey, stateByLabel);
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add('CustomRuneSystem.StaticVisualBridges', stateByLabel);
+
+	return true;
 };
 
 CustomRuneSystem.validate = () =>

@@ -31,10 +31,11 @@
 
 InGamePincodeUI = function(_)
 {
-    if (typeof CustomDLL === "undefined" ||
-        typeof CustomDLL.applySpec !== "function" ||
-        typeof CustomDLL.findIat !== "function")
-        throw Error("InGamePincodeUI: CustomDLL helper unavailable");
+	if (typeof CustomDLL === "undefined" ||
+	    typeof CustomDLL.applySpec !== "function" ||
+	    typeof CustomDLL.getDllName !== "function" ||
+	    typeof CustomDLL.findIat !== "function")
+		throw Error("InGamePincodeUI: CustomDLL helper unavailable");
 
     ROC.findImports();
 
@@ -47,7 +48,13 @@ InGamePincodeUI = function(_)
     if (ROC.GetModHandle < 0 || ROC.GetProcAddr < 0)
         throw Error("InGamePincodeUI: GetModuleHandleA/GetProcAddress imports missing");
 
-    const dllName = "bohcustoms.dll";
+	const dllName = CustomDLL.getDllName(
+		'$pincodeUiDLLName',
+		"Pincode UI DLL",
+		"Enter the PIN UI DLL filename. Use boh_pincode_ui.dll for the dedicated no-runtime-hook Gepard build. Avoid boh.dll/bohcustoms.dll unless that combined DLL was built with runtime-hook features disabled.",
+		"boh_pincode_ui.dll",
+		"boh_pincode_ui.dll"
+	);
     CustomDLL.applySpec(`${_}.CustomDLL`, [{
         Name: dllName,
         Funcs: [
@@ -430,7 +437,7 @@ InGamePincodeUI.makeMainStub = function(options)
     hasSessionOffset = bytes.length;
     emitDebug(options.logCallVir);
 
-    emit(0x68); emit32(options.dllNameVir);      // push "bohcustoms.dll"
+	emit(0x68); emit32(options.dllNameVir);      // push selected PIN UI DLL
     emit(0xFF, 0x15); emit32(options.getModuleHandleAVir); // call [GetModuleHandleA]
     emit(0x85, 0xC0);                            // test eax, eax
     emitResolveFailJcc(0x84);                    // jz resolveFail

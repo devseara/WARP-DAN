@@ -9,8 +9,9 @@ the player is already in-game. It is paired with the BanquetOfHeroes
 ## Client Flow
 
 1. Map server sends variable-length packet `0x0BEF` with magic `PINC`.
-2. `Scripts/Patches/InGamePincodeUI.qjs` routes that packet to
-   `bohcustoms.dll!PincodeUIShow`.
+2. `Scripts/Patches/InGamePincodeUI.qjs` routes that packet to the selected
+   PIN UI DLL's `PincodeUIShow` export. For Gepard builds, use the dedicated
+   `boh_pincode_ui.dll` rather than the combined `bohcustoms.dll`.
 3. `CustomDLL/src/pincode_ui/pincode_ui.cpp` creates a child window inside the
    Ragnarok game window, using the native pincode art from the client's
    GRF-aware file system.
@@ -25,8 +26,10 @@ the player is already in-game. It is paired with the BanquetOfHeroes
   route and native packet sender stubs.
 - `CustomDLL/src/pincode_ui/pincode_ui.cpp` owns the Win32 keypad UI, pincode
   encryption, state transitions, and button rendering.
-- `CustomDLL/src/build.bat` compiles `pincode_ui.cpp` into the combined
-  `boh.dll`/`bohcustoms.dll`.
+- `CustomDLL/src/build_split.bat` compiles `pincode_ui.cpp` into the dedicated
+  `boh_pincode_ui.dll`, which is the strict no-runtime-hook Gepard target.
+- `CustomDLL/src/build.bat` can still compile it into the combined DLL, but only
+  use that combined DLL with Gepard when every runtime-hook feature flag is off.
 - `Patches/Special.yml` exposes the `InGamePincodeUI` patch.
 
 ## Assets

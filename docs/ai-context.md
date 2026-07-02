@@ -1543,6 +1543,22 @@ See `CustomDLL/src/rune_visual/boh_rune_visual.cpp`:
 
 After 50+ build iterations, the multi-balloon approach is confirmed working. Architecture:
 
+#### Gepard-safe conversion (2026-06-30)
+
+The runtime DLL trampoline at `0xC77820` has been superseded for Gepard builds.
+`AlwaysShowNpcName.qjs` now patches the single direct caller
+`0x00C7642D -> 0x00C77820` on disk to call a WARP code cave. The cave calls the
+original updater first, then calls imported `NpcNameOverlayFrame(gameMode)` from
+`boh_npc_names.dll`. The DLL no longer calls `VirtualProtect`, allocates a
+gateway, restores stolen bytes, or writes EXE code at runtime.
+
+NPC discovery no longer requires `boh_text.dll`/GDI hooks in strict profiles:
+`AlwaysShowNpcName.qjs` installs the dispatcher-table EXTN route for `0x0BB7`,
+and `boh_npc_names.dll` drains that shared ring from `NpcNameOverlayFrame`.
+Remaining approval surfaces for Gepard are static EXE patch locations, not
+runtime hooks: frame caller `0x00C7642D`, dispatcher table base `0x00CAA2E0`,
+and `0x0BB7` entry `0x00CACFF0`.
+
 ```
 Hook at 0xC77820 (5-byte trampoline, vtable guard)
   → Creates one UINameBalloonText per NPC via factory (0xC714B0)

@@ -41,13 +41,20 @@ FpsOverlay = function(_)
 		Name: dllName,
 		Funcs: [
 			{Name: "FpsPingOverlayInit"},
-			{Name: "ToggleFpsOverlay"}
+			{Name: "ToggleFpsOverlay"},
+			{Name: "SetFpsPingOverlayOption"},
+			{Name: "BohDirect3DCreate9Ex"}
 		]
 	}]);
 
+	FpsOverlay.installD3DBridge(`${_}.D3DBridge`, dllName);
+	FpsOverlay.addD3DRefreshHook(_, dllName);
+
 	FpsOverlay.installSlashCmd(`${_}.SlashCommands`, dllName, {
 		command: "/fps",
-		exportName: "ToggleFpsOverlay"
+		exportName: "ToggleFpsOverlay",
+		optionId: 10002,
+		settingsExportName: "SetFpsPingOverlayOption"
 	});
 	return true;
 };
@@ -63,6 +70,81 @@ FpsOverlay.getDllName = function()
 	);
 };
 
+FpsOverlay.findIat = function(dllName, exportName)
+{
+	const iat = (
+		typeof CustomDLL !== "undefined" &&
+		typeof CustomDLL.findIat === "function"
+	)
+		? CustomDLL.findIat(exportName, dllName)
+		: Exe.FindFunc(exportName, dllName);
+	if (iat < 0)
+		throw Error(`FpsOverlay: import not found: ${dllName}!${exportName}`);
+	return iat;
+};
+
+FpsOverlay.patchImportOperand = function(label, virAddr, expectedModRM, iat)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`FpsOverlay: ${label} address is not mapped`);
+
+	const op = Exe.GetUint8(phyAddr);
+	const modrm = Exe.GetUint8(phyAddr + 1);
+	if (op !== 0xFF || modrm !== expectedModRM)
+		throw Error(
+			`FpsOverlay: ${label} opcode mismatch at 0x${virAddr.toString(16)}` +
+			`, got ${op.toString(16)} ${modrm.toString(16)}`
+		);
+
+	Exe.SetUint32(phyAddr + 2, iat);
+};
+
+FpsOverlay.verifyRelativeCall = function(label, virAddr, expectedTarget)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`FpsOverlay: ${label} address is not mapped`);
+	if (Exe.GetUint8(phyAddr) !== 0xE8)
+		throw Error(`FpsOverlay: ${label} is not a relative call`);
+	const target = Exe.GetTgtAddr(phyAddr + 1);
+	if (target !== expectedTarget)
+		throw Error(
+			`FpsOverlay: ${label} expected target 0x${expectedTarget.toString(16)}` +
+			`, got 0x${target.toString(16)}`
+		);
+};
+
+FpsOverlay.installD3DBridge = function(_, dllName)
+{
+	if (Exe.BuildDate !== 20250716)
+		throw Error("FpsOverlay D3D bridge supports only the 2025-07-16 client");
+
+	const iat = FpsOverlay.findIat(dllName, "BohDirect3DCreate9Ex");
+	FpsOverlay.verifyRelativeCall("Direct3DCreate9Ex call 1", 0x00542C3A, 0x00DBD97D);
+	FpsOverlay.verifyRelativeCall("Direct3DCreate9Ex call 2", 0x0056478A, 0x00DBD97D);
+	FpsOverlay.verifyRelativeCall("Direct3DCreate9Ex call 3", 0x00564D0A, 0x00DBD97D);
+	FpsOverlay.patchImportOperand("Direct3DCreate9Ex import thunk", 0x00DBD97D, 0x25, iat);
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add('FpsOverlay.D3DBridge', {dllName, iat});
+
+	return true;
+};
+
+FpsOverlay.addD3DRefreshHook = function(_, dllName)
+{
+	if (typeof CustomDLL === "undefined" ||
+	    typeof CustomDLL.addRefreshHook !== "function")
+		return;
+
+	CustomDLL.addRefreshHook(
+		`${_}.D3DBridge`,
+		function() { return FpsOverlay.installD3DBridge(`${_}.D3DBridge`, dllName); }
+	);
+};
+
 FpsOverlay.installSlashCmd = function(_, dllName, spec)
 {
 	if (typeof CustomSlashCommand === "undefined" ||
@@ -75,12 +157,16 @@ FpsOverlay.installSlashCmd = function(_, dllName, spec)
 	CustomSlashCommand.register(_, {
 		command: spec.command,
 		dllName,
-		exportName: spec.exportName
+		exportName: spec.exportName,
+		optionId: Number.isInteger(spec.optionId) ? spec.optionId : null,
+		settingsExportName: IsStr(spec.settingsExportName)
+			? spec.settingsExportName
+			: null
 	});
 	return true;
 };
 
 FpsOverlay.validate = function()
 {
-	return Exe.BuildDate > 0;
+	return Exe.BuildDate === 20250716;
 };

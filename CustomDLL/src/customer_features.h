@@ -4,12 +4,15 @@
 // 1 = enabled (paid), 0 = disabled (not paid)
 // This is COMPILED INTO boh.dll — no runtime file to tamper with.
 
-#define BOH_ITEM_COLORS     1
-#define BOH_EXTENDED_NAMES  1
-#define BOH_RUNE_VISUAL     1
-#define BOH_FPS_OVERLAY     1
-#define BOH_PING_OVERLAY    1
+// Gepard static-bridge combined build: enable only modules whose hook surfaces
+// are installed by WARP at patch time. Do not enable BOH_WEAPON_SPRITE until
+// the dual-wield weapon sprite patch is working and separately audited.
+#define BOH_ITEM_COLORS      1
+#define BOH_EXTENDED_NAMES   1
+#define BOH_RUNE_VISUAL      1
+#define BOH_FPS_OVERLAY      1
+#define BOH_PING_OVERLAY     1
 #define BOH_NPC_NAME_OVERLAY 1
 #define BOH_INVENTORY_TABS   1
-#define BOH_PINCODE_UI      1
-#define BOH_WEAPON_SPRITE   0
+#define BOH_PINCODE_UI       1
+#define BOH_WEAPON_SPRITE    0

@@ -3,6 +3,11 @@
 // The overlay reuses the client's native actor-name balloon setup and mirrors
 // its above-head placement when /font is enabled. /shownpcname only controls
 // whether the additional NPC balloons exist.
+//
+// Gepard-safe model: WARP patches the EXE on disk so the known frame caller
+// invokes NpcNameOverlayFrame after the original game function returns. This
+// DLL never patches EXE code, IAT entries, vtables, or system DLL exports at
+// runtime.
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -16,7 +21,6 @@
 #include "boh_features.h"
 
 static constexpr DWORD kBase = 0x00400000;
-static constexpr DWORD kHook = 0x00C77820;
 static constexpr DWORD kFact = 0x00C714B0;
 static constexpr DWORD kSetup = 0x00C6D1D0;
 static constexpr DWORD kGetAct = 0x00A69EB0;
@@ -30,6 +34,18 @@ static constexpr DWORD kVtab = 0x010904B8;
 static constexpr DWORD kStaleNpcMs = 10000;
 static constexpr DWORD kNameAboveHeadOption = 0x5C;
 static constexpr DWORD kShowNpcNameOption = 10001;
+static constexpr uint16_t kExtNamePacketId = 0x0BB7;
+static constexpr uint16_t kExtNamePacketLen = 233;
+static constexpr uint32_t kExtNameMagic = 0x4558544E; // 'EXTN'
+static constexpr uint32_t kExtNameRingMagic = 0x474E4952; // 'RING'
+static constexpr uint32_t kExtNameRingCapacity = 128;
+static constexpr uint32_t kExtNameRingHeaderSize = 16;
+static constexpr uint32_t kExtNameRingSlotSize = 256;
+static constexpr uint32_t kExtNameRingPayloadSize =
+	kExtNameRingSlotSize - sizeof(uint32_t);
+static constexpr DWORD kPacketDispatchTable = 0x00CAA2E0;
+static constexpr uint16_t kPacketDispatchFirstId = 0x0073;
+static constexpr DWORD kClippedRetryMs = 250;
 
 enum : DWORD
 {
@@ -38,7 +54,6 @@ enum : DWORD
 	O_HG = 0x2D8,
 };
 
-using FnOrig = void (__thiscall*)(void*);
 using FnFact = void (__stdcall*)(void**);
 using FnSetup = void (__thiscall*)(void*, void*);
 using FnGetAct = void* (__thiscall*)(void*, DWORD);
@@ -48,12 +63,12 @@ using FnSetOption = bool (__cdecl*)(DWORD, int);
 using FnSetPosition = void (__thiscall*)(void*, int, int);
 
 static DWORD g_base;
-static BYTE g_stolen[5];
-static void* g_trampoline;
-static volatile LONG g_hookInstalled;
 static volatile LONG g_enabled;
 static volatile bool g_down;
-static HANDLE g_thread;
+static BYTE* g_extnBlock;
+static bool g_extnProbeComplete;
+static uint32_t g_extnReadSequence;
+static bool g_optionSynced;
 
 // Value is the last EXTN refresh tick. Names are rendered from the actor's
 // interned 0x0ADF string, so retaining another copy here is unnecessary.
@@ -69,78 +84,353 @@ struct NpcBalloon
 
 static std::unordered_map<uint32_t, NpcBalloon> g_balloons;
 static std::unordered_map<uint32_t, DWORD> g_missingSince;
+static std::unordered_map<uint32_t, DWORD> g_clippedUntil;
+static void* g_lastGameMode;
+static DWORD g_lastWorldManager;
+static DWORD g_suppressUntil;
 
 static DWORD Rebase(DWORD address)
 {
 	return g_base + (address - kBase);
 }
 
-static bool PatchJump(
-	DWORD address,
-	void* target,
-	BYTE* stolen,
-	SIZE_T stolenLength,
-	void** trampoline)
+static bool EnsureBase()
 {
-	BYTE* source = reinterpret_cast<BYTE*>(Rebase(address));
-	CopyMemory(stolen, source, stolenLength);
-
-	BYTE* gateway = reinterpret_cast<BYTE*>(VirtualAlloc(
-		nullptr,
-		stolenLength + 5,
-		MEM_COMMIT | MEM_RESERVE,
-		PAGE_EXECUTE_READWRITE));
-	if (!gateway)
-		return false;
-
-	CopyMemory(gateway, stolen, stolenLength);
-	gateway[stolenLength] = 0xE9;
-	*reinterpret_cast<int32_t*>(gateway + stolenLength + 1) =
-		static_cast<int32_t>(
-			(source + stolenLength) - (gateway + stolenLength + 5));
-
-	DWORD oldProtect = 0;
-	if (!VirtualProtect(
-			source,
-			stolenLength,
-			PAGE_EXECUTE_READWRITE,
-			&oldProtect))
-	{
-		VirtualFree(gateway, 0, MEM_RELEASE);
-		return false;
-	}
-
-	source[0] = 0xE9;
-	*reinterpret_cast<int32_t*>(source + 1) =
-		static_cast<int32_t>(reinterpret_cast<BYTE*>(target) - (source + 5));
-	for (SIZE_T i = 5; i < stolenLength; ++i)
-		source[i] = 0x90;
-
-	FlushInstructionCache(GetCurrentProcess(), source, stolenLength);
-	VirtualProtect(source, stolenLength, oldProtect, &oldProtect);
-	*trampoline = gateway;
-	return true;
+	if (!g_base)
+		g_base = reinterpret_cast<DWORD>(GetModuleHandleA(nullptr));
+	return g_base != 0;
 }
 
-static void RestorePatchedBytes(DWORD address, BYTE* stolen, SIZE_T stolenLength)
+static bool SafeReadDword(const void* ptr, DWORD* out)
 {
-	if (!g_base || !stolen || stolenLength < 5)
-		return;
+	if (!ptr || !out)
+		return false;
 
-	BYTE* source = reinterpret_cast<BYTE*>(Rebase(address));
-	DWORD oldProtect = 0;
-	if (!VirtualProtect(
-			source,
-			stolenLength,
-			PAGE_EXECUTE_READWRITE,
-			&oldProtect))
+	__try
 	{
-		return;
+		*out = *reinterpret_cast<const DWORD*>(ptr);
+		return true;
 	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
 
-	CopyMemory(source, stolen, stolenLength);
-	FlushInstructionCache(GetCurrentProcess(), source, stolenLength);
-	VirtualProtect(source, stolenLength, oldProtect, &oldProtect);
+static bool SafeReadPtr(const void* ptr, void** out)
+{
+	if (!ptr || !out)
+		return false;
+
+	__try
+	{
+		*out = *reinterpret_cast<void* const*>(ptr);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SafeReadFloat(const void* ptr, float* out)
+{
+	if (!ptr || !out)
+		return false;
+
+	__try
+	{
+		*out = *reinterpret_cast<const float*>(ptr);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SafeWriteDword(void* ptr, DWORD value)
+{
+	if (!ptr)
+		return false;
+
+	__try
+	{
+		*reinterpret_cast<DWORD*>(ptr) = value;
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SafeWritePtr(void* ptr, void* value)
+{
+	if (!ptr)
+		return false;
+
+	__try
+	{
+		*reinterpret_cast<void**>(ptr) = value;
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SafeGetOption(FnGetOption getOption, DWORD option, bool* out)
+{
+	if (!getOption || !out)
+		return false;
+
+	__try
+	{
+		*out = getOption(option);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SafeSetOption(FnSetOption setOption, DWORD option, int value)
+{
+	if (!setOption)
+		return false;
+
+	__try
+	{
+		return setOption(option, value) != false;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SafeGetActor(
+	FnGetAct getActor,
+	void* worldManager,
+	DWORD gid,
+	void** out)
+{
+	if (!getActor || !worldManager || !out)
+		return false;
+
+	__try
+	{
+		*out = getActor(worldManager, gid);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		*out = nullptr;
+		return false;
+	}
+}
+
+static bool SafeFactory(FnFact factory, void** slot)
+{
+	if (!factory || !slot)
+		return false;
+
+	__try
+	{
+		factory(slot);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SafeDestroy(FnDestroy destroy, void* uiManager, void* balloon)
+{
+	if (!destroy || !uiManager || !balloon)
+		return false;
+
+	__try
+	{
+		destroy(uiManager, balloon);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SafeSetup(FnSetup setup, void* gameMode, void* actor)
+{
+	if (!setup || !gameMode || !actor)
+		return false;
+
+	__try
+	{
+		setup(gameMode, actor);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SafeSetPosition(
+	FnSetPosition setPosition,
+	void* balloon,
+	int x,
+	int y)
+{
+	if (!setPosition || !balloon)
+		return false;
+
+	__try
+	{
+		setPosition(balloon, x, y);
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool SyncEnabledFromClientOption()
+{
+	if (g_optionSynced || !EnsureBase())
+		return g_optionSynced;
+
+	__try
+	{
+		auto getOption = reinterpret_cast<FnGetOption>(Rebase(kGetOption));
+		auto setOption = reinterpret_cast<FnSetOption>(Rebase(kSetOption));
+		bool enabled = false;
+		if (!SafeGetOption(getOption, kShowNpcNameOption, &enabled))
+			return false;
+		if (!SafeSetOption(setOption, kShowNpcNameOption, enabled ? 1 : 0))
+			return false;
+
+		InterlockedExchange(&g_enabled, enabled ? 1 : 0);
+		g_optionSynced = true;
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return false;
+	}
+}
+
+static bool IsValidExtnSharedBlock(BYTE* candidate)
+{
+	if (!candidate)
+		return false;
+
+	uint32_t magic = *reinterpret_cast<uint32_t*>(candidate);
+	if (magic != kExtNameMagic)
+		return false;
+
+	uint32_t readyOrSequence =
+		*reinterpret_cast<uint32_t*>(candidate + 4);
+	uint32_t lengthOrFormat =
+		*reinterpret_cast<uint32_t*>(candidate + 8);
+	uint32_t capacity =
+		*reinterpret_cast<uint32_t*>(candidate + 12);
+	if (lengthOrFormat == kExtNameRingMagic &&
+		capacity == kExtNameRingCapacity)
+		return true;
+
+	return (readyOrSequence == 0 || readyOrSequence == 1) &&
+		lengthOrFormat <= 4092;
+}
+
+static BYTE* NormalizeExeVa(BYTE* exe, uintptr_t value)
+{
+	const uintptr_t exeBase = reinterpret_cast<uintptr_t>(exe);
+	const uintptr_t scanEnd = exeBase + 64 * 1024 * 1024;
+	if (value >= exeBase && value < scanEnd)
+		return reinterpret_cast<BYTE*>(value);
+	if (value >= kBase && value < kBase + 64 * 1024 * 1024)
+		return exe + (value - kBase);
+	return nullptr;
+}
+
+static BYTE* FindActiveExtnDispatcherBlock()
+{
+	HMODULE exeModule = GetModuleHandleW(nullptr);
+	if (!exeModule)
+		return nullptr;
+
+	BYTE* exe = reinterpret_cast<BYTE*>(exeModule);
+	__try
+	{
+		const uintptr_t entryOffset =
+			kPacketDispatchTable - kBase +
+			(kExtNamePacketId - kPacketDispatchFirstId) * sizeof(uint32_t);
+		DWORD handlerVa = *reinterpret_cast<DWORD*>(exe + entryOffset);
+		BYTE* handler = NormalizeExeVa(exe, handlerVa);
+		if (!handler)
+			return nullptr;
+
+		if (handler[0] != 0x9C || handler[1] != 0x60 ||
+			handler[2] != 0xBE)
+			return nullptr;
+		if (*reinterpret_cast<uint16_t*>(handler + 10) != kExtNamePacketId)
+			return nullptr;
+
+		DWORD blockVa = *reinterpret_cast<DWORD*>(handler + 35);
+		BYTE* block = NormalizeExeVa(exe, blockVa);
+		return IsValidExtnSharedBlock(block) ? block : nullptr;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return nullptr;
+	}
+}
+
+static BYTE* FindExtnSharedBlock()
+{
+	BYTE* active = FindActiveExtnDispatcherBlock();
+	if (active)
+		return active;
+
+	HMODULE exe = GetModuleHandleW(nullptr);
+	if (!exe)
+		return nullptr;
+
+	BYTE* start = reinterpret_cast<BYTE*>(exe);
+	const size_t scanSize = 64 * 1024 * 1024;
+	__try
+	{
+		for (size_t offset = 0; offset < scanSize - 16; offset += 4)
+		{
+			BYTE* candidate = start + offset;
+			if (*reinterpret_cast<uint32_t*>(candidate) != kExtNameMagic)
+				continue;
+
+			if (IsValidExtnSharedBlock(candidate))
+				return candidate;
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+	}
+	return nullptr;
+}
+
+static BYTE* ProbeExtnSharedBlock()
+{
+	if (!g_extnProbeComplete)
+	{
+		g_extnBlock = FindExtnSharedBlock();
+		g_extnProbeComplete = true;
+	}
+	return g_extnBlock;
 }
 
 static void DestroyAllBalloons(FnDestroy destroy, void* uiManager)
@@ -148,10 +438,123 @@ static void DestroyAllBalloons(FnDestroy destroy, void* uiManager)
 	for (const auto& entry : g_balloons)
 	{
 		if (entry.second.ptr)
-			destroy(uiManager, entry.second.ptr);
+			SafeDestroy(destroy, uiManager, entry.second.ptr);
 	}
 	g_balloons.clear();
 	g_missingSince.clear();
+	g_clippedUntil.clear();
+}
+
+static void ClearKnownNpcs()
+{
+	std::lock_guard<std::mutex> lock(g_knownMutex);
+	g_knownNpcs.clear();
+	g_knownSnapshot.clear();
+	InterlockedExchange(&g_knownDirty, 1);
+}
+
+static void ResetOverlayState(bool clearKnown)
+{
+	if (EnsureBase())
+	{
+		auto destroy = reinterpret_cast<FnDestroy>(Rebase(kDestroy));
+		void* uiManager = reinterpret_cast<void*>(Rebase(kUiMgr));
+		DestroyAllBalloons(destroy, uiManager);
+	}
+	else
+	{
+		g_balloons.clear();
+		g_missingSince.clear();
+		g_clippedUntil.clear();
+	}
+
+	if (clearKnown)
+		ClearKnownNpcs();
+}
+
+static bool TickBefore(DWORD now, DWORD future)
+{
+	return static_cast<LONG>(now - future) < 0;
+}
+
+static bool BeginNpcFrame(void* gameMode, DWORD* worldManagerOut)
+{
+	if (g_down || !gameMode || !worldManagerOut || !EnsureBase())
+		return false;
+
+	const DWORD now = GetTickCount();
+	if (g_suppressUntil && TickBefore(now, g_suppressUntil))
+		return false;
+	g_suppressUntil = 0;
+
+	BYTE* gm = reinterpret_cast<BYTE*>(gameMode);
+	DWORD vtable = 0;
+	if (!SafeReadDword(gm, &vtable) || vtable != Rebase(kVtab))
+	{
+		if (g_lastGameMode || g_lastWorldManager)
+		{
+			ResetOverlayState(true);
+			g_lastGameMode = nullptr;
+			g_lastWorldManager = 0;
+		}
+		return false;
+	}
+
+	DWORD worldManager = 0;
+	if (!SafeReadDword(gm + O_WM, &worldManager) || !worldManager)
+	{
+		if (g_lastGameMode || g_lastWorldManager)
+		{
+			ResetOverlayState(true);
+			g_lastGameMode = nullptr;
+			g_lastWorldManager = 0;
+		}
+		return false;
+	}
+
+	if (g_lastGameMode != gameMode || g_lastWorldManager != worldManager)
+	{
+		ResetOverlayState(true);
+		g_lastGameMode = gameMode;
+		g_lastWorldManager = worldManager;
+	}
+
+	*worldManagerOut = worldManager;
+	return true;
+}
+
+static bool IsBalloonViewportClamped(
+	void* ptr,
+	int viewportWidth,
+	int viewportHeight)
+{
+	if (!ptr || viewportWidth <= 0 || viewportHeight <= 0)
+		return false;
+
+	BYTE* balloon = reinterpret_cast<BYTE*>(ptr);
+	DWORD rawWidth = 0;
+	DWORD rawHeight = 0;
+	DWORD rawX = 0;
+	DWORD rawY = 0;
+	if (!SafeReadDword(balloon + 0x14, &rawWidth) ||
+	    !SafeReadDword(balloon + 0x18, &rawHeight) ||
+	    !SafeReadDword(balloon + 0x1C, &rawX) ||
+	    !SafeReadDword(balloon + 0x20, &rawY))
+		return true;
+
+	const int width = static_cast<int>(rawWidth);
+	const int height = static_cast<int>(rawHeight);
+	const int x = static_cast<int>(rawX);
+	const int y = static_cast<int>(rawY);
+	if (width <= 0 || height <= 0 ||
+	    width > viewportWidth + 512 ||
+	    height > viewportHeight + 512)
+		return false;
+
+	const int minClamp = -3;
+	const int maxX = viewportWidth - width + 3;
+	const int maxY = viewportHeight - height + 3;
+	return x <= minClamp || y <= minClamp || x >= maxX || y >= maxY;
 }
 
 // type: 0=PC, 1=MOB, 2=NPC, 3=portal NPC.
@@ -174,17 +577,117 @@ extern "C" __declspec(dllexport) void NpcOverlay_OnExtName(
 	InterlockedExchange(&g_knownDirty, 1);
 }
 
+static void ParseExtnNpcPacket(BYTE* data, uint32_t length)
+{
+	bool hasHeader = false;
+	uint32_t offset = 2;
+	if (length >= kExtNamePacketLen)
+	{
+		uint16_t packetLength = *reinterpret_cast<uint16_t*>(data + 2);
+		uint32_t magic = *reinterpret_cast<uint32_t*>(data + 4);
+		hasHeader =
+			packetLength == kExtNamePacketLen &&
+			magic == kExtNameMagic;
+	}
+
+	if (hasHeader)
+		offset = 8;
+	else if (length < 226)
+		return;
+
+	if (*reinterpret_cast<uint16_t*>(data) != kExtNamePacketId)
+		return;
+	if (length < offset + 4 + 24 + 31)
+		return;
+
+	uint32_t gid = *reinterpret_cast<uint32_t*>(data + offset);
+	char* shortName = reinterpret_cast<char*>(data + offset + 4);
+	char* extName = reinterpret_cast<char*>(data + offset + 4 + 24);
+	shortName[23] = '\0';
+	extName[30] = '\0';
+
+	uint8_t type = 0;
+	if (hasHeader)
+		type = *reinterpret_cast<uint8_t*>(data + 232);
+	else if (length >= 227)
+		type = *reinterpret_cast<uint8_t*>(data + 226);
+
+	NpcOverlay_OnExtName(gid, type, extName[0] ? extName : shortName);
+}
+
+static void DrainExtnRing(BYTE* base)
+{
+	volatile uint32_t* writeSequence =
+		reinterpret_cast<volatile uint32_t*>(base + 4);
+	for (;;)
+	{
+		uint32_t published = *writeSequence;
+		MemoryBarrier();
+		uint32_t pending = published - g_extnReadSequence;
+		if (pending == 0)
+			break;
+		if (pending > kExtNameRingCapacity)
+			g_extnReadSequence = published - kExtNameRingCapacity;
+
+		uint32_t slotIndex =
+			g_extnReadSequence & (kExtNameRingCapacity - 1);
+		BYTE* slot =
+			base + kExtNameRingHeaderSize +
+			slotIndex * kExtNameRingSlotSize;
+		uint32_t length = *reinterpret_cast<volatile uint32_t*>(slot);
+		MemoryBarrier();
+
+		if (length > 0 && length <= kExtNameRingPayloadSize)
+		{
+			BYTE packet[kExtNameRingPayloadSize];
+			CopyMemory(packet, slot + sizeof(uint32_t), length);
+			ParseExtnNpcPacket(packet, length);
+		}
+		++g_extnReadSequence;
+	}
+}
+
+static void PollExtnSharedBlock()
+{
+	BYTE* base = ProbeExtnSharedBlock();
+	if (!base)
+		return;
+
+	uint32_t format = *reinterpret_cast<uint32_t*>(base + 8);
+	uint32_t capacity = *reinterpret_cast<uint32_t*>(base + 12);
+	if (format == kExtNameRingMagic &&
+		capacity == kExtNameRingCapacity)
+	{
+		DrainExtnRing(base);
+		return;
+	}
+
+	volatile uint32_t* ready =
+		reinterpret_cast<volatile uint32_t*>(base + 4);
+	if (*ready != 1)
+		return;
+
+	uint32_t length = *reinterpret_cast<uint32_t*>(base + 8);
+	if (length > 0 && length <= 4092)
+		ParseExtnNpcPacket(base + 12, length);
+	*ready = 0;
+}
+
 extern "C" __declspec(dllexport) void ToggleNpcNameOverlay()
 {
+	if (!BohLicense::IsEnabled(FEATURE_NPC_NAME_OVERLAY))
+		return;
+
 	const LONG current = InterlockedCompareExchange(&g_enabled, 0, 0);
 	const LONG enabled = current ? 0 : 1;
 	InterlockedExchange(&g_enabled, enabled);
 
-	if (g_base)
+	if (EnsureBase())
 	{
 		auto setOption = reinterpret_cast<FnSetOption>(Rebase(kSetOption));
-		setOption(kShowNpcNameOption, enabled != 0);
+		SafeSetOption(setOption, kShowNpcNameOption, enabled != 0);
 	}
+	g_optionSynced = true;
 }
 
 // Called by the WARP Game Settings bridge. Only the custom NPC option is
@@ -195,40 +698,32 @@ extern "C" __declspec(dllexport) void SetNpcNameOverlayOption(
 	uint32_t optionId,
 	int enabled)
 {
+	if (!BohLicense::IsEnabled(FEATURE_NPC_NAME_OVERLAY))
+		return;
+
 	const LONG value = enabled ? 1 : 0;
 	if (optionId == kShowNpcNameOption)
 	{
 		InterlockedExchange(&g_enabled, value);
-		if (g_base)
+		if (EnsureBase())
 		{
 			auto setOption =
 				reinterpret_cast<FnSetOption>(Rebase(kSetOption));
-			setOption(optionId, value != 0);
+			SafeSetOption(setOption, optionId, value != 0);
 		}
+		g_optionSynced = true;
 	}
 }
 
-extern "C" void __fastcall BalloonHook(void* gameMode)
+static void RenderNpcBalloons(void* gameMode, DWORD worldManager)
 {
-	auto original = reinterpret_cast<FnOrig>(g_trampoline);
-	if (!original)
+	if (g_down || !gameMode || !EnsureBase())
 		return;
-
-	if (g_down)
-	{
-		original(gameMode);
-		return;
-	}
 
 	BYTE* gm = reinterpret_cast<BYTE*>(gameMode);
-	if (*reinterpret_cast<DWORD*>(gm) != Rebase(kVtab))
-	{
-		original(gameMode);
+	DWORD savedHoverGid = 0;
+	if (!SafeReadDword(gm + O_HG, &savedHoverGid))
 		return;
-	}
-
-	const DWORD savedHoverGid = *reinterpret_cast<DWORD*>(gm + O_HG);
-	original(gameMode);
 
 	auto destroy = reinterpret_cast<FnDestroy>(Rebase(kDestroy));
 	void* uiManager = reinterpret_cast<void*>(Rebase(kUiMgr));
@@ -239,7 +734,6 @@ extern "C" void __fastcall BalloonHook(void* gameMode)
 		return;
 	}
 
-	const DWORD worldManager = *reinterpret_cast<DWORD*>(gm + O_WM);
 	if (!worldManager)
 		return;
 
@@ -269,8 +763,9 @@ extern "C" void __fastcall BalloonHook(void* gameMode)
 				continue;
 			}
 			if (it->second.ptr)
-				destroy(uiManager, it->second.ptr);
+				SafeDestroy(destroy, uiManager, it->second.ptr);
 			g_missingSince.erase(it->first);
+			g_clippedUntil.erase(it->first);
 			it = g_balloons.erase(it);
 		}
 	}
@@ -282,11 +777,34 @@ extern "C" void __fastcall BalloonHook(void* gameMode)
 	auto getOption =
 		reinterpret_cast<FnGetOption>(Rebase(kGetOption));
 	void** mainSlot = reinterpret_cast<void**>(gm + O_BA);
-	void* savedMain = *mainSlot;
-	const bool nameAboveHead = getOption(kNameAboveHeadOption);
-	BYTE* viewport = *reinterpret_cast<BYTE**>(Rebase(kViewport));
+	void* savedMain = nullptr;
+	if (!SafeReadPtr(mainSlot, &savedMain))
+		return;
+
+	bool nameAboveHead = false;
+	SafeGetOption(getOption, kNameAboveHeadOption, &nameAboveHead);
+
+	BYTE* viewport = nullptr;
+	void* rawViewport = nullptr;
+	SafeReadPtr(reinterpret_cast<void*>(Rebase(kViewport)), &rawViewport);
+	viewport = reinterpret_cast<BYTE*>(rawViewport);
+	const int viewportWidth = viewport
+		? [] (BYTE* view) -> int
+		{
+			DWORD value = 0;
+			return SafeReadDword(view + 0x28, &value)
+				? static_cast<int>(value)
+				: 0;
+		}(viewport)
+		: 0;
 	const int viewportHeight = viewport
-		? *reinterpret_cast<int*>(viewport + 0x2C)
+		? [] (BYTE* view) -> int
+		{
+			DWORD value = 0;
+			return SafeReadDword(view + 0x2C, &value)
+				? static_cast<int>(value)
+				: 0;
+		}(viewport)
 		: 0;
 	const DWORD now = GetTickCount();
 	std::vector<std::pair<uint32_t, DWORD>> stale;
@@ -294,13 +812,26 @@ extern "C" void __fastcall BalloonHook(void* gameMode)
 	for (const auto& entry : g_knownSnapshot)
 	{
 		const uint32_t gid = entry.first;
-		void* actor = getActor(
+		if (g_balloons.find(gid) == g_balloons.end())
+		{
+			auto clipped = g_clippedUntil.find(gid);
+			if (clipped != g_clippedUntil.end() &&
+			    TickBefore(now, clipped->second))
+				continue;
+		}
+
+		void* actor = nullptr;
+		SafeGetActor(
+			getActor,
 			reinterpret_cast<void*>(worldManager),
-			gid);
+			gid,
+			&actor);
 		if (!actor)
-			actor = getActorFallback(
+			SafeGetActor(
+				getActorFallback,
 				reinterpret_cast<void*>(worldManager),
-				gid);
+				gid,
+				&actor);
 
 		auto balloon = g_balloons.find(gid);
 		if (!actor)
@@ -308,7 +839,7 @@ extern "C" void __fastcall BalloonHook(void* gameMode)
 			if (balloon != g_balloons.end())
 			{
 				if (balloon->second.ptr)
-					destroy(uiManager, balloon->second.ptr);
+					SafeDestroy(destroy, uiManager, balloon->second.ptr);
 				g_balloons.erase(balloon);
 			}
 
@@ -317,27 +848,61 @@ extern "C" void __fastcall BalloonHook(void* gameMode)
 				g_missingSince[gid] = now;
 			else if (now - missing->second >= kStaleNpcMs)
 				stale.push_back(entry);
+			g_clippedUntil.erase(gid);
 			continue;
 		}
 
 		g_missingSince.erase(gid);
-		void* internedName = *reinterpret_cast<void**>(
-			reinterpret_cast<BYTE*>(actor) + 0x110);
+		void* internedName = nullptr;
+		if (!SafeReadPtr(
+			reinterpret_cast<BYTE*>(actor) + 0x110,
+			&internedName))
+		{
+			g_suppressUntil = now + kClippedRetryMs;
+			continue;
+		}
 		if (!internedName)
 			continue;
 
 		if (balloon == g_balloons.end() || !balloon->second.ptr)
 		{
 			void* slot = nullptr;
-			factory(&slot);
+			if (!SafeFactory(factory, &slot))
+			{
+				g_suppressUntil = now + kClippedRetryMs;
+				continue;
+			}
 			if (!slot)
 				continue;
 			g_balloons[gid] = NpcBalloon{slot};
 			balloon = g_balloons.find(gid);
 		}
 
-		*mainSlot = balloon->second.ptr;
-		setup(gameMode, actor);
+		if (!SafeWritePtr(mainSlot, balloon->second.ptr))
+			return;
+		if (!SafeSetup(setup, gameMode, actor))
+		{
+			SafeWritePtr(mainSlot, savedMain);
+			SafeWriteDword(gm + O_HG, savedHoverGid);
+			ResetOverlayState(true);
+			g_suppressUntil = now + kClippedRetryMs;
+			return;
+		}
+
+		if (IsBalloonViewportClamped(
+			balloon->second.ptr,
+			viewportWidth,
+			viewportHeight))
+		{
+			SafeWritePtr(mainSlot, savedMain);
+			if (balloon->second.ptr)
+				SafeDestroy(destroy, uiManager, balloon->second.ptr);
+			g_balloons.erase(gid);
+			g_clippedUntil[gid] = now + kClippedRetryMs;
+			continue;
+		}
+
+		g_clippedUntil.erase(gid);
 
 		// Hover-style NPC balloons normally use the below-character branch in
 		// UpdateBalloonPos because NPC actors have no +0xA8 name anchor. Match
@@ -346,8 +911,11 @@ extern "C" void __fastcall BalloonHook(void* gameMode)
 		{
 			BYTE* balloonObject =
 				reinterpret_cast<BYTE*>(balloon->second.ptr);
-			const float actorScale = *reinterpret_cast<float*>(
-				reinterpret_cast<BYTE*>(actor) + 0x5C);
+			float actorScale = 0.0f;
+			if (!SafeReadFloat(
+				reinterpret_cast<BYTE*>(actor) + 0x5C,
+				&actorScale))
+				actorScale = 0.0f;
 			if (actorScale > 0.0f && actorScale < 10.0f)
 			{
 				const int belowBase = viewportHeight / 24;
@@ -356,25 +924,35 @@ extern "C" void __fastcall BalloonHook(void* gameMode)
 					static_cast<int>(belowBase * actorScale);
 				const int aboveOffset =
 					static_cast<int>(aboveBase * actorScale);
-				const int x = *reinterpret_cast<int*>(
-					balloonObject + 0x1C);
-				const int y = *reinterpret_cast<int*>(
-					balloonObject + 0x20);
-				void** vtable = *reinterpret_cast<void***>(
-					balloonObject);
-				auto setPosition =
-					reinterpret_cast<FnSetPosition>(vtable[4]);
-				setPosition(
-					balloonObject,
-					x,
-					y + aboveOffset - belowOffset);
+				DWORD rawX = 0;
+				DWORD rawY = 0;
+				void* rawVtable = nullptr;
+				if (SafeReadDword(balloonObject + 0x1C, &rawX) &&
+				    SafeReadDword(balloonObject + 0x20, &rawY) &&
+				    SafeReadPtr(balloonObject, &rawVtable))
+				{
+					void* rawSetPosition = nullptr;
+					SafeReadPtr(
+						reinterpret_cast<BYTE*>(rawVtable) +
+							sizeof(void*) * 4,
+						&rawSetPosition);
+					auto setPosition =
+						reinterpret_cast<FnSetPosition>(
+							rawSetPosition);
+					SafeSetPosition(
+						setPosition,
+						balloonObject,
+						static_cast<int>(rawX),
+						static_cast<int>(rawY) +
+							aboveOffset - belowOffset);
+				}
 			}
 		}
-		*mainSlot = savedMain;
+		SafeWritePtr(mainSlot, savedMain);
 	}
 
-	*mainSlot = savedMain;
-	*reinterpret_cast<DWORD*>(gm + O_HG) = savedHoverGid;
+	SafeWritePtr(mainSlot, savedMain);
+	SafeWriteDword(gm + O_HG, savedHoverGid);
 
 	if (!stale.empty())
 	{
@@ -390,30 +968,32 @@ extern "C" void __fastcall BalloonHook(void* gameMode)
 				erased = true;
 			}
 			g_missingSince.erase(entry.first);
+			g_clippedUntil.erase(entry.first);
 		}
 		if (erased)
 			InterlockedExchange(&g_knownDirty, 1);
 	}
 }
 
-static DWORD WINAPI MainThread(LPVOID)
+extern "C" __declspec(dllexport) void NpcNameOverlayFrame(void* gameMode)
 {
-	Sleep(200);
-	g_base = reinterpret_cast<DWORD>(GetModuleHandleA(nullptr));
-	if (PatchJump(
-			kHook,
-			reinterpret_cast<void*>(&BalloonHook),
-			g_stolen,
-			sizeof(g_stolen),
-			&g_trampoline))
-	{
-		InterlockedExchange(&g_hookInstalled, 1);
-	}
-	return 0;
+	if (!BohLicense::IsEnabled(FEATURE_NPC_NAME_OVERLAY))
+		return;
+
+	DWORD worldManager = 0;
+	if (!BeginNpcFrame(gameMode, &worldManager))
+		return;
+
+	SyncEnabledFromClientOption();
+	PollExtnSharedBlock();
+	RenderNpcBalloons(gameMode, worldManager);
 }
 
-BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID)
+BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID reserved)
 {
+	if (reason == DLL_PROCESS_DETACH && reserved != nullptr)
+		return TRUE;
+
 	switch (reason)
 	{
 	case DLL_PROCESS_ATTACH:
@@ -421,22 +1001,12 @@ BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID)
 			break;
 		DisableThreadLibraryCalls(module);
 		g_down = false;
-		g_hookInstalled = 0;
 		g_enabled = 0;
-		g_thread = CreateThread(nullptr, 0, MainThread, nullptr, 0, nullptr);
+		EnsureBase();
 		break;
 
 	case DLL_PROCESS_DETACH:
 		g_down = true;
-		if (g_thread)
-		{
-			WaitForSingleObject(g_thread, 3000);
-			CloseHandle(g_thread);
-			g_thread = nullptr;
-		}
-		if (InterlockedExchange(&g_hookInstalled, 0) != 0)
-			RestorePatchedBytes(kHook, g_stolen, sizeof(g_stolen));
-
 		// Drain C++ containers while CRT heap is intact — see
 		// ItemColorExtNameCleanup for the full explanation.
 		// NO LOCK: all other threads are dead during DETACH.
@@ -444,6 +1014,14 @@ BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID)
 		g_knownSnapshot.clear();
 		g_balloons.clear();
 		g_missingSince.clear();
+		g_clippedUntil.clear();
+		g_lastGameMode = nullptr;
+		g_lastWorldManager = 0;
+		g_suppressUntil = 0;
+		g_extnBlock = nullptr;
+		g_extnProbeComplete = false;
+		g_extnReadSequence = 0;
+		g_optionSynced = false;
 		break;
 	}
 	return TRUE;
