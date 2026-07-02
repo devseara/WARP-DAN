@@ -21,8 +21,7 @@ CustomBarterZenySep = function()
 	+	"A1 ?? ?? ?? ?? "
 	+	"33 C5 89 45 FC "
 	+	"56 8B 75 10 "
-	+	"85 F6 74 2D"
-	;
+	+	"85 F6 74 2D";
 
 	const fmtPhy = Exe.FindHex(fmtCode);
 	if (fmtPhy < 0)
@@ -30,7 +29,7 @@ CustomBarterZenySep = function()
 
 	const fmtFunc = Exe.Phy2Vir(fmtPhy, CODE);
 
-	$$(_ + '1.2 - Find the hook pattern (need 2nd match)')
+	$$(_ + '1.2 - Find both hook patterns')
 	const hookCode =
 		"E8 ?? ?? ?? ?? "
 	+	"8B BD ?? ?? ?? ?? "
@@ -38,22 +37,27 @@ CustomBarterZenySep = function()
 	+	"83 C4 ?? "
 	+	"8B CF "
 	+	"6A 00 6A 00 6A 0C 6A 00 6A 00 "
-	+	"50"
-	;
+	+	"50";
 
 	const addrs = Exe.FindHexN(2, hookCode);
 	if (addrs.length < 2)
 		throw Error("Hook pattern not found (expected 2 matches)");
 
-	$$(_ + '1.3 - hookAddr, drawFunc, retAddr')
-	const hookAddr = addrs[1];
+	$$(_ + '1.3 - Resolve hook #1')
+	const hookAddr1 = addrs[0];
+	const rel1      = Exe.GetInt32(hookAddr1 + 1);
+	const nextVir1  = Exe.Phy2Vir(hookAddr1 + 5, CODE);
+	const drawFunc1 = nextVir1 + rel1;
+	const retVir1   = nextVir1;
 
-	const rel      = Exe.GetInt32(hookAddr + 1);
-	const nextVir  = Exe.Phy2Vir(hookAddr + 5, CODE);
-	const drawFunc = nextVir + rel;
-	const retVir   = nextVir;
+	$$(_ + '1.4 - Resolve hook #2')
+	const hookAddr2 = addrs[1];
+	const rel2      = Exe.GetInt32(hookAddr2 + 1);
+	const nextVir2  = Exe.Phy2Vir(hookAddr2 + 5, CODE);
+	const drawFunc2 = nextVir2 + rel2;
+	const retVir2   = nextVir2;
 
-	$$(_ + '2.1 - Allocate space for string + buffer (separate from code cave)')
+	$$(_ + '2.1 - Allocate shared data for string + buffer')
 	const [dataPhy, dataVir] = Exe.Allocate(0x20, 0x10);
 	if (dataPhy < 0)
 		throw Error("No free space for data");
@@ -64,31 +68,57 @@ CustomBarterZenySep = function()
 	$$(_ + '2.2 - Write format string')
 	Exe.SetHex(dataPhy, "25 73 20 7A 00"); // "%s z\0"
 
-	$$(_ + '3.1 - Build code cave with pre-known addresses')
-	const code =
-		" 60"                                   // pushad
-	+	" 8B 44 24 30"                          // mov eax, [esp+30]  ; raw Zeny
-	+	" 68 04 01 00 00"                       // push 104
-	+	PUSH(bufVir)                            // push bufVir
-	+	" 6A 00"                               // push 0
-	+	" 50"                                  // push eax
-	+	CALL(Filler(1))                         // call fmtFunc
-	+	" 83 C4 10"                             // add esp, 10
-	+	" 61"                                   // popad
+	$$(_ + '3.1 - Build code cave for hook #1')
+	const code1 =
+		" 60"
+	+	" 8B 44 24 30"
+	+	" 68 04 01 00 00"
+	+	PUSH(bufVir)
+	+	" 6A 00"
+	+	" 50"
+	+	CALL(Filler(1))
+	+	" 83 C4 10"
+	+	" 61"
 	+	MOV([ESP, 0xC],  strVir)
 	+	MOV([ESP, 0x10], bufVir)
 	+	CALL(Filler(2))
-	+	JMP(Filler(3))
-	;
+	+	JMP(Filler(3));
 
-	$$(_ + '3.2 - AutoHook')
-	AutoHook(hookAddr, code,
+	$$(_ + '3.2 - Apply hook #1')
+	AutoHook(hookAddr1, code1,
 	{
 		targets :
 		{
 			1 : fmtFunc,
-			2 : drawFunc,
-			3 : retVir,
+			2 : drawFunc1,
+			3 : retVir1,
+		},
+	});
+
+	$$(_ + '4.1 - Build code cave for hook #2')
+	const code2 =
+		" 60"
+	+	" 8B 44 24 30"
+	+	" 68 04 01 00 00"
+	+	PUSH(bufVir)
+	+	" 6A 00"
+	+	" 50"
+	+	CALL(Filler(1))
+	+	" 83 C4 10"
+	+	" 61"
+	+	MOV([ESP, 0xC],  strVir)
+	+	MOV([ESP, 0x10], bufVir)
+	+	CALL(Filler(2))
+	+	JMP(Filler(3));
+
+	$$(_ + '4.2 - Apply hook #2')
+	AutoHook(hookAddr2, code2,
+	{
+		targets :
+		{
+			1 : fmtFunc,
+			2 : drawFunc2,
+			3 : retVir2,
 		},
 	});
 
