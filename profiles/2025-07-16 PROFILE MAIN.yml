@@ -276,7 +276,7 @@ patches:
     - NoHelpMsg
     - EnableNpcDialogueScrolling
     - CustomEnchantGradeLabels
-    - DisableExpensiveCharRender
+    - ReduceExpensiveUIRender
     - HideZeroDateInGuildWin
     - ShortcutForAll
     - EnableFlagAnimation

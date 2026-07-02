@@ -1,0 +1,231 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-02                                             *
+*   Last Modified : 2026-07-02                                             *
+*                                                                          *
+*   Description   : Reduces FPS loss from expensive UI rendering in the   *
+*                   2025-07-16 client by disabling heavy UI actor preview *
+*                   rendering and skipping ALT+S Skill Tree level-number  *
+*                   text. Static EXE patch only; no runtime hooks.        *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief Consolidated UI FPS patch for the 2025-07-16 client.
+///
+/// This intentionally merges the previous character-preview, Skill Tree avatar,
+/// and Skill Tree level-text FPS fixes into one production patch:
+/// - `UIDisplayCharacter::Draw` returns immediately.
+/// - Display-character factory outputs stay valid but are not added to parent
+///   render/update child lists.
+/// - The Skill Tree paperdoll frame is forced to 0.
+/// - Skill Tree level labels such as "5/5" and "10/10" are skipped.
+///
+ReduceExpensiveUIRender = function(_)
+{
+	$$(_, 1, `Reduce expensive UI rendering`);
+
+	ReduceExpensiveUIRender.patchDisplayCharacterDraw(_);
+	ReduceExpensiveUIRender.disableFactoryAddChild(_);
+	ReduceExpensiveUIRender.freezeSkillTreeAvatarFrame(_);
+	ReduceExpensiveUIRender.skipSkillTreeLevelText(_);
+
+	return true;
+};
+
+ReduceExpensiveUIRender.normalizeHex = function(hex)
+{
+	return hex.toLowerCase().replace(/\s+/g, "");
+};
+
+ReduceExpensiveUIRender.hexMatches = function(bytes, patterns)
+{
+	const normalized = ReduceExpensiveUIRender.normalizeHex(bytes);
+	for (const pattern of patterns)
+	{
+		if (normalized === ReduceExpensiveUIRender.normalizeHex(pattern))
+			return true;
+	}
+	return false;
+};
+
+ReduceExpensiveUIRender.tryVir2Phy = function(virAddr)
+{
+	try
+	{
+		const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+		return phyAddr >= 0 ? phyAddr : -1;
+	}
+	catch (e)
+	{
+		return -1;
+	}
+};
+
+ReduceExpensiveUIRender.findByContext = function(context, offset)
+{
+	const found = Exe.FindHex(context);
+	return found >= 0 ? found + offset : -1;
+};
+
+ReduceExpensiveUIRender.findFallback = function(virAddr, len, patterns)
+{
+	const phyAddr = ReduceExpensiveUIRender.tryVir2Phy(virAddr);
+	if (phyAddr < 0)
+		return -1;
+
+	if (ReduceExpensiveUIRender.hexMatches(Exe.GetHex(phyAddr, len), patterns))
+		return phyAddr;
+	return -1;
+};
+
+ReduceExpensiveUIRender.patchDisplayCharacterDraw = function(_)
+{
+	const original = "55 8B EC 6A FF 68 10 14 E9 00";
+	const patched = "C3";
+
+	let addr = Exe.FindHex(original);
+	if (addr < 0)
+		addr = ReduceExpensiveUIRender.findFallback(
+			0x007F2790,
+			1,
+			[patched]
+		);
+	if (addr < 0)
+		addr = ReduceExpensiveUIRender.findFallback(
+			0x007F2790,
+			10,
+			[original]
+		);
+	if (addr < 0)
+		throw Error('ReduceExpensiveUIRender: UIDisplayCharacter::Draw not found');
+
+	Exe.SetHex(addr, patched);
+	$$(_, 1.1, `Patched UIDisplayCharacter::Draw at 0x${addr.toString(16).toUpperCase()}`);
+};
+
+ReduceExpensiveUIRender.nops8 = "90 90 90 90 90 90 90 90";
+
+ReduceExpensiveUIRender.factoryAddChildSites = [
+	{
+		name: "factory #1 AddChild",
+		pattern: "56 8B CF E8 E4 68 18 00",
+		fallbackVir: [0x00894E94, 0x00893E94]
+	},
+	{
+		name: "factory #2 AddChild",
+		pattern: "56 8B CB E8 0F 67 18 00",
+		fallbackVir: [0x00895069, 0x00894069]
+	}
+];
+
+ReduceExpensiveUIRender.findFactoryAddChild = function(site)
+{
+	const found = Exe.FindHex(site.pattern);
+	if (found >= 0)
+		return found;
+
+	for (const virAddr of site.fallbackVir)
+	{
+		const phyAddr = ReduceExpensiveUIRender.findFallback(
+			virAddr,
+			8,
+			[site.pattern, ReduceExpensiveUIRender.nops8]
+		);
+		if (phyAddr >= 0)
+			return phyAddr;
+	}
+	return -1;
+};
+
+ReduceExpensiveUIRender.disableFactoryAddChild = function(_)
+{
+	for (const site of ReduceExpensiveUIRender.factoryAddChildSites)
+	{
+		const addr = ReduceExpensiveUIRender.findFactoryAddChild(site);
+		if (addr < 0)
+			throw Error(
+				'ReduceExpensiveUIRender: unable to find ' +
+				site.name
+			);
+
+		Exe.SetHex(addr, ReduceExpensiveUIRender.nops8);
+		$$(_, 1.2, `NOP ${site.name} at 0x${addr.toString(16).toUpperCase()}`);
+	}
+};
+
+ReduceExpensiveUIRender.avatarFrameContext =
+	"F3 0F 2C C0 99 F7 FE 8B F0 89 B5 24 FF FF FF 83 FE 03";
+
+ReduceExpensiveUIRender.freezeSkillTreeAvatarFrame = function(_)
+{
+	const original = "8B F0";
+	const patched = "33 F6";
+
+	let addr = ReduceExpensiveUIRender.findByContext(
+		ReduceExpensiveUIRender.avatarFrameContext,
+		7
+	);
+	if (addr < 0)
+		addr = ReduceExpensiveUIRender.findFallback(
+			0x00974BC9,
+			2,
+			[original, patched]
+		);
+	if (addr < 0)
+		throw Error('ReduceExpensiveUIRender: Skill Tree avatar frame site not found');
+
+	Exe.SetHex(addr, patched);
+	$$(_, 1.3, `Freeze Skill Tree avatar frame at 0x${addr.toString(16).toUpperCase()}`);
+};
+
+ReduceExpensiveUIRender.skillLevelContext =
+	"E8 35 51 DC FF 83 C4 04 83 BD 78 FF FF FF 00 0F 84 7B 02 00 00 84 C0 0F 84 F8 01 00 00";
+
+ReduceExpensiveUIRender.skipSkillTreeLevelText = function(_)
+{
+	const original = "83 BD 78 FF FF FF 00 0F 84 7B 02 00 00";
+	const patched = "E9 83 02 00 00 90 90 90 90 90 90 90 90";
+
+	let addr = ReduceExpensiveUIRender.findByContext(
+		ReduceExpensiveUIRender.skillLevelContext,
+		8
+	);
+	if (addr < 0)
+		addr = ReduceExpensiveUIRender.findFallback(
+			0x00975C7E,
+			13,
+			[original, patched]
+		);
+	if (addr < 0)
+		throw Error('ReduceExpensiveUIRender: Skill Tree level text site not found');
+
+	Exe.SetHex(addr, patched);
+	$$(_, 1.4, `Skip Skill Tree level text at 0x${addr.toString(16).toUpperCase()}`);
+};
+
+ReduceExpensiveUIRender.validate = function()
+{
+	return Exe.BuildDate === 20250716;
+};

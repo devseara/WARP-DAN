@@ -1159,18 +1159,20 @@ Final confirmed working state after item-color black/shadow suppression:
 
 These children draw via `UIDisplayCharacter::Draw` at `0x007F2790` (vtable index 20), which sets up a camera and renders the full actor each frame.
 
-**Two Prepared Fixes**:
+**Prepared Fixes**:
 
 | Fix | Scope | Method | Address(es) |
 |-----|-------|--------|-------------|
 | **Global** | ALL UI windows | Patch `UIDisplayCharacter::Draw` → `ret` | `0x007F2790` |
-| **Targeted** | Skill Tree only | NOP out the two `UIDisplayCharacter` creation calls in `UINewSkillListWnd::OnCreate` | `0x00976E5B` and `0x00976E86` |
+| **Factory AddChild suppression** | UI display-character factories | Keep factories returning valid objects, but NOP their parent `AddChild` calls | `0x00894E94` and `0x00895069` |
+| **Static Skill Tree avatar frame** | Skill Tree paperdoll/avatar | Preserve setup/timer calls, then force computed ACT frame to 0 | `0x00974BC9` |
+| **Skill Tree level-text skip** | ALT+S Skill Tree | Skip the per-skill level-number text block while preserving icons and skill names | `0x00975C7E` |
 
 **WARP Patch Script**:
-- `WARP0716-main/Scripts/Patches/DisableExpensiveCharRender.qjs` — global fix (renamed from `DisableSkillTreeCharacter` for clarity)
+- `WARP0716-main/Scripts/Patches/ReduceExpensiveUIRender.qjs` — consolidated production patch for UI FPS loss. It applies the global actor-preview draw skip, factory `AddChild` suppression, Skill Tree avatar-frame freeze, and Skill Tree level-number text skip. It is a static EXE patch only: no runtime hooks and no recv interception.
 
 **Archived Targeted Patch** (not registered in WARP UI due to `validate()` lowercase hex bug, kept in `Scripts/Patches/` for reference):
-- `WARP0716-main/Scripts/Patches/DisableSkillTreeCharTargeted.qjs` — NOPs out UIDisplayCharacter creation in UINewSkillListWnd::OnCreate. Kept for future reference only. Bug: `Exe.GetHex()` returns lowercase strings but `validate()` compares against uppercase, causing `validate()` to return `false` and WARP hides the patch. Fix: change expected strings to lowercase.
+- `WARP0716-main/Scripts/Patches/DisableSkillTreeCharTargeted.qjs` — NOPs out UIDisplayCharacter creation in UINewSkillListWnd::OnCreate. Kept for future reference only. Do not enable this approach for 2025-07-16: `OnCreate` stores the returned `EAX` values at `[this+0xBC]`, `[this+0xC0]`, and `[this+0xC4]`, then calls through those slots during setup. Directly NOPing the calls can leave stale return values and crash on ALT+S/character select. The old `validate()` also compared `Exe.GetHex()` output without normalizing case/spacing.
 
 **Standalone Python Applier**:
 - `WARP0716-main/apply_skill_tree_fix.py` — applies either fix directly without WARP
@@ -1178,12 +1180,17 @@ These children draw via `UIDisplayCharacter::Draw` at `0x007F2790` (vtable index
 
 **Byte Verification** (2025-07-16 client):
 - `0x007F2790`: `55 8b ec 6a ff 68 10 14 e9 00` → patched to `C3`
-- `0x00976E5B`: `e8 90 df f1 ff` → patched to `90 90 90 90 90`
-- `0x00976E86`: `e8 15 e1 f1 ff` → patched to `90 90 90 90 90`
+- `0x00976E5B`: stays `e8 90 df f1 ff` (do not NOP direct creation call)
+- `0x00976E86`: stays `e8 15 e1 f1 ff` (do not NOP direct creation call)
+- `0x00894E94`: `56 8b cf e8 e4 68 18 00` → patched to `90 90 90 90 90 90 90 90`
+- `0x00895069`: `56 8b cb e8 0f 67 18 00` → patched to `90 90 90 90 90 90 90 90`
+- `0x00974B89`: stays `e8 22 ab d9 ff` (do not skip; this call balances the preceding `push 0x17`)
+- `0x00974BC9`: `8b f0` → patched to `33 f6` (force frame index 0 without changing stack flow)
+- `0x00975C7E`: `83 bd 78 ff ff ff 00 0f 84 7b 02 00 00` → patched to `e9 83 02 00 00 90 90 90 90 90 90 90 90` (skip Skill Tree level-number text such as `5/5` and `10/10`)
 
-**Recommendation**: Use the **targeted fix** so the Equipment window and Character Creation screen keep their character avatars. Only the skill tree loses the model, which is acceptable because the avatar provides no gameplay information there.
+**Recommendation**: Use `ReduceExpensiveUIRender` as the single production FPS patch for this client.
 
-**Important**: The global patch (and targeted patch, if applied) eliminates the **expensive 3D mini-render-pass** that causes FPS lag. However, a **cheap static cached 2D sprite** of the character may still remain visible in the skill tree window, drawn by a separate lightweight code path inside `UINewSkillListWnd::RealDraw` itself. This sprite has zero performance impact — the lag comes from the framebuffer/camera/viewport switches in `UIDisplayCharacter::Draw`, not from the sprite itself.
+**Important**: The global/factory patches eliminate the **expensive 3D mini-render-pass** from `UIDisplayCharacter`. However, a **cheap static cached 2D sprite** of the character may still remain visible in the skill tree window, drawn by a separate lightweight code path inside `UINewSkillListWnd::RealDraw` itself. Any remaining ALT+S FPS drop after the actor-preview fix comes from the Skill Tree's normal UI painting path: repeated bitmap tiling, empty-slot backgrounds, icon/text drawing, and skill-list iteration.
 
 ### Why the Main Character Doesn't Lag (But the Skill Tree Avatar Does)
 

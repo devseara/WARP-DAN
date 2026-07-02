@@ -236,17 +236,11 @@ CustomUI:
             author : Louis T Steinhil
             desc : Replaces the hardcoded item name grade marks like [D], [C], [B], and [A] with labels from Inputs/enchant_grade.INI.
 
-        - DisableExpensiveCharRender:
-            title : Disable heavy 3D character rendering in ALL UI windows
+        - ReduceExpensiveUIRender:
+            title : Reduce expensive UI rendering
             recommend : no
             author : Louis T Steinhil
-            desc : Eliminates FPS lag from the expensive per-instance 3D character mini-render-pass in UI windows by patching UIDisplayCharacter::Draw to return immediately.
-
-        - DisableSkillTreeCharRender:
-            title : Disable character rendering in Skill Tree (ALT+S)
-            recommend : no
-            author : Louis T Steinhil
-            desc : Prevents UIDisplayCharacter child widgets from being added to the skill tree window's child list. Use together with DisableExpensiveCharRender for complete skill tree FPS relief.
+            desc : Reduces FPS loss from UI actor previews and ALT+S Skill Tree level text by applying static patches only. No runtime hooks or recv interception.
         
         - HideZeroDateInGuildWin:
             title : Hide Zero Date in Guild Window

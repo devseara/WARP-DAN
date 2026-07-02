@@ -632,7 +632,7 @@ and console. Convention: `<Section>.<Subsection>.<Step>` numbering.
 - **Overlay**: FpsOverlay, PingOverlay, LoadGRFOnSlashCmd
 - **Icons**: EnableFlagEmotes, EnableFlagAnimation, EnableNoticeMails
 - **Fixes**: FixSkillbarReset, FixLatestNCWin, AllowShortcutsInWine
-- **Special**: CustomBarterZenySep, CustomEnchantGradeLabels, DisableExpensiveCharRender
+- **Special**: CustomBarterZenySep, CustomEnchantGradeLabels, ReduceExpensiveUIRender
 - **Rune**: CustomRuneSystem
 
 ### Character (Character.yml)

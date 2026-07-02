@@ -236,7 +236,6 @@
 361 : SNSButtonURL
 362 : BookingButtonGuide
 363 : CustomEnchantGradeLabels
-364 : DisableExpensiveCharRender
+364 : ReduceExpensiveUIRender
 365 : FpsPingOverlay
-366 : DisableSkillTreeCharRender
 367 : PatchDiagnostics
