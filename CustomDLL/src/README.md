@@ -7,11 +7,26 @@ Two packaging modes are supported.
 Run `build.bat` to produce `boh.dll`. If your client imports
 `bohcustoms.dll`, copy or rename the output DLL to `bohcustoms.dll`.
 
+`build.bat` links the `dll_integrity` module and seals the DLL after link. The
+sealed DLL verifies its on-disk SHA-256 before any feature module is initialized.
+The digest slot itself is zeroed for the canonical hash, so renaming
+`boh.dll` to `bohcustoms.dll` does not invalidate the seal. Any byte edit to the
+sealed DLL makes `DllMain` return `FALSE` and the client will fail the import
+load instead of running modified feature code.
+
+The self-check is intentionally Gepard-friendly: it opens and reads its own DLL,
+uses an in-module SHA-256 implementation, and does not allocate executable
+memory, rewrite code, patch imports, install hooks, scan processes, or contact
+the network. Treat it as a local tamper tripwire. For real external enforcement,
+send the generated `boh.dll.sha256` manifest and final renamed DLL hash to the
+Gepard owner for whitelist/protection review.
+
 For strict Gepard builds, keep the combined build limited to non-hook modules.
-The checked-in `customer_features.h` baseline enables the PIN UI and converted
-NPC name overlay only. Do not enable item colors, extended names, rune visuals,
-FPS/ping, inventory tabs, or other runtime-hook modules unless the anti-cheat
-owner has approved that specific runtime memory behavior.
+The checked-in `customer_features.h` may reflect a customer/runtime feature set;
+do not treat it as proof of strict Gepard compliance. Do not enable item colors,
+extended names, rune visuals, FPS/ping, inventory tabs, or other runtime-hook
+modules unless the anti-cheat owner has approved that specific runtime memory
+behavior.
 
 ## Dedicated builds
 

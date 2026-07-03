@@ -61,9 +61,12 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
       combined build is audited with all runtime-hook features disabled.
 - [x] Keep the dual-wield / weapon sprite patch out of strict profiles.
 - [x] Run `tools/gepard_safe_audit.ps1` before packaging.
+- [ ] Seal custom combined DLL builds with `CustomDLL/seal_dll.py` and keep the
+      generated SHA-256 manifest with the release artifacts.
 - [ ] Live-smoke UI behavior in client: item/ext names, inventory tabs,
       `/fps`, `/ping`, rune stacking, NPC names, PIN UI.
-- [ ] Send the final patch list, DLL list, and static patch surfaces to the Gepard owner for whitelist review.
+- [ ] Send the final patch list, DLL list, static patch surfaces, and sealed DLL
+      SHA-256 manifest to the Gepard owner for whitelist review.
 
 ## Required Runtime Properties
 

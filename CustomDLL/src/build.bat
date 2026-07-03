@@ -58,7 +58,12 @@ set "BOH_FPS_PING=0"
 if "%BOH_FPS_OVERLAY%"=="1" set "BOH_FPS_PING=1"
 if "%BOH_PING_OVERLAY%"=="1" set "BOH_FPS_PING=1"
 
-set "LINK_OBJECTS=main_proxy.obj"
+set "LINK_OBJECTS=main_proxy.obj dll_integrity.obj"
+
+echo [core] dll_integrity - sealed SHA-256 self-check...
+cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
+    dll_integrity\dll_integrity.cpp /Fo:dll_integrity.obj
+if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo [core] main_proxy - DllMain + DDRAW forwarding...
 cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
@@ -173,9 +178,17 @@ link.exe /nologo /DLL /OPT:REF /OUT:boh.dll ^
     kernel32.lib user32.lib gdi32.lib d3d9.lib iphlpapi.lib ws2_32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
+echo [seal] Embedding BOH DLL integrity hash...
+python ..\seal_dll.py boh.dll --manifest boh.dll.sha256
+if errorlevel 1 (
+    py -3 ..\seal_dll.py boh.dll --manifest boh.dll.sha256
+)
+if errorlevel 1 (echo FAILED & exit /b 1)
+
 echo.
 echo ============================================================
 echo  Build successful: boh.dll
 echo  Deploy: copy/rename boh.dll to the game folder, e.g. bohcustoms.dll.
+echo  Gepard handoff: send boh.dll.sha256 with the final DLL list.
 echo ============================================================
 endlocal

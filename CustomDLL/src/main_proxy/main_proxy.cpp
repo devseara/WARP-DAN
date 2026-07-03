@@ -18,6 +18,7 @@
 
 // Feature license system
 #include "boh_features.h"
+#include "dll_integrity/dll_integrity.h"
 
 #if BOH_ITEM_COLORS || BOH_EXTENDED_NAMES || BOH_PLAYER_NAME_COLORS
 #define BOH_HAS_TEXT_VISUAL 1
@@ -82,6 +83,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
     // =======================================================================
     if (reason == DLL_PROCESS_DETACH && lpReserved != nullptr)
         return TRUE;
+
+    if (reason == DLL_PROCESS_ATTACH && !BohVerifyDllIntegrity(hModule))
+        return FALSE;
 
     const bool textFeaturesEnabled =
 #if BOH_HAS_TEXT_VISUAL
