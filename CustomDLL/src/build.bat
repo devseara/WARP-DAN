@@ -175,7 +175,7 @@ if "%BOH_WEAPON_SPRITE%"=="1" (
 echo [LINK] boh.dll...
 link.exe /nologo /DLL /OPT:REF /OUT:boh.dll ^
     !LINK_OBJECTS! ^
-    kernel32.lib user32.lib gdi32.lib d3d9.lib iphlpapi.lib ws2_32.lib
+    kernel32.lib user32.lib gdi32.lib gdiplus.lib d3d9.lib iphlpapi.lib ws2_32.lib
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo [seal] Embedding BOH DLL integrity hash...

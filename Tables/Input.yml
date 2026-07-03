@@ -95,6 +95,15 @@ inputs:
     
     $newFont:
         type: D_FontName
+
+    $customCodePage:
+        type: D_Int32
+
+    $customCodePageUtf8Bridge:
+        type: D_Bool
+
+    $codePageVisualDLLName:
+        type: D_Text
     
     $maxFriends:
         type: D_Int8

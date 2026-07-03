@@ -15,6 +15,8 @@
 #include "boh_features.h"
 #include "extended_name/extended_name.h"
 #include "player_name_color/player_name_color.h"
+#include "text_visual/fluent_emoji_renderer.h"
+#include "text_visual/utf8_char_bridge.h"
 #include "text_visual/text_visual_bridge.h"
 
 #ifndef BOH_TEXT_STATIC_WRAPPERS
@@ -1499,6 +1501,7 @@ static bool ResolveRealTextApis()
 static BOOL WINAPI HookTextOutW(HDC hdc, int x, int y, LPCWSTR lpString, int cchString)
 {
     typedef BOOL (WINAPI *TextOutW_t)(HDC, int, int, LPCWSTR, int);
+    typedef BOOL (WINAPI *GetTextExtentPoint32W_t)(HDC, LPCWSTR, int, LPSIZE);
     if (IsTextHooksShuttingDown())
         return ((TextOutW_t)g_origTextOutW)(hdc, x, y, lpString, cchString);
 
@@ -1702,6 +1705,30 @@ skip_item_processing:
     {
         outString = substitutedText.c_str();
         outCount = (int)substitutedText.length();
+    }
+
+    std::wstring renderText;
+    if (outString)
+    {
+        if (outCount < 0)
+            renderText = outString;
+        else if (outCount > 0)
+            renderText.assign(outString, outCount);
+    }
+    BOOL emojiResult = FALSE;
+    if (BohFluentEmoji::Draw(
+            hdc,
+            x,
+            y,
+            renderText,
+            (TextOutW_t)g_origTextOutW,
+            (GetTextExtentPoint32W_t)g_origGetTextExtentPoint32W,
+            false,
+            &emojiResult))
+    {
+        if (oldColor != CLR_INVALID)
+            SetTextColor(hdc, oldColor);
+        return emojiResult;
     }
 
     // Substituted text: use ExtTextOutW with large rect to bypass clipping
@@ -2225,6 +2252,19 @@ static BOOL WINAPI HookGetTextExtentPoint32W(HDC hdc, LPCWSTR lpString, int cchS
         }
     }
 
+    const std::wstring& measureText =
+        substitutedText.empty() ? text : substitutedText;
+    SIZE emojiSize = {};
+    if (BohFluentEmoji::Measure(
+            hdc,
+            measureText,
+            (GetTextExtentPoint32W_t)g_origGetTextExtentPoint32W,
+            &emojiSize))
+    {
+        lpSize->cx = emojiSize.cx;
+        lpSize->cy = emojiSize.cy;
+    }
+
     return result;
 }
 
@@ -2430,6 +2470,7 @@ static bool InstallGetTextExtentPoint32WHook()
 
 void TextVisualInit(HMODULE hModule)
 {
+    BohFluentEmoji::SetModule(hModule);
     if (g_tlsPassthroughDepth == TLS_OUT_OF_INDEXES)
         g_tlsPassthroughDepth = TlsAlloc();
     InterlockedExchange(&g_textHooksShuttingDown, 0);
@@ -2532,6 +2573,7 @@ void TextVisualCleanup(bool isProcessTermination)
     }
 
     ExtendedNameCleanup();
+    BohFluentEmoji::Cleanup();
 
     if (g_tlsPassthroughDepth != TLS_OUT_OF_INDEXES)
     {

@@ -6,7 +6,9 @@
 #include "boh_features.h"
 #include "extended_name/extended_name.h"
 #include "player_name_color/player_name_color.h"
+#include "text_visual/fluent_emoji_renderer.h"
 #include "text_visual/text_visual_bridge.h"
+#include "text_visual/utf8_char_bridge.h"
 
 static LPVOID g_origTextOutW = nullptr;
 static LPVOID g_origExtTextOutW = nullptr;
@@ -118,6 +120,25 @@ static BOOL WINAPI BridgeTextOutW(
         g_tlsPassthroughDepth,
         (LPVOID)((DWORD_PTR)TlsGetValue(g_tlsPassthroughDepth) + 1));
 
+    std::wstring renderText = CaptureText(outString, outCount);
+    if (BohFluentEmoji::Draw(
+            hdc,
+            x,
+            y,
+            renderText,
+            (TextOutW_t)g_origTextOutW,
+            (GetTextExtentPoint32W_t)g_origGetTextExtentPoint32W,
+            false,
+            &result))
+    {
+        TlsSetValue(
+            g_tlsPassthroughDepth,
+            (LPVOID)((DWORD_PTR)TlsGetValue(g_tlsPassthroughDepth) - 1));
+        if (didColor && oldColor != CLR_INVALID)
+            SetTextColor(hdc, oldColor);
+        return result;
+    }
+
     if (outString != lpString && outCount > 0)
     {
         int savedDC = SaveDC(hdc);
@@ -188,6 +209,19 @@ static BOOL WINAPI BridgeGetTextExtentPoint32W(
         }
     }
 
+    const std::wstring& measureText =
+        substitutedText.empty() ? text : substitutedText;
+    SIZE emojiSize = {};
+    if (BohFluentEmoji::Measure(
+            hdc,
+            measureText,
+            (GetTextExtentPoint32W_t)g_origGetTextExtentPoint32W,
+            &emojiSize))
+    {
+        lpSize->cx = emojiSize.cx;
+        lpSize->cy = emojiSize.cy;
+    }
+
     (void)isNameplate;
     return result;
 }
@@ -220,8 +254,9 @@ extern "C" __declspec(dllexport) BOOL WINAPI BohGetTextExtentPoint32W(
     return BridgeGetTextExtentPoint32W(hdc, lpString, cchString, lpSize);
 }
 
-void TextVisualInit(HMODULE)
+void TextVisualInit(HMODULE module)
 {
+    BohFluentEmoji::SetModule(module);
     if (g_tlsPassthroughDepth == TLS_OUT_OF_INDEXES)
         g_tlsPassthroughDepth = TlsAlloc();
     InterlockedExchange(&g_textBridgeShuttingDown, 0);
@@ -235,6 +270,7 @@ void TextVisualCleanup(bool isProcessTermination)
     (void)isProcessTermination;
     InterlockedExchange(&g_textBridgeShuttingDown, 1);
     ExtendedNameCleanup();
+    BohFluentEmoji::Cleanup();
 
     if (g_tlsPassthroughDepth != TLS_OUT_OF_INDEXES)
     {

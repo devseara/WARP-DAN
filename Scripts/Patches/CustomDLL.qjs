@@ -544,6 +544,7 @@ CustomDLL.cleanup = () =>
 {
 	CustomDLL.runRefreshHooks('CustomDLL.cleanup');
 	ReloadPatch("NoHShield");
+	CustomDLL.runRefreshHooks('CustomDLL.cleanup.post');
 };
 
 ///

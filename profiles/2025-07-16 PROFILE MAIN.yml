@@ -11,6 +11,21 @@ inputs:
         display: "bohcustoms.dll"
         type: 10
 
+    $customCodePage:
+        data: 'e9fd0000'
+        display: 65001
+        type: 2
+
+    $customCodePageUtf8Bridge:
+        data: ''
+        display: "false"
+        type: 10
+
+    $codePageVisualDLLName:
+        data: '626f68637573746f6d732e646c6c00'
+        display: "bohcustoms.dll"
+        type: 10
+
     $fpsOverlayDLLName:
         data: '626f68637573746f6d732e646c6c00'
         display: "bohcustoms.dll"
@@ -212,6 +227,7 @@ patches:
     - UseOldLogin
     - UnlimitedChatRepeat
     - FixFontsCharset
+    - CustomCodePage
     - AlwaysAscii
     - CallKoreaClientInfo
     - PlainTextDesc

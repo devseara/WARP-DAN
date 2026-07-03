@@ -425,6 +425,12 @@ CustomFont:
             author : Neo-Mind
             desc : Overrides the character set (charset) used for all fonts to a custom value. Use to force a specific encoding like ANSI (0), Baltic (186), or UTF-8 when the default charset causes display issues.
 
+        - CustomCodePage:
+            title : Override client codepage
+            recommend : no
+            author : Ylen X Walker
+            desc : Forces the 2025-07-16 client's multibyte codepage. The default QJS-only UTF-8 mode patches static codepage sites without adding a DLL; an optional DLL bridge can also redirect CharNextExA/CharPrevExA for safer emoji/icon cluster walking.
+
 RuneSystem:
     title : RUNE SYSTEM
     mutex : false

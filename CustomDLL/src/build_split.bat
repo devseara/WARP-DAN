@@ -99,7 +99,7 @@ if "%BOH_TEXT_VISUAL%"=="1" (
     echo [text] Link boh_text.dll...
     link.exe /nologo /DLL /OPT:REF /OUT:boh_text.dll ^
         split_text_proxy.obj !TEXT_BRIDGE_OBJ! split_extended_name.obj split_player_name_color.obj ^
-        kernel32.lib user32.lib gdi32.lib
+        kernel32.lib user32.lib gdi32.lib gdiplus.lib
     if errorlevel 1 (echo FAILED & exit /b 1)
 ) else (
     echo [skip] text visual DLL disabled
