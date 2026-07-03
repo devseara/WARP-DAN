@@ -122,6 +122,12 @@ CustomSkills:
             author : Louis T Steinhil
             desc : "Dispatcher-table shared-block path for custom item name colors. Routes variable item-color packet 0x0BDD to ICOL after the stock packet reader has consumed the full packet and avoids ws2_32.recv / RecvStrip0BB6. The dedicated boh_text.dll uses WARP-time TextOutW/GetTextExtentPoint32W wrapper bridges instead of runtime GDI hooks."
 
+        - CustomPlayerNameColor:
+            title : Enable Custom Player Name Colors (dispatcher transport)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Dispatcher-table shared-block path for custom player nameplate colors. Routes extended-name packet 0x0BB7 to EXTN after the stock packet reader has consumed the full packet, then the selected boh_text.dll/boh.dll applies the packet RGB color only to exact player nameplate draws using the WARP-time TextOutW/GetTextExtentPoint32W bridge."
+
         - InGamePincodeUI:
             title : Enable In-Game PIN Pad
             recommend : no

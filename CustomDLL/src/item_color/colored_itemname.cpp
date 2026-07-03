@@ -1227,7 +1227,9 @@ static void ProcessCustomStream(RecvStreamState& state)
 
             uint16_t pktLen = *(uint16_t*)(&input[in + 2]);
             uint32_t magic = *(uint32_t*)(&input[in + 4]);
-            if (pktLen == EXT_NAME_PACKET_LEN && magic == EXT_NAME_PACKET_MAGIC)
+            if (pktLen >= EXT_NAME_PACKET_LEN_V1 &&
+                pktLen <= EXT_NAME_PACKET_LEN &&
+                magic == EXT_NAME_PACKET_MAGIC)
             {
                 if (available < pktLen)
                     break;
@@ -1465,6 +1467,7 @@ static BOOL WINAPI HookTextOutW(HDC hdc, int x, int y, LPCWSTR lpString, int cch
     std::wstring colorMatch;
     std::wstring text;
     bool hasItemColorMatch = false;
+    bool hasPlayerNameColor = false;
     bool inDescriptionRegion = false;
     bool isDescriptionMarker = false;
 
@@ -1606,6 +1609,13 @@ skip_item_processing:
             customColor = contColor;
     }
 
+    COLORREF playerNameColor = CLR_INVALID;
+    if (ExtendedNameLookupNameplateColor(text, playerNameColor))
+    {
+        customColor = playerNameColor;
+        hasPlayerNameColor = true;
+    }
+
     // Only apply custom color if this is NOT the shadow/outline layer.
     // The game draws text twice: once in black (shadow) and once in white (main).
     // Coloring the shadow makes text look bold/overlapping.
@@ -1632,7 +1642,7 @@ skip_item_processing:
         LogItemColorRender("TextOutW", action, text, colorMatch, matchedColor, hdc, x, y, nullptr, 0, currentColor, isShadowLayer, inDescriptionRegion, isDescriptionMarker);
     }
 
-    if (customColor != CLR_INVALID && isShadowLayer)
+    if (customColor != CLR_INVALID && isShadowLayer && !hasPlayerNameColor)
         return TRUE;
 
     // Track sequence: if this text was colored, mark it for ETO shadow detection.
@@ -1713,12 +1723,15 @@ static BOOL WINAPI HookExtTextOutW(HDC hdc, int x, int y, UINT options, const RE
     std::wstring colorMatch;
     std::wstring text;
     bool hasItemColorMatch = false;
+    bool hasPlayerNameColor = false;
     bool inDescriptionRegion = false;
     bool isDescriptionMarker = false;
     bool itemColorEligible = false;
 
     if (lpString && cchString > 0)
     {
+        text.assign(lpString, cchString);
+
         // Same fast-path as TextOutW: skip if not item-related
         bool looksItemRelated = false;
         for (UINT fi = 0; fi < cchString && fi < 8; fi++)
@@ -1735,8 +1748,6 @@ static BOOL WINAPI HookExtTextOutW(HDC hdc, int x, int y, UINT options, const RE
             goto skip_eto_processing;
         }
         g_perfItemProcd++;
-
-        text.assign(lpString, cchString);
 
         if (!text.empty())
         {
@@ -1792,6 +1803,13 @@ skip_eto_processing:
             customColor = contColor;
     }
 
+    COLORREF playerNameColor = CLR_INVALID;
+    if (ExtendedNameLookupNameplateColor(text, playerNameColor))
+    {
+        customColor = playerNameColor;
+        hasPlayerNameColor = true;
+    }
+
     COLORREF currentColor = GetTextColor(hdc);
     bool isShadowLayer = IsShadowLayerColor(currentColor);
 
@@ -1815,7 +1833,7 @@ skip_eto_processing:
         LogItemColorRender("ExtTextOutW", action, text, colorMatch, matchedColor, hdc, x, y, lprc, options, currentColor, isShadowLayer, inDescriptionRegion, isDescriptionMarker);
     }
 
-    if (customColor != CLR_INVALID && isShadowLayer)
+    if (customColor != CLR_INVALID && isShadowLayer && !hasPlayerNameColor)
         return TRUE;
 
     // Track sequence for ETO too

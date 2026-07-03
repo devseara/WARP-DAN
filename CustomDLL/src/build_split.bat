@@ -4,8 +4,9 @@ echo ============================================================
 echo  BOH Dedicated Feature DLL Build
 echo ============================================================
 echo.
-echo  Text wrappers are intentionally shared by item colors and
-echo  extended names in boh_text.dll. Other features are isolated.
+echo  Text wrappers are intentionally shared by item colors,
+echo  extended names, and player name colors in boh_text.dll.
+echo  Other features are isolated.
 echo.
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -36,7 +37,7 @@ cl.exe /nologo /c /O2 /Gy /MT /EHa /I"./" ^
     extended_name\extended_name.cpp /Fo:split_extended_name.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [3/12] Shared static text wrappers + item colors...
+echo [3/12] Shared static text wrappers + item/player-name colors...
 cl.exe /nologo /c /O2 /Gy /MT /EHa /I"./" ^
     item_color\colored_itemname.cpp /Fo:split_item_color.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
@@ -111,7 +112,7 @@ if errorlevel 1 (echo FAILED & exit /b 1)
 echo.
 echo ============================================================
 echo  Dedicated DLL build successful
-echo    boh_text.dll           item colors + extended names
+echo    boh_text.dll           item colors + extended names + player name colors
 echo    boh_npc_names.dll      always-show NPC names
 echo    boh_rune.dll           rune visuals
 echo    boh_fps.dll            FPS + ping

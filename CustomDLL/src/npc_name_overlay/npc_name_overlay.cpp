@@ -35,7 +35,9 @@ static constexpr DWORD kStaleNpcMs = 10000;
 static constexpr DWORD kNameAboveHeadOption = 0x5C;
 static constexpr DWORD kShowNpcNameOption = 10001;
 static constexpr uint16_t kExtNamePacketId = 0x0BB7;
-static constexpr uint16_t kExtNamePacketLen = 233;
+static constexpr uint16_t kExtNamePacketLenV1 = 233;
+static constexpr uint16_t kExtNamePacketLen = 237;
+static constexpr uint16_t kExtNamePacketTypeOffset = 232;
 static constexpr uint32_t kExtNameMagic = 0x4558544E; // 'EXTN'
 static constexpr uint32_t kExtNameRingMagic = 0x474E4952; // 'RING'
 static constexpr uint32_t kExtNameRingCapacity = 128;
@@ -580,13 +582,16 @@ extern "C" __declspec(dllexport) void NpcOverlay_OnExtName(
 static void ParseExtnNpcPacket(BYTE* data, uint32_t length)
 {
 	bool hasHeader = false;
+	uint16_t packetLength = 0;
 	uint32_t offset = 2;
-	if (length >= kExtNamePacketLen)
+	if (length >= kExtNamePacketLenV1)
 	{
-		uint16_t packetLength = *reinterpret_cast<uint16_t*>(data + 2);
+		packetLength = *reinterpret_cast<uint16_t*>(data + 2);
 		uint32_t magic = *reinterpret_cast<uint32_t*>(data + 4);
 		hasHeader =
-			packetLength == kExtNamePacketLen &&
+			packetLength == length &&
+			(packetLength == kExtNamePacketLenV1 ||
+			 packetLength == kExtNamePacketLen) &&
 			magic == kExtNameMagic;
 	}
 
@@ -608,7 +613,7 @@ static void ParseExtnNpcPacket(BYTE* data, uint32_t length)
 
 	uint8_t type = 0;
 	if (hasHeader)
-		type = *reinterpret_cast<uint8_t*>(data + 232);
+		type = *reinterpret_cast<uint8_t*>(data + kExtNamePacketTypeOffset);
 	else if (length >= 227)
 		type = *reinterpret_cast<uint8_t*>(data + 226);
 

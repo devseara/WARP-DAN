@@ -1,0 +1,70 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2025-07-16                                             *
+*   Last Modified : 2026-07-03                                             *
+*                                                                          *
+*   Description   : Dispatcher-table player-name color patch for the       *
+*                   2025-07-16 client. Routes the extended-name packet     *
+*                   0x0BB7 to EXTN after stock packet read, then lets      *
+*                   boh_text.dll read the appended RGB name-color field    *
+*                   and apply it only to exact player nameplate draws.     *
+*                                                                          *
+\**************************************************************************/
+
+CustomPlayerNameColor = function(_)
+{
+	$$(_, 1, `Install dispatcher-table transport for player-name colors`);
+
+	if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.install !== "function")
+		throw Error("CustomPacketDispatch.install helper is unavailable");
+
+	CustomPacketDispatch.install(`${_}.Dispatch`, ['EXTN']);
+
+	$$(_, 2, `Add renameable player-name-color visual DLL as startup import`);
+	CustomPlayerNameColor.addVisualDll(`${_}.CustomDLL`);
+
+	$$(_, 3, `Custom player-name color dispatcher transport + visual DLL import are enabled`);
+	return true;
+};
+
+CustomPlayerNameColor.addVisualDll = function(_)
+{
+	if (typeof CustomTextVisualStatic === "undefined" ||
+		typeof CustomTextVisualStatic.addVisualDll !== "function")
+		throw Error("CustomTextVisualStatic.addVisualDll helper is unavailable");
+
+	return CustomTextVisualStatic.addVisualDll(_, {
+		inputKey: '$playerNameColorVisualDLLName',
+		title: "Player Name Color Visual DLL",
+		exportName: "PlayerNameColorVisualInit",
+		defaultName: "boh.dll",
+		dedicatedName: "boh_text.dll",
+		description: "Enter the DLL filename for player-name-color rendering. Use boh.dll for the combined build or boh_text.dll for the dedicated text build. Player name colors share the EXTN dispatcher ring and static TextOutW/GetTextExtentPoint32W bridge."
+	});
+};
+
+CustomPlayerNameColor.validate = function()
+{
+	return Exe.BuildDate === 20250716;
+};

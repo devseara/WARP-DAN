@@ -70,7 +70,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
     const bool textFeaturesEnabled =
         BohLicense::IsEnabled(FEATURE_ITEM_COLORS) ||
-        BohLicense::IsEnabled(FEATURE_EXTENDED_NAMES);
+        BohLicense::IsEnabled(FEATURE_EXTENDED_NAMES) ||
+        BohLicense::IsEnabled(FEATURE_PLAYER_NAME_COLORS);
     const bool fpsFeaturesEnabled =
         BohLicense::IsEnabled(FEATURE_FPS_OVERLAY) ||
         BohLicense::IsEnabled(FEATURE_PING_OVERLAY);
@@ -163,6 +164,7 @@ extern "C" __declspec(dllexport) HRESULT DirectDrawEnumerateExA(
 
 extern "C" __declspec(dllexport) void ExtNameVisualInit(void) {}
 extern "C" __declspec(dllexport) void ColoredItemNameVisualInit(void) {}
+extern "C" __declspec(dllexport) void PlayerNameColorVisualInit(void) {}
 // RuneVisualInit is exported by rune_visual.obj (boh_rune_visual.cpp)
 // FpsPingOverlayInit is exported by fps_ping.obj (fps_ping_overlay.cpp)
 // NpcNameOverlayInit is exported by npc_name_overlay.obj (npc_name_overlay.cpp)

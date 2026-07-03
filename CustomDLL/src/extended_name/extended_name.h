@@ -6,7 +6,10 @@
 #include <string>
 
 static const uint16_t EXT_NAME_PACKET_ID = 0x0BB7;
-static const uint16_t EXT_NAME_PACKET_LEN = 233;
+static const uint16_t EXT_NAME_PACKET_LEN_V1 = 233;
+static const uint16_t EXT_NAME_PACKET_LEN = 237;
+static const uint16_t EXT_NAME_PACKET_TYPE_OFFSET = 232;
+static const uint16_t EXT_NAME_PACKET_COLOR_OFFSET = 233;
 static const uint32_t EXT_NAME_PACKET_MAGIC = 0x4558544E; // 'EXTN'
 
 LPVOID ExtendedNameProbeSharedBlock();
@@ -24,3 +27,7 @@ bool ExtendedNameSubstitute(
     const std::wstring& text,
     std::wstring& substitutedText,
     bool& isNameplate);
+
+bool ExtendedNameLookupNameplateColor(
+    const std::wstring& text,
+    COLORREF& color);

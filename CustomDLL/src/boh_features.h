@@ -13,6 +13,7 @@
 // ------------------------|-------------------------|----------------------
 // Custom Item Name Colors | BOH_ITEM_COLORS         | CustomColoredItemName
 // Extended Names          | BOH_EXTENDED_NAMES      | CustomExtName
+// Player Name Colors      | BOH_PLAYER_NAME_COLORS  | CustomPlayerNameColor
 // Rune Visual             | BOH_RUNE_VISUAL         | CustomRuneSystem
 // FPS Overlay             | BOH_FPS_OVERLAY         | FpsOverlay
 // Ping Overlay            | BOH_PING_OVERLAY        | PingOverlay
@@ -39,6 +40,7 @@ enum BohFeature : unsigned
     FEATURE_INVENTORY_TABS    = 1 << 6,  // 0x40
     FEATURE_PINCODE_UI        = 1 << 7,  // 0x80
     FEATURE_WEAPON_SPRITE      = 1 << 8,  // 0x100
+    FEATURE_PLAYER_NAME_COLORS = 1 << 9,  // 0x200
 };
 
 // Build the license mask from customer_features.h defines
@@ -52,6 +54,11 @@ namespace BohLicense
 #endif
 #ifdef BOH_EXTENDED_NAMES
         (BOH_EXTENDED_NAMES ? FEATURE_EXTENDED_NAMES : 0) |
+#else
+        0 |
+#endif
+#ifdef BOH_PLAYER_NAME_COLORS
+        (BOH_PLAYER_NAME_COLORS ? FEATURE_PLAYER_NAME_COLORS : 0) |
 #else
         0 |
 #endif

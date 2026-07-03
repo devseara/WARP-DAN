@@ -456,13 +456,15 @@ CustomDLL.findIat = function(exportName, dllName)
 
 	if (IsStr(dllName) && !dllName.isEmpty())
 	{
+		const exactKey = (dllName + '!' + exportName).toLowerCase();
+		// Prefer the current cumulative import table. Exe.FindFunc can see
+		// stale abandoned lookup tables after repeated CustomDLL rebuilds.
+		if (exactKey in iatMap)
+			return iatMap[exactKey];
+
 		const exactIat = Exe.FindFunc(exportName, dllName);
 		if (exactIat >= 0)
 			return exactIat;
-
-		const exactKey = (dllName + '!' + exportName).toLowerCase();
-		if (exactKey in iatMap)
-			return iatMap[exactKey];
 	}
 
 	return -1;

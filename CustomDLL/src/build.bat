@@ -35,7 +35,7 @@ cl.exe /nologo /c /O2 /Gy /MT /EHa /I"./" ^
     extended_name\extended_name.cpp /Fo:extended_name.obj
 if errorlevel 1 (echo FAILED & exit /b 1)
 
-echo [4/10] item_color - static text wrappers + item colors...
+echo [4/10] item_color - static text wrappers + item/player-name colors...
 cl.exe /nologo /c /O2 /Gy /MT /EHa /I"./" ^
     item_color\colored_itemname.cpp
 if errorlevel 1 (echo FAILED & exit /b 1)

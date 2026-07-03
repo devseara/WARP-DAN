@@ -9,6 +9,7 @@
 // the dual-wield weapon sprite patch is working and separately audited.
 #define BOH_ITEM_COLORS      1
 #define BOH_EXTENDED_NAMES   1
+#define BOH_PLAYER_NAME_COLORS 1
 #define BOH_RUNE_VISUAL      1
 #define BOH_FPS_OVERLAY      1
 #define BOH_PING_OVERLAY     1

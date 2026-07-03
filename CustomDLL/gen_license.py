@@ -16,6 +16,7 @@ from datetime import datetime
 ALL_FEATURES = {
     "ItemColors":       ("BOH_ITEM_COLORS",       "Custom item name colors"),
     "ExtendedNames":    ("BOH_EXTENDED_NAMES",    "Extended character names"),
+    "PlayerNameColors": ("BOH_PLAYER_NAME_COLORS", "Custom player nameplate colors"),
     "RuneVisual":       ("BOH_RUNE_VISUAL",       "Rune set rendering"),
     "FpsOverlay":       ("BOH_FPS_OVERLAY",       "/fps slash command"),
     "PingOverlay":      ("BOH_PING_OVERLAY",      "/ping slash command"),

@@ -20,3 +20,4 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID lpReserved)
 
 extern "C" __declspec(dllexport) void ExtNameVisualInit() {}
 extern "C" __declspec(dllexport) void ColoredItemNameVisualInit() {}
+extern "C" __declspec(dllexport) void PlayerNameColorVisualInit() {}

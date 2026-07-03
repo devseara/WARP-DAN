@@ -25,6 +25,7 @@ static std::unordered_map<std::wstring, std::wstring> g_extPartyMap;
 static std::unordered_map<std::wstring, std::wstring> g_extGuildMap;
 static std::unordered_map<std::wstring, std::wstring> g_extPositionMap;
 static std::unordered_map<std::wstring, uint8_t> g_extTypeMap;
+static std::unordered_map<std::wstring, COLORREF> g_extNameColorMap;
 static std::mutex g_extNameMutex;
 
 static LPVOID g_extnBlock = nullptr;
@@ -168,6 +169,14 @@ static std::string WidePreview(const std::wstring& value, size_t maxChars = 80)
     return result;
 }
 
+static COLORREF RgbToColorRef(uint32_t rgb)
+{
+    uint32_t r = (rgb >> 16) & 0xFF;
+    uint32_t g = (rgb >> 8) & 0xFF;
+    uint32_t b = rgb & 0xFF;
+    return static_cast<COLORREF>((b << 16) | (g << 8) | r);
+}
+
 static LPVOID FindSharedBlock()
 {
     LPVOID active = FindActiveDispatcherBlock();
@@ -275,13 +284,16 @@ static void ForwardNpcName(uint32_t gid, uint8_t type, const char* name)
 void ExtendedNameParsePacket(BYTE* data, uint32_t length)
 {
     bool hasHeader = false;
+    uint16_t packetLength = 0;
     uint32_t offset = 2;
-    if (length >= EXT_NAME_PACKET_LEN)
+    if (length >= EXT_NAME_PACKET_LEN_V1)
     {
-        uint16_t packetLength = *reinterpret_cast<uint16_t*>(data + 2);
+        packetLength = *reinterpret_cast<uint16_t*>(data + 2);
         uint32_t magic = *reinterpret_cast<uint32_t*>(data + 4);
         hasHeader =
-            packetLength == EXT_NAME_PACKET_LEN &&
+            packetLength == length &&
+            (packetLength == EXT_NAME_PACKET_LEN_V1 ||
+             packetLength == EXT_NAME_PACKET_LEN) &&
             magic == EXT_NAME_PACKET_MAGIC;
     }
 
@@ -329,9 +341,15 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
 
     uint8_t type = 0;
     if (hasHeader)
-        type = *reinterpret_cast<uint8_t*>(data + 232);
+        type = *reinterpret_cast<uint8_t*>(data + EXT_NAME_PACKET_TYPE_OFFSET);
     else if (length >= 227)
         type = *reinterpret_cast<uint8_t*>(data + 226);
+
+    uint32_t nameColor = 0;
+    if (hasHeader && packetLength >= EXT_NAME_PACKET_LEN)
+        nameColor =
+            *reinterpret_cast<uint32_t*>(data + EXT_NAME_PACKET_COLOR_OFFSET) &
+            0x00FFFFFF;
 
     ForwardNpcName(gid, type, extName[0] ? extName : shortName);
 
@@ -345,11 +363,12 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
         std::wstring wGuildShort = Utf8ToWide(guildNameShort);
         std::wstring wPosition = Utf8ToWide(positionName);
         std::wstring wPositionShort = Utf8ToWide(positionNameShort);
+        bool hasNameColor = type == 0 && nameColor != 0;
 
         std::lock_guard<std::mutex> lock(g_extNameMutex);
         if (!wShort.empty() &&
             (!wExt.empty() || !wParty.empty() || !wGuild.empty() ||
-             !wPosition.empty()))
+             !wPosition.empty() || hasNameColor))
         {
             std::wstring composite;
             if (type == 1)
@@ -392,6 +411,13 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
             g_extNameMap[wShort] = composite;
             g_extTypeMap[wShort] = type;
         }
+        if (type == 0 && !wShort.empty())
+        {
+            if (nameColor != 0)
+                g_extNameColorMap[wShort] = RgbToColorRef(nameColor);
+            else
+                g_extNameColorMap.erase(wShort);
+        }
         if (!wPartyShort.empty() && !wParty.empty())
             g_extPartyMap[wPartyShort] = wParty;
         if (!wGuildShort.empty() && !wGuild.empty())
@@ -403,6 +429,7 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
         {
             g_extNameMap.clear();
             g_extTypeMap.clear();
+            g_extNameColorMap.clear();
         }
         if (g_extPartyMap.size() > 5000)
             g_extPartyMap.clear();
@@ -416,7 +443,7 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
         {
             LogMsg(
                 "[EXT] gid=%u type=%u len=%u short=\"%s\" ext=\"%s\" "
-                "party=\"%s\" guild=\"%s\" pos=\"%s\" maps=%u/%u/%u/%u",
+                "party=\"%s\" guild=\"%s\" pos=\"%s\" color=0x%06X maps=%u/%u/%u/%u",
                 gid,
                 (unsigned)type,
                 length,
@@ -425,6 +452,7 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
                 WidePreview(wParty).c_str(),
                 WidePreview(wGuild).c_str(),
                 WidePreview(wPosition).c_str(),
+                nameColor,
                 (unsigned)g_extNameMap.size(),
                 (unsigned)g_extPartyMap.size(),
                 (unsigned)g_extGuildMap.size(),
@@ -446,17 +474,20 @@ static bool HasNullTerminator(const char* value, size_t length)
 
 bool ExtendedNameLooksLikePacket(const char* data, size_t length)
 {
-    if (!data || length < EXT_NAME_PACKET_LEN)
+    if (!data || length < EXT_NAME_PACKET_LEN_V1)
         return false;
     if (*reinterpret_cast<const uint16_t*>(data) != EXT_NAME_PACKET_ID)
         return false;
-    if (*reinterpret_cast<const uint16_t*>(data + 2) != EXT_NAME_PACKET_LEN)
+    uint16_t packetLength = *reinterpret_cast<const uint16_t*>(data + 2);
+    if ((packetLength != EXT_NAME_PACKET_LEN_V1 &&
+         packetLength != EXT_NAME_PACKET_LEN) ||
+        packetLength > length)
         return false;
     if (*reinterpret_cast<const uint32_t*>(data + 4) != EXT_NAME_PACKET_MAGIC)
         return false;
     // 0=PC, 1=MOB, 2=NPC, 3=portal NPC. Portal names still participate in
     // hover-name substitution but are not forwarded to the always-on overlay.
-    if (static_cast<uint8_t>(data[232]) > 3)
+    if (static_cast<uint8_t>(data[EXT_NAME_PACKET_TYPE_OFFSET]) > 3)
         return false;
     const char* shortName = data + 12;
     return shortName[0] != '\0' && HasNullTerminator(shortName, 24);
@@ -601,6 +632,7 @@ void ExtendedNameCleanup()
     g_extGuildMap.clear();
     g_extPositionMap.clear();
     g_extTypeMap.clear();
+    g_extNameColorMap.clear();
     g_pendingNpcNames.clear();
 }
 
@@ -677,4 +709,21 @@ bool ExtendedNameSubstitute(
     return replaceExact(g_extPartyMap) ||
            replaceExact(g_extGuildMap) ||
            replaceExact(g_extPositionMap);
+}
+
+bool ExtendedNameLookupNameplateColor(
+    const std::wstring& text,
+    COLORREF& color)
+{
+    color = CLR_INVALID;
+    if (text.empty())
+        return false;
+
+    std::lock_guard<std::mutex> lock(g_extNameMutex);
+    auto it = g_extNameColorMap.find(text);
+    if (it == g_extNameColorMap.end())
+        return false;
+
+    color = it->second;
+    return true;
 }

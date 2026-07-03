@@ -26,7 +26,8 @@ static std::vector<BYTE> MakePacket(
     uint8_t type,
     const char* shortName,
     const char* extendedName,
-    const char* partyName = "")
+    const char* partyName = "",
+    uint32_t nameColor = 0)
 {
     std::vector<BYTE> packet(EXT_NAME_PACKET_LEN, 0);
     *reinterpret_cast<uint16_t*>(packet.data()) = EXT_NAME_PACKET_ID;
@@ -37,7 +38,9 @@ static std::vector<BYTE> MakePacket(
     WriteField(packet, 12, 24, shortName);
     WriteField(packet, 36, 31, extendedName);
     WriteField(packet, 67, 31, partyName);
-    packet[232] = type;
+    packet[EXT_NAME_PACKET_TYPE_OFFSET] = type;
+    *reinterpret_cast<uint32_t*>(
+        packet.data() + EXT_NAME_PACKET_COLOR_OFFSET) = nameColor;
     return packet;
 }
 
@@ -69,6 +72,14 @@ int main()
     assert(!isNameplate);
     assert(output == L"Alice the Brave: hello");
 
+    std::vector<BYTE> colorOnly =
+        MakePacket(1004, 0, "Bob", "", "", 0x00FF00);
+    ExtendedNameParsePacket(
+        colorOnly.data(), static_cast<uint32_t>(colorOnly.size()));
+    COLORREF nameColor = CLR_INVALID;
+    assert(ExtendedNameLookupNameplateColor(L"Bob", nameColor));
+    assert(nameColor == RGB(0, 255, 0));
+
     std::vector<BYTE> portal =
         MakePacket(1003, 3, "East Gate#warp", "East Gate");
     assert(ExtendedNameLooksLikePacket(
@@ -81,7 +92,7 @@ int main()
     assert(ExtendedNameSubstitute(L"East Gate#warp", output, isNameplate));
     assert(output == L"East Gate");
 
-    portal[232] = 4;
+    portal[EXT_NAME_PACKET_TYPE_OFFSET] = 4;
     assert(!ExtendedNameLooksLikePacket(
         reinterpret_cast<const char*>(portal.data()), portal.size()));
 
