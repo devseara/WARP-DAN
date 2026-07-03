@@ -1,7 +1,6 @@
 #include <windows.h>
 
-void ItemColorExtNameInit(HMODULE module);
-void ItemColorExtNameCleanup(bool isProcessTermination);
+#include "text_visual/text_visual_bridge.h"
 
 BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID lpReserved)
 {
@@ -9,10 +8,10 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID lpReserved)
     {
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(module);
-        ItemColorExtNameInit(module);
+        TextVisualInit(module);
         break;
     case DLL_PROCESS_DETACH:
-        ItemColorExtNameCleanup(lpReserved != nullptr);
+        TextVisualCleanup(lpReserved != nullptr);
         break;
     }
     return TRUE;

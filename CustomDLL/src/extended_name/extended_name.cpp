@@ -13,7 +13,7 @@
 static const uint32_t EXT_NAME_RING_MAGIC = 0x474E4952; // 'RING'
 static const uint32_t EXT_NAME_RING_CAPACITY = 128;
 static const uint32_t EXT_NAME_RING_HEADER_SIZE = 16;
-static const uint32_t EXT_NAME_RING_SLOT_SIZE = 256;
+static const uint32_t EXT_NAME_RING_SLOT_SIZE = 1024;
 static const uint32_t EXT_NAME_RING_PAYLOAD_SIZE =
     EXT_NAME_RING_SLOT_SIZE - sizeof(uint32_t);
 static const uintptr_t RO_IMAGE_BASE = 0x00400000;
@@ -24,12 +24,14 @@ static std::unordered_map<std::wstring, std::wstring> g_extNameMap;
 static std::unordered_map<std::wstring, std::wstring> g_extPartyMap;
 static std::unordered_map<std::wstring, std::wstring> g_extGuildMap;
 static std::unordered_map<std::wstring, std::wstring> g_extPositionMap;
+static std::unordered_map<std::wstring, std::wstring> g_extTitleMap;
 static std::unordered_map<std::wstring, uint8_t> g_extTypeMap;
 static std::unordered_map<std::wstring, COLORREF> g_extNameColorMap;
 static std::mutex g_extNameMutex;
 
 static LPVOID g_extnBlock = nullptr;
 static bool g_probeComplete = false;
+static DWORD g_nextProbeTick = 0;
 static HANDLE g_pollThread = nullptr;
 static HANDLE g_stopEvent = nullptr;
 static uint32_t g_readSequence = 0;
@@ -177,6 +179,88 @@ static COLORREF RgbToColorRef(uint32_t rgb)
     return static_cast<COLORREF>((b << 16) | (g << 8) | r);
 }
 
+static bool TickBefore(DWORD now, DWORD future)
+{
+    return static_cast<LONG>(now - future) < 0;
+}
+
+struct ExtNamePacketLayout
+{
+    uint16_t packetLenV1;
+    uint16_t packetLenV2;
+    uint16_t shortLen;
+    uint16_t textLen;
+    uint16_t shortNameOffset;
+    uint16_t nameOffset;
+    uint16_t partyNameOffset;
+    uint16_t guildNameOffset;
+    uint16_t positionNameOffset;
+    uint16_t titleNameOffset;
+    uint16_t partyNameShortOffset;
+    uint16_t guildNameShortOffset;
+    uint16_t positionNameShortOffset;
+    uint16_t titleNameShortOffset;
+    uint16_t typeOffset;
+    uint16_t colorOffset;
+    bool hasTitle;
+};
+
+static const ExtNamePacketLayout EXT_NAME_LAYOUT_LEGACY = {
+    EXT_NAME_PACKET_LEN_LEGACY_V1,
+    EXT_NAME_PACKET_LEN_LEGACY,
+    EXT_NAME_SHORT_FIELD_LEN,
+    EXT_NAME_LEGACY_TEXT_FIELD_LEN,
+    4,
+    4 + EXT_NAME_SHORT_FIELD_LEN,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_LEGACY_TEXT_FIELD_LEN,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_LEGACY_TEXT_FIELD_LEN * 2,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_LEGACY_TEXT_FIELD_LEN * 3,
+    0,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_LEGACY_TEXT_FIELD_LEN * 4,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_LEGACY_TEXT_FIELD_LEN * 4 +
+        EXT_NAME_SHORT_FIELD_LEN,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_LEGACY_TEXT_FIELD_LEN * 4 +
+        EXT_NAME_SHORT_FIELD_LEN * 2,
+    0,
+    EXT_NAME_PACKET_TYPE_OFFSET_LEGACY - 8,
+    EXT_NAME_PACKET_COLOR_OFFSET_LEGACY - 8,
+    false
+};
+
+static const ExtNamePacketLayout EXT_NAME_LAYOUT_V3 = {
+    EXT_NAME_PACKET_LEN_V1,
+    EXT_NAME_PACKET_LEN,
+    EXT_NAME_SHORT_FIELD_LEN,
+    EXT_NAME_TEXT_FIELD_LEN,
+    4,
+    4 + EXT_NAME_SHORT_FIELD_LEN,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_TEXT_FIELD_LEN,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_TEXT_FIELD_LEN * 2,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_TEXT_FIELD_LEN * 3,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_TEXT_FIELD_LEN * 4,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_TEXT_FIELD_LEN * 5,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_TEXT_FIELD_LEN * 5 +
+        EXT_NAME_SHORT_FIELD_LEN,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_TEXT_FIELD_LEN * 5 +
+        EXT_NAME_SHORT_FIELD_LEN * 2,
+    4 + EXT_NAME_SHORT_FIELD_LEN + EXT_NAME_TEXT_FIELD_LEN * 5 +
+        EXT_NAME_SHORT_FIELD_LEN * 3,
+    EXT_NAME_PACKET_TYPE_OFFSET - 8,
+    EXT_NAME_PACKET_COLOR_OFFSET - 8,
+    true
+};
+
+static const ExtNamePacketLayout* FindExtNameLayout(uint16_t packetLength)
+{
+    if (packetLength == EXT_NAME_LAYOUT_V3.packetLenV1 ||
+        packetLength == EXT_NAME_LAYOUT_V3.packetLenV2)
+        return &EXT_NAME_LAYOUT_V3;
+    if (packetLength == EXT_NAME_LAYOUT_LEGACY.packetLenV1 ||
+        packetLength == EXT_NAME_LAYOUT_LEGACY.packetLenV2)
+        return &EXT_NAME_LAYOUT_LEGACY;
+    return nullptr;
+}
+
 static LPVOID FindSharedBlock()
 {
     LPVOID active = FindActiveDispatcherBlock();
@@ -209,10 +293,27 @@ static LPVOID FindSharedBlock()
 
 LPVOID ExtendedNameProbeSharedBlock()
 {
-    if (!g_probeComplete)
+    if (g_extnBlock)
+        return g_extnBlock;
+
+    DWORD now = GetTickCount();
+    if (g_probeComplete && g_nextProbeTick &&
+        TickBefore(now, g_nextProbeTick))
+        return nullptr;
+
+    g_extnBlock = FindSharedBlock();
+    if (g_extnBlock)
     {
-        g_extnBlock = FindSharedBlock();
         g_probeComplete = true;
+        g_nextProbeTick = 0;
+    }
+    else
+    {
+        // DLL load order can race the patched dispatcher table. Do not make a
+        // failed early probe permanent; retry at a low rate until the block is
+        // visible.
+        g_probeComplete = true;
+        g_nextProbeTick = now + 500;
     }
     return g_extnBlock;
 }
@@ -285,15 +386,16 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
 {
     bool hasHeader = false;
     uint16_t packetLength = 0;
+    const ExtNamePacketLayout* layout = nullptr;
     uint32_t offset = 2;
-    if (length >= EXT_NAME_PACKET_LEN_V1)
+    if (length >= EXT_NAME_PACKET_LEN_LEGACY_V1)
     {
         packetLength = *reinterpret_cast<uint16_t*>(data + 2);
         uint32_t magic = *reinterpret_cast<uint32_t*>(data + 4);
+        layout = FindExtNameLayout(packetLength);
         hasHeader =
             packetLength == length &&
-            (packetLength == EXT_NAME_PACKET_LEN_V1 ||
-             packetLength == EXT_NAME_PACKET_LEN) &&
+            layout != nullptr &&
             magic == EXT_NAME_PACKET_MAGIC;
     }
 
@@ -316,39 +418,56 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
         return;
     }
 
-    uint32_t gid = *reinterpret_cast<uint32_t*>(data + offset);
-    char* shortName = reinterpret_cast<char*>(data + offset + 4);
-    char* extName = reinterpret_cast<char*>(data + offset + 4 + 24);
-    char* partyName = reinterpret_cast<char*>(data + offset + 4 + 24 + 31);
-    char* guildName = reinterpret_cast<char*>(data + offset + 4 + 24 + 31 + 31);
-    char* positionName =
-        reinterpret_cast<char*>(data + offset + 4 + 24 + 31 + 31 + 31);
-    char* partyNameShort =
-        reinterpret_cast<char*>(data + offset + 4 + 24 + 31 + 31 + 31 + 31);
-    char* guildNameShort =
-        reinterpret_cast<char*>(data + offset + 4 + 24 + 31 + 31 + 31 + 31 + 24);
-    char* positionNameShort =
-        reinterpret_cast<char*>(data + offset + 4 + 24 + 31 + 31 + 31 + 31 + 24 + 24);
+    if (!layout)
+        layout = &EXT_NAME_LAYOUT_LEGACY;
 
-    shortName[23] = '\0';
-    extName[30] = '\0';
-    partyName[30] = '\0';
-    guildName[30] = '\0';
-    positionName[30] = '\0';
-    partyNameShort[23] = '\0';
-    guildNameShort[23] = '\0';
-    positionNameShort[23] = '\0';
+    uint32_t gid = *reinterpret_cast<uint32_t*>(data + offset);
+    char* shortName =
+        reinterpret_cast<char*>(data + offset + layout->shortNameOffset);
+    char* extName =
+        reinterpret_cast<char*>(data + offset + layout->nameOffset);
+    char* partyName =
+        reinterpret_cast<char*>(data + offset + layout->partyNameOffset);
+    char* guildName =
+        reinterpret_cast<char*>(data + offset + layout->guildNameOffset);
+    char* positionName =
+        reinterpret_cast<char*>(data + offset + layout->positionNameOffset);
+    char* titleName = layout->hasTitle ?
+        reinterpret_cast<char*>(data + offset + layout->titleNameOffset) :
+        nullptr;
+    char* partyNameShort =
+        reinterpret_cast<char*>(data + offset + layout->partyNameShortOffset);
+    char* guildNameShort =
+        reinterpret_cast<char*>(data + offset + layout->guildNameShortOffset);
+    char* positionNameShort =
+        reinterpret_cast<char*>(data + offset + layout->positionNameShortOffset);
+    char* titleNameShort = layout->hasTitle ?
+        reinterpret_cast<char*>(data + offset + layout->titleNameShortOffset) :
+        nullptr;
+
+    shortName[layout->shortLen - 1] = '\0';
+    extName[layout->textLen - 1] = '\0';
+    partyName[layout->textLen - 1] = '\0';
+    guildName[layout->textLen - 1] = '\0';
+    positionName[layout->textLen - 1] = '\0';
+    if (titleName)
+        titleName[layout->textLen - 1] = '\0';
+    partyNameShort[layout->shortLen - 1] = '\0';
+    guildNameShort[layout->shortLen - 1] = '\0';
+    positionNameShort[layout->shortLen - 1] = '\0';
+    if (titleNameShort)
+        titleNameShort[layout->shortLen - 1] = '\0';
 
     uint8_t type = 0;
     if (hasHeader)
-        type = *reinterpret_cast<uint8_t*>(data + EXT_NAME_PACKET_TYPE_OFFSET);
+        type = *reinterpret_cast<uint8_t*>(data + offset + layout->typeOffset);
     else if (length >= 227)
         type = *reinterpret_cast<uint8_t*>(data + 226);
 
     uint32_t nameColor = 0;
-    if (hasHeader && packetLength >= EXT_NAME_PACKET_LEN)
+    if (hasHeader && packetLength == layout->packetLenV2)
         nameColor =
-            *reinterpret_cast<uint32_t*>(data + EXT_NAME_PACKET_COLOR_OFFSET) &
+            *reinterpret_cast<uint32_t*>(data + offset + layout->colorOffset) &
             0x00FFFFFF;
 
     ForwardNpcName(gid, type, extName[0] ? extName : shortName);
@@ -363,12 +482,14 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
         std::wstring wGuildShort = Utf8ToWide(guildNameShort);
         std::wstring wPosition = Utf8ToWide(positionName);
         std::wstring wPositionShort = Utf8ToWide(positionNameShort);
+        std::wstring wTitle = Utf8ToWide(titleName);
+        std::wstring wTitleShort = Utf8ToWide(titleNameShort);
         bool hasNameColor = type == 0 && nameColor != 0;
 
         std::lock_guard<std::mutex> lock(g_extNameMutex);
         if (!wShort.empty() &&
             (!wExt.empty() || !wParty.empty() || !wGuild.empty() ||
-             !wPosition.empty() || hasNameColor))
+             !wPosition.empty() || !wTitle.empty() || hasNameColor))
         {
             std::wstring composite;
             if (type == 1)
@@ -388,6 +509,8 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
                     composite += L" | " + wGuild;
                 if (!wPosition.empty())
                     composite += L" | " + wPosition;
+                if (!wTitle.empty())
+                    composite += L" | " + wTitle;
             }
             else if (type == 2 || type == 3)
             {
@@ -397,10 +520,12 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
             {
                 composite =
                     wExt.find(wShort) == 0 ? wExt : wShort + L" " + wExt;
+                if (!wTitle.empty())
+                    composite = wTitle + L" " + composite;
             }
             else
             {
-                composite = wShort;
+                composite = !wTitle.empty() ? wTitle + L" " + wShort : wShort;
                 if (!wParty.empty())
                     composite += L" [" + wParty + L"]";
                 if (!wGuild.empty())
@@ -424,6 +549,8 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
             g_extGuildMap[wGuildShort] = wGuild;
         if (!wPositionShort.empty() && !wPosition.empty())
             g_extPositionMap[wPositionShort] = wPosition;
+        if (!wTitleShort.empty() && !wTitle.empty())
+            g_extTitleMap[wTitleShort] = wTitle;
 
         if (g_extNameMap.size() > 5000)
         {
@@ -437,13 +564,16 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
             g_extGuildMap.clear();
         if (g_extPositionMap.size() > 5000)
             g_extPositionMap.clear();
+        if (g_extTitleMap.size() > 5000)
+            g_extTitleMap.clear();
 
         LONG budget = InterlockedDecrement(&g_packetLogBudget);
         if (budget >= 0)
         {
             LogMsg(
                 "[EXT] gid=%u type=%u len=%u short=\"%s\" ext=\"%s\" "
-                "party=\"%s\" guild=\"%s\" pos=\"%s\" color=0x%06X maps=%u/%u/%u/%u",
+                "party=\"%s\" guild=\"%s\" pos=\"%s\" title=\"%s\" "
+                "color=0x%06X maps=%u/%u/%u/%u/%u",
                 gid,
                 (unsigned)type,
                 length,
@@ -452,11 +582,13 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
                 WidePreview(wParty).c_str(),
                 WidePreview(wGuild).c_str(),
                 WidePreview(wPosition).c_str(),
+                WidePreview(wTitle).c_str(),
                 nameColor,
                 (unsigned)g_extNameMap.size(),
                 (unsigned)g_extPartyMap.size(),
                 (unsigned)g_extGuildMap.size(),
-                (unsigned)g_extPositionMap.size());
+                (unsigned)g_extPositionMap.size(),
+                (unsigned)g_extTitleMap.size());
         }
     }
     catch (...)
@@ -474,23 +606,23 @@ static bool HasNullTerminator(const char* value, size_t length)
 
 bool ExtendedNameLooksLikePacket(const char* data, size_t length)
 {
-    if (!data || length < EXT_NAME_PACKET_LEN_V1)
+    if (!data || length < EXT_NAME_PACKET_LEN_LEGACY_V1)
         return false;
     if (*reinterpret_cast<const uint16_t*>(data) != EXT_NAME_PACKET_ID)
         return false;
     uint16_t packetLength = *reinterpret_cast<const uint16_t*>(data + 2);
-    if ((packetLength != EXT_NAME_PACKET_LEN_V1 &&
-         packetLength != EXT_NAME_PACKET_LEN) ||
-        packetLength > length)
+    const ExtNamePacketLayout* layout = FindExtNameLayout(packetLength);
+    if (!layout || packetLength > length)
         return false;
     if (*reinterpret_cast<const uint32_t*>(data + 4) != EXT_NAME_PACKET_MAGIC)
         return false;
     // 0=PC, 1=MOB, 2=NPC, 3=portal NPC. Portal names still participate in
     // hover-name substitution but are not forwarded to the always-on overlay.
-    if (static_cast<uint8_t>(data[EXT_NAME_PACKET_TYPE_OFFSET]) > 3)
+    if (static_cast<uint8_t>(data[8 + layout->typeOffset]) > 3)
         return false;
     const char* shortName = data + 12;
-    return shortName[0] != '\0' && HasNullTerminator(shortName, 24);
+    return shortName[0] != '\0' &&
+        HasNullTerminator(shortName, layout->shortLen);
 }
 
 static void DrainRing(BYTE* base)
@@ -594,12 +726,6 @@ void ExtendedNameInit(bool enableSharedPolling, bool debugLogEnabled)
     if (!enableSharedPolling || g_pollThread)
         return;
 
-    if (!ExtendedNameProbeSharedBlock())
-    {
-        LogMsg("[INIT] EXTN shared block is absent; drain thread not needed");
-        return;
-    }
-
     g_stopEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (g_stopEvent)
         g_pollThread =
@@ -631,9 +757,14 @@ void ExtendedNameCleanup()
     g_extPartyMap.clear();
     g_extGuildMap.clear();
     g_extPositionMap.clear();
+    g_extTitleMap.clear();
     g_extTypeMap.clear();
     g_extNameColorMap.clear();
     g_pendingNpcNames.clear();
+    g_extnBlock = nullptr;
+    g_probeComplete = false;
+    g_nextProbeTick = 0;
+    g_readSequence = 0;
 }
 
 static bool IsChatNameMatch(
@@ -708,7 +839,8 @@ bool ExtendedNameSubstitute(
 
     return replaceExact(g_extPartyMap) ||
            replaceExact(g_extGuildMap) ||
-           replaceExact(g_extPositionMap);
+           replaceExact(g_extPositionMap) ||
+           replaceExact(g_extTitleMap);
 }
 
 bool ExtendedNameLookupNameplateColor(

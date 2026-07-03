@@ -68,7 +68,8 @@ RecvStrip0BB6.install = function(_)
     Exe.SetUint32(free + stubSize + blockSize + 8, 0);       // length = 0
 
     // MASM-generated stdcall stub. It preserves EBX/ESI/EDI like ws2_32.recv,
-    // and treats 0x0BB7 as the fixed 233-byte length+EXTN custom packet.
+    // and copies 0x0BB7 by packetLength+EXTN. This is a legacy/debug route;
+    // production Gepard-safe profiles use CustomPacketDispatch's EXTN ring.
     $$(_, 5, `Write stub machine code (333 bytes)`);
     const stubHex =
         "558bec83ec1c5356578b45088b4d0c8b55108b7514894dfc8955f8" +

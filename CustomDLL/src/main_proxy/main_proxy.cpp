@@ -19,6 +19,16 @@
 // Feature license system
 #include "boh_features.h"
 
+#if BOH_ITEM_COLORS || BOH_EXTENDED_NAMES || BOH_PLAYER_NAME_COLORS
+#define BOH_HAS_TEXT_VISUAL 1
+#else
+#define BOH_HAS_TEXT_VISUAL 0
+#endif
+
+#if BOH_HAS_TEXT_VISUAL
+#include "text_visual/text_visual_bridge.h"
+#endif
+
 // ============================================================================
 //  DirectDraw forwarding globals (also referenced by colored_itemname.cpp)
 // ============================================================================
@@ -31,21 +41,26 @@ FARPROC g_pDirectDrawEnumerateExA = nullptr;
 //  Feature module forward declarations
 // ============================================================================
 
-// colored_itemname.cpp - GDI hooks + item colors
-void ItemColorExtNameInit(HMODULE hModule);
-void ItemColorExtNameCleanup(bool isProcessTermination);
-
+#if BOH_RUNE_VISUAL
 // rune_visual.cpp (RuneVisualDLL/boh_rune_visual.cpp)
 BOOL APIENTRY RuneVisualDllMain(HMODULE module, DWORD reason, LPVOID reserved);
+#endif
 
+#if BOH_FPS_OVERLAY || BOH_PING_OVERLAY
 // fps_ping.cpp (FpsPingOverlay/fps_ping_overlay.cpp + ping.cpp)
 BOOL APIENTRY FpsOverlayDllMain(HMODULE module, DWORD reason, LPVOID reserved);
+#endif
 
+#if BOH_NPC_NAME_OVERLAY
 // npc_name_overlay.cpp (npc_name_overlay/npc_name_overlay.cpp)
 BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID reserved);
+#endif
 
+#if BOH_INVENTORY_TABS
 // inventory_tabs.cpp (inventory_tabs/inventory_tabs.cpp)
 BOOL APIENTRY InvTabsDllMain(HMODULE module, DWORD reason, LPVOID reserved);
+#endif
+
 #if BOH_WEAPON_SPRITE
 BOOL APIENTRY WeaponSpriteDllMain(HMODULE module, DWORD reason, LPVOID reserved);
 #endif
@@ -69,28 +84,42 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
         return TRUE;
 
     const bool textFeaturesEnabled =
+#if BOH_HAS_TEXT_VISUAL
         BohLicense::IsEnabled(FEATURE_ITEM_COLORS) ||
         BohLicense::IsEnabled(FEATURE_EXTENDED_NAMES) ||
         BohLicense::IsEnabled(FEATURE_PLAYER_NAME_COLORS);
+#else
+        false;
+#endif
     const bool fpsFeaturesEnabled =
         BohLicense::IsEnabled(FEATURE_FPS_OVERLAY) ||
         BohLicense::IsEnabled(FEATURE_PING_OVERLAY);
 
     // Explicit DLL unload — safe to run cleanup.
+#if BOH_HAS_TEXT_VISUAL
     if (reason == DLL_PROCESS_DETACH && textFeaturesEnabled)
-        ItemColorExtNameCleanup(false);
+        TextVisualCleanup(false);
+#endif
 
     // Chain only to compiled-in feature modules that are enabled for this build.
     // This keeps a Gepard-safe combined DLL from running disabled modules that
     // would otherwise patch EXE code, IAT entries, or vtables at runtime.
+#if BOH_RUNE_VISUAL
     if (BohLicense::IsEnabled(FEATURE_RUNE_VISUAL))
         RuneVisualDllMain(hModule, reason, lpReserved);
+#endif
+#if BOH_FPS_OVERLAY || BOH_PING_OVERLAY
     if (fpsFeaturesEnabled)
         FpsOverlayDllMain(hModule, reason, lpReserved);
+#endif
+#if BOH_NPC_NAME_OVERLAY
     if (BohLicense::IsEnabled(FEATURE_NPC_NAME_OVERLAY))
         NpcNameOverlayDllMain(hModule, reason, lpReserved);
+#endif
+#if BOH_INVENTORY_TABS
     if (BohLicense::IsEnabled(FEATURE_INVENTORY_TABS))
         InvTabsDllMain(hModule, reason, lpReserved);
+#endif
 #if BOH_WEAPON_SPRITE
     if (BohLicense::IsEnabled(FEATURE_WEAPON_SPRITE))
         WeaponSpriteDllMain(hModule, reason, lpReserved);
@@ -115,8 +144,10 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
         // Initialize item colors + extended names only for builds that enable
         // those text-hook features.
+#if BOH_HAS_TEXT_VISUAL
         if (textFeaturesEnabled)
-            ItemColorExtNameInit(hModule);
+            TextVisualInit(hModule);
+#endif
         break;
     }
 
@@ -165,8 +196,6 @@ extern "C" __declspec(dllexport) HRESULT DirectDrawEnumerateExA(
 extern "C" __declspec(dllexport) void ExtNameVisualInit(void) {}
 extern "C" __declspec(dllexport) void ColoredItemNameVisualInit(void) {}
 extern "C" __declspec(dllexport) void PlayerNameColorVisualInit(void) {}
-// RuneVisualInit is exported by rune_visual.obj (boh_rune_visual.cpp)
-// FpsPingOverlayInit is exported by fps_ping.obj (fps_ping_overlay.cpp)
-// NpcNameOverlayInit is exported by npc_name_overlay.obj (npc_name_overlay.cpp)
-// InventoryTabsInit is exported by inventory_tabs.obj (inventory_tabs.cpp)
-// WeaponSpriteInit is exported by weapon_sprite.obj (weapon_sprite.cpp)
+// Other WARP-facing exports are provided only by enabled feature objects:
+// RuneVisualInit, FpsPingOverlayInit, NpcNameOverlayInit, InventoryTabsInit,
+// PincodeUIInit/PincodeUIShow, and WeaponSpriteInit.

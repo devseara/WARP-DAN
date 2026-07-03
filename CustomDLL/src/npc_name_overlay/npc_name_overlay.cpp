@@ -35,14 +35,20 @@ static constexpr DWORD kStaleNpcMs = 10000;
 static constexpr DWORD kNameAboveHeadOption = 0x5C;
 static constexpr DWORD kShowNpcNameOption = 10001;
 static constexpr uint16_t kExtNamePacketId = 0x0BB7;
-static constexpr uint16_t kExtNamePacketLenV1 = 233;
-static constexpr uint16_t kExtNamePacketLen = 237;
-static constexpr uint16_t kExtNamePacketTypeOffset = 232;
+static constexpr uint16_t kExtNamePacketLenLegacyV1 = 233;
+static constexpr uint16_t kExtNamePacketLenLegacy = 237;
+static constexpr uint16_t kExtNamePacketLenV1 = 773;
+static constexpr uint16_t kExtNamePacketLen = 777;
+static constexpr uint16_t kExtNamePacketTypeOffsetLegacy = 232;
+static constexpr uint16_t kExtNamePacketTypeOffset = 772;
+static constexpr uint16_t kExtNameShortFieldLen = 24;
+static constexpr uint16_t kExtNameLegacyTextFieldLen = 31;
+static constexpr uint16_t kExtNameTextFieldLen = 128;
 static constexpr uint32_t kExtNameMagic = 0x4558544E; // 'EXTN'
 static constexpr uint32_t kExtNameRingMagic = 0x474E4952; // 'RING'
 static constexpr uint32_t kExtNameRingCapacity = 128;
 static constexpr uint32_t kExtNameRingHeaderSize = 16;
-static constexpr uint32_t kExtNameRingSlotSize = 256;
+static constexpr uint32_t kExtNameRingSlotSize = 1024;
 static constexpr uint32_t kExtNameRingPayloadSize =
 	kExtNameRingSlotSize - sizeof(uint32_t);
 static constexpr DWORD kPacketDispatchTable = 0x00CAA2E0;
@@ -69,6 +75,7 @@ static volatile LONG g_enabled;
 static volatile bool g_down;
 static BYTE* g_extnBlock;
 static bool g_extnProbeComplete;
+static DWORD g_extnNextProbeTick;
 static uint32_t g_extnReadSequence;
 static bool g_optionSynced;
 
@@ -90,6 +97,8 @@ static std::unordered_map<uint32_t, DWORD> g_clippedUntil;
 static void* g_lastGameMode;
 static DWORD g_lastWorldManager;
 static DWORD g_suppressUntil;
+
+static bool TickBefore(DWORD now, DWORD future);
 
 static DWORD Rebase(DWORD address)
 {
@@ -427,10 +436,27 @@ static BYTE* FindExtnSharedBlock()
 
 static BYTE* ProbeExtnSharedBlock()
 {
-	if (!g_extnProbeComplete)
+	if (g_extnBlock)
+		return g_extnBlock;
+
+	const DWORD now = GetTickCount();
+	if (g_extnProbeComplete && g_extnNextProbeTick &&
+		TickBefore(now, g_extnNextProbeTick))
+		return nullptr;
+
+	g_extnBlock = FindExtnSharedBlock();
+	if (g_extnBlock)
 	{
-		g_extnBlock = FindExtnSharedBlock();
 		g_extnProbeComplete = true;
+		g_extnNextProbeTick = 0;
+	}
+	else
+	{
+		// Startup import order can make the dispatcher table look absent during
+		// DLL attach. Retry misses instead of disabling EXTN-backed NPC names for
+		// the lifetime of the process.
+		g_extnProbeComplete = true;
+		g_extnNextProbeTick = now + 500;
 	}
 	return g_extnBlock;
 }
@@ -582,16 +608,21 @@ extern "C" __declspec(dllexport) void NpcOverlay_OnExtName(
 static void ParseExtnNpcPacket(BYTE* data, uint32_t length)
 {
 	bool hasHeader = false;
+	bool hasWideLayout = false;
 	uint16_t packetLength = 0;
 	uint32_t offset = 2;
-	if (length >= kExtNamePacketLenV1)
+	if (length >= kExtNamePacketLenLegacyV1)
 	{
 		packetLength = *reinterpret_cast<uint16_t*>(data + 2);
 		uint32_t magic = *reinterpret_cast<uint32_t*>(data + 4);
+		hasWideLayout =
+			packetLength == kExtNamePacketLenV1 ||
+			packetLength == kExtNamePacketLen;
 		hasHeader =
 			packetLength == length &&
-			(packetLength == kExtNamePacketLenV1 ||
-			 packetLength == kExtNamePacketLen) &&
+			(hasWideLayout ||
+			 packetLength == kExtNamePacketLenLegacyV1 ||
+			 packetLength == kExtNamePacketLenLegacy) &&
 			magic == kExtNameMagic;
 	}
 
@@ -602,18 +633,24 @@ static void ParseExtnNpcPacket(BYTE* data, uint32_t length)
 
 	if (*reinterpret_cast<uint16_t*>(data) != kExtNamePacketId)
 		return;
-	if (length < offset + 4 + 24 + 31)
+	const uint16_t textLen =
+		hasWideLayout ? kExtNameTextFieldLen : kExtNameLegacyTextFieldLen;
+	if (length < offset + 4 + kExtNameShortFieldLen + textLen)
 		return;
 
 	uint32_t gid = *reinterpret_cast<uint32_t*>(data + offset);
 	char* shortName = reinterpret_cast<char*>(data + offset + 4);
-	char* extName = reinterpret_cast<char*>(data + offset + 4 + 24);
-	shortName[23] = '\0';
-	extName[30] = '\0';
+	char* extName =
+		reinterpret_cast<char*>(data + offset + 4 + kExtNameShortFieldLen);
+	shortName[kExtNameShortFieldLen - 1] = '\0';
+	extName[textLen - 1] = '\0';
 
 	uint8_t type = 0;
 	if (hasHeader)
-		type = *reinterpret_cast<uint8_t*>(data + kExtNamePacketTypeOffset);
+		type = *reinterpret_cast<uint8_t*>(
+			data + (hasWideLayout ?
+				kExtNamePacketTypeOffset :
+				kExtNamePacketTypeOffsetLegacy));
 	else if (length >= 227)
 		type = *reinterpret_cast<uint8_t*>(data + 226);
 
@@ -1025,6 +1062,7 @@ BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID reserve
 		g_suppressUntil = 0;
 		g_extnBlock = nullptr;
 		g_extnProbeComplete = false;
+		g_extnNextProbeTick = 0;
 		g_extnReadSequence = 0;
 		g_optionSynced = false;
 		break;

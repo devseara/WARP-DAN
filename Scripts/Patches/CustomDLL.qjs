@@ -450,10 +450,68 @@ CustomDLL.getDllName = function(inputKey, title, description, defaultName, dedic
 	return dllName;
 };
 
+CustomDLL.findActiveIat = function(exportName, dllName)
+{
+	if (!IsStr(dllName) || dllName.isEmpty() ||
+	    !IsStr(exportName) || exportName.isEmpty())
+		return -1;
+
+	const wantedDll = dllName.toLowerCase();
+	const wantedExport = exportName.toLowerCase();
+	const lastEntry = ' 00'.repeat(20);
+	const importDir = Exe.GetDirAddr(D_Import, PHYSICAL);
+	if (importDir < 0)
+		return -1;
+
+	for (let desc = importDir; Exe.GetHex(desc, 20) !== lastEntry; desc += 20)
+	{
+		const originalFirstThunkRva = Exe.GetUint32(desc);
+		const nameRva = Exe.GetUint32(desc + 12);
+		const firstThunkRva = Exe.GetUint32(desc + 16);
+		if (nameRva === 0 || firstThunkRva === 0)
+			continue;
+
+		const namePhy = Exe.Rva2Phy(nameRva);
+		if (namePhy < 0)
+			continue;
+		const activeDll = Exe.GetText(namePhy).toLowerCase();
+		if (activeDll !== wantedDll)
+			continue;
+
+		const lookupRva = originalFirstThunkRva || firstThunkRva;
+		const lookupPhy = Exe.Rva2Phy(lookupRva);
+		if (lookupPhy < 0)
+			return -1;
+
+		for (let index = 0; ; ++index)
+		{
+			const lookupValue = Exe.GetUint32(lookupPhy + index * 4);
+			if (lookupValue === 0)
+				break;
+			if ((lookupValue & 0x80000000) !== 0)
+				continue;
+
+			const importNamePhy = Exe.Rva2Phy(lookupValue);
+			if (importNamePhy < 0)
+				continue;
+			const activeExport = Exe.GetText(importNamePhy + 2).toLowerCase();
+			if (activeExport === wantedExport)
+				return Exe.ImageBase + firstThunkRva + index * 4;
+		}
+
+		return -1;
+	}
+
+	return -1;
+};
+
 CustomDLL.findIat = function(exportName, dllName)
 {
-	const iatMap = CACHE.get('CustomDLL.IAT') ?? {};
+	const activeIat = CustomDLL.findActiveIat(exportName, dllName);
+	if (activeIat >= 0)
+		return activeIat;
 
+	const iatMap = CACHE.get('CustomDLL.IAT') ?? {};
 	if (IsStr(dllName) && !dllName.isEmpty())
 	{
 		const exactKey = (dllName + '!' + exportName).toLowerCase();

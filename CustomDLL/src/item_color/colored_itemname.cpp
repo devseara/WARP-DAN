@@ -14,6 +14,8 @@
 
 #include "boh_features.h"
 #include "extended_name/extended_name.h"
+#include "player_name_color/player_name_color.h"
+#include "text_visual/text_visual_bridge.h"
 
 #ifndef BOH_TEXT_STATIC_WRAPPERS
 #define BOH_TEXT_STATIC_WRAPPERS 1
@@ -199,6 +201,7 @@ static const int g_checkInterval = 60; // check every ~60 frames (~1 sec at 60fp
 
 static LPVOID g_icolBlock = nullptr;   // WARP-allocated ICOL shared memory (item colors)
 static bool g_checkedShared = false;
+static DWORD g_nextSharedProbeTick = 0;
 static CRITICAL_SECTION g_sharedBlockCS;
 static HANDLE g_sharedPollThread = nullptr;
 static HANDLE g_sharedPollStopEvent = nullptr;
@@ -256,6 +259,21 @@ static bool IsTextHooksShuttingDown()
     return InterlockedCompareExchange(&g_textHooksShuttingDown, 0, 0) != 0;
 }
 
+static bool TextVisualTryExtendedNameSubstitute(
+    const std::wstring& text,
+    std::wstring& substitutedText,
+    bool& isNameplate)
+{
+#if BOH_EXTENDED_NAMES
+    return ExtendedNameSubstitute(text, substitutedText, isNameplate);
+#else
+    (void)text;
+    substitutedText.clear();
+    isNameplate = false;
+    return false;
+#endif
+}
+
 #if !BOH_TEXT_STATIC_WRAPPERS
 static void RestorePatchedBytes(LPVOID target, LPVOID originalBytes, SIZE_T length)
 {
@@ -278,6 +296,11 @@ static bool IsShadowLayerColor(COLORREF color)
     BYTE green = GetGValue(color);
     BYTE blue = GetBValue(color);
     return red <= 0x20 && green <= 0x20 && blue <= 0x20;
+}
+
+static bool TickBefore(DWORD now, DWORD future)
+{
+    return static_cast<LONG>(now - future) < 0;
 }
 
 static void TrackColorSequence(const std::wstring& text, bool didColor, HDC hdc, int x, int y)
@@ -698,11 +721,19 @@ static PacketSourceMode ResolvePacketSourceMode(bool isLikelyGepard, bool hasWar
 
     // Default for Banquet: shared-block polling only. Runtime recv interception
     // is intentionally disabled; packet transport should be provided by an
-    // approved WARP-side static integration point instead.
+    // approved WARP-side static integration point instead. Static-wrapper
+    // builds must not depend on a successful first probe during DllMain: the
+    // pollers can retry until the WARP dispatcher blocks are visible.
+#if BOH_TEXT_STATIC_WRAPPERS
+    (void)isLikelyGepard;
+    (void)hasWarpSharedBlocks;
+    return PacketSourceMode::SharedOnly;
+#else
     if (hasWarpSharedBlocks)
         return PacketSourceMode::SharedOnly;
     (void)isLikelyGepard;
     return PacketSourceMode::None;
+#endif
 }
 
 static void ApplyPacketSourceMode(PacketSourceMode mode)
@@ -1086,10 +1117,19 @@ static void CheckSharedBlock()
 
     EnterCriticalSection(&g_sharedBlockCS);
 
-    if (!g_icolBlock && !g_checkedShared)
+    if (!g_icolBlock)
     {
+        DWORD now = GetTickCount();
+        if (g_checkedShared && g_nextSharedProbeTick &&
+            TickBefore(now, g_nextSharedProbeTick))
+        {
+            LeaveCriticalSection(&g_sharedBlockCS);
+            return;
+        }
+
         g_icolBlock = FindSharedBlock(0x49434F4C); // 'ICOL'
         g_checkedShared = true;
+        g_nextSharedProbeTick = g_icolBlock ? 0 : now + 500;
 
         LogMsg("[GRADE:shared] SCAN: ICOL=%p sharedPolling=%u",
             g_icolBlock, g_enableSharedPolling ? 1 : 0);
@@ -1227,7 +1267,7 @@ static void ProcessCustomStream(RecvStreamState& state)
 
             uint16_t pktLen = *(uint16_t*)(&input[in + 2]);
             uint32_t magic = *(uint32_t*)(&input[in + 4]);
-            if (pktLen >= EXT_NAME_PACKET_LEN_V1 &&
+            if (pktLen >= EXT_NAME_PACKET_LEN_LEGACY_V1 &&
                 pktLen <= EXT_NAME_PACKET_LEN &&
                 magic == EXT_NAME_PACKET_MAGIC)
             {
@@ -1610,7 +1650,7 @@ skip_item_processing:
     }
 
     COLORREF playerNameColor = CLR_INVALID;
-    if (ExtendedNameLookupNameplateColor(text, playerNameColor))
+    if (PlayerNameColorLookup(text, playerNameColor))
     {
         customColor = playerNameColor;
         hasPlayerNameColor = true;
@@ -1658,7 +1698,7 @@ skip_item_processing:
     int outCount = cchString;
     std::wstring substitutedText;
     bool isNameplate = false;
-    if (ExtendedNameSubstitute(text, substitutedText, isNameplate))
+    if (TextVisualTryExtendedNameSubstitute(text, substitutedText, isNameplate))
     {
         outString = substitutedText.c_str();
         outCount = (int)substitutedText.length();
@@ -1804,7 +1844,7 @@ skip_eto_processing:
     }
 
     COLORREF playerNameColor = CLR_INVALID;
-    if (ExtendedNameLookupNameplateColor(text, playerNameColor))
+    if (PlayerNameColorLookup(text, playerNameColor))
     {
         customColor = playerNameColor;
         hasPlayerNameColor = true;
@@ -1844,7 +1884,7 @@ skip_eto_processing:
     UINT outCount = cchString;
     std::wstring substitutedText;
     bool isNameplate = false;
-    if (ExtendedNameSubstitute(text, substitutedText, isNameplate))
+    if (TextVisualTryExtendedNameSubstitute(text, substitutedText, isNameplate))
     {
         outString = substitutedText.c_str();
         outCount = (UINT)substitutedText.length();
@@ -1981,7 +2021,7 @@ static int WINAPI HookDrawTextW(HDC hdc, LPCWSTR lpchText, int cchText, LPRECT l
     int outCount = cchText;
     std::wstring substitutedText;
     bool isNameplate = false;
-    if (ExtendedNameSubstitute(text, substitutedText, isNameplate))
+    if (TextVisualTryExtendedNameSubstitute(text, substitutedText, isNameplate))
     {
         outString = substitutedText.c_str();
         outCount = (int)substitutedText.length();
@@ -2111,7 +2151,7 @@ static int WINAPI HookDrawTextExW(HDC hdc, LPCWSTR lpchText, int cchText, LPRECT
     int outCount = cchText;
     std::wstring substitutedText;
     bool isNameplate = false;
-    if (ExtendedNameSubstitute(text, substitutedText, isNameplate))
+    if (TextVisualTryExtendedNameSubstitute(text, substitutedText, isNameplate))
     {
         outString = substitutedText.c_str();
         outCount = (int)substitutedText.length();
@@ -2171,7 +2211,7 @@ static BOOL WINAPI HookGetTextExtentPoint32W(HDC hdc, LPCWSTR lpString, int cchS
 
     std::wstring substitutedText;
     bool isNameplate = false;
-    if (ExtendedNameSubstitute(text, substitutedText, isNameplate))
+    if (TextVisualTryExtendedNameSubstitute(text, substitutedText, isNameplate))
     {
         SIZE extSz = {};
         if (((GetTextExtentPoint32W_t)g_origGetTextExtentPoint32W)(
@@ -2385,10 +2425,10 @@ static bool InstallGetTextExtentPoint32WHook()
 }
 #endif
 // ============================================================================
-//  ItemColorExtNameInit — called from main_proxy.cpp DllMain
+//  TextVisualInit — called from main_proxy.cpp DllMain
 // ============================================================================
 
-void ItemColorExtNameInit(HMODULE hModule)
+void TextVisualInit(HMODULE hModule)
 {
     if (g_tlsPassthroughDepth == TLS_OUT_OF_INDEXES)
         g_tlsPassthroughDepth = TlsAlloc();
@@ -2416,7 +2456,7 @@ void ItemColorExtNameInit(HMODULE hModule)
     if (g_enableSharedPolling)
     {
         g_icolBlock = icolProbe;
-        g_checkedShared = true;
+        g_checkedShared = g_icolBlock != nullptr;
     }
     LogMsg("[INIT] packet_source=%s likely_gepard=%s warp_shared=%s static_bridge=%s shared_poll=%s ICOL=%p EXTN=%p",
         PacketSourceModeToAnsi(g_packetSourceMode),
@@ -2426,7 +2466,7 @@ void ItemColorExtNameInit(HMODULE hModule)
         g_enableSharedPolling ? "on" : "off",
         g_icolBlock, extnProbe);
 
-    if (g_enableSharedPolling && g_icolBlock)
+    if (g_enableSharedPolling)
     {
         InitializeCriticalSection(&g_sharedBlockCS);
         g_sharedBlockCSInitialized = true;
@@ -2438,7 +2478,7 @@ void ItemColorExtNameInit(HMODULE hModule)
     }
 
     ExtendedNameInit(
-        g_enableSharedPolling && extnProbe != nullptr,
+        g_enableSharedPolling,
         g_debugLogEnabled);
 
     LoadColorMap();
@@ -2473,7 +2513,7 @@ void ItemColorExtNameInit(HMODULE hModule)
 #endif
 }
 
-void ItemColorExtNameCleanup(bool isProcessTermination)
+void TextVisualCleanup(bool isProcessTermination)
 {
     InterlockedExchange(&g_textHooksShuttingDown, 1);
 
@@ -2542,4 +2582,17 @@ void ItemColorExtNameCleanup(bool isProcessTermination)
     g_gradeColorMap.clear();
     g_gradeLabels.clear();
     g_lastDescItemName.clear();
+    g_icolBlock = nullptr;
+    g_checkedShared = false;
+    g_nextSharedProbeTick = 0;
+}
+
+void ItemColorExtNameInit(HMODULE hModule)
+{
+    TextVisualInit(hModule);
+}
+
+void ItemColorExtNameCleanup(bool isProcessTermination)
+{
+    TextVisualCleanup(isProcessTermination);
 }

@@ -115,7 +115,7 @@ CustomPacketDispatch.install = function(_, routeNames)
     const handlerSize = 0x80;
     const legacyBlockSize = 4096;
     const extnRingCapacity = 128;
-    const extnRingSlotSize = 256;
+    const extnRingSlotSize = 1024;
     const extnRingBlockSize = 16 + extnRingCapacity * extnRingSlotSize;
     const extnRingMagic = 0x474E4952; // 'RING'
 
@@ -132,8 +132,8 @@ CustomPacketDispatch.install = function(_, routeNames)
     // ready flag silently overwrote before the DLL could poll.
     const extnRingHandlerTemplate =
         "9C 60 BE 11 11 11 11 66 81 3E 22 22 75 31 0F B7" +
-        "4E 02 81 F9 33 33 00 00 72 25 81 F9 FC 00 00 00" +
-        "77 1D BB 44 44 44 44 8B 43 04 83 E0 7F C1 E0 08" +
+        "4E 02 81 F9 33 33 00 00 72 25 81 F9 FC 03 00 00" +
+        "77 1D BB 44 44 44 44 8B 43 04 83 E0 7F C1 E0 0A" +
         "8D 7C 03 10 89 0F 83 C7 04 FC F3 A4 FF 43 04 61" +
         "9D B8 55 55 55 55 FF E0";
 
@@ -183,7 +183,7 @@ CustomPacketDispatch.install = function(_, routeNames)
             entryVir: route.entryVir,
             handlerVir,
             blockVir,
-            transport: isExtnRing ? 'ring-v1' : 'single-slot'
+            transport: isExtnRing ? 'ring-v2' : 'single-slot'
         };
 
         if (route.name === 'ICOL')
@@ -241,6 +241,8 @@ CustomPacketDispatch.isStateStale = function(state)
         const route = state.routes[name];
         if (!route || typeof route.entryVir !== "number" ||
             typeof route.handlerVir !== "number")
+            return true;
+        if (name === "EXTN" && route.transport !== "ring-v2")
             return true;
 
         const entryPhy = Exe.Vir2Phy(route.entryVir, CODE);
