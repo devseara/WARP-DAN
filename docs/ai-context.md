@@ -1166,10 +1166,10 @@ These children draw via `UIDisplayCharacter::Draw` at `0x007F2790` (vtable index
 | **Global** | ALL UI windows | Patch `UIDisplayCharacter::Draw` → `ret` | `0x007F2790` |
 | **Factory AddChild suppression** | UI display-character factories | Keep factories returning valid objects, but NOP their parent `AddChild` calls | `0x00894E94` and `0x00895069` |
 | **Static Skill Tree avatar frame** | Skill Tree paperdoll/avatar | Preserve setup/timer calls, then force computed ACT frame to 0 | `0x00974BC9` |
-| **Skill Tree level-text skip** | ALT+S Skill Tree | Skip the per-skill level-number text block while preserving icons and skill names | `0x00975C7E` |
+| **Skill Tree level-text preservation** | ALT+S Skill Tree | Keep per-skill level-number text visible; restore old skip bytes if an already-patched EXE is reused | `0x00975C7E` |
 
 **WARP Patch Script**:
-- `WARP0716-main/Scripts/Patches/ReduceExpensiveUIRender.qjs` — consolidated production patch for UI FPS loss. It applies the global actor-preview draw skip, factory `AddChild` suppression, Skill Tree avatar-frame freeze, and Skill Tree level-number text skip. It is a static EXE patch only: no runtime hooks and no recv interception.
+- `WARP0716-main/Scripts/Patches/ReduceExpensiveUIRender.qjs` — consolidated production patch for UI FPS loss. It applies the global actor-preview draw skip, factory `AddChild` suppression, and Skill Tree avatar-frame freeze while preserving/restoring Skill Tree level-number text. It is a static EXE patch only: no runtime hooks and no recv interception.
 
 **Archived Targeted Patch** (not registered in WARP UI due to `validate()` lowercase hex bug, kept in `Scripts/Patches/` for reference):
 - `WARP0716-main/Scripts/Patches/DisableSkillTreeCharTargeted.qjs` — NOPs out UIDisplayCharacter creation in UINewSkillListWnd::OnCreate. Kept for future reference only. Do not enable this approach for 2025-07-16: `OnCreate` stores the returned `EAX` values at `[this+0xBC]`, `[this+0xC0]`, and `[this+0xC4]`, then calls through those slots during setup. Directly NOPing the calls can leave stale return values and crash on ALT+S/character select. The old `validate()` also compared `Exe.GetHex()` output without normalizing case/spacing.
@@ -1186,7 +1186,7 @@ These children draw via `UIDisplayCharacter::Draw` at `0x007F2790` (vtable index
 - `0x00895069`: `56 8b cb e8 0f 67 18 00` → patched to `90 90 90 90 90 90 90 90`
 - `0x00974B89`: stays `e8 22 ab d9 ff` (do not skip; this call balances the preceding `push 0x17`)
 - `0x00974BC9`: `8b f0` → patched to `33 f6` (force frame index 0 without changing stack flow)
-- `0x00975C7E`: `83 bd 78 ff ff ff 00 0f 84 7b 02 00 00` → patched to `e9 83 02 00 00 90 90 90 90 90 90 90 90` (skip Skill Tree level-number text such as `5/5` and `10/10`)
+- `0x00975C7E`: keep `83 bd 78 ff ff ff 00 0f 84 7b 02 00 00`; if old output contains `e9 83 02 00 00 90 90 90 90 90 90 90 90`, restore the original branch so Skill Tree level-number text such as `5/5` and `10/10` remains visible
 
 **Recommendation**: Use `ReduceExpensiveUIRender` as the single production FPS patch for this client.
 

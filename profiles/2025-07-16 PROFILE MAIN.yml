@@ -1,233 +1,263 @@
 from: "C:/Users/Administrator/Documents/GitHub/WARP20250716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
 to: "C:/Users/Administrator/Documents/GitHub/WARP20250716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo_patched.exe"
 inputs:
-    $viewIDLimit:
-        data: '007d0000'
-        display: 32000
-        type: 2
-
-    $itemColorVisualDLLName:
-        data: '626f68637573746f6d732e646c6c00'
-        display: "bohcustoms.dll"
-        type: 10
-
-    $customCodePage:
-        data: 'e9fd0000'
-        display: 65001
-        type: 2
-
-    $customCodePageUtf8Bridge:
-        data: ''
-        display: "false"
-        type: 10
-
     $codePageVisualDLLName:
         data: '626f68637573746f6d732e646c6c00'
         display: "bohcustoms.dll"
         type: 10
-
-    $fpsOverlayDLLName:
-        data: '626f68637573746f6d732e646c6c00'
-        display: "bohcustoms.dll"
-        type: 10
-
-    $AllianceChatHotkey:
-        data: '5e095b307835455d2020285265636f6d6d656e6465642900'
-        display: "^	[0x5E]  (Recommended)"
-        type: 10
-
-    $newTipBox:
-        data: '53797374656d454e5c746970626f785f454e2e6c756200'
-        display: "SystemEN\\tipbox_EN.lub"
-        type: 10
-
-    $inpFlag:
-        data: ''
-        display: "Inputs/FlagSpec.yml"
-        type: 10
-
-    $luaOvrdFile:
-        data: ''
-        display: "Inputs/LuaOvrdSpec.yml"
-        type: 10
-
-    $newMonSizeEffect:
-        data: '53797374656d454e5c4d6f6e737465725f53697a655f4566666563745f454e2e6c756200'
-        display: "SystemEN\\Monster_Size_Effect_EN.lub"
-        type: 10
-
-    $customDLL:
-        data: ''
-        display: "Inputs/DLLSpec.yml"
-        type: 10
-
-    $newOngQInfoList:
-        data: '73797374656d454e5c4f6e676f696e675175657374735f454e00'
-        display: "systemEN\\OngoingQuests_EN"
-        type: 10
-
-    $newAchieveList:
-        data: '73797374656d454e5c416368696576656d656e74735f454e2e6c756200'
-        display: "systemEN\\Achievements_EN.lub"
-        type: 10
-
-    $newQuestQuali:
-        data: '53797374656d454e5c5175657374436c617373696669636174696f6e496e666f5f454e2e6c756200'
-        display: "SystemEN\\QuestClassificationInfo_EN.lub"
-        type: 10
-
-    $newMapInfo:
-        data: '73797374656d454e5c4d6170496e666f5f454e2e6c756200'
-        display: "systemEN\\MapInfo_EN.lub"
-        type: 10
-
-    $runeVisualDLLName:
-        data: '626f68637573746f6d732e646c6c00'
-        display: "bohcustoms.dll"
-        type: 10
-
-    $snsBtnURL:
-        data: '68747470733a2f2f646973636f72642e67672f354d714d76664150476400'
-        display: "https://discord.gg/5MqMvfAPGd"
-        type: 10
-
-    $npcNameOverlayDLLName:
-        data: '626f68637573746f6d732e646c6c00'
-        display: "bohcustoms.dll"
-        type: 10
-
-    $pincodeUiDLLName:
-        data: '626f68637573746f6d732e646c6c00'
-        display: "bohcustoms.dll"
-        type: 10
-
+    
     $enchantGradeMap:
         data: ''
         display: "Inputs/enchant_grade.yml"
         type: 10
-
-    $dataINI:
-        data: '444154412e494e4900'
-        display: "DATA.INI"
+    
+    $newAchieveList:
+        data: '73797374656d454e5c416368696576656d656e74735f454e2e6c756200'
+        display: "systemEN\\Achievements_EN.lub"
         type: 10
-
-    $inventoryTabsDLLName:
-        data: '626f68637573746f6d732e646c6c00'
-        display: "bohcustoms.dll"
+    
+    $AllianceChatHotkey:
+        data: '5e095b307835455d2020285265636f6d6d656e6465642900'
+        display: "^	[0x5E]  (Recommended)"
         type: 10
-
-    $MaxItemCount:
-        data: 'e7030000'
-        display: 999
-        type: 2
-
-    $newPetEvoCln:
-        data: '73797374656d454e5c50657445766f6c7574696f6e5f454e2e6c756200'
-        display: "systemEN\\PetEvolution_EN.lub"
-        type: 10
-
-    $maxShield:
-        data: '7f'
-        display: 127
-        type: 2
-
-    $extNameVisualDLLName:
-        data: '626f68637573746f6d732e646c6c00'
-        display: "bohcustoms.dll"
-        type: 10
-
-    $copyCSLub:
+    
+    $runeVisualDLLName:
         data: ''
-        display: "true"
+        display: ""
         type: 10
-
-    $copyCustomGameSettingsLua:
-        data: ''
-        display: "true"
-        type: 10
-
+    
     $newspopup:
         data: '53797374656d454e5c53706f7075705f454e2e6c756200'
         display: "SystemEN\\Spopup_EN.lub"
         type: 10
-
-    $newItemInfo:
-        data: '53797374656d454e5c6974656d496e666f5f454e2e6c756200'
-        display: "SystemEN\\itemInfo_EN.lub"
+    
+    $npcNameOverlayDLLName:
+        data: ''
+        display: ""
         type: 10
-
-    $InventoryExpandMax:
-        data: '3f420f00'
-        display: 999999
+    
+    $pmBoxLen:
+        data: 'ff000000'
+        display: 255
         type: 2
-
-    $newchangemat:
-        data: '53797374656d454e5c4368616e67654d6174657269616c5f454e2e6c756200'
-        display: "SystemEN\\ChangeMaterial_EN.lub"
-        type: 10
-
-    $newPrivAirplane:
-        data: '53797374656d454e5c50726976617465416972706c616e655f454e2e6c756200'
-        display: "SystemEN\\PrivateAirplane_EN.lub"
-        type: 10
-
-    $newCheckAtt:
-        data: '53797374656d454e5c436865636b417474656e64616e63655f454e2e6c756200'
-        display: "SystemEN\\CheckAttendance_EN.lub"
-        type: 10
-
+    
     $newShownButtons:
         data: ''
-        display:
+        display: 
             - type: 10
               value: "Battleground"
             - type: 10
               value: "Twitter (SNS)"
             - type: 10
               value: "Booking"
-
-    $inpMultGRF:
+    
+    $extNameVisualDLLName:
         data: ''
-        display: "Inputs/Sample_DATA.INI"
+        display: ""
         type: 10
-
-    $newRcmdQInfoList:
-        data: '73797374656d454e5c5265636f6d6d656e6465645175657374735f454e00'
-        display: "systemEN\\RecommendedQuests_EN"
-        type: 10
-
-    $translationFile:
+    
+    $customDLL:
         data: ''
-        display: "Inputs/Translations_EN.yml"
+        display: "Inputs/DLLSpec.yml"
         type: 10
-
+    
+    $inventoryTabsDLLName:
+        data: ''
+        display: ""
+        type: 10
+    
+    $copyCSLub:
+        data: ''
+        display: "true"
+        type: 10
+    
+    $chatRoomBoxLen:
+        data: 'ff000000'
+        display: 255
+        type: 2
+    
+    $newMonSizeEffect:
+        data: '53797374656d454e5c4d6f6e737465725f53697a655f4566666563745f454e2e6c756200'
+        display: "SystemEN\\Monster_Size_Effect_EN.lub"
+        type: 10
+    
     $newTownInfo:
         data: '53797374656d454e5c546f776e696e666f5f454e2e6c756200'
         display: "SystemEN\\Towninfo_EN.lub"
         type: 10
-
+    
+    $InventoryExpandMax:
+        data: '3f420f00'
+        display: 999999
+        type: 2
+    
+    $MaxItemCount:
+        data: 'e7030000'
+        display: 999
+        type: 2
+    
+    $maxShield:
+        data: '7f'
+        display: 127
+        type: 2
+    
+    $newPrivAirplane:
+        data: '53797374656d454e5c50726976617465416972706c616e655f454e2e6c756200'
+        display: "SystemEN\\PrivateAirplane_EN.lub"
+        type: 10
+    
+    $snsBtnURL:
+        data: '68747470733a2f2f646973636f72642e67672f354d714d76664150476400'
+        display: "https://discord.gg/5MqMvfAPGd"
+        type: 10
+    
+    $newMapInfo:
+        data: '73797374656d454e5c4d6170496e666f5f454e2e6c756200'
+        display: "systemEN\\MapInfo_EN.lub"
+        type: 10
+    
+    $warpFadeOutDelay:
+        data: '00000000'
+        display: 0
+        type: 2
+    
+    $newOngQInfoList:
+        data: '73797374656d454e5c4f6e676f696e675175657374735f454e00'
+        display: "systemEN\\OngoingQuests_EN"
+        type: 10
+    
+    $chatBoxLen:
+        data: 'ff000000'
+        display: 255
+        type: 2
+    
+    $newchangemat:
+        data: '53797374656d454e5c4368616e67654d6174657269616c5f454e2e6c756200'
+        display: "SystemEN\\ChangeMaterial_EN.lub"
+        type: 10
+    
+    $newQuestQuali:
+        data: '53797374656d454e5c5175657374436c617373696669636174696f6e496e666f5f454e2e6c756200'
+        display: "SystemEN\\QuestClassificationInfo_EN.lub"
+        type: 10
+    
+    $fpsOverlayDLLName:
+        data: ''
+        display: ""
+        type: 10
+    
+    $translationFile:
+        data: ''
+        display: "Inputs/Translations_EN.yml"
+        type: 10
+    
+    $newCheckAtt:
+        data: '53797374656d454e5c436865636b417474656e64616e63655f454e2e6c756200'
+        display: "SystemEN\\CheckAttendance_EN.lub"
+        type: 10
+    
+    $customCodePage:
+        data: 'e9fd0000'
+        display: 65001
+        type: 2
+    
     $GoldPCMaxPoints:
         data: '9f860100'
         display: 99999
         type: 2
-
+    
+    $newRcmdQInfoList:
+        data: '73797374656d454e5c5265636f6d6d656e6465645175657374735f454e00'
+        display: "systemEN\\RecommendedQuests_EN"
+        type: 10
+    
+    $inpMultGRF:
+        data: ''
+        display: "Inputs/Sample_DATA.INI"
+        type: 10
+    
+    $luaOvrdFile:
+        data: ''
+        display: "Inputs/LuaOvrdSpec.yml"
+        type: 10
+    
+    $dataINI:
+        data: '444154412e494e4900'
+        display: "DATA.INI"
+        type: 10
+    
+    $pincodeUiDLLName:
+        data: ''
+        display: ""
+        type: 10
+    
+    $newItemInfo:
+        data: '53797374656d454e5c6974656d496e666f5f454e2e6c756200'
+        display: "SystemEN\\itemInfo_EN.lub"
+        type: 10
+    
+    $npcBoxLength:
+        data: '00100000'
+        display: 4096
+        type: 2
+    
+    $newTipBox:
+        data: '53797374656d454e5c746970626f785f454e2e6c756200'
+        display: "SystemEN\\tipbox_EN.lub"
+        type: 10
+    
+    $copyCustomGameSettingsLua:
+        data: ''
+        display: "true"
+        type: 10
+    
+    $newPetEvoCln:
+        data: '73797374656d454e5c50657445766f6c7574696f6e5f454e2e6c756200'
+        display: "systemEN\\PetEvolution_EN.lub"
+        type: 10
+    
+    $customCodePageUtf8Bridge:
+        data: ''
+        display: "false"
+        type: 10
+    
+    $inpFlag:
+        data: ''
+        display: "Inputs/FlagSpec.yml"
+        type: 10
+    
+    $viewIDLimit:
+        data: '007d0000'
+        display: 32000
+        type: 2
+    
+    $itemColorVisualDLLName:
+        data: ''
+        display: ""
+        type: 10
+    
 patches:
     - AllowPL2Leave
     - AllowGuildInClan
+    - NoWalkDelay
     - AllianceChatHotkeySelector
+    - RestoreSongsEffect
     - EnableWho
     - EnableShowName
     - AlwaysShowNpcName
-    - CustomGameSettingsOptions
+    - ResizeChatBox
+    - ResizeChatRoomBox
+    - ResizePMBox
+    - ResizeNpcBox
     - ZeroCinShop
     - PreviewInShop
     - PreviewInTrader
     - HideCashShop
     - HighCamAngle
+    - ZoomMax
     - UseOldLogin
     - UnlimitedChatRepeat
     - FixFontsCharset
-    - CustomCodePage
     - AlwaysAscii
     - CallKoreaClientInfo
     - PlainTextDesc
@@ -259,6 +289,7 @@ patches:
     - BodyPalUnisex
     - HeadPalUnisex
     - GRFsEmbedded
+    - RemovePremiumService
     - EnableSysMenu
     - No1and1Arg
     - RestoreIcon
@@ -268,7 +299,7 @@ patches:
     - SendClientFlags
     - NoPassEncr
     - Enable44kHzAudio
-    - PatchDiagnostics
+    - CustomGameSettingsOptions
     - AddLuaOverrides
     - AllowAPBarforAllJobs
     - RemoveMaxNumbersLimit
@@ -291,12 +322,15 @@ patches:
     - DeleteCharWithEmail
     - NoHelpMsg
     - EnableNpcDialogueScrolling
+    - MoveUpItemCount
+    - CustomFadeDelay
     - CustomEnchantGradeLabels
     - ReduceExpensiveUIRender
     - HideZeroDateInGuildWin
     - ShortcutForAll
     - EnableFlagAnimation
     - RestoreBattlegroundUI
+    - DisableDoram
     - FixSelectMenuReset
     - FixSelectMenuWidthExpansion
     - FixSkillbarReset
@@ -306,6 +340,7 @@ patches:
     - InsensitiveShopSearch
     - NoGravityAds
     - NoGravityLogo
+    - CustomCodePage
     - CustomRuneSystem
     - ShowNewButtons
     - FixLatestNCWin

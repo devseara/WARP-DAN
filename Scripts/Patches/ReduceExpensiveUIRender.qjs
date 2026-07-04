@@ -22,11 +22,11 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-02                                             *
-*   Last Modified : 2026-07-02                                             *
+*   Last Modified : 2026-07-05                                             *
 *                                                                          *
 *   Description   : Reduces FPS loss from expensive UI rendering in the   *
 *                   2025-07-16 client by disabling heavy UI actor preview *
-*                   rendering and skipping ALT+S Skill Tree level-number  *
+*                   rendering while preserving ALT+S Skill Tree level     *
 *                   text. Static EXE patch only; no runtime hooks.        *
 *                                                                          *
 \**************************************************************************/
@@ -34,13 +34,14 @@
 ///
 /// \brief Consolidated UI FPS patch for the 2025-07-16 client.
 ///
-/// This intentionally merges the previous character-preview, Skill Tree avatar,
-/// and Skill Tree level-text FPS fixes into one production patch:
+/// This intentionally merges the previous character-preview and Skill Tree
+/// avatar FPS fixes into one production patch:
 /// - `UIDisplayCharacter::Draw` returns immediately.
 /// - Display-character factory outputs stay valid but are not added to parent
 ///   render/update child lists.
 /// - The Skill Tree paperdoll frame is forced to 0.
-/// - Skill Tree level labels such as "5/5" and "10/10" are skipped.
+/// - Skill Tree level labels such as "5/5" and "10/10" are preserved; old
+///   binaries patched with the removed level-text skip are restored.
 ///
 ReduceExpensiveUIRender = function(_)
 {
@@ -49,7 +50,7 @@ ReduceExpensiveUIRender = function(_)
 	ReduceExpensiveUIRender.patchDisplayCharacterDraw(_);
 	ReduceExpensiveUIRender.disableFactoryAddChild(_);
 	ReduceExpensiveUIRender.freezeSkillTreeAvatarFrame(_);
-	ReduceExpensiveUIRender.skipSkillTreeLevelText(_);
+	ReduceExpensiveUIRender.preserveSkillTreeLevelText(_);
 
 	return true;
 };
@@ -203,11 +204,14 @@ ReduceExpensiveUIRender.freezeSkillTreeAvatarFrame = function(_)
 ReduceExpensiveUIRender.skillLevelContext =
 	"E8 35 51 DC FF 83 C4 04 83 BD 78 FF FF FF 00 0F 84 7B 02 00 00 84 C0 0F 84 F8 01 00 00";
 
-ReduceExpensiveUIRender.skipSkillTreeLevelText = function(_)
-{
-	const original = "83 BD 78 FF FF FF 00 0F 84 7B 02 00 00";
-	const patched = "E9 83 02 00 00 90 90 90 90 90 90 90 90";
+ReduceExpensiveUIRender.skillLevelOriginal =
+	"83 BD 78 FF FF FF 00 0F 84 7B 02 00 00";
 
+ReduceExpensiveUIRender.skillLevelSkipped =
+	"E9 83 02 00 00 90 90 90 90 90 90 90 90";
+
+ReduceExpensiveUIRender.preserveSkillTreeLevelText = function(_)
+{
 	let addr = ReduceExpensiveUIRender.findByContext(
 		ReduceExpensiveUIRender.skillLevelContext,
 		8
@@ -216,13 +220,26 @@ ReduceExpensiveUIRender.skipSkillTreeLevelText = function(_)
 		addr = ReduceExpensiveUIRender.findFallback(
 			0x00975C7E,
 			13,
-			[original, patched]
+			[
+				ReduceExpensiveUIRender.skillLevelOriginal,
+				ReduceExpensiveUIRender.skillLevelSkipped
+			]
 		);
 	if (addr < 0)
 		throw Error('ReduceExpensiveUIRender: Skill Tree level text site not found');
 
-	Exe.SetHex(addr, patched);
-	$$(_, 1.4, `Skip Skill Tree level text at 0x${addr.toString(16).toUpperCase()}`);
+	const bytes = Exe.GetHex(addr, 13);
+	if (ReduceExpensiveUIRender.hexMatches(bytes, [ReduceExpensiveUIRender.skillLevelSkipped]))
+	{
+		Exe.SetHex(addr, ReduceExpensiveUIRender.skillLevelOriginal);
+		$$(_, 1.4, `Restored Skill Tree level text at 0x${addr.toString(16).toUpperCase()}`);
+		return;
+	}
+
+	if (!ReduceExpensiveUIRender.hexMatches(bytes, [ReduceExpensiveUIRender.skillLevelOriginal]))
+		throw Error('ReduceExpensiveUIRender: unexpected Skill Tree level text bytes');
+
+	$$(_, 1.4, `Preserve Skill Tree level text at 0x${addr.toString(16).toUpperCase()}`);
 };
 
 ReduceExpensiveUIRender.validate = function()
