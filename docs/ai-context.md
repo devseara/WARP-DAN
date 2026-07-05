@@ -1164,12 +1164,12 @@ These children draw via `UIDisplayCharacter::Draw` at `0x007F2790` (vtable index
 | Fix | Scope | Method | Address(es) |
 |-----|-------|--------|-------------|
 | **Global** | ALL UI windows | Patch `UIDisplayCharacter::Draw` → `ret` | `0x007F2790` |
-| **Factory AddChild suppression** | UI display-character factories | Keep factories returning valid objects, but NOP their parent `AddChild` calls | `0x00894E94` and `0x00895069` |
+| **Factory AddChild preservation** | UI child-control factories | Keep parent `AddChild` calls intact; restore old NOPs so title-bar close buttons remain visible | `0x00894E94` and `0x00895069` |
 | **Static Skill Tree avatar frame** | Skill Tree paperdoll/avatar | Preserve setup/timer calls, then force computed ACT frame to 0 | `0x00974BC9` |
 | **Skill Tree level-text preservation** | ALT+S Skill Tree | Keep per-skill level-number text visible; restore old skip bytes if an already-patched EXE is reused | `0x00975C7E` |
 
 **WARP Patch Script**:
-- `WARP0716-main/Scripts/Patches/ReduceExpensiveUIRender.qjs` — consolidated production patch for UI FPS loss. It applies the global actor-preview draw skip, factory `AddChild` suppression, and Skill Tree avatar-frame freeze while preserving/restoring Skill Tree level-number text. It is a static EXE patch only: no runtime hooks and no recv interception.
+- `WARP0716-main/Scripts/Patches/ReduceExpensiveUIRender.qjs` — consolidated production patch for UI FPS loss. It applies the global actor-preview draw skip and Skill Tree avatar-frame freeze while preserving/restoring factory `AddChild` calls and Skill Tree level-number text. It is a static EXE patch only: no runtime hooks and no recv interception.
 
 **Archived Targeted Patch** (not registered in WARP UI due to `validate()` lowercase hex bug, kept in `Scripts/Patches/` for reference):
 - `WARP0716-main/Scripts/Patches/DisableSkillTreeCharTargeted.qjs` — NOPs out UIDisplayCharacter creation in UINewSkillListWnd::OnCreate. Kept for future reference only. Do not enable this approach for 2025-07-16: `OnCreate` stores the returned `EAX` values at `[this+0xBC]`, `[this+0xC0]`, and `[this+0xC4]`, then calls through those slots during setup. Directly NOPing the calls can leave stale return values and crash on ALT+S/character select. The old `validate()` also compared `Exe.GetHex()` output without normalizing case/spacing.
@@ -1182,15 +1182,15 @@ These children draw via `UIDisplayCharacter::Draw` at `0x007F2790` (vtable index
 - `0x007F2790`: `55 8b ec 6a ff 68 10 14 e9 00` → patched to `C3`
 - `0x00976E5B`: stays `e8 90 df f1 ff` (do not NOP direct creation call)
 - `0x00976E86`: stays `e8 15 e1 f1 ff` (do not NOP direct creation call)
-- `0x00894E94`: `56 8b cf e8 e4 68 18 00` → patched to `90 90 90 90 90 90 90 90`
-- `0x00895069`: `56 8b cb e8 0f 67 18 00` → patched to `90 90 90 90 90 90 90 90`
+- `0x00894E94`: keep `56 8b cf e8 e4 68 18 00`; if old output contains `90 90 90 90 90 90 90 90`, restore the original `AddChild` call so UI child controls remain attached
+- `0x00895069`: keep `56 8b cb e8 0f 67 18 00`; if old output contains `90 90 90 90 90 90 90 90`, restore the original `AddChild` call so UI child controls remain attached
 - `0x00974B89`: stays `e8 22 ab d9 ff` (do not skip; this call balances the preceding `push 0x17`)
 - `0x00974BC9`: `8b f0` → patched to `33 f6` (force frame index 0 without changing stack flow)
 - `0x00975C7E`: keep `83 bd 78 ff ff ff 00 0f 84 7b 02 00 00`; if old output contains `e9 83 02 00 00 90 90 90 90 90 90 90 90`, restore the original branch so Skill Tree level-number text such as `5/5` and `10/10` remains visible
 
 **Recommendation**: Use `ReduceExpensiveUIRender` as the single production FPS patch for this client.
 
-**Important**: The global/factory patches eliminate the **expensive 3D mini-render-pass** from `UIDisplayCharacter`. However, a **cheap static cached 2D sprite** of the character may still remain visible in the skill tree window, drawn by a separate lightweight code path inside `UINewSkillListWnd::RealDraw` itself. Any remaining ALT+S FPS drop after the actor-preview fix comes from the Skill Tree's normal UI painting path: repeated bitmap tiling, empty-slot backgrounds, icon/text drawing, and skill-list iteration.
+**Important**: The global draw patch eliminates the **expensive 3D mini-render-pass** from `UIDisplayCharacter`. Factory `AddChild` calls must stay intact because they can also carry normal UI child controls such as title-bar close buttons. A **cheap static cached 2D sprite** of the character may still remain visible in the skill tree window, drawn by a separate lightweight code path inside `UINewSkillListWnd::RealDraw` itself. Any remaining ALT+S FPS drop after the actor-preview fix comes from the Skill Tree's normal UI painting path: repeated bitmap tiling, empty-slot backgrounds, icon/text drawing, and skill-list iteration.
 
 ### Why the Main Character Doesn't Lag (But the Skill Tree Avatar Does)
 

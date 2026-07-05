@@ -26,8 +26,9 @@
 *                                                                          *
 *   Description   : Reduces FPS loss from expensive UI rendering in the   *
 *                   2025-07-16 client by disabling heavy UI actor preview *
-*                   rendering while preserving ALT+S Skill Tree level     *
-*                   text. Static EXE patch only; no runtime hooks.        *
+*                   rendering while preserving UI child controls and ALT+S *
+*                   Skill Tree level text. Static EXE patch only; no      *
+*                   runtime hooks.                                        *
 *                                                                          *
 \**************************************************************************/
 
@@ -37,8 +38,8 @@
 /// This intentionally merges the previous character-preview and Skill Tree
 /// avatar FPS fixes into one production patch:
 /// - `UIDisplayCharacter::Draw` returns immediately.
-/// - Display-character factory outputs stay valid but are not added to parent
-///   render/update child lists.
+/// - UI child-control `AddChild` calls are preserved; old binaries patched with
+///   the removed factory suppression are restored so close buttons stay visible.
 /// - The Skill Tree paperdoll frame is forced to 0.
 /// - Skill Tree level labels such as "5/5" and "10/10" are preserved; old
 ///   binaries patched with the removed level-text skip are restored.
@@ -48,7 +49,7 @@ ReduceExpensiveUIRender = function(_)
 	$$(_, 1, `Reduce expensive UI rendering`);
 
 	ReduceExpensiveUIRender.patchDisplayCharacterDraw(_);
-	ReduceExpensiveUIRender.disableFactoryAddChild(_);
+	ReduceExpensiveUIRender.preserveFactoryAddChild(_);
 	ReduceExpensiveUIRender.freezeSkillTreeAvatarFrame(_);
 	ReduceExpensiveUIRender.preserveSkillTreeLevelText(_);
 
@@ -143,10 +144,6 @@ ReduceExpensiveUIRender.factoryAddChildSites = [
 
 ReduceExpensiveUIRender.findFactoryAddChild = function(site)
 {
-	const found = Exe.FindHex(site.pattern);
-	if (found >= 0)
-		return found;
-
 	for (const virAddr of site.fallbackVir)
 	{
 		const phyAddr = ReduceExpensiveUIRender.findFallback(
@@ -157,10 +154,15 @@ ReduceExpensiveUIRender.findFactoryAddChild = function(site)
 		if (phyAddr >= 0)
 			return phyAddr;
 	}
+
+	const found = Exe.FindHex(site.pattern);
+	if (found >= 0)
+		return found;
+
 	return -1;
 };
 
-ReduceExpensiveUIRender.disableFactoryAddChild = function(_)
+ReduceExpensiveUIRender.preserveFactoryAddChild = function(_)
 {
 	for (const site of ReduceExpensiveUIRender.factoryAddChildSites)
 	{
@@ -171,8 +173,18 @@ ReduceExpensiveUIRender.disableFactoryAddChild = function(_)
 				site.name
 			);
 
-		Exe.SetHex(addr, ReduceExpensiveUIRender.nops8);
-		$$(_, 1.2, `NOP ${site.name} at 0x${addr.toString(16).toUpperCase()}`);
+		const bytes = Exe.GetHex(addr, 8);
+		if (ReduceExpensiveUIRender.hexMatches(bytes, [ReduceExpensiveUIRender.nops8]))
+		{
+			Exe.SetHex(addr, site.pattern);
+			$$(_, 1.2, `Restored ${site.name} at 0x${addr.toString(16).toUpperCase()}`);
+			continue;
+		}
+
+		if (!ReduceExpensiveUIRender.hexMatches(bytes, [site.pattern]))
+			throw Error('ReduceExpensiveUIRender: unexpected ' + site.name + ' bytes');
+
+		$$(_, 1.2, `Preserve ${site.name} at 0x${addr.toString(16).toUpperCase()}`);
 	}
 };
 
