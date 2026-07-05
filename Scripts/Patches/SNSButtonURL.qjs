@@ -27,8 +27,178 @@
 \**************************************************************************/
 
 ///
+/// \brief Shared hook for replacing New Basic button hover labels before the
+///        client dispatches into the first/second button-ID switch tables.
+///
+NewBasicButtonHover = {
+	refsKey: 'NBH_Refs',
+	overridesKey: 'NBH_Overrides',
+	noHotkeyBehaviorID: 0x2732,
+
+	registerMsgString: function(patchName, buttonID, msgID)
+	{
+		this.register(patchName, {
+			owner: patchName,
+			kind: 'msg',
+			buttonID,
+			msgID
+		});
+	},
+
+	registerText: function(patchName, buttonID, textAddr, textLen)
+	{
+		this.register(patchName, {
+			owner: patchName,
+			kind: 'text',
+			buttonID,
+			textAddr,
+			textLen
+		});
+	},
+
+	register: function(patchName, entry)
+	{
+		let entries = CACHE.has(this.overridesKey) ? CACHE.get(this.overridesKey) : [];
+		entries = entries.filter(item => item.owner !== patchName);
+		entries.push(entry);
+		CACHE.put(this.overridesKey, entries);
+		this.stage(patchName);
+	},
+
+	resolveRefs: function(_)
+	{
+		if (CACHE.has(this.refsKey))
+			return CACHE.get(this.refsKey);
+
+		$$(_, 4.1, `Find New Basic hover mapper`)
+		const mapperStart =
+			MOV(EAX, [EAX, 0x2C]) // mov eax, dword ptr [button + button_id]
+		+	MOV(EDX, this.noHotkeyBehaviorID)
+		+	MOV(EDI, 0x1103)
+		+	CMP(EAX, 0x1CD);
+
+		const addr = Exe.FindHex(mapperStart);
+		if (addr < 0)
+			throw Error("New Basic hover mapper start not found");
+
+		const hookAddr = addr
+			+ MOV(EAX, [EAX, 0x2C]).byteCount()
+			+ MOV(EDX, this.noHotkeyBehaviorID).byteCount()
+			+ MOV(EDI, 0x1103).byteCount();
+
+		const continueVir = Exe.Phy2Vir(hookAddr + CMP(EAX, 0x1CD).byteCount(), CODE);
+		if (continueVir < 0)
+			throw Error("New Basic hover mapper continuation conversion failed");
+
+		const subId =
+			SUB(EAX, 0xC0)
+		+	CMP(EAX, 0xEE)
+		+	JA(POS4WC);
+
+		const subAddr = Exe.FindHex(subId, hookAddr, hookAddr + 0x80);
+		if (subAddr < 0)
+			throw Error("New Basic hover mapper switch not found");
+
+		const cmpAddr = subAddr + SUB(EAX, 0xC0).byteCount();
+		const jaAddr = cmpAddr + CMP(EAX, 0xEE).byteCount();
+		const defaultAddr = Exe.GetTgtAddr(jaAddr + 2);
+
+		const assignAddr = Exe.FindHex("8D 45 D0 C7 45 D0 00 00 00 00", hookAddr, hookAddr + 0x200);
+		if (assignAddr < 0)
+			throw Error("New Basic hover label assignment path not found");
+
+		const assignVir = Exe.Phy2Vir(assignAddr, CODE);
+		if (assignVir < 0)
+			throw Error("New Basic hover label assignment conversion failed");
+
+		const assignCall = Exe.FindHex("8B CE 52 50 E8", assignAddr, assignAddr + 0x180);
+		if (assignCall < 0)
+			throw Error("New Basic hover std::string assign call not found");
+
+		const textAssignVir = Exe.GetTgtAddr(assignCall + 5);
+		if (textAssignVir < 0)
+			throw Error("New Basic hover std::string assign target not found");
+
+		const refs = {hookAddr, continueVir, assignVir, defaultAddr, textAssignVir};
+		CACHE.put(this.refsKey, refs);
+		return refs;
+	},
+
+	stage: function(patchName)
+	{
+		const refs = this.resolveRefs(patchName + " hover");
+		const entries = CACHE.has(this.overridesKey) ? CACHE.get(this.overridesKey) : [];
+		if (entries.isEmpty())
+			return;
+
+		let fillerIdx = 1;
+		let targets = {};
+		const continueIdx = fillerIdx++;
+		targets[continueIdx] = refs.continueVir;
+
+		let parts = [];
+		for (const entry of entries)
+		{
+			const skipIdx = fillerIdx++;
+			let body = "";
+
+			if (entry.kind === 'msg')
+			{
+				const assignIdx = fillerIdx++;
+				targets[assignIdx] = refs.assignVir;
+
+				body =
+					MOV(EDX, this.noHotkeyBehaviorID)
+				+	MOV(EDI, entry.msgID)
+				+	JMP(Filler(assignIdx));
+			}
+			else if (entry.kind === 'text')
+			{
+				const assignFnIdx = fillerIdx++;
+				const doneIdx = fillerIdx++;
+				targets[assignFnIdx] = refs.textAssignVir;
+				targets[doneIdx] = refs.defaultAddr;
+
+				body =
+					MOV(ESI, [EBP, -0x34])
+				+	LEA(ECX, [ESI, 0x94])
+				+	PUSH(entry.textLen)
+				+	PUSH(entry.textAddr)
+				+	CALL(Filler(assignFnIdx))
+				+	JMP(Filler(doneIdx));
+			}
+			else
+			{
+				continue;
+			}
+
+			let block =
+				CMP(EAX, entry.buttonID)
+			+	JNE(Filler(skipIdx, 1))
+			+	body;
+
+			block = SwapFillers(block, {[skipIdx + ',1']: body.byteCount()});
+			parts.push(block);
+		}
+
+		parts.push(
+			CMP(EAX, 0x1CD)
+		+	JMP(Filler(continueIdx))
+		);
+
+		Exe.ActivateGlobal();
+		Exe.BeginTag('NewBasicHover', true);
+		const [, stubVir] = AutoHook(null, parts, {targets});
+		Exe.SetJMP(refs.hookAddr, stubVir);
+		Exe.EndTag();
+		Exe.ActivePatch = patchName;
+	}
+};
+
+///
 /// \brief Reuse the Basic Info "SNS" button by opening a custom URL in the
-///        user's default browser while preserving related new-UI button behavior.
+///        user's default browser while replacing the hover label and suppressing
+///        the original SNS hotkey suffix.
 ///
 SNSButtonURL = function(_)
 {
@@ -45,9 +215,26 @@ SNSButtonURL = function(_)
 	if (url === false)
 		Cancel("No URL entered");
 
-	$$(_, 1.2, `Add URL string`)
+	$$(_, 1.2, `Get hover label from user`)
+	const hoverVarName = '$snsBtnHover';
+	const hoverText = Exe.GetUserInput(
+		hoverVarName,
+		D_Text,
+		"SNS Button Hover",
+		"Enter the hover label to show for the SNS button",
+		"Discord Channel",
+		{minLen: 1, maxLen: 60, saveDefault: true}
+	);
+	if (hoverText === false)
+		Cancel("No hover label entered");
+
+	$$(_, 1.3, `Add URL and hover strings`)
 	const [, urlAddr] = Exe.AddFromVar(varName);
 	const [, openAddr] = Exe.AddText("open");
+	const [, hoverAddr] = Exe.AddFromVar(hoverVarName);
+	const hoverLen = hoverText.length;
+	if (hoverLen <= 0)
+		throw Error("SNS hover label is empty");
 
 	$$(_, 2.1, `Find ShellExecuteA import`)
 	const shellExecIA = Exe.FindFunc("ShellExecuteA", "SHELL32.dll");
@@ -102,7 +289,10 @@ SNSButtonURL = function(_)
 	if (battlegroundID <= 0)
 		throw Error("Battleground button ID is invalid");
 
-	$$(_, 3.4, `Keep SNS button visible`)
+	$$(_, 3.4, `Register SNS hover label`)
+	NewBasicButtonHover.registerText(_, targetID, hoverAddr, hoverLen);
+
+	$$(_, 3.5, `Keep SNS button visible`)
 	const swPrefix = MOVZX(EAX, BYTE_PTR, [EAX, POS4WC]); // movzx eax, byte ptr [eax + switchTbl]
 	const swSuffix = JMP([4, EAX, POS4WC]);               // jmp dword ptr [eax*4 + jumpTbl]
 	const swPattern = swPrefix + swSuffix;
