@@ -120,8 +120,10 @@ static BOOL WINAPI BridgeTextOutW(
         g_tlsPassthroughDepth,
         (LPVOID)((DWORD_PTR)TlsGetValue(g_tlsPassthroughDepth) + 1));
 
-    std::wstring renderText = CaptureText(outString, outCount);
-    if (BohFluentEmoji::Draw(
+    const std::wstring& renderText =
+        substitutedText.empty() ? text : substitutedText;
+    if (BohFluentEmoji::MayContainToken(renderText) &&
+        BohFluentEmoji::Draw(
             hdc,
             x,
             y,
@@ -191,6 +193,9 @@ static BOOL WINAPI BridgeGetTextExtentPoint32W(
         hdc, lpString, cchString, lpSize);
     if (!result || !lpSize || cchString <= 0)
         return result;
+    if (!ExtendedNameHasSubstitutionState() &&
+        !BohFluentEmoji::MayContainToken(lpString, cchString))
+        return result;
 
     std::wstring text(lpString, cchString);
     std::wstring substitutedText;
@@ -212,7 +217,8 @@ static BOOL WINAPI BridgeGetTextExtentPoint32W(
     const std::wstring& measureText =
         substitutedText.empty() ? text : substitutedText;
     SIZE emojiSize = {};
-    if (BohFluentEmoji::Measure(
+    if (BohFluentEmoji::MayContainToken(measureText) &&
+        BohFluentEmoji::Measure(
             hdc,
             measureText,
             (GetTextExtentPoint32W_t)g_origGetTextExtentPoint32W,

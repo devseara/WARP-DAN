@@ -54,6 +54,10 @@ static constexpr uint32_t kExtNameRingPayloadSize =
 static constexpr DWORD kPacketDispatchTable = 0x00CAA2E0;
 static constexpr uint16_t kPacketDispatchFirstId = 0x0073;
 static constexpr DWORD kClippedRetryMs = 250;
+// Native balloon setup also updates screen position. Throttling it during
+// movement makes names visibly jitter, so throttling is opt-in for profiling.
+static constexpr DWORD kDefaultFrameIntervalMs = 0;
+static constexpr DWORD kMaxFrameIntervalMs = 250;
 
 enum : DWORD
 {
@@ -97,6 +101,9 @@ static std::unordered_map<uint32_t, DWORD> g_clippedUntil;
 static void* g_lastGameMode;
 static DWORD g_lastWorldManager;
 static DWORD g_suppressUntil;
+static volatile LONG g_renderIntervalLoaded;
+static DWORD g_renderIntervalMs = kDefaultFrameIntervalMs;
+static DWORD g_nextRenderTick;
 
 static bool TickBefore(DWORD now, DWORD future);
 
@@ -328,6 +335,7 @@ static bool SyncEnabledFromClientOption()
 			return false;
 
 		InterlockedExchange(&g_enabled, enabled ? 1 : 0);
+		g_nextRenderTick = 0;
 		g_optionSynced = true;
 		return true;
 	}
@@ -483,6 +491,8 @@ static void ClearKnownNpcs()
 
 static void ResetOverlayState(bool clearKnown)
 {
+	g_nextRenderTick = 0;
+
 	if (EnsureBase())
 	{
 		auto destroy = reinterpret_cast<FnDestroy>(Rebase(kDestroy));
@@ -503,6 +513,49 @@ static void ResetOverlayState(bool clearKnown)
 static bool TickBefore(DWORD now, DWORD future)
 {
 	return static_cast<LONG>(now - future) < 0;
+}
+
+static DWORD ReadNpcFrameIntervalMs()
+{
+	char value[32] = {};
+	const DWORD length = GetEnvironmentVariableA(
+		"BOH_NPC_NAME_FRAME_MS",
+		value,
+		sizeof(value));
+	if (length == 0 || length >= sizeof(value))
+		return kDefaultFrameIntervalMs;
+
+	DWORD parsed = 0;
+	for (DWORD i = 0; i < length; ++i)
+	{
+		if (value[i] < '0' || value[i] > '9')
+			return kDefaultFrameIntervalMs;
+		parsed = parsed * 10 + static_cast<DWORD>(value[i] - '0');
+		if (parsed > kMaxFrameIntervalMs)
+			return kMaxFrameIntervalMs;
+	}
+	return parsed;
+}
+
+static DWORD NpcFrameIntervalMs()
+{
+	if (InterlockedCompareExchange(&g_renderIntervalLoaded, 1, 0) == 0)
+		g_renderIntervalMs = ReadNpcFrameIntervalMs();
+	return g_renderIntervalMs;
+}
+
+static bool ShouldRenderNpcOverlayNow()
+{
+	const DWORD interval = NpcFrameIntervalMs();
+	if (interval == 0)
+		return true;
+
+	const DWORD now = GetTickCount();
+	if (g_nextRenderTick && TickBefore(now, g_nextRenderTick))
+		return false;
+
+	g_nextRenderTick = now + interval;
+	return true;
 }
 
 static bool BeginNpcFrame(void* gameMode, DWORD* worldManagerOut)
@@ -723,6 +776,7 @@ extern "C" __declspec(dllexport) void ToggleNpcNameOverlay()
 	const LONG current = InterlockedCompareExchange(&g_enabled, 0, 0);
 	const LONG enabled = current ? 0 : 1;
 	InterlockedExchange(&g_enabled, enabled);
+	g_nextRenderTick = 0;
 
 	if (EnsureBase())
 	{
@@ -747,6 +801,7 @@ extern "C" __declspec(dllexport) void SetNpcNameOverlayOption(
 	if (optionId == kShowNpcNameOption)
 	{
 		InterlockedExchange(&g_enabled, value);
+		g_nextRenderTick = 0;
 		if (EnsureBase())
 		{
 			auto setOption =
@@ -771,6 +826,7 @@ static void RenderNpcBalloons(void* gameMode, DWORD worldManager)
 	void* uiManager = reinterpret_cast<void*>(Rebase(kUiMgr));
 	if (InterlockedCompareExchange(&g_enabled, 0, 0) == 0)
 	{
+		g_nextRenderTick = 0;
 		if (!g_balloons.empty())
 			DestroyAllBalloons(destroy, uiManager);
 		return;
@@ -1028,6 +1084,9 @@ extern "C" __declspec(dllexport) void NpcNameOverlayFrame(void* gameMode)
 
 	SyncEnabledFromClientOption();
 	PollExtnSharedBlock();
+	if (InterlockedCompareExchange(&g_enabled, 0, 0) != 0 &&
+	    !ShouldRenderNpcOverlayNow())
+		return;
 	RenderNpcBalloons(gameMode, worldManager);
 }
 
@@ -1044,6 +1103,9 @@ BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID reserve
 		DisableThreadLibraryCalls(module);
 		g_down = false;
 		g_enabled = 0;
+		g_renderIntervalLoaded = 0;
+		g_renderIntervalMs = kDefaultFrameIntervalMs;
+		g_nextRenderTick = 0;
 		EnsureBase();
 		break;
 
@@ -1065,6 +1127,9 @@ BOOL APIENTRY NpcNameOverlayDllMain(HMODULE module, DWORD reason, LPVOID reserve
 		g_extnNextProbeTick = 0;
 		g_extnReadSequence = 0;
 		g_optionSynced = false;
+		g_renderIntervalLoaded = 0;
+		g_renderIntervalMs = kDefaultFrameIntervalMs;
+		g_nextRenderTick = 0;
 		break;
 	}
 	return TRUE;

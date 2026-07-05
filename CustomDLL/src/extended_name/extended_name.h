@@ -25,6 +25,8 @@ void ExtendedNameCleanup();
 
 bool ExtendedNameLooksLikePacket(const char* data, size_t length);
 void ExtendedNameParsePacket(BYTE* data, uint32_t length);
+bool ExtendedNameHasSubstitutionState();
+bool ExtendedNameHasNameplateColorState();
 
 // Returns true when text was replaced. Mob entries are intentionally limited
 // to exact nameplate matches so item names such as "Poring Card" cannot inherit

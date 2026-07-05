@@ -1707,16 +1707,11 @@ skip_item_processing:
         outCount = (int)substitutedText.length();
     }
 
-    std::wstring renderText;
-    if (outString)
-    {
-        if (outCount < 0)
-            renderText = outString;
-        else if (outCount > 0)
-            renderText.assign(outString, outCount);
-    }
+    const std::wstring& renderText =
+        outString == lpString ? text : substitutedText;
     BOOL emojiResult = FALSE;
-    if (BohFluentEmoji::Draw(
+    if (BohFluentEmoji::MayContainToken(renderText) &&
+        BohFluentEmoji::Draw(
             hdc,
             x,
             y,
@@ -2233,6 +2228,9 @@ static BOOL WINAPI HookGetTextExtentPoint32W(HDC hdc, LPCWSTR lpString, int cchS
 
     if (!result || !lpSize || cchString <= 0)
         return result;
+    if (!ExtendedNameHasSubstitutionState() &&
+        !BohFluentEmoji::MayContainToken(lpString, cchString))
+        return result;
 
     std::wstring text(lpString, cchString);
 
@@ -2255,7 +2253,8 @@ static BOOL WINAPI HookGetTextExtentPoint32W(HDC hdc, LPCWSTR lpString, int cchS
     const std::wstring& measureText =
         substitutedText.empty() ? text : substitutedText;
     SIZE emojiSize = {};
-    if (BohFluentEmoji::Measure(
+    if (BohFluentEmoji::MayContainToken(measureText) &&
+        BohFluentEmoji::Measure(
             hdc,
             measureText,
             (GetTextExtentPoint32W_t)g_origGetTextExtentPoint32W,

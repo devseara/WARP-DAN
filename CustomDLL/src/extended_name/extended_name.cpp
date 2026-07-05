@@ -39,6 +39,8 @@ static bool g_debugLogEnabled = false;
 static LONG g_sharedLogBudget = 40;
 static LONG g_packetLogBudget = 160;
 static LONG g_rejectLogBudget = 40;
+static volatile LONG g_hasSubstitutionState = 0;
+static volatile LONG g_hasNameplateColorState = 0;
 
 using NpcOverlaySink = void (__cdecl*)(uint32_t, uint8_t, const char*);
 static NpcOverlaySink g_npcOverlaySink = nullptr;
@@ -182,6 +184,20 @@ static COLORREF RgbToColorRef(uint32_t rgb)
 static bool TickBefore(DWORD now, DWORD future)
 {
     return static_cast<LONG>(now - future) < 0;
+}
+
+static void UpdateVisualStateFlagsLocked()
+{
+    const bool hasSubstitution =
+        !g_extNameMap.empty() ||
+        !g_extPartyMap.empty() ||
+        !g_extGuildMap.empty() ||
+        !g_extPositionMap.empty() ||
+        !g_extTitleMap.empty();
+    InterlockedExchange(&g_hasSubstitutionState, hasSubstitution ? 1 : 0);
+    InterlockedExchange(
+        &g_hasNameplateColorState,
+        g_extNameColorMap.empty() ? 0 : 1);
 }
 
 struct ExtNamePacketLayout
@@ -567,6 +583,8 @@ void ExtendedNameParsePacket(BYTE* data, uint32_t length)
         if (g_extTitleMap.size() > 5000)
             g_extTitleMap.clear();
 
+        UpdateVisualStateFlagsLocked();
+
         LONG budget = InterlockedDecrement(&g_packetLogBudget);
         if (budget >= 0)
         {
@@ -765,6 +783,8 @@ void ExtendedNameCleanup()
     g_probeComplete = false;
     g_nextProbeTick = 0;
     g_readSequence = 0;
+    InterlockedExchange(&g_hasSubstitutionState, 0);
+    InterlockedExchange(&g_hasNameplateColorState, 0);
 }
 
 static bool IsChatNameMatch(
@@ -793,10 +813,43 @@ bool ExtendedNameSubstitute(
 {
     substitutedText.clear();
     isNameplate = false;
-    if (text.empty())
+    if (text.empty() || !ExtendedNameHasSubstitutionState())
         return false;
 
     std::lock_guard<std::mutex> lock(g_extNameMutex);
+
+    auto exact = g_extNameMap.find(text);
+    if (exact != g_extNameMap.end())
+    {
+        auto typeIt = g_extTypeMap.find(exact->first);
+        uint8_t type = typeIt == g_extTypeMap.end() ? 0 : typeIt->second;
+        if (text != exact->second &&
+            !(type == 0 && text.find(exact->second) != std::wstring::npos))
+        {
+            substitutedText = exact->second;
+            isNameplate = true;
+            return true;
+        }
+    }
+
+    const auto replaceExact = [&](const auto& map) -> bool
+    {
+        auto it = map.find(text);
+        if (it == map.end())
+            return false;
+        substitutedText = it->second;
+        return true;
+    };
+
+    if (replaceExact(g_extPartyMap) ||
+        replaceExact(g_extGuildMap) ||
+        replaceExact(g_extPositionMap) ||
+        replaceExact(g_extTitleMap))
+        return true;
+
+    if (text.find(L':') == std::wstring::npos)
+        return false;
+
     for (const auto& entry : g_extNameMap)
     {
         auto typeIt = g_extTypeMap.find(entry.first);
@@ -804,13 +857,6 @@ bool ExtendedNameSubstitute(
         if (text == entry.second ||
             (type == 0 && text.find(entry.second) != std::wstring::npos))
             continue;
-
-        if (text == entry.first)
-        {
-            substitutedText = entry.second;
-            isNameplate = true;
-            return true;
-        }
 
         // Mobs never use player-chat rendering. Restricting them to an exact
         // nameplate match prevents "Poring Card" and similar item names from
@@ -828,19 +874,7 @@ bool ExtendedNameSubstitute(
         }
     }
 
-    const auto replaceExact = [&](const auto& map) -> bool
-    {
-        auto it = map.find(text);
-        if (it == map.end())
-            return false;
-        substitutedText = it->second;
-        return true;
-    };
-
-    return replaceExact(g_extPartyMap) ||
-           replaceExact(g_extGuildMap) ||
-           replaceExact(g_extPositionMap) ||
-           replaceExact(g_extTitleMap);
+    return false;
 }
 
 bool ExtendedNameLookupNameplateColor(
@@ -848,7 +882,7 @@ bool ExtendedNameLookupNameplateColor(
     COLORREF& color)
 {
     color = CLR_INVALID;
-    if (text.empty())
+    if (text.empty() || !ExtendedNameHasNameplateColorState())
         return false;
 
     std::lock_guard<std::mutex> lock(g_extNameMutex);
@@ -858,4 +892,14 @@ bool ExtendedNameLookupNameplateColor(
 
     color = it->second;
     return true;
+}
+
+bool ExtendedNameHasSubstitutionState()
+{
+    return InterlockedCompareExchange(&g_hasSubstitutionState, 0, 0) != 0;
+}
+
+bool ExtendedNameHasNameplateColorState()
+{
+    return InterlockedCompareExchange(&g_hasNameplateColorState, 0, 0) != 0;
 }

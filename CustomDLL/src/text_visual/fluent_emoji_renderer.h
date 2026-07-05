@@ -300,6 +300,39 @@ static bool PotentialTokenStart(wchar_t ch)
 	return ch == L':' || ch == L'@';
 }
 
+static bool MayContainToken(LPCWSTR text, int count)
+{
+	if (!text)
+		return false;
+
+	if (count < 0)
+	{
+		for (const wchar_t* cursor = text; *cursor; ++cursor)
+		{
+			if (PotentialTokenStart(*cursor))
+				return true;
+		}
+		return false;
+	}
+
+	for (int i = 0; i < count; ++i)
+	{
+		if (PotentialTokenStart(text[i]))
+			return true;
+	}
+	return false;
+}
+
+static bool MayContainToken(const std::wstring& text)
+{
+	for (size_t i = 0; i < text.length(); ++i)
+	{
+		if (PotentialTokenStart(text[i]))
+			return true;
+	}
+	return false;
+}
+
 static bool StartsWith(const std::wstring& text, size_t at, const std::wstring& token)
 {
 	return at + token.length() <= text.length() &&
