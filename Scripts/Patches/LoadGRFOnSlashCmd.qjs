@@ -201,8 +201,22 @@ LoadGRFOnSlashCmd = function(_)
 		"main.grf",
 		{minLen: 3, maxLen: 300, saveDefault: true});
 
+	const startupAutoload = Exe.GetUserInput('$greyWorldStartupAutoload', D_Bool,
+		"Startup GRF auto-load",
+		"Auto-load the selected GRF during client startup when the saved toggle is enabled. Leave disabled for encrypted GRFs or when testing.",
+		false,
+		{saveDefault: true});
+
+	const restoreOnDisable = Exe.GetUserInput('$greyWorldRestoreOnDisable', D_Bool,
+		"Restore GRFs on disable",
+		"Push the restore GRF list when the slash command is toggled off. Disable this if any restore GRF can throw inside AddPak.",
+		false,
+		{saveDefault: true});
+
 	/// Parse comma separated restore list; push in reverse so highest prio GRF ends up on top
-	const restoreGrfs = restoreGrf.split(',').map(s => s.trim()).filter(s => s.length > 0);
+	const restoreGrfs = restoreOnDisable
+		? restoreGrf.split(',').map(s => s.trim()).filter(s => s.length > 0)
+		: [];
 	const restoreGrfsPushOrder = [...restoreGrfs].reverse();
 
 	/// Build an absolute AddPak call: MOV EAX, <AddPak VA>  /  CALL EAX  (7 bytes).
@@ -391,7 +405,9 @@ LoadGRFOnSlashCmd = function(_)
 	}
 
 	const msgOn  = "Gray World is enabled - the effect will apply after switching maps or re-logging.";
-	const msgOff = "Gray World is disabled - the effect will apply after switching maps or re-logging.";
+	const msgOff = restoreOnDisable
+		? "Gray World is disabled - the effect will apply after switching maps or re-logging."
+		: "Gray World is disabled - restart the client to fully restore GRF priority.";
 
 	const cmdLen = cmdName.length;
 	let cave, notMatchOff, turnOffOff;
@@ -554,6 +570,12 @@ LoadGRFOnSlashCmd = function(_)
 		localTgts : { 1 : notMatchOff, 5 : turnOffOff },
 		targets   : { 2 : afterHookVir, 3 : AddPak, 6 : 0x00A4AD20, 7 : saveFnVir }
 	});
+
+	if (!startupAutoload)
+	{
+		$$(_, 5.1, `Startup GRF auto-load hook disabled by configuration`)
+		return true;
+	}
 
 	$$(_, 5.1, `Install startup auto-load hook at the post-AddPak GameGuard CALL`)
 

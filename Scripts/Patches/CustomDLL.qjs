@@ -508,13 +508,20 @@ CustomDLL.findActiveIat = function(exportName, dllName)
 CustomDLL.findIat = function(exportName, dllName)
 {
 	const activeIat = CustomDLL.findActiveIat(exportName, dllName);
-	if (activeIat >= 0)
-		return activeIat;
 
 	const iatMap = CACHE.get('CustomDLL.IAT') ?? {};
 	if (IsStr(dllName) && !dllName.isEmpty())
 	{
 		const exactKey = (dllName + '!' + exportName).toLowerCase();
+		if (activeIat >= 0 || exactKey in iatMap)
+		{
+			const lazySlot = CustomDLL.findLazyExportSlot(dllName, exportName);
+			if (lazySlot >= 0)
+				return lazySlot;
+			if (activeIat >= 0)
+				return activeIat;
+		}
+
 		// Prefer the current cumulative import table. Exe.FindFunc can see
 		// stale abandoned lookup tables after repeated CustomDLL rebuilds.
 		if (exactKey in iatMap)
@@ -522,10 +529,81 @@ CustomDLL.findIat = function(exportName, dllName)
 
 		const exactIat = Exe.FindFunc(exportName, dllName);
 		if (exactIat >= 0)
-			return exactIat;
+		{
+			const lazySlot = CustomDLL.findLazyExportSlot(dllName, exportName);
+			return lazySlot >= 0 ? lazySlot : exactIat;
+		}
 	}
 
 	return -1;
+};
+
+CustomDLL.findLazyExportSlot = function(dllName, exportName)
+{
+	if (!IsStr(dllName) || dllName.isEmpty() ||
+	    !IsStr(exportName) || exportName.isEmpty())
+		return -1;
+
+	if (typeof ROC === "undefined" ||
+	    typeof ROC.findImports !== "function")
+		return -1;
+
+	ROC.findImports();
+	if (ROC.GetModHandle < 0 || ROC.GetProcAddr < 0)
+		return -1;
+
+	const key = (dllName + '!' + exportName).toLowerCase();
+	const slots = CACHE.get('CustomDLL.LazyExportSlots') ?? {};
+	const existing = slots[key];
+	if (existing && typeof existing.slotVir === "number")
+	{
+		const slotPhy = Exe.Vir2Phy(existing.slotVir);
+		if (slotPhy >= 0)
+			return existing.slotVir;
+	}
+
+	const [, dllNameVir] = Exe.AddText(dllName);
+	const [, exportNameVir] = Exe.AddText(exportName);
+	const [blockPhy, blockVir] = Exe.Allocate(0x40, 0x10);
+	const slotPhy = blockPhy;
+	const slotVir = blockVir;
+	const resolverPhy = blockPhy + 0x10;
+	const resolverVir = blockVir + 0x10;
+
+	Exe.SetUint32(slotPhy, resolverVir);
+	Exe.SetHex(
+		resolverPhy,
+		CustomDLL.makeLazyExportResolver(slotVir, dllNameVir, exportNameVir)
+	);
+
+	slots[key] = {
+		dllName,
+		exportName,
+		slotVir,
+		resolverVir
+	};
+	CACHE.put('CustomDLL.LazyExportSlots', slots);
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+	    typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add('CustomDLL.findLazyExportSlot', slots[key]);
+
+	return slotVir;
+};
+
+CustomDLL.makeLazyExportResolver = function(slotVir, dllNameVir, exportNameVir)
+{
+	return ' 9C'                         // PUSHFD
+		+ ' 60'                         // PUSHAD
+		+ ' 68 ' + dllNameVir.toHex()   // PUSH dllName
+		+ ' FF 15 ' + ROC.GetModHandle.toHex() // CALL [GetModuleHandleA]
+		+ ' 68 ' + exportNameVir.toHex() // PUSH exportName
+		+ ' 50'                         // PUSH EAX ; hModule
+		+ ' FF 15 ' + ROC.GetProcAddr.toHex() // CALL [GetProcAddress]
+		+ ' A3 ' + slotVir.toHex()      // MOV [slot], EAX
+		+ ' 61'                         // POPAD
+		+ ' 9D'                         // POPFD
+		+ ' FF 25 ' + slotVir.toHex();  // JMP [slot]
 };
 
 /*
