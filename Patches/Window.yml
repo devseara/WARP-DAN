@@ -189,18 +189,6 @@ ShowButton:
             author : Neo-Mind
             desc : Shows a Register button on the login screen for all langtypes. Clicking it opens the registration URL defined in clientinfo.xml's &lt;registrationweb&gt; tag and closes the client. Useful for directing new players to your registration page.
 
-        - SNSButtonURL:
-            title : Open URL from SNS button (New UI)
-            recommend : no
-            author : Louis T Steinhil
-            desc : Reuses the Basic Info SNS button (new UI) to open a custom URL in the default browser.
-
-        - BookingButtonGuide:
-            title : Open In-Game Settings from Booking button (New UI)
-            recommend : no
-            author : Louis T Steinhil
-            desc : Reuses the Basic Info Booking button from Show Buttons (New UI) to send the custom in-game guide/settings packet 0x0BB2.
-
 NoLetterLimit:
     title : 4/6 LETTER LIMIT REMOVAL
     mutex : false
@@ -223,6 +211,42 @@ NoLetterLimit:
             recommend : no
             author : Shinryo
             desc : Removes the minimum 4-letter (or 6-letter on some langtypes) requirement for passwords on the client side. Server-side limits may still apply.
+
+SNSButtonAction:
+    title : SNS BUTTON ACTION
+    mutex : true
+    color : darkorange
+
+    patches:
+        - SNSButtonGuide:
+            title : Send custom packet from SNS button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info SNS button (new UI) to send a configurable custom packet, defaulting to 0x0BB2 for the in-game guide/settings flow. Mutually exclusive with the SNS URL action.
+
+        - SNSButtonURL:
+            title : Open URL from SNS button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info SNS button (new UI) to open a custom URL in the default browser. Mutually exclusive with the SNS custom packet action.
+
+BookingButtonAction:
+    title : BOOKING BUTTON ACTION
+    mutex : true
+    color : darkorange
+
+    patches:
+        - BookingButtonGuide:
+            title : Send custom packet from Booking button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info Booking button (new UI) to send a configurable custom packet, defaulting to 0x0BB2 for the in-game guide/settings flow. Mutually exclusive with the Booking URL action.
+
+        - BookingButtonURL:
+            title : Open URL from Booking button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info Booking button (new UI) to open a custom URL in the default browser. Mutually exclusive with the Booking custom packet action.
 
 LicenseScreenVis:
     title : LICENSE SCREEN VISIBILITY
