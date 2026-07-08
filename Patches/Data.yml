@@ -90,7 +90,7 @@ CustomData:
         
         - DataFolderFirst:
             title : Read data folder first
-            recommend : no
+            recommend : yes
             author : Shinryo ,Skylove
             desc : Loads loose files from the 'data' folder before checking GRF archives. Useful for development and testing custom sprites, textures, or lua files without repacking the GRF.
         
