@@ -44,6 +44,12 @@ CustomChar:
             recommend : no
             author : Neo-Mind
             desc : Hides the special GM sprite (the yellow character) while keeping all GM functionality intact, including the yellow name color and admin right-click menu. GMs appear as their normal job class.
+
+        - VipSelectCharacterFrame:
+            title : Use VIP character-select frame
+            recommend : no
+            author : Louis T Steinhil
+            desc : Replaces the selected character card with Banquet's native VIP frame for active VIP accounts on the 2025-07-16 client. Requires Banquet to send premium_slot only when the account is VIP.
         
         - ShowBGEmblem:
             title : Enable Emblem hover for BG [Experimental]
