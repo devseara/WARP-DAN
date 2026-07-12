@@ -22,11 +22,11 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
     `GetTextExtentPoint32W` call/thunk surfaces to passive DLL exports.
   - Strict text DLL has no `VirtualAlloc`, `FlushInstructionCache`,
     `ws2_32`, `recv`, `HookRecv`, or `InstallRecvHook` binary tokens.
-- `ImageBasedInventoryTabs.qjs`
-  - Loads `boh_inventory_tabs.dll` by normal startup import.
-  - WARP-time caves replace static vtable entries at `0x0103D4B0`,
-    `0x0102DD94`, and `0x0102DDB4`.
-  - DLL exports call original methods by rebased VA and do not swap vtables at runtime.
+- `ROGlobalZeroInventory.qjs`
+  - Adds no inventory DLL import; all handlers are emitted into EXE caves.
+  - WARP-time caves replace the inventory/tab draw and mousemove vtable entries,
+    reserve the final item row, and draw the Global Zero Zeny/weight footer.
+  - Calls only verified native client rendering, tooltip, and number-format APIs.
 - `FpsOverlay.qjs` / `PingOverlay.qjs`
   - Loads `boh_fps.dll` by normal startup import.
   - WARP-time bridge patches the `Direct3DCreate9Ex` thunk at `0x00DBD97D`.

@@ -1,4 +1,4 @@
-// Image-Based Inventory Tabs — 2025-07-16 Ragexe
+// RO Global Zero Inventory (legacy DLL module) — 2025-07-16 Ragexe
 // ============================================================================
 // Replaces the inventory window's text tab labels ("Use"/"Eqp"/"Etc"/"Fav")
 // with BMP images (tab_pri_%02d.bmp) by overlaying them through the game's OWN

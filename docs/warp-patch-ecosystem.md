@@ -117,7 +117,7 @@ runs.
 - `CustomRuneSystem.qjs`: Prompts for `boh.dll` or `boh_rune.dll`
 - `FpsOverlay.qjs`: Prompts for `boh.dll` or `boh_fps.dll`, then installs the slash-command code cave
 - `AlwaysShowNpcName.qjs`: Routes 0x0BB7 to EXTN, installs a static frame bridge, and prompts for `boh_npc_names.dll`
-- `ImageBasedInventoryTabs.qjs`: Prompts for `boh.dll` or `boh_inventory_tabs.dll`
+- `ROGlobalZeroInventory.qjs`: QJS-only native inventory layout, tabs, tooltips, and Zeny/weight panel
 - `PingOverlay.qjs`: Standalone slash-command code cave; visual output still uses the FpsOverlay DLL
 
 ### 1.4 String / Data Table Replacement (~10% of patches)
@@ -279,7 +279,7 @@ because they own the same GDI text hooks.
 | `boh_npc_names.dll` | `NpcNameOverlayInit`, `NpcNameOverlayFrame` | AlwaysShowNpcName |
 | `boh_rune.dll` | `RuneVisualInit` | CustomRuneSystem |
 | `boh_fps.dll` | `FpsPingOverlayInit` | FpsOverlay |
-| `boh_inventory_tabs.dll` | `InventoryTabsInit` | ImageBasedInventoryTabs |
+| `boh_inventory_tabs.dll` | `InventoryTabsInit` | ROGlobalZeroInventory (legacy; no longer imported) |
 
 **Import via CustomPacketDispatch.addVisualDll:**
 ```javascript

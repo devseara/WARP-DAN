@@ -50,11 +50,11 @@ CustomUI:
             author : Louis T Steinhil
             desc : Adds /ping through the shared custom slash-command dispatcher and imports the selected ping DLL exports. It shares the dedicated boh_fps.dll static Direct3DCreate9Ex bridge and does not patch D3D IAT/vtables at runtime.
 
-        - ImageBasedInventoryTabs:
-            title : Image-based inventory tabs
+        - ROGlobalZeroInventory:
+            title : RO Global Zero Inventory
             recommend : no
             author : Louis T Steinhil
-            desc : Loads the selected inventory-tabs DLL, which replaces inventory tab text labels with tab_pri_%02d.bmp images through the game's own image-draw pipeline. The dedicated boh_inventory_tabs.dll uses WARP-time vtable-entry bridges and does not swap vtables at runtime.
+            desc : Uses static EXE caves and the client's native image/tooltip pipeline to draw tab_pri_%02d.bmp, place bg_zeny.bmp behind the native bottom text, and anchor renewal tab balloons beside the hovered vertical tab. No inventory DLL import is added.
 
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]

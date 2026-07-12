@@ -111,7 +111,7 @@ PatchDiagnostics.write = function(_)
 		'FpsOverlay',
 		'PingOverlay',
 		'CustomRuneSystem',
-		'ImageBasedInventoryTabs',
+		'ROGlobalZeroInventory',
 		'CustomGameSettingsOptions',
 		'PatchDiagnostics'
 	].forEach(name => line(name + ': ' + PatchDiagnostics.patchState(name)));

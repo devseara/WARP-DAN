@@ -18,7 +18,7 @@
 // FPS Overlay             | BOH_FPS_OVERLAY         | FpsOverlay
 // Ping Overlay            | BOH_PING_OVERLAY        | PingOverlay
 // NPC Name Overlay        | BOH_NPC_NAME_OVERLAY    | AlwaysShowNpcName
-// Image Inventory Tabs    | BOH_INVENTORY_TABS      | ImageBasedInventoryTabs
+// RO Global Zero Inv.     | BOH_INVENTORY_TABS      | ROGlobalZeroInventory
 // In-Game PIN Pad         | BOH_PINCODE_UI          | InGamePincodeUI
 // Dual-Wield Weapon Sprite| BOH_WEAPON_SPRITE       | AllowDualCustomWeaponSprites
 #pragma once

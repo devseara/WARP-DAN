@@ -1284,7 +1284,25 @@ Added an in-game FPS + frame-time overlay via WARP patch + startup-loaded DLL. T
 | `CustomDLL/FpsPingOverlay/fps_ping_overlay.cpp` | Overlay rendering + sentinel polling |
 | `Inputs/DLLSpec.yml` | `boh.dll` with `ExtNameVisualInit`, `RuneVisualInit`, `FpsPingOverlayInit` |
 
-# Image-Based Inventory Tabs — AI Context
+# RO Global Zero Inventory — AI Context
+
+**2026-07-12 update:** the DLL-backed Option A implementation documented below
+has been superseded by a pure-QJS static implementation in
+`Scripts/Patches/ROGlobalZeroInventory.qjs`. It retains the native texture,
+surface, hit-test, coordinate-conversion, and tooltip calls, but emits the
+handlers directly into EXE caves. It also anchors renewal balloons beside the
+four vertical tabs and draws `uirenewal/itemui/bg_zeny.bmp` immediately before
+the native bottom text block. A follow-up reserves one full item row and
+overpaints its native empty-slot textures while leaving the window's painted
+row count unchanged. The reservation stays white normally and switches to the
+sampled `itemwin_mid_lock` background `#DEE7FF` only when Personal tab index 3
+and native lock flag `0x01600553` are active. `FillRect` takes COLORREF byte
+order, so that rendered RGB value is encoded as `0x00FFE7DE`. It reads the same live globals as Basic Information: Zeny
+`0x015FBA90`, maximum weight `0x015FBA9C`, and current weight `0x015FBAA0`.
+Hovering the weight row uses the stock `Weight %d%%` tooltip format. The older
+DLL notes remain as reverse-engineering history. Zeny, current weight, and
+maximum weight use the native bounded number formatter at `0x00A94870`, with
+weight composed afterward as `"%s / %s"`.
 
 **Goal:** Replace inventory text labels ("Use"/"Eqp"/"Etc"/"Fav") with BMP images
 (`tab_pri_01-04.bmp`, 21×134px) from the ROZ Global UI renewal system.
@@ -1420,9 +1438,9 @@ turning the window transparent when it was replaced).
 - `tools/dump_vtable.py` — vtable comparison script (earlier session)
 - `tools/find_ui_position.py` — vtable method analysis (earlier session)
 
-(Note: `Scripts/Patches/ImageBasedInventoryTabs.qjs` was rewritten on 2026-06-14
-as a DLL loader for the `inventory_tabs` module — it no longer attempts a QJS
-vtable patch. See "Option A Implementation".)
+(Historical note: on 2026-06-14 the predecessor implementation became a DLL
+loader for the `inventory_tabs` module. That approach was later superseded by
+the current pure-QJS `ROGlobalZeroInventory.qjs` implementation.)
 
 ## Option A Implementation (2026-06-14)
 
@@ -1447,7 +1465,7 @@ Env tuning (no rebuild needed — mirrors rune_visual's iterative workflow):
 `BOH_INVTABS_X`/`_Y` (tab strip origin, default 0,0), `BOH_INVTABS_IDXOFF`
 (selected-tab byte offset, default `0x30`), `BOH_INVTABS_FORCEIDX`.
 
-WARP: `Scripts/Patches/ImageBasedInventoryTabs.qjs` (registers `InventoryTabsInit`
+WARP: `Scripts/Patches/ROGlobalZeroInventory.qjs` (formerly registered `InventoryTabsInit`
 via `CustomDLL.applySpec`), UI entry under `CustomUI` in `Patches/UI.yml`,
 export added to `Inputs/DLLSpec.yml`, feature bit `BOH_INVENTORY_TABS` in
 `boh_features.h`. Analysis tool: `tools/disasm_invtabs.py`.

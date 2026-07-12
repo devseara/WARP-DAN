@@ -22,7 +22,7 @@ Rule of thumb for every conversion:
 | InGamePincodeUI | `boh_pincode_ui.dll` | None | Already strict-safe |
 | CustomExtName / CustomColoredItemName | `boh_text.dll` | Runtime GDI export hooks; stale recv fallback code | Converted: static `TextOutW` / `GetTextExtentPoint32W` wrapper bridges |
 | FpsOverlay / PingOverlay | `boh_fps.dll` | Runtime D3D IAT and COM vtable patching | Converted: static `Direct3DCreate9Ex` thunk bridge plus COM proxy |
-| ImageBasedInventoryTabs | `boh_inventory_tabs.dll` | Runtime `.rdata` vtable swaps | Converted: WARP-time vtable-entry caves |
+| ROGlobalZeroInventory | None | Former DLL-owned draw/input handlers | Converted again: pure-QJS native caves, renewal tooltips, and Zeny underlay |
 | CustomRuneSystem visuals | `boh_rune.dll` | Runtime call/JMP patches and dynamic surface vtable swap | Converted: WARP-time call/prologue/surface bridges |
 
 ## Text DLL: Item Colors + Extended Names
@@ -123,6 +123,12 @@ Fallback option:
 
 ## Inventory Tabs DLL
 
+Superseded on 2026-07-12: `ROGlobalZeroInventory.qjs` now owns the inventory
+window capture, tab draw, mousemove tooltip, and Zeny-underlay handlers directly
+as static native caves. It does not import `InventoryTabsInit` or any inventory
+DLL exports. The address inventory and calling-convention notes below remain the
+reverse-engineering basis for the QJS implementation.
+
 Current problem:
 
 - Runtime `.rdata` vtable entry swaps:
@@ -157,7 +163,7 @@ Implementation checklist:
 - [x] Refactor hook bodies to exported passive functions.
 - [x] Replace `g_orig_wnd_draw`, `g_orig_tab_draw`, and `g_orig_mousemove` with
       original VAs from the table above.
-- [x] Add `ImageBasedInventoryTabs.installStaticVtableBridges`.
+- [x] Replace the former static bridge loader with `ROGlobalZeroInventory` native caves.
 - [x] Verify vtable entries before writing, then write cave VAs.
 - [ ] Live-test tab image overlay, click regions, tooltips, on-parent mode, and exit.
 
