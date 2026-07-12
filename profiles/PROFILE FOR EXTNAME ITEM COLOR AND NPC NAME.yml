@@ -21,11 +21,6 @@ inputs:
         display: 0
         type: 2
     
-    $npcNameOverlayDLLName:
-        data: '626f685f6e70635f6e616d65732e646c6c00'
-        display: "boh_npc_names.dll"
-        type: 10
-    
     $translationFile:
         data: ''
         display: "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP0716-main\\Inputs\\Translations_EN.yml"

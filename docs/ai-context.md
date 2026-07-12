@@ -1491,6 +1491,19 @@ Remaining work (needs the live client — cannot be done from static analysis):
 ### Goal
 Make NPC names always visible above their heads (not just on mouse hover), using the game's own rendering pipeline for correct 3D-to-screen positioning.
 
+**2026-07-12 QJS-only update:** `AlwaysShowNpcName.qjs` no longer imports
+`boh_npc_names.dll`. It drains the static EXTN ring into a 256-entry fixed
+`(GID, balloon, retry-frame)` table, guards the `CGameMode` vtable/world
+manager, and calls the native factory `0x00C714B0`, actor lookups
+`0x00A69EB0/0x00A69FA0`, setup/projection `0x00C6D1D0`, and teardown
+`0x00A447D0` from EXE caves. `/shownpcname` now targets a static option-toggle
+cave through `CustomSlashCommand.targetVir`. The four former NPC overlay
+imports are absent from the generated client. Option 10001 is mirrored to the
+one-byte `savedata/shownpcname.dat` sidecar through the client's existing
+`CreateFileA`/`ReadFile`/`WriteFile`/`CloseHandle` imports. This avoids adding
+the synthetic option to the native command-registration list; detouring that
+registration call interfered with the label renderer and must not be restored.
+
 ### What NOT to do (from commit e4c57e2d)
 - **DO NOT** NOP the 6 "gates" in `AlwaysShowNpcName.qjs`. The gates are string-pool management code, NOT visibility checks. NOPing them causes crashes.
 - **DO NOT** use a GDI layered window (`npc_name_overlay.cpp`) to draw NPC names manually. It cannot get correct per-NPC screen coordinates and draws all names in a static list at the top-left corner.

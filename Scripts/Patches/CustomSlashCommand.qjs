@@ -21,9 +21,10 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Last Modified : 2026-06-15                                             *
-*   Description   : Shared slash-command dispatcher for custom DLL         *
-*                   features. Commands call imported DLL exports directly, *
-*                   avoiding sentinel files, polling, and competing hooks. *
+*   Description   : Shared slash-command dispatcher for imported DLL and   *
+*                   static native-cave features. Commands call their       *
+*                   registered target directly, avoiding sentinel files,  *
+*                   polling, and competing hooks.                         *
 *                                                                          *
 \**************************************************************************/
 
@@ -68,9 +69,12 @@ CustomSlashCommand.addRefreshHook = function(name, hook)
 
 CustomSlashCommand.register = function(_, spec)
 {
-	if (!spec || !IsStr(spec.command) || !IsStr(spec.dllName) ||
-	    !IsStr(spec.exportName))
-		throw Error("CustomSlashCommand.register requires command, dllName, and exportName");
+	const hasDllTarget = spec && IsStr(spec.dllName) && IsStr(spec.exportName);
+	const hasStaticTarget = spec && Number.isInteger(spec.targetVir) && spec.targetVir > 0;
+	if (!spec || !IsStr(spec.command) || hasDllTarget === hasStaticTarget)
+		throw Error(
+			"CustomSlashCommand.register requires exactly one DLL export or static targetVir"
+		);
 
 	const command = spec.command.toLowerCase();
 	if (!/^\/[a-z0-9_]+$/.test(command))
@@ -78,8 +82,9 @@ CustomSlashCommand.register = function(_, spec)
 
 	const clean = {
 		command,
-		dllName: spec.dllName,
-		exportName: spec.exportName,
+		dllName: hasDllTarget ? spec.dllName : null,
+		exportName: hasDllTarget ? spec.exportName : null,
+		targetVir: hasStaticTarget ? spec.targetVir : null,
 		optionId: Number.isInteger(spec.optionId) ? spec.optionId : null,
 		settingsExportName: IsStr(spec.settingsExportName)
 			? spec.settingsExportName
@@ -96,6 +101,7 @@ CustomSlashCommand.register = function(_, spec)
 	{
 		existing.dllName = clean.dllName;
 		existing.exportName = clean.exportName;
+		existing.targetVir = clean.targetVir;
 		existing.optionId = clean.optionId;
 		existing.settingsExportName = clean.settingsExportName;
 	}
@@ -113,6 +119,7 @@ CustomSlashCommand.register = function(_, spec)
 			command: clean.command,
 			dllName: clean.dllName,
 			exportName: clean.exportName,
+			targetVir: clean.targetVir,
 			optionId: clean.optionId,
 			settingsExportName: clean.settingsExportName
 		});
@@ -211,6 +218,13 @@ CustomSlashCommand.refresh = function(_)
 
 		const commands = registry.map(entry =>
 		{
+			if (Number.isInteger(entry.targetVir) && entry.targetVir > 0)
+				return {
+					command: entry.command,
+					targetVir: entry.targetVir,
+					optionId: entry.optionId
+				};
+
 			const iat = (
 				typeof CustomDLL !== "undefined" &&
 				typeof CustomDLL.findIat === "function"
@@ -222,6 +236,7 @@ CustomSlashCommand.refresh = function(_)
 			return {
 				command: entry.command,
 				iat,
+				targetVir: null,
 				optionId: entry.optionId
 			};
 		});
@@ -321,7 +336,17 @@ CustomSlashCommand.refresh = function(_)
 				patchRel(runtimeRel, caveVir + off());
 			}
 
-			b.push(0xFF, 0x15); u32(entry.iat); // CALL DWORD PTR [iat]
+			if (Number.isInteger(entry.targetVir) && entry.targetVir > 0)
+			{
+				b.push(0xE8);                     // CALL static cave
+				const callRel = off();
+				u32(0);
+				patchRel(callRel, entry.targetVir);
+			}
+			else
+			{
+				b.push(0xFF, 0x15); u32(entry.iat); // CALL DWORD PTR [iat]
+			}
 			hexBytes(extraPops);
 			b.push(0x33, 0xC0); // XOR EAX,EAX
 			const out = emitJmp();
@@ -493,14 +518,6 @@ CustomSlashCommand.runRefreshHook = function(hook)
 {
 	if (hook.type === 'CustomSlashCommand.GameSettings')
 		return CustomSlashCommand.installSettingsBridge();
-
-	if (hook.type === 'AlwaysShowNpcName.GameSettings')
-	{
-		if (typeof AlwaysShowNpcName === "undefined" ||
-		    typeof AlwaysShowNpcName.installSettingsBridge !== "function")
-			throw Error("CustomSlashCommand: AlwaysShowNpcName settings hook unavailable");
-		return AlwaysShowNpcName.installSettingsBridge();
-	}
 
 	if (typeof hook.callback === "function")
 		return hook.callback();

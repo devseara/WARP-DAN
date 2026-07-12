@@ -18,7 +18,7 @@ Rule of thumb for every conversion:
 
 | Feature | DLL | Current problem | Conversion status |
 |---|---|---|---|
-| AlwaysShowNpcName | `boh_npc_names.dll` | Was DLL trampoline at `0x00C77820` | Converted: static call bridge at `0x00C7642D` plus EXTN ring |
+| AlwaysShowNpcName | None | Former DLL frame renderer | Converted again: bounded QJS-only EXTN table and native balloon frame cave at `0x00C7642D` |
 | InGamePincodeUI | `boh_pincode_ui.dll` | None | Already strict-safe |
 | CustomExtName / CustomColoredItemName | `boh_text.dll` | Runtime GDI export hooks; stale recv fallback code | Converted: static `TextOutW` / `GetTextExtentPoint32W` wrapper bridges |
 | FpsOverlay / PingOverlay | `boh_fps.dll` | Runtime D3D IAT and COM vtable patching | Converted: static `Direct3DCreate9Ex` thunk bridge plus COM proxy |

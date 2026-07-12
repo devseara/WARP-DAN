@@ -5,11 +5,10 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
 ## Allowed Baseline
 
 - `AlwaysShowNpcName.qjs`
-  - Static WARP-time frame bridge at `0x00C7642D` calls the original `0x00C77820` updater, then calls `NpcNameOverlayFrame(gameMode)` through the imported DLL IAT.
+  - Static WARP-time frame bridge at `0x00C7642D` calls the original `0x00C77820` updater, then a guarded native cave.
   - Installs the dispatcher-table `0x0BB7` EXTN ring for NPC discovery, not the recv/read path.
-  - Loads `boh_npc_names.dll` by normal startup import.
-  - DLL drains the EXTN ring and renders native game balloons when called by the bridge.
-  - No DLL-side `VirtualProtect`, trampoline install, EXE code writes, IAT/vtable patching, or `ws2_32.recv`.
+  - QJS-only fixed state owns at most 256 `(GID, balloon, retry-frame)` entries and calls the native factory/setup/projection pipeline.
+  - No NPC-name DLL import, runtime patch API, networking hook, or heap container is used.
 - `InGamePincodeUI.qjs`
   - Static dispatcher-table route for `0x0BEF/PINC`.
   - Loads `boh_pincode_ui.dll` by normal startup import.

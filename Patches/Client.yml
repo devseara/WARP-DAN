@@ -102,10 +102,10 @@ EnableSlashCmd:
             desc : Enables the <b>/showname</b> command on all langtypes, allowing players to toggle the display of character names, party names, and guild names above sprites.
 
         - AlwaysShowNpcName:
-            title : Always show NPC names (static bridge)
+            title : Always show NPC names (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : Always renders NPC names above their heads at correct screen positions, even without mouse hover. Installs a WARP-time static call bridge at 0x00C7642D, routes 0x0BB7 through the dispatcher-table EXTN ring, imports NpcNameOverlayFrame from the selected DLL, and adds the /shownpcname client-side toggle. The dedicated boh_npc_names.dll no longer patches EXE code at runtime; submit the static call-site and dispatcher-table entries for Gepard owner approval.
+            desc : Always renders native NPC name balloons without mouse hover. A guarded QJS-only frame cave drains the 0x0BB7 EXTN ring into a bounded table, resolves actors, and reuses the client's balloon factory/setup/projection pipeline. Adds the /shownpcname client-side toggle and persists option 10001 in savedata/shownpcname.dat, with no NPC-name DLL import or runtime hook.
 
         - EnableUnknCmds:
             title : Allow unknown '/command's [Experimental]

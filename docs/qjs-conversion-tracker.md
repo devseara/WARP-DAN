@@ -20,7 +20,7 @@ Status meanings:
 | Dual-wield and off-hand weapon sprites | Working | QJS-only native resource-slot patch; attack animation and off-hand-only behavior confirmed by live testing. |
 | Custom code page | Implemented, test required | Base codepage override is QJS-only. The optional UTF-8 character-walking bridge still uses a DLL when explicitly enabled. |
 | RO Global Zero Inventory | Working | QJS-only window/tab/tooltip caves, anchored balloons, a reserved row matching ordinary/locked-Personal backgrounds, and a live comma-formatted Zeny/weight panel. Confirmed in game on the 2025-07-16 client. |
-| Always-show NPC names | Planned | Patch the native NPC nameplate visibility path first; use a bounded native balloon table only if EXTN names require it. |
+| Always-show NPC names | Implemented, persistence retest required | QJS-only bounded EXTN balloon renderer and static `/shownpcname`. Runtime state is mirrored through existing client file APIs to `savedata/shownpcname.dat`; the failed native command-registration experiment was removed because it interfered with rendering. |
 | Extended names | Planned | Replace DLL maps with a bounded EXE table fed by the existing `0x0BB7` dispatcher route. |
 | Player-name colors | Planned | Convert together with Extended Names; current color policy depends on EXTN state. |
 | Item-name colors | Planned | Feed a bounded item-ID/color table from `0x0BDD` and patch semantic item UI draw sites. |
@@ -30,7 +30,7 @@ Status meanings:
 | In-game PIN keypad | DLL retained | A QJS-only port requires a full map-session native RO window/control reconstruction. |
 | HatEffect world occlusion | Renderer research planned | Rehost original HatEffectInfo STR resources as real `CRagEffect`/`CEffectPrim` world primitives; packet remap and bucket changes are rejected approaches. |
 
-## Renewal inventory checklist
+## RO Global Zero Inventory checklist
 
 - [x] Remove the inventory DLL import from `ROGlobalZeroInventory`.
 - [x] Capture the live inventory window and its tab-control pointer.
@@ -50,11 +50,27 @@ Status meanings:
 - [x] Restore the active combined-DLL filename inputs and build the complete main profile successfully.
 - [x] Verify the complete EXE imports 25 `bohcustoms.dll` exports, none belonging to Inventory Tabs, with zero stale bridge operands.
 - [x] Generate `Banquet of Heroes_inventory_qjs_test.exe` without overwriting the working game EXE.
-- [ ] Confirm the four selected-tab images and click regions in game.
-- [ ] Confirm balloon placement at every inventory screen position and resolution.
-- [ ] Confirm the Zeny/weight values update, the weight balloon appears, and the opaque reserved row contains no slots or items.
-- [ ] Confirm inventory close/reopen, resize, map change, Alt+Tab, and client exit.
-- [ ] Tune only the QJS constants if live positioning differs from the reference screenshots.
+- [x] Confirm the four selected-tab images and click regions in game.
+- [x] Confirm balloon placement while moving the inventory and across all tested resolutions.
+- [x] Confirm the Zeny/weight values update, the weight balloon appears, and the opaque reserved row contains no slots or items.
+- [x] Confirm inventory close/reopen, resize, map change, Alt+Tab, and clean client exit with no crashes.
+- [x] Confirm live positioning matches the reference screenshots; no QJS constant tuning required.
+
+## Always-show NPC names checklist
+
+- [x] Remove the four NPC overlay DLL imports and DLL filename prompts.
+- [x] Preserve the original `0x00C77820` updater before the custom frame pass.
+- [x] Guard `CGameMode` vtable `0x010904B8` and world-manager transitions.
+- [x] Drain the dispatcher-table EXTN ring without a recv/read-path hook.
+- [x] Use a bounded 256-entry GID/balloon/retry table with no runtime heap containers.
+- [x] Reuse native balloon factory, actor lookup, setup/projection, and teardown methods.
+- [x] Route `/shownpcname` directly to a static client-option cave.
+- [x] Build the full profile with zero NPC overlay imports and zero stale bridges.
+- [ ] Confirm `/shownpcname` and the Game Settings toggle persist across logout and client restart.
+- [x] Confirm NPC names during login, map changes, warps, and NPC spawn/despawn.
+- [x] Confirm off-screen NPCs do not stack names at viewport edges.
+- [x] Confirm `/font` disabled/enabled placement and all tested resolutions.
+- [x] Confirm Alt+Tab, client exit, and repeated enable/disable have no crashes.
 
 ## HatEffect renderer gates
 

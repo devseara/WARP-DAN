@@ -36,11 +36,6 @@ inputs:
         display: "SystemEN\\tipbox_EN.lub"
         type: 10
     
-    $npcNameOverlayDLLName:
-        data: ''
-        display: ""
-        type: 10
-    
     $newPetEvoCln:
         data: '73797374656d454e5c50657445766f6c7574696f6e5f454e2e6c756200'
         display: "systemEN\\PetEvolution_EN.lub"
