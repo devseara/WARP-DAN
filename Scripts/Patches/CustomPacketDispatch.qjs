@@ -114,7 +114,7 @@ CustomPacketDispatch.install = function(_, routeNames)
     $$(_, 2, `Allocate dispatcher stubs + shared blocks`);
     const handlerSize = 0x80;
     const legacyBlockSize = 4096;
-    const extnRingCapacity = 128;
+    const extnRingCapacity = 1024;
     const extnRingSlotSize = 1024;
     const extnRingBlockSize = 16 + extnRingCapacity * extnRingSlotSize;
     const extnRingMagic = 0x474E4952; // 'RING'
@@ -127,13 +127,13 @@ CustomPacketDispatch.install = function(_, routeNames)
         "00 61 9D B8 55 55 55 55 FF E0";
 
     // EXTN uses a lock-free single-producer ring. The dispatcher writes the
-    // packet into slot (writeSequence & 127), then increments writeSequence as
-    // the publish step. This preserves view/login bursts that the old one-slot
-    // ready flag silently overwrote before the DLL could poll.
+    // packet into slot (writeSequence & 1023), then increments writeSequence
+    // as the publish step. The 1024-slot depth also preserves the initial-login
+    // burst that arrives before CGameMode begins draining on its first frame.
     const extnRingHandlerTemplate =
-        "9C 60 BE 11 11 11 11 66 81 3E 22 22 75 31 0F B7" +
-        "4E 02 81 F9 33 33 00 00 72 25 81 F9 FC 03 00 00" +
-        "77 1D BB 44 44 44 44 8B 43 04 83 E0 7F C1 E0 0A" +
+        "9C 60 BE 11 11 11 11 66 81 3E 22 22 75 33 0F B7" +
+        "4E 02 81 F9 33 33 00 00 72 27 81 F9 FC 03 00 00" +
+        "77 1F BB 44 44 44 44 8B 43 04 25 FF 03 00 00 C1 E0 0A" +
         "8D 7C 03 10 89 0F 83 C7 04 FC F3 A4 FF 43 04 61" +
         "9D B8 55 55 55 55 FF E0";
 
@@ -156,7 +156,7 @@ CustomPacketDispatch.install = function(_, routeNames)
         Exe.SetUint32(handlerPhy + 20, route.minLen);
         Exe.SetUint32(handlerPhy + 35, blockVir);
         if (isExtnRing)
-            Exe.SetUint32(handlerPhy + 66, route.continueVir);
+            Exe.SetUint32(handlerPhy + 68, route.continueVir);
         else
         {
             Exe.SetUint32(handlerPhy + 57, blockVir + 4);
@@ -246,7 +246,20 @@ CustomPacketDispatch.isStateStale = function(state)
             return true;
 
         const entryPhy = Exe.Vir2Phy(route.entryVir, CODE);
-        if (entryPhy < 0 || Exe.GetUint32(entryPhy) !== route.handlerVir)
+        if (entryPhy < 0)
+            return true;
+
+        // Exe.GetUint32() can still expose the source-image table value while
+        // another active patch owns the staged dispatcher write. Treat the
+        // stock/default value as valid within this WARP session; the cached
+        // handler and block remain the authoritative shared route. Without
+        // this allowance, two consumers of EXTN allocate separate rings and
+        // only the last table write receives packets.
+        const current = Exe.GetUint32(entryPhy);
+        const sourceValue = route.mirrorStock
+            ? route.continueVir
+            : 0x00CAA2B7;
+        if (current !== route.handlerVir && current !== sourceValue)
             return true;
     }
 

@@ -81,11 +81,6 @@ inputs:
         display: 127
         type: 2
     
-    $extNameVisualDLLName:
-        data: '626f685f746578742e646c6c00'
-        display: "boh_text.dll"
-        type: 10
-    
     $newTownInfo:
         data: '53797374656d454e2f546f776e696e666f5f454e2e6c756200'
         display: "SystemEN/Towninfo_EN.lub"

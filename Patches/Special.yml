@@ -111,10 +111,10 @@ CustomSkills:
             desc : Enables custom mercenary skills beyond the official list by loading definitions from lua files. Required for servers that add new mercenary abilities. Experimental.
 
         - CustomExtName:
-            title : Enable Custom Name Packets (dispatcher transport)
+            title : Enable Custom Name Packets (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : "Dispatcher-table shared-block path for custom extended names. Routes extended-name packet 0x0BB7 to EXTN after the stock packet reader has consumed the full packet and avoids ws2_32.recv / RecvStrip0BB6. The dedicated boh_text.dll uses WARP-time TextOutW/GetTextExtentPoint32W wrapper bridges instead of runtime GDI hooks."
+            desc : "Routes packet 0x0BB7 to the EXTN ring, then guarded static frame and GDI call-site caves perform bounded exact-text substitution. Mob information uses the client's supported Group Title/ID row while the stock mob name remains separate. No CNameInfo mutation, text DLL, recv hook, or runtime patching is used."
 
         - CustomColoredItemName:
             title : Enable Custom Color Packets (dispatcher transport)
@@ -123,10 +123,10 @@ CustomSkills:
             desc : "Dispatcher-table shared-block path for custom item name colors. Routes variable item-color packet 0x0BDD to ICOL after the stock packet reader has consumed the full packet and avoids ws2_32.recv / RecvStrip0BB6. The dedicated boh_text.dll uses WARP-time TextOutW/GetTextExtentPoint32W wrapper bridges instead of runtime GDI hooks."
 
         - CustomPlayerNameColor:
-            title : Enable Custom Player Name Colors (dispatcher transport)
+            title : Enable Custom Player Name Colors (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : "Dispatcher-table shared-block path for custom player nameplate colors. Routes extended-name packet 0x0BB7 to EXTN after the stock packet reader has consumed the full packet, then the selected boh_text.dll/boh.dll applies the packet RGB color only to exact player nameplate draws using the WARP-time TextOutW/GetTextExtentPoint32W bridge."
+            desc : "Stores PC RGB values with the bounded EXTN exact-text entries and applies them only around matching non-shadow TextOutW player-name draws. No text DLL, recv hook, or runtime patching is used."
 
         - InGamePincodeUI:
             title : Enable In-Game PIN Pad

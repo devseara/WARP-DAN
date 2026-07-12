@@ -8,8 +8,8 @@
 // are installed by WARP at patch time. Weapon sprites are now implemented by
 // the self-contained AllowDualCustomWeaponSprites QJS patch, not this DLL.
 #define BOH_ITEM_COLORS      1
-#define BOH_EXTENDED_NAMES   1
-#define BOH_PLAYER_NAME_COLORS 1
+#define BOH_EXTENDED_NAMES   0
+#define BOH_PLAYER_NAME_COLORS 0
 #define BOH_RUNE_VISUAL      1
 #define BOH_FPS_OVERLAY      1
 #define BOH_PING_OVERLAY     1

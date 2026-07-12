@@ -14,13 +14,16 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
   - Loads `boh_pincode_ui.dll` by normal startup import.
   - DLL creates its own Win32 keypad UI and calls WARP-provided packet sender stubs.
   - No `ws2_32.recv`, no runtime EXE patching, no IAT/vtable/prologue patching.
-- `CustomExtName.qjs` / `CustomColoredItemName.qjs`
-  - Static dispatcher-table routes for `0x0BB7/EXTN` and `0x0BDD/ICOL`.
-  - Loads `boh_text.dll` by normal startup import.
-  - WARP-time bridges redirect the known `TextOutW` and
-    `GetTextExtentPoint32W` call/thunk surfaces to passive DLL exports.
-  - Strict text DLL has no `VirtualAlloc`, `FlushInstructionCache`,
-    `ws2_32`, `recv`, `HookRecv`, or `InstallRecvHook` binary tokens.
+- `CustomExtName.qjs` / `CustomPlayerNameColor.qjs`
+  - Static dispatcher-table route for the `0x0BB7/EXTN` ring.
+  - A QJS-only frame cave drains into a bounded exact-text map; WARP-time GDI
+    call-site caves expand matching names/titles and scope player RGB changes.
+  - Mob information uses the stock `0x0ADF` title/groupId/name layout.
+  - No `CNameInfo` mutation, text DLL, networking hook, runtime patch API, or heap map.
+- `CustomColoredItemName.qjs`
+  - Static dispatcher-table route for `0x0BDD/ICOL`.
+  - Item colors still use the passive `BohTextOutW` and
+    `BohGetTextExtentPoint32W` DLL wrappers pending their separate conversion.
 - `ROGlobalZeroInventory.qjs`
   - Adds no inventory DLL import; all handlers are emitted into EXE caves.
   - WARP-time caves replace the inventory/tab draw and mousemove vtable entries,

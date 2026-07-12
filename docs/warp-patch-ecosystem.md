@@ -99,19 +99,19 @@ A newer, more surgical approach for routing custom packets to shared memory bloc
 5. Patch the dispatcher table entry to point to the new handler
 6. Handler copies packet data from the stock buffer into the shared block, then continues
 
-`ICOL` and `HATF` use the legacy 4096-byte single slot. `EXTN` uses a 128-slot
-ring (`16-byte header + 128 * 256-byte slots`) so login, warp, and view-entry
-bursts cannot overwrite all but the last NPC name before the text visual DLL
-runs.
+`ICOL` and `HATF` use the legacy 4096-byte single slot. `EXTN` uses a 1024-slot
+ring (`16-byte header + 1024 * 1024-byte slots`) so initial-login, warp, and
+view-entry bursts remain available until the QJS frame consumers run.
 
 **Current routes (07-16):**
 | Route | Packet ID | Magic | Purpose |
 |-------|-----------|-------|---------|
 | ICOL  | 0x0BDD    | 0x49434F4C | Item name colors |
-| EXTN  | 0x0BB7    | 0x4558544E | Extended character names (128-slot ring) |
+| EXTN  | 0x0BB7    | 0x4558544E | Extended character names (1024-slot ring) |
 **Patches using import table modification:**
 - `CustomDLL.qjs`: Generic DLL adder (user provides DLLSpec.yml)
-- `CustomExtName.qjs`: Routes 0x0BB7 to EXTN and prompts for `boh.dll` or `boh_text.dll`
+- `CustomExtName.qjs`: QJS-only bounded EXTN exact-text map and static GDI call-site expansion
+- `CustomPlayerNameColor.qjs`: QJS-only exact player-name color scope with GDI color restoration
 - `CustomColoredItemName.qjs`: Routes 0x0BDD to ICOL and prompts for `boh.dll` or `boh_text.dll`
 - `CustomExtNameVisualDLL.qjs`: Historical visual-only companion using the extended-name DLL prompt
 - `CustomRuneSystem.qjs`: Prompts for `boh.dll` or `boh_rune.dll`
@@ -687,7 +687,7 @@ and console. Convention: `<Section>.<Subsection>.<Step>` numbering.
 | Custom jobs | CustomJobs, IncrViewID | JobInfo Lua files required |
 | Custom skills | CustomPlayerSkills | SkillInfo Lua files required |
 | Custom items (colors) | CustomColoredItemName | boh.dll required |
-| Custom items (names) | CustomExtName | boh.dll required |
+| Extended names and player colors | CustomExtName, CustomPlayerNameColor | No custom DLL; server 0x0BB7 EXTN support required |
 | Enchant grades | CustomEnchantGradeLabels | ench_grade.yml required |
 | Rune system | CustomRuneSystem | boh.dll required |
 | FPS/Ping overlay | FpsOverlay, PingOverlay | boh.dll required |

@@ -2486,7 +2486,10 @@ void TextVisualInit(HMODULE hModule)
 
     bool likelyGepard = IsLikelyGepardClient();
     LPVOID icolProbe = FindSharedBlock(0x49434F4C);
-    LPVOID extnProbe = ExtendedNameProbeSharedBlock();
+    LPVOID extnProbe = nullptr;
+#if BOH_EXTENDED_NAMES || BOH_PLAYER_NAME_COLORS
+    extnProbe = ExtendedNameProbeSharedBlock();
+#endif
     bool hasWarpSharedBlocks = icolProbe != nullptr || extnProbe != nullptr;
     PacketSourceMode resolvedMode = ResolvePacketSourceMode(likelyGepard, hasWarpSharedBlocks);
     ApplyPacketSourceMode(resolvedMode);
@@ -2517,9 +2520,11 @@ void TextVisualInit(HMODULE hModule)
             LogMsg("[WARN] ICOL shared-block drain thread was not started");
     }
 
+#if BOH_EXTENDED_NAMES || BOH_PLAYER_NAME_COLORS
     ExtendedNameInit(
         g_enableSharedPolling,
         g_debugLogEnabled);
+#endif
 
     LoadColorMap();
     {
@@ -2571,7 +2576,9 @@ void TextVisualCleanup(bool isProcessTermination)
 #endif
     }
 
+#if BOH_EXTENDED_NAMES || BOH_PLAYER_NAME_COLORS
     ExtendedNameCleanup();
+#endif
     BohFluentEmoji::Cleanup();
 
     if (g_tlsPassthroughDepth != TLS_OUT_OF_INDEXES)

@@ -57,7 +57,7 @@ const NpcNameStatic = {
 	TableCapacity: 256,
 	EntrySize: 12,
 	RetryFrames: 15,
-	ExtnRingCapacity: 128,
+	ExtnRingCapacity: 1024,
 	ExtnRingSlotShift: 10,
 	ExtnPacketId: 0x0BB7,
 	ExtnWideTypeOffset: 772,
@@ -69,6 +69,22 @@ const NpcNameStatic = {
 	StateFrameCounter: 12,
 	StateTable: 16,
 	StateSize: 16 + 256 * 12
+};
+
+NpcNameStatic.patchFrameCaller = function(callerPhy, bridgeVir)
+{
+	const callerPatch = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag("NativeName.FrameCaller"), true);
+	try
+	{
+		Exe.SetCALL(callerPhy, bridgeVir, 0);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = callerPatch;
+	}
 };
 
 NpcNameStatic.hexNorm = function(hex)
@@ -270,7 +286,12 @@ NpcNameStatic.buildPersistence = function(persistVir, pathVir)
 	return a;
 };
 
-NpcNameStatic.buildFrame = function(stateVir, tableVir, extnVir, persistenceVir)
+NpcNameStatic.buildFrame = function(
+	stateVir,
+	tableVir,
+	extnVir,
+	persistenceVir
+)
 {
 	const a = NpcNameStatic.asm();
 	const state = offset => stateVir + offset;
@@ -286,7 +307,6 @@ NpcNameStatic.buildFrame = function(stateVir, tableVir, extnVir, persistenceVir)
 		a.emit(0x83, 0xC0, NpcNameStatic.RetryFrames);
 		a.emit(0x89, 0x47, 0x08);               // MOV [EDI+8],EAX
 	};
-
 	// Frame prologue and strict CGameMode/world-manager guards.
 	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x28);
 	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1);     // save EBX/ESI/EDI; ESI=this
@@ -307,6 +327,31 @@ NpcNameStatic.buildFrame = function(stateVir, tableVir, extnVir, persistenceVir)
 	a.emit(0x3B, 0x1D); a.dword(state(NpcNameStatic.StateLastWorld));
 	a.jcc(0x84, "drain_ring");
 	a.label("reset_map");
+	// Login can replace CGameMode while retaining the same live world manager.
+	// That is not a map transition: keep the EXTN GID set and only discard the
+	// balloon objects owned by the retired mode. A changed world pointer is the
+	// authoritative boundary that invalidates the GID set.
+	a.emit(0x83, 0x3D); a.dword(state(NpcNameStatic.StateLastWorld)); a.emit(0x00);
+	a.jcc(0x84, "full_reset");
+	a.emit(0x3B, 0x1D); a.dword(state(NpcNameStatic.StateLastWorld));
+	a.jcc(0x85, "full_reset");
+	a.emit(0xBF); a.dword(tableVir);
+	a.emit(0xB9); a.dword(NpcNameStatic.TableCapacity);
+	a.label("stabilize_loop");
+	a.emit(0x8B, 0x47, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "stabilize_clear");
+	a.emit(0x51);
+	emitDestroyEax();
+	a.emit(0x59);
+	a.label("stabilize_clear");
+	a.emit(0xC7, 0x47, 0x04); a.dword(0);
+	a.emit(0xC7, 0x47, 0x08); a.dword(0);
+	a.emit(0x83, 0xC7, NpcNameStatic.EntrySize, 0x49);
+	a.jcc(0x85, "stabilize_loop");
+	a.emit(0x89, 0x35); a.dword(state(NpcNameStatic.StateLastGameMode));
+	a.emit(0x89, 0x1D); a.dword(state(NpcNameStatic.StateLastWorld));
+	a.jmp("drain_ring");
+	a.label("full_reset");
 	a.emit(0xBF); a.dword(tableVir);
 	a.emit(0xB9); a.dword(NpcNameStatic.TableCapacity);
 	a.label("reset_loop");
@@ -435,12 +480,20 @@ NpcNameStatic.buildFrame = function(stateVir, tableVir, extnVir, persistenceVir)
 	a.jcc(0x84, "actor_missing");
 	a.label("actor_ready");
 	a.emit(0x89, 0x45, 0xEC);                 // [EBP-14] actor
+	// Match the proven DLL guard: an actor can exist before its interned name
+	// at +0x110 is published during initial login. BalloonSetup is not valid
+	// until that pointer is ready.
+	a.emit(0x83, 0xB8); a.dword(0x110); a.emit(0x00);
+	a.jcc(0x84, "retry_entry");
 	a.emit(0x8B, 0x57, 0x04, 0x85, 0xD2);
 	a.jcc(0x85, "balloon_ready");
 	a.emit(0xC7, 0x45, 0xE8); a.dword(0);
 	a.emit(0x8D, 0x45, 0xE8, 0x50);
 	a.call(NpcNameStatic.BalloonFactory);
 	a.emit(0x8B, 0x55, 0xE8, 0x89, 0x57, 0x04);
+	a.emit(0x85, 0xD2);
+	a.jcc(0x84, "retry_entry");
+	a.emit(0x8B, 0x57, 0x04);
 	a.label("balloon_ready");
 	a.emit(0x85, 0xD2);
 	a.jcc(0x84, "retry_entry");
@@ -456,8 +509,16 @@ NpcNameStatic.buildFrame = function(stateVir, tableVir, extnVir, persistenceVir)
 	a.jcc(0x84, "above_adjust");
 	a.emit(0x8B, 0x4A, 0x14, 0x85, 0xC9);
 	a.jcc(0x8E, "above_adjust");
+	a.emit(0x8B, 0x45, 0xDC, 0x8B, 0x40, 0x28, 0x05);
+	a.dword(512);
+	a.emit(0x3B, 0xC8);
+	a.jcc(0x8F, "above_adjust");
 	a.emit(0x8B, 0x4A, 0x18, 0x85, 0xC9);
 	a.jcc(0x8E, "above_adjust");
+	a.emit(0x8B, 0x45, 0xDC, 0x8B, 0x40, 0x2C, 0x05);
+	a.dword(512);
+	a.emit(0x3B, 0xC8);
+	a.jcc(0x8F, "above_adjust");
 	a.emit(0x8B, 0x42, 0x1C, 0x83, 0xF8, 0xFD);
 	a.jcc(0x8E, "clipped_balloon");
 	a.emit(0x8B, 0x42, 0x20, 0x83, 0xF8, 0xFD);
@@ -580,9 +641,14 @@ AlwaysShowNpcName = function(_)
 	const bridge = NpcNameStatic.allocateCode(
 		NpcNameStatic.buildFrameBridge(frame.virAddr)
 	);
+	CACHE.put("AlwaysShowNpcName.QjsState", {
+		bridgeVir: bridge.virAddr,
+		frameVir: frame.virAddr,
+		frameCaller: NpcNameStatic.FrameCaller
+	});
 
 	$$(_, 4, "Activate frame bridge and /shownpcname static command");
-	Exe.SetCALL(callerContextPhy + 2, bridge.virAddr, 0);
+	NpcNameStatic.patchFrameCaller(callerContextPhy + 2, bridge.virAddr);
 	CustomSlashCommand.register(`${_}.SlashCommand`, {
 		command: "/shownpcname",
 		targetVir: toggle.virAddr,

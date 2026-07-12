@@ -20,9 +20,9 @@ Status meanings:
 | Dual-wield and off-hand weapon sprites | Working | QJS-only native resource-slot patch; attack animation and off-hand-only behavior confirmed by live testing. |
 | Custom code page | Implemented, test required | Base codepage override is QJS-only. The optional UTF-8 character-walking bridge still uses a DLL when explicitly enabled. |
 | RO Global Zero Inventory | Working | QJS-only window/tab/tooltip caves, anchored balloons, a reserved row matching ordinary/locked-Personal backgrounds, and a live comma-formatted Zeny/weight panel. Confirmed in game on the 2025-07-16 client. |
-| Always-show NPC names | Implemented, persistence retest required | QJS-only bounded EXTN balloon renderer and static `/shownpcname`. Runtime state is mirrored through existing client file APIs to `savedata/shownpcname.dat`; the failed native command-registration experiment was removed because it interfered with rendering. |
-| Extended names | Planned | Replace DLL maps with a bounded EXE table fed by the existing `0x0BB7` dispatcher route. |
-| Player-name colors | Planned | Convert together with Extended Names; current color policy depends on EXTN state. |
+| Always-show NPC names | Working | QJS-only bounded EXTN balloon renderer and static `/shownpcname`, with live-confirmed one-byte persistence in `savedata/shownpcname.dat`. |
+| Extended names | Working | QJS-only EXTN ring drain feeds a bounded exact-text map. Mob details use the official `0x0ADF` Group Title/ID row above the independently rendered stock mob name. |
+| Player-name colors | Working | QJS-only EXTN exact-text entries apply RGB around matching non-shadow player-name draws and restore the original GDI color afterward. |
 | Item-name colors | Planned | Feed a bounded item-ID/color table from `0x0BDD` and patch semantic item UI draw sites. |
 | Rune visual system | Planned | Translate the existing static bridge handlers to native caves and bake configuration at patch time. |
 | FPS overlay | Planned | Replace the D3D proxy with a native frame counter and client text draw callback. |
@@ -66,11 +66,28 @@ Status meanings:
 - [x] Reuse native balloon factory, actor lookup, setup/projection, and teardown methods.
 - [x] Route `/shownpcname` directly to a static client-option cave.
 - [x] Build the full profile with zero NPC overlay imports and zero stale bridges.
-- [ ] Confirm `/shownpcname` and the Game Settings toggle persist across logout and client restart.
+- [x] Confirm `/shownpcname` and the Game Settings toggle persist across logout and client restart.
 - [x] Confirm NPC names during login, map changes, warps, and NPC spawn/despawn.
 - [x] Confirm off-screen NPCs do not stack names at viewport edges.
 - [x] Confirm `/font` disabled/enabled placement and all tested resolutions.
 - [x] Confirm Alt+Tab, client exit, and repeated enable/disable have no crashes.
+
+## Extended names and player-name colors checklist
+
+- [x] Reuse the dispatcher-table `0x0BB7` EXTN ring without a recv/read-path hook.
+- [x] Chain the EXTN text-map frame with the original updater and NPC-name frame.
+- [x] Keep `CNameInfo` ownership untouched; the dual native ACK-name experiment was rejected after corrupting the client's name/UI object state.
+- [x] Support legacy `233/237` and V3 `773/777` EXTN packet layouts.
+- [x] Use a bounded exact-text map and guarded static GDI call-site bridges for names and player colors.
+- [x] Reject dual ACK-name packets, direct `CNameInfo` mutation and multiline name replacement after live tests exposed corruption, crashes and one-row clipping.
+- [x] Put the compact mob-info string in official `0x0ADF.title`, the element icon in `groupId`, and retain the stock mob name in `name`.
+- [x] Expand the official 24-byte title through EXTN's exact short-title to long-title mapping.
+- [x] Keep the original server-wide `show_mob_info` disabled; use the persisted per-character `@showmobinfo` bitmask.
+- [x] Remove `ExtNameVisualInit` and `PlayerNameColorVisualInit` imports.
+- [x] Disable EXTN/player-color workers and maps in the combined DLL build.
+- [x] Confirm long PC, mob, NPC, portal, party, guild, position and title text in game.
+- [x] Confirm player RGB colors, black shadow behavior and color reset in game.
+- [x] Confirm login bursts, map changes, warps, F12, Alt+Tab and clean exit.
 
 ## HatEffect renderer gates
 

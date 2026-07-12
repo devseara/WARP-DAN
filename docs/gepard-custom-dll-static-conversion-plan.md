@@ -20,10 +20,32 @@ Rule of thumb for every conversion:
 |---|---|---|---|
 | AlwaysShowNpcName | None | Former DLL frame renderer | Converted again: bounded QJS-only EXTN table and native balloon frame cave at `0x00C7642D` |
 | InGamePincodeUI | `boh_pincode_ui.dll` | None | Already strict-safe |
-| CustomExtName / CustomColoredItemName | `boh_text.dll` | Runtime GDI export hooks; stale recv fallback code | Converted: static `TextOutW` / `GetTextExtentPoint32W` wrapper bridges |
+| CustomExtName / CustomPlayerNameColor | None | Former DLL maps and global GDI text matching | Converted: bounded EXTN exact-text map plus WARP-time GDI call-site caves; mob title/name rows stay stock-owned |
+| CustomColoredItemName | `boh_text.dll` | Passive GDI wrappers still own semantic item-color matching | Static wrappers retained pending the separate item-color QJS conversion |
 | FpsOverlay / PingOverlay | `boh_fps.dll` | Runtime D3D IAT and COM vtable patching | Converted: static `Direct3DCreate9Ex` thunk bridge plus COM proxy |
 | ROGlobalZeroInventory | None | Former DLL-owned draw/input handlers | Converted again: pure-QJS native caves, renewal tooltips, and Zeny underlay |
 | CustomRuneSystem visuals | `boh_rune.dll` | Runtime call/JMP patches and dynamic surface vtable swap | Converted: WARP-time call/prologue/surface bridges |
+
+### Final extended-name findings (2026-07-13)
+
+- Keep official name packets stock-sized and send exactly one ACK-name packet
+  per entity. Sending both `0x0A30` and `0x0ADF` for one mob corrupts the
+  client's name/UI state and eventually crashes its object-list traversal.
+- Do not write Ragexe's internal `CNameInfo` strings from the frame cave. Their
+  ownership and update lifetime are not stable at that point in this build.
+- The mob name render target is effectively single-line. Embedded newlines and
+  additional `TextOutW` rows are clipped even when their extents are measured.
+- The supported two-row mob layout is the stock `0x0ADF` structure:
+  `groupId` selects the element icon, `title` owns the compact information row,
+  and `name` owns the mob-name row.
+- `title` is limited to `NAME_LENGTH`. The EXTN exact-text map therefore keys
+  on the same truncated title and substitutes the 128-byte long title only at
+  the static GDI call sites.
+- Keep `conf/battle/monster.conf:show_mob_info` at `0`; the persisted
+  per-character `@showmobinfo` bitmask controls ID, HP, percentage, level,
+  element/element level, and race.
+- Live validation passed long entity fields, player RGB/shadow/reset behavior,
+  initial-login bursts, map changes, warps, F12, Alt+Tab, and clean exit.
 
 ## Text DLL: Item Colors + Extended Names
 
@@ -73,8 +95,8 @@ Implementation checklist:
       shows thunk callers.
 - [x] Remove strict-build access to `PacketSource=recv`, `HookRecv`, and
       `BuildTrampolineFor`.
-- [ ] Live-test item color, ext name, NPC forwarding, F12 reload, and item description
-      clipping against the current runtime-hook DLL.
+- [x] Live-test extended names, player colors, NPC forwarding, F12 reload,
+      login/map transitions, Alt+Tab and clean exit. Item-color validation remains separate.
 
 ## FPS/Ping DLL
 

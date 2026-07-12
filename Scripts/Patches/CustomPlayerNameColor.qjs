@@ -22,49 +22,28 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2025-07-16                                             *
-*   Last Modified : 2026-07-03                                             *
+*   Last Modified : 2026-07-12                                             *
 *                                                                          *
-*   Description   : Dispatcher-table player-name color patch for the       *
-*                   2025-07-16 client. Routes the extended-name packet     *
-*                   0x0BB7 to EXTN after stock packet read, then lets      *
-*                   boh_text.dll read the appended RGB name-color field    *
-*                   and apply it only to exact player nameplate draws.     *
+*   Description   : QJS-only player-name color patch for the 2025-07-16    *
+*                   client. Uses the shared EXTN exact-text map and applies *
+*                   RGB only around non-shadow TextOutW player-name draws, *
+*                   matching the former DLL bridge without a custom DLL.  *
 *                                                                          *
 \**************************************************************************/
 
 CustomPlayerNameColor = function(_)
 {
-	$$(_, 1, `Install dispatcher-table transport for player-name colors`);
-
-	if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.install !== "function")
-		throw Error("CustomPacketDispatch.install helper is unavailable");
-
-	CustomPacketDispatch.install(`${_}.Dispatch`, ['EXTN']);
-
-	$$(_, 2, `Add renameable player-name-color visual DLL as startup import`);
-	CustomPlayerNameColor.addVisualDll(`${_}.CustomDLL`);
-
-	$$(_, 3, `Custom player-name color dispatcher transport + visual DLL import are enabled`);
+	if (typeof ExtNameTextStatic === "undefined" ||
+		typeof ExtNameTextStatic.enable !== "function")
+		throw Error("CustomPlayerNameColor: ExtNameTextStatic helper unavailable");
+	$$(_, 1, "Install QJS-only exact player-name color bridge");
+	ExtNameTextStatic.enable(_, ExtNameTextStatic.FeatureColors);
+	$$(_, 2, "Player name colors are applied around TextOutW; no visual DLL");
 	return true;
-};
-
-CustomPlayerNameColor.addVisualDll = function(_)
-{
-	if (typeof CustomTextVisualStatic === "undefined" ||
-		typeof CustomTextVisualStatic.addVisualDll !== "function")
-		throw Error("CustomTextVisualStatic.addVisualDll helper is unavailable");
-
-	return CustomTextVisualStatic.addVisualDll(_, {
-		inputKey: '$playerNameColorVisualDLLName',
-		title: "Player Name Color Visual DLL",
-		exportName: "PlayerNameColorVisualInit",
-		defaultName: "boh.dll",
-		dedicatedName: "boh_text.dll",
-		description: "Enter the DLL filename for player-name-color rendering. Use boh.dll for the combined build or boh_text.dll for the dedicated text build. Player name colors share the EXTN dispatcher ring and static TextOutW/GetTextExtentPoint32W bridge."
-	});
 };
 
 CustomPlayerNameColor.validate = function()
 {
-	return Exe.BuildDate === 20250716;
+	return Exe.BuildDate === 20250716 &&
+		typeof ExtNameTextStatic !== "undefined";
 };

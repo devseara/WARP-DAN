@@ -1,0 +1,913 @@
+/**************************************************************************\
+*                                                                          *
+*   QJS-only extended-name text bridge for 2025-07-16 Ragexe.             *
+*                                                                          *
+*   Description   : Drains the dispatcher-table EXTN ring into a bounded  *
+*                   exact-text map and redirects the four known Ragexe    *
+*                   TextOutW/GetTextExtentPoint32W call surfaces to EXE   *
+*                   caves. This reproduces the former DLL's name-field    *
+*                   substitution and player-name color behavior without  *
+*                   a custom DLL, recv hook, or runtime code patching.     *
+*                                                                          *
+\**************************************************************************/
+
+ExtNameTextStatic = {
+	BuildDate: 20250716,
+	FeatureNames: 1,
+	FeatureColors: 2,
+	FrameCaller: 0x00C7642D,
+	FrameCallerPrefix: "8B CE E8",
+	TextOutDirect: 0x005476C7,
+	ExtentDirect: 0x0054758D,
+	TextOutThunk: 0x00DBA690,
+	ExtentThunk: 0x00DBA66C,
+	MapCapacity: 2048,
+	ProbeLimit: 32,
+	EntrySize: 0x328,
+	EntryHash: 0,
+	EntryKind: 4,
+	EntryEntityType: 8,
+	EntryColor: 12,
+	EntryKey: 16,
+	EntryValue: 40,
+	KeyCapacity: 24,
+	ValueCapacity: 768,
+	StateReadSequence: 0,
+	StateFeatures: 4,
+	StateSize: 8,
+	RingCapacity: 1024,
+	RingSlotShift: 10,
+	PacketId: 0x0BB7,
+	PacketMagic: 0x4558544E
+};
+
+ExtNameTextStatic.callIat = function(a, iat)
+{
+	a.emit(0xFF, 0x15); a.dword(iat);
+};
+
+ExtNameTextStatic.allocateCode = function(assembler)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(assembler.bytes.length, 0x10);
+	Exe.SetHex(phyAddr, assembler.finish(virAddr));
+	return {phyAddr, virAddr, size: assembler.bytes.length};
+};
+
+ExtNameTextStatic.allocateText = function(value)
+{
+	const bytes = [];
+	for (let i = 0; i < value.length; ++i)
+		bytes.push(value.charCodeAt(i) & 0x7F);
+	bytes.push(0);
+	const [phyAddr, virAddr] = Exe.Allocate(bytes.length, 1);
+	Exe.SetHex(phyAddr, ExtNameStaticAsm.bytesToHex(bytes));
+	return virAddr;
+};
+
+ExtNameTextStatic.zeroBlock = function(phyAddr, size)
+{
+	const chunkSize = 4096;
+	const chunk = "00 ".repeat(chunkSize).trim();
+	for (let offset = 0; offset < size; offset += chunkSize)
+	{
+		const count = Math.min(chunkSize, size - offset);
+		Exe.SetHex(phyAddr + offset, count === chunkSize
+			? chunk
+			: "00 ".repeat(count).trim());
+	}
+};
+
+ExtNameTextStatic.buildHashAnsi = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x56);
+	a.emit(0x8B, 0x75, 0x08);
+	a.emit(0xB8); a.dword(0x811C9DC5);
+	a.label("loop");
+	a.emit(0x0F, 0xB6, 0x0E, 0x84, 0xC9);
+	a.jcc(0x84, "done");
+	a.emit(0x33, 0xC1, 0x69, 0xC0); a.dword(0x01000193);
+	a.emit(0x46);
+	a.jmp("loop");
+	a.label("done");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "return");
+	a.emit(0x40);
+	a.label("return");
+	a.emit(0x5E, 0x5D, 0xC2, 0x04, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildStrEqual = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x7D, 0x0C);
+	a.label("loop");
+	a.emit(0x8A, 0x06, 0x3A, 0x07);
+	a.jcc(0x85, "different");
+	a.emit(0x84, 0xC0);
+	a.jcc(0x84, "equal");
+	a.emit(0x46, 0x47);
+	a.jmp("loop");
+	a.label("equal");
+	a.emit(0xB8); a.dword(1);
+	a.jmp("done");
+	a.label("different");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildCopyZ = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x7D, 0x08, 0x8B, 0x75, 0x0C, 0x8B, 0x5D, 0x10);
+	a.emit(0x8B, 0xC7, 0x85, 0xDB);
+	a.jcc(0x84, "done");
+	a.emit(0x4B);
+	a.label("loop");
+	a.emit(0x85, 0xDB);
+	a.jcc(0x84, "terminate");
+	a.emit(0x8A, 0x0E, 0x84, 0xC9);
+	a.jcc(0x84, "terminate");
+	a.emit(0x88, 0x0F, 0x46, 0x47, 0x4B);
+	a.jmp("loop");
+	a.label("terminate");
+	a.emit(0xC6, 0x07, 0x00);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x0C, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildAppendZ = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x7D, 0x08, 0x8B, 0x75, 0x0C, 0x8B, 0x5D, 0x10);
+	a.emit(0x8B, 0xC7, 0x85, 0xDB);
+	a.jcc(0x84, "done");
+	a.label("find_end");
+	a.emit(0x80, 0x3F, 0x00);
+	a.jcc(0x84, "copy");
+	a.emit(0x47, 0x4B);
+	a.jcc(0x85, "find_end");
+	a.jmp("done");
+	a.label("copy");
+	a.emit(0x4B);
+	a.label("copy_loop");
+	a.emit(0x85, 0xDB);
+	a.jcc(0x84, "terminate");
+	a.emit(0x8A, 0x0E, 0x84, 0xC9);
+	a.jcc(0x84, "terminate");
+	a.emit(0x88, 0x0F, 0x46, 0x47, 0x4B);
+	a.jmp("copy_loop");
+	a.label("terminate");
+	a.emit(0xC6, 0x07, 0x00);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x0C, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildMapPut = function(tableVir, hashVir, equalVir, copyVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x5D, 0x0C);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "done");
+	a.emit(0x80, 0x3E, 0x00);
+	a.jcc(0x84, "done");
+	a.emit(0x85, 0xDB);
+	a.jcc(0x84, "done");
+	a.emit(0x80, 0x3B, 0x00);
+	a.jcc(0x84, "done");
+	a.emit(0x56);
+	a.call(hashVir);
+	a.emit(0x89, 0x45, 0xF4);
+	a.emit(0x25); a.dword(ExtNameTextStatic.MapCapacity - 1);
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0xC7, 0x45, 0xFC); a.dword(ExtNameTextStatic.ProbeLimit);
+	a.label("probe");
+	a.emit(0x8B, 0x45, 0xF8, 0x69, 0xC0); a.dword(ExtNameTextStatic.EntrySize);
+	a.emit(0xBF); a.dword(tableVir);
+	a.emit(0x03, 0xF8);
+	a.emit(0x8B, 0x07, 0x85, 0xC0);
+	a.jcc(0x84, "store");
+	a.emit(0x3B, 0x45, 0xF4);
+	a.jcc(0x85, "next");
+	a.emit(0x8D, 0x47, ExtNameTextStatic.EntryKey, 0x50, 0x56);
+	a.call(equalVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "store");
+	a.label("next");
+	a.emit(0xFF, 0x45, 0xF8);
+	a.emit(0x81, 0x65, 0xF8); a.dword(ExtNameTextStatic.MapCapacity - 1);
+	a.emit(0xFF, 0x4D, 0xFC);
+	a.jcc(0x85, "probe");
+	// A saturated probe window replaces its base bucket deterministically.
+	a.emit(0x8B, 0x45, 0xF4, 0x25); a.dword(ExtNameTextStatic.MapCapacity - 1);
+	a.emit(0x69, 0xC0); a.dword(ExtNameTextStatic.EntrySize);
+	a.emit(0xBF); a.dword(tableVir);
+	a.emit(0x03, 0xF8);
+	a.label("store");
+	a.emit(0x68); a.dword(ExtNameTextStatic.KeyCapacity);
+	a.emit(0x56, 0x8D, 0x47, ExtNameTextStatic.EntryKey, 0x50);
+	a.call(copyVir);
+	a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
+	a.emit(0x53, 0x8D, 0x47, ExtNameTextStatic.EntryValue, 0x50);
+	a.call(copyVir);
+	a.emit(0x8B, 0x45, 0x10, 0x89, 0x47, ExtNameTextStatic.EntryKind);
+	a.emit(0x8B, 0x45, 0x14, 0x89, 0x47, ExtNameTextStatic.EntryEntityType);
+	a.emit(0x8B, 0x45, 0x18, 0x89, 0x47, ExtNameTextStatic.EntryColor);
+	a.emit(0x8B, 0x45, 0xF4, 0x89, 0x07);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x14, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildMapLookup = function(tableVir, hashVir, equalVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x85, 0xF6);
+	a.jcc(0x84, "missing");
+	a.emit(0x56);
+	a.call(hashVir);
+	a.emit(0x89, 0x45, 0xF4);
+	a.emit(0x25); a.dword(ExtNameTextStatic.MapCapacity - 1);
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0xC7, 0x45, 0xFC); a.dword(ExtNameTextStatic.ProbeLimit);
+	a.label("probe");
+	a.emit(0x8B, 0x45, 0xF8, 0x69, 0xC0); a.dword(ExtNameTextStatic.EntrySize);
+	a.emit(0xBF); a.dword(tableVir);
+	a.emit(0x03, 0xF8);
+	a.emit(0x8B, 0x07, 0x85, 0xC0);
+	a.jcc(0x84, "missing");
+	a.emit(0x3B, 0x45, 0xF4);
+	a.jcc(0x85, "next");
+	a.emit(0x8D, 0x47, ExtNameTextStatic.EntryKey, 0x50, 0x56);
+	a.call(equalVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "found");
+	a.label("next");
+	a.emit(0xFF, 0x45, 0xF8);
+	a.emit(0x81, 0x65, 0xF8); a.dword(ExtNameTextStatic.MapCapacity - 1);
+	a.emit(0xFF, 0x4D, 0xFC);
+	a.jcc(0x85, "probe");
+	a.label("missing");
+	a.emit(0x33, 0xC0);
+	a.jmp("done");
+	a.label("found");
+	a.emit(0x8B, 0xC7);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x04, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildPacketStore = function(
+	putVir,
+	copyVir,
+	appendVir,
+	scratchVir,
+	scratch2Vir,
+	literals
+)
+{
+	const a = ExtNameStaticAsm.asm();
+	const callCopy = function(dstVir, srcRegBytes)
+	{
+		a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
+		a.emit(...srcRegBytes);
+		a.emit(0x68); a.dword(dstVir);
+		a.call(copyVir);
+	};
+	const appendPtr = function(dstVir, ptrBytes)
+	{
+		a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
+		a.emit(...ptrBytes);
+		a.emit(0x68); a.dword(dstVir);
+		a.call(appendVir);
+	};
+	const appendLiteral = function(dstVir, literalVir)
+	{
+		appendPtr(dstVir, [0x68, literalVir & 0xFF, (literalVir >>> 8) & 0xFF,
+			(literalVir >>> 16) & 0xFF, (literalVir >>> 24) & 0xFF]);
+	};
+	const appendField = function(dstVir, offset, prefixVir = 0, suffixVir = 0)
+	{
+		const skip = `skip_${offset}_${a.bytes.length}`;
+		a.emit(0x80, 0xBB); a.dword(offset); a.emit(0x00);
+		a.jcc(0x84, skip);
+		if (prefixVir)
+			appendLiteral(dstVir, prefixVir);
+		appendPtr(dstVir, [0x8D, 0x83, offset & 0xFF, (offset >>> 8) & 0xFF,
+			(offset >>> 16) & 0xFF, (offset >>> 24) & 0xFF, 0x50]);
+		if (suffixVir)
+			appendLiteral(dstVir, suffixVir);
+		a.label(skip);
+	};
+	const put = function(keyOffset, valueOffset, valueIsScratch, kind)
+	{
+		a.emit(0x6A, 0x00);                      // color, overridden below for main
+		a.emit(0x56);                            // entity type
+		a.emit(0x6A, kind);
+		if (valueIsScratch)
+		{
+			a.emit(0x68); a.dword(valueOffset);
+		}
+		else
+		{
+			a.emit(0x8D, 0x83); a.dword(valueOffset);
+			a.emit(0x50);
+		}
+		a.emit(0x8D, 0x83); a.dword(keyOffset);
+		a.emit(0x50);
+		a.call(putVir);
+	};
+	const putMain = function()
+	{
+		a.emit(0x57, 0x56, 0x6A, 0x00);
+		a.emit(0x68); a.dword(scratchVir);
+		a.emit(0x8D, 0x43, 0x0C, 0x50);
+		a.call(putVir);
+	};
+
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x5D, 0x08, 0x8B, 0x75, 0x0C, 0x8B, 0x7D, 0x10);
+	a.emit(0x0F, 0xB7, 0x43, 0x02);
+	a.emit(0x3D); a.dword(773);
+	a.jcc(0x84, "v3");
+	a.emit(0x3D); a.dword(777);
+	a.jcc(0x84, "v3");
+
+	// Legacy layout.
+	a.emit(0x8D, 0x43, 0x24);
+	a.emit(0x80, 0x38, 0x00);
+	a.jcc(0x85, "legacy_base");
+	a.emit(0x8D, 0x43, 0x0C);
+	a.label("legacy_base");
+	callCopy(scratchVir, [0x50]);
+	a.emit(0x83, 0xFE, 0x01);
+	a.jcc(0x85, "legacy_main");
+	appendField(scratchVir, 67, literals.pipe);
+	appendField(scratchVir, 98, literals.pipe);
+	appendField(scratchVir, 129, literals.pipe);
+	a.label("legacy_main");
+	putMain();
+	put(160, 67, false, 1);
+	put(184, 98, false, 2);
+	put(208, 129, false, 3);
+	a.jmp("done");
+
+	// V3 layout.
+	a.label("v3");
+	a.emit(0x8D, 0x43, 0x24);
+	a.emit(0x80, 0x38, 0x00);
+	a.jcc(0x85, "v3_base");
+	a.emit(0x8D, 0x43, 0x0C);
+	a.label("v3_base");
+	callCopy(scratchVir, [0x50]);
+	a.emit(0x83, 0xFE, 0x01);
+	a.jcc(0x84, "v3_mob");
+	a.emit(0x83, 0xFE, 0x00);
+	a.jcc(0x85, "v3_main");
+	// PC packets without a prebuilt extended name retain the DLL's compact
+	// title/name/party/guild/position composition.
+	a.emit(0x80, 0x7B, 0x24, 0x00);
+	a.jcc(0x85, "v3_pc_title");
+	appendField(scratchVir, 164, literals.openSquare, literals.closeSquare);
+	appendField(scratchVir, 292, literals.openBrace, literals.closeBrace);
+	appendField(scratchVir, 420, literals.openParen, literals.closeParen);
+	a.label("v3_pc_title");
+	a.emit(0x80, 0xBB); a.dword(548); a.emit(0x00);
+	a.jcc(0x84, "v3_main");
+	callCopy(scratch2Vir, [0x8D, 0x83, 0x24, 0x02, 0x00, 0x00, 0x50]);
+	appendLiteral(scratch2Vir, literals.space);
+	appendPtr(scratch2Vir, [0x68, scratchVir & 0xFF, (scratchVir >>> 8) & 0xFF,
+		(scratchVir >>> 16) & 0xFF, (scratchVir >>> 24) & 0xFF]);
+	callCopy(scratchVir, [0x68, scratch2Vir & 0xFF, (scratch2Vir >>> 8) & 0xFF,
+		(scratch2Vir >>> 16) & 0xFF, (scratch2Vir >>> 24) & 0xFF]);
+	a.jmp("v3_main");
+	a.label("v3_mob");
+	// The official 0x0ADF title field owns the Group Title/ID row. EXTN maps
+	// that packet's truncated title to its long form; keep the mob name intact.
+	a.jmp("v3_main");
+	a.label("v3_main");
+	putMain();
+	put(676, 164, false, 1);
+	put(700, 292, false, 2);
+	put(724, 420, false, 3);
+	put(748, 548, false, 4);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x0C, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildFrame = function(stateVir, extnVir, storeVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57);
+	a.emit(0xA1); a.dword(extnVir + 4);
+	a.emit(0x89, 0x45, 0xF4);
+	a.emit(0x8B, 0x15); a.dword(stateVir + ExtNameTextStatic.StateReadSequence);
+	a.emit(0x8B, 0xC8, 0x2B, 0xCA);
+	a.emit(0x81, 0xF9); a.dword(ExtNameTextStatic.RingCapacity);
+	a.jcc(0x86, "sequence_ready");
+	a.emit(0x8B, 0xD0, 0x81, 0xEA); a.dword(ExtNameTextStatic.RingCapacity);
+	a.label("sequence_ready");
+	a.emit(0x89, 0x55, 0xF8);
+	a.label("loop");
+	a.emit(0x8B, 0x55, 0xF8);
+	a.emit(0x3B, 0x55, 0xF4);
+	a.jcc(0x84, "publish");
+	a.emit(0x8B, 0xC2, 0x25); a.dword(ExtNameTextStatic.RingCapacity - 1);
+	a.emit(0xC1, 0xE0, ExtNameTextStatic.RingSlotShift);
+	a.emit(0x05); a.dword(extnVir + 16);
+	a.emit(0x8B, 0x08, 0x8D, 0x58, 0x04);
+	a.emit(0x66, 0x81, 0x3B, 0xB7, 0x0B);
+	a.jcc(0x85, "next");
+	a.emit(0x0F, 0xB7, 0x43, 0x02, 0x3B, 0xC1);
+	a.jcc(0x85, "next");
+	a.emit(0x81, 0x7B, 0x04); a.dword(ExtNameTextStatic.PacketMagic);
+	a.jcc(0x85, "next");
+	a.emit(0x3D); a.dword(773);
+	a.jcc(0x84, "v3_no_color");
+	a.emit(0x3D); a.dword(777);
+	a.jcc(0x84, "v3_color");
+	a.emit(0x3D); a.dword(233);
+	a.jcc(0x84, "legacy_no_color");
+	a.emit(0x3D); a.dword(237);
+	a.jcc(0x84, "legacy_color");
+	a.jmp("next");
+	a.label("v3_no_color");
+	a.emit(0x0F, 0xB6, 0xB3); a.dword(772);
+	a.emit(0x33, 0xFF);
+	a.jmp("store");
+	a.label("v3_color");
+	a.emit(0x0F, 0xB6, 0xB3); a.dword(772);
+	a.emit(0x8B, 0xBB); a.dword(773);
+	a.jmp("convert");
+	a.label("legacy_no_color");
+	a.emit(0x0F, 0xB6, 0xB3); a.dword(232);
+	a.emit(0x33, 0xFF);
+	a.jmp("store");
+	a.label("legacy_color");
+	a.emit(0x0F, 0xB6, 0xB3); a.dword(232);
+	a.emit(0x8B, 0xBB); a.dword(233);
+	a.label("convert");
+	a.emit(0x81, 0xE7); a.dword(0x00FFFFFF);
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "store");
+	a.emit(0x8B, 0xC7, 0x0F, 0xC8, 0xC1, 0xE8, 0x08, 0x8B, 0xF8);
+	a.label("store");
+	a.emit(0x83, 0xFE, 0x03);
+	a.jcc(0x87, "next");
+	a.emit(0x57, 0x56, 0x53);
+	a.call(storeVir);
+	a.label("next");
+	a.emit(0xFF, 0x45, 0xF8);
+	a.jmp("loop");
+	a.label("publish");
+	a.emit(0x8B, 0x55, 0xF8);
+	a.emit(0x89, 0x15); a.dword(stateVir + ExtNameTextStatic.StateReadSequence);
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+ExtNameTextStatic.buildFrameBridge = function(frameVir, previousTarget)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x51);
+	a.call(frameVir);
+	a.emit(0x59);
+	a.call(previousTarget);
+	a.emit(0xC3);
+	return a;
+};
+
+ExtNameTextStatic.buildFindWide = function(lookupVir, ansiScratchVir, wideToMultiIat)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x7D, 0x0C);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "missing");
+	a.emit(0x85, 0xFF);
+	a.jcc(0x8E, "missing");
+	a.emit(0x83, 0xFF, 0x7F);
+	a.jcc(0x8F, "missing");
+	a.emit(0x6A, 0x00, 0x6A, 0x00, 0x68); a.dword(255);
+	a.emit(0x68); a.dword(ansiScratchVir);
+	a.emit(0x57, 0x56, 0x6A, 0x00, 0x68); a.dword(65001);
+	ExtNameTextStatic.callIat(a, wideToMultiIat);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, "missing");
+	a.emit(0xC6, 0x80); a.dword(ansiScratchVir); a.emit(0x00);
+	a.emit(0x68); a.dword(ansiScratchVir);
+	a.call(lookupVir);
+	a.jmp("done");
+	a.label("missing");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildTextOut = function(
+	stateVir,
+	findWideVir,
+	wideScratchVir,
+	apis
+)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18, 0x53, 0x56, 0x57);
+	a.emit(0xC7, 0x45, 0xF4); a.dword(0);       // didColor
+	a.emit(0xC7, 0x45, 0xF8); a.dword(0);       // matched map entry
+	a.emit(0x8B, 0x45, 0x14, 0x89, 0x45, 0xEC);
+	a.emit(0x8B, 0x45, 0x18, 0x89, 0x45, 0xE8);
+	a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
+	a.dword(ExtNameTextStatic.FeatureNames | ExtNameTextStatic.FeatureColors);
+	a.jcc(0x84, "draw");
+	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14);
+	a.call(findWideVir);
+	a.emit(0x89, 0x45, 0xF8, 0x85, 0xC0);
+	a.jcc(0x84, "draw");
+	a.emit(0x8B, 0xF0);
+	if (apis.getTextColor > 0)
+	{
+		a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
+		a.dword(ExtNameTextStatic.FeatureColors);
+		a.jcc(0x84, "substitute");
+		a.emit(0x83, 0x7E, ExtNameTextStatic.EntryKind, 0x00);
+		a.jcc(0x85, "substitute");
+		a.emit(0x83, 0x7E, ExtNameTextStatic.EntryEntityType, 0x00);
+		a.jcc(0x85, "substitute");
+		a.emit(0x8B, 0x5E, ExtNameTextStatic.EntryColor, 0x85, 0xDB);
+		a.jcc(0x84, "substitute");
+		a.emit(0xFF, 0x75, 0x08);
+		ExtNameTextStatic.callIat(a, apis.getTextColor);
+		a.emit(0x8B, 0xD0, 0x81, 0xE2); a.dword(0xFF);
+		a.emit(0x83, 0xFA, 0x20);
+		a.jcc(0x87, "apply_color");
+		a.emit(0x8B, 0xD0, 0xC1, 0xEA, 0x08, 0x81, 0xE2); a.dword(0xFF);
+		a.emit(0x83, 0xFA, 0x20);
+		a.jcc(0x87, "apply_color");
+		a.emit(0xC1, 0xE8, 0x10, 0x25); a.dword(0xFF);
+		a.emit(0x83, 0xF8, 0x20);
+		a.jcc(0x86, "substitute");
+		a.label("apply_color");
+		a.emit(0x53, 0xFF, 0x75, 0x08);
+		ExtNameTextStatic.callIat(a, apis.setTextColor);
+		a.emit(0x89, 0x45, 0xF0);
+		a.emit(0xC7, 0x45, 0xF4); a.dword(1);
+	}
+	a.label("substitute");
+	a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
+	a.dword(ExtNameTextStatic.FeatureNames);
+	a.jcc(0x84, "draw");
+	a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
+	a.emit(0x68); a.dword(wideScratchVir);
+	a.emit(0x6A, 0xFF, 0x8D, 0x46, ExtNameTextStatic.EntryValue, 0x50);
+	a.emit(0x6A, 0x00, 0x68); a.dword(65001);
+	ExtNameTextStatic.callIat(a, apis.multiToWide);
+	a.emit(0x83, 0xF8, 0x01);
+	a.jcc(0x8E, "draw");
+	a.emit(0x48, 0x89, 0x45, 0xE8);
+	a.emit(0xC7, 0x45, 0xEC); a.dword(wideScratchVir);
+	a.label("draw");
+	a.label("draw_normal");
+	a.emit(0xFF, 0x75, 0xE8, 0xFF, 0x75, 0xEC, 0xFF, 0x75, 0x10,
+		0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
+	ExtNameTextStatic.callIat(a, apis.textOut);
+	a.emit(0x89, 0x45, 0xF8);
+	a.label("restore_color");
+	a.emit(0x83, 0x7D, 0xF4, 0x00);
+	a.jcc(0x84, "return");
+	a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
+	ExtNameTextStatic.callIat(a, apis.setTextColor);
+	a.label("return");
+	a.emit(0x8B, 0x45, 0xF8, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D,
+		0xC2, 0x14, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildExtent = function(
+	stateVir,
+	findWideVir,
+	wideScratchVir,
+	apis
+)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x45, 0x0C, 0x89, 0x45, 0xFC);
+	a.emit(0x8B, 0x45, 0x10, 0x89, 0x45, 0xF8);
+	a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
+	a.dword(ExtNameTextStatic.FeatureNames);
+	a.jcc(0x84, "measure");
+	a.emit(0xFF, 0x75, 0x10, 0xFF, 0x75, 0x0C);
+	a.call(findWideVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "measure");
+	a.emit(0x8B, 0xF0);
+	a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
+	a.emit(0x68); a.dword(wideScratchVir);
+	a.emit(0x6A, 0xFF, 0x8D, 0x46, ExtNameTextStatic.EntryValue, 0x50);
+	a.emit(0x6A, 0x00, 0x68); a.dword(65001);
+	ExtNameTextStatic.callIat(a, apis.multiToWide);
+	a.emit(0x83, 0xF8, 0x01);
+	a.jcc(0x8E, "measure");
+	a.emit(0x48, 0x89, 0x45, 0xF8);
+	a.emit(0xC7, 0x45, 0xFC); a.dword(wideScratchVir);
+	a.label("measure");
+	a.emit(0xFF, 0x75, 0x14, 0xFF, 0x75, 0xF8, 0xFF, 0x75, 0xFC,
+		0xFF, 0x75, 0x08);
+	ExtNameTextStatic.callIat(a, apis.extent);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x10, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.findApis = function(requireColor)
+{
+	if (typeof CustomDLL === "undefined" ||
+		typeof CustomDLL.findActiveIat !== "function")
+		throw Error("ExtNameTextStatic: CustomDLL import helper unavailable");
+	const find = function(dllName, exportName)
+	{
+		const iat = CustomDLL.findActiveIat(exportName, dllName);
+		if (iat < 0)
+			throw Error(`ExtNameTextStatic: ${dllName}!${exportName} is not imported`);
+		return iat;
+	};
+	let getTextColor = 0;
+	const customIat = CACHE.get("CustomDLL.IAT") || {};
+	if (requireColor)
+	{
+		getTextColor = customIat["gdi32.dll!gettextcolor"] || 0;
+		if (!getTextColor)
+			throw Error("ExtNameTextStatic: staged GetTextColor IAT is unavailable");
+	}
+	return {
+		textOut: find("gdi32.dll", "TextOutW"),
+		extent: find("gdi32.dll", "GetTextExtentPoint32W"),
+		setTextColor: find("gdi32.dll", "SetTextColor"),
+		getTextColor,
+		multiToWide: find("kernel32.dll", "MultiByteToWideChar"),
+		wideToMulti: find("kernel32.dll", "WideCharToMultiByte")
+	};
+};
+
+ExtNameTextStatic.patchTextSurfaces = function(state, requireColor)
+{
+	const apis = ExtNameTextStatic.findApis(requireColor);
+	const findWide = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildFindWide(
+			state.lookupVir,
+			state.ansiScratchVir,
+			apis.wideToMulti
+		)
+	);
+	const textOut = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildTextOut(
+			state.stateVir,
+			findWide.virAddr,
+			state.wideScratchVir,
+			apis
+		)
+	);
+	const extent = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildExtent(
+			state.stateVir,
+			findWide.virAddr,
+			state.wideScratchVir,
+			apis
+		)
+	);
+
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag("ExtNameTextStatic.TextBridge"), true);
+	try
+	{
+		const textDirectPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutDirect, CODE);
+		const extentDirectPhy = Exe.Vir2Phy(ExtNameTextStatic.ExtentDirect, CODE);
+		const textThunkPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutThunk, CODE);
+		const extentThunkPhy = Exe.Vir2Phy(ExtNameTextStatic.ExtentThunk, CODE);
+		if (textDirectPhy < 0 || extentDirectPhy < 0 ||
+			textThunkPhy < 0 || extentThunkPhy < 0)
+			throw Error("ExtNameTextStatic: a text call surface is not mapped");
+		Exe.SetCALL(textDirectPhy, textOut.virAddr, 0);
+		Exe.SetNOPs(textDirectPhy + 5, 1);
+		Exe.SetCALL(extentDirectPhy, extent.virAddr, 0);
+		Exe.SetNOPs(extentDirectPhy + 5, 1);
+		Exe.SetJMP(textThunkPhy, textOut.virAddr, 0);
+		Exe.SetNOPs(textThunkPhy + 5, 1);
+		Exe.SetJMP(extentThunkPhy, extent.virAddr, 0);
+		Exe.SetNOPs(extentThunkPhy + 5, 1);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+	state.findWideVir = findWide.virAddr;
+	state.textOutVir = textOut.virAddr;
+	state.extentVir = extent.virAddr;
+	state.apis = apis;
+	return state;
+};
+
+ExtNameTextStatic.patchFrameCaller = function(callerPhy, bridgeVir)
+{
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag("NativeName.FrameCaller"), true);
+	try
+	{
+		Exe.SetCALL(callerPhy, bridgeVir, 0);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+};
+
+ExtNameTextStatic.ensureInstalled = function(_, extnVir)
+{
+	let state = CACHE.get("ExtNameTextStatic.State");
+	if (state && Number.isInteger(state.stateVir))
+		return state;
+
+	const callerPhy = ExtNameStaticAsm.assertCode(
+		"frame caller prefix",
+		ExtNameTextStatic.FrameCaller - 2,
+		ExtNameTextStatic.FrameCallerPrefix
+	) + 2;
+	const npcState = CACHE.get("AlwaysShowNpcName.QjsState");
+	const previousTarget = npcState && Number.isInteger(npcState.bridgeVir)
+		? npcState.bridgeVir
+		: Exe.GetTgtAddr(callerPhy + 1);
+
+	const [statePhy, stateVir] = Exe.Allocate(ExtNameTextStatic.StateSize, 4);
+	ExtNameTextStatic.zeroBlock(statePhy, ExtNameTextStatic.StateSize);
+	const tableSize = ExtNameTextStatic.MapCapacity * ExtNameTextStatic.EntrySize;
+	const [tablePhy, tableVir] = Exe.Allocate(tableSize, 0x10);
+	ExtNameTextStatic.zeroBlock(tablePhy, tableSize);
+	const [ansiScratchPhy, ansiScratchVir] = Exe.Allocate(256, 0x10);
+	ExtNameTextStatic.zeroBlock(ansiScratchPhy, 256);
+	const [wideScratchPhy, wideScratchVir] = Exe.Allocate(
+		ExtNameTextStatic.ValueCapacity * 2,
+		0x10
+	);
+	ExtNameTextStatic.zeroBlock(wideScratchPhy, ExtNameTextStatic.ValueCapacity * 2);
+	const [packetScratchPhy, packetScratchVir] = Exe.Allocate(
+		ExtNameTextStatic.ValueCapacity * 2,
+		0x10
+	);
+	ExtNameTextStatic.zeroBlock(packetScratchPhy, ExtNameTextStatic.ValueCapacity * 2);
+	const literals = {
+		space: ExtNameTextStatic.allocateText(" "),
+		pipe: ExtNameTextStatic.allocateText(" | "),
+		openSquare: ExtNameTextStatic.allocateText(" ["),
+		closeSquare: ExtNameTextStatic.allocateText("]"),
+		openBrace: ExtNameTextStatic.allocateText(" {"),
+		closeBrace: ExtNameTextStatic.allocateText("}"),
+		openParen: ExtNameTextStatic.allocateText(" ("),
+		closeParen: ExtNameTextStatic.allocateText(")")
+	};
+	const hash = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildHashAnsi());
+	const equal = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildStrEqual());
+	const copy = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
+	const append = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildAppendZ());
+	const put = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildMapPut(tableVir, hash.virAddr, equal.virAddr, copy.virAddr)
+	);
+	const lookup = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildMapLookup(tableVir, hash.virAddr, equal.virAddr)
+	);
+	const store = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildPacketStore(
+			put.virAddr,
+			copy.virAddr,
+			append.virAddr,
+			packetScratchVir,
+			packetScratchVir + ExtNameTextStatic.ValueCapacity,
+			literals
+		)
+	);
+	const frame = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildFrame(
+			stateVir,
+			extnVir,
+			store.virAddr
+		)
+	);
+	const bridge = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildFrameBridge(frame.virAddr, previousTarget)
+	);
+	ExtNameTextStatic.patchFrameCaller(callerPhy, bridge.virAddr);
+
+	state = {
+		statePhy,
+		stateVir,
+		tablePhy,
+		tableVir,
+		ansiScratchVir,
+		wideScratchVir,
+		lookupVir: lookup.virAddr,
+		putVir: put.virAddr,
+		storeVir: store.virAddr,
+		frameVir: frame.virAddr,
+		bridgeVir: bridge.virAddr,
+		previousTarget,
+		callerPhy,
+		extnVir,
+		features: 0
+	};
+	CACHE.put("ExtNameTextStatic.State", state);
+	ExtNameTextStatic.patchTextSurfaces(state, false);
+	CACHE.put("ExtNameTextStatic.State", state);
+
+	if (typeof CustomDLL.addRefreshHook === "function")
+	{
+		CustomDLL.addRefreshHook("CustomExtName.StaticTextBridge", function()
+		{
+			const current = CACHE.get("ExtNameTextStatic.State");
+			if (!current || !Number.isInteger(current.stateVir))
+				return false;
+			ExtNameTextStatic.patchFrameCaller(current.callerPhy, current.bridgeVir);
+			ExtNameTextStatic.patchTextSurfaces(
+				current,
+				(current.features & ExtNameTextStatic.FeatureColors) !== 0
+			);
+			CACHE.put("ExtNameTextStatic.State", current);
+			return true;
+		});
+	}
+	return state;
+};
+
+ExtNameTextStatic.enable = function(_, feature)
+{
+	if (Exe.BuildDate !== ExtNameTextStatic.BuildDate)
+		throw Error("ExtNameTextStatic supports only the 2025-07-16 client");
+	if (typeof ExtNameStaticAsm === "undefined" || typeof ExtNameStaticAsm.asm !== "function")
+		throw Error("ExtNameTextStatic: assembly helper unavailable");
+	if (typeof CustomPacketDispatch === "undefined" ||
+		typeof CustomPacketDispatch.install !== "function")
+		throw Error("ExtNameTextStatic: EXTN dispatcher helper unavailable");
+
+	// Banquet sends the variable-length ICOL packet immediately after
+	// clif_authok. Even when item-color rendering is not selected, consume it
+	// through the static dispatcher so it cannot block the following login,
+	// NPC-name and skill-list packets. A later CustomColoredItemName patch can
+	// reuse the same cached ICOL block and add its visual layer.
+	CustomPacketDispatch.install(`${_}.Dispatch`, ["EXTN", "ICOL"]);
+	const routes = CACHE.get("CustomPacketDispatch.Routes");
+	const extn = routes && routes.routes ? routes.routes.EXTN : null;
+	if (!extn || extn.transport !== "ring-v2" || !Number.isInteger(extn.blockVir))
+		throw Error("ExtNameTextStatic: EXTN ring-v2 block unavailable");
+
+	const systemImports = [];
+	if ((feature & ExtNameTextStatic.FeatureColors) !== 0)
+	{
+		systemImports.push({
+			Name: "gdi32.dll",
+			Funcs: [{Name: "GetTextColor"}]
+		});
+	}
+	if (!systemImports.isEmpty())
+		CustomDLL.applySpec(`${_}.SystemImport`, systemImports);
+
+	const state = ExtNameTextStatic.ensureInstalled(_, extn.blockVir);
+	state.features |= feature;
+	Exe.SetUint32(
+		state.statePhy + ExtNameTextStatic.StateFeatures,
+		state.features
+	);
+	if ((feature & ExtNameTextStatic.FeatureColors) !== 0)
+		ExtNameTextStatic.patchTextSurfaces(state, true);
+	CACHE.put("ExtNameTextStatic.State", state);
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("ExtNameTextStatic.QjsOnly", {
+			owner: _,
+			features: state.features,
+			mapCapacity: ExtNameTextStatic.MapCapacity,
+			frameVir: state.frameVir,
+			textOutVir: state.textOutVir,
+			extentVir: state.extentVir,
+			extnVir: state.extnVir,
+			customDllImports: 0
+		});
+	}
+	return true;
+};

@@ -9,63 +9,130 @@
 *   the Free Software Foundation, either version 3 of the License, or      *
 *   (at your option) any later version.                                    *
 *                                                                          *
-*   This program is distributed in the hope that it will be useful,        *
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
-*   GNU General Public License for more details.                           *
-*                                                                          *
-*   You should have received a copy of the GNU General Public License      *
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
-*                                                                          *
-*                                                                          *
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2025-07-16                                             *
-*   Last Modified : 2026-06-05                                             *
+*   Last Modified : 2026-07-13                                             *
 *                                                                          *
-*   Description   : Dispatcher-table extended-name patch. Routes packet    *
-*                   0x0BB7 (with packetLength + EXTN magic) to the EXTN    *
-*                   shared block after the stock client reader has         *
-*                   consumed the full packet. Avoids runtime ws2_32.recv   *
-*                   hooks and the legacy RecvStrip0BB6 recv/read-path      *
-*                   patch. The visual layer is a renameable normal startup *
-*                   import, matching CustomRuneSystem.                     *
+*   Description   : Routes 0x0BB7 through the dispatcher-table EXTN ring   *
+*                   and drains it into a bounded exact-text map. Static    *
+*                   GDI call-site caves expand long names and titles       *
+*                   without a custom DLL, recv hook, or native CNameInfo  *
+*                   mutation. Target: 2025-07-16 Ragexe.                   *
 *                                                                          *
 \**************************************************************************/
 
-CustomExtName = function(_)
-{
-    $$(_, 1, `Install dispatcher-table transport for extended-name packets`);
-
-    if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.install !== "function")
-        throw Error("CustomPacketDispatch.install helper is unavailable");
-
-    CustomPacketDispatch.install(`${_}.Dispatch`, ['EXTN']);
-
-    $$(_, 2, `Add renameable extended-name visual DLL as startup import`);
-    CustomExtName.addVisualDll(`${_}.CustomDLL`);
-
-    $$(_, 3, `Custom extended-name dispatcher transport + visual DLL import are enabled`);
-    return true;
+ExtNameStaticAsm = {
+	BuildDate: 20250716,
+	FrameCaller: 0x00C7642D,
+	FrameCallerPrefix: "8B CE E8"
 };
 
-CustomExtName.addVisualDll = function(_)
+ExtNameStaticAsm.hexNorm = function(hex)
 {
-    if (typeof CustomTextVisualStatic === "undefined" ||
-        typeof CustomTextVisualStatic.addVisualDll !== "function")
-        throw Error("CustomTextVisualStatic.addVisualDll helper is unavailable");
+	return (hex || "").replace(/\s+/g, " ").trim().toUpperCase();
+};
 
-    return CustomTextVisualStatic.addVisualDll(_, {
-        inputKey: '$extNameVisualDLLName',
-        title: "Extended Name Visual DLL",
-        exportName: "ExtNameVisualInit",
-        defaultName: "boh.dll",
-        dedicatedName: "boh_text.dll"
-    });
+ExtNameStaticAsm.bytesToHex = function(bytes)
+{
+	return bytes.map(value => (value & 0xFF).toString(16).padStart(2, "0")).join(" ");
+};
+
+ExtNameStaticAsm.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+				bytes.push(value & 0xFF);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error(`ExtNameStaticAsm: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			bytes.push(opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(`ExtNameStaticAsm: unresolved label ${fixup.target}`);
+				const targetVir = typeof fixup.target === "string"
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				put32(out, fixup.pos, targetVir - (baseVir + fixup.pos + 4));
+			}
+			return ExtNameStaticAsm.bytesToHex(out);
+		}
+	};
+};
+
+ExtNameStaticAsm.assertCode = function(label, virAddr, expectedHex)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`ExtNameStaticAsm: ${label} is not mapped`);
+	const expected = ExtNameStaticAsm.hexNorm(expectedHex);
+	const actual = ExtNameStaticAsm.hexNorm(
+		Exe.GetHex(phyAddr, expected.split(" ").length)
+	);
+	if (actual !== expected)
+		throw Error(`ExtNameStaticAsm: ${label} mismatch, got ${actual}`);
+	return phyAddr;
+};
+
+CustomExtName = function(_)
+{
+	if (typeof ExtNameTextStatic === "undefined" ||
+		typeof ExtNameTextStatic.enable !== "function")
+		throw Error("CustomExtName: ExtNameTextStatic helper unavailable");
+	$$(_, 1, "Install QJS-only EXTN exact-text map and GDI bridge");
+	ExtNameTextStatic.enable(_, ExtNameTextStatic.FeatureNames);
+	$$(_, 2, "Extended names use static text caves; no visual DLL");
+	return true;
 };
 
 CustomExtName.validate = function()
 {
-    return Exe.BuildDate >= 20250700;
+	return Exe.BuildDate === 20250716 &&
+		typeof ExtNameTextStatic !== "undefined";
 };

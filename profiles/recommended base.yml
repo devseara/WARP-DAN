@@ -61,11 +61,6 @@ inputs:
         display: ""
         type: 10
     
-    $extNameVisualDLLName:
-        data: ''
-        display: ""
-        type: 10
-    
     $newCheckAtt:
         data: '53797374656d454e5c436865636b417474656e64616e63655f454e2e6c756200'
         display: "SystemEN\\CheckAttendance_EN.lub"
