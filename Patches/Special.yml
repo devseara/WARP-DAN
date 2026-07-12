@@ -117,10 +117,10 @@ CustomSkills:
             desc : "Routes packet 0x0BB7 to the EXTN ring, then guarded static frame and GDI call-site caves perform bounded exact-text substitution. Mob information uses the client's supported Group Title/ID row while the stock mob name remains separate. No CNameInfo mutation, text DLL, recv hook, or runtime patching is used."
 
         - CustomColoredItemName:
-            title : Enable Custom Color Packets (dispatcher transport)
+            title : Enable Custom Item Name Colors (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : "Dispatcher-table shared-block path for custom item name colors. Routes variable item-color packet 0x0BDD to ICOL after the stock packet reader has consumed the full packet and avoids ws2_32.recv / RecvStrip0BB6. The dedicated boh_text.dll uses WARP-time TextOutW/GetTextExtentPoint32W wrapper bridges instead of runtime GDI hooks."
+            desc : "Routes variable packet 0x0BDD to a bounded ICOL table, matches UTF-8 item-name substrings and grade labels, and applies colors through guarded static TextOutW caves with shadow suppression and grade continuation. No text DLL, recv hook, system-API hook, or runtime patching is used."
 
         - CustomPlayerNameColor:
             title : Enable Custom Player Name Colors (QJS-only)

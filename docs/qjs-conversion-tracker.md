@@ -23,7 +23,7 @@ Status meanings:
 | Always-show NPC names | Working | QJS-only bounded EXTN balloon renderer and static `/shownpcname`, with live-confirmed one-byte persistence in `savedata/shownpcname.dat`. |
 | Extended names | Working | QJS-only EXTN ring drain feeds a bounded exact-text map. Mob details use the official `0x0ADF` Group Title/ID row above the independently rendered stock mob name. |
 | Player-name colors | Working | QJS-only EXTN exact-text entries apply RGB around matching non-shadow player-name draws and restore the original GDI color afterward. |
-| Item-name colors | Planned | Feed a bounded item-ID/color table from `0x0BDD` and patch semantic item UI draw sites. |
+| Item-name colors | Working | QJS-only `0x0BDD` ICOL drain, bounded UTF-8 substring/grade table, static TextOutW color bridge, dark-shadow suppression and grade-label continuation; confirmed across item windows and client transitions. |
 | Rune visual system | Planned | Translate the existing static bridge handlers to native caves and bake configuration at patch time. |
 | FPS overlay | Planned | Replace the D3D proxy with a native frame counter and client text draw callback. |
 | Ping overlay | Planned | Prefer application-level packet RTT; exact threaded ICMP behavior remains DLL-backed. |
@@ -88,6 +88,21 @@ Status meanings:
 - [x] Confirm long PC, mob, NPC, portal, party, guild, position and title text in game.
 - [x] Confirm player RGB colors, black shadow behavior and color reset in game.
 - [x] Confirm login bursts, map changes, warps, F12, Alt+Tab and clean exit.
+
+## Item-name colors checklist
+
+- [x] Remove `ColoredItemNameVisualInit`, `BohTextOutW`, and `BohGetTextExtentPoint32W` imports from the patch.
+- [x] Reuse the dispatcher-table `0x0BDD` ICOL block without `recv` or system-API hooks.
+- [x] Parse the packet into a bounded 512-entry UTF-8 substring/color table (enough for the maximum 4092-byte wire packet).
+- [x] Convert `_GRADE_<n>_<label>` sentinels into grade-label matches.
+- [x] Chain after the EXTN/player-color TextOutW bridge regardless of profile order.
+- [x] Preserve dark-shadow suppression, GDI color restoration, and adjacent grade-name continuation.
+- [x] Disable the compiled item-color module for the next combined DLL rebuild.
+- [x] Build the full profile and verify the output has no item-color/text-bridge BOH imports.
+- [x] Confirm normal item-name colors in inventory, equipment, storage, cart and shop lists.
+- [x] Confirm grade labels and split/wrapped grade-name continuation in Alt+Q and hover balloons.
+- [x] Confirm item-detail description/title text is not incorrectly recolored.
+- [x] Confirm color-list refresh, map change, relog, F12, Alt+Tab and clean exit.
 
 ## HatEffect renderer gates
 

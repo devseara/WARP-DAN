@@ -22,51 +22,529 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2025-07-16                                             *
-*   Last Modified : 2026-06-05                                             *
+*   Last Modified : 2026-07-13                                             *
 *                                                                          *
-*   Description   : Dispatcher-table item-color patch. Routes variable-    *
-*                   length packet 0x0BDD to the ICOL shared block after    *
-*                   the stock client reader has consumed the full packet.  *
-*                   Avoids runtime ws2_32.recv hooks and the legacy        *
-*                   RecvStrip0BB6 recv/read-path patch. The visual layer   *
-*                   is a renameable normal startup import. The combined   *
-*                   build is boh.dll; the dedicated build is boh_text.dll.*
+*   Description   : Routes the Banquet 0x0BDD item-color list into a       *
+*                   bounded EXE-resident table and colors matching item    *
+*                   names at the client's TextOutW surfaces. This replaces *
+*                   the former boh.dll/boh_text.dll runtime hooks while    *
+*                   retaining UTF-8 substring, grade-label continuation   *
+*                   and shadow-suppression behavior. Target: 2025-07-16.   *
 *                                                                          *
 \**************************************************************************/
 
-CustomColoredItemName = function(_)
-{
-    $$(_, 1, `Install dispatcher-table transport for item-color packets`);
-
-    if (typeof CustomPacketDispatch === "undefined" || typeof CustomPacketDispatch.install !== "function")
-        throw Error("CustomPacketDispatch.install helper is unavailable");
-
-    CustomPacketDispatch.install(`${_}.Dispatch`, ['ICOL']);
-
-    $$(_, 2, `Add renameable item-color visual DLL as startup import`);
-    CustomColoredItemName.addVisualDll(`${_}.CustomDLL`);
-
-    $$(_, 3, `Custom item-color dispatcher transport + visual DLL import are enabled`);
-    return true;
+ItemColorStatic = {
+	BuildDate: 20250716,
+	PacketId: 0x0BDD,
+	PacketMagic: 0x49434F4C,
+	PacketMax: 4092,
+	// A 4092-byte packet can contain at most 510 minimal entries. Reserve 512
+	// slots so every structurally valid packet fits without an unbounded map.
+	TableCapacity: 512,
+	NameCapacity: 128,
+	EntrySize: 0x8C,
+	EntryColor: 0,
+	EntryLength: 4,
+	EntryFlags: 8,
+	EntryName: 12,
+	EntryGrade: 1,
+	StateCount: 0,
+	StatePreviousTextOut: 4,
+	StateContinuationColor: 8,
+	StateContinuationHdc: 12,
+	StateContinuationX: 16,
+	StateContinuationY: 20,
+	StateContinuationTick: 24,
+	StateContinuationValid: 28,
+	StateSize: 32,
+	AnsiScratchSize: 512,
+	ContinuationMs: 150
 };
 
-CustomColoredItemName.addVisualDll = function(_)
+ItemColorStatic.allocateCode = function(assembler)
 {
-    if (typeof CustomTextVisualStatic === "undefined" ||
-        typeof CustomTextVisualStatic.addVisualDll !== "function")
-        throw Error("CustomTextVisualStatic.addVisualDll helper is unavailable");
+	return ExtNameTextStatic.allocateCode(assembler);
+};
 
-    return CustomTextVisualStatic.addVisualDll(_, {
-        inputKey: '$itemColorVisualDLLName',
-        title: "Colored Item Name Visual DLL",
-        exportName: "ColoredItemNameVisualInit",
-        defaultName: "boh.dll",
-        dedicatedName: "boh_text.dll",
-        description: "Enter the DLL filename for item-color rendering. Use boh.dll for the combined build or boh_text.dll for the dedicated text build. Item colors and extended names intentionally share one static text-wrapper DLL."
-    });
+ItemColorStatic.callIat = function(a, iat)
+{
+	a.emit(0xFF, 0x15); a.dword(iat);
+};
+
+ItemColorStatic.buildDrain = function(icolVir, stateVir, tableVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18, 0x53, 0x56, 0x57);
+	a.emit(0x83, 0x3D); a.dword(icolVir + 4); a.emit(0x01);
+	a.jcc(0x85, "done");
+	// Claim the single-slot packet before parsing so malformed data cannot
+	// stall later client packets or be reparsed on every draw.
+	a.emit(0xC7, 0x05); a.dword(icolVir + 4); a.dword(0);
+	a.emit(0x81, 0x3D); a.dword(icolVir); a.dword(ItemColorStatic.PacketMagic);
+	a.jcc(0x85, "done");
+	a.emit(0xA1); a.dword(icolVir + 8);
+	a.emit(0x83, 0xF8, 0x08);
+	a.jcc(0x82, "done");
+	a.emit(0x3D); a.dword(ItemColorStatic.PacketMax);
+	a.jcc(0x87, "done");
+	a.emit(0xBE); a.dword(icolVir + 12);
+	a.emit(0x8D, 0x14, 0x06, 0x89, 0x55, 0xF0); // packet end
+	a.emit(0x66, 0x81, 0x3E); a.emit(ItemColorStatic.PacketId & 0xFF,
+		(ItemColorStatic.PacketId >>> 8) & 0xFF);
+	a.jcc(0x85, "done");
+	a.emit(0x0F, 0xB7, 0x56, 0x02, 0x3B, 0xD0);
+	a.jcc(0x85, "done");
+	a.emit(0x8B, 0x4E, 0x04, 0x89, 0x4D, 0xFC);
+	a.emit(0xC7, 0x45, 0xF8); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(stateVir + ItemColorStatic.StateCount); a.dword(0);
+	a.emit(0x83, 0xC6, 0x08);
+	a.label("entry_loop");
+	a.emit(0x83, 0x7D, 0xFC, 0x00);
+	a.jcc(0x84, "publish");
+	a.emit(0x8D, 0x46, 0x02, 0x3B, 0x45, 0xF0);
+	a.jcc(0x87, "publish");
+	a.emit(0x0F, 0xB7, 0x1E, 0x83, 0xC6, 0x02);
+	a.emit(0x85, 0xDB);
+	a.jcc(0x84, "publish");
+	a.emit(0x8D, 0x44, 0x1E, 0x04, 0x3B, 0x45, 0xF0);
+	a.jcc(0x87, "publish");
+	a.emit(0x89, 0x45, 0xF4); // next entry
+	a.emit(0x80, 0x7C, 0x1E, 0xFF, 0x00);
+	a.jcc(0x85, "advance");
+	a.emit(0x81, 0x7D, 0xF8); a.dword(ItemColorStatic.TableCapacity);
+	a.jcc(0x83, "advance");
+	a.emit(0x81, 0xFB); a.dword(ItemColorStatic.NameCapacity);
+	a.jcc(0x87, "advance");
+
+	// Convert server 0x00RRGGBB to Win32 COLORREF 0x00BBGGRR.
+	a.emit(0x8B, 0x14, 0x1E, 0x8B, 0xC2, 0xC1, 0xE8, 0x10);
+	a.emit(0x25); a.dword(0xFF);
+	a.emit(0x8B, 0xCA, 0x81, 0xE1); a.dword(0xFF00);
+	a.emit(0x81, 0xE2); a.dword(0xFF);
+	a.emit(0xC1, 0xE2, 0x10, 0x0B, 0xC1, 0x0B, 0xC2, 0x89, 0x45, 0xEC);
+
+	// Normal entries store the UTF-8 item substring. Grade sentinels use
+	// _GRADE_<n>_<label>; store only <label>, which matches [Label] draws.
+	a.emit(0x8B, 0xD6, 0x8B, 0xCB, 0x49, 0x33, 0xC0); // src,len,flags=0
+	a.emit(0x83, 0xFB, 0x09);
+	a.jcc(0x82, "have_name");
+	a.emit(0x81, 0x3E); a.dword(0x4152475F); // _GRA
+	a.jcc(0x85, "have_name");
+	a.emit(0x81, 0x7E, 0x03); a.dword(0x5F454441); // ADE_
+	a.jcc(0x85, "have_name");
+	a.emit(0x8D, 0x56, 0x07, 0x8D, 0x4C, 0x1E, 0xFF); // scan,end-without-NUL
+	a.label("grade_scan");
+	a.emit(0x3B, 0xD1);
+	a.jcc(0x83, "advance");
+	a.emit(0x80, 0x3A, 0x5F);
+	a.jcc(0x84, "grade_label");
+	a.emit(0x42);
+	a.jmp("grade_scan");
+	a.label("grade_label");
+	a.emit(0x42, 0x3B, 0xD1);
+	a.jcc(0x83, "advance");
+	a.emit(0x2B, 0xCA, 0xB8); a.dword(ItemColorStatic.EntryGrade);
+	a.label("have_name");
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "advance");
+	a.emit(0x81, 0xF9); a.dword(ItemColorStatic.NameCapacity - 1);
+	a.jcc(0x87, "advance");
+
+	a.emit(0x8B, 0x7D, 0xF8, 0x69, 0xFF); a.dword(ItemColorStatic.EntrySize);
+	a.emit(0x81, 0xC7); a.dword(tableVir);
+	a.emit(0x8B, 0x5D, 0xEC, 0x89, 0x5F, ItemColorStatic.EntryColor);
+	a.emit(0x89, 0x4F, ItemColorStatic.EntryLength);
+	a.emit(0x89, 0x47, ItemColorStatic.EntryFlags);
+	a.emit(0x53, 0x56); // preserve packet length and packet cursor
+	a.emit(0x8B, 0xF2, 0x8D, 0x7F, ItemColorStatic.EntryName);
+	a.emit(0xF3, 0xA4, 0xC6, 0x07, 0x00);
+	a.emit(0x5E, 0x5B);
+	a.emit(0xFF, 0x45, 0xF8);
+	a.label("advance");
+	a.emit(0x8B, 0x75, 0xF4, 0xFF, 0x4D, 0xFC);
+	a.jmp("entry_loop");
+	a.label("publish");
+	a.emit(0x8B, 0x45, 0xF8, 0xA3); a.dword(stateVir + ItemColorStatic.StateCount);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+ItemColorStatic.buildLookup = function(stateVir, tableVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57);
+	a.emit(0xA1); a.dword(stateVir + ItemColorStatic.StateCount);
+	a.emit(0x89, 0x45, 0xFC, 0xBF); a.dword(tableVir);
+	a.label("entry_loop");
+	a.emit(0x83, 0x7D, 0xFC, 0x00);
+	a.jcc(0x84, "not_found");
+	a.emit(0x8B, 0x57, ItemColorStatic.EntryLength, 0x85, 0xD2);
+	a.jcc(0x84, "next_entry");
+	a.emit(0x3B, 0x55, 0x0C);
+	a.jcc(0x87, "next_entry");
+	a.emit(0x8B, 0x45, 0x0C, 0x2B, 0xC2, 0x89, 0x45, 0xF4);
+	a.emit(0xC7, 0x45, 0xF8); a.dword(0);
+	a.label("position_loop");
+	a.emit(0x8B, 0x45, 0xF8, 0x3B, 0x45, 0xF4);
+	a.jcc(0x87, "next_entry");
+	a.emit(0x8B, 0x75, 0x08, 0x03, 0xF0);
+	a.emit(0x8D, 0x5F, ItemColorStatic.EntryName);
+	a.emit(0x8B, 0x4F, ItemColorStatic.EntryLength);
+	a.label("compare_loop");
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "found");
+	a.emit(0x8A, 0x06, 0x3A, 0x03);
+	a.jcc(0x85, "next_position");
+	a.emit(0x46, 0x43, 0x49);
+	a.jmp("compare_loop");
+	a.label("next_position");
+	a.emit(0xFF, 0x45, 0xF8);
+	a.jmp("position_loop");
+	a.label("next_entry");
+	a.emit(0x81, 0xC7); a.dword(ItemColorStatic.EntrySize);
+	a.emit(0xFF, 0x4D, 0xFC);
+	a.jmp("entry_loop");
+	a.label("found");
+	a.emit(0x8B, 0xC7);
+	a.jmp("return");
+	a.label("not_found");
+	a.emit(0x33, 0xC0);
+	a.label("return");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+ItemColorStatic.buildContinuationLookup = function(stateVir, getTickCountIat)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x83, 0x3D); a.dword(stateVir + ItemColorStatic.StateContinuationValid); a.emit(0x00);
+	a.jcc(0x84, "invalid");
+	a.emit(0x8B, 0x45, 0x08, 0x3B, 0x05); a.dword(stateVir + ItemColorStatic.StateContinuationHdc);
+	a.jcc(0x85, "invalid");
+	ItemColorStatic.callIat(a, getTickCountIat);
+	a.emit(0x2B, 0x05); a.dword(stateVir + ItemColorStatic.StateContinuationTick);
+	a.emit(0x3D); a.dword(ItemColorStatic.ContinuationMs);
+	a.jcc(0x87, "invalid");
+
+	// Wrapped continuation: approximately same X, next line within 22 pixels.
+	a.emit(0x8B, 0x5D, 0x0C, 0x2B, 0x1D); a.dword(stateVir + ItemColorStatic.StateContinuationX);
+	a.emit(0x8B, 0xF3, 0xC1, 0xFE, 0x1F, 0x33, 0xDE, 0x2B, 0xDE);
+	a.emit(0x83, 0xFB, 0x02);
+	a.jcc(0x87, "same_line");
+	a.emit(0x8B, 0x45, 0x10, 0x2B, 0x05); a.dword(stateVir + ItemColorStatic.StateContinuationY);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, "same_line");
+	a.emit(0x83, 0xF8, 0x16);
+	a.jcc(0x86, "valid");
+	a.label("same_line");
+	// Same-line continuation: approximately same Y and up to 120 px right.
+	a.emit(0x8B, 0x5D, 0x10, 0x2B, 0x1D); a.dword(stateVir + ItemColorStatic.StateContinuationY);
+	a.emit(0x8B, 0xF3, 0xC1, 0xFE, 0x1F, 0x33, 0xDE, 0x2B, 0xDE);
+	a.emit(0x83, 0xFB, 0x02);
+	a.jcc(0x87, "invalid");
+	a.emit(0x8B, 0x45, 0x0C, 0x2B, 0x05); a.dword(stateVir + ItemColorStatic.StateContinuationX);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, "invalid");
+	a.emit(0x83, 0xF8, 0x78);
+	a.jcc(0x87, "invalid");
+	a.label("valid");
+	a.emit(0xA1); a.dword(stateVir + ItemColorStatic.StateContinuationColor);
+	a.jmp("return");
+	a.label("invalid");
+	a.emit(0xB8); a.dword(0xFFFFFFFF);
+	a.label("return");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC3);
+	return a;
+};
+
+ItemColorStatic.buildTextOut = function(
+	stateVir,
+	drainVir,
+	lookupVir,
+	continuationVir,
+	ansiScratchVir,
+	apis
+)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x20, 0x53, 0x56, 0x57);
+	a.emit(0xC7, 0x45, 0xFC); a.dword(0xFFFFFFFF); // custom color
+	a.emit(0xC7, 0x45, 0xF8); a.dword(0);          // matched entry
+	a.emit(0xC7, 0x45, 0xF4); a.dword(0);          // old color valid
+	a.call(drainVir);
+	a.emit(0x83, 0x7D, 0x14, 0x00);
+	a.jcc(0x84, "continuation");
+	a.emit(0x8B, 0x45, 0x18, 0x85, 0xC0);
+	a.jcc(0x8E, "continuation");
+	a.emit(0x3D); a.dword(127);
+	a.jcc(0x87, "continuation");
+
+	// Convert exactly the TextOutW span to bounded UTF-8 for packet-name matching.
+	a.emit(0x6A, 0x00, 0x6A, 0x00, 0x68); a.dword(ItemColorStatic.AnsiScratchSize - 1);
+	a.emit(0x68); a.dword(ansiScratchVir);
+	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14, 0x6A, 0x00, 0x68); a.dword(65001);
+	ItemColorStatic.callIat(a, apis.wideToMulti);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, "continuation");
+	a.emit(0x89, 0x45, 0xEC, 0xBA); a.dword(ansiScratchVir);
+	a.emit(0xC6, 0x04, 0x02, 0x00);
+
+	// Mirror the native DLL fast path: item text begins with a grade bracket or
+	// exposes a client color-code marker in its first eight UTF-8 bytes.
+	a.emit(0x33, 0xC9);
+	a.label("fast_scan");
+	a.emit(0x83, 0xF9, 0x08);
+	a.jcc(0x83, "continuation");
+	a.emit(0x3B, 0x4D, 0xEC);
+	a.jcc(0x83, "continuation");
+	a.emit(0x8A, 0x91); a.dword(ansiScratchVir);
+	a.emit(0x80, 0xFA, 0x5B);
+	a.jcc(0x84, "lookup");
+	a.emit(0x80, 0xFA, 0x5E);
+	a.jcc(0x84, "lookup");
+	a.emit(0x41);
+	a.jmp("fast_scan");
+	a.label("lookup");
+	a.emit(0xFF, 0x75, 0xEC, 0x68); a.dword(ansiScratchVir);
+	a.call(lookupVir);
+	a.emit(0x83, 0xC4, 0x08, 0x89, 0x45, 0xF8, 0x85, 0xC0);
+	a.jcc(0x84, "continuation");
+	a.emit(0x8B, 0x58, ItemColorStatic.EntryColor, 0x89, 0x5D, 0xFC);
+
+	// Do not tint the exact item-detail title pass around the sprite header.
+	a.emit(0x8B, 0x50, ItemColorStatic.EntryLength, 0x3B, 0x55, 0xEC);
+	a.jcc(0x85, "track_grade");
+	a.emit(0x81, 0x7D, 0x0C); a.dword(80);
+	a.jcc(0x82, "track_grade");
+	a.emit(0x81, 0x7D, 0x0C); a.dword(180);
+	a.jcc(0x87, "track_grade");
+	a.emit(0x83, 0x7D, 0x10, 0x00);
+	a.jcc(0x8C, "track_grade");
+	a.emit(0x83, 0x7D, 0x10, 0x18);
+	a.jcc(0x8F, "track_grade");
+	a.emit(0xC7, 0x45, 0xFC); a.dword(0xFFFFFFFF);
+	a.jmp("draw");
+
+	a.label("track_grade");
+	a.emit(0xF7, 0x40, ItemColorStatic.EntryFlags); a.dword(ItemColorStatic.EntryGrade);
+	a.jcc(0x84, "apply");
+	a.emit(0x8B, 0x5D, 0xFC, 0x89, 0x1D); a.dword(stateVir + ItemColorStatic.StateContinuationColor);
+	a.emit(0x8B, 0x5D, 0x08, 0x89, 0x1D); a.dword(stateVir + ItemColorStatic.StateContinuationHdc);
+	a.emit(0x8B, 0x5D, 0x0C, 0x89, 0x1D); a.dword(stateVir + ItemColorStatic.StateContinuationX);
+	a.emit(0x8B, 0x5D, 0x10, 0x89, 0x1D); a.dword(stateVir + ItemColorStatic.StateContinuationY);
+	ItemColorStatic.callIat(a, apis.getTickCount);
+	a.emit(0xA3); a.dword(stateVir + ItemColorStatic.StateContinuationTick);
+	a.emit(0xC7, 0x05); a.dword(stateVir + ItemColorStatic.StateContinuationValid); a.dword(1);
+	a.jmp("apply");
+
+	a.label("continuation");
+	a.emit(0xFF, 0x75, 0x10, 0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
+	a.call(continuationVir);
+	a.emit(0x83, 0xC4, 0x0C, 0x89, 0x45, 0xFC);
+	a.label("apply");
+	a.emit(0x83, 0x7D, 0xFC, 0xFF);
+	a.jcc(0x84, "draw");
+	a.emit(0xFF, 0x75, 0x08);
+	ItemColorStatic.callIat(a, apis.getTextColor);
+	a.emit(0x89, 0x45, 0xE8);
+	// Reject all-dark shadow/outline passes. The original item DLL returned
+	// TRUE without drawing these passes so the colored main glyph stays crisp.
+	a.emit(0x8B, 0xD0, 0x81, 0xE2); a.dword(0xFF);
+	a.emit(0x83, 0xFA, 0x20);
+	a.jcc(0x87, "set_color");
+	a.emit(0x8B, 0xD0, 0xC1, 0xEA, 0x08, 0x81, 0xE2); a.dword(0xFF);
+	a.emit(0x83, 0xFA, 0x20);
+	a.jcc(0x87, "set_color");
+	a.emit(0xC1, 0xE8, 0x10, 0x25); a.dword(0xFF);
+	a.emit(0x83, 0xF8, 0x20);
+	a.jcc(0x86, "shadow_done");
+	a.label("set_color");
+	a.emit(0xFF, 0x75, 0xFC, 0xFF, 0x75, 0x08);
+	ItemColorStatic.callIat(a, apis.setTextColor);
+	a.emit(0x89, 0x45, 0xF0, 0xC7, 0x45, 0xF4); a.dword(1);
+	a.label("draw");
+	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14, 0xFF, 0x75, 0x10,
+		0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
+	a.emit(0xFF, 0x15); a.dword(stateVir + ItemColorStatic.StatePreviousTextOut);
+	a.emit(0x89, 0x45, 0xE4);
+	a.emit(0x83, 0x7D, 0xF4, 0x00);
+	a.jcc(0x84, "return");
+	a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
+	ItemColorStatic.callIat(a, apis.setTextColor);
+	a.jmp("return");
+	a.label("shadow_done");
+	a.emit(0xC7, 0x45, 0xE4); a.dword(1);
+	a.label("return");
+	a.emit(0x8B, 0x45, 0xE4, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D,
+		0xC2, 0x14, 0x00);
+	return a;
+};
+
+ItemColorStatic.findApis = function()
+{
+	const find = function(dllName, exportName)
+	{
+		const iat = CustomDLL.findActiveIat(exportName, dllName);
+		if (iat < 0)
+			throw Error(`ItemColorStatic: ${dllName}!${exportName} is not imported`);
+		return iat;
+	};
+	const customIat = CACHE.get("CustomDLL.IAT") || {};
+	const getTextColor = customIat["gdi32.dll!gettextcolor"] || 0;
+	if (!getTextColor)
+		throw Error("ItemColorStatic: staged GetTextColor IAT is unavailable");
+	return {
+		wideToMulti: find("kernel32.dll", "WideCharToMultiByte"),
+		getTickCount: find("kernel32.dll", "GetTickCount"),
+		setTextColor: find("gdi32.dll", "SetTextColor"),
+		getTextColor
+	};
+};
+
+ItemColorStatic.patchTextSurfaces = function(state)
+{
+	const extState = CACHE.get("ExtNameTextStatic.State");
+	if (!extState || !Number.isInteger(extState.textOutVir))
+		throw Error("ItemColorStatic: underlying ExtNameTextStatic TextOutW bridge unavailable");
+	const apis = ItemColorStatic.findApis();
+	const textOut = ItemColorStatic.allocateCode(
+		ItemColorStatic.buildTextOut(
+			state.stateVir,
+			state.drainVir,
+			state.lookupVir,
+			state.continuationVir,
+			state.ansiScratchVir,
+			apis
+		)
+	);
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag("ItemColorStatic.TextBridge"), true);
+	try
+	{
+		Exe.SetUint32(
+			state.statePhy + ItemColorStatic.StatePreviousTextOut,
+			extState.textOutVir
+		);
+		const directPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutDirect, CODE);
+		const thunkPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutThunk, CODE);
+		if (directPhy < 0 || thunkPhy < 0)
+			throw Error("ItemColorStatic: a TextOutW surface is not mapped");
+		Exe.SetCALL(directPhy, textOut.virAddr, 0);
+		Exe.SetNOPs(directPhy + 5, 1);
+		Exe.SetJMP(thunkPhy, textOut.virAddr, 0);
+		Exe.SetNOPs(thunkPhy + 5, 1);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+	state.textOutVir = textOut.virAddr;
+	state.apis = apis;
+	return state;
+};
+
+ItemColorStatic.enable = function(_, icolVir)
+{
+	if (Exe.BuildDate !== ItemColorStatic.BuildDate)
+		throw Error("ItemColorStatic supports only the 2025-07-16 client");
+	if (!Number.isInteger(icolVir))
+		throw Error("ItemColorStatic: ICOL dispatcher block unavailable");
+
+	CustomDLL.applySpec(`${_}.SystemImport`, [{
+		Name: "gdi32.dll",
+		Funcs: [{Name: "GetTextColor"}]
+	}]);
+
+	let state = CACHE.get("ItemColorStatic.State");
+	if (!state || !Number.isInteger(state.stateVir))
+	{
+		const [statePhy, stateVir] = Exe.Allocate(ItemColorStatic.StateSize, 4);
+		ExtNameTextStatic.zeroBlock(statePhy, ItemColorStatic.StateSize);
+		const tableSize = ItemColorStatic.TableCapacity * ItemColorStatic.EntrySize;
+		const [tablePhy, tableVir] = Exe.Allocate(tableSize, 0x10);
+		ExtNameTextStatic.zeroBlock(tablePhy, tableSize);
+		const [scratchPhy, scratchVir] = Exe.Allocate(ItemColorStatic.AnsiScratchSize, 0x10);
+		ExtNameTextStatic.zeroBlock(scratchPhy, ItemColorStatic.AnsiScratchSize);
+		const drain = ItemColorStatic.allocateCode(
+			ItemColorStatic.buildDrain(icolVir, stateVir, tableVir)
+		);
+		const lookup = ItemColorStatic.allocateCode(
+			ItemColorStatic.buildLookup(stateVir, tableVir)
+		);
+		const apis = ItemColorStatic.findApis();
+		const continuation = ItemColorStatic.allocateCode(
+			ItemColorStatic.buildContinuationLookup(stateVir, apis.getTickCount)
+		);
+		state = {
+			statePhy,
+			stateVir,
+			tableVir,
+			ansiScratchVir: scratchVir,
+			drainVir: drain.virAddr,
+			lookupVir: lookup.virAddr,
+			continuationVir: continuation.virAddr,
+			icolVir
+		};
+	}
+	ItemColorStatic.patchTextSurfaces(state);
+	CACHE.put("ItemColorStatic.State", state);
+
+	if (typeof CustomDLL.addRefreshHook === "function")
+	{
+		CustomDLL.addRefreshHook("CustomColoredItemName.StaticTextBridge", function()
+		{
+			const current = CACHE.get("ItemColorStatic.State");
+			if (!current || !Number.isInteger(current.stateVir))
+				return false;
+			ItemColorStatic.patchTextSurfaces(current);
+			CACHE.put("ItemColorStatic.State", current);
+			return true;
+		});
+	}
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("ItemColorStatic.QjsOnly", {
+			owner: _,
+			packetId: ItemColorStatic.PacketId,
+			tableCapacity: ItemColorStatic.TableCapacity,
+			icolVir,
+			textOutVir: state.textOutVir,
+			customDllImports: 0
+		});
+	}
+	return true;
+};
+
+CustomColoredItemName = function(_)
+{
+	if (typeof ExtNameTextStatic === "undefined" ||
+		typeof ExtNameTextStatic.enable !== "function")
+		throw Error("CustomColoredItemName: ExtNameTextStatic helper unavailable");
+	if (typeof CustomPacketDispatch === "undefined" ||
+		typeof CustomPacketDispatch.install !== "function")
+		throw Error("CustomColoredItemName: dispatcher helper unavailable");
+
+	// Feature zero installs only the shared GDI/dispatcher base. It does not
+	// enable extended-name substitution or player-name coloring by itself.
+	ExtNameTextStatic.enable(`${_}.Base`, 0);
+	CustomPacketDispatch.install(`${_}.Dispatch`, ["ICOL"]);
+	const routes = CACHE.get("CustomPacketDispatch.Routes");
+	const icol = routes && routes.routes ? routes.routes.ICOL : null;
+	if (!icol || !Number.isInteger(icol.blockVir))
+		throw Error("CustomColoredItemName: ICOL shared block unavailable");
+
+	return ItemColorStatic.enable(_, icol.blockVir);
 };
 
 CustomColoredItemName.validate = function()
 {
-    return Exe.BuildDate >= 20250700;
+	return Exe.BuildDate === ItemColorStatic.BuildDate &&
+		typeof ExtNameTextStatic !== "undefined" &&
+		typeof ItemColorStatic !== "undefined";
 };

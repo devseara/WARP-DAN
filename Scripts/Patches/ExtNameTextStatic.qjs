@@ -895,6 +895,20 @@ ExtNameTextStatic.enable = function(_, feature)
 		ExtNameTextStatic.patchTextSurfaces(state, true);
 	CACHE.put("ExtNameTextStatic.State", state);
 
+	// The item-color bridge intentionally wraps the shared TextOutW bridge.
+	// Re-apply it after a later name/color feature rebuilds this base layer so
+	// profile ordering cannot silently disable item-name colors.
+	if (typeof ItemColorStatic !== "undefined" &&
+		typeof ItemColorStatic.patchTextSurfaces === "function")
+	{
+		const itemState = CACHE.get("ItemColorStatic.State");
+		if (itemState && Number.isInteger(itemState.stateVir))
+		{
+			ItemColorStatic.patchTextSurfaces(itemState);
+			CACHE.put("ItemColorStatic.State", itemState);
+		}
+	}
+
 	if (typeof PatchDiagnostics !== "undefined" &&
 		typeof PatchDiagnostics.add === "function")
 	{
