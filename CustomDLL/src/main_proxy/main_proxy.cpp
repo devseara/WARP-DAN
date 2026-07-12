@@ -200,6 +200,12 @@ extern "C" __declspec(dllexport) HRESULT DirectDrawEnumerateExA(
 extern "C" __declspec(dllexport) void ExtNameVisualInit(void) {}
 extern "C" __declspec(dllexport) void ColoredItemNameVisualInit(void) {}
 extern "C" __declspec(dllexport) void PlayerNameColorVisualInit(void) {}
+#if !BOH_WEAPON_SPRITE
+// Compatibility anchor for EXEs produced by the older DLL-backed weapon
+// patch. The QJS implementation does all work in the EXE and does not import
+// this symbol; keeping the no-op export makes the transition non-breaking.
+extern "C" __declspec(dllexport) void WeaponSpriteInit(void) {}
+#endif
 // Other WARP-facing exports are provided only by enabled feature objects:
 // RuneVisualInit, FpsPingOverlayInit, NpcNameOverlayInit, InventoryTabsInit,
-// PincodeUIInit/PincodeUIShow, and WeaponSpriteInit.
+// and PincodeUIInit/PincodeUIShow.

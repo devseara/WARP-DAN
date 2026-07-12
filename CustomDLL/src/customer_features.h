@@ -5,8 +5,8 @@
 // This is COMPILED INTO boh.dll — no runtime file to tamper with.
 
 // Gepard static-bridge combined build: enable only modules whose hook surfaces
-// are installed by WARP at patch time. Do not enable BOH_WEAPON_SPRITE until
-// the dual-wield weapon sprite patch is working and separately audited.
+// are installed by WARP at patch time. Weapon sprites are now implemented by
+// the self-contained AllowDualCustomWeaponSprites QJS patch, not this DLL.
 #define BOH_ITEM_COLORS      1
 #define BOH_EXTENDED_NAMES   1
 #define BOH_PLAYER_NAME_COLORS 1

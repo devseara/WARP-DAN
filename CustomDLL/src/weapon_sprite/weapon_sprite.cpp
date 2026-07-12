@@ -200,6 +200,11 @@ static constexpr DWORD kGlobalObj        = 0x015FA3C0; // 'this' for weapon fns
 static constexpr DWORD kRendererGlobal   = 0x01213338; // 'this' for renderer getter
 static constexpr DWORD kWeaponLoader     = 0x00D3F4F0; // weapon sprite loader (vtable +0x58)
 static constexpr DWORD kWeaponSetup      = 0x00D3E850; // weapon setup (vtable +0x50, calls D3F4F0)
+static constexpr DWORD kWeaponEquipUpdate = 0x00D403A0; // main/off item update; loads slots 5/6
+static constexpr DWORD kGetActSlot       = 0x00D38310; // actor ACT resource accessor by slot
+static constexpr DWORD kActGetFrame      = 0x0070F4B0; // ACT action/frame lookup
+static constexpr DWORD kResourceAddRef   = 0x00A8E800; // ++resource[+4]
+static constexpr DWORD kResourceRelease  = 0x00A8F910; // --resource[+4]
 static constexpr DWORD kWeaponLoaderSlots[5] = { // .rdata vtable +0x58 slots holding D3F4F0
     0x01093BA0, 0x01093C9C, 0x01093D98, 0x01094400, 0x01094868
 };
@@ -218,6 +223,10 @@ static constexpr SIZE_T kStolenLayerB = 7; // 55 / 8B EC / 51 / 8B 45 08
 static constexpr SIZE_T kStolenPathBuilder = 10; // 55 / 8B EC / 6A FF / 68 imm32
 static constexpr SIZE_T kStolenWeaponPathBuilder = 10; // 55 / 8B EC / 6A FF / 68 imm32
 static constexpr SIZE_T kStolenResourceLookup = 6; // 55 / 8B EC / 8B 51 10
+static constexpr SIZE_T kStolenWeaponSetup = 5; // 55 / 8B EC / 53 / 56
+static constexpr SIZE_T kStolenWeaponEquipUpdate = 5; // 55 / 8B EC / 6A FF
+static constexpr SIZE_T kStolenGetActSlot = 9; // 55 / 8B EC / 8B 81 B8 04 00 00
+static constexpr SIZE_T kStolenActGetFrame = 10; // 55 / 8B EC / 6A FF / 68 imm32
 
 // ---- module state ---------------------------------------------------------
 static HMODULE g_module = nullptr;
@@ -245,6 +254,8 @@ static bool  g_state_hooks = true; // BOH_DUALWPN_STATE_HOOKS
 static bool  g_placement_trace = true; // BOH_DUALWPN_PLACEMENT_TRACE
 static DWORD g_log_every = 0;      // BOH_DUALWPN_LOG_EVERY
 static bool  g_native_bind = false; // BOH_DUALWPN_NATIVE_BIND (D3F4F0 per-hand swap)
+static bool  g_slot_trace = true; // compiled-on D403A0 equipment trace
+static bool  g_native_slots = true; // compiled-on native two-slot bind
 
 static BYTE  g_wtf_stolen[16]  = {};
 static BYTE  g_draw_stolen[16] = {};
@@ -257,6 +268,10 @@ static BYTE  g_path_stolen[16] = {};
 static BYTE  g_main_path_stolen[16] = {};
 static BYTE  g_off_path_stolen[16] = {};
 static BYTE  g_res_lookup_stolen[16] = {};
+static BYTE  g_wsetup_inline_stolen[8] = {};
+static BYTE  g_wequip_stolen[8] = {};
+static BYTE  g_get_act_stolen[12] = {};
+static BYTE  g_act_frame_stolen[16] = {};
 static void* g_wtf_tramp  = nullptr;
 static void* g_draw_tramp = nullptr;
 static void* g_set_tramp  = nullptr;
@@ -268,6 +283,10 @@ static void* g_path_tramp = nullptr;
 static void* g_main_path_tramp = nullptr;
 static void* g_off_path_tramp = nullptr;
 static void* g_res_lookup_tramp = nullptr;
+static void* g_wsetup_inline_tramp = nullptr;
+static void* g_wequip_tramp = nullptr;
+static void* g_get_act_tramp = nullptr;
+static void* g_act_frame_tramp = nullptr;
 
 static bool g_wtf_hooked = false, g_draw_hooked = false, g_set_hooked = false;
 static bool g_mode_hooked = false, g_submit_hooked = false;
@@ -278,6 +297,10 @@ static DWORD g_wloader_slot_old[5] = {}; // original D3F4F0 vtable slot values
 static DWORD g_wsetup_slot_old[5] = {};  // original D3E850 vtable slot values
 static bool  g_wloader_hooked = false;
 static bool  g_wsetup_hooked  = false;
+static bool  g_wsetup_inline_hooked = false;
+static bool  g_wequip_hooked = false;
+static bool  g_get_act_hooked = false;
+static bool  g_act_frame_hooked = false;
 static DWORD g_last_bind_char = 0xFFFFFFFF, g_last_bind_main = 0xFFFFFFFF, g_last_bind_off = 0xFFFFFFFF, g_last_bind_type = 0xFFFFFFFF;
 
 // last-seen values for de-duplicating high-frequency log lines
@@ -319,6 +342,32 @@ static volatile LONG g_draw_count = 0;
 static volatile LONG g_reentry = 0; // guards the synthetic second draw
 static volatile LONG g_render_depth = 0;
 static volatile LONG g_synth_draw_depth = 0;
+static volatile LONG g_setup_hook_calls = 0;
+static volatile LONG g_equip_hook_calls = 0;
+static volatile LONG g_act_frame_remap_logs = 0;
+
+struct ActSlotTraceEntry
+{
+	DWORD charObj;
+	DWORD caller;
+	DWORD slot;
+	DWORD action;
+};
+
+static ActSlotTraceEntry g_act_slot_trace[128] = {};
+static volatile LONG g_act_slot_trace_count = 0;
+
+struct WeaponActRemapEntry
+{
+	DWORD charObj;
+	DWORD act5;
+	DWORD act6;
+};
+
+// ACT resources are shared by the client cache, so this table is keyed by
+// actor and revalidated against the actor's live slots before every remap.
+static WeaponActRemapEntry g_weapon_act_remap[128] = {};
+static volatile LONG g_weapon_act_remap_count = 0;
 
 // most recent dual-wield context captured at WeaponTypeFunc
 static DWORD g_ctx_main = 0, g_ctx_off = 0, g_ctx_mainView = 0, g_ctx_offView = 0;
@@ -481,6 +530,14 @@ static void restore_all_patches()
                   kStolenWeaponPathBuilder, g_off_path_hooked);
     restore_patch(kResourceKeyLookup, g_res_lookup_stolen,
                   kStolenResourceLookup, g_res_lookup_hooked);
+    restore_patch(kWeaponSetup, g_wsetup_inline_stolen,
+                  kStolenWeaponSetup, g_wsetup_inline_hooked);
+    restore_patch(kWeaponEquipUpdate, g_wequip_stolen,
+                  kStolenWeaponEquipUpdate, g_wequip_hooked);
+    restore_patch(kGetActSlot, g_get_act_stolen,
+                  kStolenGetActSlot, g_get_act_hooked);
+    restore_patch(kActGetFrame, g_act_frame_stolen,
+                  kStolenActGetFrame, g_act_frame_hooked);
 }
 
 static bool patch_nop2(DWORD target_va, BYTE expected0, BYTE expected1)
@@ -1156,7 +1213,7 @@ static DWORD __fastcall WeaponTypeHook(void* glob, void* /*edx*/,
         else if (offItem != 0 && baseType >= 1 && baseType <= 24 && mainView > 24)
         {
             // Dual-wield with base class type → use item-specific view from WeaponNameTable
-            // e.g. type 1 (SHORTSWORD/_단검) → type 34 (Zeny_Knife/_1238) or 45 (Twin_Edge_B/_13412)
+            // e.g. generic SHORTSWORD -> the equipped item's specific view ID
             repl = mainView;
         }
 
@@ -1544,58 +1601,527 @@ static void* __fastcall OffWeaponPathHook(void* glob, void* /*edx*/,
     return ret;
 }
 
-// ---- native per-hand weapon bind (D3F4F0 vtable hook) ---------------------
-// D3F4F0 (__thiscall: ecx=charObj, stack=weaponType, ret 4) loads the weapon
-// sprite handles into the char object, using ONE type for BOTH hands -> dual
-// wield shows the combined sprite. We swap the 5 actor vtable slots (+0x58)
-// for a shim that re-drives the native loader twice so each hand resolves to
-// its own item's sprite. Equip-time only, never per frame.
-//   main handle  = *( *(char+0x4AC) + 4 )
-//   offhand slot = (*(int**)(char+0x4B8))[1]
+// ---- native resource slots ------------------------------------------------
+// D3F4F0 (__thiscall: ecx=charObj, stack=weaponType, ret 4) loads one weapon
+// visual into slot 1. The two arrays are parallel resources for that visual:
+//   [char+0x4AC][slot] = SPR/surface resource
+//   [char+0x4B8][slot] = ACT resource
+// They are NOT main/offhand arrays. D3E6C0 normally owns slot 2. The guarded
+// native-slot proof below replaces both slot-2 entries only after stock D3E850
+// setup has completed, so ACT and SPR can never refer to different weapons.
 //   type [char+0x438]   main item [char+0x440]   off item [char+0x444]
 typedef void (__thiscall* WeaponLoaderFn)(void* charObj, int weaponType);
+typedef void (__thiscall* ResourceRefFn)(void* resource);
+
+struct ActorResourceSlots
+{
+	DWORD* spr;
+	DWORD* act;
+	DWORD sprCount;
+	DWORD actCount;
+};
 
 static void call_real_weapon_loader(void* charObj, int weaponType)
 {
     reinterpret_cast<WeaponLoaderFn>(va(kWeaponLoader))(charObj, weaponType);
 }
 
-// ---- D3E850 vtable hook (weapon setup, +0x50) ----------------------------
-// D3E850(charObj, jobCode, p3, weaponType, p5, itemId, p7..p11, p12)
-// It writes [char+0x438]=weaponType, [char+0x444]=itemId, then calls D3F4F0.
-// This hook fires BEFORE D3F4F0 and populates g_ctx from the real item IDs
-// so the D3F4F0_VHook 2-pass remap has the per-hand types ready.
+static void resource_add_ref(DWORD resource)
+{
+	if (resource != 0)
+		reinterpret_cast<ResourceRefFn>(va(kResourceAddRef))(
+			reinterpret_cast<void*>(resource));
+}
+
+static void resource_release(DWORD resource)
+{
+	if (resource != 0)
+		reinterpret_cast<ResourceRefFn>(va(kResourceRelease))(
+			reinterpret_cast<void*>(resource));
+}
+
+static bool get_actor_resource_slots(void* charObj, ActorResourceSlots* out)
+{
+	if (charObj == nullptr || out == nullptr)
+		return false;
+
+	__try {
+		BYTE* actor = reinterpret_cast<BYTE*>(charObj);
+		DWORD* spr = *reinterpret_cast<DWORD**>(actor + 0x4AC);
+		DWORD* sprEnd = *reinterpret_cast<DWORD**>(actor + 0x4B0);
+		DWORD* act = *reinterpret_cast<DWORD**>(actor + 0x4B8);
+		DWORD* actEnd = *reinterpret_cast<DWORD**>(actor + 0x4BC);
+		if (spr == nullptr || act == nullptr || sprEnd < spr || actEnd < act)
+			return false;
+
+		DWORD sprCount = static_cast<DWORD>(sprEnd - spr);
+		DWORD actCount = static_cast<DWORD>(actEnd - act);
+		if (sprCount < 3 || actCount < 3 || sprCount > 32 || actCount > 32)
+			return false;
+
+		out->spr = spr;
+		out->act = act;
+		out->sprCount = sprCount;
+		out->actCount = actCount;
+		return true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER) {
+		return false;
+	}
+}
+
+static void trace_actor_resource_slots(const char* phase, void* charObj,
+	DWORD mainItem, DWORD offItem, DWORD weaponType)
+{
+	if (!g_slot_trace)
+		return;
+
+	ActorResourceSlots slots = {};
+	if (!get_actor_resource_slots(charObj, &slots)) {
+		log_alwaysf("SlotTrace %s char=%08X items=%u/%u type=%u INVALID",
+			reinterpret_cast<DWORD>(phase), reinterpret_cast<DWORD>(charObj),
+			mainItem, offItem, weaponType);
+		return;
+	}
+
+	log_alwaysf("SlotTrace %s char=%08X items=%u/%u type=%u counts=%u",
+		reinterpret_cast<DWORD>(phase), reinterpret_cast<DWORD>(charObj),
+		mainItem, offItem, weaponType,
+		(slots.sprCount << 16) | (slots.actCount & 0xFFFF));
+	DWORD count = slots.sprCount < slots.actCount ? slots.sprCount : slots.actCount;
+	if (count > 9)
+		count = 9;
+	for (DWORD i = 0; i < count; ++i) {
+		log_alwaysf("SlotTrace %s slot=%u SPR=%08X ACT=%08X",
+			reinterpret_cast<DWORD>(phase), i, slots.spr[i], slots.act[i]);
+	}
+}
+
+static void set_weapon_act_remap(void* charObj, DWORD act5, DWORD act6)
+{
+	if (charObj == nullptr)
+		return;
+
+	DWORD actor = reinterpret_cast<DWORD>(charObj);
+	LONG count = g_weapon_act_remap_count;
+	if (count > 128)
+		count = 128;
+	for (LONG i = 0; i < count; ++i) {
+		if (g_weapon_act_remap[i].charObj == actor) {
+			g_weapon_act_remap[i].act5 = act5;
+			g_weapon_act_remap[i].act6 = act6;
+			return;
+		}
+	}
+
+	LONG index = InterlockedIncrement(&g_weapon_act_remap_count) - 1;
+	if (index < 0 || index >= 128) {
+		// A bounded replacement is preferable to growing work in a render hook.
+		index = static_cast<LONG>((actor >> 4) % 128);
+	}
+	g_weapon_act_remap[index].charObj = actor;
+	g_weapon_act_remap[index].act5 = act5;
+	g_weapon_act_remap[index].act6 = act6;
+}
+
+static bool should_remap_weapon_action(void* actResource, DWORD action)
+{
+	// 88..95 is the dual-wield attack group. Item-specific ACTs normally leave
+	// it blank because the stock client uses a combined type-25..30 ACT there.
+	if (actResource == nullptr || action < 88 || action > 95)
+		return false;
+
+	DWORD act = reinterpret_cast<DWORD>(actResource);
+	LONG count = g_weapon_act_remap_count;
+	if (count > 128)
+		count = 128;
+	for (LONG i = 0; i < count; ++i) {
+		const WeaponActRemapEntry& entry = g_weapon_act_remap[i];
+		if (act != entry.act5 && act != entry.act6)
+			continue;
+
+		__try {
+			void* charObj = reinterpret_cast<void*>(entry.charObj);
+			ActorResourceSlots slots = {};
+			if (entry.charObj != 0 && get_actor_resource_slots(charObj, &slots) &&
+				slots.actCount >= 7 &&
+				((act == entry.act5 && slots.act[5] == act) ||
+				 (act == entry.act6 && slots.act[6] == act)) &&
+				(field32(charObj, 0x440) != 0 || field32(charObj, 0x444) != 0))
+				return true;
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER) {}
+	}
+	return false;
+}
+
+static bool install_originals_in_native_slots(void* charObj, int combinedType,
+	DWORD mainItem, DWORD offItem)
+{
+	int mainType = mainItem ? d8a1d0(mainItem) : 0;
+	int offType = offItem ? d8a1d0(offItem) : 0;
+	if (mainType <= 0 || offType <= 0)
+		return false;
+
+	DWORD retainedOffSpr = 0;
+	DWORD retainedOffAct = 0;
+	bool retained = false;
+	bool installed = false;
+	__try {
+		// Load the offhand through the proven slot-1 path, retain both halves,
+		// then reload the main hand. The retained references survive that reload.
+		call_real_weapon_loader(charObj, offType);
+		ActorResourceSlots slots = {};
+		if (!get_actor_resource_slots(charObj, &slots))
+			__leave;
+		retainedOffSpr = slots.spr[1];
+		retainedOffAct = slots.act[1];
+		if (retainedOffSpr == 0 || retainedOffAct == 0)
+			__leave;
+		resource_add_ref(retainedOffSpr);
+		resource_add_ref(retainedOffAct);
+		retained = true;
+
+		call_real_weapon_loader(charObj, mainType);
+		if (!get_actor_resource_slots(charObj, &slots))
+			__leave;
+
+		resource_release(slots.spr[2]);
+		resource_release(slots.act[2]);
+		slots.spr[2] = retainedOffSpr;
+		slots.act[2] = retainedOffAct;
+		retained = false; // the retained references now belong to slot 2
+		write_field32(charObj, 0x438, static_cast<DWORD>(combinedType));
+		installed = true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER) {
+		installed = false;
+	}
+
+	if (retained) {
+		resource_release(retainedOffSpr);
+		resource_release(retainedOffAct);
+	}
+	if (!installed) {
+		// Restore the client's combined resource if any step failed.
+		__try {
+			call_real_weapon_loader(charObj, combinedType);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER) {}
+	}
+	return installed;
+}
+
+// D403A0 owns the actual equipped item IDs and the native weapon visual slots.
+// Its dual-item branch calls D39130, which collapses the pair to generic types
+// 25..30 before building slot 5/6 paths. Its single-item branch instead uses
+// D8A1D0(item) and therefore resolves the item's original ACT/SPR resources.
+typedef void (__thiscall* WeaponEquipUpdateFn)(void* charObj,
+	DWORD mainItem, DWORD offItem);
+
+static void call_real_weapon_equip_update(void* charObj,
+	DWORD mainItem, DWORD offItem)
+{
+	WeaponEquipUpdateFn target = reinterpret_cast<WeaponEquipUpdateFn>(
+		g_wequip_tramp ? g_wequip_tramp
+		                 : reinterpret_cast<void*>(va(kWeaponEquipUpdate)));
+	target(charObj, mainItem, offItem);
+}
+
+static bool install_originals_in_weapon_slots(void* charObj,
+	DWORD mainItem, DWORD offItem)
+{
+	DWORD retainedOffSpr = 0;
+	DWORD retainedOffAct = 0;
+	bool retained = false;
+	bool installed = false;
+	__try {
+		// Drive the stock single-item path once for the offhand and retain its
+		// slot-5 pair. The final main-item call leaves the original main visual
+		// in slot 5; the retained offhand pair is transferred to slot 6.
+		call_real_weapon_equip_update(charObj, offItem, 0);
+		ActorResourceSlots slots = {};
+		if (!get_actor_resource_slots(charObj, &slots) ||
+			slots.sprCount < 7 || slots.actCount < 7)
+			__leave;
+		retainedOffSpr = slots.spr[5];
+		retainedOffAct = slots.act[5];
+		if (retainedOffSpr == 0 || retainedOffAct == 0)
+			__leave;
+		resource_add_ref(retainedOffSpr);
+		resource_add_ref(retainedOffAct);
+		retained = true;
+
+		call_real_weapon_equip_update(charObj, mainItem, 0);
+		if (!get_actor_resource_slots(charObj, &slots) ||
+			slots.sprCount < 7 || slots.actCount < 7)
+			__leave;
+
+		resource_release(slots.spr[6]);
+		resource_release(slots.act[6]);
+		slots.spr[6] = retainedOffSpr;
+		slots.act[6] = retainedOffAct;
+		retained = false;
+		write_field32(charObj, 0x440, mainItem);
+		write_field32(charObj, 0x444, offItem);
+		installed = true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER) {
+		installed = false;
+	}
+
+	if (retained) {
+		resource_release(retainedOffSpr);
+		resource_release(retainedOffAct);
+	}
+	if (!installed) {
+		__try {
+			call_real_weapon_equip_update(charObj, mainItem, offItem);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER) {}
+	}
+	return installed;
+}
+
+static bool install_original_in_offhand_slot(void* charObj, DWORD offItem)
+{
+	DWORD retainedSpr = 0;
+	DWORD retainedAct = 0;
+	bool retained = false;
+	bool installed = false;
+	__try {
+		// Load the same item through the stock single-weapon path to obtain its
+		// real SPR/ACT pair, then restore the offhand-only state before replacing
+		// the generic visual with that pair in slot 6.
+		call_real_weapon_equip_update(charObj, offItem, 0);
+		ActorResourceSlots slots = {};
+		if (!get_actor_resource_slots(charObj, &slots) ||
+			slots.sprCount < 7 || slots.actCount < 7)
+			__leave;
+		retainedSpr = slots.spr[5];
+		retainedAct = slots.act[5];
+		if (retainedSpr == 0 || retainedAct == 0)
+			__leave;
+		resource_add_ref(retainedSpr);
+		resource_add_ref(retainedAct);
+		retained = true;
+
+		call_real_weapon_equip_update(charObj, 0, offItem);
+		if (!get_actor_resource_slots(charObj, &slots) ||
+			slots.sprCount < 7 || slots.actCount < 7)
+			__leave;
+
+		// Remove the stock generic pair. Both halves of the item-specific visual
+		// must stay together or the render cache will omit the slot.
+		resource_release(slots.spr[5]);
+		resource_release(slots.act[5]);
+		resource_release(slots.spr[6]);
+		resource_release(slots.act[6]);
+		slots.spr[5] = 0;
+		slots.act[5] = 0;
+		slots.spr[6] = retainedSpr;
+		slots.act[6] = retainedAct;
+		retained = false;
+		write_field32(charObj, 0x440, 0);
+		write_field32(charObj, 0x444, offItem);
+		installed = true;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER) {
+		installed = false;
+	}
+
+	if (retained) {
+		resource_release(retainedSpr);
+		resource_release(retainedAct);
+	}
+	if (!installed) {
+		__try {
+			call_real_weapon_equip_update(charObj, 0, offItem);
+		}
+		__except (EXCEPTION_EXECUTE_HANDLER) {}
+	}
+	return installed;
+}
+
+static void __fastcall D403A0_EquipHook(void* charObj, void* /*edx*/,
+	DWORD mainItem, DWORD offItem)
+{
+	LONG equipCall = InterlockedIncrement(&g_equip_hook_calls);
+	log_alwaysf("EquipHook call=%u char=%08X items=%u/%u views=%u/%u",
+		static_cast<DWORD>(equipCall), reinterpret_cast<DWORD>(charObj),
+		mainItem, offItem,
+		mainItem ? static_cast<DWORD>(d8a1d0(mainItem)) : 0,
+		offItem ? static_cast<DWORD>(d8a1d0(offItem)) : 0);
+
+	// Invalidate any previous mapping for this actor before stock releases or
+	// replaces its resources.
+	set_weapon_act_remap(charObj, 0, 0);
+
+	// Preserve every stock side effect first.
+	call_real_weapon_equip_update(charObj, mainItem, offItem);
+	if (!g_native_slots || charObj == nullptr)
+		return;
+
+	if (mainItem == 0 && offItem != 0 && d8a1d0(offItem) > 0) {
+		trace_actor_resource_slots("offhand-stock", charObj, mainItem, offItem,
+			field32(charObj, 0x438));
+		bool ok = install_original_in_offhand_slot(charObj, offItem);
+		ActorResourceSlots slots = {};
+		if (ok && get_actor_resource_slots(charObj, &slots) && slots.actCount >= 7)
+			set_weapon_act_remap(charObj, 0, slots.act[6]);
+		log_alwaysf("OffhandSlot char=%08X item=%u result=%u slot=6",
+			reinterpret_cast<DWORD>(charObj), offItem, ok ? 1u : 0u);
+		trace_actor_resource_slots(ok ? "offhand-patched" : "offhand-restored",
+			charObj, mainItem, offItem, field32(charObj, 0x438));
+		return;
+	}
+
+	if (mainItem == 0 || offItem == 0 ||
+		d8a1d0(mainItem) <= 0 || d8a1d0(offItem) <= 0)
+		return;
+
+	trace_actor_resource_slots("equip-stock", charObj, mainItem, offItem,
+		field32(charObj, 0x438));
+	bool ok = install_originals_in_weapon_slots(charObj, mainItem, offItem);
+	ActorResourceSlots slots = {};
+	if (ok && get_actor_resource_slots(charObj, &slots) && slots.actCount >= 7)
+		set_weapon_act_remap(charObj, slots.act[5], slots.act[6]);
+	log_alwaysf("WeaponSlots char=%08X items=%u/%u result=%u slotMain=5 slotOff=6",
+		reinterpret_cast<DWORD>(charObj), mainItem, offItem, ok ? 1u : 0u);
+	trace_actor_resource_slots(ok ? "equip-patched" : "equip-restored",
+		charObj, mainItem, offItem, field32(charObj, 0x438));
+}
+
+typedef void* (__thiscall* GetActSlotFn)(void* charObj, DWORD slot);
+
+static void* __fastcall D38310_GetActSlotHook(void* charObj, void* /*edx*/,
+	DWORD slot)
+{
+	GetActSlotFn target = reinterpret_cast<GetActSlotFn>(g_get_act_tramp);
+	void* result = target ? target(charObj, slot) : nullptr;
+	if (charObj == nullptr || (slot != 5 && slot != 6))
+		return result;
+
+	__try {
+		DWORD mainItem = field32(charObj, 0x440);
+		DWORD offItem = field32(charObj, 0x444);
+		if (mainItem == 0 && offItem == 0)
+			return result;
+
+		DWORD caller = reinterpret_cast<DWORD>(_ReturnAddress());
+		DWORD action = field32(charObj, 0x38);
+		LONG count = g_act_slot_trace_count;
+		if (count > 128)
+			count = 128;
+		for (LONG i = 0; i < count; ++i) {
+			const ActSlotTraceEntry& seen = g_act_slot_trace[i];
+			if (seen.charObj == reinterpret_cast<DWORD>(charObj) &&
+				seen.caller == caller && seen.slot == slot &&
+				seen.action == action)
+				return result;
+		}
+
+		LONG index = InterlockedIncrement(&g_act_slot_trace_count) - 1;
+		if (index >= 0 && index < 128) {
+			g_act_slot_trace[index].charObj = reinterpret_cast<DWORD>(charObj);
+			g_act_slot_trace[index].caller = caller;
+			g_act_slot_trace[index].slot = slot;
+			g_act_slot_trace[index].action = action;
+			log_alwaysf("ActSlot char=%08X slot=%u action=%u frame=%u caller=%08X res=%08X",
+				reinterpret_cast<DWORD>(charObj), slot, action,
+				field32(charObj, 0x3C), caller,
+				reinterpret_cast<DWORD>(result));
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER) {}
+	return result;
+}
+
+typedef void* (__thiscall* ActGetFrameFn)(void* actResource,
+	DWORD action, DWORD frame);
+
+static void* __fastcall ActGetFrameHook(void* actResource, void* /*edx*/,
+	DWORD action, DWORD frame)
+{
+	ActGetFrameFn target = reinterpret_cast<ActGetFrameFn>(g_act_frame_tramp);
+	if (target == nullptr)
+		return nullptr;
+
+	DWORD mappedAction = action;
+	if (should_remap_weapon_action(actResource, action)) {
+		// Preserve direction (low three bits) and select the populated normal
+		// weapon attack group 80..87 instead of the blank item group 88..95.
+		mappedAction = action - 8;
+		LONG logIndex = InterlockedIncrement(&g_act_frame_remap_logs);
+		if (logIndex <= 64) {
+			log_alwaysf("ActFrameRemap act=%08X action=%u->%u frame=%u caller=%08X",
+				reinterpret_cast<DWORD>(actResource), action, mappedAction, frame,
+				reinterpret_cast<DWORD>(_ReturnAddress()));
+		}
+	}
+	return target(actResource, mappedAction, frame);
+}
+
+// ---- D3E850 entry hook (weapon setup; also used at vtable +0x50) ----------
+// D3E850(charObj, jobCode, p3, weaponType, mainItem, offItem, p7..p11, p12)
+// It writes +0x438/+0x440/+0x444, invokes D3F4F0 for slot 1, then invokes
+// D3E6C0/D3E370/D3E550 for slots 2/3/4. Therefore the proof must run AFTER
+// this function returns; doing the slot-2 transfer inside D3F4F0 is overwritten.
 typedef void (__thiscall* WeaponSetupFn)(void* charObj,
-    int jobCode, void* p3, int weaponType, int p5,
-    int itemId, int p7, int p8, int p9, int p10, int p11, void* p12);
+    int jobCode, void* p3, int weaponType, int mainItem,
+    int offItem, int p7, int p8, int p9, int p10, int p11, void* p12);
 
 static void call_real_weapon_setup(void* charObj,
-    int jobCode, void* p3, int weaponType, int p5,
-    int itemId, int p7, int p8, int p9, int p10, int p11, void* p12)
+    int jobCode, void* p3, int weaponType, int mainItem,
+    int offItem, int p7, int p8, int p9, int p10, int p11, void* p12)
 {
-    reinterpret_cast<WeaponSetupFn>(va(kWeaponSetup))(
-        charObj, jobCode, p3, weaponType, p5,
-        itemId, p7, p8, p9, p10, p11, p12);
+    WeaponSetupFn target = reinterpret_cast<WeaponSetupFn>(
+        g_wsetup_inline_tramp ? g_wsetup_inline_tramp
+                              : reinterpret_cast<void*>(va(kWeaponSetup)));
+    target(
+        charObj, jobCode, p3, weaponType, mainItem,
+        offItem, p7, p8, p9, p10, p11, p12);
 }
 
 static void __fastcall D3E850_VHook(void* charObj, void* /*edx*/,
-    int jobCode, void* p3, int weaponType, int p5,
-    int itemId, int p7, int p8, int p9, int p10, int p11, void* p12)
+    int jobCode, void* p3, int weaponType, int mainItem,
+    int offItem, int p7, int p8, int p9, int p10, int p11, void* p12)
 {
-    if (g_unloading) return;
-    if (!g_unloading && g_native_bind && charObj) {
-        DWORD mainItem = field32(charObj, 0x440);
-        DWORD offItem  = static_cast<DWORD>(itemId);
-        g_ctx_main = mainItem;
-        g_ctx_off  = offItem;
-        g_ctx_mainView = mainItem ? static_cast<DWORD>(d8a1d0(mainItem)) : 0;
-        g_ctx_offView  = offItem  ? static_cast<DWORD>(d8a1d0(offItem))  : 0;
-    }
-    call_real_weapon_setup(charObj, jobCode, p3, weaponType, p5,
-                           itemId, p7, p8, p9, p10, p11, p12);
+	DWORD main = static_cast<DWORD>(mainItem);
+	DWORD off = static_cast<DWORD>(offItem);
+	LONG setupCall = InterlockedIncrement(&g_setup_hook_calls);
+	if (g_slot_trace) {
+		log_alwaysf("SetupHook call=%u char=%08X job=%u type=%u items=%u/%u",
+			static_cast<DWORD>(setupCall), reinterpret_cast<DWORD>(charObj),
+			static_cast<DWORD>(jobCode), static_cast<DWORD>(weaponType), main, off);
+	}
+	if (charObj != nullptr) {
+		g_ctx_main = main;
+		g_ctx_off = off;
+		g_ctx_mainView = main ? static_cast<DWORD>(d8a1d0(main)) : 0;
+		g_ctx_offView = off ? static_cast<DWORD>(d8a1d0(off)) : 0;
+	}
+
+	call_real_weapon_setup(charObj, jobCode, p3, weaponType, mainItem,
+		offItem, p7, p8, p9, p10, p11, p12);
+
+	bool combined = weaponType >= 25 && weaponType <= 30 && main != 0 && off != 0;
+	if (!combined || charObj == nullptr)
+		return;
+
+	trace_actor_resource_slots("stock", charObj, main, off,
+		static_cast<DWORD>(weaponType));
+	if (g_native_slots) {
+		bool ok = install_originals_in_native_slots(charObj, weaponType, main, off);
+		log_alwaysf("NativeSlots char=%08X items=%u/%u type=%u result=%u",
+			reinterpret_cast<DWORD>(charObj), main, off,
+			static_cast<DWORD>(weaponType), ok ? 1u : 0u);
+		trace_actor_resource_slots(ok ? "patched" : "restored", charObj,
+			main, off, static_cast<DWORD>(weaponType));
+	}
 }
 
-// ---- D3F4F0 vtable hook (weapon loader, +0x58) ---------------------------
+// ---- legacy D3F4F0 vtable hook (not installed) ---------------------------
 static void __fastcall D3F4F0_VHook(void* charObj, void* /*edx*/, int weaponType)
 {
     DWORD vhookCaller = reinterpret_cast<DWORD>(_ReturnAddress());
@@ -1624,7 +2150,7 @@ static void __fastcall D3F4F0_VHook(void* charObj, void* /*edx*/, int weaponType
     if (mainType <= 0) { DWORD it = field32(charObj, 0x440); mainType = it ? d8a1d0(it) : 0; }
     if (offType  <= 0) { DWORD it = field32(charObj, 0x444); offType  = it ? d8a1d0(it) : 0; }
     // Dual = both hands have distinct individual types.  g_ctx is now
-    // populated by D3E850_VHook (vtable +0x50) which fires BEFORE us,
+    // populated by the D3E850 entry hook which fires BEFORE us,
     // so the WeaponType combined-range gate is unnecessary.
     bool  dual = mainType > 0 && offType > 0 && mainType != offType;
 
@@ -1647,13 +2173,11 @@ static void __fastcall D3F4F0_VHook(void* charObj, void* /*edx*/, int weaponType
              field32(charObj, 0x440), field32(charObj, 0x444),
              field32(charObj, 0x448), field32(charObj, 0x44C),
              dual ? 1u : 0u);
-        // Scan the loader object for the test items (13412 main / 1238 off) to
-        // locate their offset here. If neither appears, the per-hand items are
-        // NOT on this object and must come from the combiner/per-char capture.
+        // Scan the loader object for the current per-hand item IDs.
         __try {
             for (DWORD off = 0; off <= 0x600; off += 4) {
                 DWORD v = field32(charObj, off);
-                if (v == 13412u || v == 1238u)
+                if (v != 0 && (v == ctxMain || v == ctxOff))
                     logf("VHook scan char=%08X off=%03X val=%u",
                          reinterpret_cast<DWORD>(charObj), off, v);
             }
@@ -1669,7 +2193,7 @@ static void __fastcall D3F4F0_VHook(void* charObj, void* /*edx*/, int weaponType
             __try {
                 DWORD* sp = reinterpret_cast<DWORD*>(vhookRetSlot);
                 for (int i = 0; i < 200; ++i)
-                    if (sp[i] == 13412u || sp[i] == 1238u)
+                    if (sp[i] != 0 && (sp[i] == ctxMain || sp[i] == ctxOff))
                         logf("VHook stk[+%03X]=%u", i * 4, sp[i]);
             } __except (EXCEPTION_EXECUTE_HANDLER) {}
         }
@@ -1824,7 +2348,7 @@ static void restore_weapon_loader_vhook()
 // ---- installer ------------------------------------------------------------
 static DWORD WINAPI install_thread(LPVOID)
 {
-    Sleep(150);
+    Sleep(0);
     g_base = reinterpret_cast<DWORD>(GetModuleHandleA(nullptr));
 
     log_alwaysf("installer start base=%08X log=%u replace=%u offhand=%u every=%u",
@@ -1838,6 +2362,32 @@ static DWORD WINAPI install_thread(LPVOID)
          g_trace_actor_paths ? 1 : 0);
     log_alwaysf("installer flags placementTrace=%u",
                 g_placement_trace ? 1 : 0);
+    log_alwaysf("installer flags slotTrace=%u nativeSlots=%u allDualWeapons=1",
+                g_slot_trace ? 1 : 0, g_native_slots ? 1 : 0);
+
+	// Hook the live equipment-update entry rather than setup-time vtables.
+	// D403A0 receives the actual main/off item IDs after login and on equip.
+	if (g_slot_trace || g_native_slots) {
+		g_wequip_hooked = patch_jmp(
+			kWeaponEquipUpdate, reinterpret_cast<void*>(&D403A0_EquipHook),
+			g_wequip_stolen, kStolenWeaponEquipUpdate,
+			&g_wequip_tramp);
+		log_alwaysf("NativeBind: equip inline hook=%u site=%08X target=%08X",
+			g_wequip_hooked ? 1u : 0u, va(kWeaponEquipUpdate),
+			reinterpret_cast<DWORD>(&D403A0_EquipHook));
+		g_get_act_hooked = patch_jmp(
+			kGetActSlot, reinterpret_cast<void*>(&D38310_GetActSlotHook),
+			g_get_act_stolen, kStolenGetActSlot, &g_get_act_tramp);
+		log_alwaysf("NativeBind: ACT-slot trace hook=%u site=%08X target=%08X",
+			g_get_act_hooked ? 1u : 0u, va(kGetActSlot),
+			reinterpret_cast<DWORD>(&D38310_GetActSlotHook));
+		g_act_frame_hooked = patch_jmp(
+			kActGetFrame, reinterpret_cast<void*>(&ActGetFrameHook),
+			g_act_frame_stolen, kStolenActGetFrame, &g_act_frame_tramp);
+		log_alwaysf("NativeBind: ACT-frame remap hook=%u site=%08X target=%08X",
+			g_act_frame_hooked ? 1u : 0u, va(kActGetFrame),
+			reinterpret_cast<DWORD>(&ActGetFrameHook));
+	}
 
     // Skip old mutating native experiments. The overlay still needs the
     // read-only state feed, and placement trace can hook C55C30 for evidence.
@@ -1945,12 +2495,10 @@ static DWORD WINAPI install_thread(LPVOID)
 
     } // else (!skipHooks)
 
-    // All EXE hooks (inline + vtable) permanently removed.
-    // But WeaponTypeHook is safe — it returns 0 on g_unloading and
-    // its inline patch is restored by the OS on process exit.
-    // It populates g_ctx which the overlay reads for per-hand items.
+    // The native proof uses only the D403A0 equipment-update entry hook. The older
+    // render-path hooks remain disabled; WeaponTypeHook is overlay-only.
 
-    if (!g_wtf_hooked) {
+    if (!g_wtf_hooked && g_overlay_renderer) {
         g_wtf_hooked = patch_jmp(kWeaponTypeFunc,
                                  reinterpret_cast<void*>(&WeaponTypeHook),
                                  g_wtf_stolen, kStolenWTF, &g_wtf_tramp);
@@ -1995,22 +2543,40 @@ static BOOL on_dll_main(HMODULE module, DWORD reason, LPVOID reserved)
         g_state_hooks = false;       // no inline hooks → no crash
         g_placement_trace = false;
         g_log_every = 0;
-        g_native_bind = false;       // no vtable hooks → no crash
+        g_native_bind = false;       // legacy loader-vtable experiment stays off
+        g_slot_trace = true;
+        g_native_slots = true;
+        if (g_slot_trace || g_native_slots)
+            g_overlay_renderer = false; // isolate the native proof from overlay/inline hooks
         HANDLE t = CreateThread(nullptr, 0, install_thread, nullptr, 0, nullptr);
         if (t)
             CloseHandle(t);
     }
     if (reason == DLL_PROCESS_DETACH)
     {
-        g_unloading = true;
         // During process termination the OS kills all threads — do NOT
         // wait on handles (they are already signaled, but the wait is
         // unnecessary and adds shutdown latency).
         const bool isProcessTerm = (reserved != nullptr);
-        if (!isProcessTerm)
+        if (!isProcessTerm) {
+            // Do not leave DLL targets in the client entry point or vtables.
+            restore_patch(kWeaponSetup, g_wsetup_inline_stolen,
+                          kStolenWeaponSetup, g_wsetup_inline_hooked);
+            g_wsetup_inline_hooked = false;
+            restore_patch(kWeaponEquipUpdate, g_wequip_stolen,
+                          kStolenWeaponEquipUpdate, g_wequip_hooked);
+            g_wequip_hooked = false;
+            restore_patch(kGetActSlot, g_get_act_stolen,
+                          kStolenGetActSlot, g_get_act_hooked);
+            g_get_act_hooked = false;
+            restore_patch(kActGetFrame, g_act_frame_stolen,
+                          kStolenActGetFrame, g_act_frame_hooked);
+            g_act_frame_hooked = false;
+            restore_weapon_setup_vhook();
             WeaponOverlayStop();
+        }
+        g_unloading = true;
         WeaponOverlayClearState();
-        // No hooks to restore — zero patching, zero crashes.
         return TRUE;
     }
     return TRUE;
@@ -2063,7 +2629,7 @@ extern "C" DWORD poll_weapon_state()
             __try {
                 DWORD v0 = *reinterpret_cast<DWORD*>(candidate + 0x440);
                 DWORD v1 = *reinterpret_cast<DWORD*>(candidate + 0x444);
-                if ((v0 == 13412 && v1 == 1238) || (v0 == 1238 && v1 == 13412)) {
+                if (v0 != 0 && v1 != 0) {
                     lastChar = candidate;
                     lastItems[0] = v0; lastItems[1] = v1;
                     found = candidate;
@@ -2087,7 +2653,7 @@ extern "C" DWORD poll_weapon_state()
                 if (candidate < 0x0C000000 || candidate > 0x60000000) continue;
                 DWORD v0 = *reinterpret_cast<DWORD*>(candidate + 0x440);
                 DWORD v1 = *reinterpret_cast<DWORD*>(candidate + 0x444);
-                if ((v0 == 13412 && v1 == 1238) || (v0 == 1238 && v1 == 13412)) {
+                if (v0 != 0 && v1 != 0) {
                     lastChar = candidate;
                     lastItems[0] = v0; lastItems[1] = v1;
                     found = candidate;
