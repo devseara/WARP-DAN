@@ -22,7 +22,7 @@ Rule of thumb for every conversion:
 | InGamePincodeUI | `boh_pincode_ui.dll` | None | Already strict-safe |
 | CustomExtName / CustomPlayerNameColor | None | Former DLL maps and global GDI text matching | Converted: bounded EXTN exact-text map plus WARP-time GDI call-site caves; mob title/name rows stay stock-owned |
 | CustomColoredItemName | `boh_text.dll` | Passive GDI wrappers still own semantic item-color matching | Static wrappers retained pending the separate item-color QJS conversion |
-| FpsOverlay / PingOverlay | `boh_fps.dll` | Runtime D3D IAT and COM vtable patching | Converted: static `Direct3DCreate9Ex` thunk bridge plus COM proxy |
+| FpsOverlay / PingOverlay | None | Former D3D proxy, layered window and ICMP worker | Converted again: QJS-only post-Present renderer plus stock application-packet RTT capture |
 | ROGlobalZeroInventory | None | Former DLL-owned draw/input handlers | Converted again: pure-QJS native caves, renewal tooltips, and Zeny underlay |
 | CustomRuneSystem visuals | `boh_rune.dll` | Runtime call/JMP patches and dynamic surface vtable swap | Converted: WARP-time call/prologue/surface bridges |
 
@@ -99,6 +99,35 @@ Implementation checklist:
       login/map transitions, Alt+Tab and clean exit. Item-color validation remains separate.
 
 ## FPS/Ping DLL
+
+Superseded on 2026-07-13: `FpsOverlay.qjs` and `PingOverlay.qjs` no longer
+import `boh_fps.dll`. The original COM proxy design below is retained only as
+historical context.
+
+Current QJS-only design:
+
+- `0x0054343E` is the stock `IDirect3DDevice9::Present` call and
+  `0x00543441` is the guarded six-byte post-call store replaced at WARP time.
+- The shared cave replays `mov [esi+0x68c],eax`, counts frames with the stock
+  `GetTickCount` IAT, obtains the client HWND from the renderer object, and
+  draws transparent shadowed text after `Present` through existing GDI/User32
+  imports.
+- `ReleaseDC` is resolved once with the existing `GetModuleHandleA` and
+  `GetProcAddress` imports. No PE import or DLL is added.
+- FPS and ping have separate `D_VecI16` X/Y prompts. Negative X/Y values use
+  client width/height, matching `MoveShopIcon` semantics.
+- The 2025-07-16 client saves its `CZ_REQUEST_TIME2 (0x0360)` send tick at
+  `0x00C82D32` / `CGameMode+0x274`. Its stock `0x007F` handler calculates
+  `GetTickCount() - savedTick` at `0x00C9E8F2`; the ping cave copies that EAX
+  value at `0x00C9E8F8`. No Winsock or recv surface is touched.
+
+Current validation:
+
+- [x] QJS syntax, CRLF and no-BOM checks.
+- [x] WARP console build with independent saved FPS/Ping coordinates.
+- [x] Static disassembly confirms both caves and original-instruction replay.
+- [x] Output imports no BOH/FPS/Ping DLL export.
+- [ ] Live-test position, toggles, RTT updates, resize, Alt+Tab and exit.
 
 Current problem:
 

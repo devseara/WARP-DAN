@@ -115,10 +115,10 @@ view-entry bursts remain available until the QJS frame consumers run.
 - `CustomColoredItemName.qjs`: Routes 0x0BDD to ICOL and prompts for `boh.dll` or `boh_text.dll`
 - `CustomExtNameVisualDLL.qjs`: Historical visual-only companion using the extended-name DLL prompt
 - `CustomRuneSystem.qjs`: Prompts for `boh.dll` or `boh_rune.dll`
-- `FpsOverlay.qjs`: Prompts for `boh.dll` or `boh_fps.dll`, then installs the slash-command code cave
+- `FpsOverlay.qjs`: QJS-only post-Present frame counter and prompted-position static GDI renderer
 - `AlwaysShowNpcName.qjs`: QJS-only bounded EXTN table, native balloon frame cave, and static `/shownpcname` toggle
 - `ROGlobalZeroInventory.qjs`: QJS-only native inventory layout, tabs, tooltips, and Zeny/weight panel
-- `PingOverlay.qjs`: Standalone slash-command code cave; visual output still uses the FpsOverlay DLL
+- `PingOverlay.qjs`: QJS-only stock `0x0360/0x007F` RTT capture and prompted-position shared renderer
 
 ### 1.4 String / Data Table Replacement (~10% of patches)
 
@@ -196,21 +196,19 @@ conditional branches (Jcc instructions) in certain hook contexts. By building th
 entire cave manually and avoiding AutoHook entirely, the FPS/ping patches avoid
 this crash. The trade-off is significantly more complex code.
 
-**FpsOverlay architecture:**
-1. Add `FpsPingOverlayInit` to boh.dll import table (via CustomDLL.applySpec)
-2. Find `CSession::GetNoParamTalkType` function suffix
-3. Allocate code cave (0x300 bytes)
-4. Build slash-command parser as raw x86:
-   - Check for `/fps` (5 char comparisons) — if match, create `fps_overlay.toggle` sentinel file
-   - Check for `/ping` (6 char comparisons) — if match, create `ping_overlay.toggle` sentinel file
-   - If not matched, fall through to original handler with `ADD tgtReg, 1`
-   - On match: `ADD tgtReg, 2` (consumes command), `CreateFileA` + `CloseHandle`
-5. Redirect `GetNoParamTalkType` suffix to cave
-
-**Shared implementation:**
-PingOverlay.qjs is a standalone version. It checks the `FpsOverlay.SlashCmdInstalled` CACHE
-flag — if FpsOverlay already installed the hook, PingOverlay just adds its DLL import and
-skips the cave injection.
+**Current native telemetry architecture (2026-07-13):**
+1. Prompt independently for FPS and ping X/Y positions; negative coordinates
+   are relative to the client right/bottom edge.
+2. Share a reference-counted EXE state block and post-`Present` cave at
+   `0x00543441`.
+3. Count client frames with `GetTickCount`, format bounded decimal text, and
+   draw transparent shadowed text through stock Win32 imports.
+4. Route `/fps` and `/ping` to static client-option toggles through the shared
+   slash-command dispatcher.
+5. Capture ping from the stock application exchange: `0x0360` saves the send
+   tick at `CGameMode+0x274`, and `0x007F` calculates the RTT before the cave
+   copies EAX at `0x00C9E8F8`.
+6. No custom DLL, D3D proxy, COM-vtable mutation, ICMP or recv hook remains.
 
 ### 1.7 Registry / Config Manipulation
 

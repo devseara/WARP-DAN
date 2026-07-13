@@ -25,10 +25,23 @@ Status meanings:
 | Player-name colors | Working | QJS-only EXTN exact-text entries apply RGB around matching non-shadow player-name draws and restore the original GDI color afterward. |
 | Item-name colors | Working | QJS-only `0x0BDD` ICOL drain, bounded UTF-8 substring/grade table, static TextOutW color bridge, dark-shadow suppression and grade-label continuation; confirmed across item windows and client transitions. |
 | Rune visual system | Planned | Translate the existing static bridge handlers to native caves and bake configuration at patch time. |
-| FPS overlay | Planned | Replace the D3D proxy with a native frame counter and client text draw callback. |
-| Ping overlay | Planned | Prefer application-level packet RTT; exact threaded ICMP behavior remains DLL-backed. |
+| FPS overlay | Implemented, test required | QJS-only post-Present cave counts native frames and draws at prompted X/Y coordinates through existing Win32 imports. No D3D proxy or custom DLL. |
+| Ping overlay | Implemented, test required | QJS-only `0x0360/0x007F` application RTT capture feeds the shared prompted-position renderer. No ICMP, recv hook or custom DLL. |
 | In-game PIN keypad | DLL retained | A QJS-only port requires a full map-session native RO window/control reconstruction. |
 | HatEffect world occlusion | Renderer research planned | Rehost original HatEffectInfo STR resources as real `CRagEffect`/`CEffectPrim` world primitives; packet remap and bucket changes are rejected approaches. |
+
+## Native FPS/Ping overlay checklist
+
+- [x] Replace the `Direct3DCreate9Ex` proxy and layered overlay DLL with a static post-`Present` cave at `0x00543441`.
+- [x] Count client presentation frames in bounded EXE-owned state.
+- [x] Draw transparent, shadowed ANSI text through stock `GetDC`, `TextOutA`, `SetBkMode`, and `SetTextColor` imports.
+- [x] Resolve `ReleaseDC` from the already-loaded `user32.dll` without adding an import or custom DLL.
+- [x] Prompt independently for FPS and ping X/Y coordinates; negative values are relative to the client right/bottom edge.
+- [x] Route `/fps` and `/ping` to static client-option toggles.
+- [x] Capture the stock `CZ_REQUEST_TIME2 (0x0360)` / `ZC_NOTIFY_TIME (0x007F)` RTT at `0x00C9E8F8` after the client's own subtraction.
+- [x] Build `Banquet of Heroes_telemetry_qjs_test.exe` and verify both static hook targets, state coordinates, and absence of FPS/Ping DLL imports.
+- [ ] Confirm FPS and `MS` values update in game at the selected coordinates.
+- [ ] Confirm `/fps`, `/ping`, Game Settings, resolution changes, F12, Alt+Tab, map changes, relog, and clean exit.
 
 ## RO Global Zero Inventory checklist
 

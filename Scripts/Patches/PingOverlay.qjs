@@ -9,59 +9,110 @@
 *   the Free Software Foundation, either version 3 of the License, or      *
 *   (at your option) any later version.                                    *
 *                                                                          *
-*   This program is distributed in the hope that it will be useful,        *
+*   WARP is distributed in the hope that it will be useful,                *
 *   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
 *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
 *   GNU General Public License for more details.                           *
 *                                                                          *
-*   You should have received a copy of the GNU General Public License      *
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
-*                                                                          *
-*                                                                          *
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-06-07                                             *
+*   Last Modified : 2026-07-13                                             *
 *                                                                          *
-*   Description   : Loads the ping overlay command independently from FPS. *
+*   Description   : Adds a QJS-only ping overlay to the 2025-07-16 client. *
+*                   The static response cave captures the client's own     *
+*                   CZ_REQUEST_TIME2/ZC_NOTIFY_TIME application RTT. No    *
+*                   ICMP worker, Winsock recv hook or custom DLL is used.  *
 *                                                                          *
 \**************************************************************************/
 
+NativeTelemetryOverlay.RequestTickStore = 0x00C82D32;
+NativeTelemetryOverlay.RequestTickBytes =
+	"89 86 74 02 00 00 B8 60 03 00 00 66 89 45 EC";
+NativeTelemetryOverlay.PingSubtract = 0x00C9E8EC;
+NativeTelemetryOverlay.PingSubtractBytes =
+	"FF 15 B0 17 FC 00 2B 87 74 02 00 00";
+NativeTelemetryOverlay.PingCapture = 0x00C9E8F8;
+NativeTelemetryOverlay.PingCaptureReturn = 0x00C9E8FD;
+NativeTelemetryOverlay.PingCaptureBytes = "B9 C0 A3 5F 01";
+
+NativeTelemetryOverlay.installPingCapture = function(_, state)
+{
+	NativeTelemetryOverlay.assertCode(
+		"CZ_REQUEST_TIME2 tick store",
+		NativeTelemetryOverlay.RequestTickStore,
+		NativeTelemetryOverlay.RequestTickBytes
+	);
+	NativeTelemetryOverlay.assertCode(
+		"ZC_NOTIFY_TIME RTT subtraction",
+		NativeTelemetryOverlay.PingSubtract,
+		NativeTelemetryOverlay.PingSubtractBytes
+	);
+	const capturePhy = NativeTelemetryOverlay.assertCode(
+		"ZC_NOTIFY_TIME capture site",
+		NativeTelemetryOverlay.PingCapture,
+		NativeTelemetryOverlay.PingCaptureBytes
+	);
+	const a = NativeTelemetryOverlay.asm();
+	a.emit(0xA3); a.dword(
+		state.stateVir + NativeTelemetryOverlay.StatePingValue
+	);
+	a.emit(0xB9); a.dword(0x015FA3C0);
+	a.jmp(NativeTelemetryOverlay.PingCaptureReturn);
+	const cave = NativeTelemetryOverlay.allocateCode(a);
+	Exe.SetJMP(capturePhy, cave.virAddr, 0);
+	return cave.virAddr;
+};
+
 PingOverlay = function(_)
 {
-	if (typeof CustomDLL === "undefined" ||
-	    typeof CustomDLL.applySpec !== "function")
-		throw Error("PingOverlay: CustomDLL.applySpec helper unavailable");
-	if (typeof FpsOverlay === "undefined" ||
-	    typeof FpsOverlay.getDllName !== "function")
-		throw Error("PingOverlay: FpsOverlay helper unavailable");
+	if (typeof NativeTelemetryOverlay === "undefined" ||
+		typeof NativeTelemetryOverlay.ensure !== "function")
+		throw Error("PingOverlay: NativeTelemetryOverlay helper unavailable");
 
-	const dllName = FpsOverlay.getDllName();
-
-	$$(_, 1, 'Register ping visual DLL');
-	CustomDLL.applySpec(`${_}.CustomDLL`, [{
-		Name: dllName,
-		Funcs: [
-			{Name: "FpsPingOverlayInit"},
-			{Name: "TogglePingOverlay"},
-			{Name: "SetFpsPingOverlayOption"},
-			{Name: "BohDirect3DCreate9Ex"}
-		]
-	}]);
-
-	FpsOverlay.installD3DBridge(`${_}.D3DBridge`, dllName);
-	FpsOverlay.addD3DRefreshHook(_, dllName);
-
-	FpsOverlay.installSlashCmd(`${_}.SlashCommands`, dllName, {
-		command: "/ping",
-		exportName: "TogglePingOverlay",
-		optionId: 10003,
-		settingsExportName: "SetFpsPingOverlayOption"
-	});
+	$$(_, 1, "Read ping overlay coordinates");
+	const coordinates = NativeTelemetryOverlay.getCoordinates(
+		"$pingOverlayXY",
+		"Ping Overlay",
+		[-195, 66]
+	);
+	$$(_, 2, "Install shared native post-Present overlay");
+	const state = NativeTelemetryOverlay.ensure(_);
+	NativeTelemetryOverlay.configure(
+		state,
+		NativeTelemetryOverlay.StatePingInstalled,
+		NativeTelemetryOverlay.StatePingX,
+		NativeTelemetryOverlay.StatePingY,
+		coordinates
+	);
+	$$(_, 3, "Capture stock application-packet RTT");
+	const captureVir = NativeTelemetryOverlay.installPingCapture(_, state);
+	$$(_, 4, "Register /ping static command");
+	const toggleVir = NativeTelemetryOverlay.registerCommand(
+		_,
+		"/ping",
+		NativeTelemetryOverlay.PingOption
+	);
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add("PingOverlay.QjsOnly", {
+			coordinates,
+			stateVir: state.stateVir,
+			captureVir,
+			toggleVir,
+			requestPacket: 0x0360,
+			responsePacket: 0x007F
+		});
 	return true;
+};
+
+PingOverlay.cleanup = function(patchName)
+{
+	NativeTelemetryOverlay.disable(NativeTelemetryOverlay.StatePingInstalled);
+	CACHE.delUser(NativeTelemetryOverlay.CacheKey, patchName);
 };
 
 PingOverlay.validate = function()
 {
-	return Exe.BuildDate === 20250716;
+	return Exe.BuildDate === NativeTelemetryOverlay.BuildDate;
 };

@@ -76,7 +76,7 @@ HideGameWindows = function(_)
 
 	$$(_, 2.3, `Change the index for all the ids specified`)
 	for (const id of WinIDs)
-		Exe.SetInt8(idxTblAddr + id, dfCase);
+		Exe.SetInt8(itPhy + id, dfCase);
 
 	return true;
 };

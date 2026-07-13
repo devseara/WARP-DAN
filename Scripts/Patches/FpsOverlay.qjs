@@ -9,164 +9,682 @@
 *   the Free Software Foundation, either version 3 of the License, or      *
 *   (at your option) any later version.                                    *
 *                                                                          *
-*   This program is distributed in the hope that it will be useful,        *
+*   WARP is distributed in the hope that it will be useful,                *
 *   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
 *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
 *   GNU General Public License for more details.                           *
 *                                                                          *
-*   You should have received a copy of the GNU General Public License      *
-*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
-*                                                                          *
-*                                                                          *
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-06-07                                             *
+*   Last Modified : 2026-07-13                                             *
 *                                                                          *
-*   Description   : Loads the FPS/ping visual DLL and registers /fps and   *
-*                   /ping with the shared custom slash-command dispatcher. *
+*   Description   : Adds a QJS-only FPS overlay to the 2025-07-16 client.  *
+*                   A static post-Present cave counts native frames and    *
+*                   draws transparent GDI text inside the client HWND.     *
+*                   No custom DLL, D3D proxy, COM-vtable mutation or       *
+*                   runtime code patching is used.                         *
 *                                                                          *
 \**************************************************************************/
 
-FpsOverlay = function(_)
-{
-	if (typeof CustomDLL === "undefined" ||
-	    typeof CustomDLL.applySpec !== "function")
-		throw Error("FpsOverlay: CustomDLL.applySpec helper unavailable");
-
-	const dllName = FpsOverlay.getDllName();
-
-	$$(_, 1, 'Register FPS visual DLL');
-	CustomDLL.applySpec(`${_}.CustomDLL`, [{
-		Name: dllName,
-		Funcs: [
-			{Name: "FpsPingOverlayInit"},
-			{Name: "ToggleFpsOverlay"},
-			{Name: "SetFpsPingOverlayOption"},
-			{Name: "BohDirect3DCreate9Ex"}
-		]
-	}]);
-
-	FpsOverlay.installD3DBridge(`${_}.D3DBridge`, dllName);
-	FpsOverlay.addD3DRefreshHook(_, dllName);
-
-	FpsOverlay.installSlashCmd(`${_}.SlashCommands`, dllName, {
-		command: "/fps",
-		exportName: "ToggleFpsOverlay",
-		optionId: 10002,
-		settingsExportName: "SetFpsPingOverlayOption"
-	});
-	return true;
+NativeTelemetryOverlay = {
+	BuildDate: 20250716,
+	PresentStore: 0x00543441,
+	PresentReturn: 0x00543447,
+	PresentStoreBytes: "89 86 8C 06 00 00",
+	GetOption: 0x0068EA70,
+	GetTickCountIat: 0x00FC120C,
+	GetModuleHandleIat: 0x00FC1268,
+	GetProcAddressIat: 0x00FC1390,
+	TextOutAIat: 0x00FC10D8,
+	SetTextColorIat: 0x00FC10E0,
+	SetBkModeIat: 0x00FC10E8,
+	CreateFontAIat: 0x00FC1114,
+	SelectObjectIat: 0x00FC1120,
+	GetClientRectIat: 0x00FC16B8,
+	GetDCIat: 0x00FC16D8,
+	FpsOption: 10002,
+	PingOption: 10003,
+	StateFpsInstalled: 0,
+	StatePingInstalled: 4,
+	StateFpsX: 8,
+	StateFpsY: 12,
+	StatePingX: 16,
+	StatePingY: 20,
+	StateFpsFrames: 24,
+	StateFpsWindowStart: 28,
+	StateFpsValue: 32,
+	StatePingValue: 36,
+	StateReleaseDC: 40,
+	StateFpsBuffer: 44,
+	StatePingBuffer: 76,
+	StateFont: 108,
+	StateFontSize: 112,
+	StateSize: 116,
+	CacheKey: "NativeTelemetryOverlay"
 };
 
-FpsOverlay.getDllName = function()
+NativeTelemetryOverlay.bytesToHex = function(bytes)
 {
-	return CustomDLL.getDllName(
-		'$fpsOverlayDLLName',
-		"FPS/Ping Overlay DLL",
-		"Enter the FPS/ping DLL filename. Use boh.dll for the combined build or boh_fps.dll for the dedicated build. Place it beside the patched EXE.",
-		"boh.dll",
-		"boh_fps.dll"
+	return bytes.map(value =>
+		(value & 0xFF).toString(16).padStart(2, "0")
+	).join(" ");
+};
+
+NativeTelemetryOverlay.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+				bytes.push(value & 0xFF);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error(`NativeTelemetryOverlay: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			bytes.push(opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(`NativeTelemetryOverlay: unresolved label ${fixup.target}`);
+				const targetVir = typeof fixup.target === "string"
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				put32(out, fixup.pos, targetVir - (baseVir + fixup.pos + 4));
+			}
+			return NativeTelemetryOverlay.bytesToHex(out);
+		}
+	};
+};
+
+NativeTelemetryOverlay.allocateBytes = function(bytes, alignment = 1)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(bytes.length, alignment);
+	Exe.SetHex(phyAddr, NativeTelemetryOverlay.bytesToHex(bytes));
+	return {phyAddr, virAddr, size: bytes.length};
+};
+
+NativeTelemetryOverlay.allocateText = function(text)
+{
+	const bytes = [];
+	for (let i = 0; i < text.length; ++i)
+		bytes.push(text.charCodeAt(i) & 0x7F);
+	bytes.push(0);
+	return NativeTelemetryOverlay.allocateBytes(bytes, 1);
+};
+
+NativeTelemetryOverlay.allocateCode = function(assembler)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(assembler.bytes.length, 0x10);
+	Exe.SetHex(phyAddr, assembler.finish(virAddr));
+	return {phyAddr, virAddr, size: assembler.bytes.length};
+};
+
+NativeTelemetryOverlay.assertCode = function(label, virAddr, expectedHex)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`NativeTelemetryOverlay: ${label} is not mapped`);
+	const expected = expectedHex.replace(/\s+/g, " ").trim().toUpperCase();
+	const actual = Exe.GetHex(phyAddr, expected.split(" ").length)
+		.replace(/\s+/g, " ").trim().toUpperCase();
+	if (actual !== expected)
+		throw Error(`NativeTelemetryOverlay: ${label} mismatch, got ${actual}`);
+	return phyAddr;
+};
+
+NativeTelemetryOverlay.buildFormat = function()
+{
+	const a = NativeTelemetryOverlay.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x7D, 0x08, 0x8B, 0x75, 0x0C);
+	a.label("copy_prefix");
+	a.emit(0xAC, 0x84, 0xC0);
+	a.jcc(0x84, "digits");
+	a.emit(0xAA);
+	a.jmp("copy_prefix");
+	a.label("digits");
+	a.emit(0x8B, 0x45, 0x10, 0x85, 0xC0);
+	a.jcc(0x85, "convert");
+	a.emit(0xC6, 0x07, 0x30, 0x47);
+	a.jmp("suffix");
+	a.label("convert");
+	a.emit(0xBB); a.dword(10);
+	a.emit(0x33, 0xC9);
+	a.label("convert_loop");
+	a.emit(0x33, 0xD2, 0xF7, 0xF3, 0x80, 0xC2, 0x30);
+	a.emit(0x88, 0x54, 0x0D, 0xF0, 0x41, 0x85, 0xC0);
+	a.jcc(0x85, "convert_loop");
+	a.label("reverse_loop");
+	a.emit(0x49, 0x8A, 0x54, 0x0D, 0xF0, 0x88, 0x17, 0x47, 0x85, 0xC9);
+	a.jcc(0x85, "reverse_loop");
+	a.label("suffix");
+	a.emit(0x8B, 0x75, 0x14);
+	a.label("copy_suffix");
+	a.emit(0xAC, 0x84, 0xC0);
+	a.jcc(0x84, "finish");
+	a.emit(0xAA);
+	a.jmp("copy_suffix");
+	a.label("finish");
+	a.emit(0xC6, 0x07, 0x00, 0x8B, 0xC7, 0x2B, 0x45, 0x08);
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x10, 0x00);
+	return a;
+};
+
+NativeTelemetryOverlay.callIat = function(a, iat)
+{
+	a.emit(0xFF, 0x15); a.dword(iat);
+};
+
+NativeTelemetryOverlay.buildDrawLine = function()
+{
+	const a = NativeTelemetryOverlay.asm();
+	a.emit(0x55, 0x8B, 0xEC);
+	a.emit(0x6A, 0x00, 0xFF, 0x75, 0x08);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.SetTextColorIat);
+	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14);
+	a.emit(0x8B, 0x45, 0x10, 0x40, 0x50);
+	a.emit(0x8B, 0x45, 0x0C, 0x40, 0x50, 0xFF, 0x75, 0x08);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.TextOutAIat);
+	a.emit(0xFF, 0x75, 0x1C);
+	a.emit(0xFF, 0x75, 0x08);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.SetTextColorIat);
+	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14, 0xFF, 0x75, 0x10);
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.TextOutAIat);
+	a.emit(0x5D, 0xC2, 0x18, 0x00);
+	return a;
+};
+
+NativeTelemetryOverlay.emitOptionCheck = function(a, installedVir, optionId, flag)
+{
+	a.emit(0x83, 0x3D); a.dword(installedVir); a.emit(0x00);
+	a.jcc(0x84, `option_${flag}_done`);
+	a.emit(0x68); a.dword(optionId);
+	a.call(NativeTelemetryOverlay.GetOption);
+	a.emit(0x83, 0xC4, 0x04, 0x84, 0xC0);
+	a.jcc(0x84, `option_${flag}_done`);
+	a.emit(0x83, 0xCF, flag);
+	a.label(`option_${flag}_done`);
+};
+
+NativeTelemetryOverlay.emitLine = function(
+	a,
+	stateVir,
+	flag,
+	xOffset,
+	yOffset,
+	valueOffset,
+	bufferOffset,
+	prefixVir,
+	suffixVir,
+	formatVir,
+	drawLineVir
+)
+{
+	a.emit(0xF7, 0xC7); a.dword(flag);
+	a.jcc(0x84, `line_${flag}_done`);
+	a.emit(0xA1); a.dword(stateVir + xOffset);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x89, `line_${flag}_x_ready`);
+	a.emit(0x03, 0x45, 0x10);
+	a.label(`line_${flag}_x_ready`);
+	a.emit(0x89, 0x45, 0x00);
+	a.emit(0xA1); a.dword(stateVir + yOffset);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x89, `line_${flag}_y_ready`);
+	a.emit(0x03, 0x45, 0x14);
+	a.label(`line_${flag}_y_ready`);
+	a.emit(0x89, 0x45, 0x04);
+	a.emit(0x68); a.dword(suffixVir);
+	a.emit(0xFF, 0x35); a.dword(stateVir + valueOffset);
+	a.emit(0x68); a.dword(prefixVir);
+	a.emit(0x68); a.dword(stateVir + bufferOffset);
+	a.call(formatVir);
+	if (flag === 2)
+	{
+		a.emit(0x8B, 0x0D); a.dword(stateVir + valueOffset);
+		a.emit(0x81, 0xF9); a.dword(50);
+		a.jcc(0x86, `line_${flag}_green`);
+		a.emit(0x81, 0xF9); a.dword(100);
+		a.jcc(0x86, `line_${flag}_yellow`);
+		a.emit(0xBA); a.dword(0x000000FF);
+		a.jmp(`line_${flag}_color_ready`);
+		a.label(`line_${flag}_green`);
+		a.emit(0xBA); a.dword(0x0000FF00);
+		a.jmp(`line_${flag}_color_ready`);
+		a.label(`line_${flag}_yellow`);
+		a.emit(0xBA); a.dword(0x0000FFFF);
+		a.label(`line_${flag}_color_ready`);
+		a.emit(0x52);
+	}
+	else
+	{
+		a.emit(0x68); a.dword(0x00FFFFFF);
+	}
+	a.emit(0x50);
+	a.emit(0x68); a.dword(stateVir + bufferOffset);
+	a.emit(0xFF, 0x75, 0x04, 0xFF, 0x75, 0x00, 0xFF, 0x75, 0x1C);
+	a.call(drawLineVir);
+	a.label(`line_${flag}_done`);
+};
+
+NativeTelemetryOverlay.buildPresent = function(
+	stateVir,
+	formatVir,
+	drawLineVir,
+	fpsPrefixVir,
+	pingPrefixVir,
+	emptySuffixVir,
+	pingSuffixVir,
+	fontFaceVir,
+	user32Vir,
+	releaseDCVir
+)
+{
+	const a = NativeTelemetryOverlay.asm();
+	a.emit(0x89, 0x86, 0x8C, 0x06, 0x00, 0x00);
+	a.emit(0x9C, 0x60, 0x83, 0xEC, 0x24, 0x8B, 0xEC);
+	a.emit(0xC7, 0x45, 0x20); a.dword(0);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.GetTickCountIat);
+	a.emit(0x8B, 0xD8);
+	a.emit(0x8B, 0x15); a.dword(stateVir + NativeTelemetryOverlay.StateFpsWindowStart);
+	a.emit(0x85, 0xD2);
+	a.jcc(0x85, "have_fps_start");
+	a.emit(0xA3); a.dword(stateVir + NativeTelemetryOverlay.StateFpsWindowStart);
+	a.emit(0x8B, 0xD0);
+	a.label("have_fps_start");
+	a.emit(0xFF, 0x05); a.dword(stateVir + NativeTelemetryOverlay.StateFpsFrames);
+	a.emit(0x8B, 0xC8, 0x2B, 0xCA, 0x81, 0xF9); a.dword(1000);
+	a.jcc(0x82, "fps_ready");
+	a.emit(0xA1); a.dword(stateVir + NativeTelemetryOverlay.StateFpsFrames);
+	a.emit(0x69, 0xC0); a.dword(1000);
+	a.emit(0x33, 0xD2, 0xF7, 0xF1);
+	a.emit(0xA3); a.dword(stateVir + NativeTelemetryOverlay.StateFpsValue);
+	a.emit(0xC7, 0x05); a.dword(stateVir + NativeTelemetryOverlay.StateFpsFrames); a.dword(0);
+	a.emit(0x89, 0x1D); a.dword(stateVir + NativeTelemetryOverlay.StateFpsWindowStart);
+	a.label("fps_ready");
+	a.emit(0xA1); a.dword(stateVir + NativeTelemetryOverlay.StateFpsInstalled);
+	a.emit(0x0B, 0x05); a.dword(stateVir + NativeTelemetryOverlay.StatePingInstalled);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "cleanup");
+	a.emit(0x33, 0xFF);
+	NativeTelemetryOverlay.emitOptionCheck(
+		a,
+		stateVir + NativeTelemetryOverlay.StateFpsInstalled,
+		NativeTelemetryOverlay.FpsOption,
+		1
 	);
+	NativeTelemetryOverlay.emitOptionCheck(
+		a,
+		stateVir + NativeTelemetryOverlay.StatePingInstalled,
+		NativeTelemetryOverlay.PingOption,
+		2
+	);
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "cleanup");
+	a.emit(0x8B, 0x45, 0x28, 0x8B, 0x00, 0x89, 0x45, 0x18);
+	a.emit(0x8D, 0x4D, 0x00, 0x51, 0x50);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.GetClientRectIat);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "cleanup");
+	a.emit(0x8B, 0x45, 0x08, 0x2B, 0x45, 0x00, 0x89, 0x45, 0x10);
+	a.emit(0x8B, 0x45, 0x0C, 0x2B, 0x45, 0x04, 0x89, 0x45, 0x14);
+	a.emit(0xFF, 0x75, 0x18);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.GetDCIat);
+	a.emit(0x89, 0x45, 0x1C, 0x85, 0xC0);
+	a.jcc(0x84, "cleanup");
+	a.emit(0x83, 0x3D); a.dword(stateVir + NativeTelemetryOverlay.StateReleaseDC); a.emit(0x00);
+	a.jcc(0x85, "release_ready");
+	a.emit(0x68); a.dword(user32Vir);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.GetModuleHandleIat);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "release_ready");
+	a.emit(0x68); a.dword(releaseDCVir);
+	a.emit(0x50);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.GetProcAddressIat);
+	a.emit(0xA3); a.dword(stateVir + NativeTelemetryOverlay.StateReleaseDC);
+	a.label("release_ready");
+	a.emit(0x6A, 0x01, 0xFF, 0x75, 0x1C);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.SetBkModeIat);
+	a.emit(0xA1); a.dword(stateVir + NativeTelemetryOverlay.StateFont);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "font_ready");
+	a.emit(0x68); a.dword(fontFaceVir);
+	a.emit(0x6A, 0x00, 0x6A, 0x05, 0x6A, 0x00, 0x6A, 0x00);
+	a.emit(0x6A, 0x01, 0x6A, 0x00, 0x6A, 0x00, 0x6A, 0x00);
+	a.emit(0x68); a.dword(400);
+	a.emit(0x6A, 0x00, 0x6A, 0x00, 0x6A, 0x00);
+	a.emit(0xA1); a.dword(stateVir + NativeTelemetryOverlay.StateFontSize);
+	a.emit(0xF7, 0xD8, 0x50);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.CreateFontAIat);
+	a.emit(0xA3); a.dword(stateVir + NativeTelemetryOverlay.StateFont);
+	a.label("font_ready");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "font_selected");
+	a.emit(0x50, 0xFF, 0x75, 0x1C);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.SelectObjectIat);
+	a.emit(0x89, 0x45, 0x20);
+	a.label("font_selected");
+	NativeTelemetryOverlay.emitLine(
+		a,
+		stateVir,
+		1,
+		NativeTelemetryOverlay.StateFpsX,
+		NativeTelemetryOverlay.StateFpsY,
+		NativeTelemetryOverlay.StateFpsValue,
+		NativeTelemetryOverlay.StateFpsBuffer,
+		fpsPrefixVir,
+		emptySuffixVir,
+		formatVir,
+		drawLineVir
+	);
+	NativeTelemetryOverlay.emitLine(
+		a,
+		stateVir,
+		2,
+		NativeTelemetryOverlay.StatePingX,
+		NativeTelemetryOverlay.StatePingY,
+		NativeTelemetryOverlay.StatePingValue,
+		NativeTelemetryOverlay.StatePingBuffer,
+		pingPrefixVir,
+		pingSuffixVir,
+		formatVir,
+		drawLineVir
+	);
+	a.emit(0x8B, 0x45, 0x20, 0x85, 0xC0);
+	a.jcc(0x84, "font_restored");
+	a.emit(0x83, 0xF8, 0xFF);
+	a.jcc(0x84, "font_restored");
+	a.emit(0x50, 0xFF, 0x75, 0x1C);
+	NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.SelectObjectIat);
+	a.label("font_restored");
+	a.emit(0xA1); a.dword(stateVir + NativeTelemetryOverlay.StateReleaseDC);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "cleanup");
+	a.emit(0xFF, 0x75, 0x1C, 0xFF, 0x75, 0x18, 0xFF, 0xD0);
+	a.label("cleanup");
+	a.emit(0x83, 0xC4, 0x24, 0x61, 0x9D);
+	a.jmp(NativeTelemetryOverlay.PresentReturn);
+	return a;
 };
 
-FpsOverlay.findIat = function(dllName, exportName)
+NativeTelemetryOverlay.buildToggle = function(optionId)
 {
-	const iat = (
-		typeof CustomDLL !== "undefined" &&
-		typeof CustomDLL.findIat === "function"
-	)
-		? CustomDLL.findIat(exportName, dllName)
-		: Exe.FindFunc(exportName, dllName);
-	if (iat < 0)
-		throw Error(`FpsOverlay: import not found: ${dllName}!${exportName}`);
-	return iat;
+	const a = NativeTelemetryOverlay.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x68); a.dword(optionId);
+	a.call(NativeTelemetryOverlay.GetOption);
+	a.emit(0x83, 0xC4, 0x04, 0x84, 0xC0, 0x0F, 0x94, 0xC0);
+	a.emit(0x0F, 0xB6, 0xC0, 0x50, 0x68); a.dword(optionId);
+	a.call(0x0068FD50);
+	a.emit(0x83, 0xC4, 0x08, 0x5D, 0xC3);
+	return a;
 };
 
-FpsOverlay.patchImportOperand = function(label, virAddr, expectedModRM, iat)
+NativeTelemetryOverlay.getCoordinates = function(inputKey, title, defaults)
 {
-	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
-	if (phyAddr < 0)
-		throw Error(`FpsOverlay: ${label} address is not mapped`);
+	const result = Exe.GetUserInput(
+		inputKey,
+		D_VecI16,
+		title,
+		"Enter overlay coordinates (negative values are w.r.t. the client right/bottom side)",
+		defaults,
+		{
+			name0: "X Coord ", min0: -7680, max0: 7680,
+			name1: "Y Coord ", min1: -4320, max1: 4320
+		}
+	);
+	if (result === false)
+		Cancel("Coordinates", `(${defaults[0]},${defaults[1]})`);
+	return result;
+};
 
-	const op = Exe.GetUint8(phyAddr);
-	const modrm = Exe.GetUint8(phyAddr + 1);
-	if (op !== 0xFF || modrm !== expectedModRM)
-		throw Error(
-			`FpsOverlay: ${label} opcode mismatch at 0x${virAddr.toString(16)}` +
-			`, got ${op.toString(16)} ${modrm.toString(16)}`
+NativeTelemetryOverlay.getFontSettings = function()
+{
+	const cacheKey = `${NativeTelemetryOverlay.CacheKey}.FontSettings`;
+	const existing = CACHE.get(cacheKey);
+	if (existing)
+		return existing;
+	const name = Exe.GetUserInput(
+		"$telemetryFontName",
+		D_FontName,
+		"FPS/Ping Font",
+		"Select the FPS/Ping overlay font family",
+		"Arial",
+		{saveDefault: true, sampleSize: 14}
+	);
+	if (name === false)
+		Cancel("FPS/Ping Font", "Arial");
+	const size = Exe.GetUserInput(
+		"$telemetryFontSize",
+		D_FontSize,
+		"FPS/Ping Font Size",
+		"Select the FPS/Ping overlay font size",
+		14,
+		{sampleName: name}
+	);
+	if (size === false)
+		Cancel("FPS/Ping Font Size", 14);
+	const settings = {name, size};
+	CACHE.put(cacheKey, settings);
+	return settings;
+};
+
+NativeTelemetryOverlay.ensure = function(patchName)
+{
+	const cacheKey = NativeTelemetryOverlay.CacheKey;
+	const firstUser = !CACHE.hasUsers(cacheKey);
+	CACHE.addUser(cacheKey, patchName);
+	if (!firstUser)
+	{
+		const existing = CACHE.get(`${cacheKey}.State`);
+		if (!existing)
+			throw Error("NativeTelemetryOverlay: shared state missing");
+		return existing;
+	}
+
+	if (Exe.BuildDate !== NativeTelemetryOverlay.BuildDate)
+		throw Error("NativeTelemetryOverlay supports only the 2025-07-16 client");
+
+	const callerPatch = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag(cacheKey));
+	try
+	{
+		const fontSettings = NativeTelemetryOverlay.getFontSettings();
+		const sitePhy = NativeTelemetryOverlay.assertCode(
+			"post-Present store",
+			NativeTelemetryOverlay.PresentStore,
+			NativeTelemetryOverlay.PresentStoreBytes
 		);
-
-	Exe.SetUint32(phyAddr + 2, iat);
-};
-
-FpsOverlay.verifyRelativeCall = function(label, virAddr, expectedTarget)
-{
-	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
-	if (phyAddr < 0)
-		throw Error(`FpsOverlay: ${label} address is not mapped`);
-	if (Exe.GetUint8(phyAddr) !== 0xE8)
-		throw Error(`FpsOverlay: ${label} is not a relative call`);
-	const target = Exe.GetTgtAddr(phyAddr + 1);
-	if (target !== expectedTarget)
-		throw Error(
-			`FpsOverlay: ${label} expected target 0x${expectedTarget.toString(16)}` +
-			`, got 0x${target.toString(16)}`
+		const state = NativeTelemetryOverlay.allocateBytes(
+			new Array(NativeTelemetryOverlay.StateSize).fill(0),
+			0x10
 		);
+		Exe.SetUint32(
+			state.phyAddr + NativeTelemetryOverlay.StateFontSize,
+			fontSettings.size
+		);
+		const fpsPrefix = NativeTelemetryOverlay.allocateText("FPS: ");
+		const pingPrefix = NativeTelemetryOverlay.allocateText("Ping: ");
+		const emptySuffix = NativeTelemetryOverlay.allocateText("");
+		const pingSuffix = NativeTelemetryOverlay.allocateText(" ms");
+		const fontFace = NativeTelemetryOverlay.allocateText(fontSettings.name);
+		const user32 = NativeTelemetryOverlay.allocateText("user32.dll");
+		const releaseDC = NativeTelemetryOverlay.allocateText("ReleaseDC");
+		const format = NativeTelemetryOverlay.allocateCode(
+			NativeTelemetryOverlay.buildFormat()
+		);
+		const drawLine = NativeTelemetryOverlay.allocateCode(
+			NativeTelemetryOverlay.buildDrawLine()
+		);
+		const present = NativeTelemetryOverlay.allocateCode(
+			NativeTelemetryOverlay.buildPresent(
+				state.virAddr,
+				format.virAddr,
+				drawLine.virAddr,
+				fpsPrefix.virAddr,
+				pingPrefix.virAddr,
+				emptySuffix.virAddr,
+				pingSuffix.virAddr,
+				fontFace.virAddr,
+				user32.virAddr,
+				releaseDC.virAddr
+			)
+		);
+		Exe.SetJMP(sitePhy, present.virAddr, 1);
+		const result = {
+			statePhy: state.phyAddr,
+			stateVir: state.virAddr,
+			presentVir: present.virAddr,
+			formatVir: format.virAddr,
+			drawLineVir: drawLine.virAddr
+		};
+		CACHE.put(`${cacheKey}.State`, result);
+		return result;
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = callerPatch;
+	}
 };
 
-FpsOverlay.installD3DBridge = function(_, dllName)
+NativeTelemetryOverlay.configure = function(state, installedOffset, xOffset, yOffset, coordinates)
 {
-	if (Exe.BuildDate !== 20250716)
-		throw Error("FpsOverlay D3D bridge supports only the 2025-07-16 client");
-
-	const iat = FpsOverlay.findIat(dllName, "BohDirect3DCreate9Ex");
-	FpsOverlay.verifyRelativeCall("Direct3DCreate9Ex call 1", 0x00542C3A, 0x00DBD97D);
-	FpsOverlay.verifyRelativeCall("Direct3DCreate9Ex call 2", 0x0056478A, 0x00DBD97D);
-	FpsOverlay.verifyRelativeCall("Direct3DCreate9Ex call 3", 0x00564D0A, 0x00DBD97D);
-	FpsOverlay.patchImportOperand("Direct3DCreate9Ex import thunk", 0x00DBD97D, 0x25, iat);
-
-	if (typeof PatchDiagnostics !== "undefined" &&
-	    typeof PatchDiagnostics.add === "function")
-		PatchDiagnostics.add('FpsOverlay.D3DBridge', {dllName, iat});
-
-	return true;
+	const callerPatch = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag(NativeTelemetryOverlay.CacheKey));
+	try
+	{
+		Exe.SetUint32(state.statePhy + installedOffset, 1);
+		Exe.SetUint32(state.statePhy + xOffset, coordinates[0] >>> 0);
+		Exe.SetUint32(state.statePhy + yOffset, coordinates[1] >>> 0);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = callerPatch;
+	}
 };
 
-FpsOverlay.addD3DRefreshHook = function(_, dllName)
+NativeTelemetryOverlay.disable = function(installedOffset)
 {
-	if (typeof CustomDLL === "undefined" ||
-	    typeof CustomDLL.addRefreshHook !== "function")
+	const state = CACHE.get(`${NativeTelemetryOverlay.CacheKey}.State`);
+	if (!state)
 		return;
-
-	CustomDLL.addRefreshHook(
-		`${_}.D3DBridge`,
-		function() { return FpsOverlay.installD3DBridge(`${_}.D3DBridge`, dllName); }
-	);
+	const callerPatch = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag(NativeTelemetryOverlay.CacheKey));
+	try
+	{
+		Exe.SetUint32(state.statePhy + installedOffset, 0);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = callerPatch;
+	}
 };
 
-FpsOverlay.installSlashCmd = function(_, dllName, spec)
+NativeTelemetryOverlay.registerCommand = function(_, command, optionId)
 {
 	if (typeof CustomSlashCommand === "undefined" ||
-	    typeof CustomSlashCommand.register !== "function")
-		throw Error("FpsOverlay: CustomSlashCommand helper unavailable");
-
-	dllName = dllName ?? FpsOverlay.getDllName();
-
-	$$(_, 2, `Register ${spec.command} command`);
-	CustomSlashCommand.register(_, {
-		command: spec.command,
-		dllName,
-		exportName: spec.exportName,
-		optionId: Number.isInteger(spec.optionId) ? spec.optionId : null,
-		settingsExportName: IsStr(spec.settingsExportName)
-			? spec.settingsExportName
-			: null
+		typeof CustomSlashCommand.register !== "function")
+		throw Error("NativeTelemetryOverlay: CustomSlashCommand helper unavailable");
+	const toggle = NativeTelemetryOverlay.allocateCode(
+		NativeTelemetryOverlay.buildToggle(optionId)
+	);
+	CustomSlashCommand.register(`${_}.SlashCommand`, {
+		command,
+		targetVir: toggle.virAddr,
+		optionId
 	});
+	return toggle.virAddr;
+};
+
+FpsOverlay = function(_)
+{
+	$$(_, 1, "Read FPS overlay coordinates");
+	const coordinates = NativeTelemetryOverlay.getCoordinates(
+		"$fpsOverlayXY",
+		"FPS Overlay",
+		[-195, 50]
+	);
+	$$(_, 2, "Install shared native post-Present overlay");
+	const state = NativeTelemetryOverlay.ensure(_);
+	NativeTelemetryOverlay.configure(
+		state,
+		NativeTelemetryOverlay.StateFpsInstalled,
+		NativeTelemetryOverlay.StateFpsX,
+		NativeTelemetryOverlay.StateFpsY,
+		coordinates
+	);
+	$$(_, 3, "Register /fps static command");
+	const toggleVir = NativeTelemetryOverlay.registerCommand(
+		_,
+		"/fps",
+		NativeTelemetryOverlay.FpsOption
+	);
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add("FpsOverlay.QjsOnly", {
+			coordinates,
+			stateVir: state.stateVir,
+			presentVir: state.presentVir,
+			toggleVir
+		});
 	return true;
+};
+
+FpsOverlay.cleanup = function(patchName)
+{
+	NativeTelemetryOverlay.disable(NativeTelemetryOverlay.StateFpsInstalled);
+	CACHE.delUser(NativeTelemetryOverlay.CacheKey, patchName);
 };
 
 FpsOverlay.validate = function()
 {
-	return Exe.BuildDate === 20250716;
+	return Exe.BuildDate === NativeTelemetryOverlay.BuildDate;
 };

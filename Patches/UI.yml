@@ -39,16 +39,16 @@ CustomUI:
             desc : Adds a configurable slash command (default /greyworld) that loads a specified GRF archive at runtime via CFileMgr::AddPak. Typing the command toggles the GRF on/off with chat feedback. The state persists across sessions via the registry. Assets become available on the next map change.
 
         - FpsOverlay:
-            title : FPS Overlay Slash Commands (/fps)
+            title : Native FPS Overlay (/fps)
             recommend : no
             author : Louis T Steinhil
-            desc : Adds /fps through the shared custom slash-command dispatcher and imports the selected FPS DLL exports. The dedicated boh_fps.dll uses a passive Direct3DCreate9Ex COM proxy bridge installed at WARP patch time instead of runtime IAT/vtable patching.
+            desc : Adds a QJS-only FPS counter at a customer-selected X/Y position. Negative coordinates are relative to the client right/bottom edge. A static post-Present EXE cave draws the overlay and /fps toggles the client option; no custom DLL, D3D proxy or runtime vtable patch is used.
 
         - PingOverlay:
-            title : Ping Overlay Slash Commands (/ping)
+            title : Native Ping Overlay (/ping)
             recommend : no
             author : Louis T Steinhil
-            desc : Adds /ping through the shared custom slash-command dispatcher and imports the selected ping DLL exports. It shares the dedicated boh_fps.dll static Direct3DCreate9Ex bridge and does not patch D3D IAT/vtables at runtime.
+            desc : Adds a QJS-only ping counter at a customer-selected X/Y position. It captures the client's stock CZ_REQUEST_TIME2/ZC_NOTIFY_TIME application RTT after packet dispatch and uses the shared static renderer; no ICMP worker, recv hook or custom DLL is used.
 
         - ROGlobalZeroInventory:
             title : RO Global Zero Inventory

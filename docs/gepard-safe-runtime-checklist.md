@@ -30,11 +30,11 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
     reserve the final item row, and draw the Global Zero Zeny/weight footer.
   - Calls only verified native client rendering, tooltip, and number-format APIs.
 - `FpsOverlay.qjs` / `PingOverlay.qjs`
-  - Loads `boh_fps.dll` by normal startup import.
-  - WARP-time bridge patches the `Direct3DCreate9Ex` thunk at `0x00DBD97D`.
-  - DLL wraps returned D3D COM objects instead of patching IAT/vtables.
-  - `boh_fps.dll` may import Winsock resolver helpers for ping, but does not
-    import or hook `recv`.
+  - QJS-only static cave replaces the post-`Present` store at `0x00543441` and
+    draws FPS/ping text through existing Win32 IATs.
+  - Independent prompted X/Y coordinates support right/bottom-relative values.
+  - Ping copies the client's stock `0x0360/0x007F` RTT result at `0x00C9E8F8`.
+  - No D3D proxy, custom DLL, ICMP worker, Winsock import, or recv hook.
 - `CustomRuneSystem.qjs`
   - Keeps the static equipped-set guard patch.
   - Loads `boh_rune.dll` by normal startup import.
@@ -85,8 +85,9 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
   PINC `0x0BEF`.
 - Text wrappers: `0x005476C7`, `0x0054758D`, `0x00DBA690`, `0x00DBA66C`.
 - Inventory vtable entries: `0x0103D4B0`, `0x0102DD94`, `0x0102DDB4`.
-- D3D thunk: `0x00DBD97D`; call sites remain `0x00542C3A`, `0x0056478A`,
-  `0x00564D0A`.
+- Telemetry post-Present bridge: `0x00543441`; application RTT capture:
+  request tick `0x00C82D32`, response subtraction `0x00C9E8F2`, capture
+  `0x00C9E8F8`.
 - Rune call sites: `0x00CF953F`, `0x00CF9591`, `0x007E69D6`, `0x007E5C12`,
   `0x007E5E47`, `0x007E5E56`.
 - Rune prologues: `0x007E1610`, `0x00A1D260`, `0x00A25A70`, `0x007E4B70`,

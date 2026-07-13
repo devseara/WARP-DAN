@@ -38,7 +38,16 @@ ExtNameTextStatic = {
 	RingCapacity: 1024,
 	RingSlotShift: 10,
 	PacketId: 0x0BB7,
-	PacketMagic: 0x4558544E
+	PacketMagic: 0x4558544E,
+	// This patch is build-locked. Keep stock API calls on the original IAT;
+	// CustomDLL rebuilds can relocate and later abandon generated descriptors.
+	StableIat: {
+		textOut: 0x00FC10DC,
+		extent: 0x00FC112C,
+		setTextColor: 0x00FC10E0,
+		multiToWide: 0x00FC1200,
+		wideToMulti: 0x00FC1204
+	}
 };
 
 ExtNameTextStatic.callIat = function(a, iat)
@@ -334,6 +343,21 @@ ExtNameTextStatic.buildPacketStore = function(
 		a.emit(0x8D, 0x43, 0x0C, 0x50);
 		a.call(putVir);
 	};
+	const putMainPacketKey = function(keyOffset)
+	{
+		a.emit(0x57, 0x56, 0x6A, 0x00);
+		a.emit(0x68); a.dword(scratchVir);
+		a.emit(0x8D, 0x83); a.dword(keyOffset);
+		a.emit(0x50);
+		a.call(putVir);
+	};
+	const putMainScratchKey = function(keyVir)
+	{
+		a.emit(0x57, 0x56, 0x6A, 0x00);
+		a.emit(0x68); a.dword(scratchVir);
+		a.emit(0x68); a.dword(keyVir);
+		a.call(putVir);
+	};
 
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
 	a.emit(0x8B, 0x5D, 0x08, 0x8B, 0x75, 0x0C, 0x8B, 0x7D, 0x10);
@@ -383,13 +407,24 @@ ExtNameTextStatic.buildPacketStore = function(
 	appendField(scratchVir, 420, literals.openParen, literals.closeParen);
 	a.label("v3_pc_title");
 	a.emit(0x80, 0xBB); a.dword(548); a.emit(0x00);
-	a.jcc(0x84, "v3_main");
+	a.jcc(0x84, "v3_pc_aliases");
 	callCopy(scratch2Vir, [0x8D, 0x83, 0x24, 0x02, 0x00, 0x00, 0x50]);
 	appendLiteral(scratch2Vir, literals.space);
 	appendPtr(scratch2Vir, [0x68, scratchVir & 0xFF, (scratchVir >>> 8) & 0xFF,
 		(scratchVir >>> 16) & 0xFF, (scratchVir >>> 24) & 0xFF]);
 	callCopy(scratchVir, [0x68, scratch2Vir & 0xFF, (scratch2Vir >>> 8) & 0xFF,
 		(scratch2Vir >>> 16) & 0xFF, (scratch2Vir >>> 24) & 0xFF]);
+	a.label("v3_pc_aliases");
+	// The stock PC name packet renders "status.name display_name" while EXTN
+	// carries those fields separately. Index every visible source form so the
+	// same long-name substitution and RGB value apply to local and remote PCs.
+	a.emit(0x80, 0x7B, 0x24, 0x00);
+	a.jcc(0x84, "v3_main");
+	putMainPacketKey(36);
+	callCopy(scratch2Vir, [0x8D, 0x43, 0x0C, 0x50]);
+	appendLiteral(scratch2Vir, literals.space);
+	appendPtr(scratch2Vir, [0x8D, 0x43, 0x24, 0x50]);
+	putMainScratchKey(scratch2Vir);
 	a.jmp("v3_main");
 	a.label("v3_mob");
 	// The official 0x0ADF title field owns the Group Title/ID row. EXTN maps
@@ -537,7 +572,7 @@ ExtNameTextStatic.buildTextOut = function(
 	a.emit(0x89, 0x45, 0xF8, 0x85, 0xC0);
 	a.jcc(0x84, "draw");
 	a.emit(0x8B, 0xF0);
-	if (apis.getTextColor > 0)
+	if (apis.colorEnabled)
 	{
 		a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
 		a.dword(ExtNameTextStatic.FeatureColors);
@@ -548,8 +583,12 @@ ExtNameTextStatic.buildTextOut = function(
 		a.jcc(0x85, "substitute");
 		a.emit(0x8B, 0x5E, ExtNameTextStatic.EntryColor, 0x85, 0xDB);
 		a.jcc(0x84, "substitute");
-		a.emit(0xFF, 0x75, 0x08);
-		ExtNameTextStatic.callIat(a, apis.getTextColor);
+		// SetTextColor returns the previous COLORREF. Use that return value to
+		// classify the stock main/shadow pass, avoiding a separately imported
+		// GetTextColor thunk that moves whenever CustomDLL rebuilds the IAT.
+		a.emit(0x53, 0xFF, 0x75, 0x08);
+		ExtNameTextStatic.callIat(a, apis.setTextColor);
+		a.emit(0x89, 0x45, 0xF0);
 		a.emit(0x8B, 0xD0, 0x81, 0xE2); a.dword(0xFF);
 		a.emit(0x83, 0xFA, 0x20);
 		a.jcc(0x87, "apply_color");
@@ -558,12 +597,13 @@ ExtNameTextStatic.buildTextOut = function(
 		a.jcc(0x87, "apply_color");
 		a.emit(0xC1, 0xE8, 0x10, 0x25); a.dword(0xFF);
 		a.emit(0x83, 0xF8, 0x20);
-		a.jcc(0x86, "substitute");
+		a.jcc(0x86, "restore_shadow");
 		a.label("apply_color");
-		a.emit(0x53, 0xFF, 0x75, 0x08);
-		ExtNameTextStatic.callIat(a, apis.setTextColor);
-		a.emit(0x89, 0x45, 0xF0);
 		a.emit(0xC7, 0x45, 0xF4); a.dword(1);
+		a.jmp("substitute");
+		a.label("restore_shadow");
+		a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
+		ExtNameTextStatic.callIat(a, apis.setTextColor);
 	}
 	a.label("substitute");
 	a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
@@ -634,31 +674,14 @@ ExtNameTextStatic.buildExtent = function(
 
 ExtNameTextStatic.findApis = function(requireColor)
 {
-	if (typeof CustomDLL === "undefined" ||
-		typeof CustomDLL.findActiveIat !== "function")
-		throw Error("ExtNameTextStatic: CustomDLL import helper unavailable");
-	const find = function(dllName, exportName)
-	{
-		const iat = CustomDLL.findActiveIat(exportName, dllName);
-		if (iat < 0)
-			throw Error(`ExtNameTextStatic: ${dllName}!${exportName} is not imported`);
-		return iat;
-	};
-	let getTextColor = 0;
-	const customIat = CACHE.get("CustomDLL.IAT") || {};
-	if (requireColor)
-	{
-		getTextColor = customIat["gdi32.dll!gettextcolor"] || 0;
-		if (!getTextColor)
-			throw Error("ExtNameTextStatic: staged GetTextColor IAT is unavailable");
-	}
+	const stable = ExtNameTextStatic.StableIat;
 	return {
-		textOut: find("gdi32.dll", "TextOutW"),
-		extent: find("gdi32.dll", "GetTextExtentPoint32W"),
-		setTextColor: find("gdi32.dll", "SetTextColor"),
-		getTextColor,
-		multiToWide: find("kernel32.dll", "MultiByteToWideChar"),
-		wideToMulti: find("kernel32.dll", "WideCharToMultiByte")
+		textOut: stable.textOut,
+		extent: stable.extent,
+		setTextColor: stable.setTextColor,
+		colorEnabled: requireColor,
+		multiToWide: stable.multiToWide,
+		wideToMulti: stable.wideToMulti
 	};
 };
 
@@ -873,17 +896,6 @@ ExtNameTextStatic.enable = function(_, feature)
 	const extn = routes && routes.routes ? routes.routes.EXTN : null;
 	if (!extn || extn.transport !== "ring-v2" || !Number.isInteger(extn.blockVir))
 		throw Error("ExtNameTextStatic: EXTN ring-v2 block unavailable");
-
-	const systemImports = [];
-	if ((feature & ExtNameTextStatic.FeatureColors) !== 0)
-	{
-		systemImports.push({
-			Name: "gdi32.dll",
-			Funcs: [{Name: "GetTextColor"}]
-		});
-	}
-	if (!systemImports.isEmpty())
-		CustomDLL.applySpec(`${_}.SystemImport`, systemImports);
 
 	const state = ExtNameTextStatic.ensureInstalled(_, extn.blockVir);
 	state.features |= feature;

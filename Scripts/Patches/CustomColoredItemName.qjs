@@ -179,6 +179,13 @@ ItemColorStatic.buildLookup = function(stateVir, tableVir)
 	a.label("entry_loop");
 	a.emit(0x83, 0x7D, 0xFC, 0x00);
 	a.jcc(0x84, "not_found");
+	// Grade sentinels are only eligible for bracket/color-code text. Plain
+	// item_color_db.yml entries remain eligible for ordinary item names.
+	a.emit(0x83, 0x7D, 0x10, 0x00);
+	a.jcc(0x85, "entry_eligible");
+	a.emit(0xF7, 0x47, ItemColorStatic.EntryFlags); a.dword(ItemColorStatic.EntryGrade);
+	a.jcc(0x85, "next_entry");
+	a.label("entry_eligible");
 	a.emit(0x8B, 0x57, ItemColorStatic.EntryLength, 0x85, 0xD2);
 	a.jcc(0x84, "next_entry");
 	a.emit(0x3B, 0x55, 0x0C);
@@ -265,6 +272,8 @@ ItemColorStatic.buildTextOut = function(
 	lookupVir,
 	continuationVir,
 	ansiScratchVir,
+	previousTextOutVir,
+	entityFindWideVir,
 	apis
 )
 {
@@ -273,7 +282,19 @@ ItemColorStatic.buildTextOut = function(
 	a.emit(0xC7, 0x45, 0xFC); a.dword(0xFFFFFFFF); // custom color
 	a.emit(0xC7, 0x45, 0xF8); a.dword(0);          // matched entry
 	a.emit(0xC7, 0x45, 0xF4); a.dword(0);          // old color valid
+	a.emit(0xC7, 0x45, 0xE0); a.dword(0);          // grade marker present
 	a.call(drainVir);
+	// EXTN owns entity names and metadata rows. Exclude every exact EXTN key
+	// before item substring matching or grade-continuation inheritance so NPC
+	// titles such as "[Reset Stats/Skills]" cannot collide with ICOL entries.
+	a.emit(0x83, 0x7D, 0x14, 0x00);
+	a.jcc(0x84, "continuation");
+	a.emit(0x8B, 0x45, 0x18, 0x85, 0xC0);
+	a.jcc(0x8E, "continuation");
+	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14);
+	a.call(entityFindWideVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "draw");
 	a.emit(0x83, 0x7D, 0x14, 0x00);
 	a.jcc(0x84, "continuation");
 	a.emit(0x8B, 0x45, 0x18, 0x85, 0xC0);
@@ -291,25 +312,28 @@ ItemColorStatic.buildTextOut = function(
 	a.emit(0x89, 0x45, 0xEC, 0xBA); a.dword(ansiScratchVir);
 	a.emit(0xC6, 0x04, 0x02, 0x00);
 
-	// Mirror the native DLL fast path: item text begins with a grade bracket or
-	// exposes a client color-code marker in its first eight UTF-8 bytes.
+	// A grade bracket/color code enables grade sentinels. Ordinary text still
+	// reaches the lookup so name-based item_color_db.yml entries work.
 	a.emit(0x33, 0xC9);
 	a.label("fast_scan");
 	a.emit(0x83, 0xF9, 0x08);
-	a.jcc(0x83, "continuation");
+	a.jcc(0x83, "lookup");
 	a.emit(0x3B, 0x4D, 0xEC);
-	a.jcc(0x83, "continuation");
+	a.jcc(0x83, "lookup");
 	a.emit(0x8A, 0x91); a.dword(ansiScratchVir);
 	a.emit(0x80, 0xFA, 0x5B);
-	a.jcc(0x84, "lookup");
+	a.jcc(0x84, "grade_marker");
 	a.emit(0x80, 0xFA, 0x5E);
-	a.jcc(0x84, "lookup");
+	a.jcc(0x84, "grade_marker");
 	a.emit(0x41);
 	a.jmp("fast_scan");
+	a.label("grade_marker");
+	a.emit(0xC7, 0x45, 0xE0); a.dword(1);
 	a.label("lookup");
+	a.emit(0xFF, 0x75, 0xE0);
 	a.emit(0xFF, 0x75, 0xEC, 0x68); a.dword(ansiScratchVir);
 	a.call(lookupVir);
-	a.emit(0x83, 0xC4, 0x08, 0x89, 0x45, 0xF8, 0x85, 0xC0);
+	a.emit(0x83, 0xC4, 0x0C, 0x89, 0x45, 0xF8, 0x85, 0xC0);
 	a.jcc(0x84, "continuation");
 	a.emit(0x8B, 0x58, ItemColorStatic.EntryColor, 0x89, 0x5D, 0xFC);
 
@@ -346,8 +370,10 @@ ItemColorStatic.buildTextOut = function(
 	a.label("apply");
 	a.emit(0x83, 0x7D, 0xFC, 0xFF);
 	a.jcc(0x84, "draw");
-	a.emit(0xFF, 0x75, 0x08);
-	ItemColorStatic.callIat(a, apis.getTextColor);
+	// SetTextColor returns the old COLORREF, so the wrapper can classify and
+	// restore the stock shadow pass without a relocatable GetTextColor import.
+	a.emit(0xFF, 0x75, 0xFC, 0xFF, 0x75, 0x08);
+	ItemColorStatic.callIat(a, apis.setTextColor);
 	a.emit(0x89, 0x45, 0xE8);
 	// Reject all-dark shadow/outline passes. The original item DLL returned
 	// TRUE without drawing these passes so the colored main glyph stays crisp.
@@ -359,15 +385,21 @@ ItemColorStatic.buildTextOut = function(
 	a.jcc(0x87, "set_color");
 	a.emit(0xC1, 0xE8, 0x10, 0x25); a.dword(0xFF);
 	a.emit(0x83, 0xF8, 0x20);
-	a.jcc(0x86, "shadow_done");
+	a.jcc(0x86, "restore_shadow");
 	a.label("set_color");
-	a.emit(0xFF, 0x75, 0xFC, 0xFF, 0x75, 0x08);
+	a.emit(0x8B, 0x45, 0xE8, 0x89, 0x45, 0xF0);
+	a.emit(0xC7, 0x45, 0xF4); a.dword(1);
+	a.jmp("draw");
+	a.label("restore_shadow");
+	a.emit(0xFF, 0x75, 0xE8, 0xFF, 0x75, 0x08);
 	ItemColorStatic.callIat(a, apis.setTextColor);
-	a.emit(0x89, 0x45, 0xF0, 0xC7, 0x45, 0xF4); a.dword(1);
+	a.jmp("shadow_done");
 	a.label("draw");
 	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14, 0xFF, 0x75, 0x10,
 		0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
-	a.emit(0xFF, 0x15); a.dword(stateVir + ItemColorStatic.StatePreviousTextOut);
+	// Embed the immutable EXE-cave target. A shared-state function pointer is
+	// cleared when WARP replays the global text-bridge tag in a full build.
+	a.call(previousTextOutVir);
 	a.emit(0x89, 0x45, 0xE4);
 	a.emit(0x83, 0x7D, 0xF4, 0x00);
 	a.jcc(0x84, "return");
@@ -384,22 +416,10 @@ ItemColorStatic.buildTextOut = function(
 
 ItemColorStatic.findApis = function()
 {
-	const find = function(dllName, exportName)
-	{
-		const iat = CustomDLL.findActiveIat(exportName, dllName);
-		if (iat < 0)
-			throw Error(`ItemColorStatic: ${dllName}!${exportName} is not imported`);
-		return iat;
-	};
-	const customIat = CACHE.get("CustomDLL.IAT") || {};
-	const getTextColor = customIat["gdi32.dll!gettextcolor"] || 0;
-	if (!getTextColor)
-		throw Error("ItemColorStatic: staged GetTextColor IAT is unavailable");
 	return {
-		wideToMulti: find("kernel32.dll", "WideCharToMultiByte"),
-		getTickCount: find("kernel32.dll", "GetTickCount"),
-		setTextColor: find("gdi32.dll", "SetTextColor"),
-		getTextColor
+		wideToMulti: ExtNameTextStatic.StableIat.wideToMulti,
+		getTickCount: 0x00FC120C,
+		setTextColor: ExtNameTextStatic.StableIat.setTextColor
 	};
 };
 
@@ -416,6 +436,8 @@ ItemColorStatic.patchTextSurfaces = function(state)
 			state.lookupVir,
 			state.continuationVir,
 			state.ansiScratchVir,
+			extState.textOutVir,
+			extState.findWideVir,
 			apis
 		)
 	);
@@ -424,10 +446,6 @@ ItemColorStatic.patchTextSurfaces = function(state)
 	Exe.BeginTag(CACHE.getTag("ItemColorStatic.TextBridge"), true);
 	try
 	{
-		Exe.SetUint32(
-			state.statePhy + ItemColorStatic.StatePreviousTextOut,
-			extState.textOutVir
-		);
 		const directPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutDirect, CODE);
 		const thunkPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutThunk, CODE);
 		if (directPhy < 0 || thunkPhy < 0)
@@ -453,11 +471,6 @@ ItemColorStatic.enable = function(_, icolVir)
 		throw Error("ItemColorStatic supports only the 2025-07-16 client");
 	if (!Number.isInteger(icolVir))
 		throw Error("ItemColorStatic: ICOL dispatcher block unavailable");
-
-	CustomDLL.applySpec(`${_}.SystemImport`, [{
-		Name: "gdi32.dll",
-		Funcs: [{Name: "GetTextColor"}]
-	}]);
 
 	let state = CACHE.get("ItemColorStatic.State");
 	if (!state || !Number.isInteger(state.stateVir))
