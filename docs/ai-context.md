@@ -847,10 +847,13 @@ Runtime note for `boh.dll` rune visuals:
 - These are UI/render hooks, not network recv hooks, but they still need Gepard owner approval if enabled.
 
 ### Hat effects
-Current WARP hat-effect experiment:
-```text
-WARP0716-main/Scripts/Patches/CustomHatEffectOcclusion.qjs
-```
+The original flags-`0x05` STR carrier/depth-bias experiments and the type-0 aura
+host are retired. The flags-`0x0D` queue oracle also failed live.
+`AllHatEffectsWorldDepthOracle.qjs` v4.2 is the current test-only option-2 oracle:
+it preserves original HatEffect STR objects and their screen-space sizing, but
+replaces the screen renderer's constant normalized Z with native world-derived
+depth. V4 keeps floor-side vertices on the minimally biased v3 anchor plane and
+reconstructs upright world depth for upper vertices.
 
 Known static patch points:
 ```text
@@ -861,9 +864,29 @@ Remove-effect parser: 00D00090
 ```
 
 Status:
-- It is not a recv hook and not DLL injection.
-- It is still a static EXE patch and should not be described as Gepard-safe without approval.
-- Testing showed it can translate hat effects into special-effect IDs, but large HatEffectInfo STRs still do not reliably clip behind 3D buildings. Do not promise full wall/building occlusion from this path yet.
+- The rejected prototypes were static EXE patches, not recv hooks or DLL injection.
+- Stock SpecialEffect `0x925`, a HatEffect STR rehosted in that carrier, and the original flags-`0x05` HatEffect primitive with native `-0.01f` depth bias all leaked through the same opaque RSW wall.
+- The type-0 SpecialEffect-200 aura host had no STR binder. Its apparent ring-suppressed result used stale `[EBP+8]`, so `B026F0` was never actually suppressed and the visible aura did not validate the substituted children. Authoritative parent-`+0x04` and corrected-matrix revisions produced no HatEffect; that architecture is rejected.
+- `0x0054B9B0` builds only an intermediate scale transform. Native `0x00B02E60` combines rotation and scale through `0x0054C320`, so the custom direct-final-matrix inference was unsupported.
+- Lua HatEffect runtime IDs are `0x98A + HatEFID`. The rejected queue hook at `0x00AECE35` changed only loaded primitive flags `0x05 -> 0x0D`; the user's 2026-07-14 capture still shows Flutter Butterfly across opaque geometry. Its patch/profile/catalog wiring was removed.
+- Level-99 SpecialEffect `200` allocates type-0 aura primitives with flags `0x0D` and renders them through `0x00ADA090`, which runs `0x00554380` projection and `0x00554040` depth conversion for each 32-byte vertex. Its live capture clips at the same opaque wall, so the decisive difference is vertex generation rather than queue selection.
+- Generic HatEffect render methods call type-2 loop `0x00AD8750` at `0x00AFE41C` and `0x00AFE52B`. Its layer builder `0x00AD8C40` manually creates screen-space vertices and hardcodes normalized `z = 0x38021CC8` at `0x00AD93C5`, explaining why original HatEffects render in front of RSW depth.
+- Native loop `0x00AD86D0` is calling-convention and lifecycle compatible with `0x00AD8750`, but dispatches layers to world builder `0x00AD87D0`. That path retains STR texture/UV/color/blend data and invokes projection `0x00554380` plus depth conversion `0x00554040`.
+- The 2026-07-14 live world-builder result partially clips Flutter Butterfly behind an opaque tower, proving the depth path. It also enlarges every STR because screen-authored pixel dimensions become world units, so redirecting the complete layer builder is rejected.
+- `0x005541B0`, called by the original screen builder at `0x00AD8D91`, already returns actor reciprocal depth in `[EBP-0x64]`; the builder stores it in vertex `+0x0C` while independently forcing vertex `+0x08` to the constant near Z.
+- The v2 oracle leaves X/Y, screen scale, animation, texture, UV, color, blend, and submission on `0x00AD8750`. Its two HatEffect calls enter a scoped wrapper; only inside that scope, the `0x00AD93D4` hook converts the existing reciprocal depth with `0x00554040` and writes normalized vertex Z. Other screen-STR users retain the original path.
+- Full embedded-GRF artifact `hateffect_all_screen_size_depth_v2_oracle_full.exe` hashes to `6FCC5112CB6FB546AF0D98B949814803BB0630AA7B0B5BAD3BA3B852F66158DB`. Wrapper `0x0181F854` and depth bridge `0x0181F880` disassemble correctly; the audit reports 11 custom imports and zero stale bridge operands.
+- The v2 live capture passed partial building clipping and stock size, but distant zoom caused lower STR layers to be occluded by the floor. The cause is the screen builder's `layerIndex * 1e-5` subtraction at `0x00AD9308/0x00AD93D9`: v2 converted the layer-shifted RHW into normalized Z, unlike the stock renderer's one shared constant Z plane.
+- V3 preserves `anchor - layerBias` in vertex RHW `+0x0C`, reloads the unshifted reciprocal actor anchor for vertex Z, adds the native `1e-5` quantum at `0x00FD6AE4`, and converts it through `0x00554040`. Native world-effect builder `0x00ADBE7D` positively applies the same quantum to depth ordering.
+- Isolated v3 artifact `hateffect_all_screen_size_depth_v3_oracle_smoke.exe` hashes to `3B2319C25855A3005C6B1179DD51850B2F325C5718244EFD7F8EC51289750345`. Full embedded-GRF artifact `hateffect_all_screen_size_depth_v3_oracle_full.exe` hashes to `E5A0C10919AF6A306D104E6BE1E540B334D6934BFC5F64C8C3616864B29185BD`; wrapper `0x0181F854`, bridge `0x0181F880`, native conversion call and both continuations disassemble correctly. The audit reports 11 custom imports and zero stale bridge operands.
+- The v3 live result fixes zoom-dependent floor clipping and preserves stock size/general wall occlusion, but a wall immediately beside the actor can still consume most upper HatEffect pixels because all vertices share the actor anchor's depth.
+- V4 leaves vertices at/below projected anchor Y on the v3 plane. For upper vertices it computes `rhw' = rhw * (m8*(y-cy)-m7*sy)/(m8*(anchorY-cy)-m7*sy)`, the algebraic inverse of native `0x005541B0` projection along world Z, then calls `0x00554040`. It deliberately leaves vertex RHW and all screen/texture fields stock to avoid scale or interpolation changes. A native absolute mask and `1e-5` comparison guard the denominator and fall back to the anchor plane if it is degenerate.
+- Full v4 artifact `hateffect_upright_depth_v4_oracle_full.exe` (`37E0DB339C62CB287F555E92519C082BDB7E076EDB3BA92EBD63FC4154302ADF`) is rejected. It crashes on login at `0x0181F8F1` with `ECX=0` because `0x0181F8EE` loaded the matrix from reused compiler local `[EBP-0x38]`.
+- V4.1 uses stable original argument `[EBP+0x10]`, the same matrix pointer copied by stock `0x00AD8C63/0x00AD8C6A` and passed to `0x005541B0`. Isolated artifact `hateffect_upright_depth_v4_1_oracle_smoke.exe` hashes to `A30CF40A41A9EC9293F837C529E6C93114BFC7835964C30C37BF768FC8E75547`. Full embedded-GRF artifact `hateffect_upright_depth_v4_1_oracle_full.exe` hashes to `2A9F52582AE694978116B3CEBB19F1020EB9C03067DA004DA8E47B8420EFA552`; the corrected matrix load is at `0x0181F8EE`, and the audit reports 11 custom imports with zero stale bridge operands.
+- V4.1 is stable live but does not improve near-wall over-occlusion. Native world `.str` NPCs exhibit the same behavior, proving this is a world-STR depth characteristic rather than a HatEffect attachment/lifecycle defect. The v4.1 inverse projection also selected Z-axis coefficients; Ragnarok elevation is the second/Y coordinate.
+- V4.2 uses matrix `+0x10` screen-Y and `+0x14` depth coefficients for Y-up inverse projection. Both ground and upper paths receive a four-quantum `3.9999999e-5` reciprocal-depth contact tolerance, deliberately bounded far below the stock constant-near-Z renderer. The patch remains scoped to the two HatEffect render calls and does not alter native world `.str` NPCs.
+- Isolated v4.2 artifact `hateffect_yup_contact_depth_v4_2_oracle_smoke.exe` hashes to `C1C66360DB0092FFAAE210500855C90AFB3826059CD100D4D7EFF197506DA2C8`. Full embedded-GRF artifact `hateffect_yup_contact_depth_v4_2_oracle_full.exe` hashes to `7D055E5531DDC4B5F66D7ADF6632C7C9317E00A1ED0772EB0480EDA2A60C049A`; the full bridge, contact data, stable matrix load, Y-up coefficients, guards, native conversion and continuations disassemble correctly. The audit reports 11 custom imports and zero stale bridge operands.
+- V4.2 passed live acceptance on 2026-07-14: true behind-wall partial clipping, stock apparent size, no floor loss at zoom extremes, and no excessive upper-effect loss while touching walls, buildings, or obstacles.
 
 ### Single DLL direction
 Preferred deployment shape if approved:
@@ -1840,9 +1863,10 @@ Scope and constraints:
 
 - Existing `hatEffectID = X` entries should continue using stock `0x01F3`
   special effects. The new renderer targets custom `resourceFileName` entries.
-- Packet remapping alone, actor-position changes, HatEffect marker changes,
-  render-queue bucket changes, and model-culling changes have not produced true
-  world occlusion.
+- Packet remapping, actor-position changes, HatEffect marker changes, the
+  flags-`0x05` carrier/depth-bias path, flags-`0x0D` queue selection, and
+  model-culling changes did not produce true world occlusion. V4.2's scoped
+  normalized-Z bridge passed the live wall, contact, floor, size, and zoom gates.
 - Avoid broad Direct3D state forcing and HUD-style rendering.
 - Review the static dispatcher patch and runtime render hooks for
   anti-cheat/Gepard compatibility.
@@ -1851,9 +1875,10 @@ Scope and constraints:
   frame, cap active effects, and remove instances promptly during lifecycle
   transitions.
 
-Confidence: custom packet/ring transport, Lua mapping, and actor lifecycle are
-high-confidence work. Rendering arbitrary STR resources with genuine world
-occlusion remains medium confidence until the single-effect prototype succeeds.
+Confidence: high for the build-specific 2025-07-16 QJS patch after live v4.2
+validation. It retains the native HatEffect objects, attachment, resources, and
+lifecycle, so no custom packet/ring transport or parallel actor registry is
+required for this renderer correction.
 
 # ROZ Global UI Renewal Port - Investigation
 
