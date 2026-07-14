@@ -1,6 +1,6 @@
 /**************************************************************************\
 *                                                                          *
-*   Copyright (C) 2026 Ylen X Walker                                       *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
 *                                                                          *
 *   This file is a part of WARP project (specific to RO clients)           *
 *                                                                          *
@@ -19,15 +19,14 @@
 *                                                                          *
 |**************************************************************************|
 *                                                                          *
-*   Author(s)     : Ylen X Walker                                          *
+*   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-04                                             *
 *   Last Modified : 2026-07-04                                             *
 *                                                                          *
 *   Description   : Overrides the 2025-07-16 client's multibyte codepage   *
-*                   selection. QJS-only mode patches the langtype mapper   *
-*                   and global codepage slots; an optional DLL bridge can  *
-*                   redirect CharNextExA/CharPrevExA for full UTF-8        *
-*                   emoji/icon cluster walking.                            *
+*                   selection by patching the langtype mapper and global   *
+*                   codepage slots. This is a QJS-only static patch and    *
+*                   does not add runtime DLL imports.                      *
 *                                                                          *
 \**************************************************************************/
 
@@ -37,15 +36,7 @@ CustomCodePage = function(_)
 	if (codePage < 0)
 		return true;
 
-	const useUtf8Bridge = codePage === 65001 && CustomCodePage.useUtf8CharBridge();
-	CACHE.put('CustomCodePage.UseUtf8CharBridge', useUtf8Bridge);
-	if (!useUtf8Bridge)
-		CACHE.put('CustomCodePage.DLL', "");
-
-	CustomCodePage.patchStaticCodePage(_, codePage, useUtf8Bridge);
-
-	if (useUtf8Bridge)
-		CustomCodePage.addUtf8CharBridge(`${_}.CustomDLL`);
+	CustomCodePage.patchStaticCodePage(_, codePage);
 
 	return true;
 };
@@ -66,20 +57,7 @@ CustomCodePage.getCodePage = function()
 	return Number(codePage);
 };
 
-CustomCodePage.useUtf8CharBridge = function()
-{
-	const useBridge = Exe.GetUserInput(
-		'$customCodePageUtf8Bridge',
-		D_Bool,
-		"UTF-8 Char Bridge",
-		"Import a DLL bridge for CharNextExA/CharPrevExA. Disable this for a QJS-only public patch; enable it only when the target client also ships a DLL exporting BohCharNextExA and BohCharPrevExA.",
-		false
-	);
-
-	return useBridge === true;
-};
-
-CustomCodePage.patchStaticCodePage = function(_, codePage, useUtf8Bridge)
+CustomCodePage.patchStaticCodePage = function(_, codePage)
 {
 	if (Exe.BuildDate !== 20250716)
 		throw Error("CustomCodePage supports only the 2025-07-16 client");
@@ -92,8 +70,7 @@ CustomCodePage.patchStaticCodePage = function(_, codePage, useUtf8Bridge)
 	if (typeof PatchDiagnostics !== "undefined" &&
 	    typeof PatchDiagnostics.add === "function")
 		PatchDiagnostics.add('CustomCodePage.patchStaticCodePage', {
-			codePage,
-			useUtf8Bridge: useUtf8Bridge === true
+			codePage
 		});
 };
 
@@ -152,169 +129,5 @@ CustomCodePage.patchGlobalCodePageAssignments = function(codePage)
 	}
 };
 
-CustomCodePage.addUtf8CharBridge = function(_)
-{
-	if (typeof CustomDLL === "undefined" ||
-	    typeof CustomDLL.applySpec !== "function" ||
-	    typeof CustomDLL.getDllName !== "function")
-		throw Error("CustomCodePage: CustomDLL helper unavailable");
-
-	const dllName = CustomDLL.getDllName(
-		'$codePageVisualDLLName',
-		"BOH UTF-8 Text DLL",
-		"Enter the DLL filename that exports BohCharNextExA and BohCharPrevExA. Use boh.dll/bohcustoms.dll for the combined build or boh_text.dll for the dedicated text build.",
-		"boh.dll",
-		"boh_text.dll"
-	);
-	CACHE.put('CustomCodePage.DLL', dllName);
-
-	if (typeof CustomDLL.addRefreshHook === "function")
-	{
-		CustomDLL.addRefreshHook(
-			`${_}.Utf8CharBridge`,
-			function() { return CustomCodePage.installUtf8CharBridge(`${_}.Bridge`, dllName); }
-		);
-	}
-
-	const result = CustomDLL.applySpec(_, [
-		{
-			Name: dllName,
-			Funcs: [
-				{Name: "BohCharNextExA"},
-				{Name: "BohCharPrevExA"}
-			]
-		}
-	]);
-
-	CustomCodePage.installUtf8CharBridge(`${_}.Bridge`, dllName);
-	return result;
-};
-
-CustomCodePage.installUtf8CharBridge = function(_, dllName)
-{
-	const nextIat = CustomCodePage.findIat(dllName, "BohCharNextExA");
-	const prevIat = CustomCodePage.findIat(dllName, "BohCharPrevExA");
-	const oldNext = Exe.FindFunc("CharNextExA", "user32.dll");
-	const oldPrev = Exe.FindFunc("CharPrevExA", "user32.dll");
-
-	if (oldNext < 0 || oldPrev < 0)
-		throw Error("CustomCodePage: CharNextExA/CharPrevExA imports not found");
-
-	const nextRefs = CustomCodePage.patchIatOperandRefs("CharNextExA", oldNext, nextIat);
-	const prevRefs = CustomCodePage.patchIatOperandRefs("CharPrevExA", oldPrev, prevIat);
-
-	if (typeof PatchDiagnostics !== "undefined" &&
-	    typeof PatchDiagnostics.add === "function")
-		PatchDiagnostics.add('CustomCodePage.installUtf8CharBridge', {
-			dllName,
-			nextIat,
-			prevIat,
-			nextRefs,
-			prevRefs
-		});
-
-	return true;
-};
-
-CustomCodePage.findIat = function(dllName, exportName)
-{
-	const iat = (
-		typeof CustomDLL !== "undefined" &&
-		typeof CustomDLL.findIat === "function"
-	)
-		? CustomDLL.findIat(exportName, dllName)
-		: Exe.FindFunc(exportName, dllName);
-	if (iat < 0)
-		throw Error(`CustomCodePage: import not found: ${dllName}!${exportName}`);
-	return iat;
-};
-
-CustomCodePage.patchIatOperandRefs = function(label, oldIat, newIat)
-{
-	const cacheKey = 'CustomCodePage.IatRefs.' + label;
-	let refs = CACHE.get(cacheKey);
-	if (!Array.isArray(refs) || refs.isEmpty())
-	{
-		refs = CustomCodePage.findIatOperandRefs(oldIat);
-		CACHE.put(cacheKey, refs);
-	}
-
-	if (refs.isEmpty())
-		throw Error(`CustomCodePage: no supported ${label} operand references found`);
-
-	let patched = 0;
-	for (const addr of refs)
-	{
-		if (CustomCodePage.isSupportedIatOperand(addr))
-		{
-			Exe.SetUint32(addr, newIat);
-			patched++;
-		}
-	}
-
-	if (patched === 0)
-		throw Error(`CustomCodePage: cached ${label} operand references no longer match supported forms`);
-
-	return patched;
-};
-
-CustomCodePage.findIatOperandRefs = function(oldIat)
-{
-	const from = Exe.GetSectBegin(CODE);
-	const to = Exe.GetSectEnd(CODE);
-	const operand = oldIat.toHex();
-	let refs = [];
-
-	const addRefs = function(pattern, offset)
-	{
-		const found = Exe.FindHexN(pattern + operand, from, to);
-		for (const addr of found)
-			refs.push(addr + offset);
-	};
-
-	addRefs(" FF 15", 2); // call dword ptr [iat]
-	addRefs(" FF 25", 2); // jmp dword ptr [iat]
-	addRefs(" A1", 1);    // mov eax, [iat]
-
-	const movModRms = ["05", "0D", "15", "1D", "25", "2D", "35", "3D"];
-	for (const modrm of movModRms)
-		addRefs(" 8B " + modrm, 2);
-
-	return refs.sort((a, b) => a - b);
-};
-
-CustomCodePage.isSupportedIatOperand = function(addr)
-{
-	const one = Exe.GetUint8(addr - 1);
-	const op = Exe.GetUint8(addr - 2);
-	const modrm = Exe.GetUint8(addr - 1);
-
-	if (one === 0xA1)
-		return true;
-
-	if (op === 0xFF && (modrm === 0x15 || modrm === 0x25))
-		return true;
-
-	if (op === 0x8B &&
-	    (modrm === 0x05 || modrm === 0x0D || modrm === 0x15 ||
-	     modrm === 0x1D || modrm === 0x25 || modrm === 0x2D ||
-	     modrm === 0x35 || modrm === 0x3D))
-		return true;
-
-	return false;
-};
-
 CustomCodePage.validate = () =>
 	Exe.BuildDate === 20250716;
-
-CustomCodePage.cleanup = function(_)
-{
-	if (CACHE.get('CustomCodePage.UseUtf8CharBridge') !== true)
-		return true;
-
-	const dllName = CACHE.get('CustomCodePage.DLL');
-	if (!IsStr(dllName) || dllName.isEmpty())
-		return true;
-
-	return CustomCodePage.installUtf8CharBridge(`${_}.Bridge`, dllName);
-};
