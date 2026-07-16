@@ -1,4 +1,4 @@
-﻿# rAthena AI Context — Banquet of Heroes
+# rAthena AI Context — Banquet of Heroes
 
 ## Server
 - **rAthena branch**: BanquetOfHeroes (custom fork)
@@ -1172,89 +1172,32 @@ Final confirmed working state after item-color black/shadow suppression:
 - Active config is `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\ddraw_proxy.ini` with `PacketSource=shared` and `DebugLog=0`.
 - Obsolete game-folder artifacts were removed: `boh.before-*`, `boh.pending-*`, `boh_extname_visual.before-*`, `boh_swap_*`, and related temporary BOH visual logs.
 
-## Skill Tree FPS Fix — UIDisplayCharacter Rendering (2026-06-05)
+## Skill Tree FPS Fix — repaint-on-change gate (2026-07-17)
 
-**Problem**: The ALT+S skill tree window (`UINewSkillListWnd`) renders a 3D character model every frame, causing significant FPS lag.
+**Validated source**: [Bourgeon Skill Tree RE at `a96c403`](https://github.com/Stingor/Bourgeon/blob/a96c4037c1fe227281400084b1f34f2695441c29/docs/skill_tree_re.md) and its [implemented gate](https://github.com/Stingor/Bourgeon/blob/a96c4037c1fe227281400084b1f34f2695441c29/src/plugins/skill_tree_tweaks.cc).
 
-**Root Cause**: `UINewSkillListWnd::OnCreate` creates two `UIDisplayCharacter` child widgets via factory functions:
-- `0x00894DF0` (called at VA `0x00976E5B`)
-- `0x00894FA0` (called at VA `0x00976E86`)
+**Measured root cause**: `UINewSkillListWnd::DrawContent` (`0x00977E80`) rebuilds the entire immediate-mode Skill Tree render-node list every frame. On a full modern tab, external live timing measured approximately 9–15 ms per call. The grid loop (`0x00975730`) repeatedly creates texture keys, looks up cached textures, and calls `GetSkillInfoAt` (`0x00976230`), which linearly re-walks and copies a skill node for each node already being iterated. That makes the hot path O(n²) plus repeated allocation/cache-lock churn.
 
-These children draw via `UIDisplayCharacter::Draw` at `0x007F2790` (vtable index 20), which sets up a camera and renders the full actor each frame.
+**Local 2025-07-16 EXE proof** (`SHA-256 EAD7C0A316BC6C27705A5A6876DAF5093ABEC31677F3C1AF7525C1709B201BFF`):
 
-**Prepared Fixes**:
+| Evidence | VA / bytes | Meaning |
+|---|---|---|
+| `UINewSkillListWnd` vtable slot `+0x50` | `0x0103F6B0 = 0x00977E80` | The sole absolute reference to DrawContent; the gate can be scoped to this one class. |
+| Render-node clear | `0x00977EBE: E8 6D 4C 0A 00` | Returning before the original function preserves the previous frame's nodes. |
+| Compact/list body | call `0x009750D0` at `0x00978160` | Both view modes are handled by the same DrawContent. |
+| Modern/grid body | call `0x00975730` at `0x00978280` | The measured expensive grid path. |
+| Avatar body | call `0x00974700` at `0x00978287` | Preserved; external live removal recovered no FPS. |
+| Dirty clear | `0x0097828C: C6 86 71 02 00 00 00` | The original paint consumes `this+0x271`. |
+| Dirty producers | `0x009785C1`, `0x009786D2`, `0x009787D6`, `0x00978E9A`, `0x0097950E` | Skill action, hover, scroll/relayout, and view-toggle paths request a repaint. |
+| Skill-point source | `0x015FB9FC` | Read by the native skill rebuild/render path and watched by the gate. |
 
-| Fix | Scope | Method | Address(es) |
-|-----|-------|--------|-------------|
-| **Global** | ALL UI windows | Patch `UIDisplayCharacter::Draw` → `ret` | `0x007F2790` |
-| **Skill Tree RealDraw integrity** | ALT+S Skill Tree | Preserve the RTTI/vtable-verified per-frame draw routine; restore its first byte from experimental `C3` to original `55` | `0x00977E80` |
-| **Factory AddChild preservation** | UI child-control factories | Keep parent `AddChild` calls intact; restore old NOPs so title-bar close buttons remain visible | `0x00894E94` and `0x00895069` |
-| **Static Skill Tree avatar frame** | Skill Tree paperdoll/avatar | Preserve setup/timer calls, then force computed ACT frame to 0 | `0x00974BC9` |
-| **Skill Tree level-text cleanup** | ALT+S Skill Tree | Restore the original branch if an older experimental level-text skip is present; the RealDraw bypass supersedes this path | `0x00975C7E` |
+**Implemented fix**: `Scripts/Patches/ReduceExpensiveUIRender.qjs` allocates a 36-byte snapshot and a static x86 code cave, then changes only vtable slot `0x0103F6B0`. The wrapper calls the untouched original DrawContent on first use or when any render input changes: object identity, native dirty byte, width, height, hovered skill, active tab, scroll row, point availability, or current skill-point level. An unchanged frame returns before the native render-node clear, so retained geometry stays visible without rebuilding the grid.
 
-**WARP Patch Script**:
-- `WARP0716-main/Scripts/Patches/ReduceExpensiveUIRender.qjs` — consolidated production patch for UI FPS loss. It applies the global actor-preview draw skip while preserving `UINewSkillListWnd::RealDraw` at its verified entry and retaining the earlier safe cleanup/restoration logic. It is a static EXE patch only: no runtime hooks and no recv interception.
+The wrapper is a build-time EXE patch, not a DLL/runtime patcher. It preserves nonvolatile `ESI`, calls the original `__thiscall` with `ECX=this`, snapshots post-paint state, and fails closed during patching unless the verified vtable and DrawContent contract bytes match.
 
-**Archived Targeted Patch** (not registered in WARP UI due to `validate()` lowercase hex bug, kept in `Scripts/Patches/` for reference):
-- `WARP0716-main/Scripts/Patches/DisableSkillTreeCharTargeted.qjs` — NOPs out UIDisplayCharacter creation in UINewSkillListWnd::OnCreate. Kept for future reference only. Do not enable this approach for 2025-07-16: `OnCreate` stores the returned `EAX` values at `[this+0xBC]`, `[this+0xC0]`, and `[this+0xC4]`, then calls through those slots during setup. Directly NOPing the calls can leave stale return values and crash on ALT+S/character select. The old `validate()` also compared `Exe.GetHex()` output without normalizing case/spacing.
+**Removed misdiagnosis**: the animated class avatar is real per-frame work but was measured as negligible. The production patch now restores the original `UIDisplayCharacter::Draw` prologue and avatar-frame calculation rather than disabling previews globally or forcing frame zero. It also retains the prior recovery guards for experimental RealDraw `ret`, factory `AddChild` NOPs, and level-text skips.
 
-**Standalone Python Applier**:
-- `WARP0716-main/apply_skill_tree_fix.py` — applies either fix directly without WARP
-- `WARP0716-main/test_skill_tree_fix2.py` — patches a test copy for verification
-
-**Byte Verification** (2025-07-16 client):
-- `0x007F2790`: `55 8b ec 6a ff 68 10 14 e9 00` → patched to `C3`
-- `0x00977E80`: keep `55 8b ec 6a ff 68 bd a3 ec 00 64 a1 00 00 00 00 50 83 ec 74`; if an experimental output starts with `c3 8b ec ...`, restore the first byte to `55`. RTTI for `UINewSkillListWnd` points to vtable `0x0103F660`, whose slot 20 is `0x00977E80`.
-- `0x00976E5B`: stays `e8 90 df f1 ff` (do not NOP direct creation call)
-- `0x00976E86`: stays `e8 15 e1 f1 ff` (do not NOP direct creation call)
-- `0x00894E94`: keep `56 8b cf e8 e4 68 18 00`; if old output contains `90 90 90 90 90 90 90 90`, restore the original `AddChild` call so UI child controls remain attached
-- `0x00895069`: keep `56 8b cb e8 0f 67 18 00`; if old output contains `90 90 90 90 90 90 90 90`, restore the original `AddChild` call so UI child controls remain attached
-- `0x00974B89`: stays `e8 22 ab d9 ff` (do not skip; this call balances the preceding `push 0x17`)
-- `0x00974BC9`: `8b f0` → patched to `33 f6` (force frame index 0 without changing stack flow)
-- `0x00975C7E`: keep `83 bd 78 ff ff ff 00 0f 84 7b 02 00 00`; if old output contains `e9 83 02 00 00 90 90 90 90 90 90 90 90`, restore the original branch so Skill Tree level-number text remains visible.
-
-**Recommendation**: Use `ReduceExpensiveUIRender` as the single production FPS patch for this client.
-
-**Recovery note**: Rebuild from the clean source EXE after removing the `0x00977E80` bypass. Do not use the previously patched EXE as WARP input because its `.epi` state can replay the old `C3`. For an already-deployed affected binary, verify the full `c3 8b ec 6a ff 68 bd a3 ec 00 64 a1 00 00 00 00 50 83 ec 74` sequence at file offset `0x577280`, back it up, and restore only the first byte to `55`.
-
-**Important**: The global draw patch eliminates the **expensive 3D mini-render-pass** from `UIDisplayCharacter`. Factory `AddChild` calls must stay intact because they can also carry normal UI child controls such as title-bar close buttons. `0x00977E80` is the complete `UINewSkillListWnd::RealDraw`, not a safe isolated over-render block: replacing its entry with `ret` removes the Skill Tree background, icons, names, and level text, leaving only separately managed child controls. The production patch therefore preserves this function and repairs the experimental `C3` entry if encountered.
-
-### Why the Main Character Doesn't Lag (But the Skill Tree Avatar Does)
-
-The main in-game character and the UI avatar use the **same polygon mesh and textures**, yet only the UI version causes FPS drops. The difference is in the **render pass architecture**:
-
-**Main Character (World Scene)**
-- Rendered as part of the single world-scene batch
-- Same camera, same framebuffer, same viewport as everything else
-- The engine walks the scene graph once and draws all entities together
-- No extra framebuffer switches, viewport changes, or camera recalculations
-
-**UI Character Widget (`UIDisplayCharacter::Draw` at `0x007F2790`)**
-- Each instance performs its own **mini render pass** per frame
-- Disassembly reveals the per-instance overhead:
-  1. **Save state** — pushes render state, camera matrices (CPU overhead)
-  2. **Acquire context** — calls `0xC43230` twice, resource locks (synchronization)
-  3. **Get render device** — calls `0xA75340` through global `0x1213338` (indirection)
-  4. **Set viewport** — virtual call `[edx+0xDC]` (**GPU state change**)
-  5. **Set camera** — recalculates matrices for the small UI window rectangle
-  6. **Render actor** — calls `0xD999D0` with renderer context `0x15FA3C0` (full draw)
-  7. **End scene** — virtual calls `[eax+0x94]`, `[eax+0x98]` (**GPU pipeline flush**)
-  8. **Restore state** — pop everything back (more CPU overhead)
-  9. **Composite** — UI system blends the result into the window (texture read)
-
-**The Skill Tree Creates TWO Instances**
-- `UINewSkillListWnd::OnCreate` instantiates **two** `UIDisplayCharacter` children
-- That means **two extra viewport/camera/framebuffer switches every frame**
-- On RO's older engine, framebuffer switches are especially expensive because the entire GPU pipeline must flush and sync
-
-**Per-Frame Render Pass Comparison**
-
-| Scenario | Render passes |
-|----------|---------------|
-| Walking in town (no UI open) | 1 world pass |
-| ALT+S skill tree open | 1 world pass + **2 UI character passes** |
-
-The main character is "free" because it's already in the world batch. The UI avatars are expensive because each one adds a **separate mini render target** with its own camera, viewport, and composite step. This is why the targeted fix (preventing creation) is optimal — it eliminates the extra passes entirely without touching the main renderer.
+**Runtime acceptance gate**: open a full modern Skill Tree tab, confirm idle FPS returns to the client cap, then verify hover, wheel scroll, tab changes, view toggle, level-up/reserved points, resize, close/reopen, avatar-at-interaction, icons, names, and level labels all repaint correctly. This live render/FPS check remains required because static analysis proves control flow and state coverage, not presentation timing on the target machine.
 
 ## 2026-06-07 FPS/Ping Overlay — Working Architecture
 

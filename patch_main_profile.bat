@@ -37,9 +37,7 @@ endlocal
 exit /b 0
 
 :audit_bridges
-for %%D in (boh_rune.dll boh_pincode_ui.dll) do (
-    echo [bridge-iat] %%D
-    %* tools\fix_custom_bridge_iats.py "%TARGET%" --dll "%%D" --write
-    if errorlevel 1 exit /b 1
-)
+echo [bridge-iat] bohcustoms.dll
+%* tools\fix_custom_bridge_iats.py "%TARGET%" --dll "bohcustoms.dll" --write
+if errorlevel 1 exit /b 1
 exit /b 0
