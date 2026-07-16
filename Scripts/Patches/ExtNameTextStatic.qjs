@@ -15,6 +15,7 @@ ExtNameTextStatic = {
 	BuildDate: 20250716,
 	FeatureNames: 1,
 	FeatureColors: 2,
+	FeatureEmoji: 4,
 	FrameCaller: 0x00C7642D,
 	FrameCallerPrefix: "8B CE E8",
 	TextOutDirect: 0x005476C7,
@@ -559,7 +560,7 @@ ExtNameTextStatic.buildTextOut = function(
 )
 {
 	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18, 0x53, 0x56, 0x57);
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x1C, 0x53, 0x56, 0x57);
 	a.emit(0xC7, 0x45, 0xF4); a.dword(0);       // didColor
 	a.emit(0xC7, 0x45, 0xF8); a.dword(0);       // matched map entry
 	a.emit(0x8B, 0x45, 0x14, 0x89, 0x45, 0xEC);
@@ -619,6 +620,19 @@ ExtNameTextStatic.buildTextOut = function(
 	a.emit(0x48, 0x89, 0x45, 0xE8);
 	a.emit(0xC7, 0x45, 0xEC); a.dword(wideScratchVir);
 	a.label("draw");
+	if (apis.emojiDraw)
+	{
+		// emojiDraw is embedded only while FluentEmoji is selected. Do not gate
+		// it on the shared feature word: cross-patch write ownership can replay
+		// an older names/colors value into that allocation in the final EXE.
+		a.emit(0x8D, 0x45, 0xE4, 0x50, 0xFF, 0x75, 0xE8, 0xFF, 0x75, 0xEC);
+		a.emit(0xFF, 0x75, 0x10, 0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
+		a.call(apis.emojiDraw);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, "draw_normal");
+		a.emit(0x8B, 0x45, 0xE4, 0x89, 0x45, 0xF8);
+		a.jmp("restore_color");
+	}
 	a.label("draw_normal");
 	a.emit(0xFF, 0x75, 0xE8, 0xFF, 0x75, 0xEC, 0xFF, 0x75, 0x10,
 		0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
@@ -664,6 +678,18 @@ ExtNameTextStatic.buildExtent = function(
 	a.emit(0x48, 0x89, 0x45, 0xF8);
 	a.emit(0xC7, 0x45, 0xFC); a.dword(wideScratchVir);
 	a.label("measure");
+	if (apis.emojiMeasure)
+	{
+		// The emitted call itself is the durable enable state. See buildTextOut.
+		a.emit(0xFF, 0x75, 0x14, 0xFF, 0x75, 0xF8, 0xFF, 0x75, 0xFC,
+			0xFF, 0x75, 0x08);
+		a.call(apis.emojiMeasure);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, "measure_normal");
+		a.emit(0xB8); a.dword(1);
+		a.jmp("done");
+	}
+	a.label("measure_normal");
 	a.emit(0xFF, 0x75, 0x14, 0xFF, 0x75, 0xF8, 0xFF, 0x75, 0xFC,
 		0xFF, 0x75, 0x08);
 	ExtNameTextStatic.callIat(a, apis.extent);
@@ -688,6 +714,12 @@ ExtNameTextStatic.findApis = function(requireColor)
 ExtNameTextStatic.patchTextSurfaces = function(state, requireColor)
 {
 	const apis = ExtNameTextStatic.findApis(requireColor);
+	const emoji = CACHE.get("FluentEmojiStatic.State");
+	if ((state.features & ExtNameTextStatic.FeatureEmoji) !== 0 && emoji)
+	{
+		apis.emojiDraw = emoji.drawVir;
+		apis.emojiMeasure = emoji.measureVir;
+	}
 	const findWide = ExtNameTextStatic.allocateCode(
 		ExtNameTextStatic.buildFindWide(
 			state.lookupVir,
@@ -764,8 +796,11 @@ ExtNameTextStatic.patchFrameCaller = function(callerPhy, bridgeVir)
 ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 {
 	let state = CACHE.get("ExtNameTextStatic.State");
-	if (state && Number.isInteger(state.stateVir))
+	if (state && Number.isInteger(state.stateVir) && !state.minimal)
 		return state;
+	const previousFeatures = state && Number.isInteger(state.features)
+		? state.features
+		: 0;
 
 	const callerPhy = ExtNameStaticAsm.assertCode(
 		"frame caller prefix",
@@ -851,8 +886,12 @@ ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 		previousTarget,
 		callerPhy,
 		extnVir,
-		features: 0
+		features: previousFeatures
 	};
+	Exe.SetUint32(
+		statePhy + ExtNameTextStatic.StateFeatures,
+		previousFeatures
+	);
 	CACHE.put("ExtNameTextStatic.State", state);
 	ExtNameTextStatic.patchTextSurfaces(state, false);
 	CACHE.put("ExtNameTextStatic.State", state);
@@ -874,6 +913,71 @@ ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 		});
 	}
 	return state;
+};
+
+ExtNameTextStatic.buildMissingFindWide = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x33, 0xC0, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.enableEmoji = function(_, renderer)
+{
+	if (Exe.BuildDate !== ExtNameTextStatic.BuildDate)
+		throw Error("ExtNameTextStatic supports only the 2025-07-16 client");
+	if (!renderer || !Number.isInteger(renderer.drawVir) ||
+		!Number.isInteger(renderer.measureVir))
+		throw Error("ExtNameTextStatic: emoji renderer state unavailable");
+
+	let state = CACHE.get("ExtNameTextStatic.State");
+	if (!state || !Number.isInteger(state.stateVir))
+	{
+		const [statePhy, stateVir] = Exe.Allocate(ExtNameTextStatic.StateSize, 4);
+		ExtNameTextStatic.zeroBlock(statePhy, ExtNameTextStatic.StateSize);
+		const [wideScratchPhy, wideScratchVir] = Exe.Allocate(
+			ExtNameTextStatic.ValueCapacity * 2,
+			0x10
+		);
+		ExtNameTextStatic.zeroBlock(
+			wideScratchPhy,
+			ExtNameTextStatic.ValueCapacity * 2
+		);
+		const missing = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildMissingFindWide()
+		);
+		state = {
+			statePhy,
+			stateVir,
+			wideScratchVir,
+			findWideVir: missing.virAddr,
+			features: 0,
+			minimal: true
+		};
+	}
+	state.features |= ExtNameTextStatic.FeatureEmoji;
+	Exe.SetUint32(
+		state.statePhy + ExtNameTextStatic.StateFeatures,
+		state.features
+	);
+	CACHE.put("ExtNameTextStatic.State", state);
+	ExtNameTextStatic.patchTextSurfaces(
+		state,
+		(state.features & ExtNameTextStatic.FeatureColors) !== 0
+	);
+	CACHE.put("ExtNameTextStatic.State", state);
+
+	if (typeof ItemColorStatic !== "undefined" &&
+		typeof ItemColorStatic.patchTextSurfaces === "function")
+	{
+		const itemState = CACHE.get("ItemColorStatic.State");
+		if (itemState && Number.isInteger(itemState.stateVir))
+		{
+			ItemColorStatic.patchTextSurfaces(itemState);
+			CACHE.put("ItemColorStatic.State", itemState);
+		}
+	}
+	return true;
 };
 
 ExtNameTextStatic.enable = function(_, feature)

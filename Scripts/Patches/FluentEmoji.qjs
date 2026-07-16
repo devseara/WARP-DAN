@@ -1,0 +1,1140 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-15                                             *
+*   Last Modified : 2026-07-16                                             *
+*                                                                          *
+*   Description   : Replaces literal emoji-token text in the 2025-07-16   *
+*                   client with manifest-driven Fluent PNGs. EXE-resident *
+*                   TextOutW/measure caves render :shortcode:, compact    *
+*                   @shortcode@ and raw Unicode tokens through the        *
+*                   client's GDI+ dependency through Ragexe's static     *
+*                   text bridges. No custom DLL is required.             *
+*                                                                          *
+\**************************************************************************/
+
+FluentEmojiStatic = {
+	BuildDate: 20250716,
+	ManifestPath: "Images/BohEmoji/fluent/manifest.tsv",
+	AssetPath: "Images/BohEmoji/fluent",
+	TargetPath: "BohEmoji/fluent",
+	HashLoadNumerator: 2,
+	EntrySize: 16,
+	EntryHash: 0,
+	EntryToken: 4,
+	EntryFile: 8,
+	EntryFlags: 12,
+	EntryCompact: 0x00010000,
+	MaxProbe: 64,
+	CacheCapacity: 1024,
+	PathCapacity: 512,
+	IconSize: 24,
+	CompactMin: 10,
+	CompactMax: 14,
+	CompactFallback: 12,
+	TextCapacity: 512,
+	StateInit: 0,
+	StateToken: 4,
+	StateLoadImage: 8,
+	StateCreateGraphics: 12,
+	StateSetInterpolation: 16,
+	StateDrawImage: 20,
+	StateDeleteGraphics: 24,
+	StateDisposeImage: 28,
+	StateGetTextAlign: 32,
+	StateSetTextAlign: 36,
+	StateSaveDC: 40,
+	StateRestoreDC: 44,
+	StateGetTextMetrics: 48,
+	StateGetCurrentPosition: 52,
+	StateMoveTo: 56,
+	StatePrefixLength: 60,
+	StateSize: 64,
+	Iat: {
+		textOut: 0x00FC10DC,
+		extent: 0x00FC112C,
+		getModuleHandleW: 0x00FC1344,
+		getProcAddress: 0x00FC1390,
+		getModuleFileNameW: 0x00FC13F4,
+		lstrlenW: 0x00FC13DC,
+		gdiplusStartup: 0x00FC1C40
+	}
+};
+
+FluentEmojiStatic.put32 = function(bytes, offset, value)
+{
+	const v = value >>> 0;
+	bytes[offset] = v & 0xFF;
+	bytes[offset + 1] = (v >>> 8) & 0xFF;
+	bytes[offset + 2] = (v >>> 16) & 0xFF;
+	bytes[offset + 3] = (v >>> 24) & 0xFF;
+};
+
+FluentEmojiStatic.allocateBytes = function(bytes, alignment = 1)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(bytes.length, alignment);
+	const chunkSize = 16384;
+	for (let offset = 0; offset < bytes.length; offset += chunkSize)
+	{
+		const chunk = bytes.slice(offset, offset + chunkSize);
+		Exe.SetHex(phyAddr + offset, ExtNameStaticAsm.bytesToHex(chunk));
+	}
+	return {phyAddr, virAddr, size: bytes.length};
+};
+
+FluentEmojiStatic.allocateWide = function(value)
+{
+	const bytes = [];
+	for (let i = 0; i < value.length; ++i)
+	{
+		const code = value.charCodeAt(i);
+		bytes.push(code & 0xFF, (code >>> 8) & 0xFF);
+	}
+	bytes.push(0, 0);
+	return FluentEmojiStatic.allocateBytes(bytes, 2);
+};
+
+FluentEmojiStatic.callIat = function(a, iat)
+{
+	a.emit(0xFF, 0x15); a.dword(iat);
+};
+
+FluentEmojiStatic.readUtf8 = function(path)
+{
+	const handle = new BinFile(path, 'r');
+	if (!handle.Valid)
+		throw Error(`FluentEmoji: unable to read ${path}`);
+	const hex = handle.ReadHex();
+	handle.Close();
+	const pairs = hex.match(/[0-9A-Fa-f]{2}/g) || [];
+	const bytes = pairs.map(value => parseInt(value, 16));
+	const units = [];
+	let result = "";
+	const flush = function()
+	{
+		if (units.length === 0)
+			return;
+		result += String.fromCharCode(...units);
+		units.length = 0;
+	};
+	for (let i = 0; i < bytes.length; )
+	{
+		let code = bytes[i++];
+		if (code < 0x80)
+		{
+			units.push(code);
+		}
+		else if ((code & 0xE0) === 0xC0 && i < bytes.length)
+		{
+			code = ((code & 0x1F) << 6) | (bytes[i++] & 0x3F);
+			units.push(code);
+		}
+		else if ((code & 0xF0) === 0xE0 && i + 1 < bytes.length)
+		{
+			code = ((code & 0x0F) << 12) |
+				((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F);
+			units.push(code);
+		}
+		else if ((code & 0xF8) === 0xF0 && i + 2 < bytes.length)
+		{
+			code = ((code & 0x07) << 18) |
+				((bytes[i++] & 0x3F) << 12) |
+				((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F);
+			code -= 0x10000;
+			units.push(0xD800 | ((code >>> 10) & 0x3FF));
+			units.push(0xDC00 | (code & 0x3FF));
+		}
+		else
+		{
+			units.push(0xFFFD);
+		}
+		if (units.length >= 2048)
+			flush();
+	}
+	flush();
+	if (result.charCodeAt(0) === 0xFEFF)
+		result = result.substring(1);
+	return result;
+};
+
+FluentEmojiStatic.hashWide = function(value)
+{
+	let hash = 0x811C9DC5;
+	for (let i = 0; i < value.length; ++i)
+		hash = Math.imul((hash ^ value.charCodeAt(i)) >>> 0, 0x01000193) >>> 0;
+	return hash === 0 ? 1 : hash;
+};
+
+FluentEmojiStatic.loadManifest = function()
+{
+	if (FluentEmojiStatic.Manifest)
+		return FluentEmojiStatic.Manifest;
+
+	const text = FluentEmojiStatic.readUtf8(
+		Warp.Path + FluentEmojiStatic.ManifestPath
+	);
+	const seen = new Map();
+	const specs = [];
+	const files = new Set();
+	const compactRawFiles = new Set([
+		"check_mark.png",
+		"check_mark_button.png",
+		"cross_mark.png",
+		"cross_mark_button.png"
+	]);
+	const add = function(token, file, compact)
+	{
+		if (!token || !file || seen.has(token))
+			return;
+		if (!/^[A-Za-z0-9_.-]+$/.test(file))
+			return;
+		seen.set(token, true);
+		files.add(file);
+		specs.push({token, file, compact: !!compact});
+	};
+
+	for (const line of text.split(/\r?\n/))
+	{
+		if (!line || line[0] === '#')
+			continue;
+		const tab = line.indexOf('\t');
+		if (tab <= 0 || tab === line.length - 1)
+			continue;
+		const token = line.substring(0, tab);
+		const file = line.substring(tab + 1).trim();
+		add(token, file,
+			token[0] === '@' || (token[0] !== ':' && compactRawFiles.has(file))
+		);
+		if (token.length > 2 && token[0] === ':' && token[token.length - 1] === ':')
+			add('@' + token.substring(1, token.length - 1) + '@', file, true);
+	}
+
+	const fallback = [
+		[":heart:", "red_heart.png"], ["\u2764\uFE0F", "red_heart.png"], ["\u2764", "red_heart.png"],
+		[":warning:", "warning.png"], [":warn:", "warning.png"], ["\u26A0\uFE0F", "warning.png"], ["\u26A0", "warning.png"],
+		[":check:", "check_mark_button.png"], [":ok:", "check_mark_button.png"], ["\u2705", "check_mark_button.png"],
+		[":x:", "cross_mark.png"], [":cross:", "cross_mark.png"], ["\u274C", "cross_mark.png"],
+		[":coin:", "coin.png"], ["\uD83E\uDE99", "coin.png"],
+		[":money:", "money_bag.png"], [":zeny:", "money_bag.png"], ["\uD83D\uDCB0", "money_bag.png"],
+		[":gem:", "gem_stone.png"], ["\uD83D\uDC8E", "gem_stone.png"],
+		[":shield:", "shield.png"], ["\uD83D\uDEE1\uFE0F", "shield.png"], ["\uD83D\uDEE1", "shield.png"],
+		[":swords:", "crossed_swords.png"], [":sword:", "crossed_swords.png"], ["\u2694\uFE0F", "crossed_swords.png"], ["\u2694", "crossed_swords.png"],
+		[":smile:", "smiling_face_with_smiling_eyes.png"], ["\uD83D\uDE0A", "smiling_face_with_smiling_eyes.png"],
+		[":fire:", "fire.png"], ["\uD83D\uDD25", "fire.png"],
+		[":sparkles:", "sparkles.png"], ["\u2728", "sparkles.png"],
+		[":star:", "star.png"], ["\u2B50", "star.png"],
+		[":crown:", "crown.png"], ["\uD83D\uDC51", "crown.png"]
+	];
+	for (const item of fallback)
+	{
+		add(item[0], item[1], false);
+		if (item[0][0] === ':' && item[0][item[0].length - 1] === ':')
+			add('@' + item[0].substring(1, item[0].length - 1) + '@', item[1], true);
+	}
+
+	if (specs.length === 0)
+		throw Error("FluentEmoji: manifest contains no usable entries");
+	FluentEmojiStatic.Manifest = {specs, files: Array.from(files).sort()};
+	return FluentEmojiStatic.Manifest;
+};
+
+FluentEmojiStatic.buildTables = function()
+{
+	const manifest = FluentEmojiStatic.loadManifest();
+	const tokenBytes = [];
+	const fileBytes = [];
+	const fileOffsets = new Map();
+	const appendWide = function(bytes, value)
+	{
+		const offset = bytes.length;
+		for (let i = 0; i < value.length; ++i)
+		{
+			const code = value.charCodeAt(i);
+			bytes.push(code & 0xFF, (code >>> 8) & 0xFF);
+		}
+		bytes.push(0, 0);
+		return offset;
+	};
+	for (const file of manifest.files)
+		fileOffsets.set(file, appendWide(fileBytes, file));
+	for (const spec of manifest.specs)
+		spec.tokenOffset = appendWide(tokenBytes, spec.token);
+
+	const tokenPool = FluentEmojiStatic.allocateBytes(tokenBytes, 2);
+	const filePool = FluentEmojiStatic.allocateBytes(fileBytes, 2);
+	let capacity = 1;
+	while (capacity < manifest.specs.length * FluentEmojiStatic.HashLoadNumerator)
+		capacity <<= 1;
+	const tableBytes = new Array(capacity * FluentEmojiStatic.EntrySize).fill(0);
+	const startLengths = new Array(65536).fill(0);
+	let maxRawLength = 1;
+	let maxTokenLength = 3;
+	for (const spec of manifest.specs)
+	{
+		const hash = FluentEmojiStatic.hashWide(spec.token);
+		let slot = hash & (capacity - 1);
+		while (true)
+		{
+			const offset = slot * FluentEmojiStatic.EntrySize;
+			if (tableBytes[offset] === 0 && tableBytes[offset + 1] === 0 &&
+				tableBytes[offset + 2] === 0 && tableBytes[offset + 3] === 0)
+			{
+				FluentEmojiStatic.put32(tableBytes, offset + FluentEmojiStatic.EntryHash, hash);
+				FluentEmojiStatic.put32(tableBytes, offset + FluentEmojiStatic.EntryToken,
+					tokenPool.virAddr + spec.tokenOffset);
+				FluentEmojiStatic.put32(tableBytes, offset + FluentEmojiStatic.EntryFile,
+					filePool.virAddr + fileOffsets.get(spec.file));
+				FluentEmojiStatic.put32(tableBytes, offset + FluentEmojiStatic.EntryFlags,
+					spec.token.length | (spec.compact ? FluentEmojiStatic.EntryCompact : 0));
+				break;
+			}
+			slot = (slot + 1) & (capacity - 1);
+		}
+		if (spec.token[0] === ':' || spec.token[0] === '@')
+			maxTokenLength = Math.max(maxTokenLength, spec.token.length);
+		else
+		{
+			maxRawLength = Math.max(maxRawLength, spec.token.length);
+			const code = spec.token.charCodeAt(0);
+			startLengths[code] = Math.max(
+				startLengths[code],
+				spec.token.length
+			);
+		}
+	}
+	const table = FluentEmojiStatic.allocateBytes(tableBytes, 0x10);
+	const rawStarts = FluentEmojiStatic.allocateBytes(startLengths, 4);
+	return {
+		tableVir: table.virAddr,
+		tableCapacity: capacity,
+		startLengthsVir: rawStarts.virAddr,
+		maxRawLength,
+		maxTokenLength,
+		specCount: manifest.specs.length,
+		fileCount: manifest.files.length,
+		tableBytes: table.size,
+		stringBytes: tokenPool.size + filePool.size
+	};
+};
+
+FluentEmojiStatic.buildLookup = function(tableVir, tableCapacity)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x4D, 0x0C);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "missing");
+	a.emit(0x85, 0xC9);
+	a.jcc(0x8E, "missing");
+	a.emit(0x89, 0x4D, 0xF0);
+	a.emit(0xB8); a.dword(0x811C9DC5);
+	a.emit(0x33, 0xD2);
+	a.label("hash_loop");
+	a.emit(0x0F, 0xB7, 0x1C, 0x56, 0x33, 0xC3, 0x69, 0xC0); a.dword(0x01000193);
+	a.emit(0x42, 0x3B, 0xD1);
+	a.jcc(0x82, "hash_loop");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "hash_ready");
+	a.emit(0x40);
+	a.label("hash_ready");
+	a.emit(0x89, 0x45, 0xFC, 0x25); a.dword(tableCapacity - 1);
+	a.emit(0x89, 0x45, 0xF8, 0xC7, 0x45, 0xF4); a.dword(FluentEmojiStatic.MaxProbe);
+	a.label("probe");
+	a.emit(0x8B, 0x45, 0xF8, 0xC1, 0xE0, 0x04, 0x05); a.dword(tableVir);
+	a.emit(0x89, 0x45, 0xEC, 0x8B, 0x38, 0x85, 0xFF);
+	a.jcc(0x84, "missing");
+	a.emit(0x3B, 0x7D, 0xFC);
+	a.jcc(0x85, "next");
+	a.emit(0x0F, 0xB7, 0x78, FluentEmojiStatic.EntryFlags, 0x3B, 0x7D, 0xF0);
+	a.jcc(0x85, "next");
+	a.emit(0x8B, 0x78, FluentEmojiStatic.EntryToken, 0x8B, 0xCE, 0x8B, 0xD1);
+	a.emit(0x8B, 0x4D, 0xF0);
+	a.label("compare");
+	a.emit(0x0F, 0xB7, 0x02, 0x66, 0x3B, 0x07);
+	a.jcc(0x85, "next");
+	a.emit(0x83, 0xC2, 0x02, 0x83, 0xC7, 0x02, 0x49);
+	a.jcc(0x85, "compare");
+	a.emit(0x8B, 0x45, 0xEC);
+	a.jmp("done");
+	a.label("next");
+	a.emit(0xFF, 0x45, 0xF8, 0x81, 0x65, 0xF8); a.dword(tableCapacity - 1);
+	a.emit(0xFF, 0x4D, 0xF4);
+	a.jcc(0x85, "probe");
+	a.label("missing");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+FluentEmojiStatic.buildMatch = function(lookupVir, startLengthsVir, maxTokenLength)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x7D, 0x0C);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "missing");
+	a.emit(0x83, 0xFF, 0x01);
+	a.jcc(0x8C, "missing");
+	a.emit(0x0F, 0xB7, 0x06, 0x66, 0x83, 0xF8, 0x3A);
+	a.jcc(0x84, "delimited");
+	a.emit(0x66, 0x83, 0xF8, 0x40);
+	a.jcc(0x84, "delimited");
+	a.emit(0x0F, 0xB6, 0x88); a.dword(startLengthsVir);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "missing");
+	a.emit(0x3B, 0xCF);
+	a.jcc(0x86, "raw_length_ready");
+	a.emit(0x8B, 0xCF);
+	a.label("raw_length_ready");
+	a.emit(0x89, 0x4D, 0xFC);
+	a.label("raw_try");
+	a.emit(0xFF, 0x75, 0xFC, 0x56);
+	a.call(lookupVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "done");
+	a.emit(0xFF, 0x4D, 0xFC);
+	a.jcc(0x85, "raw_try");
+	a.jmp("missing");
+
+	a.label("delimited");
+	a.emit(0x83, 0xFF, 0x03);
+	a.jcc(0x8C, "missing");
+	a.emit(0x89, 0x45, 0xF8, 0xB9); a.dword(1);
+	a.label("delimiter_scan");
+	a.emit(0x3B, 0xCF);
+	a.jcc(0x83, "missing");
+	a.emit(0x81, 0xF9); a.dword(maxTokenLength);
+	a.jcc(0x83, "missing");
+	a.emit(0x0F, 0xB7, 0x14, 0x4E, 0x3B, 0x55, 0xF8);
+	a.jcc(0x84, "delimiter_found");
+	a.emit(0x83, 0xFA, 0x61);
+	a.jcc(0x82, "delimiter_digit");
+	a.emit(0x83, 0xFA, 0x7A);
+	a.jcc(0x86, "delimiter_next");
+	a.label("delimiter_digit");
+	a.emit(0x83, 0xFA, 0x30);
+	a.jcc(0x82, "delimiter_underscore");
+	a.emit(0x83, 0xFA, 0x39);
+	a.jcc(0x86, "delimiter_next");
+	a.label("delimiter_underscore");
+	a.emit(0x83, 0xFA, 0x5F);
+	a.jcc(0x85, "missing");
+	a.label("delimiter_next");
+	a.emit(0x41);
+	a.jmp("delimiter_scan");
+	a.label("delimiter_found");
+	a.emit(0x83, 0xF9, 0x02);
+	a.jcc(0x82, "missing");
+	a.emit(0x41, 0x51, 0x56);
+	a.call(lookupVir);
+	a.jmp("done");
+	a.label("missing");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+FluentEmojiStatic.buildInit = function(stateVir, pathVir, startupVir, strings)
+{
+	const a = ExtNameStaticAsm.asm();
+	const resolve = function(moduleOffset, nameVir, targetOffset)
+	{
+		a.emit(0x68); a.dword(nameVir);
+		a.emit(0xFF, 0x75, moduleOffset);
+		FluentEmojiStatic.callIat(a, FluentEmojiStatic.Iat.getProcAddress);
+		a.emit(0xA3); a.dword(stateVir + targetOffset);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, "failed");
+	};
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x53, 0x56, 0x57);
+	a.emit(0xA1); a.dword(stateVir + FluentEmojiStatic.StateInit);
+	a.emit(0x83, 0xF8, 0x01);
+	a.jcc(0x84, "ready");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8C, "failed_return");
+	a.emit(0xC7, 0x05); a.dword(stateVir + FluentEmojiStatic.StateInit); a.dword(0xFFFFFFFF);
+	a.emit(0x68); a.dword(FluentEmojiStatic.PathCapacity);
+	a.emit(0x68); a.dword(pathVir);
+	a.emit(0x6A, 0x00);
+	FluentEmojiStatic.callIat(a, FluentEmojiStatic.Iat.getModuleFileNameW);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "failed");
+	a.emit(0x3D); a.dword(FluentEmojiStatic.PathCapacity - 1);
+	a.jcc(0x83, "failed");
+	a.emit(0x8B, 0xC8);
+	a.label("find_slash");
+	a.emit(0x49);
+	a.jcc(0x88, "failed");
+	a.emit(0x0F, 0xB7, 0x14, 0x4D); a.dword(pathVir);
+	a.emit(0x66, 0x83, 0xFA, 0x5C);
+	a.jcc(0x84, "slash_found");
+	a.emit(0x66, 0x83, 0xFA, 0x2F);
+	a.jcc(0x85, "find_slash");
+	a.label("slash_found");
+	a.emit(0x8D, 0x3C, 0x4D); a.dword(pathVir);
+	a.emit(0xBE); a.dword(strings.suffix);
+	a.label("copy_suffix");
+	a.emit(0x66, 0x8B, 0x06, 0x66, 0x89, 0x07, 0x83, 0xC6, 0x02, 0x83, 0xC7, 0x02);
+	a.emit(0x66, 0x85, 0xC0);
+	a.jcc(0x85, "copy_suffix");
+	a.emit(0x8B, 0xC7, 0x2D); a.dword(pathVir + 2);
+	a.emit(0xD1, 0xE8, 0xA3); a.dword(stateVir + FluentEmojiStatic.StatePrefixLength);
+
+	a.emit(0x68); a.dword(strings.gdiplusDll);
+	FluentEmojiStatic.callIat(a, FluentEmojiStatic.Iat.getModuleHandleW);
+	a.emit(0x89, 0x45, 0xFC, 0x85, 0xC0);
+	a.jcc(0x84, "failed");
+	resolve(0xFC, strings.gdipLoadImage, FluentEmojiStatic.StateLoadImage);
+	resolve(0xFC, strings.gdipCreateGraphics, FluentEmojiStatic.StateCreateGraphics);
+	resolve(0xFC, strings.gdipSetInterpolation, FluentEmojiStatic.StateSetInterpolation);
+	resolve(0xFC, strings.gdipDrawImage, FluentEmojiStatic.StateDrawImage);
+	resolve(0xFC, strings.gdipDeleteGraphics, FluentEmojiStatic.StateDeleteGraphics);
+	resolve(0xFC, strings.gdipDisposeImage, FluentEmojiStatic.StateDisposeImage);
+
+	a.emit(0x68); a.dword(strings.gdi32Dll);
+	FluentEmojiStatic.callIat(a, FluentEmojiStatic.Iat.getModuleHandleW);
+	a.emit(0x89, 0x45, 0xF8, 0x85, 0xC0);
+	a.jcc(0x84, "failed");
+	resolve(0xF8, strings.getTextAlign, FluentEmojiStatic.StateGetTextAlign);
+	resolve(0xF8, strings.setTextAlign, FluentEmojiStatic.StateSetTextAlign);
+	resolve(0xF8, strings.saveDC, FluentEmojiStatic.StateSaveDC);
+	resolve(0xF8, strings.restoreDC, FluentEmojiStatic.StateRestoreDC);
+	resolve(0xF8, strings.getTextMetrics, FluentEmojiStatic.StateGetTextMetrics);
+	resolve(0xF8, strings.getCurrentPosition,
+		FluentEmojiStatic.StateGetCurrentPosition);
+	resolve(0xF8, strings.moveTo, FluentEmojiStatic.StateMoveTo);
+
+	a.emit(0x6A, 0x00, 0x68); a.dword(startupVir);
+	a.emit(0x68); a.dword(stateVir + FluentEmojiStatic.StateToken);
+	FluentEmojiStatic.callIat(a, FluentEmojiStatic.Iat.gdiplusStartup);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "failed");
+	a.emit(0xC7, 0x05); a.dword(stateVir + FluentEmojiStatic.StateInit); a.dword(1);
+	a.label("ready");
+	a.emit(0xB8); a.dword(1);
+	a.jmp("done");
+	a.label("failed");
+	a.emit(0xC7, 0x05); a.dword(stateVir + FluentEmojiStatic.StateInit); a.dword(0xFFFFFFFF);
+	a.label("failed_return");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+FluentEmojiStatic.buildIconSize = function(stateVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x3C);
+	a.emit(0x83, 0x7D, 0x0C, 0x00);
+	a.jcc(0x85, "compact");
+	a.emit(0xB8); a.dword(FluentEmojiStatic.IconSize);
+	a.jmp("done");
+	a.label("compact");
+	a.emit(0x8D, 0x45, 0xC4, 0x50, 0xFF, 0x75, 0x08);
+	a.emit(0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateGetTextMetrics);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "fallback");
+	// TEXTMETRIC.tmHeight includes internal leading. Menu rows are sized from
+	// the printable character height, so use tmHeight - tmInternalLeading to
+	// keep compact @token@ images aligned with the stock menu font.
+	a.emit(0x8B, 0x45, 0xC4, 0x2B, 0x45, 0xD0);
+	a.emit(0x83, 0xF8, FluentEmojiStatic.CompactMin);
+	a.jcc(0x8D, "max_check");
+	a.emit(0xB8); a.dword(FluentEmojiStatic.CompactMin);
+	a.label("max_check");
+	a.emit(0x83, 0xF8, FluentEmojiStatic.CompactMax);
+	a.jcc(0x8E, "done");
+	a.emit(0xB8); a.dword(FluentEmojiStatic.CompactMax);
+	a.jmp("done");
+	a.label("fallback");
+	a.emit(0xB8); a.dword(FluentEmojiStatic.CompactFallback);
+	a.label("done");
+	a.emit(0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+FluentEmojiStatic.buildIconTop = function(stateVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x40, 0x53);
+	a.emit(0x8B, 0x5D, 0x0C);
+	a.emit(0x8D, 0x45, 0xC0, 0x50, 0xFF, 0x75, 0x08);
+	a.emit(0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateGetTextMetrics);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "fallback");
+	a.emit(0xFF, 0x75, 0x08, 0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateGetTextAlign);
+	a.emit(0x89, 0x45, 0xFC);
+	a.emit(0x83, 0xE0, 0x18, 0x83, 0xF8, 0x18);
+	a.jcc(0x85, "bottom_check");
+	a.emit(0x2B, 0x5D, 0xC4);
+	a.jmp("center");
+	a.label("bottom_check");
+	a.emit(0x8B, 0x45, 0xFC, 0x83, 0xE0, 0x08);
+	a.jcc(0x84, "center");
+	a.emit(0x2B, 0x5D, 0xC0);
+	a.label("center");
+	a.emit(0x8B, 0x45, 0xC0, 0x2B, 0x45, 0x10, 0xD1, 0xF8, 0x03, 0xD8);
+	a.emit(0x8B, 0xC3);
+	a.jmp("done");
+	a.label("fallback");
+	a.emit(0x8B, 0xC3);
+	a.label("done");
+	a.emit(0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x0C, 0x00);
+	return a;
+};
+
+FluentEmojiStatic.buildLoadImage = function(stateVir, pathVir, cacheVir)
+{
+	// The four guarded Ragexe text surfaces execute on the render/UI thread.
+	// The fixed path scratch and direct-mapped image cache intentionally rely
+	// on that build-specific ownership; non-UI-thread callers require explicit
+	// synchronization before reusing this helper.
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x85, 0xF6);
+	a.jcc(0x84, "missing");
+	a.emit(0x8B, 0xC6, 0xC1, 0xE8, 0x04, 0x25); a.dword(FluentEmojiStatic.CacheCapacity - 1);
+	a.emit(0x8D, 0x3C, 0xC5); a.dword(cacheVir);
+	a.emit(0x89, 0x7D, 0xF8);
+	a.emit(0x3B, 0x37);
+	a.jcc(0x84, "cached");
+	a.emit(0x8B, 0x5F, 0x04, 0x85, 0xDB);
+	a.jcc(0x84, "replace");
+	a.emit(0x53, 0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateDisposeImage);
+	a.label("replace");
+	a.emit(0x89, 0x37, 0xC7, 0x47, 0x04); a.dword(0);
+	a.emit(0xA1); a.dword(stateVir + FluentEmojiStatic.StatePrefixLength);
+	a.emit(0x8D, 0x3C, 0x45); a.dword(pathVir);
+	a.emit(0x8B, 0x76, FluentEmojiStatic.EntryFile);
+	a.emit(0xB9); a.dword(FluentEmojiStatic.PathCapacity - 1);
+	a.emit(0x2B, 0xC8);
+	a.label("copy_file");
+	a.emit(0x66, 0x8B, 0x06, 0x66, 0x89, 0x07, 0x83, 0xC6, 0x02, 0x83, 0xC7, 0x02);
+	a.emit(0x66, 0x85, 0xC0);
+	a.jcc(0x84, "load");
+	a.emit(0x49);
+	a.jcc(0x85, "copy_file");
+	a.emit(0x66, 0xC7, 0x07, 0x00, 0x00);
+	a.label("load");
+	a.emit(0xC7, 0x45, 0xFC); a.dword(0);
+	a.emit(0x8D, 0x45, 0xFC, 0x50, 0x68); a.dword(pathVir);
+	a.emit(0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateLoadImage);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "missing");
+	a.emit(0x8B, 0x7D, 0xF8, 0x8B, 0x45, 0xFC, 0x89, 0x47, 0x04);
+	a.jmp("done");
+	a.label("cached");
+	a.emit(0x8B, 0x47, 0x04);
+	a.jmp("done");
+	a.label("missing");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x04, 0x00);
+	return a;
+};
+
+FluentEmojiStatic.buildMeasure = function(
+	stateVir,
+	initVir,
+	matchVir,
+	iconSizeVir
+)
+{
+	const a = ExtNameStaticAsm.asm();
+	const stackSize = 0x28 + FluentEmojiStatic.TextCapacity * 2;
+	const measureRun = function(skipLabel)
+	{
+		a.emit(0x8B, 0x45, 0xF4, 0x2B, 0x45, 0xF0);
+		a.jcc(0x84, skipLabel);
+		a.emit(0x8D, 0x55, 0xDC, 0x52, 0x50);
+		a.emit(0x8B, 0x4D, 0xF0, 0x8B, 0xD6, 0x8D, 0x14, 0x4A, 0x52);
+		a.emit(0xFF, 0x75, 0x08);
+		a.emit(0xFF, 0x15);
+		a.dword(FluentEmojiStatic.Iat.extent);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, "failed");
+		a.emit(0x8B, 0x45, 0xDC, 0x01, 0x45, 0xFC);
+		a.emit(0x8B, 0x45, 0xE0, 0x3B, 0x45, 0xF8);
+		a.jcc(0x86, skipLabel);
+		a.emit(0x89, 0x45, 0xF8);
+		a.label(skipLabel);
+	};
+	a.emit(0x55, 0x8B, 0xEC, 0x81, 0xEC); a.dword(stackSize);
+	a.emit(0x53, 0x56, 0x57);
+	a.emit(0xC7, 0x45, 0xEC); a.dword(0);
+	a.emit(0x8B, 0x75, 0x0C, 0x8B, 0x7D, 0x10);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "failed");
+	a.emit(0x83, 0x7D, 0x14, 0x00);
+	a.jcc(0x84, "failed");
+	a.emit(0x85, 0xFF);
+	a.jcc(0x89, "count_ready");
+	a.emit(0x56);
+	FluentEmojiStatic.callIat(a, FluentEmojiStatic.Iat.lstrlenW);
+	a.emit(0x8B, 0xF8);
+	a.label("count_ready");
+	a.emit(0x85, 0xFF);
+	a.jcc(0x8E, "failed");
+	a.emit(0x81, 0xFF); a.dword(FluentEmojiStatic.TextCapacity - 1);
+	a.jcc(0x87, "failed");
+	// Snapshot the caller-owned text before any API call can re-enter the UI
+	// renderer or reuse the client's transient formatting buffer. The working
+	// DLL performs the same per-call ownership via std::wstring.
+	a.emit(0x89, 0x7D, 0xD8, 0x8D, 0xBD); a.dword(-stackSize);
+	a.emit(0x89, 0x7D, 0xE4, 0x8B, 0x4D, 0xD8, 0xFC, 0xF3, 0x66, 0xA5);
+	a.emit(0x66, 0xC7, 0x07, 0x00, 0x00, 0x8B, 0x75, 0xE4, 0x8B, 0x7D, 0xD8);
+	a.call(initVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "failed");
+	// Match HookGetTextExtentPoint32W in the working DLL exactly: execute the
+	// stock full-string measurement first, then replace its SIZE with the
+	// segmented emoji-aware result below. The client uses that stock pass to
+	// populate menu-item paint/cache state; measuring only the split runs can
+	// leave otherwise valid rows without a later TextOutW callback.
+	a.emit(0xFF, 0x75, 0x14, 0xFF, 0x75, 0xD8, 0x56, 0xFF, 0x75, 0x08,
+		0xFF, 0x15);
+	a.dword(FluentEmojiStatic.Iat.extent);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "failed");
+	a.emit(0xC7, 0x45, 0xFC); a.dword(0);
+	a.emit(0xC7, 0x45, 0xF8); a.dword(0);
+	a.emit(0xC7, 0x45, 0xF4); a.dword(0);
+	a.emit(0xC7, 0x45, 0xF0); a.dword(0);
+	a.label("scan");
+	a.emit(0x8B, 0x45, 0xF4, 0x3B, 0xC7);
+	a.jcc(0x83, "tail");
+	a.emit(0x8B, 0xCF, 0x2B, 0xC8, 0x51, 0x8D, 0x04, 0x46, 0x50);
+	a.call(matchVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "next_char");
+	a.emit(0x89, 0x45, 0xE8, 0xC7, 0x45, 0xEC); a.dword(1);
+	measureRun("run_measured");
+	a.emit(0x8B, 0x45, 0xE8, 0x0F, 0xB7, 0x48, FluentEmojiStatic.EntryFlags);
+	a.emit(0x01, 0x4D, 0xF4, 0x8B, 0x4D, 0xF4, 0x89, 0x4D, 0xF0);
+	a.emit(0x8B, 0x48, FluentEmojiStatic.EntryFlags, 0xC1, 0xE9, 0x10, 0x83, 0xE1, 0x01);
+	a.emit(0x51, 0xFF, 0x75, 0x08);
+	a.call(iconSizeVir);
+	a.emit(0x01, 0x45, 0xFC, 0x3B, 0x45, 0xF8);
+	a.jcc(0x86, "scan");
+	a.emit(0x89, 0x45, 0xF8);
+	a.jmp("scan");
+	a.label("next_char");
+	a.emit(0xFF, 0x45, 0xF4);
+	a.jmp("scan");
+	a.label("tail");
+	measureRun("tail_measured");
+	a.emit(0x83, 0x7D, 0xEC, 0x00);
+	a.jcc(0x84, "failed");
+	a.emit(0x8B, 0x45, 0x14, 0x8B, 0x55, 0xFC, 0x89, 0x10, 0x8B, 0x55, 0xF8, 0x89, 0x50, 0x04);
+	a.emit(0xB8); a.dword(1);
+	a.jmp("done");
+	a.label("failed");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x10, 0x00);
+	return a;
+};
+
+FluentEmojiStatic.buildDraw = function(
+	stateVir,
+	matchVir,
+	measureVir,
+	iconSizeVir,
+	iconTopVir,
+	loadImageVir
+)
+{
+	const a = ExtNameStaticAsm.asm();
+	const stackSize = 0x4C + FluentEmojiStatic.TextCapacity * 2;
+	const emitMatch = function(finishLabel)
+	{
+		a.emit(0x8B, 0x45, 0xE8, 0x3B, 0x45, 0xE4);
+		a.jcc(0x83, finishLabel);
+		a.emit(0x8B, 0x4D, 0xE4, 0x2B, 0xC8, 0x51);
+		a.emit(0x8B, 0xD6, 0x8D, 0x04, 0x42, 0x50);
+		a.call(matchVir);
+	};
+	const emitTextRun = function(skipLabel)
+	{
+		a.emit(0x8B, 0x45, 0xE8, 0x2B, 0x45, 0xE0);
+		a.jcc(0x84, skipLabel);
+		a.emit(0x50);
+		a.emit(0x8B, 0x4D, 0xE0, 0x8B, 0xD6, 0x8D, 0x14, 0x4A, 0x52);
+		a.emit(0xFF, 0x75, 0xB4, 0xFF, 0x75, 0xDC, 0xFF, 0x75, 0x08);
+		// Draw plain-text runs through the client's stable GDI32 import.
+		a.emit(0xFF, 0x15);
+		a.dword(FluentEmojiStatic.Iat.textOut);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x85, "text_ok_" + skipLabel);
+		a.emit(0xC7, 0x45, 0xD8); a.dword(0);
+		a.label("text_ok_" + skipLabel);
+		a.emit(0x8D, 0x45, 0xC0, 0x50);
+		a.emit(0x8B, 0x45, 0xE8, 0x2B, 0x45, 0xE0, 0x50);
+		a.emit(0x8B, 0x4D, 0xE0, 0x8B, 0xD6, 0x8D, 0x14, 0x4A, 0x52);
+		a.emit(0xFF, 0x75, 0x08);
+		a.emit(0xFF, 0x15);
+		a.dword(FluentEmojiStatic.Iat.extent);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, skipLabel);
+		a.emit(0x8B, 0x45, 0xC0, 0x01, 0x45, 0xDC);
+		a.label(skipLabel);
+	};
+	a.emit(0x55, 0x8B, 0xEC, 0x81, 0xEC); a.dword(stackSize);
+	a.emit(0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x14, 0x85, 0xF6);
+	a.jcc(0x84, "not_handled");
+	a.emit(0x8B, 0x45, 0x18, 0x85, 0xC0);
+	a.jcc(0x89, "copy_count_ready");
+	a.emit(0x56);
+	FluentEmojiStatic.callIat(a, FluentEmojiStatic.Iat.lstrlenW);
+	a.label("copy_count_ready");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, "not_handled");
+	a.emit(0x3D); a.dword(FluentEmojiStatic.TextCapacity - 1);
+	a.jcc(0x87, "not_handled");
+	a.emit(0x89, 0x45, 0xE4, 0x8D, 0xBD); a.dword(-stackSize);
+	a.emit(0x8B, 0xC8, 0xFC, 0xF3, 0x66, 0xA5, 0x66, 0xC7, 0x07, 0x00, 0x00);
+	a.emit(0x8D, 0xB5); a.dword(-stackSize);
+	a.emit(0x8D, 0x45, 0xF0, 0x50, 0xFF, 0x75, 0xE4, 0x56, 0xFF, 0x75, 0x08);
+	a.call(measureVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "not_handled");
+	a.emit(0xC7, 0x45, 0xE8); a.dword(0);
+	a.emit(0xC7, 0x45, 0xC8); a.dword(0);
+	a.emit(0x8B, 0x45, 0x10, 0x89, 0x45, 0xB4);
+
+	// Preload every image before drawing so a missing asset falls back to the
+	// untouched original text instead of leaving a partially rendered line.
+	a.label("preload_loop");
+	emitMatch("preload_done");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "preload_next");
+	a.emit(0x89, 0x45, 0xEC);
+	a.emit(0xFF, 0x75, 0xEC);
+	a.call(loadImageVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "preload_ready");
+	a.jmp("not_handled");
+	a.label("preload_ready");
+	a.emit(0x8B, 0x45, 0xEC, 0x0F, 0xB7, 0x48, FluentEmojiStatic.EntryFlags, 0x01, 0x4D, 0xE8);
+	a.jmp("preload_loop");
+	a.label("preload_next");
+	a.emit(0xFF, 0x45, 0xE8);
+	a.jmp("preload_loop");
+	a.label("preload_done");
+
+	a.emit(0xFF, 0x75, 0x08, 0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateGetTextAlign);
+	a.emit(0x89, 0x45, 0xD4, 0xA9); a.dword(1);
+	a.jcc(0x84, "explicit_position");
+	// With TA_UPDATECP, TextOutW ignores its X/Y arguments. Some menu passes
+	// deliberately pass placeholder coordinates and rely on the HDC current
+	// position. Capture that point before switching the segmented renderer to
+	// TA_NOUPDATECP, then advance it after the complete text/icon run.
+	a.emit(0x8D, 0x45, 0xB8, 0x50, 0xFF, 0x75, 0x08);
+	a.emit(0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateGetCurrentPosition);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "current_position_ready");
+	a.jmp("not_handled");
+	a.label("current_position_ready");
+	a.emit(0xC7, 0x45, 0xC8); a.dword(1);
+	a.emit(0x8B, 0x5D, 0xB8, 0x8B, 0x45, 0xBC, 0x89, 0x45, 0xB4);
+	a.jmp("x_ready");
+	a.label("explicit_position");
+	a.emit(0x8B, 0x5D, 0x0C, 0x8B, 0x45, 0xD4);
+	a.emit(0x8B, 0xC8, 0x83, 0xE1, 0x06, 0x83, 0xF9, 0x06);
+	a.jcc(0x85, "right_check");
+	a.emit(0x8B, 0x45, 0xF0, 0xD1, 0xF8, 0x2B, 0xD8);
+	a.jmp("x_ready");
+	a.label("right_check");
+	a.emit(0x83, 0xE0, 0x02);
+	a.jcc(0x84, "x_ready");
+	a.emit(0x2B, 0x5D, 0xF0);
+	a.label("x_ready");
+	a.emit(0x89, 0x5D, 0xDC);
+	// Own the HDC state across the complete GDI+ Graphics lifetime.
+	a.emit(0xFF, 0x75, 0x08, 0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateSaveDC);
+	a.emit(0x89, 0x45, 0xD0);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "dc_saved");
+	a.jmp("not_handled");
+	a.label("dc_saved");
+	a.emit(0x8B, 0x45, 0xD4, 0x83, 0xE0, 0xF8, 0x50, 0xFF, 0x75, 0x08);
+	a.emit(0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateSetTextAlign);
+	a.emit(0xC7, 0x45, 0xD8); a.dword(1);
+	a.emit(0xC7, 0x45, 0xE8); a.dword(0);
+	a.emit(0xC7, 0x45, 0xE0); a.dword(0);
+	a.label("draw_loop");
+	emitMatch("draw_done");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "draw_next");
+	a.emit(0x89, 0x45, 0xEC);
+	emitTextRun("before_icon");
+	a.emit(0x8B, 0x45, 0xEC, 0x8B, 0x48, FluentEmojiStatic.EntryFlags, 0xC1, 0xE9, 0x10, 0x83, 0xE1, 0x01);
+	a.emit(0x51, 0xFF, 0x75, 0x08);
+	a.call(iconSizeVir);
+	a.emit(0x89, 0x45, 0xC4);
+	a.emit(0x50, 0xFF, 0x75, 0xB4, 0xFF, 0x75, 0x08);
+	a.call(iconTopVir);
+	a.emit(0x89, 0x45, 0xC0);
+	a.emit(0xFF, 0x75, 0xEC);
+	a.call(loadImageVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "image_loaded");
+	a.jmp("image_draw_failed");
+	a.label("image_loaded");
+	a.emit(0x89, 0x45, 0xBC);
+	// Match the working DLL renderer: never keep a GDI+ Graphics object alive
+	// while TextOutW operates on the same HDC. A Graphics lifetime spanning
+	// multiple GDI text runs causes intermittent blank menu rows.
+	a.emit(0x8D, 0x45, 0xCC, 0x50, 0xFF, 0x75, 0x08);
+	a.emit(0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateCreateGraphics);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "graphics_ready");
+	a.jmp("image_draw_failed");
+	a.label("graphics_ready");
+	a.emit(0x6A, 0x05, 0xFF, 0x75, 0xCC, 0xFF, 0x15);
+	a.dword(stateVir + FluentEmojiStatic.StateSetInterpolation);
+	a.emit(0xFF, 0x75, 0xC4, 0xFF, 0x75, 0xC4, 0xFF, 0x75, 0xC0,
+		0xFF, 0x75, 0xDC, 0xFF, 0x75, 0xBC, 0xFF, 0x75, 0xCC);
+	a.emit(0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateDrawImage);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "image_draw_ok");
+	a.emit(0xC7, 0x45, 0xD8); a.dword(0);
+	a.label("image_draw_ok");
+	a.emit(0xFF, 0x75, 0xCC, 0xFF, 0x15);
+	a.dword(stateVir + FluentEmojiStatic.StateDeleteGraphics);
+	a.jmp("image_draw_done");
+	a.label("image_draw_failed");
+	a.emit(0xC7, 0x45, 0xD8); a.dword(0);
+	a.label("image_draw_done");
+	a.emit(0x8B, 0x45, 0xC4, 0x01, 0x45, 0xDC);
+	a.emit(0x8B, 0x45, 0xEC, 0x0F, 0xB7, 0x48, FluentEmojiStatic.EntryFlags, 0x01, 0x4D, 0xE8);
+	a.emit(0x8B, 0x4D, 0xE8, 0x89, 0x4D, 0xE0);
+	a.jmp("draw_loop");
+	a.label("draw_next");
+	a.emit(0xFF, 0x45, 0xE8);
+	a.jmp("draw_loop");
+	a.label("draw_done");
+	emitTextRun("tail_done");
+	a.emit(0xFF, 0x75, 0xD0, 0xFF, 0x75, 0x08, 0xFF, 0x15); a.dword(stateVir + FluentEmojiStatic.StateRestoreDC);
+	a.emit(0x83, 0x7D, 0xC8, 0x00);
+	a.jcc(0x84, "current_position_restored");
+	a.emit(0x6A, 0x00, 0xFF, 0x75, 0xB4, 0xFF, 0x75, 0xDC,
+		0xFF, 0x75, 0x08, 0xFF, 0x15);
+	a.dword(stateVir + FluentEmojiStatic.StateMoveTo);
+	a.label("current_position_restored");
+	a.emit(0x8B, 0x45, 0x1C, 0x8B, 0x55, 0xD8, 0x89, 0x10);
+	a.emit(0xB8); a.dword(1);
+	a.jmp("done");
+	a.label("not_handled");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x18, 0x00);
+	return a;
+};
+
+FluentEmojiStatic.ensureInstalled = function(_)
+{
+	let state = CACHE.get("FluentEmojiStatic.State");
+	if (state && Number.isInteger(state.drawVir))
+		return state;
+	if (Exe.BuildDate !== FluentEmojiStatic.BuildDate)
+		throw Error("FluentEmoji supports only the 2025-07-16 client");
+	if (typeof ExtNameStaticAsm === "undefined" || typeof ExtNameStaticAsm.asm !== "function")
+		throw Error("FluentEmoji: assembly helper unavailable");
+
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag("FluentEmojiStatic"));
+	try
+	{
+		const tables = FluentEmojiStatic.buildTables();
+		const stateBlock = FluentEmojiStatic.allocateBytes(
+			new Array(FluentEmojiStatic.StateSize).fill(0), 0x10
+		);
+		const pathBlock = FluentEmojiStatic.allocateBytes(
+			new Array(FluentEmojiStatic.PathCapacity * 2).fill(0), 0x10
+		);
+		const cacheBlock = FluentEmojiStatic.allocateBytes(
+			new Array(FluentEmojiStatic.CacheCapacity * 8).fill(0), 0x10
+		);
+		const startup = FluentEmojiStatic.allocateBytes([
+			1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+		], 4);
+		const wide = function(value) { return FluentEmojiStatic.allocateWide(value).virAddr; };
+		const ansi = function(value) { return ExtNameTextStatic.allocateText(value); };
+		const strings = {
+			suffix: wide("\\BohEmoji\\fluent\\"),
+			gdiplusDll: wide("GdiPlus.dll"),
+			gdi32Dll: wide("gdi32.dll"),
+			gdipLoadImage: ansi("GdipLoadImageFromFile"),
+			gdipCreateGraphics: ansi("GdipCreateFromHDC"),
+			gdipSetInterpolation: ansi("GdipSetInterpolationMode"),
+			gdipDrawImage: ansi("GdipDrawImageRectI"),
+			gdipDeleteGraphics: ansi("GdipDeleteGraphics"),
+			gdipDisposeImage: ansi("GdipDisposeImage"),
+			getTextAlign: ansi("GetTextAlign"),
+			setTextAlign: ansi("SetTextAlign"),
+			saveDC: ansi("SaveDC"),
+			restoreDC: ansi("RestoreDC"),
+			getTextMetrics: ansi("GetTextMetricsW"),
+			getCurrentPosition: ansi("GetCurrentPositionEx"),
+			moveTo: ansi("MoveToEx")
+		};
+		const lookup = ExtNameTextStatic.allocateCode(
+			FluentEmojiStatic.buildLookup(tables.tableVir, tables.tableCapacity)
+		);
+		const match = ExtNameTextStatic.allocateCode(
+			FluentEmojiStatic.buildMatch(
+				lookup.virAddr,
+				tables.startLengthsVir,
+				tables.maxTokenLength
+			)
+		);
+		const init = ExtNameTextStatic.allocateCode(
+			FluentEmojiStatic.buildInit(
+				stateBlock.virAddr,
+				pathBlock.virAddr,
+				startup.virAddr,
+				strings
+			)
+		);
+		const iconSize = ExtNameTextStatic.allocateCode(
+			FluentEmojiStatic.buildIconSize(stateBlock.virAddr)
+		);
+		const iconTop = ExtNameTextStatic.allocateCode(
+			FluentEmojiStatic.buildIconTop(stateBlock.virAddr)
+		);
+		const loadImage = ExtNameTextStatic.allocateCode(
+			FluentEmojiStatic.buildLoadImage(
+				stateBlock.virAddr,
+				pathBlock.virAddr,
+				cacheBlock.virAddr
+			)
+		);
+		const measure = ExtNameTextStatic.allocateCode(
+			FluentEmojiStatic.buildMeasure(
+				stateBlock.virAddr,
+				init.virAddr,
+				match.virAddr,
+				iconSize.virAddr
+			)
+		);
+		const draw = ExtNameTextStatic.allocateCode(
+			FluentEmojiStatic.buildDraw(
+				stateBlock.virAddr,
+				match.virAddr,
+				measure.virAddr,
+				iconSize.virAddr,
+				iconTop.virAddr,
+				loadImage.virAddr
+			)
+		);
+		state = {
+			statePhy: stateBlock.phyAddr,
+			stateVir: stateBlock.virAddr,
+			lookupVir: lookup.virAddr,
+			matchVir: match.virAddr,
+			initVir: init.virAddr,
+			measureVir: measure.virAddr,
+			drawVir: draw.virAddr,
+			tableVir: tables.tableVir,
+			tableCapacity: tables.tableCapacity,
+			startLengthsVir: tables.startLengthsVir,
+			maxRawLength: tables.maxRawLength,
+			maxTokenLength: tables.maxTokenLength,
+			specCount: tables.specCount,
+			fileCount: tables.fileCount,
+			tableBytes: tables.tableBytes,
+			stringBytes: tables.stringBytes
+		};
+		CACHE.put("FluentEmojiStatic.State", state);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+	if (typeof PatchDiagnostics !== "undefined" && typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("FluentEmojiStatic.QjsOnly", {
+			owner: _,
+			specCount: state.specCount,
+			fileCount: state.fileCount,
+			tableBytes: state.tableBytes,
+			stringBytes: state.stringBytes,
+			drawVir: state.drawVir,
+			measureVir: state.measureVir,
+			customDllImports: 0
+		});
+	}
+	return state;
+};
+
+FluentEmoji = function(_)
+{
+	if (typeof ExtNameTextStatic === "undefined" ||
+		typeof ExtNameTextStatic.enableEmoji !== "function")
+		throw Error("FluentEmoji: shared QJS text bridge unavailable");
+	$$(_, 1, "Build manifest token table and EXE-resident GDI+ renderer");
+	const renderer = FluentEmojiStatic.ensureInstalled(_);
+	$$(_, 2, "Attach emoji rendering to the shared QJS text bridge");
+	ExtNameTextStatic.enableEmoji(_, renderer);
+	if (!Warp.TestMode)
+	{
+		Exe.GetUserInput(
+			'$copyFluentEmojiAssets',
+			D_Bool,
+			"Copy Fluent Emoji Assets",
+			"Copy BohEmoji/fluent beside the patched client executable?",
+			true
+		);
+	}
+	return true;
+};
+
+FluentEmoji.onApplied = function()
+{
+	if (Warp.TestMode || !Exe.GetSavedInput('$copyFluentEmojiAssets'))
+		return;
+	const manifest = FluentEmojiStatic.loadManifest();
+	const source = Warp.Path + FluentEmojiStatic.AssetPath;
+	const clientDir = System.DirPath(Warp.TgtExe);
+	const root = clientDir + "/BohEmoji";
+	const target = clientDir + "/" + FluentEmojiStatic.TargetPath;
+	System.MkDir(root);
+	if (!System.MkDir(target))
+		throw Error(`FluentEmoji: unable to create ${target}`);
+	for (const file of manifest.files)
+	{
+		if (!System.Copy(source + "/" + file, target + "/" + file, true))
+			throw Error(`FluentEmoji: unable to copy asset ${file}`);
+	}
+	for (const file of [
+		"manifest.tsv",
+		"README.md",
+		"LICENSE.Microsoft-Fluent-Emoji.txt"
+	])
+		System.Copy(source + "/" + file, target + "/" + file, true);
+};
+
+FluentEmoji.validate = function()
+{
+	return Exe.BuildDate === FluentEmojiStatic.BuildDate &&
+		typeof ExtNameStaticAsm !== "undefined" &&
+		typeof ExtNameTextStatic !== "undefined";
+};

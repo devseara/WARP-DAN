@@ -24,11 +24,28 @@ Status meanings:
 | Extended names | Working | QJS-only EXTN ring drain feeds a bounded exact-text map. Mob details use the official `0x0ADF` Group Title/ID row above the independently rendered stock mob name. |
 | Player-name colors | Working | QJS-only EXTN exact-text entries apply RGB around matching non-shadow player-name draws and restore the original GDI color afterward. |
 | Item-name colors | Working | QJS-only `0x0BDD` ICOL drain, bounded UTF-8 substring/grade table, static TextOutW color bridge, dark-shadow suppression and grade-label continuation; confirmed across item windows and client transitions. |
+| Fluent emoji | Working (NPC menus) | QJS-only manifest table and EXE-resident GDI+ draw/measure caves support `:shortcode:`, compact `@shortcode@`, and raw Unicode aliases. Compact menu icons, sizing, colors, and mixed text/icon rows are live-confirmed; no custom DLL or API detour is used. |
 | Rune visual system | Planned | Translate the existing static bridge handlers to native caves and bake configuration at patch time. |
 | FPS overlay | Implemented, test required | QJS-only post-Present cave counts native frames and draws at prompted X/Y coordinates through existing Win32 imports. No D3D proxy or custom DLL. |
 | Ping overlay | Implemented, test required | QJS-only `0x0360/0x007F` application RTT capture feeds the shared prompted-position renderer. No ICMP, recv hook or custom DLL. |
 | In-game PIN keypad | DLL retained | A QJS-only port requires a full map-session native RO window/control reconstruction. |
 | HatEffect world occlusion | Working | `AllHatEffectsWorldDepthOracle.qjs` preserves the original screen-space STR renderer and apparent scale. Live-accepted v4.2 uses Ragnarok's Y-up matrix coefficients for upper-vertex depth and a bounded four-native-quantum contact tolerance. It remains scoped to HatEffects; native world `.str` NPCs retain stock behavior. |
+
+## Fluent emoji checklist
+
+- [x] Parse `manifest.tsv` at WARP time and bake a bounded open-addressed UTF-16 token table into the EXE.
+- [x] Preserve canonical `:shortcode:` and compact NPC-menu `@shortcode@` forms, including the original fallback aliases.
+- [x] Add raw Unicode manifest aliases without a runtime file parser.
+- [x] Resolve the required GDI/GDI+ exports from modules already loaded by the client; add no DLL import.
+- [x] Compose below the item-color wrapper and after EXTN substitution/player-color selection.
+- [x] Measure segmented text and honor left, center, right, baseline, and bottom GDI alignment.
+- [x] Preload each line's images before drawing so missing assets fall back to untouched stock text.
+- [x] Copy all 3,145 PNG assets plus manifest/license documentation through the QJS `onApplied` callback.
+- [x] Build isolated and EXTN/item/player-color integration EXEs with WARP_console.
+- [x] Verify the four TextOutW/GetTextExtentPoint32W surfaces target EXE caves and the output has no BOH/custom DLL import.
+- [x] Confirm compact `@shortcode@` rendering and mixed text/icon rows in NPC dialogs and menus with the item-color wrapper enabled.
+- [ ] Confirm `:shortcode:` and raw-Unicode rendering in names and item text in game.
+- [ ] Confirm alignment, shadow passes, missing-asset fallback, F12, resolution changes, map changes, Alt+Tab, relog, and clean exit.
 
 ## Native FPS/Ping overlay checklist
 

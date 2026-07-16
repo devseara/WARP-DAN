@@ -1,6 +1,11 @@
 from: "D:/Programs/Games/Ragnarok/01_github/WARP0716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
 to: "D:/Programs/Games/Ragnarok/01_github/WARP20250716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo_patched.exe"
 inputs:
+    $copyFluentEmojiAssets:
+        data: ''
+        display: "true"
+        type: 10
+
     $newchangemat:
         data: '53797374656d454e5c4368616e67654d6174657269616c5f454e2e6c756200'
         display: "SystemEN\\ChangeMaterial_EN.lub"
@@ -134,6 +139,7 @@ patches:
     - PatchDiagnostics
     - CustomExtName
     - CustomColoredItemName
+    - FluentEmoji
     - OpenToServiceSelect
     - GuildBrackets
     - FixChatAt

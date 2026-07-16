@@ -1,6 +1,11 @@
 from: "D:/Programs/Games/Ragnarok/01_github/WARP0716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
 to: "D:/Programs/Games/Ragnarok/01_github/WARP0716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo_patched.exe"
 inputs:
+    $copyFluentEmojiAssets:
+        data: ''
+        display: "true"
+        type: 10
+
     $fontCopyTtf:
         data: ''
         display: "true"
@@ -334,6 +339,7 @@ patches:
     - RemoveMaxNumbersLimit
     - CustomExtName
     - CustomColoredItemName
+    - FluentEmoji
     - TildeForMatk
     - OpenToServiceSelect
     - GuildBrackets

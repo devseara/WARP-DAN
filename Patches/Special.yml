@@ -134,6 +134,12 @@ CustomSkills:
             author : Louis T Steinhil
             desc : "Stores PC RGB values with the bounded EXTN exact-text entries and applies them only around matching non-shadow TextOutW player-name draws. No text DLL, recv hook, or runtime patching is used."
 
+        - FluentEmoji:
+            title : Render Fluent Emoji (QJS-only)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Builds the Fluent manifest into an EXE-resident token table and renders :shortcode:, compact @shortcode@ and raw Unicode aliases through the client's existing GDI+ dependency. Assets are copied beside the patched client. No custom DLL, API detour, recv hook, or runtime code patching is used. Target: 2025-07-16."
+
         - InGamePincodeUI:
             title : Enable In-Game PIN Pad
             recommend : no

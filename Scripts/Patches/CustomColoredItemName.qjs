@@ -274,7 +274,8 @@ ItemColorStatic.buildTextOut = function(
 	ansiScratchVir,
 	previousTextOutVir,
 	entityFindWideVir,
-	apis
+	apis,
+	emojiTokensEnabled
 )
 {
 	const a = ExtNameStaticAsm.asm();
@@ -284,6 +285,35 @@ ItemColorStatic.buildTextOut = function(
 	a.emit(0xC7, 0x45, 0xF4); a.dword(0);          // old color valid
 	a.emit(0xC7, 0x45, 0xE0); a.dword(0);          // grade marker present
 	a.call(drainVir);
+	if (emojiTokensEnabled)
+	{
+		// Fluent Emoji labels are UI text, never item-name candidates. Let the
+		// underlying emoji bridge own any span containing a complete @token@;
+		// otherwise a nearby grade continuation can suppress the stock shadow
+		// pass and prevent the label from reaching TextOutW at all.
+		a.emit(0x8B, 0x75, 0x14, 0x85, 0xF6);       // esi = text
+		a.jcc(0x84, "emoji_scan_done");
+		a.emit(0x8B, 0x4D, 0x18, 0x85, 0xC9);       // ecx = count
+		a.jcc(0x8E, "emoji_scan_done");
+		a.emit(0x33, 0xD2);                         // edx = index
+		a.label("emoji_scan_open");
+		a.emit(0x3B, 0xD1);
+		a.jcc(0x83, "emoji_scan_done");
+		a.emit(0x66, 0x83, 0x3C, 0x56, 0x40);       // text[index] == '@'
+		a.jcc(0x84, "emoji_scan_close_next");
+		a.emit(0x42);
+		a.jmp("emoji_scan_open");
+		a.label("emoji_scan_close_next");
+		a.emit(0x42);
+		a.label("emoji_scan_close");
+		a.emit(0x3B, 0xD1);
+		a.jcc(0x83, "emoji_scan_done");
+		a.emit(0x66, 0x83, 0x3C, 0x56, 0x40);
+		a.jcc(0x84, "draw");
+		a.emit(0x42);
+		a.jmp("emoji_scan_close");
+		a.label("emoji_scan_done");
+	}
 	// EXTN owns entity names and metadata rows. Exclude every exact EXTN key
 	// before item substring matching or grade-continuation inheritance so NPC
 	// titles such as "[Reset Stats/Skills]" cannot collide with ICOL entries.
@@ -429,6 +459,9 @@ ItemColorStatic.patchTextSurfaces = function(state)
 	if (!extState || !Number.isInteger(extState.textOutVir))
 		throw Error("ItemColorStatic: underlying ExtNameTextStatic TextOutW bridge unavailable");
 	const apis = ItemColorStatic.findApis();
+	const emojiTokensEnabled =
+		(extState.features & ExtNameTextStatic.FeatureEmoji) !== 0 &&
+		!!CACHE.get("FluentEmojiStatic.State");
 	const textOut = ItemColorStatic.allocateCode(
 		ItemColorStatic.buildTextOut(
 			state.stateVir,
@@ -438,7 +471,8 @@ ItemColorStatic.patchTextSurfaces = function(state)
 			state.ansiScratchVir,
 			extState.textOutVir,
 			extState.findWideVir,
-			apis
+			apis,
+			emojiTokensEnabled
 		)
 	);
 	const owner = Exe.ActivePatch;
