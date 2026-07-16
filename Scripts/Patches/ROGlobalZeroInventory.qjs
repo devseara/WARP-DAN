@@ -18,18 +18,20 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-06-14                                             *
-*   Last Modified : 2026-07-12                                             *
+*   Last Modified : 2026-07-17                                             *
 *                                                                          *
 *   Description   : Replaces the 2025-07-16 inventory's text tabs with     *
 *                   renewal tab_pri_01..04 images, reserves the final item *
-*                   row, and draws a live Zeny/weight panel using the      *
-*                   icon_weight.bmp. Tab balloons are anchored beside the *
+*                   row, and draws an expanded live Zeny/weight panel using*
+*                   icon_weight.bmp. Weight color matches the stock       *
+*                   warning threshold, and tab balloons stay beside each  *
 *                   hovered vertical tab. This is a QJS-only static patch.*
 *                                                                          *
 \**************************************************************************/
 
 const InventoryTabsStatic = {
 	BuildDate: 20250716,
+	WindowVtable: 0x0103D460,
 	WindowVtableEntry: 0x0103D4B0,
 	WindowDrawOriginal: 0x00946DA0,
 	WindowMouseVtableEntry: 0x0103D4D0,
@@ -63,17 +65,23 @@ const InventoryTabsStatic = {
 	CurrentZeny: 0x015FBA90,
 	CurrentWeight: 0x015FBAA0,
 	MaximumWeight: 0x015FBA9C,
+	WeightWarningPercent: 0x01602324,
 	WeightTooltipFormat: 0x0103E5E4,
 	PersonalLockState: 0x01600553,
 	PersonalTabIndex: 3,
+	ControlParentOffset: 0x10,
 	TabControlOffset: 0x118,
 	SelectedTabOffset: 0x7C,
 	TooltipX: 21,
 	ZenyRightMargin: 8,
 	ZenyBottomMargin: 28,
-	ZenyWidth: 122,
+	ZenyBitmapWidth: 122,
+	ZenyWidth: 184,
 	ZenyHeight: 36,
+	PanelCornerInset: 4,
+	PanelBackgroundColor: 0x00EFE7E7,
 	PanelTextColor: 0x00232323,
+	WeightWarningColor: 0x000000FF,
 	ReservedRowColor: 0x00FFFFFF,
 	// FillRect consumes COLORREF byte order; this renders as RGB #DEE7FF.
 	LockedReservedRowColor: 0x00FFE7DE
@@ -267,6 +275,17 @@ InventoryTabsStatic.buildTabDraw = function(stateVir, tabFormatVir, blankVir)
 	a.call(InventoryTabsStatic.TabDrawOriginal);
 	a.emit(0x3B, 0x35); a.dword(stateVir + 4); // CMP ESI,[inventoryTab]
 	a.jcc(0x85, "done");                     // JNE done
+	// A closed inventory leaves cached heap addresses behind. Reject a tab
+	// control whose address was recycled by Equipment or another window.
+	a.emit(0x8B, 0x46, InventoryTabsStatic.ControlParentOffset); // MOV EAX,[ESI+parent]
+	a.emit(0x3B, 0x05); a.dword(stateVir);      // CMP EAX,[inventoryWindow]
+	a.jcc(0x85, "done");                     // JNE done
+	a.emit(0x85, 0xC0);                       // TEST EAX,EAX
+	a.jcc(0x84, "done");                     // JE done
+	a.emit(0x81, 0x38); a.dword(InventoryTabsStatic.WindowVtable); // CMP [EAX],inventory vtable
+	a.jcc(0x85, "done");                     // JNE done
+	a.emit(0x3B, 0xB0); a.dword(InventoryTabsStatic.TabControlOffset); // CMP ESI,[EAX+tab]
+	a.jcc(0x85, "done");                     // JNE done
 
 	// Blank all four drawn labels after validating the vector has four entries.
 	a.emit(0x8B, 0xBE); a.dword(0xB4);         // MOV EDI,[ESI+B4]
@@ -344,6 +363,15 @@ InventoryTabsStatic.buildTabMouse = function(stateVir, tooltipTableVir, yTableVi
 
 	a.emit(0x3B, 0x0D); a.dword(stateVir + 4); // CMP ECX,[inventoryTab]
 	a.jcc(0x85, "original");
+	a.emit(0x8B, 0x41, InventoryTabsStatic.ControlParentOffset); // MOV EAX,[ECX+parent]
+	a.emit(0x3B, 0x05); a.dword(stateVir);      // CMP EAX,[inventoryWindow]
+	a.jcc(0x85, "original");
+	a.emit(0x85, 0xC0);                       // TEST EAX,EAX
+	a.jcc(0x84, "original");
+	a.emit(0x81, 0x38); a.dword(InventoryTabsStatic.WindowVtable); // CMP [EAX],inventory vtable
+	a.jcc(0x85, "original");
+	a.emit(0x3B, 0x88); a.dword(InventoryTabsStatic.TabControlOffset); // CMP ECX,[EAX+tab]
+	a.jcc(0x85, "original");
 	a.emit(0x55, 0x8B, 0xEC);                 // PUSH EBP / MOV EBP,ESP
 	a.emit(0x83, 0xEC, 0x08);                 // SUB ESP,8
 	a.emit(0x53, 0x56, 0x57);                 // PUSH EBX/ESI/EDI
@@ -408,6 +436,35 @@ InventoryTabsStatic.buildZenyUnderlay = function(
 		a.jcc(0x84, failedLabel);
 	};
 
+	const drawPanelSurface = function(xOffset)
+	{
+		a.emit(0x6A, 0x00, 0x57);                // PUSH 0 / PUSH surface
+		a.emit(0xFF, 0x75, 0x64);                // PUSH panelY
+		a.emit(0x8B, 0x45, 0x60);                // MOV EAX,panelX
+		if (xOffset > 0)
+		{
+			a.emit(0x05); a.dword(xOffset);        // ADD EAX,xOffset
+		}
+		a.emit(0x50);                            // PUSH x
+		a.emit(0x8B, 0xCE);                      // MOV ECX,ESI
+		a.call(InventoryTabsStatic.ImageDraw);
+	};
+
+	const fillPanelMiddle = function()
+	{
+		a.emit(0x68); a.dword(InventoryTabsStatic.PanelBackgroundColor);
+		a.emit(0x6A, InventoryTabsStatic.ZenyHeight);
+		a.emit(0x68); a.dword(
+			InventoryTabsStatic.ZenyWidth - InventoryTabsStatic.PanelCornerInset * 2
+		);
+		a.emit(0xFF, 0x75, 0x64);                // PUSH panelY
+		a.emit(0x8B, 0x45, 0x60);                // MOV EAX,panelX
+		a.emit(0x83, 0xC0, InventoryTabsStatic.PanelCornerInset);
+		a.emit(0x50);                            // PUSH x
+		a.emit(0x8B, 0xCE);                      // MOV ECX,ESI
+		a.call(InventoryTabsStatic.FillRect);
+	};
+
 	const drawTextAbsolute = function(textVir, xOffset, yOffset)
 	{
 		a.emit(0x8B, 0x45, 0x64);             // MOV EAX,[EBP+64] panelY
@@ -433,17 +490,22 @@ InventoryTabsStatic.buildZenyUnderlay = function(
 		a.emit(0x8B, 0xD8);                    // MOV EBX,EAX
 	};
 
-	const drawBufferRight = function(bufferOffset, yOffset)
+	const drawBufferRight = function(bufferOffset, yOffset, useRegisterColor = false)
 	{
 		a.emit(0x8B, 0x45, 0x64);              // MOV EAX,[EBP+64] panelY
 		a.emit(0x83, 0xC0, yOffset);
 		a.emit(0x6A, 0x00, 0x6A, 0x00);
-		a.emit(0x68); a.dword(InventoryTabsStatic.PanelTextColor);
+		if (useRegisterColor)
+			a.emit(0x57);                          // PUSH EDI color
+		else
+		{
+			a.emit(0x68); a.dword(InventoryTabsStatic.PanelTextColor);
+		}
 		a.emit(0x6A, 0x0B, 0x6A, 0x00, 0x6A, 0x00);
 		a.emit(0x8D, 0x4D, bufferOffset, 0x51); // LEA ECX,[EBP+off] / PUSH ECX
 		a.emit(0x50);                           // PUSH y
 		a.emit(0x8B, 0x55, 0x60);              // MOV EDX,[EBP+60] panelX
-		a.emit(0x83, 0xC2, InventoryTabsStatic.ZenyWidth - 5);
+		a.emit(0x81, 0xC2); a.dword(InventoryTabsStatic.ZenyWidth - 5);
 		a.emit(0x2B, 0xD3);                    // SUB EDX,EBX width
 		a.emit(0x52);                           // PUSH x
 		a.emit(0x8B, 0xCE);
@@ -499,11 +561,13 @@ InventoryTabsStatic.buildZenyUnderlay = function(
 	a.label("blank_row_done");
 
 	// Background first so native text and the added summary remain visible.
+	// Overlap two native-width copies for the outer corners, then repaint the
+	// uniform center to hide both internal rounded edges. This extends the panel
+	// without an edited resource or a scaling hook.
 	loadSurface(zenyPathVir, "content");
-	a.emit(0x6A, 0x00, 0x57);
-	a.emit(0xFF, 0x75, 0x64, 0xFF, 0x75, 0x60);
-	a.emit(0x8B, 0xCE);
-	a.call(InventoryTabsStatic.ImageDraw);
+	drawPanelSurface(0);
+	drawPanelSurface(InventoryTabsStatic.ZenyWidth - InventoryTabsStatic.ZenyBitmapWidth);
+	fillPanelMiddle();
 
 	a.label("content");
 	drawTextAbsolute(zenyLabelVir, 7, 4);
@@ -547,7 +611,21 @@ InventoryTabsStatic.buildZenyUnderlay = function(
 	a.call(InventoryTabsStatic.Sprintf);
 	a.emit(0x83, 0xC4, 0x10);
 	measureBuffer(0x00);
-	drawBufferRight(0x00, 20);
+
+	// Match the stock Basic Info warning path: percent=current*100/max, maximum
+	// is clamped to one, and the server-fed warning threshold selects red.
+	a.emit(0xBF); a.dword(InventoryTabsStatic.PanelTextColor); // MOV EDI,normal color
+	a.emit(0x8B, 0x0D); a.dword(InventoryTabsStatic.MaximumWeight); // MOV ECX,max
+	a.emit(0xB8); a.dword(1);                  // MOV EAX,1
+	a.emit(0x3B, 0xC8);                       // CMP ECX,EAX
+	a.emit(0x0F, 0x4C, 0xC8);                 // CMOVL ECX,EAX
+	a.emit(0x6B, 0x05); a.dword(InventoryTabsStatic.CurrentWeight); a.emit(0x64);
+	a.emit(0x99, 0xF7, 0xF9);                 // CDQ / IDIV ECX
+	a.emit(0x3B, 0x05); a.dword(InventoryTabsStatic.WeightWarningPercent);
+	a.jcc(0x8C, "weight_color_ready");       // JL normal color
+	a.emit(0xBF); a.dword(InventoryTabsStatic.WeightWarningColor); // MOV EDI,red
+	a.label("weight_color_ready");
+	drawBufferRight(0x00, 20, true);
 
 	a.label("restore");
 	a.emit(0x8B, 0xE5);                       // MOV ESP,EBP

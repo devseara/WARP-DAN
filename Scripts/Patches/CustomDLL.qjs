@@ -441,11 +441,9 @@ CustomDLL.getDllName = function(inputKey, title, description, defaultName, dedic
 			dllName
 		});
 
-	// WARP keeps GetUserInput values around in the GUI process. DLL names must
-	// come from the active profile/build, so do not let one uploaded profile
-	// pin old import names until warp.exe restarts.
-	if (typeof Exe.ClearSavedInput === "function")
-		Exe.ClearSavedInput(inputKey);
+	// Keep the selected value saved. WARP_console serializes the active profile
+	// after patching, and clearing it here erases explicit DLL choices so the
+	// next profile build silently falls back to a different default.
 
 	return dllName;
 };

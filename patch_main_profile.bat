@@ -15,8 +15,8 @@ if errorlevel 1 (
 
 where py >nul 2>&1
 if not errorlevel 1 (
-    echo [bridge-iat] Repairing static bridge IAT operands...
-    py -3 tools\fix_custom_bridge_iats.py "%TARGET%" --write
+    echo [bridge-iat] Auditing static bridge IAT operands...
+    call :audit_bridges py -3
     if errorlevel 1 exit /b 1
     goto :done
 )
@@ -27,10 +27,19 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [bridge-iat] Repairing static bridge IAT operands...
-python tools\fix_custom_bridge_iats.py "%TARGET%" --write
+echo [bridge-iat] Auditing static bridge IAT operands...
+call :audit_bridges python
 if errorlevel 1 exit /b 1
 
 :done
 echo [done] %TARGET%
 endlocal
+exit /b 0
+
+:audit_bridges
+for %%D in (boh_rune.dll boh_pincode_ui.dll) do (
+    echo [bridge-iat] %%D
+    %* tools\fix_custom_bridge_iats.py "%TARGET%" --dll "%%D" --write
+    if errorlevel 1 exit /b 1
+)
+exit /b 0
