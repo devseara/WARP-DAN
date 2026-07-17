@@ -22,14 +22,18 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2025-07-16                                             *
-*   Last Modified : 2026-07-13                                             *
+*   Last Modified : 2026-07-17                                             *
 *                                                                          *
 *   Description   : Routes the Banquet 0x0BDD item-color list into a       *
-*                   bounded EXE-resident table and colors matching item    *
-*                   names at the client's TextOutW surfaces. This replaces *
-*                   the former boh.dll/boh_text.dll runtime hooks while    *
-*                   retaining UTF-8 substring, grade-label continuation   *
-*                   and shadow-suppression behavior. Target: 2025-07-16.   *
+*                   bounded EXE-resident table and colors item-title and   *
+*                   grade-name spans at the client's TextOutW surfaces.    *
+*                   This replaces the former boh.dll/boh_text.dll runtime  *
+*                   hooks while retaining UTF-8 matching and grade-label  *
+*                   continuation. Normal colors are limited to item-title *
+*                   shapes so bracketed description headings stay stock.  *
+*                   Inventory and ground item-label producers recolor     *
+*                   only the center glyph while retaining the client's    *
+*                   native outline. Target: 2025-07-16.                   *
 *                                                                          *
 \**************************************************************************/
 
@@ -56,9 +60,26 @@ ItemColorStatic = {
 	StateContinuationY: 20,
 	StateContinuationTick: 24,
 	StateContinuationValid: 28,
-	StateSize: 32,
+	StateBalloonBypass: 32,
+	StateSize: 36,
 	AnsiScratchSize: 512,
-	ContinuationMs: 150
+	ContinuationMs: 150,
+	ItemTooltipShow: 0x00A753D0,
+	InventoryTooltipCallSites: [0x0094D594, 0x0094D639],
+	// UIEquipWnd::OnMouseMove (vtable 0x0103223C, slot 28). The first call
+	// is the random-option label path: "[Grade] Name [N Option]".
+	EquipmentTooltipCallSites: [0x008B9EC6, 0x008B9F48, 0x008BA00E, 0x008BA0B1],
+	GroundTooltipProject: 0x00C72CE0,
+	GroundTooltipCallSites: [0x00C7147C],
+	GroundItemName: 0x158,
+	GroundItemNameLength: 0x168,
+	GroundItemNameCapacity: 0x16C,
+	TooltipCenterColor: 0x90,
+	BalloonPlainTextDraw: 0x00A27C20,
+	BalloonPlainTextDrawCallSites: [0x00826529],
+	BalloonStyledTextDraw: 0x00A26540,
+	BalloonStyledTextDrawCallSites: [0x00826503],
+	BalloonTextMax: 255
 };
 
 ItemColorStatic.allocateCode = function(assembler)
@@ -179,35 +200,174 @@ ItemColorStatic.buildLookup = function(stateVir, tableVir)
 	a.label("entry_loop");
 	a.emit(0x83, 0x7D, 0xFC, 0x00);
 	a.jcc(0x84, "not_found");
-	// Grade sentinels are only eligible for bracket/color-code text. Plain
-	// item_color_db.yml entries remain eligible for ordinary item names.
-	a.emit(0x83, 0x7D, 0x10, 0x00);
-	a.jcc(0x85, "entry_eligible");
-	a.emit(0xF7, 0x47, ItemColorStatic.EntryFlags); a.dword(ItemColorStatic.EntryGrade);
+
+	// Lookup mode 1 accepts grade sentinels only; mode 0 accepts anchored normal
+	// item-title shapes; mode 2 enables normal substring matching only for the
+	// inventory/equipment/ground semantic producers.
+	a.emit(0x8B, 0x47, ItemColorStatic.EntryFlags);
+	a.emit(0xA9); a.dword(ItemColorStatic.EntryGrade);
+	a.jcc(0x84, "normal_entry");
+	a.emit(0x83, 0x7D, 0x10, 0x01);
 	a.jcc(0x85, "next_entry");
-	a.label("entry_eligible");
+
+	// Grade labels are valid only as the leading token [<label>]. Substring
+	// matching made ordinary headings such as [Shoes Description] eligible.
+	a.emit(0x8B, 0x57, ItemColorStatic.EntryLength, 0x85, 0xD2);
+	a.jcc(0x84, "next_entry");
+	a.emit(0x8B, 0xC2, 0x83, 0xC0, 0x02, 0x3B, 0x45, 0x0C);
+	a.jcc(0x87, "next_entry");
+	a.emit(0x8B, 0x75, 0x08, 0x80, 0x3E, 0x5B);
+	a.jcc(0x85, "next_entry");
+	a.emit(0x46, 0x8D, 0x5F, ItemColorStatic.EntryName, 0x8B, 0xCA);
+	a.label("grade_compare");
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "grade_close");
+	a.emit(0x8A, 0x06, 0x3A, 0x03);
+	a.jcc(0x85, "next_entry");
+	a.emit(0x46, 0x43, 0x49);
+	a.jmp("grade_compare");
+	a.label("grade_close");
+	a.emit(0x80, 0x3E, 0x5D);
+	a.jcc(0x85, "next_entry");
+	// If the formatter emitted more than [Label], the token must be followed
+	// by its normal separating space.
+	a.emit(0x8B, 0x45, 0x0C, 0x2B, 0xC2, 0x83, 0xF8, 0x02);
+	a.jcc(0x84, "found");
+	a.emit(0x80, 0x7E, 0x01, 0x20);
+	a.jcc(0x84, "found");
+	a.jmp("next_entry");
+
+	a.label("normal_entry");
+	a.emit(0x8B, 0x45, 0x10, 0x83, 0xF8, 0x01);
+	a.jcc(0x84, "next_entry");
+	a.emit(0x83, 0xF8, 0x02);
+	a.jcc(0x84, "normal_substring");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "next_entry");
+	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x4D, 0x0C);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "next_entry");
+
+	// Accept the stock equipment-name decorations without permitting an item
+	// name to float inside arbitrary UI prose: optional +<digits><space> prefix.
+	a.emit(0x80, 0x3E, 0x2B);
+	a.jcc(0x85, "normal_candidate");
+	a.emit(0x83, 0xF9, 0x03);
+	a.jcc(0x82, "normal_candidate");
+	a.emit(0x8A, 0x46, 0x01, 0x3C, 0x30);
+	a.jcc(0x82, "normal_candidate");
+	a.emit(0x3C, 0x39);
+	a.jcc(0x87, "normal_candidate");
+	a.emit(0x83, 0xC6, 0x02, 0x83, 0xE9, 0x02);
+	a.label("refine_prefix");
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "next_entry");
+	a.emit(0x8A, 0x06, 0x3C, 0x30);
+	a.jcc(0x82, "refine_space");
+	a.emit(0x3C, 0x39);
+	a.jcc(0x87, "refine_space");
+	a.emit(0x46, 0x49);
+	a.jmp("refine_prefix");
+	a.label("refine_space");
+	a.emit(0x3C, 0x20);
+	a.jcc(0x85, "next_entry");
+	a.emit(0x46, 0x49);
+
+	a.label("normal_candidate");
+	a.emit(0x89, 0x4D, 0xF8);
+	a.emit(0x8B, 0x57, ItemColorStatic.EntryLength, 0x85, 0xD2);
+	a.jcc(0x84, "next_entry");
+	a.emit(0x3B, 0xD1);
+	a.jcc(0x87, "next_entry");
+	a.emit(0x8D, 0x5F, ItemColorStatic.EntryName, 0x8B, 0xCA);
+	a.label("normal_compare");
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "normal_suffix");
+	a.emit(0x8A, 0x06, 0x3A, 0x03);
+	a.jcc(0x85, "next_entry");
+	a.emit(0x46, 0x43, 0x49);
+	a.jmp("normal_compare");
+
+	a.label("normal_suffix");
+	a.emit(0x8B, 0x4D, 0xF8, 0x2B, 0xCA);
+	a.jcc(0x84, "found");
+	// Accept only the two stock item-title suffixes: numeric slots " [<n>]"
+	// and item-balloon quantities " <count> ea.".
+	a.emit(0x83, 0xF9, 0x04);
+	a.jcc(0x82, "next_entry");
+	a.emit(0x80, 0x3E, 0x20);
+	a.jcc(0x85, "next_entry");
+	a.emit(0x80, 0x7E, 0x01, 0x5B);
+	a.jcc(0x84, "slot_suffix");
+
+	// Quantity suffix: one or more digits followed by the exact " ea." tail.
+	a.emit(0x83, 0xF9, 0x06);
+	a.jcc(0x82, "next_entry");
+	a.emit(0x8A, 0x46, 0x01, 0x3C, 0x30);
+	a.jcc(0x82, "next_entry");
+	a.emit(0x3C, 0x39);
+	a.jcc(0x87, "next_entry");
+	a.emit(0x46, 0x49);
+	a.label("quantity_digits");
+	a.emit(0x83, 0xF9, 0x04);
+	a.jcc(0x86, "quantity_tail");
+	a.emit(0x8A, 0x06, 0x3C, 0x30);
+	a.jcc(0x82, "quantity_tail");
+	a.emit(0x3C, 0x39);
+	a.jcc(0x87, "quantity_tail");
+	a.emit(0x46, 0x49);
+	a.jmp("quantity_digits");
+	a.label("quantity_tail");
+	a.emit(0x83, 0xF9, 0x04);
+	a.jcc(0x85, "next_entry");
+	a.emit(0x81, 0x3E); a.dword(0x2E616520); // " ea."
+	a.jcc(0x84, "found");
+	a.jmp("next_entry");
+
+	a.label("slot_suffix");
+	a.emit(0x83, 0xC6, 0x02, 0x83, 0xE9, 0x02);
+	a.emit(0x83, 0xF9, 0x02);
+	a.jcc(0x82, "next_entry");
+	a.label("slot_digits");
+	a.emit(0x83, 0xF9, 0x01);
+	a.jcc(0x84, "slot_close");
+	a.emit(0x8A, 0x06, 0x3C, 0x30);
+	a.jcc(0x82, "next_entry");
+	a.emit(0x3C, 0x39);
+	a.jcc(0x87, "next_entry");
+	a.emit(0x46, 0x49);
+	a.jmp("slot_digits");
+	a.label("slot_close");
+	a.emit(0x80, 0x3E, 0x5D);
+	a.jcc(0x85, "next_entry");
+	a.jmp("found");
+
+	// Producer-scoped mode 2 permits the packet item name anywhere inside the
+	// inventory/equipment/ground formatter's visible label. It is never used by generic
+	// TextOutW surfaces, so description headings cannot collide again.
+	a.label("normal_substring");
 	a.emit(0x8B, 0x57, ItemColorStatic.EntryLength, 0x85, 0xD2);
 	a.jcc(0x84, "next_entry");
 	a.emit(0x3B, 0x55, 0x0C);
 	a.jcc(0x87, "next_entry");
 	a.emit(0x8B, 0x45, 0x0C, 0x2B, 0xC2, 0x89, 0x45, 0xF4);
 	a.emit(0xC7, 0x45, 0xF8); a.dword(0);
-	a.label("position_loop");
+	a.label("substring_position");
 	a.emit(0x8B, 0x45, 0xF8, 0x3B, 0x45, 0xF4);
 	a.jcc(0x87, "next_entry");
 	a.emit(0x8B, 0x75, 0x08, 0x03, 0xF0);
-	a.emit(0x8D, 0x5F, ItemColorStatic.EntryName);
-	a.emit(0x8B, 0x4F, ItemColorStatic.EntryLength);
-	a.label("compare_loop");
+	a.emit(0x8D, 0x5F, ItemColorStatic.EntryName, 0x8B, 0xCA);
+	a.label("substring_compare");
 	a.emit(0x85, 0xC9);
 	a.jcc(0x84, "found");
 	a.emit(0x8A, 0x06, 0x3A, 0x03);
-	a.jcc(0x85, "next_position");
+	a.jcc(0x85, "substring_next");
 	a.emit(0x46, 0x43, 0x49);
-	a.jmp("compare_loop");
-	a.label("next_position");
+	a.jmp("substring_compare");
+	a.label("substring_next");
 	a.emit(0xFF, 0x45, 0xF8);
-	a.jmp("position_loop");
+	a.jmp("substring_position");
+
 	a.label("next_entry");
 	a.emit(0x81, 0xC7); a.dword(ItemColorStatic.EntrySize);
 	a.emit(0xFF, 0x4D, 0xFC);
@@ -266,6 +426,114 @@ ItemColorStatic.buildContinuationLookup = function(stateVir, getTickCountIat)
 	return a;
 };
 
+ItemColorStatic.buildItemTooltip = function(drainVir, lookupVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	// Inventory and equipment producers pass the complete ANSI hover label and
+	// an RGB color to A753D0. Match only their exact callsites, replace that RGB
+	// argument, and tail-jump so the stock constructor still creates both the
+	// center and outline passes.
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x51);
+	a.call(drainVir);
+	a.emit(0x8B, 0x75, 0x08, 0x85, 0xF6); // esi = ANSI item label
+	a.jcc(0x84, "passthrough");
+	a.emit(0x33, 0xC9);
+	a.label("scan_loop");
+	a.emit(0x81, 0xF9); a.dword(ItemColorStatic.BalloonTextMax);
+	a.jcc(0x83, "passthrough");
+	a.emit(0x80, 0x3C, 0x0E, 0x00);
+	a.jcc(0x84, "have_length");
+	a.emit(0x41);
+	a.jmp("scan_loop");
+
+	a.label("have_length");
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "passthrough");
+	a.emit(0x8B, 0xF9);
+	// Preserve grade priority for labels such as [Rare] Item 1 ea.; fall back
+	// to the producer-scoped normal-name substring lookup.
+	a.emit(0x6A, 0x01, 0x57, 0x56);
+	a.call(lookupVir);
+	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
+	a.jcc(0x85, "matched");
+	a.emit(0x6A, 0x02, 0x57, 0x56);
+	a.call(lookupVir);
+	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
+	a.jcc(0x84, "passthrough");
+	a.label("matched");
+	a.emit(0x8B, 0x00); // ICOL table stores Win32 COLORREF 0x00BBGGRR
+	// A753D0 accepts 0x00RRGGBB and converts it to COLORREF internally.
+	a.emit(0x8B, 0xD0, 0x81, 0xE2); a.dword(0xFF);
+	a.emit(0xC1, 0xE2, 0x10);
+	a.emit(0x8B, 0xD8, 0x81, 0xE3); a.dword(0xFF00);
+	a.emit(0xC1, 0xE8, 0x10, 0x25); a.dword(0xFF);
+	a.emit(0x0B, 0xC3, 0x0B, 0xC2, 0x89, 0x45, 0x14);
+
+	a.label("passthrough");
+	a.emit(0x59, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.jmp(ItemColorStatic.ItemTooltipShow);
+	return a;
+};
+
+ItemColorStatic.buildGroundTooltip = function(drainVir, lookupVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	// The world-hover producer passes its new balloon as arg1 and CItem as arg2
+	// to C72CE0. Read CItem's MSVC std::string at +158, recolor only the
+	// balloon's center field at +90, then preserve the stock projection path.
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x51);
+	a.call(drainVir);
+	a.emit(0x8B, 0x5D, 0x0C, 0x85, 0xDB); // ebx = CItem
+	a.jcc(0x84, "passthrough");
+	a.emit(0x8B, 0x8B); a.dword(ItemColorStatic.GroundItemNameLength);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "passthrough");
+	a.emit(0x81, 0xF9); a.dword(ItemColorStatic.BalloonTextMax);
+	a.jcc(0x87, "passthrough");
+	a.emit(0x8D, 0xB3); a.dword(ItemColorStatic.GroundItemName);
+	a.emit(0x83, 0xBB); a.dword(ItemColorStatic.GroundItemNameCapacity); a.emit(0x10);
+	a.jcc(0x82, "have_text");
+	a.emit(0x8B, 0xB3); a.dword(ItemColorStatic.GroundItemName);
+	a.label("have_text");
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "passthrough");
+	a.emit(0x8B, 0xF9);
+	a.emit(0x6A, 0x01, 0x57, 0x56);
+	a.call(lookupVir);
+	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
+	a.jcc(0x85, "matched");
+	a.emit(0x6A, 0x02, 0x57, 0x56);
+	a.call(lookupVir);
+	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
+	a.jcc(0x84, "passthrough");
+	a.label("matched");
+	a.emit(0x8B, 0x00, 0x8B, 0x55, 0x08, 0x85, 0xD2);
+	a.jcc(0x84, "passthrough");
+	a.emit(0x89, 0x82); a.dword(ItemColorStatic.TooltipCenterColor);
+
+	a.label("passthrough");
+	a.emit(0x59, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.jmp(ItemColorStatic.GroundTooltipProject);
+	return a;
+};
+
+ItemColorStatic.buildBalloonTextScope = function(stateVir, stockDrawVir, argBytes)
+{
+	const a = ExtNameStaticAsm.asm();
+	// The semantic producer owns item-balloon colors. Scope the generic
+	// TextOutW item bridge out for both 8263A0 draw branches so the stock helper
+	// can render its native black shadow and already-colored center unchanged.
+	a.emit(0x55, 0x8B, 0xEC, 0x51); // receiver in [ebp-4]
+	a.emit(0xFF, 0x05); a.dword(stateVir + ItemColorStatic.StateBalloonBypass);
+	for (let offset = argBytes + 4; offset >= 8; offset -= 4)
+		a.emit(0xFF, 0x75, offset);
+	a.emit(0x8B, 0x4D, 0xFC);
+	a.call(stockDrawVir);
+	a.emit(0xFF, 0x0D); a.dword(stateVir + ItemColorStatic.StateBalloonBypass);
+	a.emit(0x8B, 0xE5, 0x5D, 0xC2, argBytes & 0xFF, (argBytes >>> 8) & 0xFF);
+	return a;
+};
+
 ItemColorStatic.buildTextOut = function(
 	stateVir,
 	drainVir,
@@ -284,6 +552,10 @@ ItemColorStatic.buildTextOut = function(
 	a.emit(0xC7, 0x45, 0xF8); a.dword(0);          // matched entry
 	a.emit(0xC7, 0x45, 0xF4); a.dword(0);          // old color valid
 	a.emit(0xC7, 0x45, 0xE0); a.dword(0);          // grade marker present
+	a.emit(0x83, 0x3D); a.dword(stateVir + ItemColorStatic.StateBalloonBypass); a.emit(0x00);
+	a.jcc(0x84, "item_text_bridge");
+	a.jmp("draw");
+	a.label("item_text_bridge");
 	a.call(drainVir);
 	if (emojiTokensEnabled)
 	{
@@ -315,7 +587,7 @@ ItemColorStatic.buildTextOut = function(
 		a.label("emoji_scan_done");
 	}
 	// EXTN owns entity names and metadata rows. Exclude every exact EXTN key
-	// before item substring matching or grade-continuation inheritance so NPC
+	// before item-title matching or grade-continuation inheritance so NPC
 	// titles such as "[Reset Stats/Skills]" cannot collide with ICOL entries.
 	a.emit(0x83, 0x7D, 0x14, 0x00);
 	a.jcc(0x84, "continuation");
@@ -342,8 +614,8 @@ ItemColorStatic.buildTextOut = function(
 	a.emit(0x89, 0x45, 0xEC, 0xBA); a.dword(ansiScratchVir);
 	a.emit(0xC6, 0x04, 0x02, 0x00);
 
-	// A grade bracket/color code enables grade sentinels. Ordinary text still
-	// reaches the lookup so name-based item_color_db.yml entries work.
+	// A grade bracket/color code enables a grade-only lookup first. Normal
+	// item-title matching is the fallback and never uses arbitrary substrings.
 	a.emit(0x33, 0xC9);
 	a.label("fast_scan");
 	a.emit(0x83, 0xF9, 0x08);
@@ -360,26 +632,22 @@ ItemColorStatic.buildTextOut = function(
 	a.label("grade_marker");
 	a.emit(0xC7, 0x45, 0xE0); a.dword(1);
 	a.label("lookup");
-	a.emit(0xFF, 0x75, 0xE0);
+	a.emit(0x83, 0x7D, 0xE0, 0x00);
+	a.jcc(0x84, "normal_lookup");
+	a.emit(0x6A, 0x01);
 	a.emit(0xFF, 0x75, 0xEC, 0x68); a.dword(ansiScratchVir);
 	a.call(lookupVir);
-	a.emit(0x83, 0xC4, 0x0C, 0x89, 0x45, 0xF8, 0x85, 0xC0);
+	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
+	a.jcc(0x85, "lookup_found");
+	a.label("normal_lookup");
+	a.emit(0x6A, 0x00);
+	a.emit(0xFF, 0x75, 0xEC, 0x68); a.dword(ansiScratchVir);
+	a.call(lookupVir);
+	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
 	a.jcc(0x84, "continuation");
+	a.label("lookup_found");
+	a.emit(0x89, 0x45, 0xF8);
 	a.emit(0x8B, 0x58, ItemColorStatic.EntryColor, 0x89, 0x5D, 0xFC);
-
-	// Do not tint the exact item-detail title pass around the sprite header.
-	a.emit(0x8B, 0x50, ItemColorStatic.EntryLength, 0x3B, 0x55, 0xEC);
-	a.jcc(0x85, "track_grade");
-	a.emit(0x81, 0x7D, 0x0C); a.dword(80);
-	a.jcc(0x82, "track_grade");
-	a.emit(0x81, 0x7D, 0x0C); a.dword(180);
-	a.jcc(0x87, "track_grade");
-	a.emit(0x83, 0x7D, 0x10, 0x00);
-	a.jcc(0x8C, "track_grade");
-	a.emit(0x83, 0x7D, 0x10, 0x18);
-	a.jcc(0x8F, "track_grade");
-	a.emit(0xC7, 0x45, 0xFC); a.dword(0xFFFFFFFF);
-	a.jmp("draw");
 
 	a.label("track_grade");
 	a.emit(0xF7, 0x40, ItemColorStatic.EntryFlags); a.dword(ItemColorStatic.EntryGrade);
@@ -400,13 +668,13 @@ ItemColorStatic.buildTextOut = function(
 	a.label("apply");
 	a.emit(0x83, 0x7D, 0xFC, 0xFF);
 	a.jcc(0x84, "draw");
-	// SetTextColor returns the old COLORREF, so the wrapper can classify and
-	// restore the stock shadow pass without a relocatable GetTextColor import.
+	// Description/item-detail text uses the shared TextOutW bridge. Color only
+	// its non-dark foreground pass and suppress the offset shadow so the title
+	// keeps the stock thin shape; inventory/equipment/ground label weight is handled by
+	// their separate semantic tooltip bridges instead.
 	a.emit(0xFF, 0x75, 0xFC, 0xFF, 0x75, 0x08);
 	ItemColorStatic.callIat(a, apis.setTextColor);
 	a.emit(0x89, 0x45, 0xE8);
-	// Reject all-dark shadow/outline passes. The original item DLL returned
-	// TRUE without drawing these passes so the colored main glyph stays crisp.
 	a.emit(0x8B, 0xD0, 0x81, 0xE2); a.dword(0xFF);
 	a.emit(0x83, 0xFA, 0x20);
 	a.jcc(0x87, "set_color");
@@ -415,12 +683,12 @@ ItemColorStatic.buildTextOut = function(
 	a.jcc(0x87, "set_color");
 	a.emit(0xC1, 0xE8, 0x10, 0x25); a.dword(0xFF);
 	a.emit(0x83, 0xF8, 0x20);
-	a.jcc(0x86, "restore_shadow");
+	a.jcc(0x86, "suppress_shadow");
 	a.label("set_color");
 	a.emit(0x8B, 0x45, 0xE8, 0x89, 0x45, 0xF0);
 	a.emit(0xC7, 0x45, 0xF4); a.dword(1);
 	a.jmp("draw");
-	a.label("restore_shadow");
+	a.label("suppress_shadow");
 	a.emit(0xFF, 0x75, 0xE8, 0xFF, 0x75, 0x08);
 	ItemColorStatic.callIat(a, apis.setTextColor);
 	a.jmp("shadow_done");
@@ -499,6 +767,67 @@ ItemColorStatic.patchTextSurfaces = function(state)
 	return state;
 };
 
+ItemColorStatic.patchItemLabelSurfaces = function(state)
+{
+	if (!Number.isInteger(state.itemTooltipVir) ||
+		!Number.isInteger(state.groundTooltipVir) ||
+		!Number.isInteger(state.balloonPlainScopeVir) ||
+		!Number.isInteger(state.balloonStyledScopeVir))
+		throw Error("ItemColorStatic: item-label bridge unavailable");
+	const groups = [
+		{
+			stockVir: ItemColorStatic.ItemTooltipShow,
+			bridgeVir: state.itemTooltipVir,
+			callSites: ItemColorStatic.InventoryTooltipCallSites
+		},
+		{
+			stockVir: ItemColorStatic.ItemTooltipShow,
+			bridgeVir: state.itemTooltipVir,
+			callSites: ItemColorStatic.EquipmentTooltipCallSites
+		},
+		{
+			stockVir: ItemColorStatic.GroundTooltipProject,
+			bridgeVir: state.groundTooltipVir,
+			callSites: ItemColorStatic.GroundTooltipCallSites
+		},
+		{
+			stockVir: ItemColorStatic.BalloonPlainTextDraw,
+			bridgeVir: state.balloonPlainScopeVir,
+			callSites: ItemColorStatic.BalloonPlainTextDrawCallSites
+		},
+		{
+			stockVir: ItemColorStatic.BalloonStyledTextDraw,
+			bridgeVir: state.balloonStyledScopeVir,
+			callSites: ItemColorStatic.BalloonStyledTextDrawCallSites
+		}
+	];
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag("ItemColorStatic.ItemLabelBridge"), true);
+	try
+	{
+		for (const group of groups)
+		{
+			for (const callVir of group.callSites)
+			{
+				const callPhy = Exe.Vir2Phy(callVir, CODE);
+				if (callPhy < 0)
+					throw Error(`ItemColorStatic: item-label call ${callVir.toHex()} is not mapped`);
+				const target = Exe.GetTgtAddr(callPhy + 1);
+				if (target !== group.stockVir && target !== group.bridgeVir)
+					throw Error(`ItemColorStatic: unexpected item-label target ${target.toHex()}`);
+				Exe.SetCALL(callPhy, group.bridgeVir, 0);
+			}
+		}
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+	return state;
+};
+
 ItemColorStatic.enable = function(_, icolVir)
 {
 	if (Exe.BuildDate !== ItemColorStatic.BuildDate)
@@ -537,7 +866,50 @@ ItemColorStatic.enable = function(_, icolVir)
 			icolVir
 		};
 	}
+	if (!Number.isInteger(state.itemTooltipVir))
+	{
+		const tooltip = ItemColorStatic.allocateCode(
+			ItemColorStatic.buildItemTooltip(
+				state.drainVir,
+				state.lookupVir
+			)
+		);
+		state.itemTooltipVir = tooltip.virAddr;
+	}
+	if (!Number.isInteger(state.groundTooltipVir))
+	{
+		const tooltip = ItemColorStatic.allocateCode(
+			ItemColorStatic.buildGroundTooltip(
+				state.drainVir,
+				state.lookupVir
+			)
+		);
+		state.groundTooltipVir = tooltip.virAddr;
+	}
+	if (!Number.isInteger(state.balloonPlainScopeVir))
+	{
+		const scope = ItemColorStatic.allocateCode(
+			ItemColorStatic.buildBalloonTextScope(
+				state.stateVir,
+				ItemColorStatic.BalloonPlainTextDraw,
+				0x24
+			)
+		);
+		state.balloonPlainScopeVir = scope.virAddr;
+	}
+	if (!Number.isInteger(state.balloonStyledScopeVir))
+	{
+		const scope = ItemColorStatic.allocateCode(
+			ItemColorStatic.buildBalloonTextScope(
+				state.stateVir,
+				ItemColorStatic.BalloonStyledTextDraw,
+				0x20
+			)
+		);
+		state.balloonStyledScopeVir = scope.virAddr;
+	}
 	ItemColorStatic.patchTextSurfaces(state);
+	ItemColorStatic.patchItemLabelSurfaces(state);
 	CACHE.put("ItemColorStatic.State", state);
 
 	if (typeof CustomDLL.addRefreshHook === "function")
@@ -562,6 +934,10 @@ ItemColorStatic.enable = function(_, icolVir)
 			tableCapacity: ItemColorStatic.TableCapacity,
 			icolVir,
 			textOutVir: state.textOutVir,
+			itemTooltipVir: state.itemTooltipVir,
+			groundTooltipVir: state.groundTooltipVir,
+			balloonPlainScopeVir: state.balloonPlainScopeVir,
+			balloonStyledScopeVir: state.balloonStyledScopeVir,
 			customDllImports: 0
 		});
 	}
