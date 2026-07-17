@@ -141,7 +141,7 @@ CustomSkills:
             desc : "Builds the Fluent manifest into an EXE-resident token table and renders :shortcode:, compact @shortcode@ and raw Unicode aliases through the client's existing GDI+ dependency. Assets are copied beside the patched client. No custom DLL, API detour, recv hook, or runtime code patching is used. Target: 2025-07-16."
 
         - InGamePincodeUI:
-            title : Enable In-Game PIN Pad
+            title : Open Stock PIN Pad In-Game (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : "Routes BOH map packet 0x0BEF/PINC to the selected PIN keypad DLL, then submits the normal client PIN reply packets through the native packet sender path. Use the dedicated boh_pincode_ui.dll for Gepard builds; it owns its own Win32 UI and does not patch EXE code at runtime."
+            desc : "Handles BOH map packet 0x0BEF/PINC on the normal client update thread, loads the original character-select PIN resources, and creates the stock C7/C8 PIN window over the active in-game scene. The stock UI submits 0x08B8/0x08BA/0x08BE through the current map connection. No custom DLL, replacement keypad, API detour, or foreign UI thread is used. Target: 2025-07-16."

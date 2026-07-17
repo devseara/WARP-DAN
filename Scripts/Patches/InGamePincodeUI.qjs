@@ -9,501 +9,488 @@
 *   the Free Software Foundation, either version 3 of the License, or      *
 *   (at your option) any later version.                                    *
 *                                                                          *
-*   This program is distributed in the hope that it will be useful,        *
-*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
-*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
-*   GNU General Public License for more details.                           *
+*   WARP is distributed in the hope that it will be useful, but WITHOUT   *
+*   ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or *
+*   FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License  *
+*   for more details.                                                      *
 *                                                                          *
 *   You should have received a copy of the GNU General Public License      *
 *   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
-*                                                                          *
 *                                                                          *
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-06-21                                             *
 *                                                                          *
-*   Description   : Routes BOH map packet 0x0BEF/PINC into a small         *
-*                   CustomDLL PIN keypad, then sends the normal client     *
-*                   PIN packets through the native packet sender path.      *
+*   Description   : Opens the 2025-07-16 client's original character-      *
+*                   select PIN windows over the active in-game scene. BOH  *
+*                   map packet 0x0BEF/PINC is handled on the main client   *
+*                   thread; the stock UI then sends its native PIN reply   *
+*                   packets through the current map connection. No custom *
+*                   DLL, runtime hook, or replacement keypad is used.      *
 *                                                                          *
 \**************************************************************************/
 
 InGamePincodeUI = function(_)
 {
-	if (typeof CustomDLL === "undefined" ||
-	    typeof CustomDLL.applySpec !== "function" ||
-	    typeof CustomDLL.getDllName !== "function" ||
-	    typeof CustomDLL.findIat !== "function")
-		throw Error("InGamePincodeUI: CustomDLL helper unavailable");
+	$$(_, 1, `Validate native in-game PIN bridge`);
+	if (Exe.BuildDate !== 20250716)
+		Cancel("InGamePincodeUI currently supports only the 2025-07-16 client");
 
-    ROC.findImports();
+	const c = InGamePincodeUI.Constants;
+	InGamePincodeUI.validateClient(c);
 
-    $$(_, 1, `Validate supported in-game pincode client`);
-    if (Exe.BuildDate !== 20250716)
-        Cancel("InGamePincodeUI currently supports only the 2025-07-16 client");
-    const debugPincodeRoute = false;
-    if (debugPincodeRoute && ROC.OutDbgStrA < 0)
-        throw Error("InGamePincodeUI: OutputDebugStringA import missing");
-    if (ROC.GetModHandle < 0 || ROC.GetProcAddr < 0)
-        throw Error("InGamePincodeUI: GetModuleHandleA/GetProcAddress imports missing");
+	const entryVir = InGamePincodeUI.tableEntryVir(c.SwitchTableVir, c.PacketId);
+	const entryPhy = Exe.Vir2Phy(entryVir, CODE);
+	if (entryPhy < 0)
+		throw Error("InGamePincodeUI: could not resolve map packet dispatcher entry");
 
-	const dllName = CustomDLL.getDllName(
-		'$pincodeUiDLLName',
-		"Pincode UI DLL",
-		"Enter the PIN UI DLL filename. Use boh_pincode_ui.dll for the dedicated no-runtime-hook Gepard build. Avoid boh.dll/bohcustoms.dll unless that combined DLL was built with runtime-hook features disabled.",
-		"boh_pincode_ui.dll",
-		"boh_pincode_ui.dll"
-	);
-    CustomDLL.applySpec(`${_}.CustomDLL`, [{
-        Name: dllName,
-        Funcs: [
-            {Name: "PincodeUIInit"},
-            {Name: "PincodeUIShow"}
-        ]
-    }]);
+	const stateKey = "InGamePincodeUI.State.StockUi.v5";
+	const state = CACHE.get(stateKey);
+	const previousStockState = CACHE.get("InGamePincodeUI.State.StockUi.v4");
+	const olderStockState = CACHE.get("InGamePincodeUI.State.StockUi.v3");
+	const oldestStockState = CACHE.get("InGamePincodeUI.State.StockUi.v2");
+	const legacyDllState = CACHE.get("InGamePincodeUI.State.CustomDll.v1");
+	const legacyState = CACHE.get("InGamePincodeUI.State");
+	const current = Exe.GetUint32(entryPhy);
 
-    const packetId = 0x0BEF;
-    const packetMinLen = 18;
-    const packetMagic = 0x434E4950; // 'PINC'
-    const packetBufferVir = 0x015E8198;
-    const switchTableVir = 0x00CAA2E0;
-    const defaultHandlerVir = 0x00CAA2B7;
-    const mainLoopReturnVir = 0x00C9E1DD;
-    const addDebugText = text => debugPincodeRoute ? Exe.AddText(text)[1] : 0;
-    const outDbgStrAVir = debugPincodeRoute ? ROC.OutDbgStrA : 0;
-    const logEntryVir = addDebugText("[PincodeUI] trigger 0x0BEF received\r\n");
-    const logValidVir = addDebugText("[PincodeUI] trigger validated\r\n");
-    const logNoSessionVir = addDebugText("[PincodeUI] abort: map session register is null\r\n");
-    const logCallVir = addDebugText("[PincodeUI] calling custom PIN UI\r\n");
-    const logReturnVir = addDebugText("[PincodeUI] custom PIN UI returned\r\n");
-    const logResolveFailVir = addDebugText("[PincodeUI] abort: PincodeUIShow resolve failed\r\n");
-    const [, dllNameVir] = Exe.AddText(dllName);
-    const [, showFuncNameVir] = Exe.AddText("PincodeUIShow");
+	if (state && state.entryVir === entryVir && current === state.handlerVir)
+	{
+		$$(_, 1.1, `Native in-game PIN bridge already installed`);
+		return true;
+	}
 
-    const entryVir = InGamePincodeUI.tableEntryVir(switchTableVir, packetId);
-    const entryPhy = Exe.Vir2Phy(entryVir, CODE);
-    if (entryPhy < 0)
-        throw Error("InGamePincodeUI: could not resolve packet dispatcher entry");
+	const ownsCurrent =
+		(state && state.handlerVir === current) ||
+		(previousStockState && previousStockState.handlerVir === current) ||
+		(olderStockState && olderStockState.handlerVir === current) ||
+		(oldestStockState && oldestStockState.handlerVir === current) ||
+		(legacyDllState && legacyDllState.handlerVir === current) ||
+		(legacyState && legacyState.handlerVir === current);
+	if (current !== c.DefaultHandlerVir && !ownsCurrent)
+		throw Error(`InGamePincodeUI: packet 0x${c.PacketId.toString(16).toUpperCase()} dispatcher entry is ${current.toHex(true)}, expected ${c.DefaultHandlerVir.toHex(true)}`);
 
-    const stateKey = 'InGamePincodeUI.State.CustomDll.v1';
-    const state = CACHE.get(stateKey);
-    const legacyState = CACHE.get('InGamePincodeUI.State');
-    const current = Exe.GetUint32(entryPhy);
+	$$(_, 2, `Allocate native PIN bridge state`);
+	const [retryPhy, retryVir] = Exe.Allocate(8, 4);
+	const traceVir = retryVir + 4;
+	Exe.SetUint32(retryPhy, 0);
+	Exe.SetUint32(retryPhy + 4, 0);
 
-    if (state && state.entryVir === entryVir && current === state.handlerVir) {
-        $$(_, 1.1, `In-game pincode custom DLL route already installed`);
-        return true;
-    }
+	$$(_, 3, `Allocate stock PIN window dispatcher`);
+	let stubBytes = InGamePincodeUI.makeMainStub(0, retryVir, traceVir, c);
+	const [stubPhy, stubVir] = Exe.Allocate(stubBytes.length, 0x10);
+	stubBytes = InGamePincodeUI.makeMainStub(stubVir, retryVir, traceVir, c);
+	Exe.SetHex(stubPhy, InGamePincodeUI.bytesToHex(stubBytes));
 
-    const ownsCurrent =
-        (state && state.handlerVir === current) ||
-        (legacyState && legacyState.handlerVir === current);
-    if (current !== defaultHandlerVir && !ownsCurrent)
-        throw Error(`InGamePincodeUI: packet 0x${packetId.toString(16).toUpperCase()} dispatcher entry is ${current.toHex(true)}, expected default ${defaultHandlerVir.toHex(true)}`);
+	$$(_, 4, `Route BOH PIN trigger to stock client UI`);
+	if (Exe.GetUint32(entryPhy) !== current)
+		throw Error("InGamePincodeUI: dispatcher entry changed while applying patch");
+	Exe.SetUint32(entryPhy, stubVir);
 
-    $$(_, 2, `Locate native packet sender helpers`);
-    const senderHelpers = InGamePincodeUI.findPacketSenderHelpers();
+	CACHE.put(stateKey, {
+		version: 5,
+		packetId: c.PacketId,
+		entryVir,
+		handlerVir: stubVir,
+		retryVir,
+		traceVir
+	});
 
-    $$(_, 3, `Allocate PIN reply packet sender stubs`);
-    const senderStubs = InGamePincodeUI.allocatePacketSenderStubs(senderHelpers);
-
-    $$(_, 4, `Allocate pincode UI dispatcher stub`);
-    let stubBytes = InGamePincodeUI.makeMainStub({
-        packetId,
-        packetMinLen,
-        packetMagic,
-        packetBufferVir,
-        getModuleHandleAVir: ROC.GetModHandle,
-        getProcAddressVir: ROC.GetProcAddr,
-        dllNameVir,
-        showFuncNameVir,
-        sendCheckVir: senderStubs.checkVir,
-        sendSetVir: senderStubs.setVir,
-        sendChangeVir: senderStubs.changeVir,
-        mainLoopReturnVir,
-        outDbgStrAVir,
-        logEntryVir,
-        logValidVir,
-        logNoSessionVir,
-        logCallVir,
-        logReturnVir,
-        logResolveFailVir,
-        stubVir: 0
-    });
-    const [stubPhy, stubVir] = Exe.Allocate(stubBytes.length, 0x10);
-    stubBytes = InGamePincodeUI.makeMainStub({
-        packetId,
-        packetMinLen,
-        packetMagic,
-        packetBufferVir,
-        getModuleHandleAVir: ROC.GetModHandle,
-        getProcAddressVir: ROC.GetProcAddr,
-        dllNameVir,
-        showFuncNameVir,
-        sendCheckVir: senderStubs.checkVir,
-        sendSetVir: senderStubs.setVir,
-        sendChangeVir: senderStubs.changeVir,
-        mainLoopReturnVir,
-        outDbgStrAVir,
-        logEntryVir,
-        logValidVir,
-        logNoSessionVir,
-        logCallVir,
-        logReturnVir,
-        logResolveFailVir,
-        stubVir
-    });
-    Exe.SetHex(stubPhy, InGamePincodeUI.bytesToHex(stubBytes));
-
-    $$(_, 5, `Patch pincode dispatcher table entry`);
-    Exe.SetUint32(entryPhy, stubVir);
-
-    CACHE.put(stateKey, {
-        version: 1,
-        packetId,
-        entryVir,
-        handlerVir: stubVir,
-        sendCheckVir: senderStubs.checkVir,
-        sendSetVir: senderStubs.setVir,
-        sendChangeVir: senderStubs.changeVir
-    });
-
-    return true;
+	return true;
 };
 
-InGamePincodeUI.findPacketSenderHelpers = function()
-{
-    const packetTemplate =
-        MOV(EAX, 0x0844)
-    +   PUSH(ESI)
-    +   MOV([EBP, 0x8], AX);
+InGamePincodeUI.Constants = {
+	PacketId: 0x0BEF,
+	PacketMinLen: 18,
+	PacketMagic: 0x434E4950,
+	PacketBufferVir: 0x015E8198,
+	SwitchTableVir: 0x00CAA2E0,
+	DefaultHandlerVir: 0x00CAA2B7,
+	MainLoopReturnVir: 0x00C9E1DD,
 
-    const packetTemplateAddrs = Exe.FindHexN(packetTemplate);
-    if (packetTemplateAddrs.isEmpty())
-        throw Error("InGamePincodeUI: packet sender template not found");
+	PinUiFlagVir: 0x015FFA78,
+	PinModeVir: 0x015FFA80,
+	PinSeedVir: 0x015FFA84,
+	PinAidVir: 0x015FFA88,
+	InterfaceNamePtrVir: 0x01212D08,
+	UiManagerVir: 0x0131F4E8,
+	SecondPasswordInputWindowPtrVir: 0x0131F8A0,
+	SecondPasswordEditWindowPtrVir: 0x0131F8A4,
 
-    const senderCandidates = packetTemplateAddrs.filter(addr =>
-        Exe.FindLastHex(PUSH(0x13E), addr, addr - 0x80) > 0
-    );
-    if (senderCandidates.length !== 1)
-        throw Error("InGamePincodeUI: expected one packet sender template, found " + senderCandidates.length);
+	GetResourceManagerVir: 0x00A90350,
+	LookupResourceVir: 0x00A9F030,
+	ResolveResourceVir: 0x00A8D4A0,
+	LoadUiResourceVir: 0x00A4BBF0,
+	CreateWindowVir: 0x00A39340,
+	CloseWindowVir: 0x00A2E770,
+	GetMessageVir: 0x00A9ED30,
+	ShowMessageVir: 0x00A31A30,
+	FormatStringVir: 0x00A94930,
+	DestroyStringVir: 0x004F08F0,
 
-    const packetSender = senderCandidates[0];
-    return {
-        packetCtorA: Exe.GetTgtAddr(packetSender + 0x0A + 1),
-        packetCtorB: Exe.GetTgtAddr(packetSender + 0x11 + 1),
-        packetLookup: Exe.GetTgtAddr(packetSender + 0x1D + 1),
-        packetSend: Exe.GetTgtAddr(packetSender + 0x29 + 1)
-    };
+	SecondPasswordInputWindow: 0x00C7,
+	SecondPasswordEditWindow: 0x00C8,
+	MessageStyleVir: 0x00FDA1A0
 };
 
-InGamePincodeUI.allocatePacketSenderStubs = function(helpers)
+InGamePincodeUI.makeAssembler = function()
 {
-    return {
-        checkVir: InGamePincodeUI.allocatePacketSenderStub({
-            packetId: 0x08B8,
-            kind: "single",
-            helpers
-        }),
-        setVir: InGamePincodeUI.allocatePacketSenderStub({
-            packetId: 0x08BA,
-            kind: "single",
-            helpers
-        }),
-        changeVir: InGamePincodeUI.allocatePacketSenderStub({
-            packetId: 0x08BE,
-            kind: "change",
-            helpers
-        })
-    };
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+
+	function put32(out, pos, value)
+	{
+		value = value >>> 0;
+		out[pos] = value & 0xFF;
+		out[pos + 1] = (value >>> 8) & 0xFF;
+		out[pos + 2] = (value >>> 16) & 0xFF;
+		out[pos + 3] = (value >>> 24) & 0xFF;
+	}
+
+	return {
+		bytes,
+		emit: function()
+		{
+			for (let i = 0; i < arguments.length; ++i)
+				bytes.push(arguments[i] & 0xFF);
+		},
+		word: function(value)
+		{
+			this.emit(value, value >>> 8);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			this.emit(0, 0, 0, 0);
+			put32(bytes, pos, value);
+			return pos;
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error(`InGamePincodeUI: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			this.emit(opcode);
+			const pos = this.dword(0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			this.emit(0x0F, opcode);
+			const pos = this.dword(0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(`InGamePincodeUI: unresolved label ${fixup.target}`);
+				const targetVir = typeof fixup.target === "string"
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				put32(out, fixup.pos, targetVir - (baseVir + fixup.pos + 4));
+			}
+			return out;
+		}
+	};
 };
 
-InGamePincodeUI.allocatePacketSenderStub = function(options)
+InGamePincodeUI.makeMainStub = function(stubVir, retryVir, traceVir, c)
 {
-    let bytes = InGamePincodeUI.makePacketSenderStub({
-        packetId: options.packetId,
-        kind: options.kind,
-        helpers: options.helpers,
-        stubVir: 0
-    });
-    const [phy, vir] = Exe.Allocate(bytes.length, 0x10);
-    bytes = InGamePincodeUI.makePacketSenderStub({
-        packetId: options.packetId,
-        kind: options.kind,
-        helpers: options.helpers,
-        stubVir: vir
-    });
-    Exe.SetHex(phy, InGamePincodeUI.bytesToHex(bytes));
-    return vir;
+	const a = InGamePincodeUI.makeAssembler();
+
+	function setDword(address, value)
+	{
+		a.emit(0xC7, 0x05); a.dword(address); a.dword(value);
+	}
+
+	function setByte(address, value)
+	{
+		a.emit(0xC6, 0x05); a.dword(address); a.emit(value);
+	}
+
+	function pushDword(value)
+	{
+		a.emit(0x68); a.dword(value);
+	}
+
+	let eventDispatchIndex = 0;
+	function dispatchWindowEvent(windowPtrVir, eventId)
+	{
+		const doneLabel = `window_event_done_${eventDispatchIndex++}`;
+		a.emit(0x8B, 0x0D); a.dword(windowPtrVir); // MOV ECX,[window pointer]
+		a.emit(0x85, 0xC9);                       // TEST ECX,ECX
+		a.jcc(0x84, doneLabel);                   // JZ
+		pushDword(0);
+		pushDword(0);
+		pushDword(0);
+		a.emit(0x8B, 0x01);                       // MOV EAX,[ECX]
+		pushDword(eventId);
+		pushDword(6);
+		pushDword(0);
+		a.emit(0xFF, 0x90); a.dword(0x94);        // CALL [EAX+94h]
+		a.label(doneLabel);
+	}
+
+	function openState(mode, flag, windowId, windowPtrVir, postEventIds)
+	{
+		a.call("close_pin_windows");
+		setDword(c.PinModeVir, mode);
+		setByte(c.PinUiFlagVir, flag);
+		setDword(retryVir, 0);
+		pushDword(windowId);
+		a.call("show_pin_window");
+		for (const eventId of postEventIds)
+			dispatchWindowEvent(windowPtrVir, eventId);
+		a.jmp("done");
+	}
+
+	// The map receive switch executes in the normal client update thread.
+	// Preserve its complete register/flag contract before calling UI code.
+	a.emit(0x9C, 0x60);                         // PUSHFD / PUSHAD
+	a.emit(0xBE); a.dword(c.PacketBufferVir);   // MOV ESI, packet buffer
+	a.emit(0x66, 0x81, 0x3E); a.word(c.PacketId);
+	a.jcc(0x85, "done");                       // JNE
+	a.emit(0x66, 0x83, 0x7E, 0x02, c.PacketMinLen);
+	a.jcc(0x82, "done");                       // JB
+	a.emit(0x81, 0x7E, 0x04); a.dword(c.PacketMagic);
+	a.jcc(0x85, "done");                       // JNE
+
+	a.emit(0x0F, 0xB7, 0x46, 0x10);            // MOVZX EAX,word [ESI+16]
+	a.emit(0x83, 0xF8, 0x08);                  // CMP EAX,8
+	a.jcc(0x87, "done");                       // JA
+	a.emit(0x8B, 0xD0);                        // MOV EDX,EAX
+	a.emit(0x81, 0xCA); a.dword(0x100);         // OR EDX,100h
+	a.emit(0x89, 0x15); a.dword(traceVir);      // trace: packet accepted + state
+	a.emit(0x8B, 0x56, 0x08);                  // MOV EDX,[ESI+8]
+	a.emit(0x89, 0x15); a.dword(c.PinSeedVir);  // MOV [seed],EDX
+	a.emit(0x8B, 0x56, 0x0C);                  // MOV EDX,[ESI+12]
+	a.emit(0x89, 0x15); a.dword(c.PinAidVir);   // MOV [AID],EDX
+
+	a.emit(0x83, 0xF8, 0x00); a.jcc(0x84, "state_ok");
+	a.emit(0x83, 0xF8, 0x01); a.jcc(0x84, "state_ask");
+	a.emit(0x83, 0xF8, 0x02); a.jcc(0x84, "state_notset");
+	a.emit(0x83, 0xF8, 0x03); a.jcc(0x84, "state_expired");
+	a.emit(0x83, 0xF8, 0x04); a.jcc(0x84, "state_new");
+	a.emit(0x83, 0xF8, 0x05); a.jcc(0x84, "state_illegal");
+	a.emit(0x83, 0xF8, 0x06); a.jcc(0x84, "state_rejected");
+	a.emit(0x83, 0xF8, 0x07); a.jcc(0x84, "state_passed");
+	a.jmp("state_wrong");
+
+	a.label("state_ok");
+	a.call("close_pin_windows");
+	setDword(c.PinModeVir, 0);
+	setDword(retryVir, 0);
+	a.jmp("done");
+
+	a.label("state_ask");
+	openState(2, 0, c.SecondPasswordInputWindow, 0, []);
+
+	a.label("state_notset");
+	openState(4, 1, c.SecondPasswordEditWindow,
+		c.SecondPasswordEditWindowPtrVir, [0x0124, 0x00B8]);
+
+	a.label("state_expired");
+	openState(3, 0, c.SecondPasswordInputWindow,
+		c.SecondPasswordInputWindowPtrVir, [0x0124]);
+
+	a.label("state_new");
+	openState(5, 1, c.SecondPasswordEditWindow, 0, []);
+
+	a.label("state_illegal");
+	a.call("close_pin_windows");
+	pushDword(0x0768);
+	a.call("show_message_id");
+	a.call("reopen_pin_window");
+	a.jmp("done");
+
+	a.label("state_rejected");
+	a.call("close_pin_windows");
+	pushDword(0x0769);
+	a.call("show_message_id");
+	a.call("reopen_pin_window");
+	a.jmp("done");
+
+	a.label("state_passed");
+	a.call("close_pin_windows");
+	setDword(c.PinModeVir, 1);
+	setDword(retryVir, 0);
+	a.jmp("done");
+
+	a.label("state_wrong");
+	a.call("close_pin_windows");
+	a.emit(0xA1); a.dword(retryVir);            // MOV EAX,[retry]
+	a.emit(0x40);                               // INC EAX
+	a.emit(0xA3); a.dword(retryVir);            // MOV [retry],EAX
+	a.emit(0x83, 0xF8, 0x03);                  // CMP EAX,3
+	a.jcc(0x83, "wrong_limit");                // JAE
+	a.emit(0xB9); a.dword(3);                  // MOV ECX,3
+	a.emit(0x2B, 0xC8);                        // SUB ECX,EAX
+	a.emit(0x51);                               // PUSH ECX
+	a.call("show_wrong_message");
+	a.call("reopen_pin_window");
+	a.jmp("done");
+
+	a.label("wrong_limit");
+	setDword(c.PinModeVir, 0);
+	pushDword(0x0773);
+	a.call("show_message_id");
+	a.jmp("done");
+
+	a.label("done");
+	a.emit(0x61, 0x9D);                        // POPAD / POPFD
+	a.emit(0xB8); a.dword(c.MainLoopReturnVir);
+	a.emit(0xFF, 0xE0);                        // JMP EAX
+
+	// void __stdcall close_pin_windows()
+	a.label("close_pin_windows");
+	pushDword(c.SecondPasswordInputWindow);
+	a.emit(0xB9); a.dword(c.UiManagerVir);
+	a.call(c.CloseWindowVir);
+	pushDword(c.SecondPasswordEditWindow);
+	a.emit(0xB9); a.dword(c.UiManagerVir);
+	a.call(c.CloseWindowVir);
+	a.emit(0xC3);
+
+	// void __stdcall reopen_pin_window()
+	a.label("reopen_pin_window");
+	a.emit(0xA1); a.dword(c.PinModeVir);
+	a.emit(0x83, 0xF8, 0x02); a.jcc(0x82, "reopen_done");
+	a.emit(0x83, 0xF8, 0x05); a.jcc(0x87, "reopen_done");
+	a.emit(0x83, 0xF8, 0x04); a.jcc(0x83, "reopen_edit");
+	pushDword(c.SecondPasswordInputWindow);
+	a.call("show_pin_window");
+	a.emit(0xC3);
+	a.label("reopen_edit");
+	pushDword(c.SecondPasswordEditWindow);
+	a.call("show_pin_window");
+	a.label("reopen_done");
+	a.emit(0xC3);
+
+	// void __stdcall show_pin_window(uint32 windowId)
+	// This is the character-select resource-load/create path from D2534B.
+	a.label("show_pin_window");
+	a.emit(0x55, 0x8B, 0xEC, 0x53);            // PUSH EBP / MOV EBP,ESP / PUSH EBX
+	setDword(traceVir, 0x200);                  // entered stock resource path
+	a.call(c.GetResourceManagerVir);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "show_pin_create");
+	setDword(traceVir, 0x201);                  // resource manager available
+	a.emit(0x8B, 0xD8);                        // MOV EBX,EAX
+	a.emit(0xFF, 0x35); a.dword(c.InterfaceNamePtrVir);
+	a.call(c.LookupResourceVir);
+	a.emit(0x83, 0xC4, 0x04);                  // caller cleans lookup argument
+	a.emit(0x85, 0xC0); a.jcc(0x84, "show_pin_create");
+	setDword(traceVir, 0x202);                  // interface resource located
+	a.emit(0x50, 0x8B, 0xCB);                  // PUSH EAX / MOV ECX,EBX
+	a.call(c.ResolveResourceVir);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "show_pin_create");
+	setDword(traceVir, 0x203);                  // interface resource resolved
+	a.emit(0x50);                              // PUSH resolved resource
+	a.emit(0xB9); a.dword(c.UiManagerVir);
+	a.call(c.LoadUiResourceVir);
+	setDword(traceVir, 0x204);                  // stock resource load attempted
+	a.label("show_pin_create");
+	setDword(traceVir, 0x205);                  // stock window factory reached
+	a.emit(0xFF, 0x75, 0x08);                  // PUSH [EBP+8] window id
+	a.emit(0xB9); a.dword(c.UiManagerVir);
+	a.call(c.CreateWindowVir);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "show_pin_failed");
+	setDword(traceVir, 0x206);                  // factory returned a window
+	a.jmp("show_pin_done");
+	a.label("show_pin_failed");
+	setDword(traceVir, 0x2FF);                  // factory rejected the window
+	a.label("show_pin_done");
+	a.emit(0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x04, 0x00);
+
+	// void __stdcall show_message_id(uint32 messageId)
+	a.label("show_message_id");
+	a.emit(0x55, 0x8B, 0xEC);
+	a.emit(0xFF, 0x75, 0x08);
+	a.call(c.GetMessageVir);
+	a.emit(0x83, 0xC4, 0x04);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "show_message_done");
+	a.call("show_message_text");
+	a.label("show_message_done");
+	a.emit(0x8B, 0xE5, 0x5D, 0xC2, 0x04, 0x00);
+
+	// void __stdcall show_wrong_message(uint32 remaining)
+	a.label("show_wrong_message");
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18, 0x56);
+	pushDword(0x0764);
+	a.call(c.GetMessageVir);
+	a.emit(0x83, 0xC4, 0x04);
+	a.emit(0xFF, 0x75, 0x08);                  // PUSH remaining
+	a.emit(0x50);                              // PUSH format
+	a.emit(0x8D, 0x75, 0xE8, 0x56);            // LEA ESI,[EBP-18] / PUSH ESI
+	a.call(c.FormatStringVir);
+	a.emit(0x83, 0xC4, 0x0C);
+	a.emit(0x83, 0x78, 0x14, 0x10);            // CMP [EAX+14],16
+	a.jcc(0x82, "wrong_text_ready");           // JB
+	a.emit(0x8B, 0x00);                        // MOV EAX,[EAX]
+	a.label("wrong_text_ready");
+	a.call("show_message_text");
+	a.emit(0x8B, 0xCE);                        // MOV ECX,ESI
+	a.call(c.DestroyStringVir);
+	a.emit(0x5E, 0x8B, 0xE5, 0x5D, 0xC2, 0x04, 0x00);
+
+	// void __fastcall show_message_text(const char* text in EAX)
+	a.label("show_message_text");
+	a.emit(0x6A, 0x00, 0x6A, 0x78);
+	pushDword(0x0118);
+	pushDword(c.MessageStyleVir);
+	a.emit(0x6A, 0x00, 0x6A, 0x00, 0x6A, 0x01, 0x6A, 0x00, 0x50);
+	a.emit(0xB9); a.dword(c.UiManagerVir);
+	a.call(c.ShowMessageVir);
+	a.emit(0xC3);
+
+	return a.finish(stubVir);
 };
 
-InGamePincodeUI.makePacketSenderStub = function(options)
+InGamePincodeUI.expectDword = function(vir, expected, label)
 {
-    const bytes = [];
-    const relCalls = [];
-    const localSize = options.kind === "change" ? 0x14 : 0x10;
-    const packetBase = -localSize;
-
-    function emit()
-    {
-        for (let i = 0; i < arguments.length; ++i)
-            bytes.push(arguments[i] & 0xFF);
-    }
-
-    function put32(pos, value)
-    {
-        value = value >>> 0;
-        bytes[pos] = value & 0xFF;
-        bytes[pos + 1] = (value >>> 8) & 0xFF;
-        bytes[pos + 2] = (value >>> 16) & 0xFF;
-        bytes[pos + 3] = (value >>> 24) & 0xFF;
-    }
-
-    function emit32(value)
-    {
-        const pos = bytes.length;
-        emit(0, 0, 0, 0);
-        put32(pos, value);
-        return pos;
-    }
-
-    function disp(value)
-    {
-        return value & 0xFF;
-    }
-
-    function emitCall(target)
-    {
-        emit(0xE8);
-        const pos = emit32(0);
-        relCalls.push({pos, target});
-    }
-
-    function copyPinArg(argDisp, packetDisp)
-    {
-        emit(0x8B, 0x45, argDisp);         // mov eax, [ebp+arg]
-        emit(0x8B, 0x00);                  // mov eax, [eax]
-        emit(0x89, 0x45, disp(packetDisp)); // mov [ebp+packet], eax
-    }
-
-    emit(0x55);                            // push ebp
-    emit(0x8B, 0xEC);                      // mov ebp, esp
-    emit(0x83, 0xEC, localSize);           // sub esp, localSize
-    emit(0x56);                            // push esi
-
-    emit(0xB8); emit32(options.packetId);  // mov eax, packetId
-    emit(0x66, 0x89, 0x45, disp(packetBase)); // mov [packet], ax
-    emit(0x8B, 0x45, 0x08);                // mov eax, [ebp+8] ; aid
-    emit(0x89, 0x45, disp(packetBase + 2)); // mov [packet+2], eax
-
-    if (options.kind === "change") {
-        copyPinArg(0x0C, packetBase + 6);   // old pin
-        copyPinArg(0x10, packetBase + 10);  // new pin
-    } else {
-        copyPinArg(0x0C, packetBase + 6);   // pin
-    }
-
-    emitCall(options.helpers.packetCtorA);
-    emit(0x8B, 0xF0);                      // mov esi, eax
-    emitCall(options.helpers.packetCtorB);
-    emit(0x0F, 0xBF, 0x4D, disp(packetBase)); // movsx ecx, word [packet]
-    emit(0x51);                            // push ecx
-    emit(0x8B, 0xC8);                      // mov ecx, eax
-    emitCall(options.helpers.packetLookup);
-    emit(0x8D, 0x4D, disp(packetBase));    // lea ecx, [packet]
-    emit(0x51);                            // push ecx
-    emit(0x50);                            // push eax
-    emit(0x8B, 0xCE);                      // mov ecx, esi
-    emitCall(options.helpers.packetSend);
-
-    emit(0x5E);                            // pop esi
-    emit(0x8B, 0xE5);                      // mov esp, ebp
-    emit(0x5D);                            // pop ebp
-    emit(0xC3);                            // ret
-
-    if (options.stubVir) {
-        for (let i = 0; i < relCalls.length; ++i) {
-            const call = relCalls[i];
-            const rel = call.target - (options.stubVir + call.pos + 4);
-            put32(call.pos, rel);
-        }
-    }
-
-    return bytes;
+	const phy = Exe.Vir2Phy(vir);
+	if (phy < 0)
+		throw Error(`InGamePincodeUI: ${label} is outside file-backed code`);
+	const actual = Exe.GetUint32(phy);
+	if (actual !== expected)
+		throw Error(`InGamePincodeUI: ${label} mismatch at ${vir.toHex(true)}: ${actual.toHex(true)} != ${expected.toHex(true)}`);
 };
 
-InGamePincodeUI.makeMainStub = function(options)
+InGamePincodeUI.validateClient = function(c)
 {
-    const bytes = [];
-    const doneJumps = [];
-    const resolveFailJumps = [];
-    let hasSessionRelPos = 0;
-    let hasSessionOffset = 0;
-
-    function emit()
-    {
-        for (let i = 0; i < arguments.length; ++i)
-            bytes.push(arguments[i] & 0xFF);
-    }
-
-    function put16(pos, value)
-    {
-        value = value & 0xFFFF;
-        bytes[pos] = value & 0xFF;
-        bytes[pos + 1] = (value >>> 8) & 0xFF;
-    }
-
-    function put32(pos, value)
-    {
-        value = value >>> 0;
-        bytes[pos] = value & 0xFF;
-        bytes[pos + 1] = (value >>> 8) & 0xFF;
-        bytes[pos + 2] = (value >>> 16) & 0xFF;
-        bytes[pos + 3] = (value >>> 24) & 0xFF;
-    }
-
-    function emit16(value)
-    {
-        const pos = bytes.length;
-        emit(0, 0);
-        put16(pos, value);
-    }
-
-    function emit32(value)
-    {
-        const pos = bytes.length;
-        emit(0, 0, 0, 0);
-        put32(pos, value);
-        return pos;
-    }
-
-    function emitDoneJcc(op)
-    {
-        emit(0x0F, op);
-        const pos = emit32(0);
-        doneJumps.push(pos);
-    }
-
-    function emitDoneJmp()
-    {
-        emit(0xE9);
-        const pos = emit32(0);
-        doneJumps.push(pos);
-    }
-
-    function emitResolveFailJcc(op)
-    {
-        emit(0x0F, op);
-        const pos = emit32(0);
-        resolveFailJumps.push(pos);
-    }
-
-    function emitDebug(textVir)
-    {
-        if (!textVir || !options.outDbgStrAVir)
-            return;
-
-        emit(0x68); emit32(textVir);       // push text
-        emit(0xFF, 0x15); emit32(options.outDbgStrAVir); // call [OutputDebugStringA]
-    }
-
-    emit(0x9C);                            // pushfd
-    emit(0x60);                            // pushad
-    emitDebug(options.logEntryVir);
-    emit(0x8B, 0xD7);                      // mov edx, edi ; live map session
-    emit(0xBE); emit32(options.packetBufferVir); // mov esi, packet buffer
-
-    emit(0x66, 0x81, 0x3E); emit16(options.packetId); // cmp word [esi], packetId
-    emitDoneJcc(0x85);                     // jne done
-
-    emit(0x66, 0x83, 0x7E, 0x02, options.packetMinLen); // cmp word [esi+2], minLen
-    emitDoneJcc(0x82);                     // jb done
-
-    emit(0x81, 0x7E, 0x04); emit32(options.packetMagic); // cmp dword [esi+4], 'PINC'
-    emitDoneJcc(0x85);                     // jne done
-
-    emitDebug(options.logValidVir);
-    emit(0x8B, 0xD7);                      // mov edx, edi ; restore after debug call
-    emit(0xBE); emit32(options.packetBufferVir); // mov esi, packet buffer
-
-    emit(0x85, 0xD2);                      // test edx, edx
-    emit(0x0F, 0x85);                      // jnz hasSession
-    hasSessionRelPos = emit32(0);
-
-    emitDebug(options.logNoSessionVir);
-    emitDoneJmp();                         // jmp done
-
-    hasSessionOffset = bytes.length;
-    emitDebug(options.logCallVir);
-
-	emit(0x68); emit32(options.dllNameVir);      // push selected PIN UI DLL
-    emit(0xFF, 0x15); emit32(options.getModuleHandleAVir); // call [GetModuleHandleA]
-    emit(0x85, 0xC0);                            // test eax, eax
-    emitResolveFailJcc(0x84);                    // jz resolveFail
-
-    emit(0x68); emit32(options.showFuncNameVir); // push "PincodeUIShow"
-    emit(0x50);                                  // push eax ; hModule
-    emit(0xFF, 0x15); emit32(options.getProcAddressVir); // call [GetProcAddress]
-    emit(0x85, 0xC0);                            // test eax, eax
-    emitResolveFailJcc(0x84);                    // jz resolveFail
-
-    emit(0x8B, 0xD8);                            // mov ebx, eax ; PincodeUIShow
-
-    emit(0xBE); emit32(options.packetBufferVir); // mov esi, packet buffer
-    emit(0x68); emit32(options.sendChangeVir); // push sendChange
-    emit(0x68); emit32(options.sendSetVir);    // push sendSet
-    emit(0x68); emit32(options.sendCheckVir);  // push sendCheck
-    emit(0x0F, 0xB7, 0x46, 0x10);         // movzx eax, word [esi+16] ; state
-    emit(0x50);                           // push eax
-    emit(0xFF, 0x76, 0x0C);               // push dword [esi+12] ; aid
-    emit(0xFF, 0x76, 0x08);               // push dword [esi+8] ; seed
-    emit(0xFF, 0xD3);                     // call ebx ; PincodeUIShow
-    emit(0x83, 0xC4, 0x18);               // add esp, 24
-    emitDebug(options.logReturnVir);
-    emitDoneJmp();                         // jmp done
-
-    const resolveFailOffset = bytes.length;
-    emitDebug(options.logResolveFailVir);
-    emitDoneJmp();                         // jmp done
-
-    const doneOffset = bytes.length;
-    emit(0x61);                            // popad
-    emit(0x9D);                            // popfd
-    emit(0xB8); emit32(options.mainLoopReturnVir); // mov eax, mainLoopReturn
-    emit(0xFF, 0xE0);                      // jmp eax
-
-    if (options.stubVir) {
-        for (let i = 0; i < doneJumps.length; ++i) {
-            const pos = doneJumps[i];
-            const rel = options.stubVir + doneOffset - (options.stubVir + pos + 4);
-            put32(pos, rel);
-        }
-
-        const hasSessionRel = options.stubVir + hasSessionOffset - (options.stubVir + hasSessionRelPos + 4);
-        put32(hasSessionRelPos, hasSessionRel);
-
-        for (let i = 0; i < resolveFailJumps.length; ++i) {
-            const pos = resolveFailJumps[i];
-            const rel = options.stubVir + resolveFailOffset - (options.stubVir + pos + 4);
-            put32(pos, rel);
-        }
-    }
-
-    return bytes;
+	// The old research address D21210 is an 0x0828 handler on this build.
+	// D221E0 is the real stock 0x08B9 state handler and identifies this layout.
+	InGamePincodeUI.expectDword(0x00D221E0, 0x6AEC8B55, "stock 0x08B9 handler");
+	InGamePincodeUI.expectDword(0x00D25333, 0x5FFA80A1, "character-select PIN mode dispatch");
+	InGamePincodeUI.expectDword(0x01035498, 0x008C91D0, "UISecondPasswordInputWnd event vtable");
+	InGamePincodeUI.expectDword(c.GetResourceManagerVir, 0x6AEC8B55, "resource manager accessor");
+	InGamePincodeUI.expectDword(c.LookupResourceVir, 0x6AEC8B55, "UI resource lookup");
+	InGamePincodeUI.expectDword(c.ResolveResourceVir, 0x6AEC8B55, "UI resource resolver");
+	InGamePincodeUI.expectDword(c.LoadUiResourceVir, 0x56EC8B55, "UI resource loader");
+	InGamePincodeUI.expectDword(c.CreateWindowVir, 0x6AEC8B55, "UI window factory");
+	InGamePincodeUI.expectDword(c.MainLoopReturnVir, 0xEECC3D83, "map receive loop continuation");
 };
 
 InGamePincodeUI.bytesToHex = function(bytes)
 {
-    return bytes.map(byte => (byte & 0xFF).toHex(1)).join(' ');
+	return bytes.map(byte => (byte & 0xFF).toHex(1)).join(" ");
 };
 
 InGamePincodeUI.tableEntryVir = function(switchTableVir, packetId)
 {
-    return switchTableVir + (packetId - 0x73) * 4;
+	return switchTableVir + (packetId - 0x73) * 4;
 };
 
 InGamePincodeUI.validate = function()
 {
-    return Exe.BuildDate === 20250716;
+	return Exe.BuildDate === 20250716;
 };
