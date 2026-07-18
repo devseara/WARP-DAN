@@ -56,6 +56,12 @@ CustomUI:
             author : Louis T Steinhil
             desc : Uses static EXE caves and the client's native image/tooltip pipeline to draw tab_pri_%02d.bmp, place bg_zeny.bmp behind the native bottom text, and anchor renewal tab balloons beside the hovered vertical tab. No inventory DLL import is added.
 
+        - ROGlobalZeroBasicInfo:
+            title : RO Global Zero Basic Information HUD
+            recommend : no
+            author : Louis T Steinhil
+            desc : Replaces both classic and AP-class Basic Information render paths with the compact 238x59 RO Global Zero HUD, unscaled 194x36 precomposited gauge frame, live HP/SP fills, Base Level, character name, and native Job-name hover tooltip. The frame and HP-fill composites preserve the centered markers without a separate transparent overlay; SP occupies native frame-local rows 20..30 so the divider gap is removed and the frame's lower white line remains unobstructed. The one-time Basic Info factory registers an overlapping 52x52 UIJobIconButton child with independent clipping and z-order; the child itself owns the hover handler and the recurring parent resize/mouse vtables remain stock. The two legacy blue title buttons and lower menu window ID 0x133 are suppressed while Alt+V remains compact. Requires the matching uirenewal/basicinfo and uirenewal/jobicon/big BMP assets. QJS-only.
+
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]
             recommend : no
