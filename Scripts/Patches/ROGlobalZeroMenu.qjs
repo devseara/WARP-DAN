@@ -1,0 +1,792 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-19                                             *
+*   Last Modified : 2026-07-19                                             *
+*                                                                          *
+*   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
+*                   Ragexe, redirects its textures to uirenewal/menuicon,  *
+*                   and reflows the stock child controls over the          *
+*                   357x322 renewal panel. The native dispatcher, click,   *
+*                   hover, notification, and open/close behavior remain    *
+*                   intact. The collapsed-state hit test follows the       *
+*                   relocated MENU child instead of the stock (0,0)        *
+*                   assumption. The 360x333 parent is anchored ten pixels  *
+*                   from the bottom-right at every resolution. QJS-only.   *
+*                                                                          *
+\**************************************************************************/
+
+const MenuZeroStatic = {
+	BuildDate: 20250716,
+	WindowId: 0x133,
+	NativeDispatcher: 0x00814A70,
+	FactoryCase: 0x00A412BF,
+	FactoryBytes:
+		"68 33 01 00 00 8B CF E8 C5 68 00 00 85 C0 75 60 " +
+		"68 D8 00 00 00",
+	WindowVtable: 0x010281B0,
+	PositionVtableEntry: 0x010281C0,
+	PositionOriginal: 0x00812F80,
+	HitTestVtableEntry: 0x01028278,
+	HitTestOriginal: 0x00812E90,
+	LayoutVtableEntry: 0x010281EC,
+	LayoutOriginal: 0x00812FB0,
+	MenuExpandedFlag: 0x0160227C,
+	DisplayPointer: 0x012515F8,
+	WindowManager: 0x0131F4E8,
+	WindowManagerUpdate: 0x00A4CCF0,
+	TabItmFormat: 0x0102AC48,
+	BackgroundCopyBlock: 0x00814359,
+	BackgroundCopyReturn: 0x0081438B,
+	BackgroundCopyBytes:
+		"C7 47 10 24 00 00 00 C7 47 14 2F 00 00 00 " +
+		"0F 10 05 D8 85 02 01 0F 11 00 0F 10 05 E8 85 02 01 " +
+		"0F 11 40 10 8B 0D F8 85 02 01 89 48 20 C6 40 24 00 89 07",
+	BackgroundDrawY: 0x00814392,
+	BackgroundDrawYBytes: "6A 0D 6A 00",
+	ProvisionalSize: 0x00A41308,
+	ProvisionalSizeBytes: "68 C5 00 00 00 68 DC 00 00 00",
+	FinalSize: 0x0081400D,
+	FinalSizeBytes: "68 EE 00 00 00 68 DC 00 00 00 FF 50 04",
+	DescriptorLength: 0x00813725,
+	DescriptorLengthBytes: "6A 10",
+	DescriptorPointer: 0x0081373C,
+	DescriptorPointerBytes: "68 3C 83 02 01",
+	PanelWidth: 357,
+	PanelHeight: 322,
+	ParentWidth: 360,
+	ParentHeight: 333,
+	ScreenMargin: 10,
+	GridX: 13,
+	GridY: 12,
+	GridStrideX: 68,
+	GridStrideY: 61,
+	ToggleX: 290,
+	ToggleY: 271,
+	BackgroundPathLength: 45,
+	BackgroundBufferSize: 48,
+	ChildOffsets: [0xCC, 0xD0, 0xD4],
+	TreeOffsets: [0xB4, 0xBC],
+	CommandGrid: [
+		[0x0C0, 0], [0x0C3, 1], [0x0C2, 2], [0x0C4, 3], [0x0C7, 4],
+		[0x175, 5], [0x169, 6], [0x0DB, 7], [0x1AE, 8], [0x0C1, 9],
+		[0x1CD, 10], [0x18F, 11], [0x1DC, 12], [0x1D9, 13], [0x1FF, 14],
+		[0x200, 15], [0x172, 16], [0x21C, 17], [0x17B, 18], [0x237, 19],
+		[0x178, 20], [0x245, 21], [0x220, 22], [0x24B, 23], [0x206, -1]
+	],
+	ResourcePushes: [
+		{
+			name: "base-format",
+			relative: "uirenewal\\menuicon\\bt_%s.bmp",
+			oldPointer: 0x01028384,
+			sites: [0x008138C4, 0x0081390A]
+		},
+		{
+			name: "pressed-format",
+			relative: "uirenewal\\menuicon\\bt_%s_press.bmp",
+			oldPointer: 0x010283A8,
+			sites: [0x00813950]
+		},
+		{
+			name: "new-format",
+			relative: "uirenewal\\menuicon\\bt_%s_new.bmp",
+			oldPointer: 0x010283D4,
+			sites: [0x00813B6A, 0x00813BB0]
+		},
+		{
+			name: "new-pressed-format",
+			relative: "uirenewal\\menuicon\\bt_%s_new_press.bmp",
+			oldPointer: 0x010283FC,
+			sites: [0x00813BF6]
+		},
+		{
+			name: "menu-normal",
+			relative: "uirenewal\\menuicon\\bt_menu_normal.bmp",
+			oldPointer: 0x0102842C,
+			sites: [0x00813DCC]
+		},
+		{
+			name: "menu-over",
+			relative: "uirenewal\\menuicon\\bt_menu_over.bmp",
+			oldPointer: 0x01028458,
+			sites: [0x00813DE6]
+		},
+		{
+			name: "menu-pressed",
+			relative: "uirenewal\\menuicon\\bt_menu_press.bmp",
+			oldPointer: 0x01028484,
+			sites: [0x00813DFA]
+		},
+		{
+			name: "menu-new-normal",
+			relative: "uirenewal\\menuicon\\bt_menu_new_normal.bmp",
+			oldPointer: 0x010284B0,
+			sites: [0x00813E8A]
+		},
+		{
+			name: "menu-new-over",
+			relative: "uirenewal\\menuicon\\bt_menu_new_over.bmp",
+			oldPointer: 0x010284E0,
+			sites: [0x00813EA4]
+		},
+		{
+			name: "menu-new-pressed",
+			relative: "uirenewal\\menuicon\\bt_menu_new_press.bmp",
+			oldPointer: 0x01028510,
+			sites: [0x00813EB8]
+		},
+		{
+			name: "menu-close-normal",
+			relative: "uirenewal\\menuicon\\bt_menu_close_normal.bmp",
+			oldPointer: 0x01028540,
+			sites: [0x00813F48]
+		},
+		{
+			name: "menu-close-over",
+			relative: "uirenewal\\menuicon\\bt_menu_close_over.bmp",
+			oldPointer: 0x01028574,
+			sites: [0x00813F62]
+		},
+		{
+			name: "menu-close-pressed",
+			relative: "uirenewal\\menuicon\\bt_menu_close_press.bmp",
+			oldPointer: 0x010285A4,
+			sites: [0x00813F76]
+		}
+	]
+};
+
+MenuZeroStatic.hexNorm = function(hex)
+{
+	return (hex || "").replace(/\s+/g, " ").trim().toUpperCase();
+};
+
+MenuZeroStatic.bytesToHex = function(bytes)
+{
+	return bytes.map(value => (value & 0xFF).toString(16).padStart(2, "0")).join(" ");
+};
+
+MenuZeroStatic.asciiBytes = function(text, nulTerminate = true)
+{
+	const bytes = [];
+	for (let i = 0; i < text.length; i++)
+		bytes.push(text.charCodeAt(i) & 0xFF);
+	if (nulTerminate)
+		bytes.push(0);
+	return bytes;
+};
+
+MenuZeroStatic.findBytes = function(bytes, needle)
+{
+	for (let i = 0; i <= bytes.length - needle.length; i++)
+	{
+		let match = true;
+		for (let j = 0; j < needle.length; j++)
+		{
+			if (bytes[i + j] !== needle[j])
+			{
+				match = false;
+				break;
+			}
+		}
+		if (match)
+			return i;
+	}
+	return -1;
+};
+
+MenuZeroStatic.readCString = function(virAddr, maxLength)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroMenu: string 0x${virAddr.toString(16)} is not mapped`);
+
+	const bytes = [];
+	for (let i = 0; i < maxLength; i++)
+	{
+		const value = Exe.GetUint8(phyAddr + i);
+		bytes.push(value);
+		if (value === 0)
+			return bytes;
+	}
+	throw Error(`ROGlobalZeroMenu: unterminated string at 0x${virAddr.toString(16)}`);
+};
+
+MenuZeroStatic.allocateBytes = function(bytes, alignment = 1)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(bytes.length, alignment);
+	Exe.SetHex(phyAddr, MenuZeroStatic.bytesToHex(bytes));
+	return {phy: phyAddr, vir: virAddr, bytes};
+};
+
+MenuZeroStatic.resourcePrefix = function()
+{
+	const source = MenuZeroStatic.readCString(MenuZeroStatic.TabItmFormat, 192);
+	const needle = MenuZeroStatic.asciiBytes("basic_interface\\", false);
+	const position = MenuZeroStatic.findBytes(source, needle);
+	if (position < 0)
+		throw Error("ROGlobalZeroMenu: texture directory prefix not found");
+	return source.slice(0, position);
+};
+
+MenuZeroStatic.buildResourceBytes = function(prefix, relativePath, nulTerminate = true)
+{
+	return prefix.concat(MenuZeroStatic.asciiBytes(relativePath, nulTerminate));
+};
+
+MenuZeroStatic.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+				bytes.push(value & 0xFF);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error(`ROGlobalZeroMenu: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			bytes.push(opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(`ROGlobalZeroMenu: unresolved label ${fixup.target}`);
+				const targetVir = typeof fixup.target === "string"
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				const nextVir = baseVir + fixup.pos + 4;
+				put32(out, fixup.pos, targetVir - nextVir);
+			}
+			return MenuZeroStatic.bytesToHex(out);
+		}
+	};
+};
+
+MenuZeroStatic.pushImmediate = function(a, value)
+{
+	if (value >= -128 && value <= 127)
+		a.emit(0x6A, value);
+	else
+	{
+		a.emit(0x68);
+		a.dword(value);
+	}
+};
+
+MenuZeroStatic.buildBackgroundCopy = function(backgroundVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0xC7, 0x47, 0x10); a.dword(MenuZeroStatic.BackgroundPathLength);
+	a.emit(0xC7, 0x47, 0x14); a.dword(MenuZeroStatic.BackgroundBufferSize - 1);
+	a.emit(0x0F, 0x10, 0x05); a.dword(backgroundVir);
+	a.emit(0x0F, 0x11, 0x00);
+	a.emit(0x0F, 0x10, 0x05); a.dword(backgroundVir + 16);
+	a.emit(0x0F, 0x11, 0x40, 0x10);
+	a.emit(0x0F, 0x10, 0x05); a.dword(backgroundVir + 32);
+	a.emit(0x0F, 0x11, 0x40, 0x20);
+	a.emit(0x89, 0x07);
+	a.jmp(MenuZeroStatic.BackgroundCopyReturn);
+	return a;
+};
+
+MenuZeroStatic.buildAnchor = function()
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x56);                                      // PUSH ESI
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX
+	a.emit(0xA1); a.dword(MenuZeroStatic.DisplayPointer);
+	a.emit(0x85, 0xC0);                                // TEST EAX,EAX
+	a.jcc(0x84, "done");                              // JZ done
+	a.emit(0x8B, 0x50, 0x28);                          // MOV EDX,[EAX+28]
+	a.emit(0x2B, 0x56, 0x14);                          // SUB EDX,[ESI+14]
+	a.emit(0x83, 0xEA, MenuZeroStatic.ScreenMargin);   // SUB EDX,margin
+	a.jcc(0x89, "x_valid");                           // JNS x_valid
+	a.emit(0x33, 0xD2);                                // XOR EDX,EDX
+	a.label("x_valid");
+	a.emit(0x89, 0x56, 0x1C);                          // MOV [ESI+1C],EDX
+	a.emit(0x8B, 0x40, 0x2C);                          // MOV EAX,[EAX+2C]
+	a.emit(0x2B, 0x46, 0x18);                          // SUB EAX,[ESI+18]
+	a.emit(0x83, 0xE8, MenuZeroStatic.ScreenMargin);   // SUB EAX,margin
+	a.jcc(0x89, "y_valid");                           // JNS y_valid
+	a.emit(0x33, 0xC0);                                // XOR EAX,EAX
+	a.label("y_valid");
+	a.emit(0x89, 0x46, 0x20);                          // MOV [ESI+20],EAX
+	a.emit(0x56);                                      // PUSH ESI
+	a.emit(0xB9); a.dword(MenuZeroStatic.WindowManager);
+	a.call(MenuZeroStatic.WindowManagerUpdate);
+	a.label("done");
+	a.emit(0x5E, 0xC3);                                // POP ESI / RET
+	return a;
+};
+
+MenuZeroStatic.buildPositionWrapper = function(anchorVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.call(anchorVir);
+	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+MenuZeroStatic.buildHitTestWrapper = function()
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);                          // frame
+	a.emit(0x80, 0x3D); a.dword(MenuZeroStatic.MenuExpandedFlag);
+	a.emit(0x00);                                      // CMP BYTE [expanded],0
+	a.jcc(0x85, "stock");                             // JNE stock
+	a.emit(0x56);                                      // PUSH ESI
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX
+	a.emit(0x8B, 0x86); a.dword(0xD0);                 // MOV EAX,[ESI+D0]
+	a.emit(0x85, 0xC0);                                // TEST EAX,EAX
+	a.jcc(0x84, "miss");                              // JZ miss
+
+	a.emit(0x8B, 0x56, 0x1C);                          // MOV EDX,[ESI+1C]
+	a.emit(0x81, 0xC2); a.dword(MenuZeroStatic.ToggleX);
+	a.emit(0x39, 0x55, 0x08);                          // CMP [EBP+8],EDX
+	a.jcc(0x8C, "miss");                              // JL miss
+	a.emit(0x03, 0x50, 0x14);                          // ADD EDX,[EAX+14]
+	a.emit(0x39, 0x55, 0x08);                          // CMP [EBP+8],EDX
+	a.jcc(0x8D, "miss");                              // JGE miss
+
+	a.emit(0x8B, 0x56, 0x20);                          // MOV EDX,[ESI+20]
+	a.emit(0x81, 0xC2); a.dword(MenuZeroStatic.ToggleY);
+	a.emit(0x39, 0x55, 0x0C);                          // CMP [EBP+C],EDX
+	a.jcc(0x8C, "miss");                              // JL miss
+	a.emit(0x03, 0x50, 0x18);                          // ADD EDX,[EAX+18]
+	a.emit(0x39, 0x55, 0x0C);                          // CMP [EBP+C],EDX
+	a.jcc(0x8D, "miss");                              // JGE miss
+
+	a.emit(0x5E);                                      // POP ESI
+	a.emit(0x81, 0x6D, 0x08); a.dword(MenuZeroStatic.ToggleX);
+	a.emit(0x81, 0x6D, 0x0C); a.dword(MenuZeroStatic.ToggleY);
+	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
+	a.jmp(MenuZeroStatic.HitTestOriginal);             // stock selection/guards
+
+	a.label("miss");
+	a.emit(0x33, 0xC0);                                // XOR EAX,EAX
+	a.emit(0x5E);                                      // POP ESI
+	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
+	a.emit(0xC2, 0x08, 0x00);                          // RET 8
+
+	a.label("stock");
+	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
+	a.jmp(MenuZeroStatic.HitTestOriginal);
+	return a;
+};
+
+MenuZeroStatic.emitSetChildPosition = function(a, offset, x, y, label)
+{
+	a.emit(0x8B, 0x8E); a.dword(offset);               // MOV ECX,[ESI+offset]
+	a.emit(0x85, 0xC9);                                // TEST ECX,ECX
+	a.jcc(0x84, label);                                // JZ label
+	a.emit(0x8B, 0x01);                                // MOV EAX,[ECX]
+	MenuZeroStatic.pushImmediate(a, y);
+	MenuZeroStatic.pushImmediate(a, x);
+	a.emit(0xFF, 0x50, 0x10);                          // CALL [EAX+10]
+	a.label(label);
+};
+
+MenuZeroStatic.emitRepositionTree = function(a, treeOffset, prefix)
+{
+	const done = `${prefix}_done`;
+	const loop = `${prefix}_loop`;
+	const advance = `${prefix}_advance`;
+	const hasRight = `${prefix}_has_right`;
+	const descend = `${prefix}_descend`;
+	const climb = `${prefix}_climb`;
+	const setNode = `${prefix}_set_node`;
+
+	a.emit(0x8B, 0xBE); a.dword(treeOffset);           // MOV EDI,[ESI+treeOffset]
+	a.emit(0x85, 0xFF);                                // TEST EDI,EDI
+	a.jcc(0x84, done);                                 // JZ done
+	a.emit(0x8B, 0x1F);                                // MOV EBX,[EDI] (leftmost)
+	a.label(loop);
+	a.emit(0x3B, 0xDF);                                // CMP EBX,EDI
+	a.jcc(0x84, done);                                 // JE done
+	a.emit(0x8B, 0x43, 0x10);                          // MOV EAX,[EBX+10] (command)
+	for (let i = 0; i < MenuZeroStatic.CommandGrid.length; i++)
+	{
+		const [command] = MenuZeroStatic.CommandGrid[i];
+		a.emit(0x3D); a.dword(command);                  // CMP EAX,command
+		a.jcc(0x84, `${prefix}_command_${i}`);           // JE command
+	}
+	a.jmp(advance);
+
+	for (let i = 0; i < MenuZeroStatic.CommandGrid.length; i++)
+	{
+		const [, index] = MenuZeroStatic.CommandGrid[i];
+		const x = MenuZeroStatic.GridX + MenuZeroStatic.GridStrideX * (index % 5);
+		const y = MenuZeroStatic.GridY + MenuZeroStatic.GridStrideY * Math.floor(index / 5);
+		a.label(`${prefix}_command_${i}`);
+		a.emit(0x8B, 0x4B, 0x14);                        // MOV ECX,[EBX+14] (child)
+		a.emit(0x85, 0xC9);                              // TEST ECX,ECX
+		a.jcc(0x84, advance);                            // JZ advance
+		a.emit(0x8B, 0x11);                              // MOV EDX,[ECX]
+		MenuZeroStatic.pushImmediate(a, y);
+		MenuZeroStatic.pushImmediate(a, x);
+		a.emit(0xFF, 0x52, 0x10);                        // CALL [EDX+10]
+		a.jmp(advance);
+	}
+
+	a.label(advance);
+	a.emit(0x8B, 0x43, 0x08);                          // MOV EAX,[EBX+8] (right)
+	a.emit(0x80, 0x78, 0x0D, 0x00);                    // CMP BYTE [EAX+0D],0
+	a.jcc(0x84, hasRight);                             // JE has_right
+	a.emit(0x8B, 0x43, 0x04);                          // MOV EAX,[EBX+4] (parent)
+	a.label(climb);
+	a.emit(0x80, 0x78, 0x0D, 0x00);                    // CMP BYTE [EAX+0D],0
+	a.jcc(0x85, setNode);                              // JNE set_node
+	a.emit(0x3B, 0x58, 0x08);                          // CMP EBX,[EAX+8]
+	a.jcc(0x85, setNode);                              // JNE set_node
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.emit(0x8B, 0x40, 0x04);                          // MOV EAX,[EAX+4]
+	a.jmp(climb);
+	a.label(setNode);
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.jmp(loop);
+
+	a.label(hasRight);
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.label(descend);
+	a.emit(0x8B, 0x0B);                                // MOV ECX,[EBX] (left)
+	a.emit(0x80, 0x79, 0x0D, 0x00);                    // CMP BYTE [ECX+0D],0
+	a.jcc(0x85, loop);                                 // JNE loop
+	a.emit(0x8B, 0xD9);                                // MOV EBX,ECX
+	a.jmp(descend);
+	a.label(done);
+};
+
+MenuZeroStatic.buildLayoutWrapper = function(anchorVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);                          // frame
+	a.emit(0x53, 0x56, 0x57);                          // preserve EBX/ESI/EDI
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX
+	a.emit(0xFF, 0x75, 0x0C);                          // PUSH arg2
+	a.emit(0xFF, 0x75, 0x08);                          // PUSH arg1
+	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
+	a.call(MenuZeroStatic.LayoutOriginal);
+	a.emit(0x50);                                      // preserve stock EAX
+
+	for (let i = 0; i < MenuZeroStatic.ChildOffsets.length; i++)
+	{
+		MenuZeroStatic.emitSetChildPosition(
+			a,
+			MenuZeroStatic.ChildOffsets[i],
+			MenuZeroStatic.ToggleX,
+			MenuZeroStatic.ToggleY,
+			`toggle_${i}_done`
+		);
+	}
+
+	MenuZeroStatic.emitRepositionTree(a, MenuZeroStatic.TreeOffsets[0], "tree_b4");
+	MenuZeroStatic.emitRepositionTree(a, MenuZeroStatic.TreeOffsets[1], "tree_bc");
+	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
+	a.call(anchorVir);
+	a.emit(0x58);                                      // restore stock EAX
+	a.emit(0x5F, 0x5E, 0x5B);                          // restore EDI/ESI/EBX
+	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
+	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+MenuZeroStatic.assertCode = function(label, virAddr, expectedHex)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroMenu: ${label} is not mapped`);
+	const normalized = MenuZeroStatic.hexNorm(expectedHex);
+	const count = normalized.split(" ").length;
+	const actual = MenuZeroStatic.hexNorm(Exe.GetHex(phyAddr, count));
+	if (actual !== normalized)
+		throw Error(`ROGlobalZeroMenu: ${label} mismatch, got ${actual}`);
+	return phyAddr;
+};
+
+MenuZeroStatic.assertVtable = function(label, entryVir, expectedVir)
+{
+	const phyAddr = Exe.Vir2Phy(entryVir);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroMenu: ${label} is not mapped`);
+	const actual = Exe.GetUint32(phyAddr);
+	if (actual !== expectedVir)
+	{
+		throw Error(
+			`ROGlobalZeroMenu: ${label} expected 0x${expectedVir.toString(16)}, ` +
+			`got 0x${actual.toString(16)}`
+		);
+	}
+	return phyAddr;
+};
+
+MenuZeroStatic.pushBytes = function(pointer)
+{
+	const bytes = [0x68];
+	for (let shift = 0; shift < 32; shift += 8)
+		bytes.push((pointer >>> shift) & 0xFF);
+	return MenuZeroStatic.bytesToHex(bytes);
+};
+
+MenuZeroStatic.verifyNativeLayout = function()
+{
+	const verified = {
+		factoryCasePhy: MenuZeroStatic.assertCode(
+			"UIMenuIconWnd factory case",
+			MenuZeroStatic.FactoryCase,
+			MenuZeroStatic.FactoryBytes
+		),
+		positionVtablePhy: MenuZeroStatic.assertVtable(
+			"UIMenuIconWnd vtable[4]",
+			MenuZeroStatic.PositionVtableEntry,
+			MenuZeroStatic.PositionOriginal
+		),
+		hitTestVtablePhy: MenuZeroStatic.assertVtable(
+			"UIMenuIconWnd vtable[50]",
+			MenuZeroStatic.HitTestVtableEntry,
+			MenuZeroStatic.HitTestOriginal
+		),
+		layoutVtablePhy: MenuZeroStatic.assertVtable(
+			"UIMenuIconWnd vtable[15]",
+			MenuZeroStatic.LayoutVtableEntry,
+			MenuZeroStatic.LayoutOriginal
+		),
+		backgroundCopyPhy: MenuZeroStatic.assertCode(
+			"background std::string copy block",
+			MenuZeroStatic.BackgroundCopyBlock,
+			MenuZeroStatic.BackgroundCopyBytes
+		),
+		backgroundDrawYPhy: MenuZeroStatic.assertCode(
+			"background draw coordinates",
+			MenuZeroStatic.BackgroundDrawY,
+			MenuZeroStatic.BackgroundDrawYBytes
+		),
+		provisionalSizePhy: MenuZeroStatic.assertCode(
+			"provisional UIMenuIconWnd size",
+			MenuZeroStatic.ProvisionalSize,
+			MenuZeroStatic.ProvisionalSizeBytes
+		),
+		finalSizePhy: MenuZeroStatic.assertCode(
+			"final UIMenuIconWnd size",
+			MenuZeroStatic.FinalSize,
+			MenuZeroStatic.FinalSizeBytes
+		),
+		descriptorLengthPhy: MenuZeroStatic.assertCode(
+			"adventurerAgency descriptor length",
+			MenuZeroStatic.DescriptorLength,
+			MenuZeroStatic.DescriptorLengthBytes
+		),
+		descriptorPointerPhy: MenuZeroStatic.assertCode(
+			"adventurerAgency descriptor pointer",
+			MenuZeroStatic.DescriptorPointer,
+			MenuZeroStatic.DescriptorPointerBytes
+		),
+		resourcePushes: []
+	};
+
+	for (const resource of MenuZeroStatic.ResourcePushes)
+	{
+		for (const siteVir of resource.sites)
+		{
+			verified.resourcePushes.push({
+				resource,
+				siteVir,
+				sitePhy: MenuZeroStatic.assertCode(
+					`${resource.name} resource PUSH`,
+					siteVir,
+					MenuZeroStatic.pushBytes(resource.oldPointer)
+				)
+			});
+		}
+	}
+	return verified;
+};
+
+ROGlobalZeroMenu = function(_)
+{
+	if (Exe.BuildDate !== MenuZeroStatic.BuildDate)
+		throw Error("ROGlobalZeroMenu supports only the 2025-07-16 client");
+
+	$$(_, 1, "Verify native menu vtables, resource operands, and layout blocks");
+	const verified = MenuZeroStatic.verifyNativeLayout();
+
+	$$(_, 2, "Allocate renewal menu resources and the chatting descriptor");
+	const prefix = MenuZeroStatic.resourcePrefix();
+	const resourcePaths = {};
+	for (const resource of MenuZeroStatic.ResourcePushes)
+	{
+		resourcePaths[resource.name] = MenuZeroStatic.allocateBytes(
+			MenuZeroStatic.buildResourceBytes(prefix, resource.relative)
+		);
+	}
+	const descriptor = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("chatting"));
+	const backgroundBytes = MenuZeroStatic.buildResourceBytes(
+		prefix,
+		"uirenewal\\menuicon\\bg_menu.tga",
+		false
+	);
+	if (backgroundBytes.length !== MenuZeroStatic.BackgroundPathLength)
+	{
+		throw Error(
+			`ROGlobalZeroMenu: bg_menu path length ${backgroundBytes.length}, ` +
+			`expected ${MenuZeroStatic.BackgroundPathLength}`
+		);
+	}
+	while (backgroundBytes.length < MenuZeroStatic.BackgroundBufferSize)
+		backgroundBytes.push(0);
+	const background = MenuZeroStatic.allocateBytes(backgroundBytes, 0x10);
+
+	$$(_, 3, "Inject full background copy, bottom-right anchor, and native reflow");
+	const backgroundCopy = MenuZeroStatic.buildBackgroundCopy(background.vir);
+	const [backgroundCopyPhy, backgroundCopyVir] = Exe.Allocate(
+		backgroundCopy.bytes.length, 0x10
+	);
+	Exe.SetHex(backgroundCopyPhy, backgroundCopy.finish(backgroundCopyVir));
+	const anchor = MenuZeroStatic.buildAnchor();
+	const [anchorPhy, anchorVir] = Exe.Allocate(anchor.bytes.length, 0x10);
+	Exe.SetHex(anchorPhy, anchor.finish(anchorVir));
+	const positionWrapper = MenuZeroStatic.buildPositionWrapper(anchorVir);
+	const [positionWrapperPhy, positionWrapperVir] = Exe.Allocate(
+		positionWrapper.bytes.length, 0x10
+	);
+	Exe.SetHex(positionWrapperPhy, positionWrapper.finish(positionWrapperVir));
+	const hitTestWrapper = MenuZeroStatic.buildHitTestWrapper();
+	const [hitTestWrapperPhy, hitTestWrapperVir] = Exe.Allocate(
+		hitTestWrapper.bytes.length, 0x10
+	);
+	Exe.SetHex(hitTestWrapperPhy, hitTestWrapper.finish(hitTestWrapperVir));
+	const layoutWrapper = MenuZeroStatic.buildLayoutWrapper(anchorVir);
+	const [layoutWrapperPhy, layoutWrapperVir] = Exe.Allocate(
+		layoutWrapper.bytes.length, 0x10
+	);
+	Exe.SetHex(layoutWrapperPhy, layoutWrapper.finish(layoutWrapperVir));
+
+	$$(_, 4, "Redirect textures and activate the renewal menu geometry");
+	for (const push of verified.resourcePushes)
+		Exe.SetUint32(push.sitePhy + 1, resourcePaths[push.resource.name].vir);
+	Exe.SetHex(verified.descriptorLengthPhy, "6A 08");
+	Exe.SetUint32(verified.descriptorPointerPhy + 1, descriptor.vir);
+	Exe.SetJMP(verified.backgroundCopyPhy, backgroundCopyVir, 0);
+	Exe.SetNOPs(verified.backgroundCopyPhy + 5, 45);
+	Exe.SetHex(verified.backgroundDrawYPhy, "6A 00");
+	Exe.SetUint32(verified.provisionalSizePhy + 1, MenuZeroStatic.ParentHeight);
+	Exe.SetUint32(verified.provisionalSizePhy + 6, MenuZeroStatic.ParentWidth);
+	Exe.SetUint32(verified.finalSizePhy + 1, MenuZeroStatic.ParentHeight);
+	Exe.SetUint32(verified.finalSizePhy + 6, MenuZeroStatic.ParentWidth);
+	Exe.SetUint32(verified.positionVtablePhy, positionWrapperVir);
+	Exe.SetUint32(verified.hitTestVtablePhy, hitTestWrapperVir);
+	Exe.SetUint32(verified.layoutVtablePhy, layoutWrapperVir);
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		const pathPointers = {};
+		for (const resource of MenuZeroStatic.ResourcePushes)
+			pathPointers[resource.name] = resourcePaths[resource.name].vir;
+		PatchDiagnostics.add("ROGlobalZeroMenu.QjsOnly", {
+			menuWindowId: MenuZeroStatic.WindowId,
+			nativeDispatcherVir: MenuZeroStatic.NativeDispatcher,
+			factoryCaseVir: MenuZeroStatic.FactoryCase,
+			positionVtableVir: MenuZeroStatic.PositionVtableEntry,
+			positionWrapperVir,
+			positionWrapperSize: positionWrapper.bytes.length,
+			hitTestVtableVir: MenuZeroStatic.HitTestVtableEntry,
+			hitTestWrapperVir,
+			hitTestWrapperSize: hitTestWrapper.bytes.length,
+			layoutVtableVir: MenuZeroStatic.LayoutVtableEntry,
+			layoutWrapperVir,
+			layoutWrapperSize: layoutWrapper.bytes.length,
+			anchorVir,
+			anchorSize: anchor.bytes.length,
+			backgroundCopyVir,
+			backgroundCopySize: backgroundCopy.bytes.length,
+			backgroundPathVir: background.vir,
+			backgroundPathLength: MenuZeroStatic.BackgroundPathLength,
+			descriptorVir: descriptor.vir,
+			descriptorName: "chatting",
+			parentWidth: MenuZeroStatic.ParentWidth,
+			parentHeight: MenuZeroStatic.ParentHeight,
+			panelWidth: MenuZeroStatic.PanelWidth,
+			panelHeight: MenuZeroStatic.PanelHeight,
+			gridOrigin: [MenuZeroStatic.GridX, MenuZeroStatic.GridY],
+			gridStride: [MenuZeroStatic.GridStrideX, MenuZeroStatic.GridStrideY],
+			togglePosition: [MenuZeroStatic.ToggleX, MenuZeroStatic.ToggleY],
+			commandCount: MenuZeroStatic.CommandGrid.length,
+			resourcePaths: pathPointers,
+			customDllImports: 0
+		});
+	}
+
+	return true;
+};
+
+ROGlobalZeroMenu.validate = function()
+{
+	if (Exe.BuildDate !== MenuZeroStatic.BuildDate)
+		return false;
+	try
+	{
+		MenuZeroStatic.verifyNativeLayout();
+		return true;
+	}
+	catch (error)
+	{
+		return false;
+	}
+};

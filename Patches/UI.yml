@@ -60,7 +60,13 @@ CustomUI:
             title : RO Global Zero Basic Information HUD
             recommend : no
             author : Louis T Steinhil
-            desc : Replaces both classic and AP-class Basic Information render paths with the compact 238x59 RO Global Zero HUD, unscaled 194x36 precomposited gauge frame, live HP/SP fills, Base Level, character name, and native Job-name hover tooltip. The frame and HP-fill composites preserve the centered markers without a separate transparent overlay; SP occupies native frame-local rows 20..30 so the divider gap is removed and the frame's lower white line remains unobstructed. The one-time Basic Info factory registers an overlapping 52x52 UIJobIconButton child with independent clipping and z-order; the child itself owns the hover handler and the recurring parent resize/mouse vtables remain stock. The two legacy blue title buttons and lower menu window ID 0x133 are suppressed while Alt+V remains compact. Requires the matching uirenewal/basicinfo and uirenewal/jobicon/big BMP assets. QJS-only.
+            desc : Replaces both classic and AP-class Basic Information render paths with the compact 238x59 RO Global Zero HUD, unscaled 194x36 precomposited gauge frame, live HP/SP fills, Base Level, character name, and native Job-name hover tooltip. The frame and HP-fill composites preserve the centered markers without a separate transparent overlay; SP occupies native frame-local rows 20..30 so the divider gap is removed and the frame's lower white line remains unobstructed. The one-time Basic Info factory registers an overlapping 52x52 UIJobIconButton child with independent clipping and z-order; the child itself owns the hover handler and the recurring parent resize/mouse vtables remain stock. The two legacy blue title buttons are suppressed while the manager-owned menu remains available to ROGlobalZeroMenu, and Alt+V remains compact. Requires the matching uirenewal/basicinfo and uirenewal/jobicon/big BMP assets. QJS-only.
+
+        - ROGlobalZeroMenu:
+            title : RO Global Zero Renewal Menu
+            recommend : no
+            author : Louis T Steinhil
+            desc : Restores the native UIMenuIconWnd and keeps its stock click, notification, hover, and open/close handlers while redirecting its resources to uirenewal/menuicon. Reflows the native actions onto the 357x322 renewal panel, adds the missing legacy icon families supplied with the data tree, anchors the 70x62 MENU control at the bottom-right across resolutions, and corrects the collapsed-state hit test for the relocated child. Uses static EXE caves only and remains compatible with encrypted GRFs because all textures still load through the client resource manager. QJS-only.
 
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]

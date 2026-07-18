@@ -18,7 +18,7 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-18                                             *
-*   Last Modified : 2026-07-18                                             *
+*   Last Modified : 2026-07-19                                             *
 *                                                                          *
 *   Description   : Replaces the classic and AP-class compact              *
 *                   UIBasicInfoWnd draw branches in the 2025-07-16         *
@@ -26,16 +26,9 @@
 *                   draws the live Base Level, character name, HP/SP       *
 *                   values, and percentages, creates a native 52x52 Job    *
 *                   icon child, adds the native Job-name hover tooltip,    *
-*                   suppresses the legacy lower menu window, and forces    *
-*                   Alt+V to retain the compact layout. This is QJS-only.  *
-*   Description   : Replaces the classic and AP-class compact              *
-*                   UIBasicInfoWnd draw branches in the 2025-07-16         *
-*                   Ragexe with the RO Global Zero 238x59 HP/SP HUD. It    *
-*                   draws the live Base Level, character name, HP/SP       *
-*                   values, and percentages, creates a native 52x52 Job    *
-*                   icon child, adds the native Job-name hover tooltip,    *
-*                   suppresses the legacy lower menu window, and forces    *
-*                   Alt+V to retain the compact layout. This is QJS-only.  *
+*                   removes the two legacy title buttons, and forces       *
+*                   Alt+V to retain the compact layout. The separately     *
+*                   patched menu window remains manager-owned. QJS-only.   *
 *                                                                          *
 \**************************************************************************/
 
@@ -72,9 +65,6 @@ const BasicInfoZeroStatic = {
 	TitleButtonsCreate: 0x0095E1F9,
 	TitleButtonsBytes: "E8 F2 6B F3 FF",
 	TitleButtonsExit: 0x0095E21C,
-	LegacyMenuFactoryCase: 0x00A412BF,
-	LegacyMenuFactoryBytes: "68 33 01 00 00 8B CF E8 C5 68 00 00",
-	LegacyMenuFactoryExit: 0x00A42620,
 	JobButtonVtable: 0x01010D50,
 	ImageButtonVtable: 0x01029820,
 	JobButtonVtableEntries: 54,
@@ -897,12 +887,6 @@ ROGlobalZeroBasicInfo = function(_)
 		BasicInfoZeroStatic.TitleButtonsCreate,
 		BasicInfoZeroStatic.TitleButtonsBytes
 	);
-	const legacyMenuFactoryPhy = BasicInfoZeroStatic.assertCode(
-		"legacy Basic Information menu factory case",
-		BasicInfoZeroStatic.LegacyMenuFactoryCase,
-		BasicInfoZeroStatic.LegacyMenuFactoryBytes
-	);
-
 	$$(_, 2, "Build RO Global Zero Basic Info resource paths");
 	const paths = {
 		gauge: BasicInfoZeroStatic.buildResourcePath(
@@ -1005,12 +989,6 @@ ROGlobalZeroBasicInfo = function(_)
 		BasicInfoZeroStatic.TitleButtonsExit,
 		0
 	);
-	Exe.SetJMP(
-		legacyMenuFactoryPhy,
-		BasicInfoZeroStatic.LegacyMenuFactoryExit,
-		0
-	);
-
 	if (typeof PatchDiagnostics !== "undefined" &&
 		typeof PatchDiagnostics.add === "function")
 	{
@@ -1044,8 +1022,6 @@ ROGlobalZeroBasicInfo = function(_)
 			compactHeightSavedVir: BasicInfoZeroStatic.CompactHeightSaved,
 			titleButtonsCreateVir: BasicInfoZeroStatic.TitleButtonsCreate,
 			titleButtonsExitVir: BasicInfoZeroStatic.TitleButtonsExit,
-			legacyMenuFactoryVir: BasicInfoZeroStatic.LegacyMenuFactoryCase,
-			legacyMenuWindowId: 0x133,
 			customDllImports: 0
 		});
 	}
@@ -1098,11 +1074,6 @@ ROGlobalZeroBasicInfo.validate = function()
 			"UIBasicInfoWnd title-button creation",
 			BasicInfoZeroStatic.TitleButtonsCreate,
 			BasicInfoZeroStatic.TitleButtonsBytes
-		);
-		BasicInfoZeroStatic.assertCode(
-			"legacy Basic Information menu factory case",
-			BasicInfoZeroStatic.LegacyMenuFactoryCase,
-			BasicInfoZeroStatic.LegacyMenuFactoryBytes
 		);
 		return true;
 	}
