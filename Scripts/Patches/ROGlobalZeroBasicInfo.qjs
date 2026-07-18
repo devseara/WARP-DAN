@@ -28,6 +28,14 @@
 *                   icon child, adds the native Job-name hover tooltip,    *
 *                   suppresses the legacy lower menu window, and forces    *
 *                   Alt+V to retain the compact layout. This is QJS-only.  *
+*   Description   : Replaces the classic and AP-class compact              *
+*                   UIBasicInfoWnd draw branches in the 2025-07-16         *
+*                   Ragexe with the RO Global Zero 238x59 HP/SP HUD. It    *
+*                   draws the live Base Level, character name, HP/SP       *
+*                   values, and percentages, creates a native 52x52 Job    *
+*                   icon child, adds the native Job-name hover tooltip,    *
+*                   suppresses the legacy lower menu window, and forces    *
+*                   Alt+V to retain the compact layout. This is QJS-only.  *
 *                                                                          *
 \**************************************************************************/
 
