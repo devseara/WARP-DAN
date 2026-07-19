@@ -20,13 +20,13 @@
 *   Created Date  : 2026-07-19                                             *
 *   Last Modified : 2026-07-20                                             *
 *                                                                          *
-*   Description   : Adds the RO Global Zero EXP HUD to the 2025-07-16     *
+*   Description   : Adds the RO Global Zero EXP HUD to the 2025-07-16      *
 *                   Ragexe as an independent 1004x15 top-level UIWindow.   *
-*                   The window owns its native canvas, loads the supplied *
+*                   The window owns its native canvas, loads the supplied  *
 *                   uirenewal/expbar assets through the client texture     *
 *                   manager, and reads the live 64-bit Base/Job EXP state. *
 *                   It is inserted behind the normal UI, remains click-    *
-*                   through while exposing native EXP hover tooltips, and *
+*                   through while exposing native EXP hover tooltips, and  *
 *                   never creates, resizes, hooks, or depends on           *
 *                   UIBasicInfoWnd. Alt+V therefore cannot hide it.        *
 *                   QJS-only.                                              *
