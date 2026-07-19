@@ -23,12 +23,13 @@
 *   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
 *                   Ragexe, redirects its textures to uirenewal/menuicon,  *
 *                   and reflows the stock child controls over the          *
-*                   357x322 renewal panel. The native dispatcher, click,   *
+*                   425x322 renewal panel. The native dispatcher, click,   *
 *                   hover, notification, and open/close behavior remain    *
 *                   intact. The collapsed-state hit test follows the       *
 *                   relocated MENU child instead of the stock (0,0)        *
-*                   assumption. The 360x333 parent is anchored ten pixels  *
-*                   from the bottom-right at every resolution. QJS-only.   *
+*                   assumption. Button visibility remains controlled by    *
+*                   Hide/Show Buttons (New UI). The 428x333 parent is      *
+*                   anchored ten pixels from the bottom-right. QJS-only.   *
 *                                                                          *
 \**************************************************************************/
 
@@ -68,16 +69,16 @@ const MenuZeroStatic = {
 	DescriptorLengthBytes: "6A 10",
 	DescriptorPointer: 0x0081373C,
 	DescriptorPointerBytes: "68 3C 83 02 01",
-	PanelWidth: 357,
+	PanelWidth: 425,
 	PanelHeight: 322,
-	ParentWidth: 360,
+	ParentWidth: 428,
 	ParentHeight: 333,
 	ScreenMargin: 10,
 	GridX: 13,
 	GridY: 12,
 	GridStrideX: 68,
 	GridStrideY: 61,
-	ToggleX: 290,
+	ToggleX: 358,
 	ToggleY: 271,
 	BackgroundPathLength: 45,
 	BackgroundBufferSize: 48,
@@ -88,7 +89,7 @@ const MenuZeroStatic = {
 		[0x175, 5], [0x169, 6], [0x0DB, 7], [0x1AE, 8], [0x0C1, 9],
 		[0x1CD, 10], [0x18F, 11], [0x1DC, 12], [0x1D9, 13], [0x1FF, 14],
 		[0x200, 15], [0x172, 16], [0x21C, 17], [0x17B, 18], [0x237, 19],
-		[0x178, 20], [0x245, 21], [0x220, 22], [0x24B, 23], [0x206, -1]
+		[0x178, 20], [0x245, 21], [0x220, 22], [0x24B, 23], [0x206, 24]
 	],
 	ResourcePushes: [
 		{
@@ -767,6 +768,7 @@ ROGlobalZeroMenu = function(_)
 			gridOrigin: [MenuZeroStatic.GridX, MenuZeroStatic.GridY],
 			gridStride: [MenuZeroStatic.GridStrideX, MenuZeroStatic.GridStrideY],
 			togglePosition: [MenuZeroStatic.ToggleX, MenuZeroStatic.ToggleY],
+			visibilityPatches: ["HideNewButtons", "ShowNewButtons"],
 			commandCount: MenuZeroStatic.CommandGrid.length,
 			resourcePaths: pathPointers,
 			customDllImports: 0

@@ -134,29 +134,34 @@ function RestoreBattlegroundUI()
 	const AddrEntryQueue = Exe.GetUint32(Addr + 1);
 
 	let Parts =
-	[ // 0
-		CMP([EBP, 0x10], BattlegroundButtonID)	// cmp dword ptr [ebp+0x10], 177h
-	+	JNE(Filler(1, 1))						// jne _NotBattleground
+	[ // 0 - Non-Battleground commands retain the original SendMsg path.
+		CMP([EBP, 0x10], BattlegroundButtonID)
+	+	JNE(Filler(5))
 
-	, // 1
-		PUSH(ECX)								// push ecx
-	+	MOV(ECX, [AddrEntryQueue])				// mov ecx, dword ptr [g_entryQueue]
-	+	CMP(BYTE_PTR, [ECX, 0x3C], 1)			// cmp byte ptr [ecx+38h]
-	+	JNE(Filler(2, 1))						// jne _NotNotify
+	, // 1 - Do not dereference the entry-queue singleton before it exists.
+		MOV(EAX, [AddrEntryQueue])
+	+	TEST(EAX, EAX)
+	+	JZ(Filler(5))
+	+	PUSH(ECX)
+	+	MOV(ECX, EAX)
+	+	CMP(BYTE_PTR, [ECX, 0x3C], 1)
+	+	JNE(Filler(2, 1))
 
 	, // 2
-		CALL(Filler(3))							// call CEntryQueueMgr::Cz_Req_Entry_Queue_Ranking
+		CALL(Filler(3))							// CEntryQueueMgr::Cz_Req_Entry_Queue_Ranking
 
-	, // 3
-		POP(ECX)								// pop ecx
-	+	PUSH(WID_ENTRYQUEUEWND)					// push WID_ENTRYQUEUEWND
-	+	CALL(Filler(4))							// call UIWindow::OpenMenuWindow
+	, // 3 - The Battleground command is fully handled here. Do not forward
+		  //     command 0x178 through generic SendMsg a second time.
+		POP(ECX)
+	+	PUSH(WID_ENTRYQUEUEWND)
+	+	CALL(Filler(4))							// UIWindow::OpenMenuWindow
+	+	XOR(EAX, EAX)
+	+	RETN(0x18)
 
 	, // 4
-		JMP(Filler(5))							// jmp UIWindow::SendMsg
+		JMP(Filler(5))							// original UIWindow::SendMsg
 	];
 
-	Parts[0] = SwapFillers(Parts[0], { '1, 1': Parts[1].byteCount() + Parts[2].byteCount() + Parts[3].byteCount() });
 	Parts[1] = SwapFillers(Parts[1], { '2, 1': Parts[2].byteCount() });
 
 
