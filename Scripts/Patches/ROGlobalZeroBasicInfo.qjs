@@ -18,7 +18,7 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-18                                             *
-*   Last Modified : 2026-07-19                                             *
+*   Last Modified : 2026-07-20                                             *
 *                                                                          *
 *   Description   : Replaces the classic and AP-class compact              *
 *                   UIBasicInfoWnd draw branches in the 2025-07-16         *
@@ -34,21 +34,25 @@
 
 const BasicInfoZeroStatic = {
 	BuildDate: 20250716,
-	WindowResizeVtableEntry: 0x0103E398,
-	WindowResizeOriginal: 0x0095E1D0,
+	WindowCreateVtableEntry: 0x0103E398,
+	WindowCreateOriginal: 0x0095E1D0,
 	WindowDrawVtableEntry: 0x0103E3AC,
 	WindowDrawOriginal: 0x0095E620,
+	BasicInfoResize: 0x0095DFB0,
 	WindowMouseVtableEntry: 0x0103E3CC,
 	WindowMouseOriginal: 0x0095F190,
 	ClassicCompactInsert: 0x0095E69E,
 	ClassicCompactBytes: "8D 85 34 FF FF FF B9 A8 E3 1F 01",
+	ClassicCompactStockResume: 0x0095E6A9,
 	ClassicCompactExit: 0x0095ED06,
 	SpecialCompactInsert: 0x0095E65C,
 	SpecialCompactBytes: "8B CB E8 CD F3 FF FF",
 	SpecialCompactExit: 0x0095E663,
-	CompactToggleJump: 0x0095F809,
-	CompactToggleBytes: "75 06",
-	CompactTogglePatch: "EB 06",
+	CompactToggleBlock: 0x0095F7FD,
+	CompactToggleBytes:
+		"8B 86 B4 00 00 00 57 8B 7E 18 3B F8 75 06 " +
+		"8B 86 B8 00 00 00 50",
+	CompactToggleResume: 0x0095F812,
 	WindowFactorySizeCall: 0x00A3954C,
 	WindowFactorySizeBytes: "56 68 DC 00 00 00 E8 19 36 FE FF",
 	WindowFactoryWidthOffset: 2,
@@ -87,6 +91,7 @@ const BasicInfoZeroStatic = {
 	LoadSurface: 0x00A8D4A0,
 	ImageDraw: 0x00A1D260,
 	ImageDrawPart: 0x00A1D2B0,
+	ClearSurface: 0x00A1CB30,
 	TextWidth: 0x00A21C90,
 	TextDraw: 0x00A25A70,
 	Sprintf: 0x00529850,
@@ -114,6 +119,7 @@ const BasicInfoZeroStatic = {
 	TextX: 0x178,
 	PanelWidth: 238,
 	PanelHeight: 59,
+	ClassicPanelWidth: 220,
 	JobIconX: 0,
 	JobIconY: 7,
 	JobIconSize: 52,
@@ -478,9 +484,26 @@ BasicInfoZeroStatic.emitValueRow = function(
 	);
 };
 
-BasicInfoZeroStatic.buildCompactDraw = function(paths, formats, exitVir)
+BasicInfoZeroStatic.buildCompactDraw = function(
+	paths, formats, exitVir, fallbackVir, fallbackKind, themeStateVir, loadThemeVir
+)
 {
 	const a = BasicInfoZeroStatic.asm();
+	a.call(loadThemeVir);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "renewal");
+	if (fallbackKind === "classic")
+	{
+		a.emit(0x8D, 0x85, 0x34, 0xFF, 0xFF, 0xFF);
+		a.emit(0xB9); a.dword(0x011FE3A8);
+	}
+	else
+	{
+		a.emit(0x8B, 0xCB);
+		a.call(0x0095DA30);
+	}
+	a.jmp(fallbackVir);
+	a.label("renewal");
 	a.emit(0x9C, 0x60);                       // PUSHFD / PUSHAD
 	a.emit(0x81, 0xEC); a.dword(BasicInfoZeroStatic.LocalSize);
 	a.emit(0x8B, 0xEC);                       // MOV EBP,ESP (stable cave locals)
@@ -569,12 +592,19 @@ BasicInfoZeroStatic.buildCompactDraw = function(paths, formats, exitVir)
 	return a;
 };
 
-BasicInfoZeroStatic.buildJobChildDraw = function(jobFormatVir)
+BasicInfoZeroStatic.buildJobChildDraw = function(jobFormatVir, themeStateVir)
 {
 	const a = BasicInfoZeroStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC);                   // PUSH EBP / MOV EBP,ESP
 	a.emit(0x81, 0xEC); a.dword(0x100);         // 256-byte resource-path buffer
 	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF9);     // preserve regs / EDI=this child
+	// The Job icon owns a persistent child surface. Clear it on every draw so
+	// switching to Classic cannot leave the last renewal icon cached onscreen.
+	BasicInfoZeroStatic.pushImm(a, 0xFFFF00FF);
+	a.emit(0x8B, 0xCF);
+	a.call(BasicInfoZeroStatic.ClearSurface);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "done");
 
 	// Resolve the big Job icon every frame. This mirrors the live CurrentJob
 	// behavior of the previous renderer without coupling the child lifetime to
@@ -615,7 +645,20 @@ BasicInfoZeroStatic.buildJobChildDraw = function(jobFormatVir)
 	return a;
 };
 
-BasicInfoZeroStatic.cloneJobButtonVtable = function(childDrawVir, childHoverVir)
+BasicInfoZeroStatic.buildJobChildDestructor = function(themeStateVir, jobChildOffset)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x3B, 0x0D); a.dword(themeStateVir + jobChildOffset);
+	a.jcc(0x85, "pass");
+	a.emit(0xC7, 0x05); a.dword(themeStateVir + jobChildOffset); a.dword(0);
+	a.label("pass");
+	a.jmp(BasicInfoZeroStatic.JobButtonDestructor);
+	return a;
+};
+
+BasicInfoZeroStatic.cloneJobButtonVtable = function(
+	childDrawVir, childHoverVir, childDestructorVir
+)
 {
 	const jobPhy = Exe.Vir2Phy(BasicInfoZeroStatic.JobButtonVtable);
 	const basePhy = Exe.Vir2Phy(BasicInfoZeroStatic.ImageButtonVtable);
@@ -626,10 +669,12 @@ BasicInfoZeroStatic.cloneJobButtonVtable = function(childDrawVir, childHoverVir)
 	const [clonePhy, cloneVir] = Exe.Allocate(byteCount, 4);
 	Exe.SetHex(clonePhy, Exe.GetHex(jobPhy, byteCount));
 
-	// Keep the real UIJobIconButton deleting destructor and inherited lifecycle,
-	// but give this instance the independent renderer above. Its Job-specific
+	// Keep the real UIJobIconButton inherited lifecycle, but clear our shared
+	// pointer before its deleting destructor runs and give this instance the
+	// independent renderer above. Its Job-specific
 	// input overrides dispatch to unrelated stock windows, so use the neutral
 	// UIImgButton handlers for this display-only child.
+	Exe.SetUint32(clonePhy, childDestructorVir);
 	Exe.SetUint32(clonePhy + 20 * 4, childDrawVir);
 	Exe.SetUint32(clonePhy + 28 * 4, childHoverVir);
 	for (const slot of [25, 31, 33])
@@ -638,60 +683,143 @@ BasicInfoZeroStatic.cloneJobButtonVtable = function(childDrawVir, childHoverVir)
 	return {phy: clonePhy, vir: cloneVir, size: byteCount};
 };
 
-BasicInfoZeroStatic.buildFactorySizeAndCreate = function(jobVtableVir)
+BasicInfoZeroStatic.buildFactorySize = function(themeStateVir, loadThemeVir)
 {
 	const a = BasicInfoZeroStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC);                 // frame
-	a.emit(0x53, 0x56, 0x57);                 // preserve EBX/ESI/EDI
+	a.emit(0x56);                             // preserve ESI
 	a.emit(0x8B, 0xF1);                       // ESI=UIBasicInfoWnd
+	a.call(loadThemeVir);
 
-	// This wrapper replaces only the one-time Basic Info factory call to
-	// UIWindow::SetWindowSize. Vtable slot 15 is its resize/layout callback,
-	// not OnCreate, and must remain stock to avoid creating a child on every
-	// later layout pass.
-	a.emit(0xFF, 0x75, 0x0C);
-	a.emit(0xFF, 0x75, 0x08);
+	// This wrapper replaces only the factory call to UIWindow::SetWindowSize.
+	// Native vtable slot 15 performs child creation later, so do not attach the
+	// Job child here: its early registration is discarded by native OnCreate.
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic_size");
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.PanelHeight);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.PanelWidth);
+	a.jmp("set_size");
+	a.label("classic_size");
+	a.emit(0xFF, 0xB6); a.dword(0xB8);         // stock expanded height
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.ClassicPanelWidth);
+	a.label("set_size");
 	a.emit(0x8B, 0xCE);
 	a.call(BasicInfoZeroStatic.SetWindowSize);
-	a.emit(0x8B, 0xD8);                       // EBX=stock return value
-
-	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobButtonObjectSize);
-	a.call(BasicInfoZeroStatic.OperatorNew);
-	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
-	a.jcc(0x84, "done");
-	a.emit(0x8B, 0xF8, 0x8B, 0xCF);           // EDI=allocation / ECX=EDI
-	a.call(BasicInfoZeroStatic.JobButtonConstructor);
-	a.emit(0x85, 0xC0);
-	a.jcc(0x84, "done");
-	a.emit(0x8B, 0xF8);                       // EDI=constructed child
-	a.emit(0xC7, 0x07); a.dword(jobVtableVir); // instance-local cloned vtable
-
-	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconSize); // height
-	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconSize); // width
-	a.emit(0x8B, 0xCF);
-	a.call(BasicInfoZeroStatic.SetWindowSize);
-
-	// MoveTo(x,y) is virtual slot 4. Register only after its final geometry is
-	// set so the parent never traverses a partially initialized child.
-	a.emit(0x8B, 0x07);                       // MOV EAX,[EDI] (vtable)
-	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconY);
-	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconX);
-	a.emit(0x8B, 0xCF, 0xFF, 0x50, 0x10);     // ECX=child / CALL [EAX+10]
-	a.emit(0x57, 0x8B, 0xCE);                 // PUSH child / ECX=parent
-	a.call(BasicInfoZeroStatic.AddChild);
-
-	a.label("done");
-	a.emit(0x8B, 0xC3);                       // restore stock return value
-	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.emit(0x5E, 0x8B, 0xE5, 0x5D);
 	a.emit(0xC2, 0x08, 0x00);                 // RET 8, matching SetWindowSize
 	return a;
 };
 
-BasicInfoZeroStatic.buildJobChildHover = function()
+BasicInfoZeroStatic.buildCreateWrapper = function(
+	jobVtableVir, themeStateVir, loadThemeVir, jobChildOffset, basicInfoOffset
+)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                       // ESI=UIBasicInfoWnd
+	a.call(loadThemeVir);
+
+	// Let native OnCreate build and lay out every stock child first. Its child
+	// list initialization is why the former factory-time Job child disappeared
+	// on the first login until Character Select rebuilt the window.
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08, 0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.WindowCreateOriginal);
+	a.emit(0x8B, 0xD8);                       // EBX=native return value
+
+	// Reuse only a child owned by this exact Basic Info instance. Character
+	// Select can create the replacement parent before the old parent finishes
+	// destruction, so a non-null child pointer alone is not sufficient.
+	a.emit(0x3B, 0x35); a.dword(themeStateVir + basicInfoOffset);
+	a.jcc(0x85, "new_parent");
+	a.emit(0x83, 0x3D); a.dword(themeStateVir + jobChildOffset); a.emit(0x00);
+	a.jcc(0x85, "redraw");
+	a.jmp("create");
+	a.label("new_parent");
+	a.emit(0x89, 0x35); a.dword(themeStateVir + basicInfoOffset);
+	a.emit(0xC7, 0x05); a.dword(themeStateVir + jobChildOffset); a.dword(0);
+	a.label("create");
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobButtonObjectSize);
+	a.call(BasicInfoZeroStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0xF8, 0x8B, 0xCF);
+	a.call(BasicInfoZeroStatic.JobButtonConstructor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0xF8);
+	a.emit(0xC7, 0x07); a.dword(jobVtableVir);
+
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconSize);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconSize);
+	a.emit(0x8B, 0xCF);
+	a.call(BasicInfoZeroStatic.SetWindowSize);
+	a.emit(0x8B, 0x07);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconY);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconX);
+	a.emit(0x8B, 0xCF, 0xFF, 0x50, 0x10);
+	a.emit(0x89, 0x3D); a.dword(themeStateVir + jobChildOffset);
+	a.emit(0x57, 0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.AddChild);
+
+	// Populate or clear the cached surface immediately for the active theme.
+	a.label("redraw");
+	a.emit(0x8B, 0x0D); a.dword(themeStateVir + jobChildOffset);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0x01, 0xFF, 0x50, 0x50);
+	a.label("done");
+	a.emit(0x8B, 0xC3, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+BasicInfoZeroStatic.buildCompactToggle = function(themeStateVir, loadThemeVir)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.call(loadThemeVir);
+	a.emit(0x8B, 0x86); a.dword(0xB4);          // stock compact height
+	a.emit(0x57, 0x8B, 0x7E, 0x18);            // PUSH EDI / current height
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "target_ready");                // New UI always remains compact
+	a.emit(0x3B, 0xF8);                         // Classic UI preserves Alt+V
+	a.jcc(0x85, "target_ready");
+	a.emit(0x8B, 0x86); a.dword(0xB8);          // stock expanded height
+	a.label("target_ready");
+	a.emit(0x50);
+	a.jmp(BasicInfoZeroStatic.CompactToggleResume);
+	return a;
+};
+
+BasicInfoZeroStatic.buildDrawLifecycleGuard = function(themeStateVir, loadThemeVir)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x56, 0x8B, 0xF1);                   // preserve ESI / ESI=this
+	a.call(loadThemeVir);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "draw");                       // Classic UI keeps native state
+	a.emit(0x81, 0x7E, 0x14); a.dword(BasicInfoZeroStatic.PanelWidth);
+	a.jcc(0x85, "resize");
+	a.emit(0x8B, 0x86); a.dword(0xB4);          // configured compact height
+	a.emit(0x39, 0x46, 0x18);                   // current height already compact?
+	a.jcc(0x84, "draw");
+	a.label("resize");
+	a.emit(0xC7, 0x46, 0x14); a.dword(BasicInfoZeroStatic.PanelWidth);
+	a.emit(0xFF, 0xB6); a.dword(0xB4);
+	a.emit(0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.BasicInfoResize);
+	a.label("draw");
+	a.emit(0x8B, 0xCE, 0x5E);
+	a.jmp(BasicInfoZeroStatic.WindowDrawOriginal);
+	return a;
+};
+
+BasicInfoZeroStatic.buildJobChildHover = function(themeStateVir)
 {
 	const a = BasicInfoZeroStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08); // EBP frame, two POINT locals
 	a.emit(0x56, 0x57, 0x8B, 0xF1);             // preserve ESI/EDI; ESI=this
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "done");
 
 	// The registered child receives its own local mouse coordinates. Keeping
 	// the hit test here avoids relying on the parent handler, which is bypassed
@@ -765,10 +893,10 @@ BasicInfoZeroStatic.assertVtableSlot = function(label, entryVir, expectedVir)
 BasicInfoZeroStatic.assertVtables = function()
 {
 	return {
-		resize: BasicInfoZeroStatic.assertVtableSlot(
-			"UIBasicInfoWnd resize vtable[15]",
-			BasicInfoZeroStatic.WindowResizeVtableEntry,
-			BasicInfoZeroStatic.WindowResizeOriginal
+		create: BasicInfoZeroStatic.assertVtableSlot(
+			"UIBasicInfoWnd OnCreate vtable[15]",
+			BasicInfoZeroStatic.WindowCreateVtableEntry,
+			BasicInfoZeroStatic.WindowCreateOriginal
 		),
 		draw: BasicInfoZeroStatic.assertVtableSlot(
 			"UIBasicInfoWnd vtable[20]",
@@ -844,9 +972,15 @@ ROGlobalZeroBasicInfo = function(_)
 {
 	if (Exe.BuildDate !== BasicInfoZeroStatic.BuildDate)
 		throw Error("ROGlobalZeroBasicInfo supports only the 2025-07-16 client");
+	const theme = CACHE.get("ROGlobalZeroUITheme.State");
+	if (!theme || !Number.isInteger(theme.stateVir) ||
+		!Number.isInteger(theme.loadVir) ||
+		!Number.isInteger(theme.jobChildOffset) ||
+		!Number.isInteger(theme.basicInfoOffset))
+		throw Error("ROGlobalZeroBasicInfo: ROGlobalZeroUITheme must run first");
 
 	$$(_, 1, "Verify Basic Info and Job button vtable boundaries");
-	BasicInfoZeroStatic.assertVtables();
+	const vtableSlots = BasicInfoZeroStatic.assertVtables();
 	const classicInsertPhy = BasicInfoZeroStatic.assertCode(
 		"classic compact draw branch",
 		BasicInfoZeroStatic.ClassicCompactInsert,
@@ -859,7 +993,7 @@ ROGlobalZeroBasicInfo = function(_)
 	);
 	const compactTogglePhy = BasicInfoZeroStatic.assertCode(
 		"Alt+V compact/expanded selector",
-		BasicInfoZeroStatic.CompactToggleJump,
+		BasicInfoZeroStatic.CompactToggleBlock,
 		BasicInfoZeroStatic.CompactToggleBytes
 	);
 	const factorySizePhy = BasicInfoZeroStatic.assertCode(
@@ -916,14 +1050,18 @@ ROGlobalZeroBasicInfo = function(_)
 
 	$$(_, 3, "Inject classic and AP-class compact native HUD renderers");
 	const classicCode = BasicInfoZeroStatic.buildCompactDraw(
-		paths, formats, BasicInfoZeroStatic.ClassicCompactExit
+		paths, formats, BasicInfoZeroStatic.ClassicCompactExit,
+		BasicInfoZeroStatic.ClassicCompactStockResume,
+		"classic", theme.stateVir, theme.loadVir
 	);
 	const [classicCodePhy, classicCodeVir] = Exe.Allocate(
 		classicCode.bytes.length, 0x10
 	);
 	Exe.SetHex(classicCodePhy, classicCode.finish(classicCodeVir));
 	const specialCode = BasicInfoZeroStatic.buildCompactDraw(
-		paths, formats, BasicInfoZeroStatic.SpecialCompactExit
+		paths, formats, BasicInfoZeroStatic.SpecialCompactExit,
+		BasicInfoZeroStatic.SpecialCompactExit,
+		"special", theme.stateVir, theme.loadVir
 	);
 	const [specialCodePhy, specialCodeVir] = Exe.Allocate(
 		specialCode.bytes.length, 0x10
@@ -931,7 +1069,9 @@ ROGlobalZeroBasicInfo = function(_)
 	Exe.SetHex(specialCodePhy, specialCode.finish(specialCodeVir));
 
 	$$(_, 4, "Create the native Job icon child renderer and vtable");
-	const childDrawCode = BasicInfoZeroStatic.buildJobChildDraw(paths.jobFormat);
+	const childDrawCode = BasicInfoZeroStatic.buildJobChildDraw(
+		paths.jobFormat, theme.stateVir
+	);
 	const [childDrawCodePhy, childDrawCodeVir] = Exe.Allocate(
 		childDrawCode.bytes.length, 0x10
 	);
@@ -939,7 +1079,7 @@ ROGlobalZeroBasicInfo = function(_)
 		childDrawCodePhy,
 		childDrawCode.finish(childDrawCodeVir)
 	);
-	const childHoverCode = BasicInfoZeroStatic.buildJobChildHover();
+	const childHoverCode = BasicInfoZeroStatic.buildJobChildHover(theme.stateVir);
 	const [childHoverCodePhy, childHoverCodeVir] = Exe.Allocate(
 		childHoverCode.bytes.length, 0x10
 	);
@@ -947,23 +1087,66 @@ ROGlobalZeroBasicInfo = function(_)
 		childHoverCodePhy,
 		childHoverCode.finish(childHoverCodeVir)
 	);
+	const childDestructorCode = BasicInfoZeroStatic.buildJobChildDestructor(
+		theme.stateVir, theme.jobChildOffset
+	);
+	const [childDestructorCodePhy, childDestructorCodeVir] = Exe.Allocate(
+		childDestructorCode.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		childDestructorCodePhy,
+		childDestructorCode.finish(childDestructorCodeVir)
+	);
 	const childVtable = BasicInfoZeroStatic.cloneJobButtonVtable(
 		childDrawCodeVir,
-		childHoverCodeVir
+		childHoverCodeVir,
+		childDestructorCodeVir
 	);
-	const factoryCode = BasicInfoZeroStatic.buildFactorySizeAndCreate(
-		childVtable.vir
+	const factoryCode = BasicInfoZeroStatic.buildFactorySize(
+		theme.stateVir, theme.loadVir
 	);
 	const [factoryCodePhy, factoryCodeVir] = Exe.Allocate(
 		factoryCode.bytes.length, 0x10
 	);
 	Exe.SetHex(factoryCodePhy, factoryCode.finish(factoryCodeVir));
+	const createCode = BasicInfoZeroStatic.buildCreateWrapper(
+		childVtable.vir, theme.stateVir, theme.loadVir,
+		theme.jobChildOffset, theme.basicInfoOffset
+	);
+	const [createCodePhy, createCodeVir] = Exe.Allocate(
+		createCode.bytes.length, 0x10
+	);
+	Exe.SetHex(createCodePhy, createCode.finish(createCodeVir));
 
-	$$(_, 5, "Install child creation, compact draw, hover, and Alt+V locks");
+	const compactToggleCode = BasicInfoZeroStatic.buildCompactToggle(
+		theme.stateVir, theme.loadVir
+	);
+	const [compactToggleCodePhy, compactToggleCodeVir] = Exe.Allocate(
+		compactToggleCode.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		compactToggleCodePhy,
+		compactToggleCode.finish(compactToggleCodeVir)
+	);
+	const drawLifecycleCode = BasicInfoZeroStatic.buildDrawLifecycleGuard(
+		theme.stateVir, theme.loadVir
+	);
+	const [drawLifecycleCodePhy, drawLifecycleCodeVir] = Exe.Allocate(
+		drawLifecycleCode.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		drawLifecycleCodePhy,
+		drawLifecycleCode.finish(drawLifecycleCodeVir)
+	);
+
+	$$(_, 5, "Install child creation, theme-aware draw, hover, and Alt+V routing");
 	Exe.SetJMP(classicInsertPhy, classicCodeVir, 0);
 	Exe.SetJMP(specialInsertPhy, specialCodeVir, 0);
 	Exe.SetNOPs(specialInsertPhy + 5, 2);
-	Exe.SetHex(compactTogglePhy, BasicInfoZeroStatic.CompactTogglePatch);
+	Exe.SetJMP(compactTogglePhy, compactToggleCodeVir, 0);
+	Exe.SetNOPs(compactTogglePhy + 5, 16);
+	Exe.SetUint32(vtableSlots.create, createCodeVir);
+	Exe.SetUint32(vtableSlots.draw, drawLifecycleCodeVir);
 	Exe.SetUint32(
 		factorySizePhy + BasicInfoZeroStatic.WindowFactoryWidthOffset,
 		BasicInfoZeroStatic.PanelWidth
@@ -997,7 +1180,12 @@ ROGlobalZeroBasicInfo = function(_)
 			factoryCodeSize: factoryCode.bytes.length,
 			factoryCallVir: BasicInfoZeroStatic.WindowFactorySizeCall +
 				BasicInfoZeroStatic.WindowFactoryCallOffset,
-			resizeVtableVir: BasicInfoZeroStatic.WindowResizeVtableEntry,
+			createVtableVir: BasicInfoZeroStatic.WindowCreateVtableEntry,
+			createCodeVir,
+			createCodeSize: createCode.bytes.length,
+			drawLifecycleVtableVir: BasicInfoZeroStatic.WindowDrawVtableEntry,
+			drawLifecycleCodeVir,
+			drawLifecycleCodeSize: drawLifecycleCode.bytes.length,
 			classicCodeVir,
 			classicCodeSize: classicCode.bytes.length,
 			classicInsertVir: BasicInfoZeroStatic.ClassicCompactInsert,
@@ -1011,10 +1199,14 @@ ROGlobalZeroBasicInfo = function(_)
 			childDrawCodeSize: childDrawCode.bytes.length,
 			childHoverCodeVir,
 			childHoverCodeSize: childHoverCode.bytes.length,
+			childDestructorCodeVir,
+			childDestructorCodeSize: childDestructorCode.bytes.length,
 			childVtableVir: childVtable.vir,
 			childVtableSize: childVtable.size,
 			parentMouseVtableVir: BasicInfoZeroStatic.WindowMouseVtableEntry,
-			compactToggleVir: BasicInfoZeroStatic.CompactToggleJump,
+			compactToggleVir: BasicInfoZeroStatic.CompactToggleBlock,
+			compactToggleCodeVir,
+			themeStateVir: theme.stateVir,
 			factorySizeVir: BasicInfoZeroStatic.WindowFactorySizeCall,
 			factoryWidth: BasicInfoZeroStatic.PanelWidth,
 			factoryHeight: BasicInfoZeroStatic.PanelHeight,
@@ -1047,7 +1239,7 @@ ROGlobalZeroBasicInfo.validate = function()
 		);
 		BasicInfoZeroStatic.assertCode(
 			"Alt+V compact/expanded selector",
-			BasicInfoZeroStatic.CompactToggleJump,
+			BasicInfoZeroStatic.CompactToggleBlock,
 			BasicInfoZeroStatic.CompactToggleBytes
 		);
 		BasicInfoZeroStatic.assertCode(

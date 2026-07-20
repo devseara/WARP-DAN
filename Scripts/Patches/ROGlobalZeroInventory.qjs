@@ -18,7 +18,7 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-06-14                                             *
-*   Last Modified : 2026-07-17                                             *
+*   Last Modified : 2026-07-20                                             *
 *                                                                          *
 *   Description   : Replaces the 2025-07-16 inventory's text tabs with     *
 *                   renewal tab_pri_01..04 images, reserves the final item *
@@ -36,6 +36,11 @@ const InventoryTabsStatic = {
 	WindowDrawOriginal: 0x00946DA0,
 	WindowMouseVtableEntry: 0x0103D4D0,
 	WindowMouseOriginal: 0x0094D450,
+	WindowId: 8,
+	WindowManager: 0x0131F4E8,
+	GetWindow: 0x00A47B90,
+	CloseWindow: 0x00A2E770,
+	CreateWindow: 0x00A39340,
 	TabDrawVtableEntry: 0x0102DD94,
 	TabDrawOriginal: 0x00857910,
 	TabMouseVtableEntry: 0x0102DDB4,
@@ -250,11 +255,12 @@ InventoryTabsStatic.asm = function()
 	};
 };
 
-InventoryTabsStatic.buildWindowDraw = function(stateVir)
+InventoryTabsStatic.buildWindowDraw = function(stateVir, loadThemeVir)
 {
 	const a = InventoryTabsStatic.asm();
 	a.emit(0x56);                              // PUSH ESI
 	a.emit(0x8B, 0xF1);                        // MOV ESI,ECX
+	a.call(loadThemeVir);
 	a.emit(0x89, 0x35); a.dword(stateVir);      // MOV [inventoryWindow],ESI
 	a.emit(0x8B, 0x86); a.dword(InventoryTabsStatic.TabControlOffset);
 	a.emit(0xA3); a.dword(stateVir + 4);        // MOV [inventoryTab],EAX
@@ -264,7 +270,9 @@ InventoryTabsStatic.buildWindowDraw = function(stateVir)
 	return a;
 };
 
-InventoryTabsStatic.buildTabDraw = function(stateVir, tabFormatVir, blankVir)
+InventoryTabsStatic.buildTabDraw = function(
+	stateVir, tabFormatVir, blankVir, themeStateVir
+)
 {
 	const a = InventoryTabsStatic.asm();
 
@@ -273,6 +281,8 @@ InventoryTabsStatic.buildTabDraw = function(stateVir, tabFormatVir, blankVir)
 	a.emit(0x53, 0x56, 0x57);                 // PUSH EBX/ESI/EDI
 	a.emit(0x8B, 0xF1);                       // MOV ESI,ECX
 	a.call(InventoryTabsStatic.TabDrawOriginal);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "done");
 	a.emit(0x3B, 0x35); a.dword(stateVir + 4); // CMP ESI,[inventoryTab]
 	a.jcc(0x85, "done");                     // JNE done
 	// A closed inventory leaves cached heap addresses behind. Reject a tab
@@ -357,10 +367,14 @@ InventoryTabsStatic.buildTabDraw = function(stateVir, tabFormatVir, blankVir)
 	return a;
 };
 
-InventoryTabsStatic.buildTabMouse = function(stateVir, tooltipTableVir, yTableVir)
+InventoryTabsStatic.buildTabMouse = function(
+	stateVir, tooltipTableVir, yTableVir, themeStateVir
+)
 {
 	const a = InventoryTabsStatic.asm();
 
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "original");
 	a.emit(0x3B, 0x0D); a.dword(stateVir + 4); // CMP ECX,[inventoryTab]
 	a.jcc(0x85, "original");
 	a.emit(0x8B, 0x41, InventoryTabsStatic.ControlParentOffset); // MOV EAX,[ECX+parent]
@@ -415,7 +429,8 @@ InventoryTabsStatic.buildZenyUnderlay = function(
 	zenyPathVir,
 	weightPathVir,
 	zenyLabelVir,
-	weightFormatVir
+	weightFormatVir,
+	themeStateVir
 )
 {
 	const a = InventoryTabsStatic.asm();
@@ -515,6 +530,8 @@ InventoryTabsStatic.buildZenyUnderlay = function(
 	a.emit(0x9C, 0x60);                       // PUSHFD / PUSHAD
 	a.emit(0x81, 0xEC); a.dword(0x80);         // SUB ESP,80
 	a.emit(0x8B, 0xEC);                       // MOV EBP,ESP local base
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "restore");
 	a.emit(0x8B, 0xF3, 0x85, 0xF6);          // MOV ESI,EBX / TEST ESI,ESI
 	a.jcc(0x84, "restore");
 
@@ -636,16 +653,21 @@ InventoryTabsStatic.buildZenyUnderlay = function(
 	return a;
 };
 
-InventoryTabsStatic.buildItemEndCount = function(returnVir)
+InventoryTabsStatic.buildItemEndCount = function(returnVir, themeStateVir)
 {
 	const a = InventoryTabsStatic.asm();
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic");
 	a.emit(0x0F, 0xAF, 0x83); a.dword(0xE0); // IMUL EAX,[EBX+E0]
 	a.emit(0x2B, 0x83); a.dword(0xE0);         // SUB EAX,[EBX+E0] one row
+	a.jmp(returnVir);
+	a.label("classic");
+	a.emit(0x0F, 0xAF, 0x83); a.dword(0xE0); // original item count
 	a.jmp(returnVir);
 	return a;
 };
 
-InventoryTabsStatic.buildWindowMouse = function()
+InventoryTabsStatic.buildWindowMouse = function(themeStateVir)
 {
 	const a = InventoryTabsStatic.asm();
 
@@ -656,6 +678,8 @@ InventoryTabsStatic.buildWindowMouse = function()
 	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
 	a.emit(0x8B, 0xCE);
 	a.call(InventoryTabsStatic.WindowMouseOriginal);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "done");
 
 	// Calculate the bottom-right panel rectangle in inventory-local space.
 	a.emit(0x8B, 0x46, 0x14);                // MOV EAX,[ESI+14]
@@ -726,6 +750,26 @@ InventoryTabsStatic.buildWindowMouse = function()
 	return a;
 };
 
+InventoryTabsStatic.buildRefresh = function()
+{
+	const a = InventoryTabsStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x68); a.dword(InventoryTabsStatic.WindowId);
+	a.emit(0xB9); a.dword(InventoryTabsStatic.WindowManager);
+	a.call(InventoryTabsStatic.GetWindow);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x68); a.dword(InventoryTabsStatic.WindowId);
+	a.emit(0xB9); a.dword(InventoryTabsStatic.WindowManager);
+	a.call(InventoryTabsStatic.CloseWindow);
+	a.emit(0x68); a.dword(InventoryTabsStatic.WindowId);
+	a.emit(0xB9); a.dword(InventoryTabsStatic.WindowManager);
+	a.call(InventoryTabsStatic.CreateWindow);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
 InventoryTabsStatic.assertVtable = function(label, entryVir, expected)
 {
 	const phyAddr = Exe.Vir2Phy(entryVir);
@@ -756,6 +800,14 @@ ROGlobalZeroInventory = function(_)
 {
 	if (Exe.BuildDate !== InventoryTabsStatic.BuildDate)
 		throw Error("ROGlobalZeroInventory supports only the 2025-07-16 client");
+	const theme = CACHE.get("ROGlobalZeroUITheme.State");
+	if (!theme || !Number.isInteger(theme.stateVir) ||
+		!Number.isInteger(theme.loadVir))
+	{
+		throw Error(
+			"ROGlobalZeroInventory: ROGlobalZeroUITheme must run first"
+		);
+	}
 
 	$$(_, 1, `Verify inventory vtables, item bounds, and bottom-text sites`);
 	const windowEntryPhy = InventoryTabsStatic.assertVtable(
@@ -823,21 +875,23 @@ ROGlobalZeroInventory = function(_)
 	Exe.SetUint32(statePhy + 4, 0);
 
 	$$(_, 3, `Inject native inventory, tab, tooltip, and Zeny-panel handlers`);
-	const windowCode = InventoryTabsStatic.buildWindowDraw(stateVir);
+	const windowCode = InventoryTabsStatic.buildWindowDraw(
+		stateVir, theme.loadVir
+	);
 	const [windowPhy, windowVir] = Exe.Allocate(windowCode.bytes.length, 0x10);
 	Exe.SetHex(windowPhy, windowCode.finish(windowVir));
-	const windowMouseCode = InventoryTabsStatic.buildWindowMouse();
+	const windowMouseCode = InventoryTabsStatic.buildWindowMouse(theme.stateVir);
 	const [windowMousePhy, windowMouseVir] = Exe.Allocate(windowMouseCode.bytes.length, 0x10);
 	Exe.SetHex(windowMousePhy, windowMouseCode.finish(windowMouseVir));
 
 	const tabDrawCode = InventoryTabsStatic.buildTabDraw(
-		stateVir, paths.tabFormatVir, blankVir
+		stateVir, paths.tabFormatVir, blankVir, theme.stateVir
 	);
 	const [tabDrawPhy, tabDrawVir] = Exe.Allocate(tabDrawCode.bytes.length, 0x10);
 	Exe.SetHex(tabDrawPhy, tabDrawCode.finish(tabDrawVir));
 
 	const tabMouseCode = InventoryTabsStatic.buildTabMouse(
-		stateVir, tooltipTableVir, yTableVir
+		stateVir, tooltipTableVir, yTableVir, theme.stateVir
 	);
 	const [tabMousePhy, tabMouseVir] = Exe.Allocate(tabMouseCode.bytes.length, 0x10);
 	Exe.SetHex(tabMousePhy, tabMouseCode.finish(tabMouseVir));
@@ -846,7 +900,8 @@ ROGlobalZeroInventory = function(_)
 		paths.zenyPathVir,
 		paths.weightPathVir,
 		zenyLabelVir,
-		weightFormatVir
+		weightFormatVir,
+		theme.stateVir
 	);
 	const [zenyPhy, zenyVir] = Exe.Allocate(zenyCode.bytes.length, 0x10);
 	Exe.SetHex(zenyPhy, zenyCode.finish(zenyVir));
@@ -855,12 +910,13 @@ ROGlobalZeroInventory = function(_)
 	for (let i = 0; i < InventoryTabsStatic.ItemEndCountSites.length; i++)
 	{
 		const siteVir = InventoryTabsStatic.ItemEndCountSites[i];
-		const code = InventoryTabsStatic.buildItemEndCount(siteVir + 7);
+		const code = InventoryTabsStatic.buildItemEndCount(
+			siteVir + 7, theme.stateVir
+		);
 		const [bridgePhy, bridgeVir] = Exe.Allocate(code.bytes.length, 0x10);
 		Exe.SetHex(bridgePhy, code.finish(bridgeVir));
 		itemEndBridges.push({siteVir, sitePhy: itemEndSitePhys[i], bridgeVir});
 	}
-
 	$$(_, 4, `Activate QJS-only inventory renewal handlers`);
 	Exe.SetUint32(windowEntryPhy, windowVir);
 	Exe.SetUint32(windowMouseEntryPhy, windowMouseVir);
@@ -883,6 +939,7 @@ ROGlobalZeroInventory = function(_)
 			tabMouseVir,
 			zenyVir,
 			stateVir,
+			themeStateVir: theme.stateVir,
 			itemEndBridges,
 			tabFormatVir: paths.tabFormatVir,
 			zenyPathVir: paths.zenyPathVir,

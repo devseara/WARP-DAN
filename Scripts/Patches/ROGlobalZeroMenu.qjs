@@ -18,7 +18,7 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-19                                             *
-*   Last Modified : 2026-07-19                                             *
+*   Last Modified : 2026-07-20                                             *
 *                                                                          *
 *   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
 *                   Ragexe, redirects its textures to uirenewal/menuicon,  *
@@ -52,6 +52,9 @@ const MenuZeroStatic = {
 	DisplayPointer: 0x012515F8,
 	WindowManager: 0x0131F4E8,
 	WindowManagerUpdate: 0x00A4CCF0,
+	GetWindow: 0x00A47B90,
+	CloseWindow: 0x00A2E770,
+	CreateWindow: 0x00A39340,
 	TabItmFormat: 0x0102AC48,
 	BackgroundCopyBlock: 0x00814359,
 	BackgroundCopyReturn: 0x0081438B,
@@ -59,20 +62,25 @@ const MenuZeroStatic = {
 		"C7 47 10 24 00 00 00 C7 47 14 2F 00 00 00 " +
 		"0F 10 05 D8 85 02 01 0F 11 00 0F 10 05 E8 85 02 01 " +
 		"0F 11 40 10 8B 0D F8 85 02 01 89 48 20 C6 40 24 00 89 07",
-	BackgroundDrawY: 0x00814392,
-	BackgroundDrawYBytes: "6A 0D 6A 00",
+	BackgroundDrawBlock: 0x00814392,
+	BackgroundDrawReturn: 0x0081439D,
+	BackgroundDrawBytes: "6A 0D 6A 00 C7 45 FC FF FF FF FF",
 	ProvisionalSize: 0x00A41308,
 	ProvisionalSizeBytes: "68 C5 00 00 00 68 DC 00 00 00",
 	FinalSize: 0x0081400D,
 	FinalSizeBytes: "68 EE 00 00 00 68 DC 00 00 00 FF 50 04",
-	DescriptorLength: 0x00813725,
-	DescriptorLengthBytes: "6A 10",
+	DescriptorLengthBlock: 0x00813722,
+	DescriptorLengthReturn: 0x0081372E,
+	DescriptorLengthBytes: "8D 4D 90 6A 10 C7 45 90 00 00 00 00",
 	DescriptorPointer: 0x0081373C,
 	DescriptorPointerBytes: "68 3C 83 02 01",
 	PanelWidth: 425,
 	PanelHeight: 322,
 	ParentWidth: 428,
 	ParentHeight: 333,
+	ClassicParentWidth: 220,
+	ClassicProvisionalHeight: 197,
+	ClassicFinalHeight: 238,
 	ScreenMargin: 10,
 	GridX: 13,
 	GridY: 12,
@@ -181,6 +189,11 @@ MenuZeroStatic.hexNorm = function(hex)
 MenuZeroStatic.bytesToHex = function(bytes)
 {
 	return bytes.map(value => (value & 0xFF).toString(16).padStart(2, "0")).join(" ");
+};
+
+MenuZeroStatic.hexToBytes = function(hex)
+{
+	return MenuZeroStatic.hexNorm(hex).split(" ").map(value => parseInt(value, 16));
 };
 
 MenuZeroStatic.asciiBytes = function(text, nulTerminate = true)
@@ -331,9 +344,19 @@ MenuZeroStatic.pushImmediate = function(a, value)
 	}
 };
 
-MenuZeroStatic.buildBackgroundCopy = function(backgroundVir)
+MenuZeroStatic.buildBackgroundCopy = function(
+	backgroundVir, themeStateVir, loadThemeVir
+)
 {
 	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "renewal");
+	a.emit(...MenuZeroStatic.hexToBytes(MenuZeroStatic.BackgroundCopyBytes));
+	a.jmp(MenuZeroStatic.BackgroundCopyReturn);
+	a.label("renewal");
 	a.emit(0xC7, 0x47, 0x10); a.dword(MenuZeroStatic.BackgroundPathLength);
 	a.emit(0xC7, 0x47, 0x14); a.dword(MenuZeroStatic.BackgroundBufferSize - 1);
 	a.emit(0x0F, 0x10, 0x05); a.dword(backgroundVir);
@@ -344,6 +367,68 @@ MenuZeroStatic.buildBackgroundCopy = function(backgroundVir)
 	a.emit(0x0F, 0x11, 0x40, 0x20);
 	a.emit(0x89, 0x07);
 	a.jmp(MenuZeroStatic.BackgroundCopyReturn);
+	return a;
+};
+
+// Replace a five-byte PUSH immediate with a five-byte CALL. The helper
+// preserves EAX and returns with the selected pointer/value left on the
+// caller's stack exactly as the original PUSH would have done.
+MenuZeroStatic.buildPushSelector = function(
+	classicValue, renewalValue, themeStateVir, loadThemeVir
+)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	a.emit(0x50);                                      // PUSH EAX
+	a.emit(0x8B, 0x44, 0x24, 0x04);                    // MOV EAX,[ESP+4] return
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "renewal");
+	a.emit(0xC7, 0x44, 0x24, 0x04); a.dword(classicValue);
+	a.jmp("finish");
+	a.label("renewal");
+	a.emit(0xC7, 0x44, 0x24, 0x04); a.dword(renewalValue);
+	a.label("finish");
+	a.emit(0x87, 0x04, 0x24, 0xC3);                    // XCHG [ESP],EAX / RET
+	return a;
+};
+
+MenuZeroStatic.buildBackgroundDraw = function(themeStateVir, loadThemeVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "renewal");
+	MenuZeroStatic.pushImmediate(a, 13);
+	a.jmp("origin_ready");
+	a.label("renewal");
+	MenuZeroStatic.pushImmediate(a, 0);
+	a.label("origin_ready");
+	MenuZeroStatic.pushImmediate(a, 0);
+	a.emit(0xC7, 0x45, 0xFC); a.dword(-1);
+	a.jmp(MenuZeroStatic.BackgroundDrawReturn);
+	return a;
+};
+
+MenuZeroStatic.buildDescriptorLength = function(themeStateVir, loadThemeVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	a.emit(0x8D, 0x4D, 0x90);                         // LEA ECX,[EBP-70]
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "renewal");
+	MenuZeroStatic.pushImmediate(a, 16);
+	a.jmp("length_ready");
+	a.label("renewal");
+	MenuZeroStatic.pushImmediate(a, 8);
+	a.label("length_ready");
+	a.emit(0xC7, 0x45, 0x90); a.dword(0);
+	a.jmp(MenuZeroStatic.DescriptorLengthReturn);
 	return a;
 };
 
@@ -377,18 +462,24 @@ MenuZeroStatic.buildAnchor = function()
 	return a;
 };
 
-MenuZeroStatic.buildPositionWrapper = function(anchorVir)
+MenuZeroStatic.buildPositionWrapper = function(anchorVir, themeStateVir)
 {
 	const a = MenuZeroStatic.asm();
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic");
 	a.call(anchorVir);
 	a.emit(0xC2, 0x08, 0x00);
+	a.label("classic");
+	a.jmp(MenuZeroStatic.PositionOriginal);
 	return a;
 };
 
-MenuZeroStatic.buildHitTestWrapper = function()
+MenuZeroStatic.buildHitTestWrapper = function(themeStateVir)
 {
 	const a = MenuZeroStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC);                          // frame
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "stock");
 	a.emit(0x80, 0x3D); a.dword(MenuZeroStatic.MenuExpandedFlag);
 	a.emit(0x00);                                      // CMP BYTE [expanded],0
 	a.jcc(0x85, "stock");                             // JNE stock
@@ -514,7 +605,7 @@ MenuZeroStatic.emitRepositionTree = function(a, treeOffset, prefix)
 	a.label(done);
 };
 
-MenuZeroStatic.buildLayoutWrapper = function(anchorVir)
+MenuZeroStatic.buildLayoutWrapper = function(anchorVir, themeStateVir)
 {
 	const a = MenuZeroStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC);                          // frame
@@ -525,6 +616,8 @@ MenuZeroStatic.buildLayoutWrapper = function(anchorVir)
 	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
 	a.call(MenuZeroStatic.LayoutOriginal);
 	a.emit(0x50);                                      // preserve stock EAX
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "finish");
 
 	for (let i = 0; i < MenuZeroStatic.ChildOffsets.length; i++)
 	{
@@ -541,10 +634,31 @@ MenuZeroStatic.buildLayoutWrapper = function(anchorVir)
 	MenuZeroStatic.emitRepositionTree(a, MenuZeroStatic.TreeOffsets[1], "tree_bc");
 	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
 	a.call(anchorVir);
+	a.label("finish");
 	a.emit(0x58);                                      // restore stock EAX
 	a.emit(0x5F, 0x5E, 0x5B);                          // restore EDI/ESI/EBX
 	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
 	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+MenuZeroStatic.buildRefresh = function()
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x68); a.dword(MenuZeroStatic.WindowId);
+	a.emit(0xB9); a.dword(MenuZeroStatic.WindowManager);
+	a.call(MenuZeroStatic.GetWindow);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "create");
+	a.emit(0x68); a.dword(MenuZeroStatic.WindowId);
+	a.emit(0xB9); a.dword(MenuZeroStatic.WindowManager);
+	a.call(MenuZeroStatic.CloseWindow);
+	a.label("create");
+	a.emit(0x68); a.dword(MenuZeroStatic.WindowId);
+	a.emit(0xB9); a.dword(MenuZeroStatic.WindowManager);
+	a.call(MenuZeroStatic.CreateWindow);
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
 	return a;
 };
 
@@ -613,10 +727,10 @@ MenuZeroStatic.verifyNativeLayout = function()
 			MenuZeroStatic.BackgroundCopyBlock,
 			MenuZeroStatic.BackgroundCopyBytes
 		),
-		backgroundDrawYPhy: MenuZeroStatic.assertCode(
+		backgroundDrawPhy: MenuZeroStatic.assertCode(
 			"background draw coordinates",
-			MenuZeroStatic.BackgroundDrawY,
-			MenuZeroStatic.BackgroundDrawYBytes
+			MenuZeroStatic.BackgroundDrawBlock,
+			MenuZeroStatic.BackgroundDrawBytes
 		),
 		provisionalSizePhy: MenuZeroStatic.assertCode(
 			"provisional UIMenuIconWnd size",
@@ -630,7 +744,7 @@ MenuZeroStatic.verifyNativeLayout = function()
 		),
 		descriptorLengthPhy: MenuZeroStatic.assertCode(
 			"adventurerAgency descriptor length",
-			MenuZeroStatic.DescriptorLength,
+			MenuZeroStatic.DescriptorLengthBlock,
 			MenuZeroStatic.DescriptorLengthBytes
 		),
 		descriptorPointerPhy: MenuZeroStatic.assertCode(
@@ -663,6 +777,12 @@ ROGlobalZeroMenu = function(_)
 {
 	if (Exe.BuildDate !== MenuZeroStatic.BuildDate)
 		throw Error("ROGlobalZeroMenu supports only the 2025-07-16 client");
+	const theme = CACHE.get("ROGlobalZeroUITheme.State");
+	if (!theme || !Number.isInteger(theme.stateVir) ||
+		!Number.isInteger(theme.loadVir))
+	{
+		throw Error("ROGlobalZeroMenu: ROGlobalZeroUITheme must run first");
+	}
 
 	$$(_, 1, "Verify native menu vtables, resource operands, and layout blocks");
 	const verified = MenuZeroStatic.verifyNativeLayout();
@@ -694,42 +814,110 @@ ROGlobalZeroMenu = function(_)
 	const background = MenuZeroStatic.allocateBytes(backgroundBytes, 0x10);
 
 	$$(_, 3, "Inject full background copy, bottom-right anchor, and native reflow");
-	const backgroundCopy = MenuZeroStatic.buildBackgroundCopy(background.vir);
+	const backgroundCopy = MenuZeroStatic.buildBackgroundCopy(
+		background.vir, theme.stateVir, theme.loadVir
+	);
 	const [backgroundCopyPhy, backgroundCopyVir] = Exe.Allocate(
 		backgroundCopy.bytes.length, 0x10
 	);
 	Exe.SetHex(backgroundCopyPhy, backgroundCopy.finish(backgroundCopyVir));
+	const backgroundDraw = MenuZeroStatic.buildBackgroundDraw(
+		theme.stateVir, theme.loadVir
+	);
+	const [backgroundDrawPhy, backgroundDrawVir] = Exe.Allocate(
+		backgroundDraw.bytes.length, 0x10
+	);
+	Exe.SetHex(backgroundDrawPhy, backgroundDraw.finish(backgroundDrawVir));
+	const descriptorLength = MenuZeroStatic.buildDescriptorLength(
+		theme.stateVir, theme.loadVir
+	);
+	const [descriptorLengthPhy, descriptorLengthVir] = Exe.Allocate(
+		descriptorLength.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		descriptorLengthPhy,
+		descriptorLength.finish(descriptorLengthVir)
+	);
+	const descriptorSelector = MenuZeroStatic.buildPushSelector(
+		0x0102833C, descriptor.vir, theme.stateVir, theme.loadVir
+	);
+	const [descriptorSelectorPhy, descriptorSelectorVir] = Exe.Allocate(
+		descriptorSelector.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		descriptorSelectorPhy,
+		descriptorSelector.finish(descriptorSelectorVir)
+	);
 	const anchor = MenuZeroStatic.buildAnchor();
 	const [anchorPhy, anchorVir] = Exe.Allocate(anchor.bytes.length, 0x10);
 	Exe.SetHex(anchorPhy, anchor.finish(anchorVir));
-	const positionWrapper = MenuZeroStatic.buildPositionWrapper(anchorVir);
+	const positionWrapper = MenuZeroStatic.buildPositionWrapper(
+		anchorVir, theme.stateVir
+	);
 	const [positionWrapperPhy, positionWrapperVir] = Exe.Allocate(
 		positionWrapper.bytes.length, 0x10
 	);
 	Exe.SetHex(positionWrapperPhy, positionWrapper.finish(positionWrapperVir));
-	const hitTestWrapper = MenuZeroStatic.buildHitTestWrapper();
+	const hitTestWrapper = MenuZeroStatic.buildHitTestWrapper(theme.stateVir);
 	const [hitTestWrapperPhy, hitTestWrapperVir] = Exe.Allocate(
 		hitTestWrapper.bytes.length, 0x10
 	);
 	Exe.SetHex(hitTestWrapperPhy, hitTestWrapper.finish(hitTestWrapperVir));
-	const layoutWrapper = MenuZeroStatic.buildLayoutWrapper(anchorVir);
+	const layoutWrapper = MenuZeroStatic.buildLayoutWrapper(
+		anchorVir, theme.stateVir
+	);
 	const [layoutWrapperPhy, layoutWrapperVir] = Exe.Allocate(
 		layoutWrapper.bytes.length, 0x10
 	);
 	Exe.SetHex(layoutWrapperPhy, layoutWrapper.finish(layoutWrapperVir));
-
+	const resourceSelectors = {};
+	for (const resource of MenuZeroStatic.ResourcePushes)
+	{
+		const selector = MenuZeroStatic.buildPushSelector(
+			resource.oldPointer,
+			resourcePaths[resource.name].vir,
+			theme.stateVir,
+			theme.loadVir
+		);
+		const [phy, vir] = Exe.Allocate(selector.bytes.length, 0x10);
+		Exe.SetHex(phy, selector.finish(vir));
+		resourceSelectors[resource.name] = {phy, vir, size: selector.bytes.length};
+	}
+	const sizeSelectors = {};
+	for (const selectorSpec of [
+		["provisionalHeight", MenuZeroStatic.ClassicProvisionalHeight, MenuZeroStatic.ParentHeight],
+		["provisionalWidth", MenuZeroStatic.ClassicParentWidth, MenuZeroStatic.ParentWidth],
+		["finalHeight", MenuZeroStatic.ClassicFinalHeight, MenuZeroStatic.ParentHeight],
+		["finalWidth", MenuZeroStatic.ClassicParentWidth, MenuZeroStatic.ParentWidth]
+	])
+	{
+		const selector = MenuZeroStatic.buildPushSelector(
+			selectorSpec[1], selectorSpec[2], theme.stateVir, theme.loadVir
+		);
+		const [phy, vir] = Exe.Allocate(selector.bytes.length, 0x10);
+		Exe.SetHex(phy, selector.finish(vir));
+		sizeSelectors[selectorSpec[0]] = {phy, vir, size: selector.bytes.length};
+	}
 	$$(_, 4, "Redirect textures and activate the renewal menu geometry");
 	for (const push of verified.resourcePushes)
-		Exe.SetUint32(push.sitePhy + 1, resourcePaths[push.resource.name].vir);
-	Exe.SetHex(verified.descriptorLengthPhy, "6A 08");
-	Exe.SetUint32(verified.descriptorPointerPhy + 1, descriptor.vir);
+	{
+		Exe.SetCALL(
+			push.sitePhy,
+			resourceSelectors[push.resource.name].vir,
+			0
+		);
+	}
+	Exe.SetJMP(verified.descriptorLengthPhy, descriptorLengthVir, 0);
+	Exe.SetNOPs(verified.descriptorLengthPhy + 5, 7);
+	Exe.SetCALL(verified.descriptorPointerPhy, descriptorSelectorVir, 0);
 	Exe.SetJMP(verified.backgroundCopyPhy, backgroundCopyVir, 0);
 	Exe.SetNOPs(verified.backgroundCopyPhy + 5, 45);
-	Exe.SetHex(verified.backgroundDrawYPhy, "6A 00");
-	Exe.SetUint32(verified.provisionalSizePhy + 1, MenuZeroStatic.ParentHeight);
-	Exe.SetUint32(verified.provisionalSizePhy + 6, MenuZeroStatic.ParentWidth);
-	Exe.SetUint32(verified.finalSizePhy + 1, MenuZeroStatic.ParentHeight);
-	Exe.SetUint32(verified.finalSizePhy + 6, MenuZeroStatic.ParentWidth);
+	Exe.SetJMP(verified.backgroundDrawPhy, backgroundDrawVir, 0);
+	Exe.SetNOPs(verified.backgroundDrawPhy + 5, 6);
+	Exe.SetCALL(verified.provisionalSizePhy, sizeSelectors.provisionalHeight.vir, 0);
+	Exe.SetCALL(verified.provisionalSizePhy + 5, sizeSelectors.provisionalWidth.vir, 0);
+	Exe.SetCALL(verified.finalSizePhy, sizeSelectors.finalHeight.vir, 0);
+	Exe.SetCALL(verified.finalSizePhy + 5, sizeSelectors.finalWidth.vir, 0);
 	Exe.SetUint32(verified.positionVtablePhy, positionWrapperVir);
 	Exe.SetUint32(verified.hitTestVtablePhy, hitTestWrapperVir);
 	Exe.SetUint32(verified.layoutVtablePhy, layoutWrapperVir);
@@ -757,10 +945,15 @@ ROGlobalZeroMenu = function(_)
 			anchorSize: anchor.bytes.length,
 			backgroundCopyVir,
 			backgroundCopySize: backgroundCopy.bytes.length,
+			backgroundDrawVir,
+			backgroundDrawSize: backgroundDraw.bytes.length,
+			themeStateVir: theme.stateVir,
 			backgroundPathVir: background.vir,
 			backgroundPathLength: MenuZeroStatic.BackgroundPathLength,
 			descriptorVir: descriptor.vir,
 			descriptorName: "chatting",
+			descriptorLengthVir,
+			descriptorSelectorVir,
 			parentWidth: MenuZeroStatic.ParentWidth,
 			parentHeight: MenuZeroStatic.ParentHeight,
 			panelWidth: MenuZeroStatic.PanelWidth,

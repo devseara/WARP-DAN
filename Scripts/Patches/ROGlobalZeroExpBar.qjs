@@ -457,16 +457,17 @@ ExpBarZeroStatic.emitLevel = function(
 	a.call(ExpBarZeroStatic.TextDraw);
 };
 
-ExpBarZeroStatic.emitPreserveSurfaceAlpha = function(a)
+ExpBarZeroStatic.emitPreserveSurfaceAlpha = function(a, label)
 {
+	const done = `${label}_surface_alpha_done`;
 	// ImageDraw copies the source surface's alpha-capable flag to the target
 	// canvas. The opaque BMP gauge fills are drawn after the alpha TGA frames,
 	// so they otherwise reset the whole canvas to the opaque upload path.
 	a.emit(0x8B, 0x46, ExpBarZeroStatic.WindowSurfaceOffset); // MOV EAX,[ESI+surface]
 	a.emit(0x85, 0xC0);                                      // TEST EAX,EAX
-	a.jcc(0x84, "surface_alpha_done");
+	a.jcc(0x84, done);
 	a.emit(0xC6, 0x40, ExpBarZeroStatic.SurfaceAlphaOffset, 0x01);
-	a.label("surface_alpha_done");
+	a.label(done);
 };
 
 ExpBarZeroStatic.emitOpaqueTextRegion = function(a, x, label)
@@ -504,7 +505,9 @@ ExpBarZeroStatic.emitOpaqueTextRegion = function(a, x, label)
 	a.label(done);
 };
 
-ExpBarZeroStatic.buildDraw = function(stateVir, paths, levelFormatVir)
+ExpBarZeroStatic.buildDraw = function(
+	stateVir, paths, levelFormatVir, themeStateVir, loadThemeVir
+)
 {
 	const a = ExpBarZeroStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, ExpBarZeroStatic.LocalSize);
@@ -512,6 +515,13 @@ ExpBarZeroStatic.buildDraw = function(stateVir, paths, levelFormatVir)
 	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.CanvasClearColor);
 	a.emit(0x8B, 0xCE);
 	a.call(ExpBarZeroStatic.WindowClearSurface);
+	a.call(loadThemeVir);
+	// A freshly created Classic-mode canvas has not yet passed through the BMP
+	// draws which normally establish alpha composition. Preserve transparent
+	// clear pixels before the early exit as well as after the New-UI draw.
+	ExpBarZeroStatic.emitPreserveSurfaceAlpha(a, "clear");
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "done");
 	ExpBarZeroStatic.emitDrawFull(a, paths.baseBackground.vir, 0, 0, "base_background");
 	ExpBarZeroStatic.emitDrawFull(
 		a,
@@ -564,7 +574,8 @@ ExpBarZeroStatic.buildDraw = function(stateVir, paths, levelFormatVir)
 	ExpBarZeroStatic.emitOpaqueTextRegion(
 		a, ExpBarZeroStatic.JobLevelX, "job_level_alpha"
 	);
-	ExpBarZeroStatic.emitPreserveSurfaceAlpha(a);
+	ExpBarZeroStatic.emitPreserveSurfaceAlpha(a, "draw");
+	a.label("done");
 	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
 	return a;
 };
@@ -576,12 +587,14 @@ ExpBarZeroStatic.buildPassThroughHitTest = function()
 	return a;
 };
 
-ExpBarZeroStatic.buildPassiveHover = function()
+ExpBarZeroStatic.buildPassiveHover = function(themeStateVir)
 {
 	const a = ExpBarZeroStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC);
 	a.emit(0x81, 0xEC); a.dword(ExpBarZeroStatic.HoverLocalSize);
 	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1);       // preserve; ESI=this
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "hover_done");
 
 	// Slot 29 observes absolute renderer coordinates for every top-level
 	// window. It does not participate in selection, so the HUD can stay fully
@@ -896,6 +909,10 @@ ROGlobalZeroExpBar = function(_)
 {
 	if (Exe.BuildDate !== ExpBarZeroStatic.BuildDate)
 		throw Error("ROGlobalZeroExpBar supports only the 2025-07-16 client");
+	const theme = CACHE.get("ROGlobalZeroUITheme.State");
+	if (!theme || !Number.isInteger(theme.stateVir) ||
+		!Number.isInteger(theme.loadVir))
+		throw Error("ROGlobalZeroExpBar: ROGlobalZeroUITheme must run first");
 	$$(_, 1, "Verify the in-game UI pass, generic UIWindow ABI, and live EXP state");
 	const verified = ExpBarZeroStatic.verifyNativeContracts();
 	$$(_, 2, "Build client-native uirenewal EXP resource paths");
@@ -925,10 +942,13 @@ ROGlobalZeroExpBar = function(_)
 	);
 	$$(_, 3, "Create the independent click-through EXP UIWindow renderer");
 	const draw = ExpBarZeroStatic.allocateCode(
-		ExpBarZeroStatic.buildDraw(state.vir, paths, levelFormat.vir)
+		ExpBarZeroStatic.buildDraw(
+			state.vir, paths, levelFormat.vir,
+			theme.stateVir, theme.loadVir
+		)
 	);
 	const passiveHover = ExpBarZeroStatic.allocateCode(
-		ExpBarZeroStatic.buildPassiveHover()
+		ExpBarZeroStatic.buildPassiveHover(theme.stateVir)
 	);
 	const passThroughHitTest = ExpBarZeroStatic.allocateCode(
 		ExpBarZeroStatic.buildPassThroughHitTest()
@@ -954,6 +974,7 @@ ROGlobalZeroExpBar = function(_)
 			renderHookVir: ExpBarZeroStatic.RenderHook,
 			renderWrapperVir: renderWrapper.vir,
 			windowStateVir: state.vir,
+			themeStateVir: theme.stateVir,
 			windowVtableVir: vtable.vir,
 			drawVir: draw.vir,
 			passiveHoverVir: passiveHover.vir,

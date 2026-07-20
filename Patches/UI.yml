@@ -50,29 +50,35 @@ CustomUI:
             author : Louis T Steinhil
             desc : Adds a QJS-only ping counter at a customer-selected X/Y position. It captures the client's stock CZ_REQUEST_TIME2/ZC_NOTIFY_TIME application RTT after packet dispatch and uses the shared static renderer; no ICMP worker, recv hook or custom DLL is used.
 
+        - ROGlobalZeroUITheme:
+            title : RO Global Zero UI Theme Toggle
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds the native-looking Classic UI / New UI switch to the Game Settings Basic tab using uirenewal/basicinfo/btn_tema_0.bmp and btn_tema_1.bmp. Its persisted state is shared by the RO Global Zero Basic Information, Experience Bar, Inventory, and Menu patches; switching themes refreshes open dependent windows immediately. QJS-only.
+
         - ROGlobalZeroInventory:
             title : RO Global Zero Inventory
             recommend : no
             author : Louis T Steinhil
-            desc : Uses static EXE caves and the client's native image/tooltip pipeline to draw tab_pri_%02d.bmp, place bg_zeny.bmp behind the native bottom text, and anchor renewal tab balloons beside the hovered vertical tab. No inventory DLL import is added.
+            desc : Uses the shared RO Global Zero theme state to select between the stock inventory and renewal tab_pri_%02d.bmp tabs, reserved bottom row, expanded Zeny/weight panel, and vertical-tab balloons. Open inventory windows are recreated when the setting changes. No inventory DLL import is added.
 
         - ROGlobalZeroBasicInfo:
             title : RO Global Zero Basic Information HUD
             recommend : no
             author : Louis T Steinhil
-            desc : Replaces both classic and AP-class Basic Information render paths with the compact 238x59 RO Global Zero HUD, unscaled 194x36 precomposited gauge frame, live HP/SP fills, Base Level, character name, and native Job-name hover tooltip. The frame and HP-fill composites preserve the centered markers without a separate transparent overlay; SP occupies native frame-local rows 20..30 so the divider gap is removed and the frame's lower white line remains unobstructed. The one-time Basic Info factory registers an overlapping 52x52 UIJobIconButton child with independent clipping and z-order; the child itself owns the hover handler and the recurring parent resize/mouse vtables remain stock. The two legacy blue title buttons are suppressed while the manager-owned menu remains available to ROGlobalZeroMenu, and Alt+V remains compact. Requires the matching uirenewal/basicinfo and uirenewal/jobicon/big BMP assets. QJS-only.
+            desc : Replaces both classic and AP-class Basic Information render paths with the compact 238x59 RO Global Zero HUD, unscaled 194x36 precomposited gauge frame, live HP/SP fills, Base Level, character name, and native Job-name hover tooltip. The frame and HP-fill composites preserve the centered markers without a separate transparent overlay; SP occupies native frame-local rows 20..30 so the divider gap is removed and the frame's lower white line remains unobstructed. Native Basic Info OnCreate registers an overlapping 52x52 UIJobIconButton child after the stock child list is initialized; the child owns its cached renderer and hover handler. ROGlobalZeroUITheme restores the stock expanded/compact renderer and Alt+V behavior in Classic mode while New UI remains compact. Requires the matching uirenewal/basicinfo and uirenewal/jobicon/big BMP assets. QJS-only.
 
         - ROGlobalZeroExpBar:
             title : RO Global Zero Experience Bar
             recommend : no
             author : Louis T Steinhil
-            desc : Adds an independent 1004x15 top-level UIWindow to the normal in-game UI pass, outside UIBasicInfoWnd and its Alt+V state. Its native canvas loads the supplied uirenewal/expbar textures through the client resource manager, draws the two 502x15 halves, a right-to-left 422x7 Base fill, a left-to-right Job fill, and live Base/Job levels from the client's 64-bit EXP state. The window is non-interactive and inserted behind stock UI windows, so chat/menu layering is preserved. It does not create, resize, hide, or hook Basic Information controls and cannot remove HP/SP. Requires bg_exp_base2.tga, bg_exp_job2.tga, gze_exp_base.bmp, and gze_exp_job.bmp. QJS-only.
+            desc : Adds an independent 1004x15 top-level UIWindow to the normal in-game UI pass, outside UIBasicInfoWnd and its Alt+V state. Its native canvas loads the supplied uirenewal/expbar textures through the client resource manager, draws the two 502x15 halves, a right-to-left 422x7 Base fill, a left-to-right Job fill, and live Base/Job levels from the client's 64-bit EXP state. The window is non-interactive and inserted behind stock UI windows, so chat/menu layering is preserved. ROGlobalZeroUITheme clears the canvas and disables hover while Classic UI is selected. Requires bg_exp_base2.tga, bg_exp_job2.tga, gze_exp_base.bmp, and gze_exp_job.bmp. QJS-only.
 
         - ROGlobalZeroMenu:
             title : RO Global Zero Renewal Menu
             recommend : no
             author : Louis T Steinhil
-            desc : Restores the native UIMenuIconWnd and keeps its stock click, notification, hover, and open/close handlers while redirecting its resources to uirenewal/menuicon. Reflows the native actions onto the 357x322 renewal panel, adds the missing legacy icon families supplied with the data tree, anchors the 70x62 MENU control at the bottom-right across resolutions, and corrects the collapsed-state hit test for the relocated child. Uses static EXE caves only and remains compatible with encrypted GRFs because all textures still load through the client resource manager. QJS-only.
+            desc : Uses the shared RO Global Zero theme state to select the stock UIMenuIconWnd resources, geometry, layout, and hit testing for Classic UI or the uirenewal/menuicon 425x322 bottom-right panel for New UI. The native menu window is recreated when the setting changes. QJS-only.
 
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]
