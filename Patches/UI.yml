@@ -50,6 +50,12 @@ CustomUI:
             author : Louis T Steinhil
             desc : Adds a QJS-only ping counter at a customer-selected X/Y position. It captures the client's stock CZ_REQUEST_TIME2/ZC_NOTIFY_TIME application RTT after packet dispatch and uses the shared static renderer; no ICMP worker, recv hook or custom DLL is used.
 
+        - AutoCombatUI:
+            title : AutoCombat UI Preview (/autohunt)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds a QJS-only client-native AutoCombat settings preview modeled after the supplied RO Global AutoHunt interface. /autohunt creates a draggable 470x346 UIFrameWnd with Basic, Monster, Skill (3 pages), Potion (2 pages), Looting (2 pages), Move, and Item tabs. The window loads the supplied AutoHunt BMPs through the client texture manager, calls no DLL, sends no packets, persists no settings, and enables no combat behavior.
+
         - ROGlobalZeroUITheme:
             title : RO Global Zero UI Theme Toggle
             recommend : no
