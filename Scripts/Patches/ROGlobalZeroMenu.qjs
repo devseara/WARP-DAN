@@ -22,8 +22,9 @@
 *                                                                          *
 *   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
 *                   Ragexe, redirects its textures to uirenewal/menuicon,  *
-*                   and reflows the stock child controls over the          *
-*                   425x322 renewal panel. The native dispatcher, click,   *
+*                   and compacts the enabled stock child controls over a   *
+*                   renewal panel whose height follows the visible rows.   *
+*                   The native dispatcher, click,                          *
 *                   hover, notification, and open/close behavior remain    *
 *                   intact. The collapsed-state hit test follows the       *
 *                   relocated MENU child instead of the stock (0,0)        *
@@ -65,6 +66,9 @@ const MenuZeroStatic = {
 	BackgroundDrawBlock: 0x00814392,
 	BackgroundDrawReturn: 0x0081439D,
 	BackgroundDrawBytes: "6A 0D 6A 00 C7 45 FC FF FF FF FF",
+	BackgroundHeightBlock: 0x00814230,
+	BackgroundHeightReturn: 0x00814239,
+	BackgroundHeightBytes: "80 3D 7C 22 60 01 00 6A 00",
 	ProvisionalSize: 0x00A41308,
 	ProvisionalSizeBytes: "68 C5 00 00 00 68 DC 00 00 00",
 	FinalSize: 0x0081400D,
@@ -84,8 +88,12 @@ const MenuZeroStatic = {
 	ScreenMargin: 10,
 	GridX: 13,
 	GridY: 12,
+	GridColumns: 5,
 	GridStrideX: 68,
 	GridStrideY: 61,
+	PanelBaseHeight: 17,
+	ParentExtraHeight: 11,
+	ToggleBottomInset: 51,
 	ToggleX: 358,
 	ToggleY: 271,
 	BackgroundPathLength: 45,
@@ -413,6 +421,29 @@ MenuZeroStatic.buildBackgroundDraw = function(themeStateVir, loadThemeVir)
 	return a;
 };
 
+MenuZeroStatic.buildBackgroundHeight = function(
+	measureRowsVir, panelHeightVir, themeStateVir, loadThemeVir
+)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic");
+	a.emit(0x8B, 0xCF);                                // MOV ECX,EDI (menu)
+	a.call(measureRowsVir);
+	a.emit(0xFF, 0x35); a.dword(panelHeightVir);        // PUSH [panel height]
+	a.jmp("height_ready");
+	a.label("classic");
+	MenuZeroStatic.pushImmediate(a, 0);                 // native texture height
+	a.label("height_ready");
+	a.emit(0x80, 0x3D); a.dword(MenuZeroStatic.MenuExpandedFlag);
+	a.emit(0x00);                                      // CMP BYTE [expanded],0
+	a.jmp(MenuZeroStatic.BackgroundHeightReturn);
+	return a;
+};
+
 MenuZeroStatic.buildDescriptorLength = function(themeStateVir, loadThemeVir)
 {
 	const a = MenuZeroStatic.asm();
@@ -490,7 +521,7 @@ MenuZeroStatic.buildHitTestWrapper = function(themeStateVir)
 	a.jcc(0x84, "miss");                              // JZ miss
 
 	a.emit(0x8B, 0x56, 0x1C);                          // MOV EDX,[ESI+1C]
-	a.emit(0x81, 0xC2); a.dword(MenuZeroStatic.ToggleX);
+	a.emit(0x03, 0x50, 0x1C);                          // ADD EDX,[EAX+1C]
 	a.emit(0x39, 0x55, 0x08);                          // CMP [EBP+8],EDX
 	a.jcc(0x8C, "miss");                              // JL miss
 	a.emit(0x03, 0x50, 0x14);                          // ADD EDX,[EAX+14]
@@ -498,7 +529,7 @@ MenuZeroStatic.buildHitTestWrapper = function(themeStateVir)
 	a.jcc(0x8D, "miss");                              // JGE miss
 
 	a.emit(0x8B, 0x56, 0x20);                          // MOV EDX,[ESI+20]
-	a.emit(0x81, 0xC2); a.dword(MenuZeroStatic.ToggleY);
+	a.emit(0x03, 0x50, 0x20);                          // ADD EDX,[EAX+20]
 	a.emit(0x39, 0x55, 0x0C);                          // CMP [EBP+C],EDX
 	a.jcc(0x8C, "miss");                              // JL miss
 	a.emit(0x03, 0x50, 0x18);                          // ADD EDX,[EAX+18]
@@ -506,8 +537,10 @@ MenuZeroStatic.buildHitTestWrapper = function(themeStateVir)
 	a.jcc(0x8D, "miss");                              // JGE miss
 
 	a.emit(0x5E);                                      // POP ESI
-	a.emit(0x81, 0x6D, 0x08); a.dword(MenuZeroStatic.ToggleX);
-	a.emit(0x81, 0x6D, 0x0C); a.dword(MenuZeroStatic.ToggleY);
+	a.emit(0x8B, 0x50, 0x1C);                          // MOV EDX,[EAX+1C]
+	a.emit(0x29, 0x55, 0x08);                          // SUB [EBP+8],EDX
+	a.emit(0x8B, 0x50, 0x20);                          // MOV EDX,[EAX+20]
+	a.emit(0x29, 0x55, 0x0C);                          // SUB [EBP+C],EDX
 	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
 	a.jmp(MenuZeroStatic.HitTestOriginal);             // stock selection/guards
 
@@ -523,19 +556,23 @@ MenuZeroStatic.buildHitTestWrapper = function(themeStateVir)
 	return a;
 };
 
-MenuZeroStatic.emitSetChildPosition = function(a, offset, x, y, label)
+MenuZeroStatic.emitSetChildPosition = function(
+	a, offset, x, panelHeightVir, label
+)
 {
 	a.emit(0x8B, 0x8E); a.dword(offset);               // MOV ECX,[ESI+offset]
 	a.emit(0x85, 0xC9);                                // TEST ECX,ECX
 	a.jcc(0x84, label);                                // JZ label
-	a.emit(0x8B, 0x01);                                // MOV EAX,[ECX]
-	MenuZeroStatic.pushImmediate(a, y);
+	a.emit(0x8B, 0x11);                                // MOV EDX,[ECX]
+	a.emit(0xA1); a.dword(panelHeightVir);              // MOV EAX,[panel height]
+	a.emit(0x83, 0xE8, MenuZeroStatic.ToggleBottomInset);
+	a.emit(0x50);                                      // PUSH EAX (dynamic Y)
 	MenuZeroStatic.pushImmediate(a, x);
-	a.emit(0xFF, 0x50, 0x10);                          // CALL [EAX+10]
+	a.emit(0xFF, 0x52, 0x10);                          // CALL [EDX+10]
 	a.label(label);
 };
 
-MenuZeroStatic.emitRepositionTree = function(a, treeOffset, prefix)
+MenuZeroStatic.emitCollectTree = function(a, treeOffset, prefix, maskVir)
 {
 	const done = `${prefix}_done`;
 	const loop = `${prefix}_loop`;
@@ -564,15 +601,105 @@ MenuZeroStatic.emitRepositionTree = function(a, treeOffset, prefix)
 	for (let i = 0; i < MenuZeroStatic.CommandGrid.length; i++)
 	{
 		const [, index] = MenuZeroStatic.CommandGrid[i];
-		const x = MenuZeroStatic.GridX + MenuZeroStatic.GridStrideX * (index % 5);
-		const y = MenuZeroStatic.GridY + MenuZeroStatic.GridStrideY * Math.floor(index / 5);
 		a.label(`${prefix}_command_${i}`);
 		a.emit(0x8B, 0x4B, 0x14);                        // MOV ECX,[EBX+14] (child)
 		a.emit(0x85, 0xC9);                              // TEST ECX,ECX
 		a.jcc(0x84, advance);                            // JZ advance
+		a.emit(0x81, 0x0D); a.dword(maskVir); a.dword(1 << index);
+		a.jmp(advance);
+	}
+
+	a.label(advance);
+	a.emit(0x8B, 0x43, 0x08);                          // MOV EAX,[EBX+8] (right)
+	a.emit(0x80, 0x78, 0x0D, 0x00);                    // CMP BYTE [EAX+0D],0
+	a.jcc(0x84, hasRight);                             // JE has_right
+	a.emit(0x8B, 0x43, 0x04);                          // MOV EAX,[EBX+4] (parent)
+	a.label(climb);
+	a.emit(0x80, 0x78, 0x0D, 0x00);                    // CMP BYTE [EAX+0D],0
+	a.jcc(0x85, setNode);                              // JNE set_node
+	a.emit(0x3B, 0x58, 0x08);                          // CMP EBX,[EAX+8]
+	a.jcc(0x85, setNode);                              // JNE set_node
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.emit(0x8B, 0x40, 0x04);                          // MOV EAX,[EAX+4]
+	a.jmp(climb);
+	a.label(setNode);
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.jmp(loop);
+
+	a.label(hasRight);
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.label(descend);
+	a.emit(0x8B, 0x0B);                                // MOV ECX,[EBX] (left)
+	a.emit(0x80, 0x79, 0x0D, 0x00);                    // CMP BYTE [ECX+0D],0
+	a.jcc(0x85, loop);                                 // JNE loop
+	a.emit(0x8B, 0xD9);                                // MOV EBX,ECX
+	a.jmp(descend);
+	a.label(done);
+};
+
+MenuZeroStatic.emitRepositionTree = function(
+	a, treeOffset, prefix, maskVir
+)
+{
+	const done = `${prefix}_done`;
+	const loop = `${prefix}_loop`;
+	const advance = `${prefix}_advance`;
+	const hasRight = `${prefix}_has_right`;
+	const descend = `${prefix}_descend`;
+	const climb = `${prefix}_climb`;
+	const setNode = `${prefix}_set_node`;
+
+	a.emit(0x8B, 0xBE); a.dword(treeOffset);           // MOV EDI,[ESI+treeOffset]
+	a.emit(0x85, 0xFF);                                // TEST EDI,EDI
+	a.jcc(0x84, done);                                 // JZ done
+	a.emit(0x8B, 0x1F);                                // MOV EBX,[EDI] (leftmost)
+	a.label(loop);
+	a.emit(0x3B, 0xDF);                                // CMP EBX,EDI
+	a.jcc(0x84, done);                                 // JE done
+	a.emit(0x8B, 0x43, 0x10);                          // MOV EAX,[EBX+10] (command)
+	for (let i = 0; i < MenuZeroStatic.CommandGrid.length; i++)
+	{
+		const [command] = MenuZeroStatic.CommandGrid[i];
+		a.emit(0x3D); a.dword(command);                  // CMP EAX,command
+		a.jcc(0x84, `${prefix}_command_${i}`);           // JE command
+	}
+	a.jmp(advance);
+
+	for (let i = 0; i < MenuZeroStatic.CommandGrid.length; i++)
+	{
+		const [, index] = MenuZeroStatic.CommandGrid[i];
+		const priorMask = index === 0 ? 0 : (2 ** index) - 1;
+		a.label(`${prefix}_command_${i}`);
+		a.emit(0x8B, 0x4B, 0x14);                        // MOV ECX,[EBX+14] (child)
+		a.emit(0x85, 0xC9);                              // TEST ECX,ECX
+		a.jcc(0x84, advance);                            // JZ advance
+		if (priorMask === 0)
+			a.emit(0x33, 0xC0);                            // XOR EAX,EAX
+		else
+		{
+			a.emit(0xA1); a.dword(maskVir);                // MOV EAX,[visible mask]
+			a.emit(0x25); a.dword(priorMask);              // AND EAX,prior mask
+		}
+		a.emit(0x33, 0xD2);                              // XOR EDX,EDX (count)
+		a.label(`${prefix}_count_${i}`);
+		a.emit(0x85, 0xC0);                              // TEST EAX,EAX
+		a.jcc(0x84, `${prefix}_count_${i}_done`);         // JZ count done
+		a.emit(0x8D, 0x48, 0xFF);                        // LEA ECX,[EAX-1]
+		a.emit(0x23, 0xC1);                              // AND EAX,ECX
+		a.emit(0x42);                                    // INC EDX
+		a.jmp(`${prefix}_count_${i}`);
+		a.label(`${prefix}_count_${i}_done`);
+		a.emit(0x8B, 0xC2);                              // MOV EAX,EDX (compact slot)
+		a.emit(0x33, 0xD2);                              // XOR EDX,EDX
+		a.emit(0xB9); a.dword(MenuZeroStatic.GridColumns);
+		a.emit(0xF7, 0xF1);                              // DIV ECX; EAX=row, EDX=column
+		a.emit(0x6B, 0xD2, MenuZeroStatic.GridStrideX);   // IMUL EDX,EDX,stride X
+		a.emit(0x83, 0xC2, MenuZeroStatic.GridX);         // ADD EDX,grid X
+		a.emit(0x6B, 0xC0, MenuZeroStatic.GridStrideY);   // IMUL EAX,EAX,stride Y
+		a.emit(0x83, 0xC0, MenuZeroStatic.GridY);         // ADD EAX,grid Y
+		a.emit(0x50, 0x52);                              // PUSH Y / PUSH X
+		a.emit(0x8B, 0x4B, 0x14);                        // MOV ECX,[EBX+14] (child)
 		a.emit(0x8B, 0x11);                              // MOV EDX,[ECX]
-		MenuZeroStatic.pushImmediate(a, y);
-		MenuZeroStatic.pushImmediate(a, x);
 		a.emit(0xFF, 0x52, 0x10);                        // CALL [EDX+10]
 		a.jmp(advance);
 	}
@@ -605,7 +732,43 @@ MenuZeroStatic.emitRepositionTree = function(a, treeOffset, prefix)
 	a.label(done);
 };
 
-MenuZeroStatic.buildLayoutWrapper = function(anchorVir, themeStateVir)
+MenuZeroStatic.buildMeasureRows = function(maskVir, panelHeightVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x60);                                      // PUSHAD
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX (menu)
+	a.emit(0xC7, 0x05); a.dword(maskVir); a.dword(0);  // clear visible mask
+	MenuZeroStatic.emitCollectTree(a, MenuZeroStatic.TreeOffsets[0], "measure_b4", maskVir);
+	MenuZeroStatic.emitCollectTree(a, MenuZeroStatic.TreeOffsets[1], "measure_bc", maskVir);
+	a.emit(0xA1); a.dword(maskVir);                    // MOV EAX,[visible mask]
+	a.emit(0x33, 0xD2);                                // XOR EDX,EDX (count)
+	a.label("measure_count");
+	a.emit(0x85, 0xC0);                                // TEST EAX,EAX
+	a.jcc(0x84, "measure_count_done");
+	a.emit(0x8D, 0x48, 0xFF);                          // LEA ECX,[EAX-1]
+	a.emit(0x23, 0xC1);                                // AND EAX,ECX
+	a.emit(0x42);                                      // INC EDX
+	a.jmp("measure_count");
+	a.label("measure_count_done");
+	a.emit(0x8B, 0xC2);                                // MOV EAX,EDX
+	a.emit(0x83, 0xC0, MenuZeroStatic.GridColumns - 1);
+	a.emit(0x33, 0xD2);                                // XOR EDX,EDX
+	a.emit(0xB9); a.dword(MenuZeroStatic.GridColumns);
+	a.emit(0xF7, 0xF1);                                // DIV ECX; EAX=rows
+	a.emit(0x85, 0xC0);                                // TEST EAX,EAX
+	a.jcc(0x85, "measure_rows_ready");
+	a.emit(0x40);                                      // INC EAX (MENU-only row)
+	a.label("measure_rows_ready");
+	a.emit(0x6B, 0xC0, MenuZeroStatic.GridStrideY);
+	a.emit(0x83, 0xC0, MenuZeroStatic.PanelBaseHeight);
+	a.emit(0xA3); a.dword(panelHeightVir);              // MOV [panel height],EAX
+	a.emit(0x61, 0xC3);                                // POPAD / RET
+	return a;
+};
+
+MenuZeroStatic.buildLayoutWrapper = function(
+	anchorVir, measureRowsVir, maskVir, panelHeightVir, themeStateVir
+)
 {
 	const a = MenuZeroStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC);                          // frame
@@ -618,6 +781,15 @@ MenuZeroStatic.buildLayoutWrapper = function(anchorVir, themeStateVir)
 	a.emit(0x50);                                      // preserve stock EAX
 	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
 	a.jcc(0x84, "finish");
+	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
+	a.call(measureRowsVir);
+	a.emit(0xA1); a.dword(panelHeightVir);              // MOV EAX,[panel height]
+	a.emit(0x83, 0xC0, MenuZeroStatic.ParentExtraHeight);
+	a.emit(0x50);                                      // PUSH dynamic parent height
+	MenuZeroStatic.pushImmediate(a, MenuZeroStatic.ParentWidth);
+	a.emit(0x8B, 0x06);                                // MOV EAX,[ESI]
+	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
+	a.emit(0xFF, 0x50, 0x04);                          // CALL [EAX+4] (SetSize)
 
 	for (let i = 0; i < MenuZeroStatic.ChildOffsets.length; i++)
 	{
@@ -625,13 +797,17 @@ MenuZeroStatic.buildLayoutWrapper = function(anchorVir, themeStateVir)
 			a,
 			MenuZeroStatic.ChildOffsets[i],
 			MenuZeroStatic.ToggleX,
-			MenuZeroStatic.ToggleY,
+			panelHeightVir,
 			`toggle_${i}_done`
 		);
 	}
 
-	MenuZeroStatic.emitRepositionTree(a, MenuZeroStatic.TreeOffsets[0], "tree_b4");
-	MenuZeroStatic.emitRepositionTree(a, MenuZeroStatic.TreeOffsets[1], "tree_bc");
+	MenuZeroStatic.emitRepositionTree(
+		a, MenuZeroStatic.TreeOffsets[0], "tree_b4", maskVir
+	);
+	MenuZeroStatic.emitRepositionTree(
+		a, MenuZeroStatic.TreeOffsets[1], "tree_bc", maskVir
+	);
 	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
 	a.call(anchorVir);
 	a.label("finish");
@@ -732,6 +908,11 @@ MenuZeroStatic.verifyNativeLayout = function()
 			MenuZeroStatic.BackgroundDrawBlock,
 			MenuZeroStatic.BackgroundDrawBytes
 		),
+		backgroundHeightPhy: MenuZeroStatic.assertCode(
+			"background draw height",
+			MenuZeroStatic.BackgroundHeightBlock,
+			MenuZeroStatic.BackgroundHeightBytes
+		),
 		provisionalSizePhy: MenuZeroStatic.assertCode(
 			"provisional UIMenuIconWnd size",
 			MenuZeroStatic.ProvisionalSize,
@@ -812,8 +993,24 @@ ROGlobalZeroMenu = function(_)
 	while (backgroundBytes.length < MenuZeroStatic.BackgroundBufferSize)
 		backgroundBytes.push(0);
 	const background = MenuZeroStatic.allocateBytes(backgroundBytes, 0x10);
+	const layoutState = MenuZeroStatic.allocateBytes([
+		0, 0, 0, 0,
+		MenuZeroStatic.PanelHeight & 0xFF,
+		(MenuZeroStatic.PanelHeight >>> 8) & 0xFF,
+		(MenuZeroStatic.PanelHeight >>> 16) & 0xFF,
+		(MenuZeroStatic.PanelHeight >>> 24) & 0xFF
+	], 4);
+	const visibleMaskVir = layoutState.vir;
+	const panelHeightVir = layoutState.vir + 4;
 
-	$$(_, 3, "Inject full background copy, bottom-right anchor, and native reflow");
+	$$(_, 3, "Inject compact reflow, row-sized background, and bottom-right anchor");
+	const measureRows = MenuZeroStatic.buildMeasureRows(
+		visibleMaskVir, panelHeightVir
+	);
+	const [measureRowsPhy, measureRowsVir] = Exe.Allocate(
+		measureRows.bytes.length, 0x10
+	);
+	Exe.SetHex(measureRowsPhy, measureRows.finish(measureRowsVir));
 	const backgroundCopy = MenuZeroStatic.buildBackgroundCopy(
 		background.vir, theme.stateVir, theme.loadVir
 	);
@@ -828,6 +1025,16 @@ ROGlobalZeroMenu = function(_)
 		backgroundDraw.bytes.length, 0x10
 	);
 	Exe.SetHex(backgroundDrawPhy, backgroundDraw.finish(backgroundDrawVir));
+	const backgroundHeight = MenuZeroStatic.buildBackgroundHeight(
+		measureRowsVir, panelHeightVir, theme.stateVir, theme.loadVir
+	);
+	const [backgroundHeightPhy, backgroundHeightVir] = Exe.Allocate(
+		backgroundHeight.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		backgroundHeightPhy,
+		backgroundHeight.finish(backgroundHeightVir)
+	);
 	const descriptorLength = MenuZeroStatic.buildDescriptorLength(
 		theme.stateVir, theme.loadVir
 	);
@@ -864,7 +1071,11 @@ ROGlobalZeroMenu = function(_)
 	);
 	Exe.SetHex(hitTestWrapperPhy, hitTestWrapper.finish(hitTestWrapperVir));
 	const layoutWrapper = MenuZeroStatic.buildLayoutWrapper(
-		anchorVir, theme.stateVir
+		anchorVir,
+		measureRowsVir,
+		visibleMaskVir,
+		panelHeightVir,
+		theme.stateVir
 	);
 	const [layoutWrapperPhy, layoutWrapperVir] = Exe.Allocate(
 		layoutWrapper.bytes.length, 0x10
@@ -914,6 +1125,8 @@ ROGlobalZeroMenu = function(_)
 	Exe.SetNOPs(verified.backgroundCopyPhy + 5, 45);
 	Exe.SetJMP(verified.backgroundDrawPhy, backgroundDrawVir, 0);
 	Exe.SetNOPs(verified.backgroundDrawPhy + 5, 6);
+	Exe.SetJMP(verified.backgroundHeightPhy, backgroundHeightVir, 0);
+	Exe.SetNOPs(verified.backgroundHeightPhy + 5, 4);
 	Exe.SetCALL(verified.provisionalSizePhy, sizeSelectors.provisionalHeight.vir, 0);
 	Exe.SetCALL(verified.provisionalSizePhy + 5, sizeSelectors.provisionalWidth.vir, 0);
 	Exe.SetCALL(verified.finalSizePhy, sizeSelectors.finalHeight.vir, 0);
@@ -947,6 +1160,12 @@ ROGlobalZeroMenu = function(_)
 			backgroundCopySize: backgroundCopy.bytes.length,
 			backgroundDrawVir,
 			backgroundDrawSize: backgroundDraw.bytes.length,
+			backgroundHeightVir,
+			backgroundHeightSize: backgroundHeight.bytes.length,
+			measureRowsVir,
+			measureRowsSize: measureRows.bytes.length,
+			visibleMaskVir,
+			panelHeightVir,
 			themeStateVir: theme.stateVir,
 			backgroundPathVir: background.vir,
 			backgroundPathLength: MenuZeroStatic.BackgroundPathLength,
@@ -955,12 +1174,15 @@ ROGlobalZeroMenu = function(_)
 			descriptorLengthVir,
 			descriptorSelectorVir,
 			parentWidth: MenuZeroStatic.ParentWidth,
-			parentHeight: MenuZeroStatic.ParentHeight,
+			maxParentHeight: MenuZeroStatic.ParentHeight,
 			panelWidth: MenuZeroStatic.PanelWidth,
-			panelHeight: MenuZeroStatic.PanelHeight,
+			maxPanelHeight: MenuZeroStatic.PanelHeight,
 			gridOrigin: [MenuZeroStatic.GridX, MenuZeroStatic.GridY],
 			gridStride: [MenuZeroStatic.GridStrideX, MenuZeroStatic.GridStrideY],
-			togglePosition: [MenuZeroStatic.ToggleX, MenuZeroStatic.ToggleY],
+			gridColumns: MenuZeroStatic.GridColumns,
+			toggleX: MenuZeroStatic.ToggleX,
+			toggleY: "panelHeight - 51",
+			dynamicRows: true,
 			visibilityPatches: ["HideNewButtons", "ShowNewButtons"],
 			commandCount: MenuZeroStatic.CommandGrid.length,
 			resourcePaths: pathPointers,
