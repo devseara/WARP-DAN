@@ -1,0 +1,893 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-21                                             *
+*   Last Modified : 2026-07-22                                             *
+*                                                                          *
+*   Description   : Replaces the 2025-07-16 Ragexe status-icon column      *
+*                   with a resolution-aware top block beside the minimap.  *
+*                   Native rendering and scale remain untouched. The       *
+*                   /statusicons command is the sole custom-layout toggle, *
+*                   independent of UI theme, /layout, and Game Settings.   *
+*                   Custom mode fills from the minimap toward HP/SP and    *
+*                   wraps only after resolution-derived width is used.     *
+*                   Hover covers each full rendered 32x32 tile on the      *
+*                   34x35 grid, leaving 2px X and 3px Y gutters. Toggle    *
+*                   state saves immediately under savedata and restores    *
+*                   across character-select and client restarts. Cash      *
+*                   Shop, RO DEX, Gold PC, and Roulette keep their natural *
+*                   creation routes. Roulette and Cash Shop share the top *
+*                   row at the minimap's left and right edges. RO DEX sits *
+*                   below Cash Shop, with Gold PC below RO DEX in the      *
+*                   same right-aligned column. Launchers are never created *
+*                   or force-shown.                                        *
+*                                                                          *
+\**************************************************************************/
+
+const GlobalZeroStatusIconStatic = {
+	BuildDate: 20250716,
+	DisplayPointer: 0x012515F8,
+	MinimapLogicalWidth: 128,
+	MinimapRightInset: 17,
+	LeftBoundary: 246,
+	RightInset: 172,
+	FirstRowY: 34,
+	HitTestTopY: 17,
+	TooltipYBase: 20,
+	IconSize: 16,
+	HitCellWidth: 32,
+	HitCellHeight: 32,
+	HitCellRightOffset: 15,
+	ColumnPitch: 34,
+	RowPitch: 35,
+	StateEnabled: 0,
+	StateLastApplied: 4,
+	StateGoldNativeX: 8,
+	StateGoldNativeY: 12,
+	StateGoldNativeValid: 16,
+	StateLoaded: 20,
+	StateByte: 24,
+	StateCount: 28,
+	StateSize: 32,
+	PersistFile: "savedata\\roglobal_status_icons.dat",
+	CreateFileIat: 0x00FC1224,
+	ReadFileIat: 0x00FC122C,
+	WriteFileIat: 0x00FC1234,
+	CloseHandleIat: 0x00FC1238,
+	WindowManager: 0x0131F4E8,
+	GetWindow: 0x00A47B90,
+	MakeWindowSwitchSite: 0x00A394C8,
+	MakeWindowSwitchBytes: "0F B6 86 A8 2C A4 00 FF 24 85 04 29 A4 00",
+	RendererSite: 0x00BD43D0,
+	RendererNativeResume: 0x00BD43D8,
+	RendererResume: 0x00BD43FF,
+	RendererBytes: "33 C0 81 C1 96 00 00 00",
+	HitTestSite: 0x00C93D3E,
+	HitTestNativeResume: 0x00C93D43,
+	HitTestResume: 0x00C93E47,
+	HitTestReject: 0x00C947E5,
+	HitTestBytes: "B8 EB A0 0E EA",
+	TooltipDivideSite: 0x00C94587,
+	TooltipDivideResume: 0x00C9458D,
+	TooltipDivideBytes: "F7 BD 5C FE FF FF",
+	TooltipPristineEnd: 0x00C945E7,
+	TooltipPristineSize: 0x60,
+	TooltipColumnPitchSite: 0x00C94599,
+	TooltipColumnPitchBytes: "6B C0 D3",
+	TooltipRowPitchSite: 0x00C945A7,
+	TooltipRowPitchBytes: "6B F2 23",
+	TooltipYBaseSite: 0x00C945D3,
+	TooltipYBaseBytes: "8D 87 AB 00 00 00",
+	TooltipYClampSite: 0x00C945E1,
+	TooltipYClampBytes: "81 C6 AB 00 00 00",
+	RelayoutSite: 0x00BD424B,
+	RelayoutResume: 0x00BD4251,
+	RelayoutBytes: "8B 83 78 01 00 00 3D FE E0 F5 05",
+	PostMakeWindowSite: 0x00A42620,
+	PostMakeWindowResume: 0x00A42625,
+	PostMakeWindowBytes: "8B 45 EC 85 C0",
+	GoldPositionSite: 0x00A40368,
+	GoldPositionResume: 0x00A4036D,
+	GoldPositionBytes: "50 8B CE FF D2",
+	ManagedWindows: [
+		{
+			key: "cashShop",
+			label: "Cash Shop",
+			windowId: 0xBE,
+			windowCase: 0x8A,
+			nativeRightInset: 0xBB,
+			nativeY: 16,
+			xMode: "minimapRight",
+			centerY: 204
+		},
+		{
+			key: "rodexNotification",
+			label: "RO DEX notification",
+			windowId: 0x106,
+			windowCase: 0xAB,
+			nativeRightInset: 0xEA,
+			nativeY: 16,
+			xMode: "minimapRight",
+			centerY: 268
+		},
+		{
+			key: "goldPc",
+			label: "Gold PC",
+			windowId: 0x10B,
+			windowCase: 0xAF,
+			restoreCaptured: true,
+			xMode: "minimapRight",
+			centerY: 324
+		},
+		{
+			key: "roulette",
+			label: "Roulette",
+			windowId: 0x10C,
+			windowCase: 0xB0,
+			nativeRightInset: 0xBB,
+			nativeY: 71,
+			xMode: "minimapLeft",
+			centerY: 204
+		}
+	]
+};
+
+GlobalZeroStatusIconStatic.normalizeHex = function(hex)
+{
+	return (hex || "").replace(/\s+/g, " ").trim().toUpperCase();
+};
+
+GlobalZeroStatusIconStatic.bytesToHex = function(bytes)
+{
+	return bytes.map(value =>
+		(value & 0xFF).toString(16).padStart(2, "0")
+	).join(" ");
+};
+
+GlobalZeroStatusIconStatic.asciiBytes = function(text)
+{
+	const bytes = [];
+	for (let index = 0; index < text.length; index++)
+		bytes.push(text.charCodeAt(index) & 0xFF);
+	bytes.push(0);
+	return bytes;
+};
+
+GlobalZeroStatusIconStatic.allocateBytes = function(bytes, alignment = 1)
+{
+	const [phy, vir] = Exe.Allocate(bytes.length, alignment);
+	Exe.SetHex(phy, GlobalZeroStatusIconStatic.bytesToHex(bytes));
+	return {phy, vir, size: bytes.length};
+};
+
+GlobalZeroStatusIconStatic.assertCode = function(label, virAddr, expected)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroStatusIcons: ${label} is not mapped`);
+	const normalized = GlobalZeroStatusIconStatic.normalizeHex(expected);
+	const actual = GlobalZeroStatusIconStatic.normalizeHex(
+		Exe.GetHex(phyAddr, normalized.split(" ").length)
+	);
+	if (actual !== normalized)
+	{
+		throw Error(
+			`ROGlobalZeroStatusIcons: ${label} mismatch at ` +
+			`0x${virAddr.toString(16).toUpperCase()}; got ${actual}`
+		);
+	}
+	return phyAddr;
+};
+
+GlobalZeroStatusIconStatic.getManagedWindowRoutes = function()
+{
+	const s = GlobalZeroStatusIconStatic;
+	const switchPhy = s.assertCode(
+		"UIWindowMgr::MakeWindow main switch",
+		s.MakeWindowSwitchSite,
+		s.MakeWindowSwitchBytes
+	);
+	const indexTableVir = Exe.GetUint32(switchPhy + 3);
+	const indexTablePhy = Exe.Vir2Phy(indexTableVir, CODE);
+	if (indexTablePhy < 0)
+		throw Error("ROGlobalZeroStatusIcons: MakeWindow index table is not mapped");
+
+	const routes = [];
+	for (const spec of s.ManagedWindows)
+	{
+		const entryPhy = indexTablePhy + spec.windowId;
+		const currentCase = Exe.GetUint8(entryPhy);
+		if (currentCase !== spec.windowCase)
+		{
+			throw Error(
+				`ROGlobalZeroStatusIcons: ${spec.label} window route mismatch; ` +
+				`got 0x${currentCase.toString(16).toUpperCase()}`
+			);
+		}
+		routes.push({
+			key: spec.key,
+			entryPhy,
+			currentCase
+		});
+	}
+	return routes;
+};
+
+GlobalZeroStatusIconStatic.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+	const addRelative = function(target)
+	{
+		const pos = bytes.length;
+		bytes.push(0, 0, 0, 0);
+		fixups.push({pos, target});
+	};
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+				bytes.push(value & 0xFF);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (labels[name] !== undefined)
+				throw Error(`ROGlobalZeroStatusIcons: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		call: function(target)
+		{
+			bytes.push(0xE8);
+			addRelative(target);
+		},
+		jmp: function(target)
+		{
+			bytes.push(0xE9);
+			addRelative(target);
+		},
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode & 0xFF);
+			addRelative(target);
+		},
+		finish: function(baseVir)
+		{
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					labels[fixup.target] === undefined)
+				{
+					throw Error(
+						`ROGlobalZeroStatusIcons: unresolved label ${fixup.target}`
+					);
+				}
+				const targetVir = typeof fixup.target === "number"
+					? fixup.target
+					: baseVir + labels[fixup.target];
+				put32(bytes, fixup.pos, targetVir - (baseVir + fixup.pos + 4));
+			}
+			return GlobalZeroStatusIconStatic.bytesToHex(bytes);
+		}
+	};
+};
+
+GlobalZeroStatusIconStatic.allocateCode = function(assembly)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(assembly.bytes.length, 0x10);
+	Exe.SetHex(phyAddr, assembly.finish(virAddr));
+	return {phy: phyAddr, vir: virAddr, size: assembly.bytes.length};
+};
+
+GlobalZeroStatusIconStatic.buildLoad = function(stateVir, pathVir)
+{
+	const s = GlobalZeroStatusIconStatic;
+	const a = s.asm();
+	a.emit(0x9C, 0x60);                            // PUSHFD / PUSHAD
+	a.emit(0x83, 0x3D); a.dword(stateVir + s.StateLoaded); a.emit(0x00);
+	a.jcc(0x85, "done");                          // JNE done
+	a.emit(0xC7, 0x05); a.dword(stateVir + s.StateLoaded); a.dword(1);
+
+	// OPEN_EXISTING, shared read/write, GENERIC_READ.
+	a.emit(0x6A, 0x00, 0x68); a.dword(0x80);
+	a.emit(0x6A, 0x03, 0x6A, 0x00, 0x6A, 0x03);
+	a.emit(0x68); a.dword(0x80000000);
+	a.emit(0x68); a.dword(pathVir);
+	a.emit(0xFF, 0x15); a.dword(s.CreateFileIat);
+	a.emit(0x8B, 0xD8, 0x83, 0xFB, 0xFF);          // MOV EBX,EAX / CMP EBX,-1
+	a.jcc(0x84, "done");                          // JE done
+
+	a.emit(0xC7, 0x05); a.dword(stateVir + s.StateCount); a.dword(0);
+	a.emit(0x6A, 0x00, 0x68); a.dword(stateVir + s.StateCount);
+	a.emit(0x6A, 0x01, 0x68); a.dword(stateVir + s.StateByte);
+	a.emit(0x53, 0xFF, 0x15); a.dword(s.ReadFileIat);
+	a.emit(0x8B, 0xF0);                            // MOV ESI,EAX (read success)
+	a.emit(0x53, 0xFF, 0x15); a.dword(s.CloseHandleIat);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "done");                          // JE done
+	a.emit(0x83, 0x3D); a.dword(stateVir + s.StateCount); a.emit(0x01);
+	a.jcc(0x85, "done");                          // JNE done
+	a.emit(0x0F, 0xB6, 0x05); a.dword(stateVir + s.StateByte);
+	a.emit(0x83, 0xF8, 0x01);
+	a.jcc(0x87, "done");                          // JA done (only 0/1 valid)
+	a.emit(0xA3); a.dword(stateVir + s.StateEnabled);
+
+	a.label("done");
+	a.emit(0x61, 0x9D, 0xC3);                      // POPAD / POPFD / RET
+	return a;
+};
+
+GlobalZeroStatusIconStatic.buildSave = function(stateVir, pathVir)
+{
+	const s = GlobalZeroStatusIconStatic;
+	const a = s.asm();
+	a.emit(0x9C, 0x60);                            // PUSHFD / PUSHAD
+	a.emit(0xA1); a.dword(stateVir + s.StateEnabled);
+	a.emit(0x83, 0xE0, 0x01);                      // AND EAX,1
+	a.emit(0xA2); a.dword(stateVir + s.StateByte); // MOV [byte],AL
+	a.emit(0xC7, 0x05); a.dword(stateVir + s.StateCount); a.dword(0);
+
+	// CREATE_ALWAYS, shared read, GENERIC_WRITE.
+	a.emit(0x6A, 0x00, 0x68); a.dword(0x80);
+	a.emit(0x6A, 0x02, 0x6A, 0x00, 0x6A, 0x01);
+	a.emit(0x68); a.dword(0x40000000);
+	a.emit(0x68); a.dword(pathVir);
+	a.emit(0xFF, 0x15); a.dword(s.CreateFileIat);
+	a.emit(0x8B, 0xD8, 0x83, 0xFB, 0xFF);          // MOV EBX,EAX / CMP EBX,-1
+	a.jcc(0x84, "done");                          // JE done
+
+	a.emit(0x6A, 0x00, 0x68); a.dword(stateVir + s.StateCount);
+	a.emit(0x6A, 0x01, 0x68); a.dword(stateVir + s.StateByte);
+	a.emit(0x53, 0xFF, 0x15); a.dword(s.WriteFileIat);
+	a.emit(0x53, 0xFF, 0x15); a.dword(s.CloseHandleIat);
+
+	a.label("done");
+	a.emit(0x61, 0x9D, 0xC3);                      // POPAD / POPFD / RET
+	return a;
+};
+
+GlobalZeroStatusIconStatic.buildColumnCount = function(a, widthRegister)
+{
+	const reserved = GlobalZeroStatusIconStatic.LeftBoundary +
+		GlobalZeroStatusIconStatic.RightInset;
+	if (widthRegister === "ecx")
+	{
+		a.emit(0x81, 0xE9); a.dword(reserved);       // SUB ECX, reserved
+	}
+	else
+	{
+		a.emit(0x8B, 0xCE);                         // MOV ECX, ESI
+		a.emit(0x81, 0xE9); a.dword(reserved);       // SUB ECX, reserved
+	}
+	a.jcc(0x8F, "calculate_columns");              // JG calculate_columns
+	a.emit(0xB9); a.dword(1);                      // MOV ECX, 1
+	a.jmp("columns_ready");
+	a.label("calculate_columns");
+	a.emit(0x8B, 0xC1);                            // MOV EAX, ECX
+	a.emit(0x33, 0xD2);                            // XOR EDX, EDX
+	a.emit(0xB9); a.dword(GlobalZeroStatusIconStatic.ColumnPitch);
+	a.emit(0xF7, 0xF1);                            // DIV ECX
+	a.emit(0x40);                                  // INC EAX
+	a.emit(0x8B, 0xC8);                            // MOV ECX, EAX
+	a.label("columns_ready");
+};
+
+GlobalZeroStatusIconStatic.buildRenderer = function(stateVir, loadVir)
+{
+	const s = GlobalZeroStatusIconStatic;
+	const a = s.asm();
+	a.call(loadVir);
+	a.emit(0x9C);                                    // PUSHFD
+	a.emit(0x83, 0x3D); a.dword(stateVir + s.StateEnabled); a.emit(0x00);
+	a.jcc(0x85, "custom_renderer");                 // JNE custom_renderer
+	a.emit(0x9D);                                    // POPFD
+	a.emit(0x33, 0xC0, 0x81, 0xC1, 0x96, 0x00, 0x00, 0x00);
+	a.jmp(s.RendererNativeResume);
+	a.label("custom_renderer");
+	a.emit(0x9D);                                    // POPFD
+	a.emit(0xA1); a.dword(s.DisplayPointer);        // MOV EAX, [display]
+	a.emit(0x8B, 0x48, 0x28);                      // MOV ECX, [EAX+28] (width)
+	s.buildColumnCount(a, "ecx");
+	a.emit(0x8B, 0xC3);                            // MOV EAX, EBX (icon index)
+	a.emit(0x33, 0xD2);                            // XOR EDX, EDX
+	a.emit(0xF7, 0xF1);                            // DIV ECX (row, column)
+	a.emit(0x6B, 0xD2, s.ColumnPitch);             // IMUL EDX, EDX, column pitch
+	a.emit(0xF7, 0xDA);                            // NEG EDX
+	a.emit(0x81, 0xEA); a.dword(s.RightInset - 0x20); // SUB EDX, minimap reserve delta
+	a.emit(0x89, 0x55, 0xF0);                      // MOV [EBP-10], EDX
+	a.emit(0x6B, 0xC0, s.RowPitch);                // IMUL EAX, EAX, row pitch
+	a.emit(0x05); a.dword(s.FirstRowY - 0x96);     // ADD EAX, first row-nativeY
+	a.emit(0x89, 0x45, 0xF8);                      // MOV [EBP-8], EAX
+	a.emit(0x8B, 0x55, 0xF0);                      // MOV EDX, [EBP-10]
+	a.emit(0x8B, 0x4D, 0xFC);                      // MOV ECX, [EBP-4]
+	a.jmp(s.RendererResume);
+	return a;
+};
+
+GlobalZeroStatusIconStatic.buildHitTest = function(stateVir, loadVir)
+{
+	const s = GlobalZeroStatusIconStatic;
+	const a = s.asm();
+	const tooltipBaseDisp = 14 - s.RightInset;
+	const rightEdgeDisp = s.HitCellRightOffset - s.RightInset;
+	a.call(loadVir);
+	a.emit(0x9C);                                    // PUSHFD
+	a.emit(0x83, 0x3D); a.dword(stateVir + s.StateEnabled); a.emit(0x00);
+	a.jcc(0x85, "custom_hit_test");                 // JNE custom_hit_test
+	a.emit(0x9D);                                    // POPFD
+	a.emit(0xB8, 0xEB, 0xA0, 0x0E, 0xEA);
+	a.jmp(s.HitTestNativeResume);
+	a.label("custom_hit_test");
+	a.emit(0x9D);                                    // POPFD
+	s.buildColumnCount(a, "esi");
+	a.emit(0x89, 0x8D, 0x5C, 0xFE, 0xFF, 0xFF);    // MOV [EBP-1A4], ECX
+	a.emit(0x8D, 0x86); a.dword(tooltipBaseDisp);  // LEA EAX, [ESI-right+14]
+	a.emit(0x89, 0x85, 0x50, 0xFE, 0xFF, 0xFF);    // MOV [EBP-1B0], EAX
+
+	// Column = (right icon edge - mouse X) / pitch. The remainder rejects gaps.
+	a.emit(0x8D, 0x86); a.dword(rightEdgeDisp);    // LEA EAX,[ESI-right+cell-1]
+	a.emit(0x2B, 0x45, 0x08);                      // SUB EAX, [EBP+8]
+	a.jcc(0x88, s.HitTestReject);                  // JS reject
+	a.emit(0x33, 0xD2);                            // XOR EDX, EDX
+	a.emit(0xB9); a.dword(s.ColumnPitch);          // MOV ECX, column pitch
+	a.emit(0xF7, 0xF1);                            // DIV ECX
+	a.emit(0x83, 0xFA, s.HitCellWidth);            // CMP EDX, hit-cell width
+	a.jcc(0x83, s.HitTestReject);                  // JAE reject (horizontal gap)
+	a.emit(0x3B, 0x85, 0x5C, 0xFE, 0xFF, 0xFF);    // CMP EAX, [EBP-1A4]
+	a.jcc(0x83, s.HitTestReject);                  // JAE reject (past left edge)
+	a.emit(0x89, 0x85, 0x68, 0xFE, 0xFF, 0xFF);    // MOV [EBP-198], EAX
+
+	// Row = (mouse Y - top Y) / pitch. Use the same gap rejection as X.
+	a.emit(0x8B, 0x45, 0x0C);                      // MOV EAX, [EBP+C]
+	a.emit(0x83, 0xE8, s.HitTestTopY);             // SUB EAX, hover-grid top
+	a.jcc(0x88, s.HitTestReject);                  // JS reject
+	a.emit(0x33, 0xD2);                            // XOR EDX, EDX
+	a.emit(0xB9); a.dword(s.RowPitch);             // MOV ECX, row pitch
+	a.emit(0xF7, 0xF1);                            // DIV ECX
+	a.emit(0x83, 0xFA, s.HitCellHeight);           // CMP EDX, hit-cell height
+	a.jcc(0x83, s.HitTestReject);                  // JAE reject (vertical gap)
+	a.emit(0x8B, 0xF0);                            // MOV ESI, EAX (row)
+	a.emit(0x0F, 0xAF, 0x85, 0x5C, 0xFE, 0xFF, 0xFF); // IMUL EAX,[cols]
+	a.emit(0x03, 0x85, 0x68, 0xFE, 0xFF, 0xFF);    // ADD EAX, [column]
+	a.emit(0x89, 0x85, 0x68, 0xFE, 0xFF, 0xFF);    // MOV [EBP-198], EAX
+	a.jmp(s.HitTestResume);
+	return a;
+};
+
+GlobalZeroStatusIconStatic.buildTooltipDivide = function(
+	stateVir, pristineVir, loadVir
+)
+{
+	const s = GlobalZeroStatusIconStatic;
+	const a = s.asm();
+	a.call(loadVir);
+	a.emit(0x9C);                                    // PUSHFD
+	a.emit(0x83, 0x3D); a.dword(stateVir + s.StateEnabled); a.emit(0x00);
+	a.jcc(0x85, "custom_tooltip");                  // JNE custom_tooltip
+	a.emit(0x9D);                                    // POPFD
+	a.jmp(pristineVir);
+	a.label("custom_tooltip");
+	a.emit(0x9D);                                    // POPFD
+	a.emit(0xF7, 0xBD, 0x5C, 0xFE, 0xFF, 0xFF);    // IDIV [EBP-1A4]
+	a.emit(0x92);                                  // XCHG EAX, EDX (column, row)
+	a.jmp(s.TooltipDivideResume);
+	return a;
+};
+
+GlobalZeroStatusIconStatic.buildRelayout = function(stateVir, loadVir)
+{
+	const s = GlobalZeroStatusIconStatic;
+	const a = s.asm();
+	a.call(loadVir);
+	a.emit(0xA1); a.dword(stateVir + s.StateEnabled); // MOV EAX,[enabled]
+	a.emit(0x3B, 0x05); a.dword(stateVir + s.StateLastApplied);
+	a.jcc(0x84, "replay_native");                   // JE replay_native
+	a.emit(0xA3); a.dword(stateVir + s.StateLastApplied);
+	a.emit(0xC7, 0x83, 0x74, 0x01, 0x00, 0x00); a.dword(1);
+	a.label("replay_native");
+	a.emit(0x8B, 0x83, 0x78, 0x01, 0x00, 0x00);    // stolen MOV EAX,[EBX+178]
+	a.jmp(s.RelayoutResume);
+	return a;
+};
+
+GlobalZeroStatusIconStatic.emitManagedX = function(a, spec)
+{
+	const s = GlobalZeroStatusIconStatic;
+	a.emit(0xA1); a.dword(s.DisplayPointer);        // MOV EAX,[display]
+	a.emit(0x8B, 0x40, 0x28);                      // MOV EAX,[EAX+28] (width)
+	if (spec.xMode === "minimapLeft")
+	{
+		a.emit(0x2D); a.dword(s.MinimapRightInset + s.MinimapLogicalWidth);
+		return;                                       // minimap left edge
+	}
+	if (spec.xMode === "minimapRight")
+	{
+		a.emit(0x2D); a.dword(s.MinimapRightInset);  // minimap right edge
+		a.emit(0x2B, 0x46, 0x14);                    // SUB EAX,[ESI+14] (wnd width)
+		return;
+	}
+	throw Error(`ROGlobalZeroStatusIcons: unsupported X mode ${spec.xMode}`);
+};
+
+GlobalZeroStatusIconStatic.emitManagedPosition = function(a, spec)
+{
+	const s = GlobalZeroStatusIconStatic;
+	s.emitManagedX(a, spec);
+	a.emit(0x8B, 0x4E, 0x18);                      // MOV ECX,[ESI+18] (wnd height)
+	a.emit(0x41, 0xD1, 0xE9);                      // INC ECX / SHR ECX,1 (ceil half)
+	a.emit(0xBA); a.dword(spec.centerY);            // MOV EDX,center Y
+	a.emit(0x2B, 0xD1);                            // SUB EDX,ECX (top-left Y)
+};
+
+GlobalZeroStatusIconStatic.buildGoldPositionCapture = function(stateVir, loadVir)
+{
+	const s = GlobalZeroStatusIconStatic;
+	const a = s.asm();
+	a.call(loadVir);
+	a.emit(0xA3); a.dword(stateVir + s.StateGoldNativeX);
+	a.emit(0x8B, 0x0C, 0x24);                      // MOV ECX,[ESP] (native Y)
+	a.emit(0x89, 0x0D); a.dword(stateVir + s.StateGoldNativeY);
+	a.emit(0xC7, 0x05); a.dword(stateVir + s.StateGoldNativeValid); a.dword(1);
+	a.emit(0x50, 0x8B, 0xCE, 0xFF, 0xD2);          // PUSH EAX/MOV ECX,ESI/CALL EDX
+	a.jmp(s.GoldPositionResume);
+	return a;
+};
+
+GlobalZeroStatusIconStatic.buildPostMakeWindow = function(stateVir, loadVir)
+{
+	const s = GlobalZeroStatusIconStatic;
+	const a = s.asm();
+	a.call(loadVir);
+	a.emit(0x9C, 0x60);                            // preserve post-MakeWindow state
+	a.emit(0x83, 0x3D); a.dword(stateVir + s.StateEnabled); a.emit(0x00);
+	a.jcc(0x84, "done");                          // native layout selected
+	a.emit(0x8B, 0x45, 0x08);                      // MOV EAX,[EBP+8] (window ID)
+	for (let index = 0; index < s.ManagedWindows.length; index++)
+	{
+		const spec = s.ManagedWindows[index];
+		a.emit(0x3D); a.dword(spec.windowId);         // CMP EAX,window ID
+		a.jcc(0x84, `apply_${index}`);
+	}
+	a.jmp("done");
+
+	for (let index = 0; index < s.ManagedWindows.length; index++)
+	{
+		const spec = s.ManagedWindows[index];
+		a.label(`apply_${index}`);
+		a.emit(0x8B, 0x75, 0xEC);                    // MOV ESI,[EBP-14] (new wnd)
+		a.emit(0x85, 0xF6);
+		a.jcc(0x84, "done");                        // null: retain native flow
+		s.emitManagedPosition(a, spec);
+		a.emit(0x52, 0x50);                          // PUSH y / PUSH x
+		a.emit(0x8B, 0x06);                          // MOV EAX,[ESI] (vtable)
+		a.emit(0x8B, 0xCE);                          // MOV ECX,ESI
+		a.emit(0xFF, 0x50, 0x10);                    // CALL [EAX+10] (SetPos)
+		a.jmp("done");
+	}
+
+	a.label("done");
+	a.emit(0x61, 0x9D);                            // restore post-MakeWindow state
+	a.emit(0x8B, 0x45, 0xEC, 0x85, 0xC0);          // stolen MOV/TEST; flags exact
+	a.jmp(s.PostMakeWindowResume);
+	return a;
+};
+
+GlobalZeroStatusIconStatic.buildToggle = function(stateVir, loadVir, saveVir)
+{
+	const s = GlobalZeroStatusIconStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);    // frame; preserve EBX/ESI/EDI
+	a.call(loadVir);
+	a.emit(0xA1); a.dword(stateVir + s.StateEnabled);
+	a.emit(0x83, 0xF0, 0x01);                      // XOR EAX,1
+	a.emit(0xA3); a.dword(stateVir + s.StateEnabled);
+	a.call(saveVir);
+
+	// Query only. Never create, show, close, or otherwise change visibility.
+	for (let index = 0; index < s.ManagedWindows.length; index++)
+	{
+		const spec = s.ManagedWindows[index];
+		const restoreLabel = `restore_native_${index}`;
+		const setPositionLabel = `set_position_${index}`;
+		const nextLabel = `next_window_${index}`;
+
+		a.emit(0x68); a.dword(spec.windowId);
+		a.emit(0xB9); a.dword(s.WindowManager);
+		a.call(s.GetWindow);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, nextLabel);                      // absent: leave it absent
+		a.emit(0x8B, 0xF0);                          // MOV ESI,EAX (existing wnd)
+		a.emit(0x83, 0x3D); a.dword(stateVir + s.StateEnabled); a.emit(0x00);
+		a.jcc(0x84, restoreLabel);
+
+		s.emitManagedPosition(a, spec);
+		a.jmp(setPositionLabel);
+
+		a.label(restoreLabel);
+		if (spec.restoreCaptured)
+		{
+			a.emit(0x83, 0x3D); a.dword(stateVir + s.StateGoldNativeValid); a.emit(0x00);
+			a.jcc(0x84, nextLabel);                    // no captured Gold position
+			a.emit(0xA1); a.dword(stateVir + s.StateGoldNativeX);
+			a.emit(0x8B, 0x15); a.dword(stateVir + s.StateGoldNativeY);
+		}
+		else
+		{
+			a.emit(0xA1); a.dword(s.DisplayPointer);
+			a.emit(0x8B, 0x40, 0x28);                  // screen width
+			a.emit(0x2D); a.dword(spec.nativeRightInset);
+			a.emit(0xBA); a.dword(spec.nativeY);
+		}
+
+		a.label(setPositionLabel);
+		a.emit(0x52, 0x50);                          // PUSH y / PUSH x
+		a.emit(0x8B, 0x06);                          // MOV EAX,[ESI] (vtable)
+		a.emit(0x8B, 0xCE);                          // MOV ECX,ESI
+		a.emit(0xFF, 0x50, 0x10);                    // CALL [EAX+10] (SetPos)
+		a.label(nextLabel);
+	}
+
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+ROGlobalZeroStatusIcons = function(_)
+{
+	const s = GlobalZeroStatusIconStatic;
+	if (Exe.BuildDate !== s.BuildDate)
+		throw Error("ROGlobalZeroStatusIcons supports only the 2025-07-16 client");
+	if (typeof CustomSlashCommand === "undefined" ||
+		typeof CustomSlashCommand.register !== "function")
+		throw Error("ROGlobalZeroStatusIcons: CustomSlashCommand helper unavailable");
+	if (!Warp.TestMode)
+		Warp.SetPatchState("MoveShopIcon", false);
+
+	$$(_, 1, "Verify status, tooltip, relayout, and natural launcher seams");
+	const rendererPhy = s.assertCode("renderer grid", s.RendererSite, s.RendererBytes);
+	const hitTestPhy = s.assertCode("hover grid", s.HitTestSite, s.HitTestBytes);
+	const relayoutPhy = s.assertCode(
+		"status relayout seam", s.RelayoutSite, s.RelayoutBytes
+	);
+	const postMakeWindowPhy = s.assertCode(
+		"post-MakeWindow layout seam",
+		s.PostMakeWindowSite,
+		s.PostMakeWindowBytes
+	);
+	const goldPositionPhy = s.assertCode(
+		"Gold native-position capture seam",
+		s.GoldPositionSite,
+		s.GoldPositionBytes
+	);
+	const tooltipDividePhy = s.assertCode(
+		"tooltip row/column divide", s.TooltipDivideSite, s.TooltipDivideBytes
+	);
+	const tooltipColumnPitchPhy = s.assertCode(
+		"tooltip column pitch", s.TooltipColumnPitchSite,
+		s.TooltipColumnPitchBytes
+	);
+	const tooltipRowPitchPhy = s.assertCode(
+		"tooltip row pitch", s.TooltipRowPitchSite, s.TooltipRowPitchBytes
+	);
+	const tooltipYBasePhy = s.assertCode(
+		"tooltip Y base", s.TooltipYBaseSite, s.TooltipYBaseBytes
+	);
+	const tooltipYClampPhy = s.assertCode(
+		"tooltip Y clamp", s.TooltipYClampSite, s.TooltipYClampBytes
+	);
+	const managedWindowRoutes = s.getManagedWindowRoutes();
+
+	$$(_, 2, "Allocate runtime state, savedata persistence, and pristine tooltip code");
+	const [statePhy, stateVir] = Exe.Allocate(s.StateSize, 4);
+	for (let offset = 0; offset < s.StateSize; offset += 4)
+		Exe.SetUint32(statePhy + offset, 0);
+	Exe.SetUint32(statePhy + s.StateEnabled, 1);
+	Exe.SetUint32(statePhy + s.StateLastApplied, 1);
+	const persistPath = s.allocateBytes(s.asciiBytes(s.PersistFile));
+	const load = s.allocateCode(s.buildLoad(stateVir, persistPath.vir));
+	const save = s.allocateCode(s.buildSave(stateVir, persistPath.vir));
+
+	const [tooltipPristinePhy, tooltipPristineVir] = Exe.Allocate(
+		s.TooltipPristineSize + 5, 0x10
+	);
+	Exe.SetHex(
+		tooltipPristinePhy,
+		Exe.GetHex(tooltipDividePhy, s.TooltipPristineSize)
+	);
+	const tooltipPristineTailPhy =
+		tooltipPristinePhy + s.TooltipPristineSize;
+	const tooltipPristineTailVir =
+		tooltipPristineVir + s.TooltipPristineSize;
+	Exe.SetHex(tooltipPristineTailPhy, "E9 00 00 00 00");
+	Exe.SetInt32(
+		tooltipPristineTailPhy + 1,
+		s.TooltipPristineEnd - (tooltipPristineTailVir + 5)
+	);
+
+	$$(_, 3, "Build gated layout, hover, tooltip, relayout, and launcher caves");
+	const renderer = s.allocateCode(s.buildRenderer(stateVir, load.vir));
+	const hitTest = s.allocateCode(s.buildHitTest(stateVir, load.vir));
+	const tooltipDivide = s.allocateCode(
+		s.buildTooltipDivide(stateVir, tooltipPristineVir, load.vir)
+	);
+	const relayout = s.allocateCode(s.buildRelayout(stateVir, load.vir));
+	const postMakeWindow = s.allocateCode(
+		s.buildPostMakeWindow(stateVir, load.vir)
+	);
+	const goldPositionCapture = s.allocateCode(
+		s.buildGoldPositionCapture(stateVir, load.vir)
+	);
+	const toggle = s.allocateCode(
+		s.buildToggle(stateVir, load.vir, save.vir)
+	);
+
+	$$(_, 4, "Install gated status hooks and natural launcher repositioning");
+	Exe.SetJMP(rendererPhy, renderer.vir, 0);
+	Exe.SetNOPs(rendererPhy + 5, s.RendererBytes.split(" ").length - 5);
+	Exe.SetJMP(hitTestPhy, hitTest.vir, 0);
+	Exe.SetJMP(tooltipDividePhy, tooltipDivide.vir, 0);
+	Exe.SetNOPs(tooltipDividePhy + 5, 1);
+	Exe.SetJMP(relayoutPhy, relayout.vir, 0);
+	Exe.SetNOPs(relayoutPhy + 5, 1);
+	Exe.SetJMP(postMakeWindowPhy, postMakeWindow.vir, 0);
+	Exe.SetJMP(goldPositionPhy, goldPositionCapture.vir, 0);
+	Exe.SetHex(
+		tooltipColumnPitchPhy,
+		GlobalZeroStatusIconStatic.bytesToHex([0x6B, 0xC0, 0x100 - s.ColumnPitch])
+	);
+	Exe.SetHex(
+		tooltipRowPitchPhy,
+		GlobalZeroStatusIconStatic.bytesToHex([0x6B, 0xF2, s.RowPitch])
+	);
+	Exe.SetInt32(tooltipYBasePhy + 2, s.TooltipYBase);
+	Exe.SetInt32(tooltipYClampPhy + 2, s.TooltipYBase);
+
+	$$(_, 5, "Register the independent /statusicons runtime toggle");
+	CustomSlashCommand.register(`${_}.SlashCommand`, {
+		command: "/statusicons",
+		targetVir: toggle.vir
+	});
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		const managedWindowDiagnostics = [];
+		for (let index = 0; index < s.ManagedWindows.length; index++)
+		{
+			const spec = s.ManagedWindows[index];
+			managedWindowDiagnostics.push({
+				key: spec.key,
+				label: spec.label,
+				windowId: spec.windowId,
+				naturalRouteCase: managedWindowRoutes[index].currentCase,
+				naturalOnly: true,
+				forceShown: false,
+				restoreCaptured: spec.restoreCaptured === true,
+				nativeRightInset: spec.nativeRightInset || 0,
+				nativeY: spec.nativeY || 0,
+				xMode: spec.xMode,
+				xFormula: spec.xMode === "minimapLeft" ?
+					"displayWidth - minimapRightInset - minimapLogicalWidth" :
+					"displayWidth - minimapRightInset - windowWidth",
+				centerY: spec.centerY
+			});
+		}
+		PatchDiagnostics.add("ROGlobalZeroStatusIcons.QjsOnly", {
+			command: "/statusicons",
+			stateVir,
+			initialEnabled: true,
+			defaultEnabled: true,
+			loadVir: load.vir,
+			saveVir: save.vir,
+			persistPathVir: persistPath.vir,
+			persistFile: s.PersistFile,
+			rendererVir: renderer.vir,
+			rendererSize: renderer.size,
+			hitTestVir: hitTest.vir,
+			hitTestSize: hitTest.size,
+			tooltipDivideVir: tooltipDivide.vir,
+			tooltipPristineVir,
+			tooltipPristineSize: s.TooltipPristineSize,
+			relayoutVir: relayout.vir,
+			postMakeWindowVir: postMakeWindow.vir,
+			postMakeWindowSize: postMakeWindow.size,
+			goldPositionCaptureVir: goldPositionCapture.vir,
+			goldPositionCaptureSize: goldPositionCapture.size,
+			toggleVir: toggle.vir,
+			minimapLogicalWidth: s.MinimapLogicalWidth,
+			minimapRightInset: s.MinimapRightInset,
+			minimapLeftFormula: "displayWidth - minimapRightInset - minimapLogicalWidth",
+			minimapRightFormula: "displayWidth - minimapRightInset",
+			launcherTopRowOrder: ["roulette", "cashShop"],
+			launcherRightColumnOrder: ["cashShop", "rodexNotification", "goldPc"],
+			leftBoundary: s.LeftBoundary,
+			rightInset: s.RightInset,
+			firstRowY: s.FirstRowY,
+			hitTestTopY: s.HitTestTopY,
+			tooltipYBase: s.TooltipYBase,
+			iconSize: s.IconSize,
+			hitCellWidth: s.HitCellWidth,
+			hitCellHeight: s.HitCellHeight,
+			hitCellRightOffset: s.HitCellRightOffset,
+			horizontalGutter: s.ColumnPitch - s.HitCellWidth,
+			verticalGutter: s.RowPitch - s.HitCellHeight,
+			columnPitch: s.ColumnPitch,
+			rowPitch: s.RowPitch,
+			dynamicColumns: true,
+			managedWindows: managedWindowDiagnostics,
+			managedWindowOrder: s.ManagedWindows.map(spec => spec.key),
+			managedWindowsNaturalOnly: true,
+			managedWindowsForceShown: false,
+			customDllImports: 0
+		});
+	}
+	return true;
+};
+
+ROGlobalZeroStatusIcons.validate = function()
+{
+	const s = GlobalZeroStatusIconStatic;
+	if (Exe.BuildDate !== s.BuildDate)
+		return false;
+	try
+	{
+		s.getManagedWindowRoutes();
+		s.assertCode("renderer grid", s.RendererSite, s.RendererBytes);
+		s.assertCode("hover grid", s.HitTestSite, s.HitTestBytes);
+		s.assertCode("status relayout seam", s.RelayoutSite, s.RelayoutBytes);
+		s.assertCode(
+			"post-MakeWindow layout seam",
+			s.PostMakeWindowSite,
+			s.PostMakeWindowBytes
+		);
+		s.assertCode(
+			"Gold native-position capture seam",
+			s.GoldPositionSite,
+			s.GoldPositionBytes
+		);
+		s.assertCode(
+			"tooltip row/column divide", s.TooltipDivideSite,
+			s.TooltipDivideBytes
+		);
+		s.assertCode(
+			"tooltip column pitch", s.TooltipColumnPitchSite,
+			s.TooltipColumnPitchBytes
+		);
+		s.assertCode(
+			"tooltip row pitch", s.TooltipRowPitchSite,
+			s.TooltipRowPitchBytes
+		);
+		s.assertCode("tooltip Y base", s.TooltipYBaseSite, s.TooltipYBaseBytes);
+		s.assertCode("tooltip Y clamp", s.TooltipYClampSite, s.TooltipYClampBytes);
+		return true;
+	}
+	catch (error)
+	{
+		return false;
+	}
+};

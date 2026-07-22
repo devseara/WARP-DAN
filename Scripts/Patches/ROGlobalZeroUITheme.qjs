@@ -19,7 +19,8 @@
 *                   to the native 2025-07-16 Game Settings Basic page.     *
 *                   The switch uses btn_tema_0/1.bmp, persists one byte    *
 *                   in savedata, and publishes shared QJS state consumed   *
-*                   by the Global Zero Basic Info and EXP-bar patches.     *
+*                   by the Global Zero Inventory, Basic Info, EXP Bar,     *
+*                   and Menu patches.                                      *
 *                                                                          *
 \**************************************************************************/
 
