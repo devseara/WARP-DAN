@@ -18,14 +18,13 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-06-14                                             *
-*   Last Modified : 2026-07-20                                             *
+*   Last Modified : 2026-07-22                                             *
 *                                                                          *
 *   Description   : Replaces the 2025-07-16 inventory's text tabs with     *
-*                   renewal tab_pri_01..04 images, reserves the final item *
-*                   row, and draws an expanded live Zeny/weight panel using*
-*                   icon_weight.bmp. Weight color matches the stock       *
-*                   warning threshold, and tab balloons stay beside each  *
-*                   hovered vertical tab. This is a QJS-only static patch.*
+*                   renewal tab_pri_01..04 images, reserves the final row  *
+*                   across draw, input, scrolling, and resize state, and   *
+*                   draws an expanded live Zeny/weight panel using         *
+*                   icon_weight.bmp. This is a QJS-only static patch.      *
 *                                                                          *
 \**************************************************************************/
 
@@ -47,8 +46,10 @@ const InventoryTabsStatic = {
 	TabMouseOriginal: 0x0085A170,
 	ZenyInsert: 0x00947477,
 	ZenyInsertBytes: "B9 C0 A3 5F 01",
-	ItemEndCountSites: [0x00947205, 0x00947448],
-	ItemEndCountBytes: "0F AF 83 E0 00 00 00",
+	InitialRowStore: 0x0093F28A,
+	InitialRowStoreBytes: "89 87 DC 00 00 00",
+	ResizeRowStore: 0x00955A33,
+	ResizeRowStoreBytes: "89 86 DC 00 00 00",
 	GetTexMgr: 0x00A90350,
 	ConvPath: 0x00A9F030,
 	LoadSurface: 0x00A8D4A0,
@@ -551,13 +552,13 @@ InventoryTabsStatic.buildZenyUnderlay = function(
 	a.label("y_ok");
 	a.emit(0x89, 0x45, 0x64);                // MOV [EBP+64],EAX
 
-	// Erase the native empty-slot textures in the final grid row without
-	// reducing the window's painted row count. The panel is drawn over this
-	// opaque inventory-background reservation immediately afterward.
-	a.emit(0x8B, 0x86); a.dword(0xDC);         // MOV EAX,[ESI+DC] rows
+	// DC is the usable row count in renewal mode. The native empty-slot pass
+	// still derives its physical row count from the window height, so erase the
+	// next row (index DC) before drawing the footer over that reservation.
+	a.emit(0x8B, 0x86); a.dword(0xDC);         // MOV EAX,[ESI+DC] usable rows
 	a.emit(0x85, 0xC0);
-	a.jcc(0x8E, "blank_row_done");           // JLE blank_row_done
-	a.emit(0x48, 0xC1, 0xE0, 0x05);          // DEC EAX / SHL EAX,5
+	a.jcc(0x88, "blank_row_done");           // JS blank_row_done
+	a.emit(0xC1, 0xE0, 0x05);                // SHL EAX,5
 	a.emit(0x83, 0xC0, 0x11);                // ADD EAX,17 row y
 	a.emit(0x8B, 0x96); a.dword(0xE0);         // MOV EDX,[ESI+E0] columns
 	a.emit(0xC1, 0xE2, 0x05);                // SHL EDX,5 row width
@@ -653,16 +654,27 @@ InventoryTabsStatic.buildZenyUnderlay = function(
 	return a;
 };
 
-InventoryTabsStatic.buildItemEndCount = function(returnVir, themeStateVir)
+InventoryTabsStatic.buildReservedRowStore = function(
+	returnVir,
+	storeModRm,
+	themeStateVir,
+	loadThemeVir
+)
 {
 	const a = InventoryTabsStatic.asm();
+	// Preserve the row calculation's register and flag contract while loading
+	// the persisted theme state before the inventory's first draw.
+	a.emit(0x9C, 0x51, 0x52, 0x50);           // PUSHFD / PUSH ECX/EDX/EAX
+	a.call(loadThemeVir);
+	a.emit(0x58);                             // POP EAX raw native rows
 	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
-	a.jcc(0x84, "classic");
-	a.emit(0x0F, 0xAF, 0x83); a.dword(0xE0); // IMUL EAX,[EBX+E0]
-	a.emit(0x2B, 0x83); a.dword(0xE0);         // SUB EAX,[EBX+E0] one row
-	a.jmp(returnVir);
-	a.label("classic");
-	a.emit(0x0F, 0xAF, 0x83); a.dword(0xE0); // original item count
+	a.jcc(0x84, "store");
+	a.emit(0x83, 0xF8, 0x01);                 // CMP EAX,1
+	a.jcc(0x8E, "store");                    // JLE store
+	a.emit(0x48);                             // DEC EAX, reserve one row
+	a.label("store");
+	a.emit(0x89, storeModRm); a.dword(0xDC);   // MOV [EDI/ESI+DC],EAX
+	a.emit(0x5A, 0x59, 0x9D);                 // POP EDX/ECX / POPFD
 	a.jmp(returnVir);
 	return a;
 };
@@ -809,7 +821,7 @@ ROGlobalZeroInventory = function(_)
 		);
 	}
 
-	$$(_, 1, `Verify inventory vtables, item bounds, and bottom-text sites`);
+	$$(_, 1, `Verify inventory vtables, row writers, and bottom-text sites`);
 	const windowEntryPhy = InventoryTabsStatic.assertVtable(
 		"inventory window vtable[20]",
 		InventoryTabsStatic.WindowVtableEntry,
@@ -840,12 +852,15 @@ ROGlobalZeroInventory = function(_)
 		InventoryTabsStatic.NumberFormat,
 		InventoryTabsStatic.NumberFormatBytes
 	);
-	const itemEndSitePhys = InventoryTabsStatic.ItemEndCountSites.map((virAddr, index) =>
-		InventoryTabsStatic.assertCode(
-			`inventory item end count ${index + 1}`,
-			virAddr,
-			InventoryTabsStatic.ItemEndCountBytes
-		)
+	const initialRowStorePhy = InventoryTabsStatic.assertCode(
+		"inventory initial visible-row store",
+		InventoryTabsStatic.InitialRowStore,
+		InventoryTabsStatic.InitialRowStoreBytes
+	);
+	const resizeRowStorePhy = InventoryTabsStatic.assertCode(
+		"inventory resize visible-row store",
+		InventoryTabsStatic.ResizeRowStore,
+		InventoryTabsStatic.ResizeRowStoreBytes
 	);
 
 	$$(_, 2, `Build renewal resource paths and fixed tooltip data`);
@@ -906,26 +921,41 @@ ROGlobalZeroInventory = function(_)
 	const [zenyPhy, zenyVir] = Exe.Allocate(zenyCode.bytes.length, 0x10);
 	Exe.SetHex(zenyPhy, zenyCode.finish(zenyVir));
 
-	const itemEndBridges = [];
-	for (let i = 0; i < InventoryTabsStatic.ItemEndCountSites.length; i++)
+	const rowCountBridges = [
+		{
+			label: "initial",
+			siteVir: InventoryTabsStatic.InitialRowStore,
+			sitePhy: initialRowStorePhy,
+			storeModRm: 0x87
+		},
+		{
+			label: "resize",
+			siteVir: InventoryTabsStatic.ResizeRowStore,
+			sitePhy: resizeRowStorePhy,
+			storeModRm: 0x86
+		}
+	];
+	for (const bridge of rowCountBridges)
 	{
-		const siteVir = InventoryTabsStatic.ItemEndCountSites[i];
-		const code = InventoryTabsStatic.buildItemEndCount(
-			siteVir + 7, theme.stateVir
+		const code = InventoryTabsStatic.buildReservedRowStore(
+			bridge.siteVir + 6,
+			bridge.storeModRm,
+			theme.stateVir,
+			theme.loadVir
 		);
 		const [bridgePhy, bridgeVir] = Exe.Allocate(code.bytes.length, 0x10);
 		Exe.SetHex(bridgePhy, code.finish(bridgeVir));
-		itemEndBridges.push({siteVir, sitePhy: itemEndSitePhys[i], bridgeVir});
+		bridge.bridgeVir = bridgeVir;
 	}
 	$$(_, 4, `Activate QJS-only inventory renewal handlers`);
 	Exe.SetUint32(windowEntryPhy, windowVir);
 	Exe.SetUint32(windowMouseEntryPhy, windowMouseVir);
 	Exe.SetUint32(tabDrawEntryPhy, tabDrawVir);
 	Exe.SetUint32(tabMouseEntryPhy, tabMouseVir);
-	for (const bridge of itemEndBridges)
+	for (const bridge of rowCountBridges)
 	{
 		Exe.SetJMP(bridge.sitePhy, bridge.bridgeVir, 0);
-		Exe.SetNOPs(bridge.sitePhy + 5, 2);
+		Exe.SetNOPs(bridge.sitePhy + 5, 1);
 	}
 	Exe.SetJMP(zenyInsertPhy, zenyVir, 0);
 
@@ -940,7 +970,7 @@ ROGlobalZeroInventory = function(_)
 			zenyVir,
 			stateVir,
 			themeStateVir: theme.stateVir,
-			itemEndBridges,
+			rowCountBridges,
 			tabFormatVir: paths.tabFormatVir,
 			zenyPathVir: paths.zenyPathVir,
 			weightPathVir: paths.weightPathVir,
@@ -987,12 +1017,16 @@ ROGlobalZeroInventory.validate = function()
 			InventoryTabsStatic.NumberFormat,
 			InventoryTabsStatic.NumberFormatBytes
 		);
-		for (let i = 0; i < InventoryTabsStatic.ItemEndCountSites.length; i++)
-			InventoryTabsStatic.assertCode(
-				`inventory item end count ${i + 1}`,
-				InventoryTabsStatic.ItemEndCountSites[i],
-				InventoryTabsStatic.ItemEndCountBytes
-			);
+		InventoryTabsStatic.assertCode(
+			"inventory initial visible-row store",
+			InventoryTabsStatic.InitialRowStore,
+			InventoryTabsStatic.InitialRowStoreBytes
+		);
+		InventoryTabsStatic.assertCode(
+			"inventory resize visible-row store",
+			InventoryTabsStatic.ResizeRowStore,
+			InventoryTabsStatic.ResizeRowStoreBytes
+		);
 		return true;
 	}
 	catch (error)

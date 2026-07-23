@@ -66,7 +66,7 @@ CustomUI:
             title : RO Global Zero Inventory
             recommend : no
             author : Louis T Steinhil
-            desc : Uses the shared RO Global Zero theme state to select between the stock inventory and renewal tab_pri_%02d.bmp tabs, reserved bottom row, expanded Zeny/weight panel, and vertical-tab balloons. Open inventory windows are recreated when the setting changes. No inventory DLL import is added.
+            desc : Uses the shared RO Global Zero theme state to select between the stock inventory and renewal tab_pri_%02d.bmp tabs, a native reserved footer row, expanded Zeny/weight panel, and vertical-tab balloons. Item drawing, hit targets, scrolling, paging, and resize calculations all honor the footer reservation. Open inventory windows are recreated when the setting changes. No inventory DLL import is added.
 
         - ROGlobalZeroBasicInfo:
             title : RO Global Zero Basic Information HUD
