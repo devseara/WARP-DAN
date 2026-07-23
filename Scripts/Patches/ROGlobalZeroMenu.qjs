@@ -18,19 +18,17 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-19                                             *
-*   Last Modified : 2026-07-20                                             *
+*   Last Modified : 2026-07-23                                             *
 *                                                                          *
 *   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
-*                   Ragexe, redirects its textures to uirenewal/menuicon,  *
-*                   and compacts the enabled stock child controls over a   *
-*                   renewal panel whose height follows the visible rows.   *
-*                   The native dispatcher, click,                          *
-*                   hover, notification, and open/close behavior remain    *
-*                   intact. The collapsed-state hit test follows the       *
-*                   relocated MENU child instead of the stock (0,0)        *
-*                   assumption. Button visibility remains controlled by    *
-*                   Hide/Show Buttons (New UI). The 428x333 parent is      *
-*                   anchored ten pixels from the bottom-right. QJS-only.   *
+*                   Ragexe, redirects New UI textures to uirenewal/menuicon*
+*                   and compacts enabled stock controls into five columns. *
+*                   New UI also right-aligns naturally available Cash Shop,*
+*                   Gold PC Cafe, Roulette, and RO DEX windows in a compact *
+*                   vertical stack below the minimap. Hidden or absent      *
+*                   launchers consume no row and are never created or       *
+*                   force-shown. Classic UI restores each captured native   *
+*                   position. QJS-only.                                    *
 *                                                                          *
 \**************************************************************************/
 
@@ -56,6 +54,15 @@ const MenuZeroStatic = {
 	GetWindow: 0x00A47B90,
 	CloseWindow: 0x00A2E770,
 	CreateWindow: 0x00A39340,
+	SetVisibleOriginal: 0x005AAD80,
+	MakeWindowSwitchSite: 0x00A394C8,
+	MakeWindowSwitchBytes: "0F B6 86 A8 2C A4 00 FF 24 85 04 29 A4 00",
+	PostMakeWindowSite: 0x00A42620,
+	PostMakeWindowReturn: 0x00A42625,
+	PostMakeWindowBytes: "8B 45 EC 85 C0",
+	GoldPositionSite: 0x00A40368,
+	GoldPositionReturn: 0x00A4036D,
+	GoldPositionBytes: "50 8B CE FF D2",
 	TabItmFormat: 0x0102AC48,
 	BackgroundCopyBlock: 0x00814359,
 	BackgroundCopyReturn: 0x0081438B,
@@ -86,6 +93,9 @@ const MenuZeroStatic = {
 	ClassicProvisionalHeight: 197,
 	ClassicFinalHeight: 238,
 	ScreenMargin: 10,
+	MinimapRightInset: 17,
+	LauncherFirstCenterY: 204,
+	LauncherRowGap: 10,
 	GridX: 13,
 	GridY: 12,
 	GridColumns: 5,
@@ -100,6 +110,41 @@ const MenuZeroStatic = {
 	BackgroundBufferSize: 48,
 	ChildOffsets: [0xCC, 0xD0, 0xD4],
 	TreeOffsets: [0xB4, 0xBC],
+	LauncherStateNativeRightInset: 0,
+	LauncherStateNativeY: 4,
+	LauncherStatePositionValid: 8,
+	LauncherStateWindow: 12,
+	LauncherStateStride: 16,
+	ManagedWindows: [
+		{
+			key: "cashShop",
+			label: "Cash Shop launcher",
+			windowId: 0xBE,
+			windowCase: 0x8A,
+			vtable: 0x010349E4
+		},
+		{
+			key: "goldPc",
+			label: "Gold PC Cafe",
+			windowId: 0x10B,
+			windowCase: 0xAF,
+			vtable: 0x01039F60
+		},
+		{
+			key: "roulette",
+			label: "Roulette",
+			windowId: 0x10C,
+			windowCase: 0xB0,
+			vtable: 0x0103A038
+		},
+		{
+			key: "rodexNotification",
+			label: "RO DEX notification",
+			windowId: 0x106,
+			windowCase: 0xAB,
+			vtable: 0x01039DAC
+		}
+	],
 	CommandGrid: [
 		[0x0C0, 0], [0x0C3, 1], [0x0C2, 2], [0x0C4, 3], [0x0C7, 4],
 		[0x175, 5], [0x169, 6], [0x0DB, 7], [0x1AE, 8], [0x0C1, 9],
@@ -257,6 +302,13 @@ MenuZeroStatic.allocateBytes = function(bytes, alignment = 1)
 	return {phy: phyAddr, vir: virAddr, bytes};
 };
 
+MenuZeroStatic.allocateCode = function(assembly)
+{
+	const [phy, vir] = Exe.Allocate(assembly.bytes.length, 0x10);
+	Exe.SetHex(phy, assembly.finish(vir));
+	return {phy, vir, size: assembly.bytes.length};
+};
+
 MenuZeroStatic.resourcePrefix = function()
 {
 	const source = MenuZeroStatic.readCString(MenuZeroStatic.TabItmFormat, 192);
@@ -350,6 +402,15 @@ MenuZeroStatic.pushImmediate = function(a, value)
 		a.emit(0x68);
 		a.dword(value);
 	}
+};
+
+MenuZeroStatic.buildPreservedThemeLoad = function(themeLoadVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);                              // PUSHFD / PUSHAD
+	a.call(themeLoadVir);
+	a.emit(0x61, 0x9D, 0xC3);                        // POPAD / POPFD / RET
+	return a;
 };
 
 MenuZeroStatic.buildBackgroundCopy = function(
@@ -493,12 +554,17 @@ MenuZeroStatic.buildAnchor = function()
 	return a;
 };
 
-MenuZeroStatic.buildPositionWrapper = function(anchorVir, themeStateVir)
+MenuZeroStatic.buildPositionWrapper = function(
+	anchorVir, themeStateVir, syncLaunchersVir
+)
 {
 	const a = MenuZeroStatic.asm();
 	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
 	a.jcc(0x84, "classic");
+	a.emit(0x51);                                      // preserve menu ECX
 	a.call(anchorVir);
+	a.emit(0x59);                                      // restore menu ECX
+	a.call(syncLaunchersVir);
 	a.emit(0xC2, 0x08, 0x00);
 	a.label("classic");
 	a.jmp(MenuZeroStatic.PositionOriginal);
@@ -767,7 +833,8 @@ MenuZeroStatic.buildMeasureRows = function(maskVir, panelHeightVir)
 };
 
 MenuZeroStatic.buildLayoutWrapper = function(
-	anchorVir, measureRowsVir, maskVir, panelHeightVir, themeStateVir
+	anchorVir, measureRowsVir, maskVir, panelHeightVir, themeStateVir,
+	syncLaunchersVir
 )
 {
 	const a = MenuZeroStatic.asm();
@@ -811,6 +878,7 @@ MenuZeroStatic.buildLayoutWrapper = function(
 	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
 	a.call(anchorVir);
 	a.label("finish");
+	a.call(syncLaunchersVir);
 	a.emit(0x58);                                      // restore stock EAX
 	a.emit(0x5F, 0x5E, 0x5B);                          // restore EDI/ESI/EBX
 	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
@@ -835,6 +903,212 @@ MenuZeroStatic.buildRefresh = function()
 	a.emit(0xB9); a.dword(MenuZeroStatic.WindowManager);
 	a.call(MenuZeroStatic.CreateWindow);
 	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+MenuZeroStatic.buildLauncherVisibility = function(
+	stateVir, themeEnabledVir, loadThemeVir, syncVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x56);                                      // PUSH ESI
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX (window)
+	a.call(loadThemeVir);
+	a.emit(0x8B, 0x44, 0x24, 0x08);                   // original visibility
+	a.emit(0x50, 0x8B, 0xCE);                         // PUSH value / MOV ECX,ESI
+	a.call(s.SetVisibleOriginal);                      // always honor native request
+	a.emit(0x83, 0x3D); a.dword(themeEnabledVir); a.emit(0x00);
+	a.jcc(0x84, "done");                             // Classic UI
+	a.emit(0x39, 0x35); a.dword(stateVir + s.LauncherStateWindow);
+	a.jcc(0x85, "done");                             // construction not captured yet
+	a.emit(0x83, 0x3D);
+	a.dword(stateVir + s.LauncherStatePositionValid);
+	a.emit(0x00);
+	a.jcc(0x84, "done");
+	a.emit(0x50);                                      // preserve native return value
+	a.call(syncVir);
+	a.emit(0x58);
+	a.label("done");
+	a.emit(0x5E, 0xC2, 0x04, 0x00);                  // POP ESI / RET 4
+	return a;
+};
+
+MenuZeroStatic.buildSyncLaunchers = function(
+	launcherStateVir, themeEnabledVir, loadThemeVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.call(loadThemeVir);
+	a.emit(0x33, 0xDB);                               // EBX=next stacked Y (unset)
+	for (let index = 0; index < s.ManagedWindows.length; index++)
+	{
+		const spec = s.ManagedWindows[index];
+		const stateVir = launcherStateVir +
+			index * s.LauncherStateStride;
+		a.emit(0x68); a.dword(spec.windowId);
+		a.emit(0xB9); a.dword(s.WindowManager);
+		a.call(s.GetWindow);
+		a.emit(0x8B, 0xF0);                            // MOV ESI,EAX (window)
+		a.emit(0x85, 0xF6);
+		a.jcc(0x84, `missing_${index}`);
+
+		a.emit(0x39, 0x35);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.jcc(0x84, `identity_ready_${index}`);
+		a.emit(0x89, 0x35);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.dword(0);
+		a.label(`identity_ready_${index}`);
+
+		a.emit(0x83, 0x3D);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.emit(0x00);
+		a.jcc(0x85, `position_ready_${index}`);
+		a.emit(0xA1); a.dword(s.DisplayPointer);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, `next_${index}`);
+		a.emit(0x8B, 0x78, 0x28);                      // display width
+		a.emit(0x2B, 0x7E, 0x1C);                      // minus native X
+		a.emit(0x89, 0x3D);
+		a.dword(stateVir + s.LauncherStateNativeRightInset);
+		a.emit(0x8B, 0x7E, 0x20);
+		a.emit(0x89, 0x3D);
+		a.dword(stateVir + s.LauncherStateNativeY);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.dword(1);
+		a.label(`position_ready_${index}`);
+
+		a.emit(0x83, 0x3D); a.dword(themeEnabledVir); a.emit(0x00);
+		a.jcc(0x84, `classic_${index}`);
+		a.emit(0x83, 0x7E, 0x28, 0x00);                // naturally visible?
+		a.jcc(0x84, `next_${index}`);                  // hidden consumes no row
+		a.emit(0x85, 0xDB);
+		a.jcc(0x85, `stack_y_ready_${index}`);
+		a.emit(0x8B, 0x7E, 0x18);                      // first window height
+		a.emit(0x47, 0xD1, 0xEF);                      // ceil(height / 2)
+		a.emit(0xBB); a.dword(s.LauncherFirstCenterY);
+		a.emit(0x2B, 0xDF);                            // first top = center-half
+		a.label(`stack_y_ready_${index}`);
+		a.emit(0xA1); a.dword(s.DisplayPointer);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, `next_${index}`);
+		a.emit(0x8B, 0x40, 0x28);                      // display width
+		a.emit(0x83, 0xE8, s.MinimapRightInset);
+		a.emit(0x2B, 0x46, 0x14);                      // right-align native width
+		a.emit(0x53, 0x50);                            // PUSH Y / PUSH X
+		a.emit(0x8B, 0x06, 0x8B, 0xCE);
+		a.emit(0xFF, 0x50, 0x10);                      // virtual SetPosition
+		a.emit(0x03, 0x5E, 0x18);                      // next Y += height
+		a.emit(0x83, 0xC3, s.LauncherRowGap);
+		a.jmp(`next_${index}`);
+
+		a.label(`classic_${index}`);
+		a.emit(0xFF, 0x35);
+		a.dword(stateVir + s.LauncherStateNativeY);
+		a.emit(0xA1); a.dword(s.DisplayPointer);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, `discard_y_${index}`);
+		a.emit(0x8B, 0x40, 0x28);
+		a.emit(0x2B, 0x05);
+		a.dword(stateVir + s.LauncherStateNativeRightInset);
+		a.emit(0x50);
+		a.emit(0x8B, 0x06, 0x8B, 0xCE);
+		a.emit(0xFF, 0x50, 0x10);                      // restore native position
+		a.jmp(`next_${index}`);
+		a.label(`discard_y_${index}`);
+		a.emit(0x58);                                  // discard pushed native Y
+		a.jmp(`next_${index}`);
+
+		a.label(`missing_${index}`);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.dword(0);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.dword(0);
+		a.label(`next_${index}`);
+	}
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC3);
+	return a;
+};
+
+MenuZeroStatic.buildPostMakeWindow = function(
+	launcherStateVir, syncVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x9C, 0x60);                              // preserve MakeWindow state
+	a.emit(0x8B, 0x45, 0x08);                        // MOV EAX,[EBP+8] (ID)
+	a.emit(0x3D); a.dword(s.WindowId);
+	a.jcc(0x84, "menu_ready");
+	for (let index = 0; index < s.ManagedWindows.length; index++)
+	{
+		a.emit(0x3D); a.dword(s.ManagedWindows[index].windowId);
+		a.jcc(0x84, `capture_${index}`);
+	}
+	a.jmp("done");
+
+	for (let index = 0; index < s.ManagedWindows.length; index++)
+	{
+		const spec = s.ManagedWindows[index];
+		const stateVir = launcherStateVir +
+			index * s.LauncherStateStride;
+		a.label(`capture_${index}`);
+		a.emit(0x8B, 0x75, 0xEC);                      // new window
+		a.emit(0x85, 0xF6);
+		a.jcc(0x84, "done");
+		a.emit(0x39, 0x35);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.jcc(0x84, `state_ready_${index}`);
+		a.emit(0x89, 0x35);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.dword(0);
+		a.label(`state_ready_${index}`);
+		a.call(syncVir);
+		a.jmp("done");
+	}
+
+	a.label("menu_ready");
+	a.emit(0x8B, 0x75, 0xEC);                        // created/existing menu
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "done");
+	a.call(syncVir);
+
+	a.label("done");
+	a.emit(0x61, 0x9D);
+	a.emit(0x8B, 0x45, 0xEC, 0x85, 0xC0);            // stolen MOV/TEST
+	a.jmp(s.PostMakeWindowReturn);
+	return a;
+};
+
+MenuZeroStatic.buildGoldPositionCapture = function(stateVir)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x8B, 0x0D); a.dword(s.DisplayPointer);
+	a.emit(0x8B, 0x49, 0x28);
+	a.emit(0x2B, 0xC8);                                // display width - native X
+	a.emit(0x89, 0x0D);
+	a.dword(stateVir + s.LauncherStateNativeRightInset);
+	a.emit(0x8B, 0x0C, 0x24);
+	a.emit(0x89, 0x0D); a.dword(stateVir + s.LauncherStateNativeY);
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + s.LauncherStatePositionValid);
+	a.dword(1);
+	a.emit(0x89, 0x35);
+	a.dword(stateVir + s.LauncherStateWindow);
+	a.emit(0x50, 0x8B, 0xCE, 0xFF, 0xD2);            // stolen block
+	a.jmp(s.GoldPositionReturn);
 	return a;
 };
 
@@ -865,6 +1139,36 @@ MenuZeroStatic.assertVtable = function(label, entryVir, expectedVir)
 		);
 	}
 	return phyAddr;
+};
+
+MenuZeroStatic.getManagedWindowRoutes = function()
+{
+	const s = MenuZeroStatic;
+	const switchPhy = s.assertCode(
+		"UIWindowMgr::MakeWindow main switch",
+		s.MakeWindowSwitchSite,
+		s.MakeWindowSwitchBytes
+	);
+	const indexTableVir = Exe.GetUint32(switchPhy + 3);
+	const indexTablePhy = Exe.Vir2Phy(indexTableVir, CODE);
+	if (indexTablePhy < 0)
+		throw Error("ROGlobalZeroMenu: MakeWindow index table is not mapped");
+	const routes = [];
+	for (const spec of s.ManagedWindows)
+	{
+		const entryPhy = indexTablePhy + spec.windowId;
+		const currentCase = Exe.GetUint8(entryPhy);
+		if (currentCase !== spec.windowCase)
+		{
+			throw Error(
+				`ROGlobalZeroMenu: ${spec.label} route expected ` +
+				`0x${spec.windowCase.toString(16).toUpperCase()}, got ` +
+				`0x${currentCase.toString(16).toUpperCase()}`
+			);
+		}
+		routes.push({key: spec.key, entryPhy, currentCase});
+	}
+	return routes;
 };
 
 MenuZeroStatic.pushBytes = function(pointer)
@@ -933,8 +1237,32 @@ MenuZeroStatic.verifyNativeLayout = function()
 			MenuZeroStatic.DescriptorPointer,
 			MenuZeroStatic.DescriptorPointerBytes
 		),
+		postMakeWindowPhy: MenuZeroStatic.assertCode(
+			"post-MakeWindow launcher seam",
+			MenuZeroStatic.PostMakeWindowSite,
+			MenuZeroStatic.PostMakeWindowBytes
+		),
+		goldPositionPhy: MenuZeroStatic.assertCode(
+			"Gold native-position seam",
+			MenuZeroStatic.GoldPositionSite,
+			MenuZeroStatic.GoldPositionBytes
+		),
+		managedWindowRoutes: MenuZeroStatic.getManagedWindowRoutes(),
+		launcherVisibilityEntries: [],
 		resourcePushes: []
 	};
+
+	for (const spec of MenuZeroStatic.ManagedWindows)
+	{
+		verified.launcherVisibilityEntries.push({
+			spec,
+			entryPhy: MenuZeroStatic.assertVtable(
+				`${spec.label} visibility vtable`,
+				spec.vtable + 14 * 4,
+				MenuZeroStatic.SetVisibleOriginal
+			)
+		});
+	}
 
 	for (const resource of MenuZeroStatic.ResourcePushes)
 	{
@@ -964,8 +1292,12 @@ ROGlobalZeroMenu = function(_)
 	{
 		throw Error("ROGlobalZeroMenu: ROGlobalZeroUITheme must run first");
 	}
+	if (!Warp.TestMode)
+		Warp.SetPatchState("MoveShopIcon", false);
+	const themeEnabledVir = theme.stateVir +
+		(Number.isInteger(theme.enabledOffset) ? theme.enabledOffset : 0);
 
-	$$(_, 1, "Verify native menu vtables, resource operands, and layout blocks");
+	$$(_, 1, "Verify menu, launcher, visibility, and layout seams");
 	const verified = MenuZeroStatic.verifyNativeLayout();
 
 	$$(_, 2, "Allocate renewal menu resources and the chatting descriptor");
@@ -1002,8 +1334,41 @@ ROGlobalZeroMenu = function(_)
 	], 4);
 	const visibleMaskVir = layoutState.vir;
 	const panelHeightVir = layoutState.vir + 4;
+	const launcherState = MenuZeroStatic.allocateBytes(
+		new Array(
+			MenuZeroStatic.ManagedWindows.length *
+			MenuZeroStatic.LauncherStateStride
+		).fill(0),
+		4
+	);
+	const loadTheme = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildPreservedThemeLoad(theme.loadVir)
+	);
+	const syncLaunchers = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncLaunchers(
+			launcherState.vir,
+			themeEnabledVir,
+			loadTheme.vir
+		)
+	);
+	const launcherVisibility = [];
+	for (let index = 0; index < MenuZeroStatic.ManagedWindows.length; index++)
+	{
+		const stateVir = launcherState.vir +
+			index * MenuZeroStatic.LauncherStateStride;
+		launcherVisibility.push(
+			MenuZeroStatic.allocateCode(
+				MenuZeroStatic.buildLauncherVisibility(
+					stateVir,
+					themeEnabledVir,
+					loadTheme.vir,
+					syncLaunchers.vir
+				)
+			)
+		);
+	}
 
-	$$(_, 3, "Inject compact reflow, row-sized background, and bottom-right anchor");
+	$$(_, 3, "Inject compact menu reflow and under-minimap launchers");
 	const measureRows = MenuZeroStatic.buildMeasureRows(
 		visibleMaskVir, panelHeightVir
 	);
@@ -1059,7 +1424,7 @@ ROGlobalZeroMenu = function(_)
 	const [anchorPhy, anchorVir] = Exe.Allocate(anchor.bytes.length, 0x10);
 	Exe.SetHex(anchorPhy, anchor.finish(anchorVir));
 	const positionWrapper = MenuZeroStatic.buildPositionWrapper(
-		anchorVir, theme.stateVir
+		anchorVir, theme.stateVir, syncLaunchers.vir
 	);
 	const [positionWrapperPhy, positionWrapperVir] = Exe.Allocate(
 		positionWrapper.bytes.length, 0x10
@@ -1075,12 +1440,33 @@ ROGlobalZeroMenu = function(_)
 		measureRowsVir,
 		visibleMaskVir,
 		panelHeightVir,
-		theme.stateVir
+		theme.stateVir,
+		syncLaunchers.vir
 	);
 	const [layoutWrapperPhy, layoutWrapperVir] = Exe.Allocate(
 		layoutWrapper.bytes.length, 0x10
 	);
 	Exe.SetHex(layoutWrapperPhy, layoutWrapper.finish(layoutWrapperVir));
+	const postMakeWindow = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildPostMakeWindow(
+			launcherState.vir,
+			syncLaunchers.vir
+		)
+	);
+	let goldIndex = -1;
+	for (let index = 0; index < MenuZeroStatic.ManagedWindows.length; index++)
+	{
+		if (MenuZeroStatic.ManagedWindows[index].key === "goldPc")
+			goldIndex = index;
+	}
+	if (goldIndex < 0)
+		throw Error("ROGlobalZeroMenu: Gold PC launcher specification missing");
+	const goldPositionCapture = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildGoldPositionCapture(
+			launcherState.vir +
+			goldIndex * MenuZeroStatic.LauncherStateStride
+		)
+	);
 	const resourceSelectors = {};
 	for (const resource of MenuZeroStatic.ResourcePushes)
 	{
@@ -1109,7 +1495,7 @@ ROGlobalZeroMenu = function(_)
 		Exe.SetHex(phy, selector.finish(vir));
 		sizeSelectors[selectorSpec[0]] = {phy, vir, size: selector.bytes.length};
 	}
-	$$(_, 4, "Redirect textures and activate the renewal menu geometry");
+	$$(_, 4, "Activate theme geometry and reversible launcher ownership");
 	for (const push of verified.resourcePushes)
 	{
 		Exe.SetCALL(
@@ -1134,6 +1520,15 @@ ROGlobalZeroMenu = function(_)
 	Exe.SetUint32(verified.positionVtablePhy, positionWrapperVir);
 	Exe.SetUint32(verified.hitTestVtablePhy, hitTestWrapperVir);
 	Exe.SetUint32(verified.layoutVtablePhy, layoutWrapperVir);
+	for (let index = 0; index < verified.launcherVisibilityEntries.length; index++)
+	{
+		Exe.SetUint32(
+			verified.launcherVisibilityEntries[index].entryPhy,
+			launcherVisibility[index].vir
+		);
+	}
+	Exe.SetJMP(verified.postMakeWindowPhy, postMakeWindow.vir, 0);
+	Exe.SetJMP(verified.goldPositionPhy, goldPositionCapture.vir, 0);
 
 	if (typeof PatchDiagnostics !== "undefined" &&
 		typeof PatchDiagnostics.add === "function")
@@ -1141,7 +1536,26 @@ ROGlobalZeroMenu = function(_)
 		const pathPointers = {};
 		for (const resource of MenuZeroStatic.ResourcePushes)
 			pathPointers[resource.name] = resourcePaths[resource.name].vir;
+		const launcherDiagnostics = [];
+		for (let index = 0; index < MenuZeroStatic.ManagedWindows.length; index++)
+		{
+			const spec = MenuZeroStatic.ManagedWindows[index];
+			launcherDiagnostics.push({
+				key: spec.key,
+				label: spec.label,
+				windowId: spec.windowId,
+				naturalRouteCase:
+					verified.managedWindowRoutes[index].currentCase,
+				stackOrder: index,
+				forceCreated: false,
+				visibilityVtableVir: spec.vtable + 14 * 4,
+				visibilityWrapperVir: launcherVisibility[index].vir,
+				stateVir: launcherState.vir +
+					index * MenuZeroStatic.LauncherStateStride
+			});
+		}
 		PatchDiagnostics.add("ROGlobalZeroMenu.QjsOnly", {
+			version: 2,
 			menuWindowId: MenuZeroStatic.WindowId,
 			nativeDispatcherVir: MenuZeroStatic.NativeDispatcher,
 			factoryCaseVir: MenuZeroStatic.FactoryCase,
@@ -1167,6 +1581,21 @@ ROGlobalZeroMenu = function(_)
 			visibleMaskVir,
 			panelHeightVir,
 			themeStateVir: theme.stateVir,
+			themeEnabledVir,
+			themeLoadBridgeVir: loadTheme.vir,
+			launcherStateVir: launcherState.vir,
+			syncLaunchersVir: syncLaunchers.vir,
+			launcherLayoutPolicy:
+				"visible existing windows compact below the minimap",
+			launcherRightInset: MenuZeroStatic.MinimapRightInset,
+			launcherFirstCenterY: MenuZeroStatic.LauncherFirstCenterY,
+			launcherRowGap: MenuZeroStatic.LauncherRowGap,
+			postMakeWindowVir: postMakeWindow.vir,
+			goldPositionCaptureVir: goldPositionCapture.vir,
+			launchers: launcherDiagnostics,
+			externalCashShopPolicy: "natural visibility; first stack slot",
+			rodexNotificationPolicy: "natural visibility; fourth stack slot",
+			missingLauncherPolicy: "query only; never create",
 			backgroundPathVir: background.vir,
 			backgroundPathLength: MenuZeroStatic.BackgroundPathLength,
 			descriptorVir: descriptor.vir,

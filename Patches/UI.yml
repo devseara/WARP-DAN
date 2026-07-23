@@ -60,7 +60,7 @@ CustomUI:
             title : RO Global Zero UI Theme Toggle
             recommend : no
             author : Louis T Steinhil
-            desc : Adds the native-looking Classic UI / New UI switch to the Game Settings Basic tab using uirenewal/basicinfo/btn_tema_0.bmp and btn_tema_1.bmp. Its persisted state is shared by the RO Global Zero Basic Information, Experience Bar, Inventory, and Menu patches; switching themes refreshes open dependent windows immediately. QJS-only.
+            desc : Adds the native-looking Classic UI / New UI switch to the Game Settings Basic tab using uirenewal/basicinfo/btn_tema_0.bmp and btn_tema_1.bmp. Its persisted state is shared by the RO Global Zero Basic Information, Experience Bar, Inventory, Status Icons V2, and Menu patches; switching themes refreshes open dependent windows immediately. QJS-only.
 
         - ROGlobalZeroInventory:
             title : RO Global Zero Inventory
@@ -75,10 +75,10 @@ CustomUI:
             desc : Replaces both classic and AP-class Basic Information render paths with the compact 238x59 RO Global Zero HUD, unscaled 194x36 precomposited gauge frame, live HP/SP fills, Base Level, character name, and native Job-name hover tooltip. The frame and HP-fill composites preserve the centered markers without a separate transparent overlay; SP occupies native frame-local rows 20..30 so the divider gap is removed and the frame's lower white line remains unobstructed. Native Basic Info OnCreate registers an overlapping 52x52 UIJobIconButton child after the stock child list is initialized; the child owns its cached renderer and hover handler. ROGlobalZeroUITheme restores the stock expanded/compact renderer and Alt+V behavior in Classic mode while New UI remains compact. Requires the matching uirenewal/basicinfo and uirenewal/jobicon/big BMP assets. QJS-only.
 
         - ROGlobalZeroStatusIcons:
-            title : RO Global Zero Top Status Icons
+            title : RO Global Zero Status Icons V2
             recommend : no
             author : Louis T Steinhil
-            desc : Moves the 2025-07-16 status-effect icons into a resolution-aware block beside the minimap while preserving native rendering and scale. /statusicons is the sole custom-layout toggle and is independent of /layout, UI theme, and Game Settings. Its validated toggle byte is written immediately to savedata/roglobal_status_icons.dat and restored across character-select and client restarts; missing or invalid files default to enabled. Enabled mode fills right-to-left on the dynamic 34x35px grid from the minimap toward HP/SP and wraps only after the available first-row width is exhausted; hover covers each full rendered 32x32 tile, leaving 2px horizontal and 3px vertical gutters. Disabled mode replays the native renderer, hit-test, and pristine tooltip block. The natural Cash Shop (ID 190), RO DEX notification (ID 262), Internet Cafe Gold (ID 267), and Roulette (ID 268) routes remain intact. When naturally present, Roulette and Cash Shop share the top row at the compact minimap's left and right edges. RO DEX sits below Cash Shop, with Gold PC below RO DEX in the same right-aligned column; each right-column launcher uses its native runtime width. Disabled mode restores native coordinates, using the captured Gold position and validated native constants for the other three. The patch only queries existing windows and never creates, shows, closes, or force-shows them. QJS-only.
+            desc : Version 2 uses the persisted RO Global Zero Classic UI / New UI setting as its only controller; the legacy independent command and separate saved-state file are removed. New UI moves the 2025-07-16 status-effect icons into a resolution-aware 34x35px block beside the minimap, fills right-to-left toward HP/SP, and wraps only after the available first-row width is exhausted. Hover covers each full rendered 32x32 tile with 2px horizontal and 3px vertical gutters. Classic UI replays the pristine native renderer, hit-test, and tooltip paths. Native rendering and icon scale remain untouched. QJS-only.
 
         - ROGlobalZeroExpBar:
             title : RO Global Zero Experience Bar
@@ -90,7 +90,7 @@ CustomUI:
             title : RO Global Zero Renewal Menu
             recommend : no
             author : Louis T Steinhil
-            desc : Uses the shared RO Global Zero theme state to select the stock UIMenuIconWnd resources, geometry, layout, and hit testing for Classic UI or the uirenewal/menuicon bottom-right panel for New UI. Enabled buttons compact in native command order, and the translucent panel contracts vertically when fewer rows are needed. The native menu window is recreated when the setting changes. QJS-only.
+            desc : Uses the shared RO Global Zero theme state to select the stock UIMenuIconWnd resources, geometry, layout, and hit testing for Classic UI or the uirenewal/menuicon bottom-right panel for New UI. Enabled native menu buttons compact into five columns. In New UI, naturally available Cash Shop, Gold PC Cafe, Roulette, and RO DEX notification windows form a native-size vertical stack below the minimap in that order, right-aligned to the minimap edge. Hidden or absent launchers consume no row and are never created or force-shown. Classic UI restores each captured native position and keeps server-driven visibility untouched. QJS-only.
 
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]

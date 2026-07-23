@@ -13,14 +13,14 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-20                                             *
-*   Last Modified : 2026-07-20                                             *
+*   Last Modified : 2026-07-23                                             *
 *                                                                          *
 *   Description   : Adds the RO Global Classic UI / New UI theme switch    *
 *                   to the native 2025-07-16 Game Settings Basic page.     *
 *                   The switch uses btn_tema_0/1.bmp, persists one byte    *
 *                   in savedata, and publishes shared QJS state consumed   *
-*                   by the Global Zero Inventory, Basic Info, EXP Bar,     *
-*                   and Menu patches.                                      *
+*                   by the Global Zero Inventory, Basic Info, Status       *
+*                   Icons, EXP Bar, and Menu patches.                      *
 *                                                                          *
 \**************************************************************************/
 
