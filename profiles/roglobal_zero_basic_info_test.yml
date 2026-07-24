@@ -1,6 +1,0 @@
-from: "C:/Users/Administrator/Documents/GitHub/WARP20250716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
-to: "C:/Users/Administrator/Documents/Ragnarok/Banquet of Heroes/ROGlobal Zero BasicInfo Test.exe"
-
-patches:
-    - DataFolderFirst
-    - ROGlobalZeroBasicInfo
