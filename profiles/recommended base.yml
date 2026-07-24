@@ -134,6 +134,7 @@ patches:
     - PatchDiagnostics
     - CustomExtName
     - CustomColoredItemName
+    - CustomColoredEnchantGradeName
     - FluentEmoji
     - OpenToServiceSelect
     - GuildBrackets

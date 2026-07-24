@@ -22,7 +22,12 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-05-25                                             *
-*   Last Modified : 2026-05-25                                             *
+*   Last Modified : 2026-07-24                                             *
+*                                                                          *
+*   Description   : Replaces stock [D]/[C]/[B]/[A] marks by numeric grade *
+*                   and publishes the identical map to the QJS-only item   *
+*                   renderer. This patch alone enables custom label words; *
+*                   server sentinel label text is never authoritative.     *
 *                                                                          *
 \**************************************************************************/
 
@@ -142,6 +147,21 @@ CustomEnchantGradeLabels = function(_)
 	});
 
 	CustomEnchantGradeLabels.HookBroadcastFormatter(_, labels, emptyLabel);
+	if (typeof ItemColorStatic === "undefined" ||
+		typeof ItemColorStatic.installGradeLabelRegistry !== "function")
+		throw Error("CustomEnchantGradeLabels: item-color grade registry unavailable");
+	const gradeConfig =
+		ItemColorStatic.installGradeLabelRegistry(labels);
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("ItemColorStatic.GradeLabels", {
+			custom: true,
+			count: labels.length,
+			pending: gradeConfig === null,
+			gradeConfigVir: gradeConfig ? gradeConfig.virAddr : 0
+		});
+	}
 
 	return true;
 };
@@ -300,5 +320,16 @@ CustomEnchantGradeLabels.LoadLabels = file =>
 	return labels;
 };
 
+CustomEnchantGradeLabels.cleanup = () =>
+{
+	if (typeof ItemColorStatic !== "undefined" &&
+		typeof ItemColorStatic.resetGradeLabelRegistry === "function")
+		ItemColorStatic.resetGradeLabelRegistry();
+	else
+		CACHE.del("ItemColorStatic.CustomGradeLabels");
+};
+
 CustomEnchantGradeLabels.validate = () =>
-	Exe.FindHex(CustomEnchantGradeLabels.Pattern) > 0;
+	Exe.FindHex(CustomEnchantGradeLabels.Pattern) > 0 &&
+	typeof ItemColorStatic !== "undefined" &&
+	typeof ItemColorStatic.installGradeLabelRegistry === "function";

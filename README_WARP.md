@@ -130,3 +130,6 @@ WARP/
 - Windows (Only this version is available as of now but will be extended to other platforms later)
 
 ## Quick Links
+
+- [Normative item/enchant-grade color renderer contract](docs/item-grade-color-renderer-contract.md)
+- [Item/grade QJS conversion and live-validation tracker](docs/qjs-conversion-tracker.md#item-name-colors-checklist)

@@ -1,3 +1,60 @@
+# Item/enchant-grade color renderer regression fix (July 24, 2026)
+
+> **Binary patch — re-WARP required.** Existing patched clients retain the old
+> renderer and must be rebuilt.
+
+The final TextOut bridge was treating every incoming span independently, but
+the stock Item Description builder deliberately inserted a native fragment
+endpoint immediately after `[Grade] `. The bridge therefore saw `[Epic]` and
+`Knife` as unrelated draws: grade lookup colored the first fragment while the
+item database recolored the second. Separately, the exact Inventory parser
+accepted slotted `Knife [3]: 1 ea.` but omitted the stock slotless form
+`Angra manyu: 1 ea.`.
+
+The fix gates only the two profiled, grade-guarded post-formatter endpoint
+insertions. Grade mode coalesces `[Grade] Item` before the renderer sees it;
+item-only mode executes the exact stock endpoint operation. No grade color is
+carried between draw calls. The Inventory grammar now accepts the anchored
+space-quantity, colon-quantity, and slotted-colon-quantity forms.
+
+The renderer contract is now explicit and enforced:
+
+- a matching enchant-grade color overrides the item-color database for the
+  complete decorated title;
+- the native post-grade endpoint is coalesced only while grade coloring is
+  active, so the decorated title reaches TextOut as one exact UTF-16 span;
+- item-only mode preserves the stock title endpoints semantically;
+- exact matching covers `Name <count> ea.`, `Name: <count> ea.`, and
+  `Name [<slots>]: <count> ea.` without permitting substrings;
+- the exact grade-matched Inventory quantity tail is omitted;
+- matched dark/shadow draws return success without drawing;
+- foreground draws restore the original HDC color;
+- no cross-call grade continuation or extent/alignment title splitting exists;
+- stock `D/C/B/A` labels are used unless `CustomEnchantGradeLabels` is
+  selected;
+- `_GRADE_<n>_<server-label>` is resolved by number and ignores the server
+  label;
+- patch order does not change grade mode or label selection.
+- `profiles/20250716.yml` no longer selects the DLL-backed
+  `CustomRuneSystem`; it and `profiles/2025-07-16 PROFILE MAIN.yml` retain the
+  generic `CustomDLL` entry only for the checked-in `cps.dll` specification.
+
+The normative behavior, forbidden implementations, and required 2025/2026
+acceptance matrix are documented in
+[`docs/item-grade-color-renderer-contract.md`](docs/item-grade-color-renderer-contract.md).
+The final-PE verifier requires the endpoint gates as well as the TextOut
+bridge, so the previously broken executable can no longer pass. Inventory,
+Alt+Q, and Item Description remain live-visual acceptance gates before this
+feature returns to “Working.”
+
+The user live-confirmed the reported 2025 Item Description and slotless
+Inventory regressions fixed in the full main-profile artifact
+`2025-07-16_Ragexe_175220998_item_grade_fixed.exe` (SHA-256
+`365A40D70865D8992E34473DBBE96BECBDB917CBEAEDD4E49F83FE57A6E21686`).
+The complete 2026 live-visual matrix remains pending.
+
+---
+
 # CrazyBebop - 2025-07-16 build (July 15, 2026)
 
 > **Patch update - re-WARP to apply.** This adds four community patches and fixes the mob/boss bar resize crash; re-apply WARP with the updated patches to use them.

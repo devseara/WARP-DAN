@@ -276,6 +276,7 @@ patches:
     - IncrViewID
     - IncrMapQuality
     - EnableEffectTool
+    # Keep the generic importer only for Inputs/DLLSpec.yml -> cps.dll.
     - CustomDLL
     - HideBuildInfo
     - NoCameraLock
@@ -318,6 +319,7 @@ patches:
     - RemoveMaxNumbersLimit
     - CustomExtName
     - CustomColoredItemName
+    - CustomColoredEnchantGradeName
     - CustomPlayerNameColor
     - FluentEmoji
     - InGamePincodeUI

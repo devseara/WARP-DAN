@@ -9,6 +9,10 @@
 #   The client adds the brackets, so Label: Rare displays as              #
 #   "[Rare] Item Name".                                                    #
 #                                                                          #
+#   This map is active only when CustomEnchantGradeLabels is selected.     #
+#   Without that patch, grades 1-4 remain D, C, B, and A. The grade number #
+#   is authoritative; any label text sent in _GRADE_<n>_<text> is ignored. #
+#                                                                          #
 #   You can add future grades here if your client/server starts            #
 #   using them:                                                            #
 #     - Grade: 5                                                           #

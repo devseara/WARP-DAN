@@ -113,7 +113,7 @@ view-entry bursts remain available until the QJS frame consumers run.
 - `CustomRuneSystem.qjs`: Prompts for `boh.dll` or `boh_rune.dll`
 - `CustomExtName.qjs`: QJS-only bounded EXTN exact-text map; no custom DLL import
 - `CustomPlayerNameColor.qjs`: QJS-only exact player-name color scope; no custom DLL import
-- `CustomColoredItemName.qjs`: QJS-only ICOL item/grade coloring; no custom DLL import
+- `CustomColoredItemName.qjs`: QJS-only bounded ICOL exact-name renderer; no custom DLL import. Anchored matching covers stock slotless/slotted Inventory quantity forms. A matching grade color conditionally coalesces the native post-grade endpoint and owns the complete decorated title; Inventory quantity tails are omitted for grade matches, and matched dark draws are suppressed. The normative contract is `docs/item-grade-color-renderer-contract.md`.
 - `FpsOverlay.qjs`: QJS-only post-Present frame counter and prompted-position static GDI renderer
 - `AlwaysShowNpcName.qjs`: QJS-only bounded EXTN table, native balloon frame cave, and static `/shownpcname` toggle
 - `ROGlobalZeroInventory.qjs`: QJS-only native inventory layout, tabs, tooltips, and Zeny/weight panel
@@ -669,11 +669,12 @@ and console. Convention: `<Section>.<Subsection>.<Step>` numbering.
 | Multiple GRFs | GRFsFromIni | None |
 | Custom jobs | CustomJobs, IncrViewID | JobInfo Lua files required |
 | Custom skills | CustomPlayerSkills | SkillInfo Lua files required |
-| Custom items (colors) | CustomColoredItemName | boh.dll required |
+| Custom items (colors) | CustomColoredItemName | No custom DLL; server 0x0BDD ICOL support required; exact display-name keys with anchored stock suffix grammar |
 | Extended names and player colors | CustomExtName, CustomPlayerNameColor | No custom DLL; server 0x0BB7 EXTN support required |
-| Enchant grades | CustomEnchantGradeLabels | ench_grade.yml required |
+| Colored enchant-grade item titles | CustomColoredItemName, CustomColoredEnchantGradeName | Server numeric `_GRADE_<n>_*` ICOL entries; conditional native endpoint gate makes grade color override the complete decorated title without cross-call state |
+| Custom enchant-grade label words | CustomEnchantGradeLabels | `Inputs/enchant_grade.yml`; otherwise the renderer uses stock D/C/B/A |
 | Rune system | CustomRuneSystem | boh.dll required |
-| FPS/Ping overlay | FpsOverlay, PingOverlay | boh.dll required |
+| FPS/Ping overlay | FpsOverlay, PingOverlay | No custom DLL; QJS-only post-Present renderer |
 | Case-insensitive search | InsensitiveStorageSearch, InsensitiveShopSearch | CaseInsensitiveSearch shared module |
 | Camera improvements | MediumCamAngle, Zoom75Percent | None |
 | Packet encryption control | CustomFirstKey + CustomSecondKey + CustomThirdKey OR NoPacketEncr + NoEncrForLC | CustomKeys need NoEncrForLC |

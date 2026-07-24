@@ -104,6 +104,7 @@ PatchDiagnostics.write = function(_)
 		'TranslateClient',
 		'CustomDLL',
 		'CustomColoredItemName',
+		'CustomColoredEnchantGradeName',
 		'CustomEnchantGradeLabels',
 		'CustomExtName',
 		'InGamePincodeUI',

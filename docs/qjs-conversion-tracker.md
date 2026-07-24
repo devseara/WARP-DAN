@@ -24,7 +24,7 @@ Status meanings:
 | Always-show NPC names | Working | QJS-only bounded EXTN balloon renderer and static `/shownpcname`, with live-confirmed one-byte persistence in `savedata/shownpcname.dat`. |
 | Extended names | Working | QJS-only EXTN ring drain feeds a bounded exact-text map. Mob details use the official `0x0ADF` Group Title/ID row above the independently rendered stock mob name. |
 | Player-name colors | Working | QJS-only EXTN exact-text entries apply RGB around matching non-shadow player-name draws and restore the original GDI color afterward. |
-| Item-name colors | Working | QJS-only `0x0BDD` ICOL drain, bounded UTF-8 substring/grade table, static TextOutW color bridge, dark-shadow suppression and grade-label continuation; confirmed across item windows and client transitions. |
+| Item-name colors | 2025 live-confirmed; 2026 live validation pending | QJS-only `0x0BDD` ICOL drain, bounded exact item/grade table, anchored slotless/slotted Inventory grammar, conditional native post-grade endpoint gates, and a non-splitting static TextOutW bridge. A matching grade color wins the complete decorated title, grade quantities are omitted, and matched dark draws are suppressed. See the normative renderer contract; do not use split spans or cross-call grade continuation. |
 | Fluent emoji | Working (NPC menus) | QJS-only manifest table and EXE-resident GDI+ draw/measure caves support `:shortcode:`, compact `@shortcode@`, and raw Unicode aliases. Compact menu icons, sizing, colors, and mixed text/icon rows are live-confirmed; no custom DLL or API detour is used. |
 | Rune visual system | Planned | Translate the existing static bridge handlers to native caves and bake configuration at patch time. |
 | FPS overlay | Implemented, test required | QJS-only post-Present cave counts native frames and draws at prompted X/Y coordinates through existing Win32 imports. No D3D proxy or custom DLL. |
@@ -182,16 +182,37 @@ Status meanings:
 
 - [x] Remove `ColoredItemNameVisualInit`, `BohTextOutW`, and `BohGetTextExtentPoint32W` imports from the patch.
 - [x] Reuse the dispatcher-table `0x0BDD` ICOL block without `recv` or system-API hooks.
-- [x] Parse the packet into a bounded 512-entry UTF-8 substring/color table (enough for the maximum 4092-byte wire packet).
-- [x] Convert `_GRADE_<n>_<label>` sentinels into grade-label matches.
+- [x] Parse the packet into the bounded 256-entry UTF-8 exact-name/color table used by both profiled clients.
+- [x] Parse `_GRADE_<n>_<server-label>` numerically, ignore the server label, and resolve the active client label from patch state.
 - [x] Chain after the EXTN/player-color TextOutW bridge regardless of profile order.
-- [x] Preserve dark-shadow suppression, GDI color restoration, and adjacent grade-name continuation.
+- [x] Give a matching grade color precedence over the complete decorated title; the item database is only a fallback.
+- [x] Gate the two profiled native post-grade endpoint insertions only while grade coloring is active, so grade plus item reaches TextOut as one exact UTF-16 span; replay exact stock endpoint behavior in item-only mode.
+- [x] Keep the TextOut bridge non-splitting and free of cross-call continuation.
+- [x] Accept anchored `Name <count> ea.`, `Name: <count> ea.`, and `Name [<slots>]: <count> ea.` Inventory forms.
+- [x] Omit the exact Inventory quantity tail from grade-matched titles while retaining the slot suffix.
+- [x] Suppress matched dark/shadow draws and restore the HDC color after the one foreground draw.
+- [x] Match exact base items after recognized decorations; `Knife` must not match `Zeny Knife`.
 - [x] Disable the compiled item-color module for the next combined DLL rebuild.
 - [x] Build the full profile and verify the output has no item-color/text-bridge BOH imports.
-- [x] Confirm normal item-name colors in inventory, equipment, storage, cart and shop lists.
-- [x] Confirm grade labels and split/wrapped grade-name continuation in Alt+Q and hover balloons.
-- [x] Confirm item-detail description/title text is not incorrectly recolored.
+- [x] Live-confirm the reported 2025 regressions: slotless
+      `Angra manyu: 1 ea.` exact color and one grade-owned Item Description
+      title instead of independently colored `[Epic]` / `Knife` fragments.
+- [ ] Repeat the reported Inventory, Alt+Q, and Item Description checks on the
+      2026 client, including quantity omission, unknown glyphs/detached `]`,
+      and matched-shadow suppression.
+- [ ] Complete the remaining all-surface visual matrix for stock `D/C/B/A`,
+      custom label maps, both patch orders, and distinct grade/item colors.
 - [x] Confirm color-list refresh, map change, relog, F12, Alt+Tab and clean exit.
+
+The complete non-negotiable behavior and acceptance matrix are in
+[`item-grade-color-renderer-contract.md`](item-grade-color-renderer-contract.md).
+
+2025 live acceptance was reported on 2026-07-24 for the full main-profile
+artifact SHA-256
+`365A40D70865D8992E34473DBBE96BECBDB917CBEAEDD4E49F83FE57A6E21686`;
+the reported Item Description grade-precedence and slotless Inventory failures
+were fixed. The unchecked items above remain open for the complete 2026 and
+all-surface visual matrix.
 
 ## HatEffect renderer gates
 

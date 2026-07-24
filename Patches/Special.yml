@@ -126,13 +126,13 @@ CustomSkills:
             title : Color Enchant Grade Prefixes (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : "Companion option for Custom Item Name Colors. Grade entries from packet 0x0BDD color only the leading [Grade] token; the exact base item name keeps its independent item color. Select this before Custom Item Name Colors."
+            desc : "Order-independent companion for Custom Item Name Colors. A matching numeric grade entry from packet 0x0BDD conditionally coalesces the client's native post-grade title endpoint, then overrides the item-color database for the complete [Grade] name and slot suffix. Grade-matched Inventory quantity tails are omitted and matched dark shadow draws are suppressed. Uses [D]/[C]/[B]/[A] unless Custom Enchant Grade Labels is selected."
 
         - CustomColoredItemName:
             title : Enable Custom Item Name Colors (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : "For the profiled 2025-07-16 and 2026-02-19 Ragexe clients, routes variable packet 0x0BDD to a bounded ICOL table and applies exact item-name colors through guarded static TextOutW caves. A leading [Grade] token is excluded from the item color; select Color Enchant Grade Prefixes to color that token independently. No text DLL, recv hook, system-API hook, or runtime patching is used."
+            desc : "For the profiled 2025-07-16 and 2026-02-19 Ragexe clients, routes packet 0x0BDD to a bounded ICOL table and applies anchored exact item-title colors through a guarded TextOutW cave. Inventory matching accepts stock slotless and slotted quantity forms. Color Enchant Grade Prefixes conditionally coalesces the native post-grade endpoint so grade color owns the complete decorated title. Matched dark shadows are suppressed and grade quantity tails are omitted. No text DLL, recv hook, API detour, or cross-call continuation is used."
 
         - CustomPlayerNameColor:
             title : Enable Custom Player Name Colors (QJS-only)

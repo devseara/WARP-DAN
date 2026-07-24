@@ -25,17 +25,20 @@
 *   Last Modified : 2026-07-24                                             *
 *                                                                          *
 *   Description   : Routes the Banquet 0x0BDD item-color list into a       *
-*                   bounded EXE-resident table and colors item-title and   *
-*                   optional grade-name spans independently at the         *
-*                   client's TextOutW surfaces.                            *
-*                   The implementation is fully EXE-resident and retains  *
-*                   bounded UTF-8 exact matching.                         *
-*                   Normal colors are limited to item-title               *
-*                   shapes so bracketed description headings stay stock.  *
-*                   Inventory and ground item-label producers recolor     *
-*                   only the center glyph while retaining the client's    *
-*                   native outline. Targets: 2025-07-16 Ragexe and        *
-*                   2026-02-19 Ragexe.                                    *
+*                   bounded EXE-resident table and colors exact item-title *
+*                   shapes at the client's TextOutW surfaces. This patch's *
+*                   rendering contract is non-negotiable: grade mode      *
+*                   conditionally coalesces the native post-grade         *
+*                   endpoint so one complete decorated UTF-16 title is    *
+*                   drawn and the grade color always wins over the item   *
+*                   database. Inventory matching accepts only anchored    *
+*                   space-quantity, slotless-colon, and slotted-colon     *
+*                   forms. Matched shadows and grade quantity tails are   *
+*                   omitted; no draw state crosses TextOutW calls.        *
+*                   Runtime labels follow stock [D]/[C]/[B]/[A] or the    *
+*                   active custom map. Emoji and EXTN text remain         *
+*                   explicitly excluded.                                 *
+*                   Targets: 2025-07-16 and 2026-02-19 Ragexe.            *
 *                                                                          *
 \**************************************************************************/
 
@@ -57,9 +60,20 @@ ItemColorStatic = {
 			BalloonPlainTextDrawCallSites: [0x00826529],
 			BalloonStyledTextDraw: 0x00A26540,
 			BalloonStyledTextDrawCallSites: [0x00826503],
-			GetTickCountIat: 0x00FC120C,
-			GetModuleHandleIat: 0x00FC1268,
-			GetProcAddressIat: 0x00FC1390
+			GradeTitleFormatter: 0x006A2AC0,
+			GradeTitleFormatterCallSites: [0x008A0620, 0x008A0822],
+			GradeTitleGuardHex: [
+				"33 C9 66 3B 88 88 00 00 00 7D 19 6A 01 53 FF 36 8B C8",
+				"33 C9 66 3B 88 88 00 00 00 7D 2E 6A 01 53 FF 36 8B C8"
+			],
+			GradeTitleBoundaryAppendCall: 0x008A062A,
+			GradeTitleBoundaryAppendStock: 0x008D2450,
+			GradeTitleBoundaryAppendShape:
+				"8B CF 56 E8 21 1E 03 00 8B 45 08",
+			GradeTitleInlinePatch: 0x008A082D,
+			GradeTitleInlineReplay: 0x008A0833,
+			GradeTitleInlineResume: 0x008A0846,
+			GradeTitleInlineHex: "8B 47 04 3B 47 08"
 		},
 		20260219: {
 			Name: "2026-02-19 Ragexe",
@@ -77,9 +91,20 @@ ItemColorStatic = {
 			BalloonPlainTextDrawCallSites: [0x0085E209],
 			BalloonStyledTextDraw: 0x00A84E30,
 			BalloonStyledTextDrawCallSites: [0x0085E1E3],
-			GetTickCountIat: 0x010C7254,
-			GetModuleHandleIat: 0x010C72B0,
-			GetProcAddressIat: 0x010C7228
+			GradeTitleFormatter: 0x006D5780,
+			GradeTitleFormatterCallSites: [0x008DA740, 0x008DA942],
+			GradeTitleGuardHex: [
+				"33 C9 66 3B 88 88 00 00 00 7D 19 6A 01 53 FF 36 8B C8",
+				"33 C9 66 3B 88 88 00 00 00 7D 2E 6A 01 53 FF 36 8B C8"
+			],
+			GradeTitleBoundaryAppendCall: 0x008DA74A,
+			GradeTitleBoundaryAppendStock: 0x0090C4C0,
+			GradeTitleBoundaryAppendShape:
+				"8B CF 56 E8 71 1D 03 00 8B 45 08",
+			GradeTitleInlinePatch: 0x008DA94D,
+			GradeTitleInlineReplay: 0x008DA953,
+			GradeTitleInlineResume: 0x008DA966,
+			GradeTitleInlineHex: "8B 47 04 3B 47 08"
 		}
 	},
 	ActiveBuildDate: 0,
@@ -97,20 +122,19 @@ ItemColorStatic = {
 	EntryFlags: 8,
 	EntryName: 12,
 	EntryGrade: 1,
+	GradeConfigColorMode: 0,
+	GradeConfigLabelCount: 4,
+	GradeConfigLabelTable: 8,
+	GradeConfigDefaultTable: 12,
+	GradeConfigRecordSize: 8,
+	GradeConfigDefaultStrings: 44,
+	GradeConfigSize: 52,
+	GradeColorEnabled: 1,
 	StateCount: 0,
-	StatePreviousTextOut: 4,
-	StateContinuationColor: 8,
-	StateContinuationHdc: 12,
-	StateContinuationX: 16,
-	StateContinuationY: 20,
-	StateContinuationTick: 24,
-	StateContinuationValid: 28,
-	StateBalloonBypass: 32,
-	StateGetTextAlign: 36,
-	StateSetTextAlign: 40,
-	StateSize: 44,
+	// Offsets 4..31 stay reserved to preserve the established state ABI.
+	StateBalloonScope: 32,
+	StateSize: 36,
 	AnsiScratchSize: 512,
-	ContinuationMs: 150,
 	GroundItemName: 0x158,
 	GroundItemNameLength: 0x168,
 	GroundItemNameCapacity: 0x16C,
@@ -133,6 +157,205 @@ ItemColorStatic.selectProfile = function()
 	return profile;
 };
 
+ItemColorStatic.getGradeConfig = function()
+{
+	const config = CACHE.get("ItemColorStatic.GradeConfig");
+	if (config &&
+		Number.isInteger(config.phyAddr) &&
+		Number.isInteger(config.virAddr))
+		return config;
+	return null;
+};
+
+ItemColorStatic.isPatchActive = function(name)
+{
+	return Exe.ActivePatch === name || Warp.GetPatchState(name);
+};
+
+ItemColorStatic.withGradeConfigOwner = function(callback)
+{
+	const config = ItemColorStatic.getGradeConfig();
+	if (!config)
+		return null;
+
+	const patchName =
+		CACHE.get("ItemColorStatic.GradeConfigOwner") ??
+		"CustomColoredItemName";
+	const owner = Exe.ActivePatch;
+	if (owner !== patchName)
+		Exe.SetActivePatch(patchName);
+	try
+	{
+		return callback(config);
+	}
+	finally
+	{
+		Exe.ActivePatch = owner;
+	}
+};
+
+ItemColorStatic.getActiveGradeLabelRegistry = function()
+{
+	const registry = CACHE.get("ItemColorStatic.CustomGradeLabels");
+	if (!registry ||
+		!Number.isInteger(registry.count) ||
+		!Number.isInteger(registry.tableVir) ||
+		registry.count <= 0)
+		return null;
+	if (!ItemColorStatic.isPatchActive("CustomEnchantGradeLabels"))
+		return null;
+	return registry;
+};
+
+ItemColorStatic.writeGradeLabelRegistry = function(config, registry)
+{
+	const countPhy =
+		config.phyAddr + ItemColorStatic.GradeConfigLabelCount;
+	const tablePhy =
+		config.phyAddr + ItemColorStatic.GradeConfigLabelTable;
+	if (registry)
+	{
+		Exe.SetUint32(countPhy, registry.count);
+		Exe.SetUint32(tablePhy, registry.tableVir);
+		return;
+	}
+
+	Exe.SetUint32(countPhy, 4);
+	Exe.SetUint32(
+		tablePhy,
+		config.virAddr + ItemColorStatic.GradeConfigDefaultTable
+	);
+};
+
+ItemColorStatic.createGradeConfig = function(ownerPatch)
+{
+	let config = ItemColorStatic.getGradeConfig();
+	if (config)
+		return config;
+
+	const [phyAddr, virAddr] = RagexeAllocationStatic.allocate(
+		ItemColorStatic.GradeConfigSize,
+		4
+	);
+	ExtNameTextStatic.zeroBlock(
+		phyAddr,
+		ItemColorStatic.GradeConfigSize
+	);
+	const tablePhy =
+		phyAddr + ItemColorStatic.GradeConfigDefaultTable;
+	const stringsPhy =
+		phyAddr + ItemColorStatic.GradeConfigDefaultStrings;
+	const stringsVir =
+		virAddr + ItemColorStatic.GradeConfigDefaultStrings;
+	const stockLabels = [0x44, 0x43, 0x42, 0x41]; // D, C, B, A
+	for (let idx = 0; idx < stockLabels.length; ++idx)
+	{
+		const recordPhy =
+			tablePhy + idx * ItemColorStatic.GradeConfigRecordSize;
+		Exe.SetUint16(recordPhy, idx + 1);
+		Exe.SetUint32(
+			recordPhy + 4,
+			stringsVir + idx * 2
+		);
+		Exe.SetUint16(stringsPhy + idx * 2, stockLabels[idx]);
+	}
+
+	config = {phyAddr, virAddr};
+	CACHE.put("ItemColorStatic.GradeConfigOwner", ownerPatch);
+	CACHE.put("ItemColorStatic.GradeConfig", config);
+	Exe.SetUint32(
+		phyAddr + ItemColorStatic.GradeConfigColorMode,
+		ItemColorStatic.isPatchActive("CustomColoredEnchantGradeName")
+			? ItemColorStatic.GradeColorEnabled
+			: 0
+	);
+	ItemColorStatic.writeGradeLabelRegistry(
+		config,
+		ItemColorStatic.getActiveGradeLabelRegistry()
+	);
+	return config;
+};
+
+ItemColorStatic.setGradeColors = function(enabled)
+{
+	const config = ItemColorStatic.getGradeConfig();
+	if (!config)
+		return null;
+
+	return ItemColorStatic.withGradeConfigOwner(current =>
+	{
+		Exe.SetUint32(
+			current.phyAddr + ItemColorStatic.GradeConfigColorMode,
+			enabled === true ? ItemColorStatic.GradeColorEnabled : 0
+		);
+		return current;
+	});
+};
+
+ItemColorStatic.enableGradeColors = function()
+{
+	return ItemColorStatic.setGradeColors(true);
+};
+
+ItemColorStatic.disableGradeColors = function()
+{
+	return ItemColorStatic.setGradeColors(false);
+};
+
+ItemColorStatic.installGradeLabelRegistry = function(labels)
+{
+	if (!IsArr(labels) ||
+		labels.isEmpty() ||
+		labels.length > ItemColorStatic.TableCapacity)
+		throw Error("ItemColorStatic: invalid enchant-grade label registry");
+
+	const tableSize =
+		labels.length * ItemColorStatic.GradeConfigRecordSize;
+	const [tablePhy, tableVir] =
+		RagexeAllocationStatic.allocate(tableSize, 4);
+	ExtNameTextStatic.zeroBlock(tablePhy, tableSize);
+	for (let idx = 0; idx < labels.length; ++idx)
+	{
+		const entry = labels[idx];
+		if (!Number.isInteger(entry.grade) ||
+			entry.grade <= 0 ||
+			entry.grade > 0xFFFF ||
+			!Number.isInteger(entry.addr))
+			throw Error("ItemColorStatic: invalid enchant-grade label entry");
+		const recordPhy =
+			tablePhy + idx * ItemColorStatic.GradeConfigRecordSize;
+		Exe.SetUint16(recordPhy, entry.grade);
+		Exe.SetUint32(recordPhy + 4, entry.addr);
+	}
+	const registry = {
+		count: labels.length,
+		tableVir
+	};
+	CACHE.put("ItemColorStatic.CustomGradeLabels", registry);
+
+	const config = ItemColorStatic.getGradeConfig();
+	if (!config)
+		return null;
+	return ItemColorStatic.withGradeConfigOwner(current =>
+	{
+		ItemColorStatic.writeGradeLabelRegistry(current, registry);
+		return current;
+	});
+};
+
+ItemColorStatic.resetGradeLabelRegistry = function()
+{
+	CACHE.del("ItemColorStatic.CustomGradeLabels");
+	const config = ItemColorStatic.getGradeConfig();
+	if (!config)
+		return null;
+	return ItemColorStatic.withGradeConfigOwner(current =>
+	{
+		ItemColorStatic.writeGradeLabelRegistry(current, null);
+		return current;
+	});
+};
+
 ItemColorStatic.allocateCode = function(assembler)
 {
 	return ExtNameTextStatic.allocateCode(assembler);
@@ -143,10 +366,59 @@ ItemColorStatic.callIat = function(a, iat)
 	a.emit(0xFF, 0x15); a.dword(iat);
 };
 
-ItemColorStatic.buildDrain = function(icolVir, stateVir, tableVir)
+ItemColorStatic.hexNorm = function(hex)
+{
+	return (hex || "").replace(/\s+/g, " ").trim().toUpperCase();
+};
+
+ItemColorStatic.assertBytes = function(label, virAddr, expected)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`ItemColorStatic: ${label} is not mapped`);
+
+	const normalized = ItemColorStatic.hexNorm(expected);
+	const actual = ItemColorStatic.hexNorm(
+		Exe.GetHex(phyAddr, normalized.split(" ").length)
+	);
+	if (actual !== normalized)
+		throw Error(`ItemColorStatic: ${label} mismatch, got ${actual}`);
+	return phyAddr;
+};
+
+ItemColorStatic.assertRelativeCall = function(
+	label,
+	callVir,
+	expectedTarget,
+	installedTarget
+)
+{
+	const callPhy = Exe.Vir2Phy(callVir, CODE);
+	if (callPhy < 0)
+		throw Error(`ItemColorStatic: ${label} is not mapped`);
+	if (Exe.GetUint8(callPhy) !== 0xE8)
+		throw Error(`ItemColorStatic: ${label} is not a relative CALL`);
+
+	const target = Exe.GetTgtAddr(callPhy + 1);
+	if (target !== expectedTarget && target !== installedTarget)
+	{
+		throw Error(
+			`ItemColorStatic: ${label} expected ${expectedTarget.toHex()}, ` +
+			`got ${target.toHex()}`
+		);
+	}
+	return {phyAddr: callPhy, target};
+};
+
+ItemColorStatic.buildDrain = function(
+	icolVir,
+	stateVir,
+	tableVir,
+	gradeConfigVir
+)
 {
 	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18, 0x53, 0x56, 0x57);
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x20, 0x53, 0x56, 0x57);
 	a.emit(0x83, 0x3D); a.dword(icolVir + 4); a.emit(0x01);
 	a.jcc(0x85, "done");
 	// Claim the single-slot packet before parsing so malformed data cannot
@@ -195,8 +467,10 @@ ItemColorStatic.buildDrain = function(icolVir, stateVir, tableVir)
 	a.emit(0x81, 0xE2); a.dword(0xFF);
 	a.emit(0xC1, 0xE2, 0x10, 0x0B, 0xC1, 0x0B, 0xC2, 0x89, 0x45, 0xEC);
 
-	// Normal entries store the UTF-8 item substring. Grade sentinels use
-	// _GRADE_<n>_<label>; store only <label>, which matches [Label] draws.
+	// Normal entries store the exact UTF-8 item name. Grade sentinels use
+	// _GRADE_<n>_<server-label>; parse <n> and resolve the active client label
+	// through GradeConfig. This keeps stock [D]/[C]/[B]/[A] and the optional
+	// CustomEnchantGradeLabels map synchronized without trusting server text.
 	a.emit(0x8B, 0xD6, 0x8B, 0xCB, 0x49, 0x33, 0xC0); // src,len,flags=0
 	a.emit(0x83, 0xFB, 0x09);
 	a.jcc(0x82, "have_name");
@@ -204,18 +478,56 @@ ItemColorStatic.buildDrain = function(icolVir, stateVir, tableVir)
 	a.jcc(0x85, "have_name");
 	a.emit(0x81, 0x7E, 0x03); a.dword(0x5F454441); // ADE_
 	a.jcc(0x85, "have_name");
-	a.emit(0x8D, 0x56, 0x07, 0x8D, 0x4C, 0x1E, 0xFF); // scan,end-without-NUL
-	a.label("grade_scan");
+	a.emit(0x8D, 0x56, 0x07, 0x8D, 0x4C, 0x1E, 0xFF, 0x33, 0xC0);
+	a.label("grade_number_scan");
 	a.emit(0x3B, 0xD1);
 	a.jcc(0x83, "advance");
 	a.emit(0x80, 0x3A, 0x5F);
-	a.jcc(0x84, "grade_label");
+	a.jcc(0x84, "grade_number_done");
+	a.emit(0x0F, 0xB6, 0x3A, 0x83, 0xEF, 0x30, 0x83, 0xFF, 0x09);
+	a.jcc(0x87, "advance");
+	a.emit(0x3D); a.dword(6553);
+	a.jcc(0x87, "advance");
+	a.jcc(0x85, "grade_number_accumulate");
+	a.emit(0x83, 0xFF, 0x05);
+	a.jcc(0x87, "advance");
+	a.label("grade_number_accumulate");
+	a.emit(0x6B, 0xC0, 0x0A, 0x03, 0xC7);
 	a.emit(0x42);
-	a.jmp("grade_scan");
-	a.label("grade_label");
-	a.emit(0x42, 0x3B, 0xD1);
+	a.jmp("grade_number_scan");
+	a.label("grade_number_done");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "advance");
+	a.emit(0x89, 0x45, 0xE8);
+	a.emit(0x8B, 0x0D);
+	a.dword(gradeConfigVir + ItemColorStatic.GradeConfigLabelCount);
+	a.emit(0x89, 0x4D, 0xE4, 0x8B, 0x3D);
+	a.dword(gradeConfigVir + ItemColorStatic.GradeConfigLabelTable);
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "advance");
+	a.label("grade_registry_loop");
+	a.emit(0x83, 0x7D, 0xE4, 0x00);
+	a.jcc(0x84, "advance");
+	a.emit(0x0F, 0xB7, 0x07, 0x3B, 0x45, 0xE8);
+	a.jcc(0x84, "grade_registry_label");
+	a.emit(0x83, 0xC7, ItemColorStatic.GradeConfigRecordSize);
+	a.emit(0xFF, 0x4D, 0xE4);
+	a.jmp("grade_registry_loop");
+	a.label("grade_registry_label");
+	a.emit(0x8B, 0x57, 0x04, 0x85, 0xD2);
+	a.jcc(0x84, "advance");
+	a.emit(0x33, 0xC9);
+	a.label("grade_label_scan");
+	a.emit(0x83, 0xF9, ItemColorStatic.NameCapacity - 1);
 	a.jcc(0x83, "advance");
-	a.emit(0x2B, 0xCA, 0xB8); a.dword(ItemColorStatic.EntryGrade);
+	a.emit(0x80, 0x3C, 0x0A, 0x00);
+	a.jcc(0x84, "grade_label_ready");
+	a.emit(0x41);
+	a.jmp("grade_label_scan");
+	a.label("grade_label_ready");
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "advance");
+	a.emit(0xB8); a.dword(ItemColorStatic.EntryGrade);
 	a.label("have_name");
 	a.emit(0x85, 0xC9);
 	a.jcc(0x84, "advance");
@@ -261,7 +573,7 @@ ItemColorStatic.buildLookup = function(stateVir, tableVir)
 	a.emit(0x83, 0x7D, 0x10, 0x01);
 	a.jcc(0x85, "next_entry");
 
-	// Grade labels are valid only as the leading token [<label>]. Substring
+	// Grade labels are valid only as the leading token [<label>]. Unanchored
 	// matching made ordinary headings such as [Shoes Description] eligible.
 	a.emit(0x8B, 0x57, ItemColorStatic.EntryLength, 0x85, 0xD2);
 	a.jcc(0x84, "next_entry");
@@ -357,12 +669,17 @@ ItemColorStatic.buildLookup = function(stateVir, tableVir)
 	a.label("normal_suffix");
 	a.emit(0x8B, 0x4D, 0xF8, 0x2B, 0xCA);
 	a.jcc(0x84, "found");
-	// Accept only the two stock item-title suffixes: numeric slots " [<n>]"
-	// and item-balloon quantities " <count> ea.".
+	// Accept only the stock item-title suffixes: numeric slots " [<n>]",
+	// item-balloon quantities " <count> ea.", and the Inventory producer's
+	// slotless quantity form ": <count> ea.".
 	a.emit(0x83, 0xF9, 0x04);
 	a.jcc(0x82, "next_entry");
 	a.emit(0x80, 0x3E, 0x20);
-	a.jcc(0x85, "next_entry");
+	a.jcc(0x84, "space_suffix");
+	a.emit(0x80, 0x3E, 0x3A);
+	a.jcc(0x84, "colon_quantity");
+	a.jmp("next_entry");
+	a.label("space_suffix");
 	a.emit(0x80, 0x7E, 0x01, 0x5B);
 	a.jcc(0x84, "slot_suffix");
 
@@ -416,6 +733,7 @@ ItemColorStatic.buildLookup = function(stateVir, tableVir)
 	a.jcc(0x84, "found");
 	// Inventory hover labels combine both decorations as
 	// "<name> [slots]: <count> ea.".
+	a.label("colon_quantity");
 	a.emit(0x83, 0xF9, 0x07);
 	a.jcc(0x82, "next_entry");
 	a.emit(0x66, 0x81, 0x3E, 0x3A, 0x20); // ": "
@@ -443,61 +761,16 @@ ItemColorStatic.buildLookup = function(stateVir, tableVir)
 	return a;
 };
 
-ItemColorStatic.buildContinuationLookup = function(stateVir, getTickCountIat)
-{
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
-	a.emit(0x83, 0x3D); a.dword(stateVir + ItemColorStatic.StateContinuationValid); a.emit(0x00);
-	a.jcc(0x84, "invalid");
-	a.emit(0x8B, 0x45, 0x08, 0x3B, 0x05); a.dword(stateVir + ItemColorStatic.StateContinuationHdc);
-	a.jcc(0x85, "invalid");
-	ItemColorStatic.callIat(a, getTickCountIat);
-	a.emit(0x2B, 0x05); a.dword(stateVir + ItemColorStatic.StateContinuationTick);
-	a.emit(0x3D); a.dword(ItemColorStatic.ContinuationMs);
-	a.jcc(0x87, "invalid");
-
-	// Wrapped continuation: approximately same X, next line within 22 pixels.
-	a.emit(0x8B, 0x5D, 0x0C, 0x2B, 0x1D); a.dword(stateVir + ItemColorStatic.StateContinuationX);
-	a.emit(0x8B, 0xF3, 0xC1, 0xFE, 0x1F, 0x33, 0xDE, 0x2B, 0xDE);
-	a.emit(0x83, 0xFB, 0x02);
-	a.jcc(0x87, "same_line");
-	a.emit(0x8B, 0x45, 0x10, 0x2B, 0x05); a.dword(stateVir + ItemColorStatic.StateContinuationY);
-	a.emit(0x85, 0xC0);
-	a.jcc(0x8E, "same_line");
-	a.emit(0x83, 0xF8, 0x16);
-	a.jcc(0x86, "valid");
-	a.label("same_line");
-	// Same-line continuation: approximately same Y and up to 120 px right.
-	a.emit(0x8B, 0x5D, 0x10, 0x2B, 0x1D); a.dword(stateVir + ItemColorStatic.StateContinuationY);
-	a.emit(0x8B, 0xF3, 0xC1, 0xFE, 0x1F, 0x33, 0xDE, 0x2B, 0xDE);
-	a.emit(0x83, 0xFB, 0x02);
-	a.jcc(0x87, "invalid");
-	a.emit(0x8B, 0x45, 0x0C, 0x2B, 0x05); a.dword(stateVir + ItemColorStatic.StateContinuationX);
-	a.emit(0x85, 0xC0);
-	a.jcc(0x8E, "invalid");
-	a.emit(0x83, 0xF8, 0x78);
-	a.jcc(0x87, "invalid");
-	a.label("valid");
-	a.emit(0xA1); a.dword(stateVir + ItemColorStatic.StateContinuationColor);
-	a.jmp("return");
-	a.label("invalid");
-	a.emit(0xB8); a.dword(0xFFFFFFFF);
-	a.label("return");
-	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC3);
-	return a;
-};
-
 ItemColorStatic.buildItemTooltip = function(
 	drainVir,
-	lookupVir,
-	gradeColorsEnabled
+	lookupVir
 )
 {
 	const a = ExtNameStaticAsm.asm();
 	// Inventory and equipment producers pass the complete ANSI hover label and
 	// an RGB color to A753D0. Match only their exact callsites, replace that RGB
-	// argument, and tail-jump so the stock constructor still creates both the
-	// center and outline passes.
+	// argument, and tail-jump so the stock constructor can request its normal
+	// passes. The shared TextOutW bridge suppresses a matched dark pass.
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x51);
 	a.call(drainVir);
 	a.emit(0x8B, 0x75, 0x08, 0x85, 0xF6); // esi = ANSI item label
@@ -514,28 +787,16 @@ ItemColorStatic.buildItemTooltip = function(
 	a.label("have_length");
 	a.emit(0x85, 0xC9);
 	a.jcc(0x84, "passthrough");
-	if (!gradeColorsEnabled)
-	{
-		// Item-only v10 leaves every decorated [Grade] title entirely stock.
-		a.emit(0x80, 0x3E, 0x5B);
-		a.jcc(0x84, "passthrough");
-	}
+	// A grade-colored decorated title is owned by the TextOutW bridge as one
+	// complete span. Leave its producer color stock so grade precedence is
+	// decided once, after the final formatted title exists.
+	a.emit(0x80, 0x3E, 0x5B);
+	a.jcc(0x84, "passthrough");
 	a.emit(0x8B, 0xF9);
-	if (gradeColorsEnabled)
-	{
-		// The stock producer owns this complete styled label. An exact leading
-		// grade token overrides the normal item entry for the entire span.
-		a.emit(0x6A, 0x01, 0x57, 0x56);
-		a.call(lookupVir);
-		a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
-		a.jcc(0x85, "matched");
-	}
 	a.emit(0x6A, 0x02, 0x57, 0x56);
 	a.call(lookupVir);
 	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
 	a.jcc(0x84, "passthrough");
-	if (gradeColorsEnabled)
-		a.label("matched");
 	a.emit(0x8B, 0x00); // ICOL table stores Win32 COLORREF 0x00BBGGRR
 	// A753D0 accepts 0x00RRGGBB and converts it to COLORREF internally.
 	a.emit(0x8B, 0xD0, 0x81, 0xE2); a.dword(0xFF);
@@ -552,8 +813,7 @@ ItemColorStatic.buildItemTooltip = function(
 
 ItemColorStatic.buildGroundTooltip = function(
 	drainVir,
-	lookupVir,
-	gradeColorsEnabled
+	lookupVir
 )
 {
 	const a = ExtNameStaticAsm.asm();
@@ -576,25 +836,13 @@ ItemColorStatic.buildGroundTooltip = function(
 	a.label("have_text");
 	a.emit(0x85, 0xF6);
 	a.jcc(0x84, "passthrough");
-	if (!gradeColorsEnabled)
-	{
-		a.emit(0x80, 0x3E, 0x5B);
-		a.jcc(0x84, "passthrough");
-	}
+	a.emit(0x80, 0x3E, 0x5B);
+	a.jcc(0x84, "passthrough");
 	a.emit(0x8B, 0xF9);
-	if (gradeColorsEnabled)
-	{
-		a.emit(0x6A, 0x01, 0x57, 0x56);
-		a.call(lookupVir);
-		a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
-		a.jcc(0x85, "matched");
-	}
 	a.emit(0x6A, 0x02, 0x57, 0x56);
 	a.call(lookupVir);
 	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
 	a.jcc(0x84, "passthrough");
-	if (gradeColorsEnabled)
-		a.label("matched");
 	a.emit(0x8B, 0x00, 0x8B, 0x55, 0x08, 0x85, 0xD2);
 	a.jcc(0x84, "passthrough");
 	a.emit(0x89, 0x82); a.dword(ItemColorStatic.TooltipCenterColor);
@@ -608,76 +856,92 @@ ItemColorStatic.buildGroundTooltip = function(
 ItemColorStatic.buildBalloonTextScope = function(stateVir, stockDrawVir, argBytes)
 {
 	const a = ExtNameStaticAsm.asm();
-	// The semantic producer owns item-balloon colors. Scope the generic
-	// TextOutW item bridge out for both 8263A0 draw branches so the stock helper
-	// can render its native black shadow and already-colored center unchanged.
+	// Mark both stock balloon branches so plain and decorated labels enter the
+	// same exact-match TextOutW policy. The scope is a counter because the stock
+	// styled path can nest the plain renderer.
 	a.emit(0x55, 0x8B, 0xEC, 0x51); // receiver in [ebp-4]
-	a.emit(0xFF, 0x05); a.dword(stateVir + ItemColorStatic.StateBalloonBypass);
+	a.emit(0xFF, 0x05); a.dword(stateVir + ItemColorStatic.StateBalloonScope);
 	for (let offset = argBytes + 4; offset >= 8; offset -= 4)
 		a.emit(0xFF, 0x75, offset);
 	a.emit(0x8B, 0x4D, 0xFC);
 	a.call(stockDrawVir);
-	a.emit(0xFF, 0x0D); a.dword(stateVir + ItemColorStatic.StateBalloonBypass);
+	a.emit(0xFF, 0x0D); a.dword(stateVir + ItemColorStatic.StateBalloonScope);
 	a.emit(0x8B, 0xE5, 0x5D, 0xC2, argBytes & 0xFF, (argBytes >>> 8) & 0xFF);
+	return a;
+};
+
+ItemColorStatic.buildGradeTitleBoundaryAppendGate = function(
+	gradeConfigVir,
+	stockAppendVir
+)
+{
+	const a = ExtNameStaticAsm.asm();
+	// The stock formatter has already advanced the title cursor. In item-only
+	// mode preserve its vector endpoint exactly. Grade-color mode omits only
+	// that endpoint so the following item-name component closes one combined
+	// "[Grade] Item" span.
+	a.emit(0x83, 0x3D);
+	a.dword(gradeConfigVir + ItemColorStatic.GradeConfigColorMode);
+	a.emit(0x00);
+	a.jcc(0x85, "skip_endpoint");
+	a.jmp(stockAppendVir);
+	a.label("skip_endpoint");
+	a.emit(0xC2, 0x04, 0x00);
+	return a;
+};
+
+ItemColorStatic.buildGradeTitleInlineGate = function(gradeConfigVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	// This branch inlines vector::push_back. Replay its displaced compare and
+	// re-enter the stock grow/append flow while grade colors are disabled.
+	a.emit(0x83, 0x3D);
+	a.dword(gradeConfigVir + ItemColorStatic.GradeConfigColorMode);
+	a.emit(0x00);
+	a.jcc(0x85, "skip_endpoint");
+	a.emit(0x8B, 0x47, 0x04); // mov eax,[edi+4]
+	a.emit(0x3B, 0x47, 0x08); // cmp eax,[edi+8]
+	a.jmp(ItemColorStatic.GradeTitleInlineReplay);
+	a.label("skip_endpoint");
+	a.jmp(ItemColorStatic.GradeTitleInlineResume);
 	return a;
 };
 
 ItemColorStatic.buildTextOut = function(
 	stateVir,
+	gradeConfigVir,
 	drainVir,
 	lookupVir,
-	continuationVir,
 	ansiScratchVir,
 	previousTextOutVir,
 	entityFindWideVir,
 	apis,
-	emojiTokensEnabled,
-	gradeColorsEnabled
+	emojiTokensEnabled
 )
 {
 	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x40, 0x53, 0x56, 0x57);
-	a.emit(0xC7, 0x45, 0xF4); a.dword(0);          // old color valid
-	a.emit(0xC7, 0x45, 0xE8); a.dword(0);          // TextOutW result
-	a.emit(0xC7, 0x45, 0xE4); a.dword(0xFFFFFFFF); // grade COLORREF
-	a.emit(0xC7, 0x45, 0xE0); a.dword(0xFFFFFFFF); // item COLORREF
-	a.emit(0xC7, 0x45, 0xDC); a.dword(0);          // grade prefix chars
-	a.emit(0x83, 0x3D); a.dword(stateVir + ItemColorStatic.StateBalloonBypass); a.emit(0x00);
-	a.jcc(0x84, "item_text_bridge");
-	if (gradeColorsEnabled)
-	{
-		// Inventory, equipment, and ground balloons already received one
-		// grade-priority center color from their semantic producers. Preserve
-		// their stock single-span outline and suffix rendering verbatim.
-		a.jmp("draw");
-	}
-	else
-	{
-		// The item-only build may split a decorated name so the grade token
-		// retains its stock color while the exact base item uses ICOL.
-		a.emit(0x83, 0x7D, 0x14, 0x00);
-		a.jcc(0x84, "draw");
-		a.emit(0x8B, 0x45, 0x14, 0x66, 0x83, 0x38, 0x5B);
-		a.jcc(0x84, "item_text_bridge");
-		a.jmp("draw");
-	}
-	a.label("item_text_bridge");
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18, 0x53, 0x56, 0x57);
+	a.emit(0xC7, 0x45, 0xFC); a.dword(0xFFFFFFFF); // selected COLORREF
+	a.emit(0xC7, 0x45, 0xF8); a.dword(0);          // original COLORREF
+	a.emit(0xC7, 0x45, 0xF4); a.dword(0);          // bounded UTF-8 length
+	a.emit(0x8B, 0x45, 0x18, 0x89, 0x45, 0xF0);    // render count
+	a.emit(0xC7, 0x45, 0xEC); a.dword(0);          // TextOutW result
+
+	// Balloon plain and styled labels use this same exact-match path. The scope
+	// counter selects producer mode without carrying draw state between calls.
 	a.call(drainVir);
 	if (emojiTokensEnabled)
 	{
-		// Fluent Emoji labels are UI text, never item-name candidates. Let the
-		// underlying emoji bridge own any span containing a complete @token@;
-		// otherwise item matching can suppress the stock shadow pass and
-		// prevent the label from reaching TextOutW at all.
-		a.emit(0x8B, 0x75, 0x14, 0x85, 0xF6);       // esi = text
+		// Fluent Emoji labels are UI text, never item-name candidates.
+		a.emit(0x8B, 0x75, 0x14, 0x85, 0xF6);
 		a.jcc(0x84, "emoji_scan_done");
-		a.emit(0x8B, 0x4D, 0x18, 0x85, 0xC9);       // ecx = count
+		a.emit(0x8B, 0x4D, 0x18, 0x85, 0xC9);
 		a.jcc(0x8E, "emoji_scan_done");
-		a.emit(0x33, 0xD2);                         // edx = index
+		a.emit(0x33, 0xD2);
 		a.label("emoji_scan_open");
 		a.emit(0x3B, 0xD1);
 		a.jcc(0x83, "emoji_scan_done");
-		a.emit(0x66, 0x83, 0x3C, 0x56, 0x40);       // text[index] == '@'
+		a.emit(0x66, 0x83, 0x3C, 0x56, 0x40);
 		a.jcc(0x84, "emoji_scan_close_next");
 		a.emit(0x42);
 		a.jmp("emoji_scan_open");
@@ -687,385 +951,148 @@ ItemColorStatic.buildTextOut = function(
 		a.emit(0x3B, 0xD1);
 		a.jcc(0x83, "emoji_scan_done");
 		a.emit(0x66, 0x83, 0x3C, 0x56, 0x40);
-		a.jcc(0x84, "draw");
+		a.jcc(0x84, "draw_stock");
 		a.emit(0x42);
 		a.jmp("emoji_scan_close");
 		a.label("emoji_scan_done");
 	}
-	// EXTN owns entity names and metadata rows. Exclude every exact EXTN key
-	// before item-title matching so NPC titles such as
-	// "[Reset Stats/Skills]" cannot collide with ICOL entries.
+
+	// EXTN owns entity names and metadata rows.
 	a.emit(0x83, 0x7D, 0x14, 0x00);
-	a.jcc(0x84, "draw");
+	a.jcc(0x84, "draw_stock");
 	a.emit(0x8B, 0x45, 0x18, 0x85, 0xC0);
-	a.jcc(0x8E, "draw");
+	a.jcc(0x8E, "draw_stock");
 	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14);
 	a.call(entityFindWideVir);
 	a.emit(0x85, 0xC0);
-	a.jcc(0x85, "draw");
-	a.emit(0x83, 0x7D, 0x14, 0x00);
-	a.jcc(0x84, "draw");
-	a.emit(0x8B, 0x45, 0x18, 0x85, 0xC0);
-	a.jcc(0x8E, "draw");
-	a.emit(0x3D); a.dword(127);
-	a.jcc(0x87, "draw");
+	a.jcc(0x85, "draw_stock");
+	a.emit(0x8B, 0x45, 0x18, 0x3D); a.dword(127);
+	a.jcc(0x87, "draw_stock");
 
-	// Convert exactly the TextOutW span to bounded UTF-8 for packet-name matching.
-	a.emit(0x6A, 0x00, 0x6A, 0x00, 0x68); a.dword(ItemColorStatic.AnsiScratchSize - 1);
+	// Convert exactly the caller's UTF-16 span to bounded UTF-8. Rendering
+	// always retains the original UTF-16 pointer.
+	a.emit(0x6A, 0x00, 0x6A, 0x00, 0x68);
+	a.dword(ItemColorStatic.AnsiScratchSize - 1);
 	a.emit(0x68); a.dword(ansiScratchVir);
-	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14, 0x6A, 0x00, 0x68); a.dword(65001);
+	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14, 0x6A, 0x00, 0x68);
+	a.dword(65001);
 	ItemColorStatic.callIat(a, apis.wideToMulti);
 	a.emit(0x85, 0xC0);
-	a.jcc(0x8E, "draw");
-	a.emit(0x89, 0x45, 0xEC, 0xBA); a.dword(ansiScratchVir);
+	a.jcc(0x8E, "draw_stock");
+	a.emit(0x89, 0x45, 0xF4, 0xBA); a.dword(ansiScratchVir);
 	a.emit(0xC6, 0x04, 0x02, 0x00);
 
-	// Item and grade are independent channels. Normal lookup accepts the
-	// complete decorated title but returns only the exact base-item entry.
-	a.emit(0x6A, 0x00);
-	a.emit(0xFF, 0x75, 0xEC, 0x68); a.dword(ansiScratchVir);
+	// Grade precedence is absolute: a grade match owns the entire title, and
+	// normal item lookup is only a fallback.
+	a.emit(0x83, 0x3D);
+	a.dword(gradeConfigVir + ItemColorStatic.GradeConfigColorMode);
+	a.emit(0x00);
+	a.jcc(0x84, "item_lookup");
+	a.emit(0x80, 0x3D); a.dword(ansiScratchVir); a.emit(0x5B);
+	a.jcc(0x85, "item_lookup");
+	a.emit(0x6A, 0x01, 0xFF, 0x75, 0xF4, 0x68);
+	a.dword(ansiScratchVir);
 	a.call(lookupVir);
 	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
-	a.jcc(0x84, "grade_lookup");
-	a.emit(0x8B, 0x00, 0x89, 0x45, 0xE0);
+	a.jcc(0x84, "item_lookup");
+	a.emit(0x8B, 0x00, 0x89, 0x45, 0xFC);
 
-	a.label("grade_lookup");
-	if (gradeColorsEnabled)
-	{
-		// Grade colors are opt-in. The companion patch enables this lookup;
-		// without it, the prefix is always drawn in the stock COLORREF.
-		a.emit(0x80, 0x3D); a.dword(ansiScratchVir); a.emit(0x5B);
-		a.jcc(0x85, "lookup_complete");
-		a.emit(0x6A, 0x01);
-		a.emit(0xFF, 0x75, 0xEC, 0x68); a.dword(ansiScratchVir);
-		a.call(lookupVir);
-		a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
-		a.jcc(0x84, "lookup_complete");
-		a.emit(0x8B, 0x00, 0x89, 0x45, 0xE4);
-	}
-	a.label("lookup_complete");
-	if (gradeColorsEnabled)
-	{
-		// Grade-enabled mode never fragments a client-owned styled string.
-		// Grade wins. The description renderer may issue "[Grade]" and the
-		// exact item name as adjacent calls, so carry grade only into a
-		// following span that has already passed exact normal-item lookup.
-		a.emit(0x83, 0x7D, 0xE4, 0xFF);
-		a.jcc(0x85, "track_grade");
-		a.emit(0x83, 0x7D, 0xE0, 0xFF);
-		a.jcc(0x84, "draw");
-		a.emit(0xFF, 0x75, 0x10, 0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
-		a.call(continuationVir);
-		a.emit(0x83, 0xC4, 0x0C, 0x83, 0xF8, 0xFF);
-		a.jcc(0x84, "single_color");
-		a.emit(0x89, 0x45, 0xE4);
-		a.jmp("single_color");
+	// Remove an exact trailing " <digits> ea." or ": <digits> ea." from
+	// grade-matched inventory text. A preceding [slots] suffix is preserved.
+	a.emit(0x8B, 0x75, 0x14, 0x8B, 0x4D, 0x18);
+	a.emit(0x83, 0xF9, 0x06);
+	a.jcc(0x82, "apply_color");
+	a.emit(0x66, 0x83, 0x7C, 0x4E, 0xF8, 0x20);
+	a.jcc(0x85, "apply_color");
+	a.emit(0x66, 0x83, 0x7C, 0x4E, 0xFA, 0x65);
+	a.jcc(0x85, "apply_color");
+	a.emit(0x66, 0x83, 0x7C, 0x4E, 0xFC, 0x61);
+	a.jcc(0x85, "apply_color");
+	a.emit(0x66, 0x83, 0x7C, 0x4E, 0xFE, 0x2E);
+	a.jcc(0x85, "apply_color");
+	a.emit(0x8B, 0xD1, 0x83, 0xEA, 0x05);
+	a.emit(0x0F, 0xB7, 0x04, 0x56, 0x83, 0xF8, 0x30);
+	a.jcc(0x82, "apply_color");
+	a.emit(0x83, 0xF8, 0x39);
+	a.jcc(0x87, "apply_color");
+	a.label("quantity_digits_back");
+	a.emit(0x85, 0xD2);
+	a.jcc(0x84, "apply_color");
+	a.emit(0x4A, 0x0F, 0xB7, 0x04, 0x56, 0x83, 0xF8, 0x30);
+	a.jcc(0x82, "quantity_delimiter");
+	a.emit(0x83, 0xF8, 0x39);
+	a.jcc(0x86, "quantity_digits_back");
+	a.jmp("apply_color");
+	a.label("quantity_delimiter");
+	a.emit(0x83, 0xF8, 0x20);
+	a.jcc(0x85, "apply_color");
+	a.emit(0x85, 0xD2);
+	a.jcc(0x84, "apply_color");
+	a.emit(0x66, 0x83, 0x7C, 0x56, 0xFE, 0x3A);
+	a.jcc(0x85, "quantity_commit");
+	a.emit(0x83, 0xFA, 0x01);
+	a.jcc(0x86, "apply_color");
+	a.emit(0x4A);
+	a.label("quantity_commit");
+	a.emit(0x89, 0x55, 0xF0);
+	a.jmp("apply_color");
 
-		a.label("track_grade");
-		a.emit(0x8B, 0x45, 0xE4, 0xA3);
-		a.dword(stateVir + ItemColorStatic.StateContinuationColor);
-		a.emit(0x8B, 0x45, 0x08, 0xA3);
-		a.dword(stateVir + ItemColorStatic.StateContinuationHdc);
-		a.emit(0x8B, 0x45, 0x0C, 0xA3);
-		a.dword(stateVir + ItemColorStatic.StateContinuationX);
-		a.emit(0x8B, 0x45, 0x10, 0xA3);
-		a.dword(stateVir + ItemColorStatic.StateContinuationY);
-		ItemColorStatic.callIat(a, apis.getTickCount);
-		a.emit(0xA3);
-		a.dword(stateVir + ItemColorStatic.StateContinuationTick);
-		a.emit(0xC7, 0x05);
-		a.dword(stateVir + ItemColorStatic.StateContinuationValid);
-		a.dword(1);
-		a.jmp("single_color");
-	}
-	else
-	{
-		a.emit(0x83, 0x7D, 0xE0, 0xFF);
-		a.jcc(0x85, "split_probe");
-		a.emit(0x83, 0x7D, 0xE4, 0xFF);
-		a.jcc(0x84, "draw");
-	}
+	a.label("item_lookup");
+	a.emit(0x33, 0xC0);
+	a.emit(0x83, 0x3D);
+	a.dword(stateVir + ItemColorStatic.StateBalloonScope);
+	a.emit(0x00);
+	a.jcc(0x84, "item_lookup_mode");
+	a.emit(0xB8); a.dword(2);
+	a.label("item_lookup_mode");
+	a.emit(0x50, 0xFF, 0x75, 0xF4, 0x68);
+	a.dword(ansiScratchVir);
+	a.call(lookupVir);
+	a.emit(0x83, 0xC4, 0x0C, 0x85, 0xC0);
+	a.jcc(0x84, "draw_stock");
+	a.emit(0x8B, 0x00, 0x89, 0x45, 0xFC);
 
-	// Split only the canonical stock prefix "[Label] ". The prefix includes
-	// its separating space; the base item begins at the following UTF-16 code
-	// unit and retains an independent exact item lookup.
-	a.label("split_probe");
-	a.emit(0x8B, 0x75, 0x14, 0x85, 0xF6);
-	a.jcc(0x84, "single_color");
-	a.emit(0x66, 0x83, 0x3E, 0x5B);
-	a.jcc(0x85, "single_color");
-	a.emit(0x8B, 0x4D, 0x18, 0x33, 0xD2);
-	a.label("split_scan");
-	a.emit(0x3B, 0xD1);
-	a.jcc(0x83, "single_color");
-	a.emit(0x66, 0x83, 0x3C, 0x56, 0x5D);
-	a.jcc(0x85, "split_next");
-	a.emit(0x8D, 0x42, 0x01, 0x3B, 0xC1);
-	a.jcc(0x83, "single_color");
-	a.emit(0x66, 0x83, 0x7C, 0x56, 0x02, 0x20);
-	a.jcc(0x85, "single_color");
-	a.emit(0x83, 0xC2, 0x02, 0x3B, 0xD1);
-	a.jcc(0x83, "single_color");
-	a.emit(0x89, 0x55, 0xDC);
-	a.jmp("split_color");
-	a.label("split_next");
-	a.emit(0x42);
-	a.jmp("split_scan");
-
-	a.label("split_color");
-	// SetTextColor returns the original COLORREF. Capture it with whichever
-	// custom channel is present so an absent grade/item channel can stay stock.
-	a.emit(0x8B, 0x5D, 0xE4, 0x83, 0xFB, 0xFF);
-	a.jcc(0x85, "split_capture");
-	a.emit(0x8B, 0x5D, 0xE0);
-	a.label("split_capture");
-	a.emit(0x53, 0xFF, 0x75, 0x08);
+	a.label("apply_color");
+	a.emit(0xFF, 0x75, 0xFC, 0xFF, 0x75, 0x08);
 	ItemColorStatic.callIat(a, apis.setTextColor);
-	a.emit(0x89, 0x45, 0xF0);
+	a.emit(0x89, 0x45, 0xF8);
+
+	// Matched stock dark passes are outlines/shadows. Restore the original DC
+	// color and report success without calling downstream TextOutW.
 	a.emit(0x8B, 0xD0, 0x81, 0xE2); a.dword(0xFF);
 	a.emit(0x83, 0xFA, 0x20);
-	a.jcc(0x87, "split_foreground");
-	a.emit(0x8B, 0xD0, 0xC1, 0xEA, 0x08, 0x81, 0xE2); a.dword(0xFF);
+	a.jcc(0x87, "draw_foreground");
+	a.emit(0x8B, 0xD0, 0xC1, 0xEA, 0x08, 0x81, 0xE2);
+	a.dword(0xFF);
 	a.emit(0x83, 0xFA, 0x20);
-	a.jcc(0x87, "split_foreground");
+	a.jcc(0x87, "draw_foreground");
 	a.emit(0xC1, 0xE8, 0x10, 0x25); a.dword(0xFF);
 	a.emit(0x83, 0xF8, 0x20);
-	a.jcc(0x87, "split_foreground");
-	// Preserve the stock dark outline inside semantic item balloons; other UI
-	// surfaces keep the established thin title rendering.
-	a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
+	a.jcc(0x87, "draw_foreground");
+	a.emit(0xFF, 0x75, 0xF8, 0xFF, 0x75, 0x08);
 	ItemColorStatic.callIat(a, apis.setTextColor);
-	a.emit(0x83, 0x3D); a.dword(stateVir + ItemColorStatic.StateBalloonBypass); a.emit(0x00);
-	a.jcc(0x85, "draw");
-	a.jmp("shadow_done");
+	a.emit(0xB8); a.dword(1);
+	a.jmp("return");
 
-	a.label("split_foreground");
-	if (!gradeColorsEnabled)
-	{
-		// Preserve the archived item-only v10 layout. Item balloons are centered
-		// by their semantic producer; other title surfaces use the stock X.
-		a.emit(0x8D, 0x45, 0xD8, 0x50, 0xFF, 0x75, 0xDC,
-			0xFF, 0x75, 0x14, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.extent);
-		a.emit(0x83, 0x3D);
-		a.dword(stateVir + ItemColorStatic.StateBalloonBypass);
-		a.emit(0x00);
-		a.jcc(0x84, "legacy_split_draw");
-		a.emit(0x8D, 0x45, 0xD0, 0x50, 0xFF, 0x75, 0x18,
-			0xFF, 0x75, 0x14, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.extent);
-
-		a.label("legacy_split_draw");
-		a.emit(0x8B, 0x5D, 0xE4, 0x83, 0xFB, 0xFF);
-		a.jcc(0x85, "legacy_split_grade_color");
-		a.emit(0x8B, 0x5D, 0xF0);
-		a.label("legacy_split_grade_color");
-		a.emit(0x53, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.setTextColor);
-		a.emit(0xFF, 0x75, 0xDC, 0xFF, 0x75, 0x14, 0xFF, 0x75, 0x10);
-		a.emit(0x83, 0x3D);
-		a.dword(stateVir + ItemColorStatic.StateBalloonBypass);
-		a.emit(0x00);
-		a.jcc(0x84, "legacy_split_prefix_stock_x");
-		a.emit(0x8B, 0x45, 0x0C, 0x8B, 0x55, 0xD0, 0xD1, 0xFA);
-		a.emit(0x2B, 0xC2, 0x8B, 0x55, 0xD8, 0xD1, 0xFA, 0x03, 0xC2);
-		a.jmp("legacy_split_prefix_x_ready");
-		a.label("legacy_split_prefix_stock_x");
-		a.emit(0x8B, 0x45, 0x0C);
-		a.label("legacy_split_prefix_x_ready");
-		a.emit(0x50, 0xFF, 0x75, 0x08);
-		a.call(previousTextOutVir);
-
-		a.emit(0x8B, 0x5D, 0xE0, 0x83, 0xFB, 0xFF);
-		a.jcc(0x85, "legacy_split_item_color");
-		a.emit(0x8B, 0x5D, 0xF0);
-		a.label("legacy_split_item_color");
-		a.emit(0x53, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.setTextColor);
-		a.emit(0x8B, 0x45, 0xDC, 0x8B, 0x4D, 0x18, 0x2B, 0xC8, 0x51);
-		a.emit(0x8B, 0x55, 0x14, 0x8D, 0x14, 0x42, 0x52);
-		a.emit(0xFF, 0x75, 0x10);
-		a.emit(0x83, 0x3D);
-		a.dword(stateVir + ItemColorStatic.StateBalloonBypass);
-		a.emit(0x00);
-		a.jcc(0x84, "legacy_split_item_stock_x");
-		a.emit(0x8B, 0x45, 0x0C, 0x8B, 0x55, 0xD8, 0xD1, 0xFA, 0x03, 0xC2);
-		a.jmp("legacy_split_item_x_ready");
-		a.label("legacy_split_item_stock_x");
-		a.emit(0x8B, 0x45, 0x0C, 0x03, 0x45, 0xD8);
-		a.label("legacy_split_item_x_ready");
-		a.emit(0x50, 0xFF, 0x75, 0x08);
-		a.call(previousTextOutVir);
-		a.emit(0x89, 0x45, 0xE8);
-		a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.setTextColor);
-		a.jmp("return");
-	}
-	else
-	{
-		// Measure the prefix and complete source span before changing alignment.
-		a.emit(0x8D, 0x45, 0xD8, 0x50, 0xFF, 0x75, 0xDC,
-			0xFF, 0x75, 0x14, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.extent);
-		a.emit(0x8D, 0x45, 0xD0, 0x50, 0xFF, 0x75, 0x18,
-			0xFF, 0x75, 0x14, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.extent);
-
-		// Resolve GetTextAlign/SetTextAlign lazily from the already-loaded GDI32
-		// module. The protected 2026 image does not import either API and cannot
-		// safely grow its import table.
-		a.emit(0x83, 0x3D);
-		a.dword(stateVir + ItemColorStatic.StateGetTextAlign);
-		a.emit(0x00);
-		a.jcc(0x84, "split_align_resolve");
-		a.emit(0x83, 0x3D);
-		a.dword(stateVir + ItemColorStatic.StateSetTextAlign);
-		a.emit(0x00);
-		a.jcc(0x85, "split_align_ready");
-		a.label("split_align_resolve");
-		a.emit(0x68); a.dword(apis.gdiModuleNameVir);
-		ItemColorStatic.callIat(a, apis.getModuleHandle);
-		a.emit(0x85, 0xC0);
-		a.jcc(0x84, "split_align_fallback");
-		a.emit(0x8B, 0xD8);
-		a.emit(0x68); a.dword(apis.getTextAlignNameVir);
-		a.emit(0x53);
-		ItemColorStatic.callIat(a, apis.getProcAddress);
-		a.emit(0x85, 0xC0);
-		a.jcc(0x84, "split_align_fallback");
-		a.emit(0xA3);
-		a.dword(stateVir + ItemColorStatic.StateGetTextAlign);
-		a.emit(0x68); a.dword(apis.setTextAlignNameVir);
-		a.emit(0x53);
-		ItemColorStatic.callIat(a, apis.getProcAddress);
-		a.emit(0x85, 0xC0);
-		a.jcc(0x84, "split_align_fallback");
-		a.emit(0xA3);
-		a.dword(stateVir + ItemColorStatic.StateSetTextAlign);
-
-		// Convert the caller's true TA_LEFT/TA_RIGHT/TA_CENTER reference point to
-		// a physical left edge, then temporarily force TA_LEFT for both spans.
-		a.label("split_align_ready");
-		a.emit(0xFF, 0x75, 0x08, 0xFF, 0x15);
-		a.dword(stateVir + ItemColorStatic.StateGetTextAlign);
-		a.emit(0x83, 0xF8, 0xFF);
-		a.jcc(0x84, "split_align_fallback");
-		a.emit(0x89, 0x45, 0xC8);
-		// TA_UPDATECP ignores the supplied X/Y; retain the stock whole-span draw
-		// rather than guessing at the DC's current position.
-		a.emit(0xA8, 0x01);
-		a.jcc(0x85, "split_align_fallback");
-		a.emit(0x8B, 0x4D, 0x0C, 0x83, 0xE0, 0x06);
-		a.emit(0x83, 0xF8, 0x06);
-		a.jcc(0x84, "split_align_center");
-		a.emit(0x83, 0xF8, 0x02);
-		a.jcc(0x84, "split_align_right");
-		a.jmp("split_align_origin");
-		a.label("split_align_center");
-		a.emit(0x8B, 0x45, 0xD0, 0xD1, 0xF8, 0x2B, 0xC8);
-		a.jmp("split_align_origin");
-		a.label("split_align_right");
-		a.emit(0x2B, 0x4D, 0xD0);
-		a.label("split_align_origin");
-		a.emit(0x89, 0x4D, 0xC4);
-		a.emit(0x8B, 0x45, 0xC8, 0x83, 0xE0, 0xF8);
-		a.emit(0x50, 0xFF, 0x75, 0x08, 0xFF, 0x15);
-		a.dword(stateVir + ItemColorStatic.StateSetTextAlign);
-		a.emit(0x83, 0xF8, 0xFF);
-		a.jcc(0x84, "split_align_fallback");
-
-		// Draw the grade prefix from the normalized left edge.
-		a.emit(0x8B, 0x5D, 0xE4, 0x83, 0xFB, 0xFF);
-		a.jcc(0x85, "split_grade_color");
-		a.emit(0x8B, 0x5D, 0xF0);
-		a.label("split_grade_color");
-		a.emit(0x53, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.setTextColor);
-		a.emit(0xFF, 0x75, 0xDC, 0xFF, 0x75, 0x14, 0xFF, 0x75, 0x10,
-			0xFF, 0x75, 0xC4, 0xFF, 0x75, 0x08);
-		a.call(previousTextOutVir);
-
-		// Draw the remaining base item and suffix immediately after the prefix.
-		a.emit(0x8B, 0x5D, 0xE0, 0x83, 0xFB, 0xFF);
-		a.jcc(0x85, "split_item_color");
-		a.emit(0x8B, 0x5D, 0xF0);
-		a.label("split_item_color");
-		a.emit(0x53, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.setTextColor);
-		a.emit(0x8B, 0x45, 0xDC, 0x8B, 0x4D, 0x18, 0x2B, 0xC8, 0x51);
-		a.emit(0x8B, 0x55, 0x14, 0x8D, 0x14, 0x42, 0x52);
-		a.emit(0xFF, 0x75, 0x10, 0x8B, 0x45, 0xC4, 0x03, 0x45, 0xD8);
-		a.emit(0x50, 0xFF, 0x75, 0x08);
-		a.call(previousTextOutVir);
-		a.emit(0x89, 0x45, 0xE8);
-		// Restore the caller's exact alignment and COLORREF.
-		a.emit(0xFF, 0x75, 0xC8, 0xFF, 0x75, 0x08, 0xFF, 0x15);
-		a.dword(stateVir + ItemColorStatic.StateSetTextAlign);
-		a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.setTextColor);
-		a.jmp("return");
-
-		a.label("split_align_fallback");
-		a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
-		ItemColorStatic.callIat(a, apis.setTextColor);
-		a.jmp("draw");
-	}
-
-	a.label("single_color");
-	// Grade-enabled mode gives the exact leading grade token priority over the
-	// normal item entry. Item-only mode retains its normal item-first path.
-	if (gradeColorsEnabled)
-	{
-		a.emit(0x8B, 0x5D, 0xE4, 0x83, 0xFB, 0xFF);
-		a.jcc(0x85, "single_apply");
-		a.emit(0x8B, 0x5D, 0xE0);
-	}
-	else
-	{
-		a.emit(0x8B, 0x5D, 0xE0, 0x83, 0xFB, 0xFF);
-		a.jcc(0x85, "single_apply");
-		a.emit(0x8B, 0x5D, 0xE4);
-	}
-	a.label("single_apply");
-	a.emit(0x53, 0xFF, 0x75, 0x08);
+	// Foreground is one draw of the original UTF-16 span. Only cchString may
+	// be shortened to suppress a verified grade quantity tail.
+	a.label("draw_foreground");
+	a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x14, 0xFF, 0x75, 0x10,
+		0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
+	a.call(previousTextOutVir);
+	a.emit(0x89, 0x45, 0xEC);
+	a.emit(0xFF, 0x75, 0xF8, 0xFF, 0x75, 0x08);
 	ItemColorStatic.callIat(a, apis.setTextColor);
-	a.emit(0x89, 0x45, 0xF0);
-	a.emit(0x8B, 0xD0, 0x81, 0xE2); a.dword(0xFF);
-	a.emit(0x83, 0xFA, 0x20);
-	a.jcc(0x87, "single_foreground");
-	a.emit(0x8B, 0xD0, 0xC1, 0xEA, 0x08, 0x81, 0xE2); a.dword(0xFF);
-	a.emit(0x83, 0xFA, 0x20);
-	a.jcc(0x87, "single_foreground");
-	a.emit(0xC1, 0xE8, 0x10, 0x25); a.dword(0xFF);
-	a.emit(0x83, 0xF8, 0x20);
-	a.jcc(0x86, "single_shadow");
-	a.label("single_foreground");
-	a.emit(0xC7, 0x45, 0xF4); a.dword(1);
-	a.jmp("draw");
-	a.label("single_shadow");
-	a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
-	ItemColorStatic.callIat(a, apis.setTextColor);
-	a.emit(0x83, 0x3D); a.dword(stateVir + ItemColorStatic.StateBalloonBypass); a.emit(0x00);
-	a.jcc(0x85, "draw");
-	a.jmp("shadow_done");
+	a.emit(0x8B, 0x45, 0xEC);
+	a.jmp("return");
 
-	a.label("draw");
+	a.label("draw_stock");
 	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14, 0xFF, 0x75, 0x10,
 		0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
-	// Embed the immutable EXE-cave target. A shared-state function pointer is
-	// cleared when WARP replays the global text-bridge tag in a full build.
 	a.call(previousTextOutVir);
-	a.emit(0x89, 0x45, 0xE8);
-	a.emit(0x83, 0x7D, 0xF4, 0x00);
-	a.jcc(0x84, "return");
-	a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
-	ItemColorStatic.callIat(a, apis.setTextColor);
-	a.jmp("return");
-	a.label("shadow_done");
-	a.emit(0xC7, 0x45, 0xE8); a.dword(1);
+
 	a.label("return");
-	a.emit(0x8B, 0x45, 0xE8, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D,
-		0xC2, 0x14, 0x00);
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x14, 0x00);
 	return a;
 };
 
@@ -1073,11 +1100,7 @@ ItemColorStatic.findApis = function()
 {
 	return {
 		wideToMulti: ExtNameTextStatic.StableIat.wideToMulti,
-		extent: ExtNameTextStatic.StableIat.extent,
-		getTickCount: ItemColorStatic.GetTickCountIat,
-		setTextColor: ExtNameTextStatic.StableIat.setTextColor,
-		getModuleHandle: ItemColorStatic.GetModuleHandleIat,
-		getProcAddress: ItemColorStatic.GetProcAddressIat
+		setTextColor: ExtNameTextStatic.StableIat.setTextColor
 	};
 };
 
@@ -1085,36 +1108,6 @@ ItemColorStatic.patchTextSurfaces = function(state)
 {
 	ExtNameTextStatic.selectProfile();
 	const apis = ItemColorStatic.findApis();
-	if (state.gradeColorsEnabled)
-	{
-		if (!Number.isInteger(apis.getModuleHandle) ||
-			apis.getModuleHandle < 0 ||
-			!Number.isInteger(apis.getProcAddress) ||
-			apis.getProcAddress < 0)
-			throw Error("ItemColorStatic: GDI resolver imports unavailable");
-		if (!Number.isInteger(state.gdiModuleNameVir))
-			state.gdiModuleNameVir =
-				ExtNameTextStatic.allocateText("GDI32.dll");
-		if (!Number.isInteger(state.getTextAlignNameVir))
-			state.getTextAlignNameVir =
-				ExtNameTextStatic.allocateText("GetTextAlign");
-		if (!Number.isInteger(state.setTextAlignNameVir))
-			state.setTextAlignNameVir =
-				ExtNameTextStatic.allocateText("SetTextAlign");
-		apis.gdiModuleNameVir = state.gdiModuleNameVir;
-		apis.getTextAlignNameVir = state.getTextAlignNameVir;
-		apis.setTextAlignNameVir = state.setTextAlignNameVir;
-	}
-	if (state.gradeColorsEnabled && !Number.isInteger(state.continuationVir))
-	{
-		const continuation = ItemColorStatic.allocateCode(
-			ItemColorStatic.buildContinuationLookup(
-				state.stateVir,
-				apis.getTickCount
-			)
-		);
-		state.continuationVir = continuation.virAddr;
-	}
 	let previousTextOutVir;
 	let entityFindWideVir;
 	let emojiTokensEnabled = false;
@@ -1169,15 +1162,14 @@ ItemColorStatic.patchTextSurfaces = function(state)
 	const textOut = ItemColorStatic.allocateCode(
 		ItemColorStatic.buildTextOut(
 			state.stateVir,
+			state.gradeConfigVir,
 			state.drainVir,
 			state.lookupVir,
-			state.continuationVir,
 			state.ansiScratchVir,
 			previousTextOutVir,
 			entityFindWideVir,
 			apis,
-			emojiTokensEnabled,
-			state.gradeColorsEnabled
+			emojiTokensEnabled
 		)
 	);
 	const owner = Exe.ActivePatch;
@@ -1201,6 +1193,115 @@ ItemColorStatic.patchTextSurfaces = function(state)
 	}
 	state.textOutVir = textOut.virAddr;
 	state.apis = apis;
+	return state;
+};
+
+ItemColorStatic.patchGradeTitleBoundaries = function(state)
+{
+	if (!Number.isInteger(state.gradeTitleBoundaryAppendGateVir) ||
+		!Number.isInteger(state.gradeTitleInlineGateVir))
+		throw Error("ItemColorStatic: grade-title boundary gates unavailable");
+
+	for (let idx = 0;
+		idx < ItemColorStatic.GradeTitleFormatterCallSites.length;
+		++idx)
+	{
+		const callVir = ItemColorStatic.GradeTitleFormatterCallSites[idx];
+		const guardHex = ItemColorStatic.GradeTitleGuardHex[idx];
+		const guardSize =
+			ItemColorStatic.hexNorm(guardHex).split(" ").length;
+		ItemColorStatic.assertBytes(
+			`grade-title guard ${idx + 1}`,
+			callVir - guardSize,
+			guardHex
+		);
+		ItemColorStatic.assertRelativeCall(
+			`grade-title formatter ${idx + 1}`,
+			callVir,
+			ItemColorStatic.GradeTitleFormatter,
+			ItemColorStatic.GradeTitleFormatter
+		);
+	}
+
+	const append = ItemColorStatic.assertRelativeCall(
+		"grade-title helper endpoint",
+		ItemColorStatic.GradeTitleBoundaryAppendCall,
+		ItemColorStatic.GradeTitleBoundaryAppendStock,
+		state.gradeTitleBoundaryAppendGateVir
+	);
+	if (append.target === ItemColorStatic.GradeTitleBoundaryAppendStock)
+	{
+		ItemColorStatic.assertBytes(
+			"grade-title helper endpoint shape",
+			ItemColorStatic.GradeTitleBoundaryAppendCall - 3,
+			ItemColorStatic.GradeTitleBoundaryAppendShape
+		);
+	}
+	else
+	{
+		ItemColorStatic.assertBytes(
+			"grade-title helper endpoint setup",
+			ItemColorStatic.GradeTitleBoundaryAppendCall - 3,
+			"8B CF 56"
+		);
+		ItemColorStatic.assertBytes(
+			"grade-title helper endpoint continuation",
+			ItemColorStatic.GradeTitleBoundaryAppendCall + 5,
+			"8B 45 08"
+		);
+	}
+
+	if (ItemColorStatic.GradeTitleInlineReplay !==
+			ItemColorStatic.GradeTitleInlinePatch + 6 ||
+		ItemColorStatic.GradeTitleInlineResume <=
+			ItemColorStatic.GradeTitleInlineReplay)
+		throw Error("ItemColorStatic: invalid grade-title inline profile");
+
+	const inlinePhy = Exe.Vir2Phy(
+		ItemColorStatic.GradeTitleInlinePatch,
+		CODE
+	);
+	if (inlinePhy < 0)
+		throw Error("ItemColorStatic: grade-title inline endpoint is not mapped");
+	const expectedInline =
+		ItemColorStatic.hexNorm(ItemColorStatic.GradeTitleInlineHex);
+	const actualInline =
+		ItemColorStatic.hexNorm(Exe.GetHex(inlinePhy, 6));
+	const inlineInstalled =
+		Exe.GetUint8(inlinePhy) === 0xE9 &&
+		Exe.GetTgtAddr(inlinePhy + 1) ===
+			state.gradeTitleInlineGateVir &&
+		Exe.GetUint8(inlinePhy + 5) === 0x90;
+	if (actualInline !== expectedInline && !inlineInstalled)
+	{
+		throw Error(
+			`ItemColorStatic: grade-title inline endpoint mismatch, ` +
+			`got ${actualInline}`
+		);
+	}
+
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag("ItemColorStatic.GradeTitleBoundary"), true);
+	try
+	{
+		Exe.SetCALL(
+			append.phyAddr,
+			state.gradeTitleBoundaryAppendGateVir,
+			0
+		);
+		Exe.SetJMP(
+			inlinePhy,
+			state.gradeTitleInlineGateVir,
+			0
+		);
+		Exe.SetNOPs(inlinePhy + 5, 1);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
 	return state;
 };
 
@@ -1265,11 +1366,12 @@ ItemColorStatic.patchItemLabelSurfaces = function(state)
 	return state;
 };
 
-ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
+ItemColorStatic.enable = function(_, icolVir)
 {
 	const profile = ItemColorStatic.selectProfile();
 	if (!Number.isInteger(icolVir))
 		throw Error("ItemColorStatic: ICOL dispatcher block unavailable");
+	const gradeConfig = ItemColorStatic.createGradeConfig(_);
 
 	let state = CACHE.get("ItemColorStatic.State");
 	if (!state || !Number.isInteger(state.stateVir))
@@ -1284,7 +1386,12 @@ ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
 			RagexeAllocationStatic.allocate(tableSize, 0x10);
 		ExtNameTextStatic.zeroBlock(tablePhy, tableSize);
 		const drain = ItemColorStatic.allocateCode(
-			ItemColorStatic.buildDrain(icolVir, stateVir, tableVir)
+			ItemColorStatic.buildDrain(
+				icolVir,
+				stateVir,
+				tableVir,
+				gradeConfig.virAddr
+			)
 		);
 		const lookup = ItemColorStatic.allocateCode(
 			ItemColorStatic.buildLookup(stateVir, tableVir)
@@ -1297,7 +1404,8 @@ ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
 			lookupVir: lookup.virAddr,
 			icolVir,
 			semanticOnly: RagexeAllocationStatic.UsesStaticCave,
-			gradeColorsEnabled: !!gradeColorsEnabled
+			gradeConfigPhy: gradeConfig.phyAddr,
+			gradeConfigVir: gradeConfig.virAddr
 		};
 		if (!state.semanticOnly)
 		{
@@ -1312,13 +1420,33 @@ ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
 			state.ansiScratchVir = scratchVir;
 		}
 	}
+	if (!Number.isInteger(state.gradeTitleBoundaryAppendGateVir))
+	{
+		const gate = ItemColorStatic.allocateCode(
+			ItemColorStatic.buildGradeTitleBoundaryAppendGate(
+				state.gradeConfigVir,
+				ItemColorStatic.GradeTitleBoundaryAppendStock
+			)
+		);
+		state.gradeTitleBoundaryAppendGateVir = gate.virAddr;
+		state.gradeTitleBoundaryAppendGateSize = gate.size;
+	}
+	if (!Number.isInteger(state.gradeTitleInlineGateVir))
+	{
+		const gate = ItemColorStatic.allocateCode(
+			ItemColorStatic.buildGradeTitleInlineGate(
+				state.gradeConfigVir
+			)
+		);
+		state.gradeTitleInlineGateVir = gate.virAddr;
+		state.gradeTitleInlineGateSize = gate.size;
+	}
 	if (!Number.isInteger(state.itemTooltipVir))
 	{
 		const tooltip = ItemColorStatic.allocateCode(
 			ItemColorStatic.buildItemTooltip(
 				state.drainVir,
-				state.lookupVir,
-				state.gradeColorsEnabled
+				state.lookupVir
 			)
 		);
 		state.itemTooltipVir = tooltip.virAddr;
@@ -1328,8 +1456,7 @@ ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
 		const tooltip = ItemColorStatic.allocateCode(
 			ItemColorStatic.buildGroundTooltip(
 				state.drainVir,
-				state.lookupVir,
-				state.gradeColorsEnabled
+				state.lookupVir
 			)
 		);
 		state.groundTooltipVir = tooltip.virAddr;
@@ -1356,6 +1483,7 @@ ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
 		);
 		state.balloonStyledScopeVir = scope.virAddr;
 	}
+	ItemColorStatic.patchGradeTitleBoundaries(state);
 	ItemColorStatic.patchTextSurfaces(state);
 	ItemColorStatic.patchItemLabelSurfaces(state);
 	CACHE.put("ItemColorStatic.State", state);
@@ -1367,6 +1495,7 @@ ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
 			const current = CACHE.get("ItemColorStatic.State");
 			if (!current || !Number.isInteger(current.stateVir))
 				return false;
+			ItemColorStatic.patchGradeTitleBoundaries(current);
 			ItemColorStatic.patchTextSurfaces(current);
 			CACHE.put("ItemColorStatic.State", current);
 			return true;
@@ -1381,13 +1510,34 @@ ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
 			build: profile.Name,
 			packetId: ItemColorStatic.PacketId,
 			tableCapacity: ItemColorStatic.TableCapacity,
-			gradeColorsEnabled: state.gradeColorsEnabled,
+			gradeColorsEnabled:
+				Exe.GetUint32(
+					state.gradeConfigPhy +
+					ItemColorStatic.GradeConfigColorMode
+				) !== 0,
+			gradeLabelCount:
+				Exe.GetUint32(
+					state.gradeConfigPhy +
+					ItemColorStatic.GradeConfigLabelCount
+				),
+			gradeLabelTableVir:
+				Exe.GetUint32(
+					state.gradeConfigPhy +
+					ItemColorStatic.GradeConfigLabelTable
+				),
+			gradeConfigVir: state.gradeConfigVir,
 			icolVir,
 			textOutVir: state.textOutVir,
 			itemTooltipVir: state.itemTooltipVir,
 			groundTooltipVir: state.groundTooltipVir,
 			balloonPlainScopeVir: state.balloonPlainScopeVir,
 			balloonStyledScopeVir: state.balloonStyledScopeVir,
+			gradeTitleBoundaryAppendGateVir:
+				state.gradeTitleBoundaryAppendGateVir,
+			gradeTitleBoundaryAppendGateSize:
+				state.gradeTitleBoundaryAppendGateSize,
+			gradeTitleInlineGateVir: state.gradeTitleInlineGateVir,
+			gradeTitleInlineGateSize: state.gradeTitleInlineGateSize,
 			externalModules: 0
 		});
 	}
@@ -1418,9 +1568,7 @@ CustomColoredItemName = function(_)
 	if (!icol || !Number.isInteger(icol.blockVir))
 		throw Error("CustomColoredItemName: ICOL shared block unavailable");
 
-	const gradeColorsEnabled =
-		CACHE.get("CustomColoredItemName.GradeColorsEnabled") === true;
-	return ItemColorStatic.enable(_, icol.blockVir, gradeColorsEnabled);
+	return ItemColorStatic.enable(_, icol.blockVir);
 };
 
 CustomColoredItemName.validate = function()

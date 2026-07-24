@@ -328,6 +328,7 @@ patches:
     - RemoveMaxNumbersLimit
     - CustomExtName
     - CustomColoredItemName
+    - CustomColoredEnchantGradeName
     - FluentEmoji
     - TildeForMatk
     - OpenToServiceSelect

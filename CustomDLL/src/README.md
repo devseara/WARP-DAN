@@ -23,10 +23,12 @@ Gepard owner for whitelist/protection review.
 
 For strict Gepard builds, keep the combined build limited to non-hook modules.
 The checked-in `customer_features.h` may reflect a customer/runtime feature set;
-do not treat it as proof of strict Gepard compliance. Do not enable item colors,
-extended names, rune visuals, FPS/ping, inventory tabs, or other runtime-hook
-modules unless the anti-cheat owner has approved that specific runtime memory
-behavior.
+do not treat it as proof of strict Gepard compliance. Item and enchant-grade
+colors cannot be enabled in this DLL; they are implemented exclusively by the
+QJS patches documented in `../../docs/item-grade-color-renderer-contract.md`.
+Do not enable extended names, rune visuals, FPS/ping, inventory tabs, or other
+runtime-hook modules unless the anti-cheat owner has approved that specific
+runtime memory behavior.
 
 ## Dedicated builds
 
@@ -34,7 +36,7 @@ Run `build_split.bat` to produce:
 
 | DLL | Features | WARP export |
 |-----|----------|-------------|
-| `boh_text.dll` | Item colors and extended names | `ColoredItemNameVisualInit`, `ExtNameVisualInit` |
+| `boh_text.dll` | Extended names and player-name colors | `ExtNameVisualInit`, `PlayerNameColorVisualInit` |
 | `boh_npc_names.dll` | Always-show NPC names | `NpcNameOverlayInit`, `NpcNameOverlayFrame` |
 | `boh_rune.dll` | Rune visuals | `RuneVisualInit` |
 | `boh_fps.dll` | FPS and ping overlays | `FpsPingOverlayInit` |
@@ -52,11 +54,21 @@ not install a runtime trampoline. The other dedicated visual DLLs are isolated
 for debugging and deployment control, but they still perform runtime
 hooks/patches.
 
-Item colors and extended names intentionally remain together in
-`boh_text.dll`. Both features intercept the same GDI text APIs, so loading two
-independent hook owners would reintroduce ordering and double-hook problems.
-Their packet consumers are separate: ICOL is handled by `item_color/`, while
-EXTN transport and substitution state live in `extended_name/`.
+`item_color/colored_itemname.cpp` and the `BOH_ITEM_COLORS` feature bit are
+deprecated historical artifacts. They implement the obsolete DLL continuation
+and shadow renderer and are non-authoritative. Both build scripts reject
+`BOH_ITEM_COLORS=1`; `gen_license.py` cannot enable it. Do not restore this
+module or use `ColoredItemNameVisualInit` to implement item/grade colors.
+
+Item and enchant-grade colors are exclusively QJS-time EXE patches. Their
+normative precedence, exact-span, quantity-tail, and shadow-suppression rules
+are in `../../docs/item-grade-color-renderer-contract.md`.
+
+`boh_text.dll` now uses `text_visual/player_name_text_bridge.cpp` only for EXTN
+substitution and player-name colors. Those remaining features still share the
+same GDI wrapper surface. The `ColoredItemNameVisualInit` export remains a
+no-op compatibility anchor for already-patched clients; it does not enable an
+item renderer.
 
 ## Dual-wield weapon sprite debug
 

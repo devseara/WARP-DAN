@@ -54,6 +54,45 @@ When analyzing binaries:
 - **Never pass `undefined` to `Exe.FindHexN`** — normalize with `from ?? 0`, `to ?? Exe.FileSize`
 - **`Exe.GetSectBegin(DIFF)` is unconfirmed** — wrap in try/catch with fallback
 
+## Custom item/enchant renderer invariants (CRITICAL)
+
+`docs/item-grade-color-renderer-contract.md` is normative. Any change to
+`CustomColoredItemName`, `CustomColoredEnchantGradeName`,
+`CustomEnchantGradeLabels`, `ExtNameTextStatic`, or their shared text surfaces
+MUST preserve and verify all of these rules:
+
+- A matching enchant-grade color wins the complete decorated item title over
+  the item-color database.
+- When grade coloring is active, gate the two profiled native post-grade
+  endpoint insertions so `[Grade] Item` reaches TextOut as one original
+  UTF-16 span. When inactive, replay stock endpoint behavior exactly. Never
+  infer continuation from another draw or use alignment/extent heuristics.
+- Omit the exact stock quantity tail from grade-matched Inventory labels;
+  `[Epic] Knife [3]: 1 ea.` renders as `[Epic] Knife [3]`.
+- Suppress matched black/dark shadow draws by returning success without
+  drawing. Never preserve or recolor the shadow.
+- Restore the original HDC color after every custom foreground draw.
+- Match the base item exactly after recognized client decorations. `Knife`
+  must not match `Zeny Knife`. Inventory grammar must cover all three anchored
+  forms: `Name <count> ea.`, `Name: <count> ea.`, and
+  `Name [<slots>]: <count> ea.`.
+- Use stock `D/C/B/A` labels unless `CustomEnchantGradeLabels` is selected.
+  Parse `_GRADE_<n>_<server-label>` by number and ignore the server label.
+- Patch selection order must not change grade mode or label resolution.
+- `itemInfo.lua` may validate/canonicalize configured display names offline,
+  but render hooks must not parse Lua. The current `0x0BDD` protocol is
+  name-keyed and Item Description exposes no item ID; ID-first matching
+  requires a versioned packet and upstream producer-hook migration.
+
+Run the checked-in item/grade contract verifier and the complete two-client
+matrix before considering the change complete. Static checks are not enough to
+mark visual behavior Working: slotless and slotted Inventory labels, grade
+quantity omission, Alt+Q, Item Description full-title precedence/shadow
+suppression, and both target clients require live screenshot acceptance.
+
+Minimum source gate:
+`.\.venv\Scripts\python.exe tools\verify_item_grade_color_contract.py --source-only`.
+
 ## Key APIs
 - `Exe.SetHex/SetUint32/SetUint16/SetNOPs/SetJMP/SetCALL` — binary writes (use `SAFETY.*` wrappers)
 - `Exe.FindHex/FindHexN` — pattern scanning (use `FindHexUnique` for single-match requirement)

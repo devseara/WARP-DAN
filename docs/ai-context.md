@@ -1,5 +1,15 @@
 # rAthena AI Context — Banquet of Heroes
 
+> **Current item/grade renderer authority (2026-07-24):**
+> `docs/item-grade-color-renderer-contract.md` is normative. Earlier material
+> in this file about `boh.dll`/`boh_text.dll`, substring matching, split grade
+> spans, cross-call continuation, preserving/recoloring shadows, or excluding
+> Item Description titles is retained only as investigation history and is
+> superseded. The QJS renderer uses anchored exact matching, grade-over-item
+> precedence for the complete decorated title, conditional native post-grade
+> endpoint coalescing, grade quantity omission, and matched-dark-draw
+> suppression.
+
 ## Server
 - **rAthena branch**: BanquetOfHeroes (custom fork)
 - **Client date**: 2025-07-16
@@ -1949,3 +1959,63 @@ image decoding, or broad UI-object searches each frame.
 Do not copy the entire `uirenewal` directory and expect it to activate. The
 target client only requests a small subset of those paths today; the rest need
 path redirection, control repositioning, or new draw/state hooks.
+
+## Normative QJS Item/Grade Renderer State (2026-07-24)
+
+The current implementation is QJS-only and has no custom text DLL, recv hook,
+runtime API detour, split-span renderer, or cross-call grade continuation.
+This section supersedes every earlier item-color "final" state in this file.
+
+- Packet `0x0BDD` is drained into a bounded EXE-resident exact-name ICOL table.
+- `_GRADE_<n>_<server-label>` is keyed by numeric grade. The server label is
+  ignored.
+- With `CustomEnchantGradeLabels` disabled, grades 1-4 resolve to D/C/B/A.
+  With it enabled, the exact `Inputs/enchant_grade.yml` map is used.
+- With `CustomColoredEnchantGradeName` enabled, a matching grade color wins
+  over the item-color database for the complete decorated title.
+- The stock title builder inserts an endpoint immediately after formatting
+  `[Grade] `. Grade mode conditionally skips only those two guarded endpoint
+  insertions, so grade plus item reaches TextOut as one original UTF-16 span.
+  Item-only mode executes the exact stock endpoint operation.
+- The TextOut bridge never splits an incoming span and no cross-call grade
+  continuation is allowed.
+- The exact grade-matched Inventory quantity tail is omitted:
+  `[Epic] Knife [3]: 1 ea.` renders as `[Epic] Knife [3]`.
+- A matched dark/shadow call returns success without drawing. The foreground
+  is drawn once and the original HDC color is restored.
+- Base-item matching is exact after recognized client decorations; `Knife`
+  never matches `Zeny Knife`. Inventory matching accepts all complete stock
+  forms: `Name <count> ea.`, `Name: <count> ea.`, and
+  `Name [<slots>]: <count> ea.`.
+- Patch order must not change grade mode or the active label registry.
+
+### Verified native endpoint sites
+
+The Item Description failure was not an item-database precedence failure
+inside one call. `UITransBalloonText` received the complete title, but the
+native item-title builder stored the cursor as a new endpoint immediately
+after the grade formatter. The downstream renderer consequently issued
+separate TextOut calls for `[Epic]` and `Knife`.
+
+| Client | Grade formatter | Post-grade append A | Post-grade append B |
+|---|---:|---:|---:|
+| 2025-07-16 | `0x006A2AC0` | CALL at `0x008A062A` to `0x008D2450` | inline append at `0x008A082D`, resume `0x008A0846` |
+| 2026-02-19 | `0x006D5780` | CALL at `0x008DA74A` to `0x0090C4C0` | inline append at `0x008DA94D`, resume `0x008DA966` |
+
+The conditional gates read `GradeConfigColorMode`. Mode zero tail-calls or
+replays the stock append; nonzero mode skips the post-grade endpoint. Do not
+replace this with timers, coordinates, text extents, HDC matching, or a color
+carried from one TextOut call to another.
+
+### Item identity limit
+
+The current `0x0BDD` payload is name-keyed, and the final Item Description
+`UITransBalloonText` path exposes formatted text/length/color/style but no item
+ID. `itemInfo.lua` `identifiedDisplayName` is useful for offline
+canonicalization or server validation, not per-draw parsing. A true ID-first
+implementation requires a versioned packet schema and scoped upstream hooks
+for every Inventory, Equipment, ground, Alt+Q, and Item Description producer.
+
+The authoritative invariants, forbidden implementations, regression vectors,
+and two-client acceptance matrix are in
+`docs/item-grade-color-renderer-contract.md`.

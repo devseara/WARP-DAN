@@ -282,7 +282,7 @@ CustomUI:
             title : Custom enchant grade labels
             recommend : no
             author : Louis T Steinhil
-            desc : Replaces the hardcoded item name grade marks like [D], [C], [B], and [A] with labels from Inputs/enchant_grade.INI.
+            desc : Replaces client grade labels by numeric grade and publishes the identical map to Custom Item Name Colors. This patch alone enables the custom words from Inputs/enchant_grade.yml; when disabled, grades 1-4 always resolve to [D], [C], [B], and [A]. The textual suffix in a server _GRADE_<n>_<label> sentinel is ignored.
 
         - ReduceExpensiveUIRender:
             title : Reduce expensive UI rendering

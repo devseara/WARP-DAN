@@ -49,8 +49,13 @@ for /f "tokens=1,2,3" %%a in ('findstr /R /C:"^#define BOH_" customer_features.h
     if "%%b"=="BOH_WEAPON_SPRITE" set "BOH_WEAPON_SPRITE=%%c"
 )
 
+if "%BOH_ITEM_COLORS%"=="1" (
+    echo [ERROR] BOH_ITEM_COLORS is retired and cannot be compiled.
+    echo [ERROR] Use the QJS item/enchant-grade patches and renderer contract.
+    exit /b 1
+)
+
 set "BOH_TEXT_VISUAL=0"
-if "%BOH_ITEM_COLORS%"=="1" set "BOH_TEXT_VISUAL=1"
 if "%BOH_EXTENDED_NAMES%"=="1" set "BOH_TEXT_VISUAL=1"
 if "%BOH_PLAYER_NAME_COLORS%"=="1" set "BOH_TEXT_VISUAL=1"
 
@@ -71,15 +76,9 @@ cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
 if errorlevel 1 (echo FAILED & exit /b 1)
 
 if "%BOH_TEXT_VISUAL%"=="1" (
-    if "%BOH_ITEM_COLORS%"=="1" (
-        set "TEXT_BRIDGE_SRC=item_color\colored_itemname.cpp"
-        set "TEXT_BRIDGE_OBJ=colored_itemname.obj"
-        set "TEXT_BRIDGE_LABEL=item_color - full static text bridge + item colors"
-    ) else (
-        set "TEXT_BRIDGE_SRC=text_visual\player_name_text_bridge.cpp"
-        set "TEXT_BRIDGE_OBJ=player_name_text_bridge.obj"
-        set "TEXT_BRIDGE_LABEL=text_visual - standalone EXTN/player-name bridge"
-    )
+    set "TEXT_BRIDGE_SRC=text_visual\player_name_text_bridge.cpp"
+    set "TEXT_BRIDGE_OBJ=player_name_text_bridge.obj"
+    set "TEXT_BRIDGE_LABEL=text_visual - standalone EXTN/player-name bridge"
 
     echo [text] extended_name - EXTN transport + substitution state...
     cl.exe /nologo /c /O2 /Gy /MT /EHa /I"./" ^

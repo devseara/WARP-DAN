@@ -158,7 +158,7 @@ inputs:
     
     $enchantGradeMap:
         data: ''
-        display: "C:\\Users\\Administrator\\Documents\\GitHub\\WARP0716-main\\Inputs\\enchant_grade.yml"
+        display: "Inputs/enchant_grade.yml"
         type: 10
     
     $maxHomun:
@@ -270,6 +270,7 @@ patches:
     - PlainTextDesc
     - LoadKrExtSettings
     - EnableEffectTool
+    # Keep the generic importer only for Inputs/DLLSpec.yml -> cps.dll.
     - CustomDLL
     - HideBuildInfo
     - FixArrowsCharset
@@ -309,6 +310,7 @@ patches:
     - AllowAPBarforAllJobs
     - CustomExtName
     - CustomColoredItemName
+    - CustomColoredEnchantGradeName
     - TildeForMatk
     - OpenToServiceSelect
     - GuildBrackets
@@ -333,7 +335,6 @@ patches:
     - InsensitiveShopSearch
     - NoGravityAds
     - NoGravityLogo
-    - CustomRuneSystem
     - RestoreModelCulling
     - CustomHatEffectOcclusion
     - ShowNewButtons

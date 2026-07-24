@@ -8,7 +8,8 @@
 //
 // Feature source files:
 //   extended_name.cpp    - EXTN transport + name substitution state
-//   colored_itemname.cpp - GDI hooks + item colors
+//   player_name_text_bridge.cpp - EXTN/player-name GDI bridge
+//   colored_itemname.cpp - DEPRECATED historical renderer; never built
 //   rune_visual.cpp       — Rune set rendering (RuneVisualDLL/)
 //   fps_ping.cpp          — FPS/Ping overlay (FpsPingOverlay/)
 //   npc_name_overlay.cpp  — NPC name overlay (npc_name_overlay/)
@@ -20,7 +21,7 @@
 #include "boh_features.h"
 #include "dll_integrity/dll_integrity.h"
 
-#if BOH_ITEM_COLORS || BOH_EXTENDED_NAMES || BOH_PLAYER_NAME_COLORS
+#if BOH_EXTENDED_NAMES || BOH_PLAYER_NAME_COLORS
 #define BOH_HAS_TEXT_VISUAL 1
 #else
 #define BOH_HAS_TEXT_VISUAL 0
@@ -31,7 +32,7 @@
 #endif
 
 // ============================================================================
-//  DirectDraw forwarding globals (also referenced by colored_itemname.cpp)
+//  DirectDraw forwarding globals
 // ============================================================================
 
 HMODULE g_hRealDDraw = nullptr;
@@ -89,7 +90,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
 
     const bool textFeaturesEnabled =
 #if BOH_HAS_TEXT_VISUAL
-        BohLicense::IsEnabled(FEATURE_ITEM_COLORS) ||
         BohLicense::IsEnabled(FEATURE_EXTENDED_NAMES) ||
         BohLicense::IsEnabled(FEATURE_PLAYER_NAME_COLORS);
 #else
@@ -146,8 +146,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
             g_pDirectDrawEnumerateExA = GetProcAddress(g_hRealDDraw, "DirectDrawEnumerateExA");
         }
 
-        // Initialize item colors + extended names only for builds that enable
-        // those text-hook features.
+        // Initialize the EXTN/player-name bridge only for builds that enable
+        // those text features. Item/enchant-grade colors are QJS-only.
 #if BOH_HAS_TEXT_VISUAL
         if (textFeaturesEnabled)
             TextVisualInit(hModule);
@@ -198,6 +198,8 @@ extern "C" __declspec(dllexport) HRESULT DirectDrawEnumerateExA(
 // ============================================================================
 
 extern "C" __declspec(dllexport) void ExtNameVisualInit(void) {}
+// Deprecated compatibility anchor. It intentionally initializes nothing;
+// item/enchant-grade colors are implemented exclusively by QJS EXE patches.
 extern "C" __declspec(dllexport) void ColoredItemNameVisualInit(void) {}
 extern "C" __declspec(dllexport) void PlayerNameColorVisualInit(void) {}
 #if !BOH_WEAPON_SPRITE

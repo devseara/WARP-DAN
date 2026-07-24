@@ -48,6 +48,13 @@ Combined with the cancel-exit fix above, you can list multiple servers and playe
 
 WARP is the patcher that WARPGATE's client is built with. If you run your own server or want to hand-pick your patch set, you can WARP an exe yourself. This build of WARP is tuned for the **2025-07-16 kRO Ragexe** (build 175220998); point it at that unpacked exe.
 
+Maintainers changing custom item or enchant-grade colors must follow the
+[normative item/grade renderer contract](docs/item-grade-color-renderer-contract.md).
+It defines grade-over-item precedence, conditional native post-grade endpoint
+coalescing, anchored slotless/slotted Inventory matching, quantity omission,
+Alt+Q span integrity, shadow suppression, and the required 2025/2026
+regression matrix.
+
 You can get the WARP patcher two ways: from this repo (`win32/WARP.exe`), or by downloading it through [WARPGATE](https://mirror2.romirrors.com/downloads/Warpgate.zip).
 
 ### Setup

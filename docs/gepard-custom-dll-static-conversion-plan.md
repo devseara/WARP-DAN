@@ -21,7 +21,7 @@ Rule of thumb for every conversion:
 | AlwaysShowNpcName | None | Former DLL frame renderer | Converted again: bounded QJS-only EXTN table and native balloon frame cave at `0x00C7642D` |
 | InGamePincodeUI | `boh_pincode_ui.dll` | None | Already strict-safe |
 | CustomExtName / CustomPlayerNameColor | None | Former DLL maps and global GDI text matching | Converted: bounded EXTN exact-text map plus WARP-time GDI call-site caves; mob title/name rows stay stock-owned |
-| CustomColoredItemName | None | Former passive GDI wrappers | Converted: QJS-only bounded ICOL table and EXE-resident text bridges |
+| CustomColoredItemName | None | Former passive GDI wrappers | Converted: QJS-only bounded exact ICOL table, anchored slotless/slotted Inventory grammar, conditional native post-grade endpoint gates, and one EXE-resident title bridge. Grade color wins a complete decorated title, grade-matched Inventory quantities are omitted, and matched dark draws are suppressed. See the normative renderer contract. |
 | FpsOverlay / PingOverlay | None | Former D3D proxy, layered window and ICMP worker | Converted again: QJS-only post-Present renderer plus stock application-packet RTT capture |
 | ROGlobalZeroInventory | None | Former DLL-owned draw/input handlers | Converted again: pure-QJS native caves, renewal tooltips, and Zeny underlay |
 | CustomRuneSystem visuals | `boh_rune.dll` | Runtime call/JMP patches and dynamic surface vtable swap | Converted: WARP-time call/prologue/surface bridges |
@@ -50,7 +50,11 @@ Rule of thumb for every conversion:
 ## Text DLL: Item Colors + Extended Names (historical)
 
 Superseded: item colors and extended names now use QJS-only EXE-resident
-tables and text bridges. The design below is retained as conversion history.
+tables and text bridges. The design below is retained only as conversion
+history and is non-normative. Do not restore its DLL wrappers, split spans,
+substring matching, continuation state, or shadow behavior. Current item and
+grade behavior is defined exclusively by
+`docs/item-grade-color-renderer-contract.md`.
 
 Working behavior:
 

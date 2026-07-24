@@ -4,8 +4,8 @@ echo ============================================================
 echo  BOH Dedicated Feature DLL Build
 echo ============================================================
 echo.
-echo  Text wrappers are intentionally shared by item colors,
-echo  extended names, and player name colors in boh_text.dll.
+echo  Text wrappers are shared by extended names and player name
+echo  colors in boh_text.dll. Item/enchant colors are QJS-only.
 echo  Other features are isolated.
 echo.
 
@@ -56,8 +56,13 @@ for /f "tokens=1,2,3" %%a in ('findstr /R /C:"^#define BOH_" customer_features.h
     if "%%b"=="BOH_WEAPON_SPRITE" set "BOH_WEAPON_SPRITE=%%c"
 )
 
+if "%BOH_ITEM_COLORS%"=="1" (
+    echo [ERROR] BOH_ITEM_COLORS is retired and cannot be compiled.
+    echo [ERROR] Use the QJS item/enchant-grade patches and renderer contract.
+    exit /b 1
+)
+
 set "BOH_TEXT_VISUAL=0"
-if "%BOH_ITEM_COLORS%"=="1" set "BOH_TEXT_VISUAL=1"
 if "%BOH_EXTENDED_NAMES%"=="1" set "BOH_TEXT_VISUAL=1"
 if "%BOH_PLAYER_NAME_COLORS%"=="1" set "BOH_TEXT_VISUAL=1"
 
@@ -66,15 +71,9 @@ if "%BOH_FPS_OVERLAY%"=="1" set "BOH_FPS_PING=1"
 if "%BOH_PING_OVERLAY%"=="1" set "BOH_FPS_PING=1"
 
 if "%BOH_TEXT_VISUAL%"=="1" (
-    if "%BOH_ITEM_COLORS%"=="1" (
-        set "TEXT_BRIDGE_SRC=item_color\colored_itemname.cpp"
-        set "TEXT_BRIDGE_OBJ=split_item_color.obj"
-        set "TEXT_BRIDGE_LABEL=Shared static text wrappers + item/player-name colors"
-    ) else (
-        set "TEXT_BRIDGE_SRC=text_visual\player_name_text_bridge.cpp"
-        set "TEXT_BRIDGE_OBJ=split_player_name_text_bridge.obj"
-        set "TEXT_BRIDGE_LABEL=Standalone EXTN/player-name text bridge"
-    )
+    set "TEXT_BRIDGE_SRC=text_visual\player_name_text_bridge.cpp"
+    set "TEXT_BRIDGE_OBJ=split_player_name_text_bridge.obj"
+    set "TEXT_BRIDGE_LABEL=Standalone EXTN/player-name text bridge"
 
     echo [text] Extended-name state...
     cl.exe /nologo /c /O2 /Gy /MT /EHa /I"./" ^

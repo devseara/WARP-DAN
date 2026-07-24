@@ -22,8 +22,13 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
   - No `CNameInfo` mutation, text DLL, networking hook, runtime patch API, or heap map.
 - `CustomColoredItemName.qjs`
   - Static dispatcher-table route for `0x0BDD/ICOL`.
-  - Item colors still use the passive `BohTextOutW` and
-    `BohGetTextExtentPoint32W` DLL wrappers pending their separate conversion.
+  - A QJS-only bounded exact-name table, anchored slotless/slotted Inventory
+    grammar, two conditional native post-grade endpoint gates, and one
+    EXE-resident `TextOutW` bridge apply item colors, give matching grade
+    colors precedence over complete decorated titles, omit grade-matched
+    Inventory quantities, and suppress matched dark draws.
+  - No text DLL, extent/alignment splitter, runtime hook, or API detour is
+    used. See `docs/item-grade-color-renderer-contract.md`.
 - `ROGlobalZeroInventory.qjs`
   - Adds no inventory DLL import; all handlers are emitted into EXE caves.
   - WARP-time caves replace the inventory/tab draw and mousemove vtable entries,
@@ -83,6 +88,8 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
 - Dispatcher table: `0x00CAA2E0`, including EXTN `0x0BB7`, ICOL `0x0BDD`,
   PINC `0x0BEF`.
 - Text wrappers: `0x005476C7`, `0x0054758D`, `0x00DBA690`, `0x00DBA66C`.
+- Item-grade endpoint gates: 2025 `0x008A062A` / `0x008A082D`; 2026
+  `0x008DA74A` / `0x008DA94D`.
 - Inventory vtable entries: `0x0103D4B0`, `0x0102DD94`, `0x0102DDB4`.
 - Telemetry post-Present bridge: `0x00543441`; application RTT capture:
   request tick `0x00C82D32`, response subtraction `0x00C9E8F2`, capture
