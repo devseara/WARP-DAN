@@ -1,0 +1,37 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-24                                             *
+*   Last Modified : 2026-07-24                                             *
+*                                                                          *
+*   Description   : Enables independent ICOL coloring for the leading      *
+*                   enchant-grade token in CustomColoredItemName. The      *
+*                   grade prefix and exact base item remain separate GDI   *
+*                   spans. Targets: 2025-07-16 and 2026-02-19 Ragexe.      *
+*                                                                          *
+\**************************************************************************/
+
+CustomColoredEnchantGradeName = function(_)
+{
+	CACHE.put("CustomColoredItemName.GradeColorsEnabled", true);
+	$$(_, 1, "Enable independent enchant-grade prefix colors");
+	return true;
+};
+
+CustomColoredEnchantGradeName.validate = function()
+{
+	return typeof RagexeClientProfile !== "undefined" &&
+		(RagexeClientProfile.Id === 20250716 ||
+			RagexeClientProfile.Id === 20260219);
+};

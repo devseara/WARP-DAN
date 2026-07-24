@@ -18,17 +18,19 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-12                                             *
-*   Last Modified : 2026-07-23                                             *
+*   Last Modified : 2026-07-24                                             *
 *                                                                          *
 *   brief Shows each weapon's original item SPR/ACT while dual-wielding or *
 *   equipping only an off-hand weapon. This is a self-contained static     *
 *   EXE patch; it does not import or require a weapon-renderer DLL.        *
 *                                                                          *
-*   Target: 2025-07-16 Ragexe 175220998, image base 0x00400000.            *
+*   Targets: 2025-07-16 Ragexe 175220998 and 2026-02-19 Ragexe,            *
+*   image base 0x00400000.                                                  *
 *                                                                          *
 *   Reverse-engineered contracts:                                          *
-*   - D403A0(this, mainItem, offItem) owns item fields +0x440/+0x444 and   *
-*     parallel weapon resource arrays +0x4AC (SPR) / +0x4B8 (ACT).         *
+*   - The profiled equipment updater owns the main/off item fields and     *
+*     parallel weapon SPR/ACT arrays. The 2026 client moves those members  *
+*     by +0x8.                                                             *
 *   - Stock dual setup collapses real items to generic types 25..30.       *
 *   - Stock single-item setup resolves the real item resource pair in      *
 *     slot 5.                                                              *
@@ -46,17 +48,63 @@
 \**************************************************************************/
 
 const DualWeaponStatic = {
-	BuildDate: 20250716,
-	EquipUpdate: 0x00D403A0,
-	EquipStolen: "55 8B EC 6A FF",
-	ActFrameCall: 0x00D36EE4,
-	ActFrameCallBytes: "E8 C7 85 9D FF",
-	ActGetFrame: 0x0070F4B0,
-	ItemToWeaponView: 0x00D8A1D0,
-	ItemToWeaponViewBytes: "55 8B EC 56 8B 75 08",
-	ItemDatabase: 0x015FA3C0,
-	ResourceAddRef: 0x00A8E800,
-	ResourceRelease: 0x00A8F910
+	Profiles: {
+		20250716: {
+			Name: "2025-07-16 Ragexe",
+			EquipUpdate: 0x00D403A0,
+			EquipStolen: "55 8B EC 6A FF",
+			ActFrameCall: 0x00D36EE4,
+			ActFrameCallBytes: "E8 C7 85 9D FF",
+			ActGetFrame: 0x0070F4B0,
+			ItemToWeaponView: 0x00D8A1D0,
+			ItemToWeaponViewBytes: "55 8B EC 56 8B 75 08",
+			ItemDatabase: 0x015FA3C0,
+			ResourceAddRef: 0x00A8E800,
+			ResourceRelease: 0x00A8F910,
+			ActorMainItem: 0x440,
+			ActorOffItem: 0x444,
+			ActorSprBegin: 0x4AC,
+			ActorSprEnd: 0x4B0,
+			ActorActBegin: 0x4B8,
+			ActorActEnd: 0x4BC
+		},
+		20260219: {
+			Name: "2026-02-19 Ragexe",
+			EquipUpdate: 0x00DB2840,
+			EquipStolen: "55 8B EC 6A FF",
+			ActFrameCall: 0x00DA90F4,
+			ActFrameCallBytes: "E8 77 E0 99 FF",
+			ActGetFrame: 0x00747170,
+			ItemToWeaponView: 0x00E19530,
+			ItemToWeaponViewBytes: "55 8B EC 56 8B 75 08",
+			ItemDatabase: 0x01732638,
+			ResourceAddRef: 0x00AEFAD0,
+			ResourceRelease: 0x00AF0BE0,
+			// This build inserts eight bytes before the resource members.
+			ActorMainItem: 0x448,
+			ActorOffItem: 0x44C,
+			ActorSprBegin: 0x4B4,
+			ActorSprEnd: 0x4B8,
+			ActorActBegin: 0x4C0,
+			ActorActEnd: 0x4C4
+		}
+	},
+	ActiveBuildDate: 0
+};
+
+DualWeaponStatic.selectProfile = function()
+{
+	const profileId = RagexeClientProfile.Id;
+	const profile = DualWeaponStatic.Profiles[profileId];
+	if (!profile)
+		throw Error(`DualWeaponStatic does not support client profile ${profileId}`);
+	if (DualWeaponStatic.ActiveBuildDate === profileId)
+		return profile;
+
+	for (const key in profile)
+		DualWeaponStatic[key] = profile[key];
+	DualWeaponStatic.ActiveBuildDate = profileId;
+	return profile;
 };
 
 DualWeaponStatic.hexNorm = function(hex)
@@ -190,19 +238,19 @@ DualWeaponStatic.buildEquipHook = function(trampolineVir)
 
 	const loadSlots = function(failLabel)
 	{
-		a.emit(0x8B, 0x86); a.dword(0x4AC); // MOV EAX,[ESI+4AC] SPR begin
+		a.emit(0x8B, 0x86); a.dword(DualWeaponStatic.ActorSprBegin);
 		a.emit(0x85, 0xC0);                 // TEST EAX,EAX
 		a.jcc(0x84, failLabel);             // JZ fail
-		a.emit(0x8B, 0x8E); a.dword(0x4B0); // MOV ECX,[ESI+4B0] SPR end
+		a.emit(0x8B, 0x8E); a.dword(DualWeaponStatic.ActorSprEnd);
 		a.emit(0x3B, 0xC8);                 // CMP ECX,EAX
 		a.jcc(0x82, failLabel);             // JB fail
 		a.emit(0x2B, 0xC8);                 // SUB ECX,EAX
 		a.emit(0x83, 0xF9, 0x1C);           // CMP ECX,7*4
 		a.jcc(0x82, failLabel);             // JB fail
-		a.emit(0x8B, 0x96); a.dword(0x4B8); // MOV EDX,[ESI+4B8] ACT begin
+		a.emit(0x8B, 0x96); a.dword(DualWeaponStatic.ActorActBegin);
 		a.emit(0x85, 0xD2);                 // TEST EDX,EDX
 		a.jcc(0x84, failLabel);
-		a.emit(0x8B, 0x8E); a.dword(0x4BC); // MOV ECX,[ESI+4BC] ACT end
+		a.emit(0x8B, 0x8E); a.dword(DualWeaponStatic.ActorActEnd);
 		a.emit(0x3B, 0xCA);                 // CMP ECX,EDX
 		a.jcc(0x82, failLabel);
 		a.emit(0x2B, 0xCA);                 // SUB ECX,EDX
@@ -263,16 +311,16 @@ DualWeaponStatic.buildEquipHook = function(trampolineVir)
 	// Leave the main item's original pair in slot 5 and transfer off to slot 6.
 	original("mainOnly");
 	loadSlots("failed");
-	releaseSlot(0x4AC, 6);
-	releaseSlot(0x4B8, 6);
-	a.emit(0x8B, 0x86); a.dword(0x4AC);
+	releaseSlot(DualWeaponStatic.ActorSprBegin, 6);
+	releaseSlot(DualWeaponStatic.ActorActBegin, 6);
+	a.emit(0x8B, 0x86); a.dword(DualWeaponStatic.ActorSprBegin);
 	a.emit(0x8B, 0x4D, 0xFC, 0x89, 0x48, 0x18); // SPR[6]=retained
-	a.emit(0x8B, 0x96); a.dword(0x4B8);
+	a.emit(0x8B, 0x96); a.dword(DualWeaponStatic.ActorActBegin);
 	a.emit(0x8B, 0x4D, 0xF8, 0x89, 0x4A, 0x18); // ACT[6]=retained
 	a.emit(0xC7, 0x45, 0xFC); a.dword(0);
 	a.emit(0xC7, 0x45, 0xF8); a.dword(0);
-	a.emit(0x89, 0x9E); a.dword(0x440);   // restore main item field
-	a.emit(0x89, 0xBE); a.dword(0x444);   // restore off item field
+	a.emit(0x89, 0x9E); a.dword(DualWeaponStatic.ActorMainItem);
+	a.emit(0x89, 0xBE); a.dword(DualWeaponStatic.ActorOffItem);
 	a.jmp("done");
 
 	// Off-hand only: obtain the real item pair, restore stock, then replace its
@@ -283,20 +331,20 @@ DualWeaponStatic.buildEquipHook = function(trampolineVir)
 	captureSlot5("failed");
 	original("offOnly");
 	loadSlots("failed");
-	releaseSlot(0x4AC, 5);
-	releaseSlot(0x4B8, 5);
-	releaseSlot(0x4AC, 6);
-	releaseSlot(0x4B8, 6);
-	a.emit(0x8B, 0x86); a.dword(0x4AC);
+	releaseSlot(DualWeaponStatic.ActorSprBegin, 5);
+	releaseSlot(DualWeaponStatic.ActorActBegin, 5);
+	releaseSlot(DualWeaponStatic.ActorSprBegin, 6);
+	releaseSlot(DualWeaponStatic.ActorActBegin, 6);
+	a.emit(0x8B, 0x86); a.dword(DualWeaponStatic.ActorSprBegin);
 	a.emit(0xC7, 0x40, 0x14); a.dword(0); // SPR[5]=0
 	a.emit(0x8B, 0x4D, 0xFC, 0x89, 0x48, 0x18); // SPR[6]=retained
-	a.emit(0x8B, 0x96); a.dword(0x4B8);
+	a.emit(0x8B, 0x96); a.dword(DualWeaponStatic.ActorActBegin);
 	a.emit(0xC7, 0x42, 0x14); a.dword(0); // ACT[5]=0
 	a.emit(0x8B, 0x4D, 0xF8, 0x89, 0x4A, 0x18); // ACT[6]=retained
 	a.emit(0xC7, 0x45, 0xFC); a.dword(0);
 	a.emit(0xC7, 0x45, 0xF8); a.dword(0);
-	a.emit(0xC7, 0x86); a.dword(0x440); a.dword(0);
-	a.emit(0x89, 0xBE); a.dword(0x444);
+	a.emit(0xC7, 0x86); a.dword(DualWeaponStatic.ActorMainItem); a.dword(0);
+	a.emit(0x89, 0xBE); a.dword(DualWeaponStatic.ActorOffItem);
 	a.jmp("done");
 
 	// A failed item-specific load releases retained references and restores the
@@ -332,10 +380,10 @@ DualWeaponStatic.buildActionBridge = function()
 
 	// First restrict the bridge to a live candidate pair installed in slot 5/6.
 	// Item classification below therefore stays off unrelated ACT lookups.
-	a.emit(0x8B, 0x87); a.dword(0x4AC);     // EAX=SPR array
+	a.emit(0x8B, 0x87); a.dword(DualWeaponStatic.ActorSprBegin);
 	a.emit(0x85, 0xC0);
 	a.jcc(0x84, "original");
-	a.emit(0x8B, 0x97); a.dword(0x4B8);     // EDX=ACT array
+	a.emit(0x8B, 0x97); a.dword(DualWeaponStatic.ActorActBegin);
 	a.emit(0x85, 0xD2);
 	a.jcc(0x84, "original");
 
@@ -360,7 +408,7 @@ DualWeaponStatic.buildActionBridge = function()
 	// candidate pair as patch-owned. A shield ID is nonzero but D8A1D0
 	// returns no weapon view for it.
 	a.label("validate_items");
-	a.emit(0x8B, 0x87); a.dword(0x444);     // EAX=off item
+	a.emit(0x8B, 0x87); a.dword(DualWeaponStatic.ActorOffItem);
 	a.emit(0x85, 0xC0);
 	a.jcc(0x84, "original");
 	a.emit(0x51, 0x50);                    // save ACT ECX / PUSH off item
@@ -372,7 +420,7 @@ DualWeaponStatic.buildActionBridge = function()
 
 	// A zero main item is the supported off-hand-only state. Otherwise both
 	// equipped items must resolve to weapon views before remapping actions.
-	a.emit(0x8B, 0x87); a.dword(0x440);     // EAX=main item
+	a.emit(0x8B, 0x87); a.dword(DualWeaponStatic.ActorMainItem);
 	a.emit(0x85, 0xC0);
 	a.jcc(0x84, "weapon_items_valid");
 	a.emit(0x51, 0x50);                    // save ACT ECX / PUSH main item
@@ -391,8 +439,9 @@ DualWeaponStatic.buildActionBridge = function()
 
 AllowDualCustomWeaponSprites = function(_)
 {
-	if (Exe.BuildDate !== DualWeaponStatic.BuildDate)
-		throw Error("DualWeaponStatic supports only the 2025-07-16 client");
+	const profile = DualWeaponStatic.selectProfile();
+	if (typeof RagexeAllocationStatic !== "undefined")
+		RagexeAllocationStatic.prepare();
 
 	$$(_, 1, `Verify the equipment, item classifier, and ACT-frame call sites`);
 	const equipPhy = DualWeaponStatic.assertBytes(
@@ -412,7 +461,8 @@ AllowDualCustomWeaponSprites = function(_)
 	);
 
 	$$(_, 2, `Create the stock D403A0 trampoline`);
-	const [trampolinePhy, trampolineVir] = Exe.Allocate(10, 0x10);
+	const [trampolinePhy, trampolineVir] =
+		RagexeAllocationStatic.allocate(10, 0x10);
 	const trampoline = DualWeaponStatic.asm();
 	trampoline.emit(0x55, 0x8B, 0xEC, 0x6A, 0xFF);
 	trampoline.jmp(DualWeaponStatic.EquipUpdate + 5);
@@ -420,12 +470,14 @@ AllowDualCustomWeaponSprites = function(_)
 
 	$$(_, 3, `Inject the generalized native slot equipment hook`);
 	const equipCode = DualWeaponStatic.buildEquipHook(trampolineVir);
-	const [equipHookPhy, equipHookVir] = Exe.Allocate(equipCode.bytes.length, 0x10);
+	const [equipHookPhy, equipHookVir] =
+		RagexeAllocationStatic.allocate(equipCode.bytes.length, 0x10);
 	Exe.SetHex(equipHookPhy, equipCode.finish(equipHookVir));
 
 	$$(_, 4, `Inject the live-slot dual attack action bridge`);
 	const actionCode = DualWeaponStatic.buildActionBridge();
-	const [actionHookPhy, actionHookVir] = Exe.Allocate(actionCode.bytes.length, 0x10);
+	const [actionHookPhy, actionHookVir] =
+		RagexeAllocationStatic.allocate(actionCode.bytes.length, 0x10);
 	Exe.SetHex(actionHookPhy, actionCode.finish(actionHookVir));
 
 	// Activate the call bridge first. It is a no-op for every stock slot layout,
@@ -438,6 +490,7 @@ AllowDualCustomWeaponSprites = function(_)
 		typeof PatchDiagnostics.add === "function")
 	{
 		PatchDiagnostics.add("AllowDualCustomWeaponSprites.Static", {
+			build: profile.Name,
 			trampolineVir,
 			equipHookVir,
 			actionHookVir,
@@ -451,10 +504,12 @@ AllowDualCustomWeaponSprites = function(_)
 
 AllowDualCustomWeaponSprites.validate = function()
 {
-	if (Exe.BuildDate !== DualWeaponStatic.BuildDate)
-		return false;
 	try
 	{
+		if (typeof RagexeAllocationStatic !== "undefined" &&
+			!RagexeAllocationStatic.isPrepared())
+			return false;
+		DualWeaponStatic.selectProfile();
 		DualWeaponStatic.assertBytes(
 			"D403A0 equipment entry",
 			DualWeaponStatic.EquipUpdate,

@@ -22,14 +22,15 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2025-07-16                                             *
-*   Last Modified : 2026-06-15                                             *
+*   Last Modified : 2026-07-24                                             *
 *                                                                          *
 *   Description   : Shared helper that copies selected custom packets from *
 *                   the stock packet buffer into WARP shared blocks after  *
 *                   the client packet reader has already consumed the      *
 *                   complete packet. This avoids the legacy RecvStrip0BB6  *
 *                   recv/read-path patch.                                  *
-*                   Current routes for 2025-07-16 Ragexe:                  *
+*                   Current routes for profiled 2025-07-16 and 2026-02-19 *
+*                   Ragexe clients:                                       *
 *                     0x0BDD -> ICOL item-color packet block               *
 *                     0x0BB7 -> EXTN extended-name packet ring             *
 *                                                                          *
@@ -37,277 +38,318 @@
 
 CustomPacketDispatch = function(_)
 {
-    return CustomPacketDispatch.install(_);
+	return CustomPacketDispatch.install(_);
 };
 
 CustomPacketDispatch.routeDefs = [
-    {name: 'ICOL', packetId: 0x0BDD, minLen: 8, magic: 0x49434F4C},
-    {name: 'EXTN', packetId: 0x0BB7, minLen: 233, magic: 0x4558544E},
-    {name: 'HATF', packetId: 0x0A3B, minLen: 9, magic: 0x48415446, mirrorStock: true}
+	{name: 'ICOL', packetId: 0x0BDD, minLen: 8, magic: 0x49434F4C},
+	{name: 'EXTN', packetId: 0x0BB7, minLen: 233, magic: 0x4558544E},
+	{name: 'HATF', packetId: 0x0A3B, minLen: 9, magic: 0x48415446, mirrorStock: true}
 ];
+
+CustomPacketDispatch.profiles = {
+	20250716: {
+		name: "2025-07-16 Ragexe",
+		packetBufferVir: 0x015E8198,
+		switchTableVir: 0x00CAA2E0,
+		defaultHandlerVir: 0x00CAA2B7,
+		mainLoopReturnVir: 0x00C9E1DD
+	},
+	20260219: {
+		name: "2026-02-19 Ragexe",
+		packetBufferVir: 0x01720410,
+		switchTableVir: 0x00D14AA4,
+		defaultHandlerVir: 0x00D14A7B,
+		mainLoopReturnVir: 0x00D08DAE
+	}
+};
+
+CustomPacketDispatch.selectProfile = function()
+{
+	const profileId = RagexeClientProfile.Id;
+	const profile = CustomPacketDispatch.profiles[profileId];
+	if (!profile)
+		Cancel(`CustomPacketDispatch does not support client profile ${profileId}`);
+	return profile;
+};
 
 CustomPacketDispatch.install = function(_, routeNames)
 {
-    const requestedRoutes = CustomPacketDispatch.normaliseRoutes(routeNames);
-    const cacheKey = 'CustomPacketDispatch.Routes';
-    let state = CACHE.get(cacheKey);
-    if (CustomPacketDispatch.isStateStale(state))
-        state = null;
-    if (!state)
-    {
-        state = {routes: {}};
-        CACHE.put(cacheKey, state);
-    }
+	const profile = CustomPacketDispatch.selectProfile();
+	if (typeof RagexeAllocationStatic !== "undefined")
+		RagexeAllocationStatic.prepare();
+	const requestedRoutes = CustomPacketDispatch.normaliseRoutes(routeNames);
+	const cacheKey = 'CustomPacketDispatch.Routes';
+	let state = CACHE.get(cacheKey);
+	if (CustomPacketDispatch.isStateStale(state))
+		state = null;
+	if (!state)
+	{
+		state = {routes: {}};
+		CACHE.put(cacheKey, state);
+	}
 
-    const pendingRoutes = requestedRoutes.filter(route => !state.routes[route.name]);
-    if (pendingRoutes.isEmpty())
-    {
-        const names = requestedRoutes.map(route => route.name).join('/');
-        $$(_, 0.5, `Dispatcher custom packet route already installed: ${names}`);
-        return true;
-    }
+	const pendingRoutes = requestedRoutes.filter(route => !state.routes[route.name]);
+	if (pendingRoutes.isEmpty())
+	{
+		const names = requestedRoutes.map(route => route.name).join('/');
+		$$(_, 0.5, `Dispatcher custom packet route already installed: ${names}`);
+		return true;
+	}
 
-    $$(_, 1, `Validate supported dispatcher-table client`);
-    if (Exe.BuildDate !== 20250716)
-        Cancel("CustomPacketDispatch currently supports only 2025-07-16 client");
+	$$(_, 1, `Validate supported dispatcher-table client`);
+	const packetBufferVir = profile.packetBufferVir;
+	const switchTableVir = profile.switchTableVir;
+	const defaultHandlerVir = profile.defaultHandlerVir;
+	const mainLoopReturnVir = profile.mainLoopReturnVir;
 
-    const packetBufferVir = 0x015E8198;
-    const switchTableVir = 0x00CAA2E0;
-    const defaultHandlerVir = 0x00CAA2B7;
-    const mainLoopReturnVir = 0x00C9E1DD;
+	const tablePhy = Exe.Vir2Phy(switchTableVir, CODE);
+	if (tablePhy < 0)
+		throw Error("Could not resolve packet dispatcher switch table");
 
-    const tablePhy = Exe.Vir2Phy(switchTableVir, CODE);
-    if (tablePhy < 0)
-        throw Error("Could not resolve packet dispatcher switch table");
+	state.packetBufferVir = packetBufferVir;
+	state.switchTableVir = switchTableVir;
+	state.defaultHandlerVir = defaultHandlerVir;
+	state.mainLoopReturnVir = mainLoopReturnVir;
+	state.buildDate = Exe.BuildDate;
 
-    state.packetBufferVir = packetBufferVir;
-    state.switchTableVir = switchTableVir;
-    state.mainLoopReturnVir = mainLoopReturnVir;
+	$$(_, 1.1, `Verify requested custom packet table entries`);
+	for (const route of pendingRoutes)
+	{
+		const entryVir = CustomPacketDispatch.tableEntryVir(switchTableVir, route.packetId);
+		const entryPhy = Exe.Vir2Phy(entryVir, CODE);
+		if (entryPhy < 0)
+			throw Error(`Could not resolve dispatcher table entry for 0x${route.packetId.toString(16).toUpperCase()}`);
 
-    $$(_, 1.1, `Verify requested custom packet table entries`);
-    for (const route of pendingRoutes)
-    {
-        const entryVir = CustomPacketDispatch.tableEntryVir(switchTableVir, route.packetId);
-        const entryPhy = Exe.Vir2Phy(entryVir, CODE);
-        if (entryPhy < 0)
-            throw Error(`Could not resolve dispatcher table entry for 0x${route.packetId.toString(16).toUpperCase()}`);
+		const current = Exe.GetUint32(entryPhy);
+		if (route.mirrorStock)
+		{
+			if (current === defaultHandlerVir)
+				throw Error(`Packet 0x${route.packetId.toString(16).toUpperCase()} has no stock handler to mirror`);
 
-        const current = Exe.GetUint32(entryPhy);
-        if (route.mirrorStock)
-        {
-            if (current === defaultHandlerVir)
-                throw Error(`Packet 0x${route.packetId.toString(16).toUpperCase()} has no stock handler to mirror`);
+			route.continueVir = current;
+		}
+		else if (current !== defaultHandlerVir)
+			throw Error(`Packet 0x${route.packetId.toString(16).toUpperCase()} dispatcher entry is ${current.toHex(true)}, expected default ${defaultHandlerVir.toHex(true)}`);
+		else
+		{
+			route.continueVir = mainLoopReturnVir;
+		}
 
-            route.continueVir = current;
-        }
-        else if (current !== defaultHandlerVir)
-            throw Error(`Packet 0x${route.packetId.toString(16).toUpperCase()} dispatcher entry is ${current.toHex(true)}, expected default ${defaultHandlerVir.toHex(true)}`);
-        else
-        {
-            route.continueVir = mainLoopReturnVir;
-        }
+		route.entryVir = entryVir;
+		route.entryPhy = entryPhy;
+	}
 
-        route.entryVir = entryVir;
-        route.entryPhy = entryPhy;
-    }
+	$$(_, 2, `Allocate dispatcher stubs + shared blocks`);
+	const handlerSize = 0x80;
+	const legacyBlockSize = 4096;
+	const extnRingCapacity = 1024;
+	const extnRingSlotSize = 1024;
+	const extnRingBlockSize = 16 + extnRingCapacity * extnRingSlotSize;
+	const extnRingMagic = 0x474E4952; // 'RING'
 
-    $$(_, 2, `Allocate dispatcher stubs + shared blocks`);
-    const handlerSize = 0x80;
-    const legacyBlockSize = 4096;
-    const extnRingCapacity = 1024;
-    const extnRingSlotSize = 1024;
-    const extnRingBlockSize = 16 + extnRingCapacity * extnRingSlotSize;
-    const extnRingMagic = 0x474E4952; // 'RING'
+	const legacyHandlerTemplate =
+		"9C 60 BE 11 11 11 11 66 81 3E 22 22 75 33 0F B7" +
+		"4E 02 81 F9 33 33 00 00 72 27 81 F9 FC 0F 00 00" +
+		"77 1F BF 44 44 44 44 C7 47 04 00 00 00 00 89 4F" +
+		"08 83 C7 0C FC F3 A4 C7 05 48 44 44 44 01 00 00" +
+		"00 61 9D B8 55 55 55 55 FF E0";
 
-    const legacyHandlerTemplate =
-        "9C 60 BE 11 11 11 11 66 81 3E 22 22 75 33 0F B7" +
-        "4E 02 81 F9 33 33 00 00 72 27 81 F9 FC 0F 00 00" +
-        "77 1F BF 44 44 44 44 C7 47 04 00 00 00 00 89 4F" +
-        "08 83 C7 0C FC F3 A4 C7 05 48 44 44 44 01 00 00" +
-        "00 61 9D B8 55 55 55 55 FF E0";
+	// EXTN uses a lock-free single-producer ring. The dispatcher writes the
+	// packet into slot (writeSequence & 1023), then increments writeSequence
+	// as the publish step. The 1024-slot depth also preserves the initial-login
+	// burst that arrives before CGameMode begins draining on its first frame.
+	const extnRingHandlerTemplate =
+		"9C 60 BE 11 11 11 11 66 81 3E 22 22 75 33 0F B7" +
+		"4E 02 81 F9 33 33 00 00 72 27 81 F9 FC 03 00 00" +
+		"77 1F BB 44 44 44 44 8B 43 04 25 FF 03 00 00 C1 E0 0A" +
+		"8D 7C 03 10 89 0F 83 C7 04 FC F3 A4 FF 43 04 61" +
+		"9D B8 55 55 55 55 FF E0";
 
-    // EXTN uses a lock-free single-producer ring. The dispatcher writes the
-    // packet into slot (writeSequence & 1023), then increments writeSequence
-    // as the publish step. The 1024-slot depth also preserves the initial-login
-    // burst that arrives before CGameMode begins draining on its first frame.
-    const extnRingHandlerTemplate =
-        "9C 60 BE 11 11 11 11 66 81 3E 22 22 75 33 0F B7" +
-        "4E 02 81 F9 33 33 00 00 72 27 81 F9 FC 03 00 00" +
-        "77 1F BB 44 44 44 44 8B 43 04 25 FF 03 00 00 C1 E0 0A" +
-        "8D 7C 03 10 89 0F 83 C7 04 FC F3 A4 FF 43 04 61" +
-        "9D B8 55 55 55 55 FF E0";
+	for (let i = 0; i < pendingRoutes.length; ++i)
+	{
+		const route = pendingRoutes[i];
+		// The protected 2026 image cannot grow to host the 1 MiB EXTN ring.
+		// CustomColoredItemName installs a compact single-slot sink so the
+		// server's 0x0BB7 metadata packet is consumed without a stock-client
+		// "Unhandled packet" dialog.
+		const isExtnRing = route.name === 'EXTN' &&
+			!RagexeAllocationStatic.UsesStaticCave;
+		const blockSize = isExtnRing ? extnRingBlockSize : legacyBlockSize;
+		const [transportPhy, transportVir] = RagexeAllocationStatic.allocate(
+			handlerSize + blockSize,
+			0x10
+		);
+		const handlerPhy = transportPhy;
+		const handlerVir = transportVir;
+		const blockPhy = transportPhy + handlerSize;
+		const blockVir = transportVir + handlerSize;
 
-    for (let i = 0; i < pendingRoutes.length; ++i)
-    {
-        const route = pendingRoutes[i];
-        const isExtnRing = route.name === 'EXTN';
-        const blockSize = isExtnRing ? extnRingBlockSize : legacyBlockSize;
-        const [transportPhy, transportVir] = Exe.Allocate(handlerSize + blockSize, 0x10);
-        const handlerPhy = transportPhy;
-        const handlerVir = transportVir;
-        const blockPhy = transportPhy + handlerSize;
-        const blockVir = transportVir + handlerSize;
+		$$(_, 2.1 + i / 10, `Write ${route.name} handler for packet 0x${route.packetId.toString(16).toUpperCase()}`);
+		Exe.SetHex(handlerPhy, isExtnRing ? extnRingHandlerTemplate : legacyHandlerTemplate);
 
-        $$(_, 2.1 + i / 10, `Write ${route.name} handler for packet 0x${route.packetId.toString(16).toUpperCase()}`);
-        Exe.SetHex(handlerPhy, isExtnRing ? extnRingHandlerTemplate : legacyHandlerTemplate);
+		Exe.SetUint32(handlerPhy + 3, packetBufferVir);
+		Exe.SetUint16(handlerPhy + 10, route.packetId);
+		Exe.SetUint32(handlerPhy + 20, route.minLen);
+		Exe.SetUint32(handlerPhy + 35, blockVir);
+		if (isExtnRing)
+			Exe.SetUint32(handlerPhy + 68, route.continueVir);
+		else
+		{
+			Exe.SetUint32(handlerPhy + 57, blockVir + 4);
+			Exe.SetUint32(handlerPhy + 68, route.continueVir);
+		}
 
-        Exe.SetUint32(handlerPhy + 3, packetBufferVir);
-        Exe.SetUint16(handlerPhy + 10, route.packetId);
-        Exe.SetUint32(handlerPhy + 20, route.minLen);
-        Exe.SetUint32(handlerPhy + 35, blockVir);
-        if (isExtnRing)
-            Exe.SetUint32(handlerPhy + 68, route.continueVir);
-        else
-        {
-            Exe.SetUint32(handlerPhy + 57, blockVir + 4);
-            Exe.SetUint32(handlerPhy + 68, route.continueVir);
-        }
+		Exe.SetUint32(blockPhy, route.magic);
+		Exe.SetUint32(blockPhy + 4, 0); // ready or ring write sequence
+		if (isExtnRing)
+		{
+			Exe.SetUint32(blockPhy + 8, extnRingMagic);
+			Exe.SetUint32(blockPhy + 12, extnRingCapacity);
+		}
+		else
+		{
+			Exe.SetUint32(blockPhy + 8, 0); // length
+		}
 
-        Exe.SetUint32(blockPhy, route.magic);
-        Exe.SetUint32(blockPhy + 4, 0); // ready or ring write sequence
-        if (isExtnRing)
-        {
-            Exe.SetUint32(blockPhy + 8, extnRingMagic);
-            Exe.SetUint32(blockPhy + 12, extnRingCapacity);
-        }
-        else
-        {
-            Exe.SetUint32(blockPhy + 8, 0); // length
-        }
+		$$(_, 3 + i / 10, `Patch ${route.name} dispatcher table entry`);
+		Exe.SetUint32(route.entryPhy, handlerVir);
 
-        $$(_, 3 + i / 10, `Patch ${route.name} dispatcher table entry`);
-        Exe.SetUint32(route.entryPhy, handlerVir);
+		state.routes[route.name] = {
+			packetId: route.packetId,
+			entryVir: route.entryVir,
+			handlerVir,
+			blockVir,
+			transport: isExtnRing ? 'ring-v2' : 'single-slot'
+		};
 
-        state.routes[route.name] = {
-            packetId: route.packetId,
-            entryVir: route.entryVir,
-            handlerVir,
-            blockVir,
-            transport: isExtnRing ? 'ring-v2' : 'single-slot'
-        };
+		if (route.name === 'ICOL')
+			state.icolVir = blockVir;
+		else if (route.name === 'EXTN')
+			state.extnVir = blockVir;
+		else if (route.name === 'HATF')
+			state.hatfVir = blockVir;
+	}
 
-        if (route.name === 'ICOL')
-            state.icolVir = blockVir;
-        else if (route.name === 'EXTN')
-            state.extnVir = blockVir;
-        else if (route.name === 'HATF')
-            state.hatfVir = blockVir;
-    }
+	CACHE.put(cacheKey, state);
 
-    CACHE.put(cacheKey, state);
-
-    const installed = pendingRoutes.map(route => `0x${route.packetId.toString(16).toUpperCase()} -> ${route.name}`).join(', ');
-    $$(_, 4, `Custom packet dispatcher route(s) enabled: ${installed}`);
-    return true;
+	const installed = pendingRoutes.map(route => `0x${route.packetId.toString(16).toUpperCase()} -> ${route.name}`).join(', ');
+	$$(_, 4, `Custom packet dispatcher route(s) enabled: ${installed}`);
+	return true;
 };
 
 CustomPacketDispatch.normaliseRoutes = function(routeNames)
 {
-    if (routeNames === undefined || routeNames === null)
-        return CustomPacketDispatch.routeDefs;
+	if (routeNames === undefined || routeNames === null)
+		return CustomPacketDispatch.routeDefs;
 
-    if (IsStr(routeNames))
-        routeNames = [routeNames];
+	if (IsStr(routeNames))
+		routeNames = [routeNames];
 
-    if (!Array.isArray(routeNames) || routeNames.isEmpty())
-        throw Error("CustomPacketDispatch.install requires one or more route names");
+	if (!Array.isArray(routeNames) || routeNames.isEmpty())
+		throw Error("CustomPacketDispatch.install requires one or more route names");
 
-    const routes = [];
-    for (const routeName of routeNames)
-    {
-        const route = CustomPacketDispatch.routeDefs.find(def => def.name === routeName);
-        if (!route)
-            throw Error(`Unknown custom packet dispatcher route: ${routeName}`);
+	const routes = [];
+	for (const routeName of routeNames)
+	{
+		const route = CustomPacketDispatch.routeDefs.find(def => def.name === routeName);
+		if (!route)
+			throw Error(`Unknown custom packet dispatcher route: ${routeName}`);
 
-        if (!routes.some(old => old.name === route.name))
-        {
-            const copy = {name: route.name, packetId: route.packetId, minLen: route.minLen, magic: route.magic};
-            if (route.mirrorStock)
-                copy.mirrorStock = true;
-            routes.push(copy);
-        }
-    }
+		if (!routes.some(old => old.name === route.name))
+		{
+			const copy = {name: route.name, packetId: route.packetId, minLen: route.minLen, magic: route.magic};
+			if (route.mirrorStock)
+				copy.mirrorStock = true;
+			routes.push(copy);
+		}
+	}
 
-    return routes;
+	return routes;
 };
 
 CustomPacketDispatch.isStateStale = function(state)
 {
-    if (!state || !state.routes)
-        return false;
+	if (!state || !state.routes)
+		return false;
+	if (state.buildDate !== Exe.BuildDate ||
+		typeof state.defaultHandlerVir !== "number")
+		return true;
 
-    for (const name in state.routes)
-    {
-        const route = state.routes[name];
-        if (!route || typeof route.entryVir !== "number" ||
-            typeof route.handlerVir !== "number")
-            return true;
-        if (name === "EXTN" && route.transport !== "ring-v2")
-            return true;
+	for (const name in state.routes)
+	{
+		const route = state.routes[name];
+		if (!route || typeof route.entryVir !== "number" ||
+			typeof route.handlerVir !== "number")
+			return true;
+		if (name === "EXTN" && route.transport !== "ring-v2")
+			return true;
 
-        const entryPhy = Exe.Vir2Phy(route.entryVir, CODE);
-        if (entryPhy < 0)
-            return true;
+		const entryPhy = Exe.Vir2Phy(route.entryVir, CODE);
+		if (entryPhy < 0)
+			return true;
 
-        // Exe.GetUint32() can still expose the source-image table value while
-        // another active patch owns the staged dispatcher write. Treat the
-        // stock/default value as valid within this WARP session; the cached
-        // handler and block remain the authoritative shared route. Without
-        // this allowance, two consumers of EXTN allocate separate rings and
-        // only the last table write receives packets.
-        const current = Exe.GetUint32(entryPhy);
-        const sourceValue = route.mirrorStock
-            ? route.continueVir
-            : 0x00CAA2B7;
-        if (current !== route.handlerVir && current !== sourceValue)
-            return true;
-    }
+		// Exe.GetUint32() can still expose the source-image table value while
+		// another active patch owns the staged dispatcher write. Treat the
+		// stock/default value as valid within this WARP session; the cached
+		// handler and block remain the authoritative shared route. Without
+		// this allowance, two consumers of EXTN allocate separate rings and
+		// only the last table write receives packets.
+		const current = Exe.GetUint32(entryPhy);
+		const sourceValue = route.mirrorStock
+			? route.continueVir
+			: state.defaultHandlerVir;
+		if (current !== route.handlerVir && current !== sourceValue)
+			return true;
+	}
 
-    return false;
+	return false;
 };
 
 CustomPacketDispatch.addVisualDll = function(_, options)
 {
-    if (typeof CustomDLL === "undefined" || typeof CustomDLL.applySpec !== "function")
-        throw Error("CustomDLL.applySpec helper is unavailable");
+	if (typeof CustomDLL === "undefined" || typeof CustomDLL.applySpec !== "function")
+		throw Error("CustomDLL.applySpec helper is unavailable");
 
-    if (typeof options === "string")
-        options = {title: options};
-    options = options || {};
+	if (typeof options === "string")
+		options = {title: options};
+	options = options || {};
 
-    const inputKey = options.inputKey || '$bohVisualDLLName';
-    const promptTitle = options.title || "BOH Visual DLL";
-    const exportName = options.exportName || "ExtNameVisualInit";
-    const defaultName = options.defaultName || "boh.dll";
-    const dedicatedName = options.dedicatedName || defaultName;
-    const description = options.description ||
-        `Enter the DLL filename for this feature. Use boh.dll for the combined build or ${dedicatedName} for the dedicated build. Place it beside the patched EXE.`;
+	const inputKey = options.inputKey || '$bohVisualDLLName';
+	const promptTitle = options.title || "BOH Visual DLL";
+	const exportName = options.exportName || "ExtNameVisualInit";
+	const defaultName = options.defaultName || "boh.dll";
+	const dedicatedName = options.dedicatedName || defaultName;
+	const description = options.description ||
+		`Enter the DLL filename for this feature. Use boh.dll for the combined build or ${dedicatedName} for the dedicated build. Place it beside the patched EXE.`;
 
-    const dllName = CustomDLL.getDllName(
-        inputKey,
-        promptTitle,
-        description,
-        defaultName,
-        dedicatedName
-    );
+	const dllName = CustomDLL.getDllName(
+		inputKey,
+		promptTitle,
+		description,
+		defaultName,
+		dedicatedName
+	);
 
-    const result = CustomDLL.applySpec(_, [
-        {
-            Name: dllName,
-            Funcs: [
-                {Name: exportName}
-            ]
-        }
-    ]);
-    return result;
+	const result = CustomDLL.applySpec(_, [
+		{
+			Name: dllName,
+			Funcs: [
+				{Name: exportName}
+			]
+		}
+	]);
+	return result;
 };
 
 CustomPacketDispatch.tableEntryVir = function(switchTableVir, packetId)
 {
-    return switchTableVir + (packetId - 0x73) * 4;
+	return switchTableVir + (packetId - 0x73) * 4;
 };
 
 CustomPacketDispatch.validate = function()
 {
-    return Exe.BuildDate === 20250716;
+	return !!CustomPacketDispatch.profiles[RagexeClientProfile.Id] &&
+		(typeof RagexeAllocationStatic === "undefined" ||
+			RagexeAllocationStatic.isPrepared());
 };

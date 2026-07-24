@@ -54,7 +54,7 @@ CustomSpecials:
             title : Dual-Wield Original Weapon Sprites [QJS]
             recommend : no
             author : Louis T Steinhil
-            desc : "Self-contained QJS/EXE patch; no weapon DLL is required. The D403A0 equipment hook drives the stock single-item loader for each equipped item and installs the original parallel SPR/ACT resources in native weapon slots 5 and 6 instead of generic combined types 25..30. A live-slot renderer bridge direction-preservingly maps blank item ACT actions 88..95 to populated actions 80..87. Off-hand-only equipment also receives its real item pair in slot 6. Applies to every valid item resource without an item-ID allowlist."
+            desc : "Self-contained QJS/EXE patch for the profiled 2025-07-16 and 2026-02-19 Ragexe clients; no weapon DLL is required. The equipment hook drives the stock single-item loader for each equipped item and installs the original parallel SPR/ACT resources in native weapon slots 5 and 6 instead of generic combined types 25..30. A live-slot renderer bridge direction-preservingly maps blank item ACT actions 88..95 to populated actions 80..87. Off-hand-only equipment also receives its real item pair in slot 6. Applies to every valid item resource without an item-ID allowlist."
 
         - AllHatEffectsWorldDepthOracle:
             title : All HatEffects Screen-Size World Depth [QJS]
@@ -122,11 +122,17 @@ CustomSkills:
             author : Louis T Steinhil
             desc : "Routes packet 0x0BB7 to the EXTN ring, then guarded static frame and GDI call-site caves perform bounded exact-text substitution. Mob information uses the client's supported Group Title/ID row while the stock mob name remains separate. No CNameInfo mutation, text DLL, recv hook, or runtime patching is used."
 
+        - CustomColoredEnchantGradeName:
+            title : Color Enchant Grade Prefixes (QJS-only)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Companion option for Custom Item Name Colors. Grade entries from packet 0x0BDD color only the leading [Grade] token; the exact base item name keeps its independent item color. Select this before Custom Item Name Colors."
+
         - CustomColoredItemName:
             title : Enable Custom Item Name Colors (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : "Routes variable packet 0x0BDD to a bounded ICOL table, matches UTF-8 item-name substrings and grade labels, and applies colors through guarded static TextOutW caves with shadow suppression and grade continuation. No text DLL, recv hook, system-API hook, or runtime patching is used."
+            desc : "For the profiled 2025-07-16 and 2026-02-19 Ragexe clients, routes variable packet 0x0BDD to a bounded ICOL table and applies exact item-name colors through guarded static TextOutW caves. A leading [Grade] token is excluded from the item color; select Color Enchant Grade Prefixes to color that token independently. No text DLL, recv hook, system-API hook, or runtime patching is used."
 
         - CustomPlayerNameColor:
             title : Enable Custom Player Name Colors (QJS-only)

@@ -22,15 +22,144 @@
 *                                                                          *
 *   Author(s)     : Neo-Mind                                               *
 *   Created Date  : 2021-08-21                                             *
-*   Last Modified : 2024-08-01                                             *
+*   Last Modified : 2026-07-24                                             *
 *                                                                          *
 \**************************************************************************/
 
 ///
-/// \brief Verify this is the 2025-07-16 client
+/// \brief Verify this is a profiled client
 ///
-if (Exe.BuildDate !== 20250716)
-	throw Error("This WARP distribution is configured for the 2025-07-16 client only (BuildDate " + Exe.BuildDate + " is not supported)");
+// The 2026-02-19 Ragexe retains a 2025-12-15 PE timestamp, which is the value
+// exposed by Exe.BuildDate. Do not accept that timestamp generically:
+// fingerprint independent equipment, renderer, item-classifier, TextOutW, and
+// packet-dispatch sites before enabling the semantic 20260219 client profile.
+const IsRagexe20260219 = function()
+{
+	if (Exe.BuildDate !== 20251215)
+		return false;
+
+	const checks = [
+		[0x00DB2840, "55 8B EC 6A FF"],
+		[0x00DA90F4, "E8 77 E0 99 FF"],
+		[0x00E19530, "55 8B EC 56 8B 75 08"],
+		[0x00550747, "FF 15 2C 71 0C 01"],
+		[0x00D08E74, "83 C0 8D 3D D1 0B 00 00"]
+	];
+	try
+	{
+		for (const check of checks)
+		{
+			const phy = Exe.Vir2Phy(check[0], CODE);
+			if (phy < 0)
+				return false;
+			const size = check[1].split(" ").length;
+			if (Exe.GetHex(phy, size).trim().toUpperCase() !== check[1])
+				return false;
+		}
+		return true;
+	}
+	catch (error)
+	{
+		return false;
+	}
+}();
+
+if (Exe.BuildDate !== 20250716 && !IsRagexe20260219)
+	throw Error("This WARP distribution does not support BuildDate " + Exe.BuildDate);
+
+RagexeClientProfile = {
+	Id: IsRagexe20260219 ? 20260219 : 20250716,
+	Name: IsRagexe20260219 ? "2026-02-19 Ragexe" : "2025-07-16 Ragexe",
+	PeBuildDate: Exe.BuildDate,
+	UsesStaticAllocationCave: IsRagexe20260219
+};
+
+RagexeAllocationStatic = {
+	UsesStaticCave: RagexeClientProfile.UsesStaticAllocationCave,
+	SectionNamePhy: 0x288,
+	OriginalName: "2E 78 64 69 66 66 00 20",
+	CaveStartPhy: 0x03628050,
+	CaveStartVir: 0x03DEAA50,
+	CaveEndPhy: 0x03635600,
+	CaveEndVir: 0x03DF8000
+};
+
+RagexeAllocationStatic.isPrepared = function()
+{
+	if (!RagexeAllocationStatic.UsesStaticCave)
+		return true;
+	try
+	{
+		return Exe.GetHex(RagexeAllocationStatic.SectionNamePhy, 8)
+			.trim().toUpperCase() === RagexeAllocationStatic.OriginalName;
+	}
+	catch (error)
+	{
+		return false;
+	}
+};
+
+RagexeAllocationStatic.prepare = function()
+{
+	if (!RagexeAllocationStatic.UsesStaticCave ||
+		CACHE.get("RagexeAllocationStatic.Prepared"))
+		return true;
+
+	const actual = Exe.GetHex(RagexeAllocationStatic.SectionNamePhy, 8)
+		.trim().toUpperCase();
+	if (actual !== RagexeAllocationStatic.OriginalName)
+		throw Error(`Ragexe section-name fingerprint mismatch: ${actual}`);
+
+	const caveBegin = Exe.GetHex(RagexeAllocationStatic.CaveStartPhy, 16)
+		.trim().toUpperCase();
+	const caveEnd = Exe.GetHex(RagexeAllocationStatic.CaveEndPhy - 16, 16)
+		.trim().toUpperCase();
+	const zero16 = "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00";
+	if (caveBegin !== zero16 || caveEnd !== zero16)
+		throw Error("Ragexe static allocation cave fingerprint mismatch");
+
+	CACHE.put(
+		"RagexeAllocationStatic.Cursor",
+		RagexeAllocationStatic.CaveStartVir
+	);
+	CACHE.put("RagexeAllocationStatic.Prepared", true);
+	return true;
+};
+
+RagexeAllocationStatic.allocate = function(size, alignment)
+{
+	if (!RagexeAllocationStatic.UsesStaticCave)
+		return Exe.Allocate(size, alignment);
+	RagexeAllocationStatic.prepare();
+
+	if (!Number.isInteger(size) || size <= 0)
+		throw Error(`Ragexe allocation size is invalid: ${size}`);
+	if (!Number.isInteger(alignment) || alignment <= 0 ||
+		(alignment & (alignment - 1)) !== 0)
+		throw Error(`Ragexe allocation alignment is invalid: ${alignment}`);
+
+	const cursor = CACHE.get("RagexeAllocationStatic.Cursor");
+	const virAddr = (cursor + alignment - 1) & ~(alignment - 1);
+	const endVir = virAddr + size;
+	if (endVir > RagexeAllocationStatic.CaveEndVir)
+	{
+		const remaining = Math.max(
+			0,
+			RagexeAllocationStatic.CaveEndVir - virAddr
+		);
+		throw Error(
+			`Ragexe static cave exhausted: requested ${size}, remaining ${remaining}`
+		);
+	}
+
+	const phyAddr = RagexeAllocationStatic.CaveStartPhy +
+		(virAddr - RagexeAllocationStatic.CaveStartVir);
+	if (phyAddr < RagexeAllocationStatic.CaveStartPhy ||
+		phyAddr + size > RagexeAllocationStatic.CaveEndPhy)
+		throw Error(`Ragexe allocation ${virAddr.toHex(true)} is not mapped`);
+	CACHE.put("RagexeAllocationStatic.Cursor", endVir);
+	return [phyAddr, virAddr];
+};
 
 ///
 /// \brief Initialize the Cache module

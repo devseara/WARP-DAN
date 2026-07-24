@@ -1,6 +1,6 @@
 /**************************************************************************\
 *                                                                          *
-*   QJS-only extended-name text bridge for 2025-07-16 Ragexe.             *
+*   QJS-only extended-name text bridge for profiled Ragexe clients.        *
 *                                                                          *
 *   Description   : Drains the dispatcher-table EXTN ring into a bounded  *
 *                   exact-text map and redirects the four known Ragexe    *
@@ -12,16 +12,44 @@
 \**************************************************************************/
 
 ExtNameTextStatic = {
-	BuildDate: 20250716,
+	Profiles: {
+		20250716: {
+			Name: "2025-07-16 Ragexe",
+			FrameCaller: 0x00C7642D,
+			FrameCallerPrefix: "8B CE E8",
+			TextOutDirect: 0x005476C7,
+			ExtentDirect: 0x0054758D,
+			TextOutThunk: 0x00DBA690,
+			ExtentThunk: 0x00DBA66C,
+			StableIat: {
+				textOut: 0x00FC10DC,
+				extent: 0x00FC112C,
+				setTextColor: 0x00FC10E0,
+				multiToWide: 0x00FC1200,
+				wideToMulti: 0x00FC1204
+			}
+		},
+		20260219: {
+			Name: "2026-02-19 Ragexe",
+			FrameCaller: 0x00CE0BAD,
+			FrameCallerPrefix: "8B CE E8",
+			TextOutDirect: 0x00550747,
+			ExtentDirect: 0x0055060D,
+			TextOutThunk: 0x00E60C50,
+			ExtentThunk: 0x00E60C2C,
+			StableIat: {
+				textOut: 0x010C712C,
+				extent: 0x010C70E0,
+				setTextColor: 0x010C7130,
+				multiToWide: 0x010C7240,
+				wideToMulti: 0x010C7244
+			}
+		}
+	},
+	ActiveBuildDate: 0,
 	FeatureNames: 1,
 	FeatureColors: 2,
 	FeatureEmoji: 4,
-	FrameCaller: 0x00C7642D,
-	FrameCallerPrefix: "8B CE E8",
-	TextOutDirect: 0x005476C7,
-	ExtentDirect: 0x0054758D,
-	TextOutThunk: 0x00DBA690,
-	ExtentThunk: 0x00DBA66C,
 	MapCapacity: 2048,
 	ProbeLimit: 32,
 	EntrySize: 0x328,
@@ -39,16 +67,22 @@ ExtNameTextStatic = {
 	RingCapacity: 1024,
 	RingSlotShift: 10,
 	PacketId: 0x0BB7,
-	PacketMagic: 0x4558544E,
-	// This patch is build-locked. Keep stock API calls on the original IAT;
-	// CustomDLL rebuilds can relocate and later abandon generated descriptors.
-	StableIat: {
-		textOut: 0x00FC10DC,
-		extent: 0x00FC112C,
-		setTextColor: 0x00FC10E0,
-		multiToWide: 0x00FC1200,
-		wideToMulti: 0x00FC1204
-	}
+	PacketMagic: 0x4558544E
+};
+
+ExtNameTextStatic.selectProfile = function()
+{
+	const profileId = RagexeClientProfile.Id;
+	const profile = ExtNameTextStatic.Profiles[profileId];
+	if (!profile)
+		throw Error(`ExtNameTextStatic does not support client profile ${profileId}`);
+	if (ExtNameTextStatic.ActiveBuildDate === profileId)
+		return profile;
+
+	for (const key in profile)
+		ExtNameTextStatic[key] = profile[key];
+	ExtNameTextStatic.ActiveBuildDate = profileId;
+	return profile;
 };
 
 ExtNameTextStatic.callIat = function(a, iat)
@@ -58,7 +92,10 @@ ExtNameTextStatic.callIat = function(a, iat)
 
 ExtNameTextStatic.allocateCode = function(assembler)
 {
-	const [phyAddr, virAddr] = Exe.Allocate(assembler.bytes.length, 0x10);
+	const [phyAddr, virAddr] = RagexeAllocationStatic.allocate(
+		assembler.bytes.length,
+		0x10
+	);
 	Exe.SetHex(phyAddr, assembler.finish(virAddr));
 	return {phyAddr, virAddr, size: assembler.bytes.length};
 };
@@ -69,7 +106,7 @@ ExtNameTextStatic.allocateText = function(value)
 	for (let i = 0; i < value.length; ++i)
 		bytes.push(value.charCodeAt(i) & 0x7F);
 	bytes.push(0);
-	const [phyAddr, virAddr] = Exe.Allocate(bytes.length, 1);
+	const [phyAddr, virAddr] = RagexeAllocationStatic.allocate(bytes.length, 1);
 	Exe.SetHex(phyAddr, ExtNameStaticAsm.bytesToHex(bytes));
 	return virAddr;
 };
@@ -924,8 +961,7 @@ ExtNameTextStatic.buildMissingFindWide = function()
 
 ExtNameTextStatic.enableEmoji = function(_, renderer)
 {
-	if (Exe.BuildDate !== ExtNameTextStatic.BuildDate)
-		throw Error("ExtNameTextStatic supports only the 2025-07-16 client");
+	ExtNameTextStatic.selectProfile();
 	if (!renderer || !Number.isInteger(renderer.drawVir) ||
 		!Number.isInteger(renderer.measureVir))
 		throw Error("ExtNameTextStatic: emoji renderer state unavailable");
@@ -982,8 +1018,7 @@ ExtNameTextStatic.enableEmoji = function(_, renderer)
 
 ExtNameTextStatic.enable = function(_, feature)
 {
-	if (Exe.BuildDate !== ExtNameTextStatic.BuildDate)
-		throw Error("ExtNameTextStatic supports only the 2025-07-16 client");
+	ExtNameTextStatic.selectProfile();
 	if (typeof ExtNameStaticAsm === "undefined" || typeof ExtNameStaticAsm.asm !== "function")
 		throw Error("ExtNameTextStatic: assembly helper unavailable");
 	if (typeof CustomPacketDispatch === "undefined" ||
