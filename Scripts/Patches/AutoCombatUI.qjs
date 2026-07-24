@@ -1134,7 +1134,7 @@ AutoCombatUI = function(_)
 			drawVir: draw.vir,
 			mouseDownVir: mouseDown.vir,
 			toggleVir: toggle.vir,
-			customDllImports: 0,
+			externalModules: 0,
 			serverBehavior: false,
 			persistence: false
 		});

@@ -123,13 +123,10 @@ CustomRuneSystem.addVisualDll = function(_)
 	]);
 
 	CustomRuneSystem.installStaticVisualBridges(`${_}.StaticVisual`, dllName);
-	if (typeof CustomDLL.addRefreshHook === "function")
-	{
-		CustomDLL.addRefreshHook(
-			`${_}.StaticVisual`,
-			function() { return CustomRuneSystem.installStaticVisualBridges(`${_}.StaticVisual`, dllName); }
-		);
-	}
+	StaticPatchRefresh.add(
+		`${_}.StaticVisual`,
+		function() { return CustomRuneSystem.installStaticVisualBridges(`${_}.StaticVisual`, dllName); }
+	);
 
 	return result;
 };

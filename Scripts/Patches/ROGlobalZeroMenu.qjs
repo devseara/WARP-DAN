@@ -1615,7 +1615,7 @@ ROGlobalZeroMenu = function(_)
 			visibilityPatches: ["HideNewButtons", "ShowNewButtons"],
 			commandCount: MenuZeroStatic.CommandGrid.length,
 			resourcePaths: pathPointers,
-			customDllImports: 0
+			externalModules: 0
 		});
 	}
 

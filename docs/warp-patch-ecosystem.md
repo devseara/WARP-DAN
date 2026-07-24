@@ -108,13 +108,12 @@ view-entry bursts remain available until the QJS frame consumers run.
 |-------|-----------|-------|---------|
 | ICOL  | 0x0BDD    | 0x49434F4C | Item name colors |
 | EXTN  | 0x0BB7    | 0x4558544E | Extended character names (1024-slot ring) |
-**Patches using import table modification:**
+**Custom patch import behavior:**
 - `CustomDLL.qjs`: Generic DLL adder (user provides DLLSpec.yml)
-- `CustomExtName.qjs`: QJS-only bounded EXTN exact-text map and static GDI call-site expansion
-- `CustomPlayerNameColor.qjs`: QJS-only exact player-name color scope with GDI color restoration
-- `CustomColoredItemName.qjs`: Routes 0x0BDD to ICOL and prompts for `boh.dll` or `boh_text.dll`
-- `CustomExtNameVisualDLL.qjs`: Historical visual-only companion using the extended-name DLL prompt
 - `CustomRuneSystem.qjs`: Prompts for `boh.dll` or `boh_rune.dll`
+- `CustomExtName.qjs`: QJS-only bounded EXTN exact-text map; no custom DLL import
+- `CustomPlayerNameColor.qjs`: QJS-only exact player-name color scope; no custom DLL import
+- `CustomColoredItemName.qjs`: QJS-only ICOL item/grade coloring; no custom DLL import
 - `FpsOverlay.qjs`: QJS-only post-Present frame counter and prompted-position static GDI renderer
 - `AlwaysShowNpcName.qjs`: QJS-only bounded EXTN table, native balloon frame cave, and static `/shownpcname` toggle
 - `ROGlobalZeroInventory.qjs`: QJS-only native inventory layout, tabs, tooltips, and Zeny/weight panel
@@ -264,35 +263,21 @@ This pattern is used by: CaseInsensitiveSearch, CustomSkills, CustomEncKeys, Res
 
 ### 2.3 DLL Loading Patterns
 
-**Combined and dedicated visual DLLs:**
-`boh.dll` remains the backward-compatible combined build. `build_split.bat`
-also produces dedicated DLLs so unrelated features do not have to share a
-module. Item colors and extended names intentionally share `boh_text.dll`
-because they own the same GDI text hooks.
+**Explicit DLL-backed features:**
+`boh.dll` and the split DLLs remain legacy build artifacts. QJS-only item
+colors, extended names, overlays, and inventory features no longer load them.
+Only patches explicitly documented as DLL-backed should add one; the current
+visual exception is `CustomRuneSystem` with `boh_rune.dll`.
 
 | Dedicated DLL | Export Function | Used By |
 |---------------|-----------------|---------|
-| `boh_text.dll` | `ExtNameVisualInit` | CustomExtName, CustomExtNameVisualDLL |
-| `boh_text.dll` | `ColoredItemNameVisualInit` | CustomColoredItemName |
 | `boh_npc_names.dll` | `NpcNameOverlayInit`, `NpcNameOverlayFrame` | Legacy AlwaysShowNpcName implementation; no longer imported |
 | `boh_rune.dll` | `RuneVisualInit` | CustomRuneSystem |
-| `boh_fps.dll` | `FpsPingOverlayInit` | FpsOverlay |
+| `boh_fps.dll` | `FpsPingOverlayInit` | Legacy FpsOverlay implementation; no longer imported |
 | `boh_inventory_tabs.dll` | `InventoryTabsInit` | ROGlobalZeroInventory (legacy; no longer imported) |
 
-**Import via CustomPacketDispatch.addVisualDll:**
-```javascript
-CustomPacketDispatch.addVisualDll(_, {
-    inputKey: '$extNameVisualDLLName',
-    title: 'Extended Name Visual DLL',
-    exportName: 'ExtNameVisualInit',
-    defaultName: 'boh.dll',
-    dedicatedName: 'boh_text.dll'
-});
-// Each feature has an independent saved DLL-name choice.
-// Validates filename format
-// CACHE-deduplicates per DLL name plus export
-// Calls CustomDLL.applySpec with the requested DLL and export
-```
+QJS-only text, name, item-color, overlay, and inventory patches do not call
+`CustomDLL`, prompt for a custom DLL filename, or add custom PE imports.
 
 ### 2.4 Safety & Backup Modules (2026-06-08)
 

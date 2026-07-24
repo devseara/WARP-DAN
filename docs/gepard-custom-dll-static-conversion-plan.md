@@ -21,7 +21,7 @@ Rule of thumb for every conversion:
 | AlwaysShowNpcName | None | Former DLL frame renderer | Converted again: bounded QJS-only EXTN table and native balloon frame cave at `0x00C7642D` |
 | InGamePincodeUI | `boh_pincode_ui.dll` | None | Already strict-safe |
 | CustomExtName / CustomPlayerNameColor | None | Former DLL maps and global GDI text matching | Converted: bounded EXTN exact-text map plus WARP-time GDI call-site caves; mob title/name rows stay stock-owned |
-| CustomColoredItemName | `boh_text.dll` | Passive GDI wrappers still own semantic item-color matching | Static wrappers retained pending the separate item-color QJS conversion |
+| CustomColoredItemName | None | Former passive GDI wrappers | Converted: QJS-only bounded ICOL table and EXE-resident text bridges |
 | FpsOverlay / PingOverlay | None | Former D3D proxy, layered window and ICMP worker | Converted again: QJS-only post-Present renderer plus stock application-packet RTT capture |
 | ROGlobalZeroInventory | None | Former DLL-owned draw/input handlers | Converted again: pure-QJS native caves, renewal tooltips, and Zeny underlay |
 | CustomRuneSystem visuals | `boh_rune.dll` | Runtime call/JMP patches and dynamic surface vtable swap | Converted: WARP-time call/prologue/surface bridges |
@@ -47,7 +47,10 @@ Rule of thumb for every conversion:
 - Live validation passed long entity fields, player RGB/shadow/reset behavior,
   initial-login bursts, map changes, warps, F12, Alt+Tab, and clean exit.
 
-## Text DLL: Item Colors + Extended Names
+## Text DLL: Item Colors + Extended Names (historical)
+
+Superseded: item colors and extended names now use QJS-only EXE-resident
+tables and text bridges. The design below is retained as conversion history.
 
 Working behavior:
 

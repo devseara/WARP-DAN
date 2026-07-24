@@ -59,11 +59,6 @@ inputs:
         display: "true"
         type: 10
     
-    $itemColorVisualDLLName:
-        data: '626f68637573746f6d732e646c6c00'
-        display: "bohcustoms.dll"
-        type: 10
-    
     $snsBtnURL:
         data: '68747470733a2f2f646973636f72642e67672f354d714d76664150476400'
         display: "https://discord.gg/5MqMvfAPGd"

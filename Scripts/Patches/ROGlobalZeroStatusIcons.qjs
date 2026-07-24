@@ -480,7 +480,7 @@ ROGlobalZeroStatusIcons = function(_)
 			dynamicColumns: true,
 			slashCommand: false,
 			independentPersistence: false,
-			customDllImports: 0
+			externalModules: 0
 		});
 	}
 	return true;

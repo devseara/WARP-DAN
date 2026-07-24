@@ -90,4 +90,3 @@ Document: target client version, original bytes/functionality, replacement, why 
 - **Import table**: Use `CustomDLL.applySpec()` — never manually manipulate import directory entries
 - **Code injection**: Use `AutoHook()` with `SwapFillers`/`SetFillTargets` for address resolution
 - **CACHE-based sharing**: Use `CACHE.get`/`CACHE.put` + `CACHE.hasUsers` for shared code injected by multiple patches (see CaseInsensitiveSearch.qjs for reference-counted example)
-- **DLL addition**: Use `CustomPacketDispatch.addVisualDll()` for startup DLL imports (validates filename, deduplicates)

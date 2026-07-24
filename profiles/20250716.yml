@@ -1,11 +1,6 @@
 from: "C:/Users/Administrator/Documents/GitHub/WARP0716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
 to: "C:/Users/Administrator/Documents/Ragnarok/Banquet of Heroes/Banquet of Heroes.exe"
 inputs:
-    $bohVisualDLLName:
-        data: '626f682e646c6c00'
-        display: "boh.dll"
-        type: 10
-    
     $maxShield:
         data: '7f'
         display: 127

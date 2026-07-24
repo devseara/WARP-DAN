@@ -1214,7 +1214,7 @@ ROGlobalZeroBasicInfo = function(_)
 			compactHeightSavedVir: BasicInfoZeroStatic.CompactHeightSaved,
 			titleButtonsCreateVir: BasicInfoZeroStatic.TitleButtonsCreate,
 			titleButtonsExitVir: BasicInfoZeroStatic.TitleButtonsExit,
-			customDllImports: 0
+			externalModules: 0
 		});
 	}
 	return true;

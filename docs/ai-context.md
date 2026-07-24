@@ -65,7 +65,7 @@ This is the single supported extended-name setup going forward. We are dropping 
 
 - **Only WARP patch to select**: `CustomExtName`.
 - **What `CustomExtName` does**: installs the static `RecvStrip0BB6` EXE patch, then adds a user-named visual DLL through `CustomDLL.applySpec()`, mirroring `CustomRuneSystem`.
-- **No runtime recv**: Do not use `CustomExtNameVisualDLL` in profiles, and do not use `PacketSource=recv` for Banquet extnames.
+- **No runtime recv or custom text DLL**: `CustomExtName` uses only the static EXTN dispatcher and EXE-resident text bridge.
 - **Visual DLL role**: `boh_extname_visual.dll` owns GDI text substitution and reads the WARP `EXTN` shared block. It should not install a runtime `ws2_32.recv` hook.
 - **Packet source config**: `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\ddraw_proxy.ini` uses:
   ```ini
@@ -351,7 +351,7 @@ Then it hooks `TextOutW`, `ExtTextOutW`, `DrawTextW`, `DrawTextExW` to substitut
 **Historical approaches (superseded for extended names):**
 - The old HTTP helper experiment failed because it did not safely own packet stripping and GDI substitution together. This does not mean named CustomDLL imports are bad; the live `boh_extname_visual.dll` path proves they are fine when there is one packet/GDI owner.
 - The old `ddraw.dll` proxy/runtime recv architecture worked earlier, but is no longer the supported Banquet extname path.
-- `CustomExtNameVisualDLL.qjs` is kept only as historical/debug code and should not be selected in profiles.
+- The historical extended-name visual-DLL companion has been removed; the supported implementation is QJS-only.
 
 ### File Reference
 
@@ -673,7 +673,7 @@ The live no-Gepard client no longer uses the old `ddraw.dll` proxy or static rec
 
 - `@warp` / `@mapmove` is confirmed working with `feature.custom_extended_name_packet: on`.
 - Single supported client path is WARP `CustomExtName` -> static `RecvStrip0BB6` EXE patch + renameable visual DLL import.
-- `CustomExtNameVisualDLL` should not be selected in profiles anymore; it was the runtime recv experiment path.
+- The runtime-recv visual-DLL experiment has been removed from the patch set.
 - Use `PacketSource=shared`, never runtime `PacketSource=recv`, for Banquet extnames.
 - The same path handles both custom packets: `0x0BB6` item colors and `0x0BB7` extended names.
 - `boh_extname_visual.dll` owns GDI substitution and reads `0x0BB7` data from the WARP `EXTN` shared block. It should not install a runtime `recv` hook in the supported setup.
@@ -1718,7 +1718,7 @@ Two more user-reported symptoms and their root causes:
 | `Patches/Client.yml` | Updated description |
 | `CustomDLL/src/boh.dll` | Combined DLL with NpcNameOverlayInit export |
 
-#### Extended-name module split + optional DLL packaging (2026-06-15)
+#### Extended-name module split + optional DLL packaging (2026-06-15, historical)
 
 - EXTN transport, ring draining, parsing, maps, and text substitution moved from
   `item_color/colored_itemname.cpp` to `extended_name/extended_name.cpp`.
@@ -1727,11 +1727,10 @@ Two more user-reported symptoms and their root causes:
 - `build.bat` still creates the backward-compatible combined `boh.dll`.
   `build_split.bat` additionally creates `boh_text.dll`, `boh_npc_names.dll`,
   `boh_rune.dll`, `boh_fps.dll`, and `boh_inventory_tabs.dll`.
-- Every WARP visual feature now has its own saved DLL filename prompt. Choosing
-  `boh.dll` everywhere preserves the combined setup. Choosing the dedicated
-  names isolates unrelated modules.
-- Item colors and extended names stay together in `boh_text.dll` because both
-  use the same GDI hook owner. Their packet handling is still separated.
+- At that time, every WARP visual feature had its own saved DLL filename
+  prompt. This design was superseded by the QJS-only static implementations.
+- Item colors and extended names used to share `boh_text.dll`; their current
+  implementations are independent EXE-resident consumers.
 - NPC forwarding no longer requires a link-time dependency. The EXTN module
   resolves exported `NpcOverlay_OnExtName` dynamically, so combined and split
   packaging both work.

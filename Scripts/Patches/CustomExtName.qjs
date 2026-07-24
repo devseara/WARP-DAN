@@ -127,7 +127,7 @@ CustomExtName = function(_)
 		throw Error("CustomExtName: ExtNameTextStatic helper unavailable");
 	$$(_, 1, "Install QJS-only EXTN exact-text map and GDI bridge");
 	ExtNameTextStatic.enable(_, ExtNameTextStatic.FeatureNames);
-	$$(_, 2, "Extended names use static text caves; no visual DLL");
+	$$(_, 2, "Extended names use static text caves");
 	return true;
 };
 

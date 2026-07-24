@@ -656,7 +656,7 @@ ROGlobalZeroUITheme = function(_)
 			rowPosition: [GlobalUIThemeStatic.RowX, GlobalUIThemeStatic.RowY],
 			rowSize: [GlobalUIThemeStatic.RowWidth, GlobalUIThemeStatic.RowHeight],
 			persistFile: "savedata\\roglobal_ui_theme.dat",
-			customDllImports: 0
+			externalModules: 0
 		});
 	}
 	return true;

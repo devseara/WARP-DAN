@@ -46,7 +46,6 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
 ## Excluded From Strict Gepard Profiles
 
 - `RecvStrip0BB6`: touches the `ws2_32.recv` / recv-read path.
-- `CustomExtNameVisualDLL`: historical/debug-only visual DLL path.
 - `NoNagle`, `EnableProxy`: rewrite Winsock call flow.
 - `LoadClientPlugins`, generic `CustomDLL`: arbitrary DLL loading surface.
 - `IgnoreDebugger`, `SkipCheatCheck`, `DisableProtect/NoGGuard`: anti-cheat-hostile semantics.
@@ -56,9 +55,9 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
 ## Build Checklist
 
 - [x] Use `profiles/2025-07-16 GEPARD SAFE.yml` as the starting profile.
-- [x] Build/deploy dedicated DLLs beside the patched EXE:
-      `boh_npc_names.dll`, `boh_pincode_ui.dll`, `boh_text.dll`,
-      `boh_inventory_tabs.dll`, `boh_fps.dll`, and `boh_rune.dll`.
+- [x] QJS-only name, item-color, overlay, PIN, and inventory patches require
+      no custom DLL. Deploy `boh_rune.dll` only when explicitly selecting
+      `CustomRuneSystem`.
 - [x] Do not use `boh.dll` / `bohcustoms.dll` for Gepard unless a separate
       combined build is audited with all runtime-hook features disabled.
 - [x] Keep the dual-wield / weapon sprite patch out of strict profiles.

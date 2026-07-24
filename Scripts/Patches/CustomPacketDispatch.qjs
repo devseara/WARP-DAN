@@ -306,42 +306,6 @@ CustomPacketDispatch.isStateStale = function(state)
 	return false;
 };
 
-CustomPacketDispatch.addVisualDll = function(_, options)
-{
-	if (typeof CustomDLL === "undefined" || typeof CustomDLL.applySpec !== "function")
-		throw Error("CustomDLL.applySpec helper is unavailable");
-
-	if (typeof options === "string")
-		options = {title: options};
-	options = options || {};
-
-	const inputKey = options.inputKey || '$bohVisualDLLName';
-	const promptTitle = options.title || "BOH Visual DLL";
-	const exportName = options.exportName || "ExtNameVisualInit";
-	const defaultName = options.defaultName || "boh.dll";
-	const dedicatedName = options.dedicatedName || defaultName;
-	const description = options.description ||
-		`Enter the DLL filename for this feature. Use boh.dll for the combined build or ${dedicatedName} for the dedicated build. Place it beside the patched EXE.`;
-
-	const dllName = CustomDLL.getDllName(
-		inputKey,
-		promptTitle,
-		description,
-		defaultName,
-		dedicatedName
-	);
-
-	const result = CustomDLL.applySpec(_, [
-		{
-			Name: dllName,
-			Funcs: [
-				{Name: exportName}
-			]
-		}
-	]);
-	return result;
-};
-
 CustomPacketDispatch.tableEntryVir = function(switchTableVir, packetId)
 {
 	return switchTableVir + (packetId - 0x73) * 4;

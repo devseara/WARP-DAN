@@ -31,9 +31,9 @@
 *                   for strings/entries/table, then replaces the PE import  *
 *                   directory entry via SetDirAddr/SetDirSize.              *
 *                   RISK: Full import table replacement; any error in the   *
-*                   new table makes the EXE unlaunchable. Patches using     *
-*                   this: CustomExtName, CustomColoredItemName, FpsOverlay, *
-*                   CustomRuneSystem, GenMapEffect.                         *
+*                   new table makes the EXE unlaunchable. The dedicated    *
+*                   caller is CustomRuneSystem; QJS-only custom patches do *
+*                   not request or import custom DLLs.                     *
 *                   Target: Ragexe clients 2014-2025 (excluding 2014-2017   *
 *                   import-table bugs).                                     *
 *                                                                          *
@@ -239,7 +239,7 @@ CustomDLL.applySpec = function(_, dllSpec)
 	if (typeof CustomSlashCommand !== "undefined" &&
 	    typeof CustomSlashCommand.refresh === "function")
 		CustomSlashCommand.refresh(`${_}.CustomSlashCommand`);
-	CustomDLL.runRefreshHooks(_);
+	StaticPatchRefresh.run(_);
 
 	return true;
 };
@@ -362,54 +362,6 @@ CustomDLL.ownerPatchName = function(name)
 		return name.substring(0, bracket);
 
 	return name;
-};
-
-CustomDLL.ownerIsActive = function(ownerName, currentOwner)
-{
-	return ownerName === currentOwner || Warp.GetPatchState(ownerName);
-};
-
-CustomDLL.addRefreshHook = function(name, hook)
-{
-	if (!IsStr(name) || !hook)
-		throw Error("CustomDLL.addRefreshHook requires a name and hook spec");
-
-	if (typeof hook === "function")
-		hook = {callback: hook};
-
-	const key = 'CustomDLL.RefreshHooksByName';
-	const hooks = CACHE.get(key) ?? {};
-	hooks[name] = Object.assign({}, hook, {
-		owner: CustomDLL.ownerPatchName(name),
-	});
-	CACHE.put(key, hooks);
-};
-
-CustomDLL.runRefreshHooks = function(_)
-{
-	const currentOwner = CustomDLL.ownerPatchName(_);
-	const hooks = CACHE.get('CustomDLL.RefreshHooksByName') ?? {};
-	const refreshed = [];
-
-	for (const name in hooks)
-	{
-		const hook = hooks[name];
-		if (typeof hook.callback === "function")
-		{
-			hook.callback();
-			refreshed.push(name);
-		}
-	}
-
-	if (typeof PatchDiagnostics !== "undefined" &&
-	    typeof PatchDiagnostics.add === "function" &&
-	    !refreshed.isEmpty())
-		PatchDiagnostics.add('CustomDLL.runRefreshHooks', {
-			owner: currentOwner,
-			refreshed
-		});
-
-	return true;
 };
 
 CustomDLL.getDllName = function(inputKey, title, description, defaultName, dedicatedName)
@@ -618,9 +570,9 @@ CustomDLL.validate = () => Exe.BuildDate < 20140700 || Exe.BuildDate > 20170700 
 ///
 CustomDLL.cleanup = () =>
 {
-	CustomDLL.runRefreshHooks('CustomDLL.cleanup');
+	StaticPatchRefresh.run('CustomDLL.cleanup');
 	ReloadPatch("NoHShield");
-	CustomDLL.runRefreshHooks('CustomDLL.cleanup.post');
+	StaticPatchRefresh.run('CustomDLL.cleanup.post');
 };
 
 ///

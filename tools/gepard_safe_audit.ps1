@@ -14,7 +14,6 @@ $failed = $false
 $profileText = Get-Content -Raw -LiteralPath $profilePath
 
 $bannedPatches = @(
-    "CustomExtNameVisualDLL",
     "RecvStrip0BB6",
     "AllowDualCustomWeaponSprites",
     "NoNagle",
@@ -50,7 +49,6 @@ foreach ($dll in $bannedDllNames) {
 
 $safeSources = @(
     "Scripts/Patches/AlwaysShowNpcName.qjs",
-    "Scripts/Patches/CustomTextVisualStatic.qjs",
     "Scripts/Patches/CustomExtName.qjs",
     "Scripts/Patches/CustomColoredItemName.qjs",
     "Scripts/Patches/ImageBasedInventoryTabs.qjs",

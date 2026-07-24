@@ -41,11 +41,6 @@ inputs:
         display: "true"
         type: 10
     
-    $itemColorVisualDLLName:
-        data: '626f685f746578742e646c6c00'
-        display: "boh_text.dll"
-        type: 10
-    
     $npcBoxLength:
         data: '00100000'
         display: 4096
@@ -134,11 +129,6 @@ inputs:
     $newPetEvoCln:
         data: '73797374656d454e5c50657445766f6c7574696f6e5f454e2e6c756200'
         display: "systemEN\\PetEvolution_EN.lub"
-        type: 10
-    
-    $customDLL:
-        data: ''
-        display: "Inputs/DLLSpec.yml"
         type: 10
     
     $newSleepDelay1:
@@ -298,7 +288,6 @@ patches:
     - IncrViewID
     - IncrMapQuality
     - EnableEffectTool
-    - CustomDLL
     - HideBuildInfo
     - NoCameraLock
     - FixArrowsCharset

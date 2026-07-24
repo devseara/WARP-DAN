@@ -28,8 +28,8 @@
 *                   bounded EXE-resident table and colors item-title and   *
 *                   optional grade-name spans independently at the         *
 *                   client's TextOutW surfaces.                            *
-*                   This replaces the former boh.dll/boh_text.dll runtime  *
-*                   hooks while retaining bounded UTF-8 exact matching.   *
+*                   The implementation is fully EXE-resident and retains  *
+*                   bounded UTF-8 exact matching.                         *
 *                   Normal colors are limited to item-title               *
 *                   shapes so bracketed description headings stay stock.  *
 *                   Inventory and ground item-label producers recolor     *
@@ -1360,10 +1360,9 @@ ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
 	ItemColorStatic.patchItemLabelSurfaces(state);
 	CACHE.put("ItemColorStatic.State", state);
 
-	if (!state.semanticOnly &&
-		typeof CustomDLL.addRefreshHook === "function")
+	if (!state.semanticOnly)
 	{
-		CustomDLL.addRefreshHook("CustomColoredItemName.StaticTextBridge", function()
+		StaticPatchRefresh.add("CustomColoredItemName.StaticTextBridge", function()
 		{
 			const current = CACHE.get("ItemColorStatic.State");
 			if (!current || !Number.isInteger(current.stateVir))
@@ -1389,7 +1388,7 @@ ItemColorStatic.enable = function(_, icolVir, gradeColorsEnabled)
 			groundTooltipVir: state.groundTooltipVir,
 			balloonPlainScopeVir: state.balloonPlainScopeVir,
 			balloonStyledScopeVir: state.balloonStyledScopeVir,
-			customDllImports: 0
+			externalModules: 0
 		});
 	}
 	return true;

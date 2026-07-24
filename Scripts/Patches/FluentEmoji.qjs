@@ -1079,7 +1079,7 @@ FluentEmojiStatic.ensureInstalled = function(_)
 			stringBytes: state.stringBytes,
 			drawVir: state.drawVir,
 			measureVir: state.measureVir,
-			customDllImports: 0
+			externalModules: 0
 		});
 	}
 	return state;

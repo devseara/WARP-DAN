@@ -161,7 +161,6 @@ PatchDiagnostics.write = function(_)
 
 	section('Slash Commands');
 	line('RegistryByOwner: ' + PatchDiagnostics.safeJson(CACHE.get('CustomSlashCommand.RegistryByOwner')));
-	line('RefreshHooksByName: ' + PatchDiagnostics.safeJson(CACHE.get('CustomSlashCommand.RefreshHooksByName')));
 
 	section('Events');
 	const events = CACHE.get('PatchDiagnostics.Events') ?? [];

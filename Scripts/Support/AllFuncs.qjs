@@ -910,6 +910,48 @@ MakeMap = function() //since we need 'arguments' this is a regular function
 };
 
 ///
+/// \brief Reapply static patch surfaces after another patch rebuilds shared
+///        PE structures such as the import table.
+///
+StaticPatchRefresh = {
+	Key: 'StaticPatchRefresh.HooksByName'
+};
+
+StaticPatchRefresh.add = function(name, callback)
+{
+	if (!IsStr(name) || name.isEmpty() || typeof callback !== "function")
+		throw Error("StaticPatchRefresh.add requires a name and callback");
+
+	const hooks = CACHE.get(StaticPatchRefresh.Key) ?? {};
+	hooks[name] = callback;
+	CACHE.put(StaticPatchRefresh.Key, hooks);
+};
+
+StaticPatchRefresh.run = function(owner)
+{
+	const hooks = CACHE.get(StaticPatchRefresh.Key) ?? {};
+	const refreshed = [];
+	for (const name in hooks)
+	{
+		if (typeof hooks[name] !== "function")
+			continue;
+		hooks[name]();
+		refreshed.push(name);
+	}
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function" &&
+		!refreshed.isEmpty())
+	{
+		PatchDiagnostics.add("StaticPatchRefresh.run", {
+			owner,
+			refreshed
+		});
+	}
+	return true;
+};
+
+///
 /// \brief Wrapper function to reload a patch if it is already selected.
 ///
 ReloadPatch = (name, ...args) =>
@@ -993,7 +1035,7 @@ for (const name of
 	'IsNumOrStr', 'IsWord', 'IsByte',
 	'Filler', 'SwapFillers', 'SetFillTargets',
 	'Wrap', 'BitWidth', 'Distance',
-	'PatchReporter', 'MakeMap', 'ReloadPatch',
+	'PatchReporter', 'MakeMap', 'StaticPatchRefresh', 'ReloadPatch',
 	'CaseAddr', 'ParseData', 'GetImpRefs',
 	'FindInstr', 'GetInstr', 'AutoHook', 'MultiAlloc',
 	'Identify', 'IdentifyClass', 'IdentifyObj',

@@ -995,7 +995,7 @@ ROGlobalZeroExpBar = function(_)
 			preservesTgaAlpha: true,
 			clickThrough: true,
 			renderOrder: "front of top-level list; stock UI paints above it",
-			customDllImports: 0
+			externalModules: 0
 		});
 	}
 	return true;

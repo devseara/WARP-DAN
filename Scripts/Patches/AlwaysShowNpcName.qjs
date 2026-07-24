@@ -687,7 +687,7 @@ AlwaysShowNpcName = function(_)
 			fp.WriteLine("  State: bounded 256-entry static table");
 			fp.WriteLine("  Toggle: /shownpcname and Game Settings option 10001");
 			fp.WriteLine("  Persistence: savedata\\shownpcname.dat (one byte)");
-			fp.WriteLine("  NPC-name DLL imports/runtime hooks: none");
+			fp.WriteLine("  NPC-name external modules/runtime hooks: none");
 			fp.Close();
 		}
 	}

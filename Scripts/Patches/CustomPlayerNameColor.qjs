@@ -38,7 +38,7 @@ CustomPlayerNameColor = function(_)
 		throw Error("CustomPlayerNameColor: ExtNameTextStatic helper unavailable");
 	$$(_, 1, "Install QJS-only exact player-name color bridge");
 	ExtNameTextStatic.enable(_, ExtNameTextStatic.FeatureColors);
-	$$(_, 2, "Player name colors are applied around TextOutW; no visual DLL");
+	$$(_, 2, "Player name colors are applied around TextOutW");
 	return true;
 };
 
