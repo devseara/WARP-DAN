@@ -70,7 +70,33 @@ same GDI wrapper surface. The `ColoredItemNameVisualInit` export remains a
 no-op compatibility anchor for already-patched clients; it does not enable an
 item renderer.
 
-## Dual-wield weapon sprite debug
+## Dual-wield weapon sprite DLL experiments (retired)
+
+This DLL renderer host is not a production feature. Direct GRF inspection
+proved that actor SPR/ACT arrays are parallel resource channels rather than
+hand anchors. Item ACTs expose ordinary single-hand geometry; stock dual
+actions use precomposed bitmaps containing both weapons.
+
+The supported implementation is the static
+`AllowDualCustomWeaponSprites.qjs` patch. It preserves the known-working fc9
+resource sequence: retain the off-hand item pair, run the stock `mainOnly`
+setup last so its original pair remains in slot 5, then transfer only the
+retained off-hand pair into slot 6. A successful split never replays the stock
+`current(main, off)` setup, because that path restores the generic combined
+resources. A four-way actor/four-resource ownership registry and guarded
+action/layer fallbacks prevent stale or foreign records from receiving custom
+placement. A renderer actor can be adopted after an ownership miss only when
+both live ACTs have the transparent action-88/frame-0 signature of the
+individual 13412/1238 resources; the visible stock combined ACT is rejected.
+
+Exact absolute independent-hand idle/attack geometry exists only for the male
+Shadow Cross main 13412/off 1238 profile. Generic Knife/Sword assets and other
+unprofiled pairs do not have solved independent-hand geometry. Do not ship
+`BOH_WEAPON_SPRITE=1`, the layered overlay, or any native probe flag below as
+part of the supported implementation. They remain historical reverse-
+engineering instrumentation.
+
+### Historical debug notes
 
 For this setup, `bohcustoms.dll` is already used by the combined build for the
 other BOH features. Keep the weapon renderer in a dedicated DLL with a unique
