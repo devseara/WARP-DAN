@@ -20,7 +20,7 @@
 // NPC Name Overlay        | BOH_NPC_NAME_OVERLAY    | AlwaysShowNpcName
 // RO Global Zero Inv.     | BOH_INVENTORY_TABS      | ROGlobalZeroInventory
 // In-Game PIN Pad         | BOH_PINCODE_UI          | InGamePincodeUI
-// Dual-Wield Weapon Sprite| BOH_WEAPON_SPRITE       | AllowDualCustomWeaponSprites
+// Weapon Sprite Experiments| BOH_WEAPON_SPRITE      | DLL debug only; QJS is static
 #pragma once
 
 #include <stdio.h>

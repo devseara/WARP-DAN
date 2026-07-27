@@ -1,3 +1,135 @@
+# Dual-weapon generic-sprite regression recovery (July 26, 2026)
+
+> **2026-07-27 correction — visual status is NOT WORKING.** Live tests
+> invalidated the split-layer compositor described below. Stock ACT5 is one
+> precomposed bitmap containing both generic weapons in their final hand
+> positions; ACT6 is glow/trail, not an off-hand. Both individual original-item
+> ACTs are primary/right-hand-authored, actions 88..103 are transparent, and
+> some idle directions have no art. Consequently, transferring original item
+> resources into channels 5/6 can overlap both weapons on one hand, displace or
+> clip the off-hand, or make it disappear. Static contract passes do not prove
+> visual correctness. Rejected build `92C381...` was rolled back to
+> `9B272C...`, which still overlaps and is not accepted as fixed. Exact original
+> art requires authored off-hand/dual assets or a new compositor supporting
+> job/gender/class/pose-specific transforms, masks, clipping, and ordering.
+> See [`docs/dual-wield-weapon-sprite.md`](docs/dual-wield-weapon-sprite.md).
+
+> **Binary patch — re-WARP from a clean client required.** Executables built
+> with an older dual-weapon experiment retain its entry and render-call hooks.
+
+The original observation was confirmed. Loading the two original item ACTs
+does restore their artwork, but both item ACTs are primary-hand-authored.
+Using their own absolute layer positions therefore converges both weapons on
+one hand in rear-facing attack frames.
+
+The regression against commit
+`fc9bddb6c0156f6411d5ea80f58f183f6a00852c` was traced to an
+altered capture-both sequence. After loading and retaining the two individual
+item pairs, that sequence invoked the stock `(main, off)` updater again on its
+nominal success path. The extra call re-entered the native dual combiner,
+reinstalled the generic resource, and mutated loader/cache state that could
+not be restored safely by rewriting only the four SPR/ACT vector pointers.
+New capture-validation failures also branched to the same stock-current
+replay.
+
+An in-process comparator was then applied to the clean client supplied by the
+user. That trace corrected two earlier reverse-engineering assumptions:
+
+- `CActor::GetJob(-1)` returns effective job **4013**, not 4254;
+- the clean runtime installs distinct SPR5/SPR6 and ACT5/ACT6 objects for the
+  native dual pair. For main/off 1201/1102, the trace observed different ACT
+  pointers and native action-88 geometry such as ACT5
+  `(-11,-110,index=0,mirror=0)`.
+
+The later male/female frame traces corrected the decisive assumption.
+Distinct ACT5/ACT6 pointers do not mean two weapon-hand channels. ACT5 keeps
+both generic weapons precomposed for the entire idle/attack animation. ACT6
+matches the native `*_검광` auxiliary glow/trail ACT: it is transparent in
+early frames and visible later, but is never an off-hand anchor.
+
+The corrected implementation separates original artwork, native dual-hand
+placement, and generic single-weapon bitmap origin:
+
+- the equipment hook once again uses the client's native item-to-weapon
+  classifier for every dual and off-hand-only weapon state;
+- after the requested stock update, the dual path reproduces the working
+  `fc9bddb` sequence: it loads the off-hand item as the sole main item,
+  retains only that slot-5 SPR/ACT pair, and then runs the native main-only
+  setup as the last stock call;
+- the main-only setup therefore keeps native ownership of the real main
+  weapon in slot 5. The hook releases any slot-6 resources and transfers the
+  retained off-hand pair to slot 6. It never replays the stock combined
+  `(main, off)` setup after a successful split; that replay is failure-only;
+- before replacing any classifier-approved stock pair, the hook AddRefs and
+  retains that actor's clean-client ACT5 and ACT6 resources. Item IDs, view
+  IDs, gender, and job are diagnostics only and never eligibility gates;
+- the hook calls the stock item-pair weapon-type mapper with `(item, 0)` for
+  each hand, then temporarily uses the stock generic weapon loader. This
+  captures the actor's matching job/gender-specific single-weapon ACT
+  baselines without any item-ID table. The preexisting slot-1 SPR/ACT owners
+  and weapon-type field are AddRef'd and restored exactly after the two
+  temporary loads;
+- the 52-byte per-actor ownership row publishes the four installed
+  original-art pointers together with the retained native ACT5/ACT6 and the
+  two generic single-weapon ACT baselines, combined/main/off native weapon
+  types, and effective native job.
+  Equipment refresh and collision eviction invalidate the actor key first,
+  release all four retained references, and zero them before reuse;
+- the 52-byte row makes each four-way set 208 bytes. The generated x86 uses
+  `IMUL r32,r32,imm32` for that stride, and all four way offsets use encodings
+  that cannot truncate offsets above 127. The rejected 144-byte experiment
+  used a sign-extending `imm8`, interpreted it as `-112`, wrote before the
+  ownership table, and eventually crashed in `ResourceRelease` with an
+  invalid `0x2710` pointer;
+- ownership misses retain original item resources and never return to the
+  stock generic pair. A dual channel-6 miss leaves blank item actions 88..95
+  intact instead of drawing the primary-hand-authored action on the wrong
+  hand; off-hand-only equipment still uses the generalized action remap;
+- that generalized action fallback is independent of the ownership record:
+  it validates the live slot, re-runs the native weapon classifier, and keeps
+  the working `88..95 -> 80..87` remap even after a registry miss or eviction;
+- actor `+0x438` reports dual stance `42`, not pair type. The hook derives
+  pair type 25..30 from the two classifier-produced single classes
+  (dagger=1, sword=2, axe=6), so eligibility and mapping remain independent
+  of item IDs;
+- every owned idle/attack draw queries composite ACT5 and validates its live
+  sprite index against an all-frame GRF-derived component record keyed by
+  gender, derived pair type, phase, direction, and frame. Mixed pairs select
+  the component matching the current item's weapon class instead of assuming
+  ACT5=main and ACT6=off. Same-class pairs use distinct first/main and
+  second/off components. Complete Assassin/Assassin Cross, Guillotine Cross,
+  and Shadow Cross tables are independently derived for both genders;
+- each component record identifies the exact generic source action/frame and
+  expected source sprite index from the same offline decomposition. The native
+  loader applies different frame-specific translations to the composite ACT5
+  and generic single ACTs, so the action hook queries both live layers. It
+  rejects a null, transparent, or sprite-mismatched source instead of mixing
+  raw-GRF coordinates with renderer coordinates;
+- per-channel records still select the visible source action/frame from the
+  original item ACT, but item-authored coordinates never supply final hand
+  placement;
+- the final layer bridge clones all 36 ACT-layer bytes and keeps the original
+  item's authored bitmap origin. It applies
+  `live original item + (live native target - live generic single source)` to
+  X/Y, the
+  equivalent XOR parity to mirror, and the same target-minus-source delta to
+  normalized rotation. Sprite index, color, scale, type, and dimensions remain
+  original-item-authored;
+- the native `CActor::GetJob(-1)` result, gender, and live item/view values
+  are recorded only for diagnostics. Actor
+  `+0x4C8/+0x4D0` is resource path context and is not used as a job ID.
+
+All main/off values accepted by the client's native weapon classifier now
+receive original item resources, the attack-action remap, and the retained
+native channel placement. New item IDs do not require another hard-coded
+geometry profile.
+
+The source/GRF contract and acceptance procedure are recorded in
+[`docs/dual-wield-weapon-sprite.md`](docs/dual-wield-weapon-sprite.md) and
+`tools/verify_dual_weapon_sprite_contract.py`.
+
+---
+
 # Item/enchant-grade color renderer regression fix (July 24, 2026)
 
 > **Binary patch — re-WARP required.** Existing patched clients retain the old
