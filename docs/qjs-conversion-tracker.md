@@ -20,7 +20,7 @@ Status meanings:
 | Dual-wield and off-hand weapon sprites | Working | QJS-only native resource-slot patch; attack animation and off-hand-only behavior confirmed by live testing. |
 | Custom code page | Implemented, test required | Base codepage override is QJS-only. The optional UTF-8 character-walking bridge still uses a DLL when explicitly enabled. |
 | RO Global Zero Inventory | Working | QJS-only window/tab/tooltip caves, anchored balloons, a reserved row matching ordinary/locked-Personal backgrounds, and a live comma-formatted Zeny/weight panel. Confirmed in game on the 2025-07-16 client. |
-| RO Global Zero Basic Information HUD | Working | QJS-only compact `UIBasicInfoWnd` branches render the live-confirmed 238x59 composite with an unscaled 194x36 gauge, full-width HP/SP fills, and Base Level/name. A cloned native `UIJobIconButton` child owns the overlapping 52x52 Job icon, clipping, z-order, lifecycle, and native Job-name hover handler. Resources use the same native texture-manager path as RO Global Zero Inventory, including client-supported encrypted GRFs. |
+| RO Global Zero Basic Information HUD | Implemented, live AP test required | QJS-only compact `UIBasicInfoWnd` branches render a 252x74 composite with the supplied unscaled 194x50 frame, 182px-clipped HP/SP/yellow-AP fills, and an outlined bold Base Level/name matching hovered world names. AP/MAXAP reuse the client stat map populated by `AllowAPBarforAllJobs`, with an authoritative 200 fallback only when MAXAP is absent. A cloned native `UIJobIconButton` child owns the screenshot-proportioned 66x66 `big2` Job icon, clipping, z-order, lifecycle, and Job/gauge hover routing. |
 | Always-show NPC names | Working | QJS-only bounded EXTN balloon renderer and static `/shownpcname`, with live-confirmed one-byte persistence in `savedata/shownpcname.dat`. |
 | Extended names | Working | QJS-only EXTN ring drain feeds a bounded exact-text map. Mob details use the official `0x0ADF` Group Title/ID row above the independently rendered stock mob name. |
 | Player-name colors | Working | QJS-only EXTN exact-text entries apply RGB around matching non-shadow player-name draws and restore the original GDI color afterward. |
@@ -144,6 +144,14 @@ Status meanings:
 - [x] Correct the v29 SP slot from frame-local row 24 to the native row 20. Move the unchanged 184x11 SP fill and its text from panel y=40/39 to y=36/35, restore `gze_sp_normal.bmp`, and leave frame rows 31..35—including the lower white line—owned by `gze_bg_deco.bmp`.
 - [x] Confirm the v30 compact HUD placement, icon mapping, bar clipping, divider seam, lower SP line, and text alignment in game against the native reference and the user's current resolution.
 - [ ] Confirm repeated Alt+V remains compact, the Job-name tooltip follows hover, dragging works, and HP/SP changes, mount/disguise transitions, map change, relog, Alt+Tab, and clean exit remain stable.
+- [x] Connect the compact renderer to the existing all-Job AP stat map (`SP_AP=0xE8`, `SP_MAXAP=0xE9`) instead of duplicating packet state; when MAXAP is absent, preserve current and supply the server overlay's authoritative all-Job `BaseAp: 200` maximum without changing valid native pairs.
+- [x] Adopt the supplied 194x50 `gze_bg_ap.bmp`, add the 184x11 AP fill/value/percentage row, and resize the composite to 252x74. Scale screenshot #2's attachment geometry by the 14px icon delta: frame x=56, fill x=61, title x=66, then use the live 300% comparison's final one-pixel right/up correction for the 66px icon at x=1/y=7.
+- [x] Add the dedicated 184x11 yellow/gold `gze_ap_normal.bmp` fill while preserving the supplied highlight texture's native gradient.
+- [x] Clip HP/SP/AP fills to the frame's measured 182px x=5..186 interior so 100% no longer overwrites the x=187..189 right cap.
+- [x] Replace the unreadable title double-strike with one bold white foreground pass and an eight-neighbor one-pixel black outline matching hovered world names; numeric rows remain unchanged.
+- [x] Route parent and overlapping Job-child hover regions to `Health Pool`, `Mana Pool`, and `Activity Points` through the native tooltip manager, anchored 16px right and 16px above the live mouse pointer like RO Global Zero Inventory.
+- [x] Redirect the native Job child to `uirenewal/jobicon/big2/icon_job_%d.bmp` and resize it to 66x66.
+- [ ] Live-confirm AP updates on a non-fourth Job, all three hover labels, the resized Job icon seam, theme switching, Alt+V, dragging, relog, and clean exit.
 
 ## Always-show NPC names checklist
 
