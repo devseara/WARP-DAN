@@ -26,7 +26,9 @@
 *                   ownership. Its native canvas loads the supplied Global *
 *                   AutoHunt BMPs and exposes Basic, Monster, Skill (1/3), *
 *                   Potion (1/2), Looting (1/2), Move, and Item pages.     *
-*                   No DLL, packets, persistence, or combat behavior.      *
+*                   It sends 0x0BF8/AHUI OPEN and receives AHUI snapshots  *
+*                   multiplexed through 0x0BEF, with no DLL or client-side *
+*                   combat logic.                                          *
 *                                                                          *
 \**************************************************************************/
 
@@ -66,6 +68,55 @@ const AutoCombatUIStatic = {
 	ImageDraw: 0x00A1D260,
 	TextDraw: 0x00A25A70,
 	TabItmFormat: 0x0102AC48,
+	PacketBuffer: 0x015E8198,
+	PacketSwitchTable: 0x00CAA2E0,
+	PacketDefaultHandler: 0x00CAA2B7,
+	PacketMainLoopReturn: 0x00C9E1DD,
+	ClientPacketId: 0x0BF8,
+	ServerPacketId: 0x0BEF,
+	PacketMagic: 0x49554841,
+	ProtocolVersion: 1,
+	MessageOpen: 1,
+	MessageSnapshot: 2,
+	MessageSetScalar: 3,
+	MessageResync: 6,
+	ClientHeaderSize: 20,
+	ScalarHeaderSize: 32,
+	SnapshotSize: 80,
+	SnapshotMonsterBitsSize: 84,
+	SnapshotMonsterBitsOffset: 80,
+	SnapshotMonsterRowsSize: 288,
+	SnapshotMonsterRowCountOffset: 84,
+	SnapshotMonsterRowsOffset: 88,
+	SnapshotLootCategoriesSize: 292,
+	SnapshotLootCategoriesOffset: 288,
+	MonsterDynamicRows: 5,
+	MonsterTotalRows: 6,
+	MonsterRowSize: 40,
+	MonsterRowIdOffset: 0,
+	MonsterRowFlagsOffset: 4,
+	MonsterRowNameOffset: 8,
+	MonsterRowsSize: 200,
+	FeatureMonsterSelection: 1 << 0,
+	FeatureMonsterRows: 1 << 1,
+	FeatureLootCategories: 1 << 2,
+	SettingTeleportFlyWing: 4,
+	SettingTeleportSkill: 6,
+	SettingStopMelee: 7,
+	SettingReturnSavePoint: 9,
+	SettingReset: 10,
+	SettingTokenSiegfried: 11,
+	SettingAcceptParty: 12,
+	SettingPriorityLoot: 13,
+	SettingTeleportNoMobDelay: 17,
+	SettingAggressive: 18,
+	SettingMonsterSelection: 19,
+	SettingPickupMode: 20,
+	SettingActionOnEnd: 22,
+	SettingMonsterSurround: 23,
+	SettingTpMvp: 24,
+	SettingAutostorageEnabled: 27,
+	SettingLootCategories: 36,
 	WindowWidth: 470,
 	WindowHeight: 346,
 	TitleHeight: 17,
@@ -76,7 +127,22 @@ const AutoCombatUIStatic = {
 	StateSkillPage: 8,
 	StatePotionPage: 12,
 	StateLootingPage: 16,
-	StateSize: 20
+	StateReady: 20,
+	StateRevision: 24,
+	StateFlags: 28,
+	StateRequest: 32,
+	StateStopMelee: 36,
+	StatePickupMode: 40,
+	StatePrioMode: 44,
+	StateListCounts: 48,
+	StateActionOnEnd: 52,
+	StateMonsterSurround: 56,
+	StateTeleportNoMobDelay: 60,
+	StateMonsterBits: 64,
+	StateLootCategoryBits: 68,
+	StateServerFeatures: 72,
+	StateMonsterRowCount: 76,
+	StateSize: 80
 };
 
 AutoCombatUIStatic.bytesToHex = function(bytes)
@@ -111,6 +177,10 @@ AutoCombatUIStatic.asm = function()
 			const pos = bytes.length;
 			bytes.push(0, 0, 0, 0);
 			put32(bytes, pos, value);
+		},
+		word: function(value)
+		{
+			bytes.push(value & 0xFF, (value >>> 8) & 0xFF);
 		},
 		label: function(name)
 		{
@@ -241,6 +311,232 @@ AutoCombatUIStatic.pushImm = function(a, value)
 		a.emit(0x68);
 		a.dword(value);
 	}
+};
+
+AutoCombatUIStatic.packetTableEntryVir = function(packetId)
+{
+	return AutoCombatUIStatic.PacketSwitchTable + (packetId - 0x73) * 4;
+};
+
+AutoCombatUIStatic.resolvePacketRefs = function(_)
+{
+	const cacheKey = "AutoCombatUI.PacketRefs";
+	if (CACHE.has(cacheKey))
+		return CACHE.get(cacheKey);
+
+	const packetTemplate =
+		MOV(EAX, 0x0844) +
+		PUSH(ESI) +
+		MOV([EBP, 0x8], AX);
+	const packetTemplateAddrs = Exe.FindHexN(packetTemplate);
+	if (packetTemplateAddrs.isEmpty())
+		throw Error("AutoCombatUI: packet sender template not found");
+
+	const senderCandidates = packetTemplateAddrs.filter(addr =>
+		Exe.FindLastHex(PUSH(0x13E), addr, addr - 0x80) > 0
+	);
+	if (senderCandidates.length !== 1)
+		throw Error(
+			"AutoCombatUI: expected one packet sender template, found " +
+			senderCandidates.length
+		);
+
+	const packetSender = senderCandidates[0];
+	const refs = {
+		packetCtorA: Exe.GetTgtAddr(packetSender + 0x0A + 1),
+		packetSend: Exe.GetTgtAddr(packetSender + 0x29 + 1)
+	};
+	CACHE.put(cacheKey, refs);
+	return refs;
+};
+
+AutoCombatUIStatic.buildOpenSender = function(stateVir, refs)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, AutoCombatUIStatic.ClientHeaderSize);
+	a.emit(0x56);
+	a.emit(0x66, 0xC7, 0x45, 0xEC); a.word(AutoCombatUIStatic.ClientPacketId);
+	a.emit(0x66, 0xC7, 0x45, 0xEE); a.word(AutoCombatUIStatic.ClientHeaderSize);
+	a.emit(0xC7, 0x45, 0xF0); a.dword(AutoCombatUIStatic.PacketMagic);
+	a.emit(0x66, 0xC7, 0x45, 0xF4); a.word(AutoCombatUIStatic.ProtocolVersion);
+	a.emit(0x66, 0xC7, 0x45, 0xF6); a.word(AutoCombatUIStatic.MessageOpen);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateRequest);
+	a.emit(0x40);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateRequest);
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateRevision);
+	a.emit(0x89, 0x45, 0xFC);
+	a.call(refs.packetCtorA);
+	a.emit(0x8B, 0xF0);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "done");
+	a.emit(0x8D, 0x45, 0xEC);
+	a.emit(0x50);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.ClientHeaderSize);
+	a.emit(0x8B, 0xCE);
+	a.call(refs.packetSend);
+	a.label("done");
+	a.emit(0x5E, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+AutoCombatUIStatic.buildScalarSender = function(stateVir, refs)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, AutoCombatUIStatic.ScalarHeaderSize);
+	a.emit(0x56);
+	a.emit(0x66, 0xC7, 0x45, 0xE0); a.word(AutoCombatUIStatic.ClientPacketId);
+	a.emit(0x66, 0xC7, 0x45, 0xE2); a.word(AutoCombatUIStatic.ScalarHeaderSize);
+	a.emit(0xC7, 0x45, 0xE4); a.dword(AutoCombatUIStatic.PacketMagic);
+	a.emit(0x66, 0xC7, 0x45, 0xE8); a.word(AutoCombatUIStatic.ProtocolVersion);
+	a.emit(0x66, 0xC7, 0x45, 0xEA); a.word(AutoCombatUIStatic.MessageSetScalar);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateRequest);
+	a.emit(0x40);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateRequest);
+	a.emit(0x89, 0x45, 0xEC);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateRevision);
+	a.emit(0x89, 0x45, 0xF0);
+	a.emit(0x8B, 0x45, 0x08);
+	a.emit(0x89, 0x45, 0xF4);
+	a.emit(0x8B, 0x45, 0x0C);
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x45, 0x10);
+	a.emit(0x89, 0x45, 0xFC);
+	a.call(refs.packetCtorA);
+	a.emit(0x8B, 0xF0);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "done");
+	a.emit(0x8D, 0x45, 0xE0);
+	a.emit(0x50);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.ScalarHeaderSize);
+	a.emit(0x8B, 0xCE);
+	a.call(refs.packetSend);
+	a.label("done");
+	a.emit(0x5E, 0x8B, 0xE5, 0x5D, 0xC2, 0x0C, 0x00);
+	return a;
+};
+
+AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, continueVir)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x3E); a.word(AutoCombatUIStatic.ServerPacketId);
+	a.jcc(0x85, "fallback");
+	a.emit(0x66, 0x83, 0x7E, 0x02); a.emit(AutoCombatUIStatic.SnapshotSize);
+	a.jcc(0x82, "fallback");
+	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.PacketMagic);
+	a.jcc(0x85, "fallback");
+	a.emit(0x66, 0x83, 0x7E, 0x08); a.emit(AutoCombatUIStatic.ProtocolVersion);
+	a.jcc(0x85, "fallback");
+	a.emit(0x66, 0x83, 0x7E, 0x0A); a.emit(AutoCombatUIStatic.MessageSnapshot);
+	a.jcc(0x85, "fallback");
+	a.emit(0x8B, 0x46, 0x0C);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateRequest);
+	a.emit(0x8B, 0x46, 0x10);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateRevision);
+	a.emit(0x8B, 0x46, 0x14);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateFlags);
+	a.emit(0x0F, 0xB7, 0x46, 0x18);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateStopMelee);
+	a.emit(0x0F, 0xB7, 0x46, 0x1A);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StatePickupMode);
+	a.emit(0x0F, 0xB7, 0x46, 0x1C);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StatePrioMode);
+	a.emit(0x0F, 0xB7, 0x46, 0x34);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateListCounts);
+	a.emit(0x0F, 0xB7, 0x46, 0x32);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateActionOnEnd);
+	a.emit(0x0F, 0xB7, 0x46, 0x30);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateMonsterSurround);
+	a.emit(0x8B, 0x46, 0x2C);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateTeleportNoMobDelay);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.dword(0);
+	a.emit(0x66, 0x83, 0x7E, 0x02); a.emit(AutoCombatUIStatic.SnapshotMonsterBitsSize);
+	a.jcc(0x82, "snapshot_no_monster_bits");
+	a.emit(0x8B, 0x46); a.emit(AutoCombatUIStatic.SnapshotMonsterBitsOffset);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+	a.emit(0x83, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(AutoCombatUIStatic.FeatureMonsterSelection);
+	a.label("snapshot_no_monster_bits");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+	a.dword(0);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotMonsterRowsSize);
+	a.jcc(0x82, "snapshot_no_monster_rows");
+	a.emit(0x0F, 0xB7, 0x46, AutoCombatUIStatic.SnapshotMonsterRowCountOffset);
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.MonsterDynamicRows);
+	a.jcc(0x86, "snapshot_monster_row_count_ok");
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.MonsterDynamicRows);
+	a.label("snapshot_monster_row_count_ok");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+	a.emit(0x8D, 0x76, AutoCombatUIStatic.SnapshotMonsterRowsOffset);
+	a.emit(0xBF); a.dword(monsterRowsVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.MonsterRowsSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x83, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(AutoCombatUIStatic.FeatureMonsterRows);
+	a.label("snapshot_no_monster_rows");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotLootCategoriesSize);
+	a.jcc(0x82, "snapshot_no_loot_categories");
+	a.emit(0x8B, 0x86); a.dword(AutoCombatUIStatic.SnapshotLootCategoriesOffset);
+	a.emit(0x83, 0xE0, 0x0F);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootCategoryBits);
+	a.emit(0x83, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(AutoCombatUIStatic.FeatureLootCategories);
+	a.label("snapshot_no_loot_categories");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateReady);
+	a.dword(1);
+	a.emit(0x8B, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateWindow);
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "handled");
+	a.emit(0xC7, 0x47, AutoCombatUIStatic.WindowDirtyOffset);
+	a.dword(1);
+	a.label("handled");
+	a.emit(0x61, 0x9D);
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.PacketMainLoopReturn);
+	a.emit(0xFF, 0xE0);
+	a.label("fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xB8); a.dword(continueVir);
+	a.emit(0xFF, 0xE0);
+	return a;
+};
+
+AutoCombatUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVir)
+{
+	const entryVir = AutoCombatUIStatic.packetTableEntryVir(
+		AutoCombatUIStatic.ServerPacketId
+	);
+	const entryPhy = Exe.Vir2Phy(entryVir, CODE);
+	if (entryPhy < 0)
+		throw Error("AutoCombatUI: could not resolve AHUI dispatcher entry");
+
+	const stateKey = "AutoCombatUI.SnapshotReceiver.v5";
+	const oldState = CACHE.get(stateKey);
+	const current = Exe.GetUint32(entryPhy);
+	if (oldState && oldState.entryVir === entryVir &&
+		current === oldState.handlerVir)
+		return oldState.handlerVir;
+
+	const continueVir = current === AutoCombatUIStatic.PacketDefaultHandler
+		? AutoCombatUIStatic.PacketMainLoopReturn
+		: current;
+
+	const receiver = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildSnapshotReceiver(stateVir, monsterRowsVir, continueVir)
+	);
+	Exe.SetUint32(entryPhy, receiver.vir);
+	CACHE.put(stateKey, {
+		packetId: AutoCombatUIStatic.ServerPacketId,
+		entryVir,
+		handlerVir: receiver.vir,
+		continueVir,
+		stateVir,
+		monsterRowsVir
+	});
+	return receiver.vir;
 };
 
 AutoCombatUIStatic.emitLoadSurface = function(a, pathVir, missingLabel)
@@ -533,7 +829,7 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 };
 
 AutoCombatUIStatic.emitPageControls = function(
-	a, stateVir, paths, fillRectVir, strings
+	a, stateVir, paths, fillRectVir, strings, monsterRowsVir
 )
 {
 	const dark = 0x00554B46;
@@ -548,27 +844,113 @@ AutoCombatUIStatic.emitPageControls = function(
 		if (label)
 			AutoCombatUIStatic.emitText(a, label.vir, x + 20, y - 2, 14, dark);
 	};
+	const drawStateCheck = function(test, x, y, label, id)
+	{
+		const offLabel = `control_check_${id}_off`;
+		const doneLabel = `control_check_${id}_done`;
+		if (test.kind === "flag")
+		{
+			a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateFlags);
+			a.emit(0xA9); a.dword(test.mask);
+			a.jcc(0x84, offLabel);
+		}
+		else if (test.kind === "nonzero")
+		{
+			a.emit(0x83, 0x3D); a.dword(stateVir + test.offset); a.emit(0);
+			a.jcc(0x84, offLabel);
+		}
+		else if (test.kind === "eq")
+		{
+			a.emit(0x83, 0x3D); a.dword(stateVir + test.offset); a.emit(test.value);
+			a.jcc(0x85, offLabel);
+		}
+		else if (test.kind === "neq")
+		{
+			a.emit(0x83, 0x3D); a.dword(stateVir + test.offset); a.emit(test.value);
+			a.jcc(0x84, offLabel);
+		}
+		else if (test.kind === "bit")
+		{
+			a.emit(0xA1); a.dword(stateVir + test.offset);
+			a.emit(0xA9); a.dword(test.mask);
+			a.jcc(0x84, offLabel);
+		}
+		AutoCombatUIStatic.emitDrawFull(
+			a, paths.checkboxOn.vir, x, y, `control_check_${id}_on`
+		);
+		a.jmp(doneLabel);
+		a.label(offLabel);
+		AutoCombatUIStatic.emitDrawFull(
+			a, paths.checkboxOff.vir, x, y, `control_check_${id}_off_draw`
+		);
+		a.label(doneLabel);
+		if (label)
+			AutoCombatUIStatic.emitText(a, label.vir, x + 20, y - 2, 14, dark);
+	};
+	const drawMonsterRow = function(mask, textVir, y, id)
+	{
+		const offLabel = `monster_row_${id}_off`;
+		const doneLabel = `monster_row_${id}_done`;
+		a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+		a.emit(0xA9); a.dword(mask);
+		a.jcc(0x84, offLabel);
+		AutoCombatUIStatic.emitDrawFull(
+			a, paths.monsterRowOn.vir, 14, y, `monster_row_${id}_on_draw`
+		);
+		a.jmp(doneLabel);
+		a.label(offLabel);
+		AutoCombatUIStatic.emitDrawFull(
+			a, paths.monsterRowOff.vir, 14, y, `monster_row_${id}_off_draw`
+		);
+		a.label(doneLabel);
+		AutoCombatUIStatic.emitText(a, textVir, 90, y + 9, 14, dark);
+		drawStateCheck(
+			{kind: "bit", offset: AutoCombatUIStatic.StateMonsterBits, mask},
+			420, y + 10, null, `monster_${id}`
+		);
+	};
 
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateTab);
 	a.emit(0x83, 0xF8, 0x00); a.jcc(0x85, "controls_monster");
-	for (let index = 0; index < strings.basicOptions.length; index++)
-		drawCheck(index === 0, 28, 143 + index * 34, strings.basicOptions[index], `basic_${index}`);
+	drawStateCheck({kind: "eq", offset: AutoCombatUIStatic.StateStopMelee, value: 2}, 28, 143, strings.basicOptions[0], "basic_0");
+	drawStateCheck({kind: "eq", offset: AutoCombatUIStatic.StateStopMelee, value: 1}, 28, 177, strings.basicOptions[1], "basic_1");
+	drawStateCheck({kind: "nonzero", offset: AutoCombatUIStatic.StateTeleportNoMobDelay}, 28, 211, strings.basicOptions[2], "basic_2");
+	drawStateCheck({kind: "nonzero", offset: AutoCombatUIStatic.StateMonsterSurround}, 28, 245, strings.basicOptions[3], "basic_3");
+	drawStateCheck({kind: "flag", mask: 1 << 7}, 28, 279, strings.basicOptions[4], "basic_4");
 	AutoCombatUIStatic.emitText(a, strings.basicNormal.vir, 48, 160, 13, link);
 	a.jmp("controls_done");
 
 	a.label("controls_monster");
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_skill");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoCombatUIStatic.FeatureMonsterRows);
+	a.jcc(0x84, "controls_monster_static");
+	drawMonsterRow(1, strings.monsters[0].vir, 87, "dynamic_all");
+	for (let index = 0; index < AutoCombatUIStatic.MonsterDynamicRows; index++)
+	{
+		const visibleLabel = `monster_dynamic_${index}_visible`;
+		const skipLabel = `monster_dynamic_${index}_skip`;
+		a.emit(0x83, 0x3D);
+		a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+		a.emit(index + 1);
+		a.jcc(0x83, visibleLabel);
+		a.jmp(skipLabel);
+		a.label(visibleLabel);
+		drawMonsterRow(
+			1 << (index + 1),
+			monsterRowsVir + index * AutoCombatUIStatic.MonsterRowSize +
+				AutoCombatUIStatic.MonsterRowNameOffset,
+			87 + (index + 1) * 38,
+			`dynamic_${index}`
+		);
+		a.label(skipLabel);
+	}
+	a.jmp("controls_done");
+	a.label("controls_monster_static");
 	for (let index = 0; index < strings.monsters.length; index++)
 	{
-		AutoCombatUIStatic.emitDrawFull(
-			a, (index < 3 ? paths.monsterRowOn : paths.monsterRowOff).vir,
-			14, 87 + index * 38, `monster_row_${index}`
-		);
-		AutoCombatUIStatic.emitText(a, strings.monsters[index].vir, 90, 96 + index * 38, 14, dark);
-		AutoCombatUIStatic.emitDrawFull(
-			a, (index < 3 ? paths.checkboxOn : paths.checkboxOff).vir,
-			420, 97 + index * 38, `monster_check_${index}`
-		);
+		const mask = 1 << index;
+		drawMonsterRow(mask, strings.monsters[index].vir, 87 + index * 38, `static_${index}`);
 	}
 	a.jmp("controls_done");
 
@@ -584,7 +966,7 @@ AutoCombatUIStatic.emitPageControls = function(
 		AutoCombatUIStatic.emitText(a, strings.skillLetters[index].vir, skillXs[index] + 5, 134 + (index === 2 ? 74 : 0), 14, 0x00FFFFFF);
 		AutoCombatUIStatic.emitText(a, strings.skillNames[index].vir, skillXs[index] - 4, 166 + (index === 2 ? 74 : 0), 13, dark);
 	}
-	drawCheck(true, 28, 277, null, "normal_attack");
+	drawStateCheck({kind: "neq", offset: AutoCombatUIStatic.StateStopMelee, value: 1}, 28, 277, null, "normal_attack");
 	a.jmp("controls_done");
 
 	a.label("controls_potion");
@@ -605,19 +987,19 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.emit(0x83, 0xF8, 0x04); a.jcc(0x85, "controls_move");
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage);
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_done");
-	drawCheck(true, 28, 226, strings.lootOptions[0], "loot_0");
-	drawCheck(true, 136, 226, strings.lootOptions[1], "loot_1");
-	drawCheck(true, 232, 226, strings.lootOptions[2], "loot_2");
-	drawCheck(true, 354, 226, strings.lootOptions[3], "loot_3");
+	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 0}, 28, 226, strings.lootOptions[0], "loot_0");
+	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 1}, 136, 226, strings.lootOptions[1], "loot_1");
+	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 2}, 232, 226, strings.lootOptions[2], "loot_2");
+	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 3}, 354, 226, strings.lootOptions[3], "loot_3");
 	AutoCombatUIStatic.emitText(a, strings.weightNote.vir, 37, 78, 13, dark);
 	a.jmp("controls_done");
 
 	a.label("controls_move");
 	a.emit(0x83, 0xF8, 0x05); a.jcc(0x85, "controls_item");
-	drawCheck(true, 129, 116, null, "move_0");
-	drawCheck(true, 277, 116, null, "move_1");
-	drawCheck(true, 129, 211, null, "move_2");
-	drawCheck(true, 277, 211, null, "move_3");
+	drawStateCheck({kind: "flag", mask: 1 << 6}, 129, 116, null, "move_0");
+	drawStateCheck({kind: "flag", mask: 1 << 5}, 277, 116, null, "move_1");
+	drawStateCheck({kind: "flag", mask: 1 << 1}, 129, 211, null, "move_2");
+	drawStateCheck({kind: "nonzero", offset: AutoCombatUIStatic.StateActionOnEnd}, 277, 211, null, "move_3");
 	AutoCombatUIStatic.emitText(a, strings.registerItem.vir, 116, 146, 13, dark);
 	AutoCombatUIStatic.emitText(a, strings.registerSkill.vir, 265, 146, 13, dark);
 	AutoCombatUIStatic.emitText(a, strings.registerItem.vir, 116, 241, 13, dark);
@@ -631,7 +1013,7 @@ AutoCombatUIStatic.emitPageControls = function(
 		AutoCombatUIStatic.emitFillRect(a, fillRectVir, itemXs[index], 122 + (index === 2 ? 74 : 0), 20, 20, skillColors[index]);
 		AutoCombatUIStatic.emitText(a, strings.itemLetters[index].vir, itemXs[index] + 5, 124 + (index === 2 ? 74 : 0), 14, 0x00FFFFFF);
 	}
-	drawCheck(false, 28, 275, strings.returnTown, "item_return");
+	drawStateCheck({kind: "nonzero", offset: AutoCombatUIStatic.StateActionOnEnd}, 28, 275, strings.returnTown, "item_return");
 	a.label("controls_done");
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateTab);
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x8C, "navigation_done");
@@ -679,7 +1061,7 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.label("navigation_done");
 };
 
-AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings)
+AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
@@ -689,7 +1071,9 @@ AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings)
 	AutoCombatUIStatic.emitBody(a, stateVir, paths);
 	AutoCombatUIStatic.emitChrome(a, stateVir, fillRectVir, strings);
 	AutoCombatUIStatic.emitPageText(a, stateVir, strings);
-	AutoCombatUIStatic.emitPageControls(a, stateVir, paths, fillRectVir, strings);
+	AutoCombatUIStatic.emitPageControls(
+		a, stateVir, paths, fillRectVir, strings, monsterRowsVir
+	);
 	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
 	return a;
 };
@@ -700,7 +1084,119 @@ AutoCombatUIStatic.emitMarkDirty = function(a)
 	a.dword(1);
 };
 
-AutoCombatUIStatic.buildMouseDown = function(stateVir)
+AutoCombatUIStatic.emitRectGate = function(a, left, top, right, bottom, failLabel)
+{
+	a.emit(0x81, 0xFB); a.dword(left);
+	a.jcc(0x8C, failLabel);
+	a.emit(0x81, 0xFB); a.dword(right);
+	a.jcc(0x8D, failLabel);
+	a.emit(0x81, 0xFA); a.dword(top);
+	a.jcc(0x8C, failLabel);
+	a.emit(0x81, 0xFA); a.dword(bottom);
+	a.jcc(0x8D, failLabel);
+};
+
+AutoCombatUIStatic.emitSendScalarConst = function(a, mutationSenderVir, settingId, value)
+{
+	if (!Number.isInteger(mutationSenderVir) || mutationSenderVir <= 0)
+		return;
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, value);
+	AutoCombatUIStatic.pushImm(a, settingId);
+	a.call(mutationSenderVir);
+};
+
+AutoCombatUIStatic.emitSendScalarPairConst = function(a, mutationSenderVir, settingId, value, value2)
+{
+	if (!Number.isInteger(mutationSenderVir) || mutationSenderVir <= 0)
+		return;
+	AutoCombatUIStatic.pushImm(a, value2);
+	AutoCombatUIStatic.pushImm(a, value);
+	AutoCombatUIStatic.pushImm(a, settingId);
+	a.call(mutationSenderVir);
+};
+
+AutoCombatUIStatic.emitSendScalarPairMem = function(a, mutationSenderVir, settingId, valueVir, value2)
+{
+	if (!Number.isInteger(mutationSenderVir) || mutationSenderVir <= 0)
+		return;
+	AutoCombatUIStatic.pushImm(a, value2);
+	a.emit(0xFF, 0x35); a.dword(valueVir);
+	AutoCombatUIStatic.pushImm(a, settingId);
+	a.call(mutationSenderVir);
+};
+
+AutoCombatUIStatic.emitSendScalarPairConstIfFeature = function(
+	a, stateVir, mutationSenderVir, featureMask, settingId, value, value2, id
+)
+{
+	if (!Number.isInteger(mutationSenderVir) || mutationSenderVir <= 0)
+		return;
+	const skipLabel = `send_scalar_pair_${id}_skip`;
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(featureMask);
+	a.jcc(0x84, skipLabel);
+	AutoCombatUIStatic.emitSendScalarPairConst(a, mutationSenderVir, settingId, value, value2);
+	a.label(skipLabel);
+};
+
+AutoCombatUIStatic.emitSendScalarPairMemIfFeature = function(
+	a, stateVir, mutationSenderVir, featureMask, settingId, valueVir, value2, id
+)
+{
+	if (!Number.isInteger(mutationSenderVir) || mutationSenderVir <= 0)
+		return;
+	const skipLabel = `send_scalar_pair_mem_${id}_skip`;
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(featureMask);
+	a.jcc(0x84, skipLabel);
+	AutoCombatUIStatic.pushImm(a, value2);
+	a.emit(0xFF, 0x35); a.dword(valueVir);
+	AutoCombatUIStatic.pushImm(a, settingId);
+	a.call(mutationSenderVir);
+	a.label(skipLabel);
+};
+
+AutoCombatUIStatic.emitSendScalarFlagToggle = function(a, stateVir, mutationSenderVir, settingId, mask)
+{
+	if (!Number.isInteger(mutationSenderVir) || mutationSenderVir <= 0)
+		return;
+	a.emit(0x33, 0xC9);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateFlags);
+	a.emit(0xA9); a.dword(mask);
+	a.emit(0x0F, 0x94, 0xC1);
+	AutoCombatUIStatic.pushImm(a, 0);
+	a.emit(0x51);
+	AutoCombatUIStatic.pushImm(a, settingId);
+	a.call(mutationSenderVir);
+	a.emit(0x81, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateFlags);
+	a.dword(mask);
+};
+
+AutoCombatUIStatic.emitSendScalarEqToggle = function(
+	a, stateVir, mutationSenderVir, offset, eqValue, settingId, eqSendValue, neSendValue, id
+)
+{
+	if (!Number.isInteger(mutationSenderVir) || mutationSenderVir <= 0)
+		return;
+	const neLabel = `send_scalar_${id}_ne`;
+	const callLabel = `send_scalar_${id}_call`;
+	a.emit(0x83, 0x3D); a.dword(stateVir + offset); a.emit(eqValue);
+	a.jcc(0x85, neLabel);
+	a.emit(0xC7, 0x05); a.dword(stateVir + offset); a.dword(eqSendValue);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, eqSendValue);
+	a.jmp(callLabel);
+	a.label(neLabel);
+	a.emit(0xC7, 0x05); a.dword(stateVir + offset); a.dword(neSendValue);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, neSendValue);
+	a.label(callLabel);
+	AutoCombatUIStatic.pushImm(a, settingId);
+	a.call(mutationSenderVir);
+};
+
+AutoCombatUIStatic.buildMouseDown = function(stateVir, mutationSenderVir, monsterRowsVir)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
@@ -738,7 +1234,15 @@ AutoCombatUIStatic.buildMouseDown = function(stateVir)
 	a.jmp("consume");
 	a.label("footer_test");
 	a.emit(0x81, 0xFA); a.dword(319);
-	a.jcc(0x8C, "consume");
+	a.jcc(0x8C, "body_click");
+	a.emit(0x81, 0xFB); a.dword(80);
+	a.jcc(0x8D, "close_test");
+	AutoCombatUIStatic.emitSendScalarConst(
+		a, mutationSenderVir, AutoCombatUIStatic.SettingReset, 1
+	);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("close_test");
 	a.emit(0x81, 0xFB); a.dword(410);
 	a.jcc(0x8C, "page_nav_test");
 	a.emit(0xC7, 0x46, AutoCombatUIStatic.WindowVisibleOffset); a.dword(0);
@@ -792,6 +1296,241 @@ AutoCombatUIStatic.buildMouseDown = function(stateVir)
 	a.emit(0xFF, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage);
 	a.label("page_changed");
 	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_click");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateTab);
+	a.emit(0x83, 0xF8, 0x00); a.jcc(0x85, "body_monster");
+	for (let index = 0; index < 5; index++)
+	{
+		const next = `body_basic_${index}_next`;
+		AutoCombatUIStatic.emitRectGate(
+			a, 20, 136 + index * 34, 455, 166 + index * 34, next
+		);
+		if (index === 0)
+			AutoCombatUIStatic.emitSendScalarEqToggle(
+				a, stateVir, mutationSenderVir,
+				AutoCombatUIStatic.StateStopMelee, 2,
+				AutoCombatUIStatic.SettingStopMelee, 0, 2, "basic_0"
+			);
+		else if (index === 1)
+			AutoCombatUIStatic.emitSendScalarEqToggle(
+				a, stateVir, mutationSenderVir,
+				AutoCombatUIStatic.StateStopMelee, 1,
+				AutoCombatUIStatic.SettingStopMelee, 0, 1, "basic_1"
+			);
+		else if (index === 2)
+			AutoCombatUIStatic.emitSendScalarEqToggle(
+				a, stateVir, mutationSenderVir,
+				AutoCombatUIStatic.StateTeleportNoMobDelay, 0,
+				AutoCombatUIStatic.SettingTeleportNoMobDelay, 10000, 0, "basic_2"
+			);
+		else if (index === 3)
+			AutoCombatUIStatic.emitSendScalarEqToggle(
+				a, stateVir, mutationSenderVir,
+				AutoCombatUIStatic.StateMonsterSurround, 0,
+				AutoCombatUIStatic.SettingMonsterSurround, 10, 0, "basic_3"
+			);
+		else
+			AutoCombatUIStatic.emitSendScalarFlagToggle(
+				a, stateVir, mutationSenderVir,
+				AutoCombatUIStatic.SettingTpMvp, 1 << 7
+			);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(next);
+	}
+	a.jmp("consume");
+	a.label("body_monster");
+	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "body_skill");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoCombatUIStatic.FeatureMonsterRows);
+	a.jcc(0x84, "body_monster_static");
+	AutoCombatUIStatic.emitRectGate(a, 14, 87, 455, 125, "body_monster_dynamic_all_next");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+	a.dword(0x3F);
+	AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+		a, stateVir, mutationSenderVir,
+		AutoCombatUIStatic.FeatureMonsterSelection,
+		AutoCombatUIStatic.SettingMonsterSelection,
+		0, 0, "monster_dynamic_all"
+	);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_monster_dynamic_all_next");
+	for (let index = 0; index < AutoCombatUIStatic.MonsterDynamicRows; index++)
+	{
+		const next = `body_monster_dynamic_${index}_next`;
+		const turnOn = `body_monster_dynamic_${index}_turn_on`;
+		const mask = 1 << (index + 1);
+		a.emit(0x83, 0x3D);
+		a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+		a.emit(index + 1);
+		a.jcc(0x82, next);
+		AutoCombatUIStatic.emitRectGate(
+			a, 14, 87 + (index + 1) * 38, 455, 125 + (index + 1) * 38, next
+		);
+		a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+		a.emit(0xA9); a.dword(mask);
+		a.jcc(0x84, turnOn);
+		a.emit(0x81, 0x25); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+		a.dword((~mask) >>> 0);
+		AutoCombatUIStatic.emitSendScalarPairMemIfFeature(
+			a, stateVir, mutationSenderVir,
+			AutoCombatUIStatic.FeatureMonsterSelection,
+			AutoCombatUIStatic.SettingMonsterSelection,
+			monsterRowsVir + index * AutoCombatUIStatic.MonsterRowSize +
+				AutoCombatUIStatic.MonsterRowIdOffset,
+			1, `monster_dynamic_${index}_off`
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(turnOn);
+		a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+		a.dword(mask);
+		AutoCombatUIStatic.emitSendScalarPairMemIfFeature(
+			a, stateVir, mutationSenderVir,
+			AutoCombatUIStatic.FeatureMonsterSelection,
+			AutoCombatUIStatic.SettingMonsterSelection,
+			monsterRowsVir + index * AutoCombatUIStatic.MonsterRowSize +
+				AutoCombatUIStatic.MonsterRowIdOffset,
+			0, `monster_dynamic_${index}_on`
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(next);
+	}
+	a.jmp("consume");
+	a.label("body_monster_static");
+	const monsterIds = [0, 1002, 1113, 1031, 1063, 1007];
+	for (let index = 0; index < monsterIds.length; index++)
+	{
+		const next = `body_monster_static_${index}_next`;
+		const mask = 1 << index;
+		AutoCombatUIStatic.emitRectGate(
+			a, 14, 87 + index * 38, 455, 125 + index * 38, next
+		);
+		if (index === 0)
+		{
+			a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+			a.dword(0x3F);
+			AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+				a, stateVir, mutationSenderVir,
+				AutoCombatUIStatic.FeatureMonsterSelection,
+				AutoCombatUIStatic.SettingMonsterSelection,
+				monsterIds[index], 0, `monster_static_${index}`
+			);
+			AutoCombatUIStatic.emitMarkDirty(a);
+			a.jmp("consume");
+		}
+		a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+		a.emit(0xA9); a.dword(mask);
+		a.jcc(0x84, `body_monster_static_${index}_turn_on`);
+		a.emit(0x81, 0x25); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+		a.dword((~mask) >>> 0);
+		AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+			a, stateVir, mutationSenderVir,
+			AutoCombatUIStatic.FeatureMonsterSelection,
+			AutoCombatUIStatic.SettingMonsterSelection,
+			monsterIds[index], 1, `monster_static_${index}_off`
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(`body_monster_static_${index}_turn_on`);
+		a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+		a.dword(mask);
+		AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+			a, stateVir, mutationSenderVir,
+			AutoCombatUIStatic.FeatureMonsterSelection,
+			AutoCombatUIStatic.SettingMonsterSelection,
+			monsterIds[index], 0, `monster_static_${index}_on`
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(next);
+	}
+	a.jmp("consume");
+	a.label("body_skill");
+	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "body_looting");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage); a.emit(0x01);
+	a.jcc(0x85, "consume");
+	AutoCombatUIStatic.emitRectGate(a, 20, 270, 170, 300, "consume");
+	AutoCombatUIStatic.emitSendScalarEqToggle(
+		a, stateVir, mutationSenderVir,
+		AutoCombatUIStatic.StateStopMelee, 1,
+		AutoCombatUIStatic.SettingStopMelee, 0, 1, "normal_attack"
+	);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_looting");
+	a.emit(0x83, 0xF8, 0x04); a.jcc(0x85, "body_move");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage); a.emit(0x01);
+	a.jcc(0x85, "consume");
+	const lootRects = [
+		[20, 128],
+		[128, 224],
+		[224, 346],
+		[346, 455]
+	];
+	for (let index = 0; index < lootRects.length; index++)
+	{
+		const next = `body_looting_${index}_next`;
+		AutoCombatUIStatic.emitRectGate(a, lootRects[index][0], 218, lootRects[index][1], 250, next);
+		a.emit(0x81, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateLootCategoryBits);
+		a.dword(1 << index);
+		AutoCombatUIStatic.emitSendScalarPairMem(
+			a, mutationSenderVir,
+			AutoCombatUIStatic.SettingLootCategories,
+			stateVir + AutoCombatUIStatic.StateLootCategoryBits,
+			0
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(next);
+	}
+	a.jmp("consume");
+	a.label("body_move");
+	a.emit(0x83, 0xF8, 0x05); a.jcc(0x85, "body_item");
+	AutoCombatUIStatic.emitRectGate(a, 118, 108, 155, 140, "body_move_1");
+	AutoCombatUIStatic.emitSendScalarFlagToggle(
+		a, stateVir, mutationSenderVir,
+		AutoCombatUIStatic.SettingTeleportFlyWing, 1 << 6
+	);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_move_1");
+	AutoCombatUIStatic.emitRectGate(a, 266, 108, 303, 140, "body_move_2");
+	AutoCombatUIStatic.emitSendScalarFlagToggle(
+		a, stateVir, mutationSenderVir,
+		AutoCombatUIStatic.SettingTeleportSkill, 1 << 5
+	);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_move_2");
+	AutoCombatUIStatic.emitRectGate(a, 118, 203, 155, 235, "body_move_3");
+	AutoCombatUIStatic.emitSendScalarFlagToggle(
+		a, stateVir, mutationSenderVir,
+		AutoCombatUIStatic.SettingReturnSavePoint, 1 << 1
+	);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_move_3");
+	AutoCombatUIStatic.emitRectGate(a, 266, 203, 303, 235, "consume");
+	AutoCombatUIStatic.emitSendScalarEqToggle(
+		a, stateVir, mutationSenderVir,
+		AutoCombatUIStatic.StateActionOnEnd, 0,
+		AutoCombatUIStatic.SettingActionOnEnd, 1, 0, "action_on_end"
+	);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_item");
+	a.emit(0x83, 0xF8, 0x06); a.jcc(0x85, "consume");
+	AutoCombatUIStatic.emitRectGate(a, 20, 268, 235, 300, "consume");
+	AutoCombatUIStatic.emitSendScalarEqToggle(
+		a, stateVir, mutationSenderVir,
+		AutoCombatUIStatic.StateActionOnEnd, 0,
+		AutoCombatUIStatic.SettingActionOnEnd, 1, 0, "item_return"
+	);
+	AutoCombatUIStatic.emitMarkDirty(a);
 	a.label("consume");
 	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
 	a.emit(0xC2, 0x08, 0x00);
@@ -822,10 +1561,12 @@ AutoCombatUIStatic.cloneFrameVtable = function(drawVir, mouseDownVir, destructor
 	return {phy: clonePhy, vir: cloneVir, size: byteCount};
 };
 
-AutoCombatUIStatic.buildToggle = function(stateVir, vtableVir)
+AutoCombatUIStatic.buildToggle = function(stateVir, vtableVir, openSenderVir)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x9C, 0x60);
+	if (Number.isInteger(openSenderVir) && openSenderVir > 0)
+		a.call(openSenderVir);
 	a.emit(0x8B, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateWindow);
 	a.emit(0x85, 0xF6);
 	a.jcc(0x85, "toggle_existing");
@@ -1086,19 +1827,36 @@ AutoCombatUI = function(_)
 	const state = AutoCombatUIStatic.allocateBytes(
 		new Array(AutoCombatUIStatic.StateSize).fill(0), 4
 	);
+	const monsterRows = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.MonsterRowsSize).fill(0), 4
+	);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateSkillPage, 1);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StatePotionPage, 1);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateLootingPage, 1);
+	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateMonsterBits, 0x07);
+	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateLootCategoryBits, 0x0F);
 
-	$$(_, 3, "Create the QJS-only Auto Combat UIFrameWnd renderer and input path");
+	$$(_, 3, "Create the AutoHunt UI AHUI packet sender and snapshot receiver");
+	const packetRefs = AutoCombatUIStatic.resolvePacketRefs(_);
+	const openSender = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildOpenSender(state.vir, packetRefs)
+	);
+	const scalarSender = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildScalarSender(state.vir, packetRefs)
+	);
+	const snapshotReceiverVir = AutoCombatUIStatic.installSnapshotReceiver(
+		_, state.vir, monsterRows.vir
+	);
+
+	$$(_, 4, "Create the QJS-only Auto Combat UIFrameWnd renderer and input path");
 	const fillRect = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildFillRect()
 	);
 	const draw = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildDraw(state.vir, paths, fillRect.vir, strings)
+		AutoCombatUIStatic.buildDraw(state.vir, paths, fillRect.vir, strings, monsterRows.vir)
 	);
 	const mouseDown = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildMouseDown(state.vir)
+		AutoCombatUIStatic.buildMouseDown(state.vir, scalarSender.vir, monsterRows.vir)
 	);
 	const destructor = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildDestructor(state.vir)
@@ -1107,10 +1865,10 @@ AutoCombatUI = function(_)
 		draw.vir, mouseDown.vir, destructor.vir
 	);
 	const toggle = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildToggle(state.vir, vtable.vir)
+		AutoCombatUIStatic.buildToggle(state.vir, vtable.vir, openSender.vir)
 	);
 
-	$$(_, 4, "Register /autohunt directly to the static UI cave");
+	$$(_, 5, "Register /autohunt directly to the static UI cave");
 	CustomSlashCommand.register(`${_}.SlashCommand`, {
 		command: "/autohunt",
 		targetVir: toggle.vir
@@ -1134,9 +1892,15 @@ AutoCombatUI = function(_)
 			drawVir: draw.vir,
 			mouseDownVir: mouseDown.vir,
 			toggleVir: toggle.vir,
+			openSenderVir: openSender.vir,
+			scalarSenderVir: scalarSender.vir,
+			snapshotReceiverVir,
+			monsterRowsVir: monsterRows.vir,
+			clientPacketId: AutoCombatUIStatic.ClientPacketId,
+			serverPacketId: AutoCombatUIStatic.ServerPacketId,
 			externalModules: 0,
-			serverBehavior: false,
-			persistence: false
+			serverBehavior: "snapshot-open-set-scalar",
+			persistence: true
 		});
 	}
 	return true;
