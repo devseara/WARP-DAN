@@ -17,18 +17,25 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-07-20                                             *
+*   Last Modified : 2026-08-01                                             *
 *                                                                          *
 *   Description   : Adds a QJS-only, client-native Auto Combat settings    *
-*                   preview to the 2025-07-16 Ragexe. /autohunt creates a  *
+*                   preview to the 2025-07-16 Ragexe. Persistent controls  *
+*                   are created by the normal in-game UI render pass;     *
+*                   /autohunt only opens or closes the settings window.   *
 *                   470x346 UIFrameWnd on the game UI thread, preserving   *
 *                   native focus, hit testing, drag capture, and window    *
 *                   ownership. Its native canvas loads the supplied Global *
-*                   AutoHunt BMPs and exposes Basic, Monster, Skill (1/3), *
-*                   Potion (1/2), Looting (1/2), Move, and Item pages.     *
-*                   It sends 0x0BF8/AHUI OPEN and receives AHUI snapshots  *
-*                   multiplexed through 0x0BEF, with no DLL or client-side *
-*                   combat logic.                                          *
+*                   AutoHunt BMPs and exposes Basic, Monster, three Skill, *
+*                   two Potion, two Looting, Move, and Item pages.         *
+*                   Separate draggable AutoBattle and AutoSupport controls  *
+*                   play baked frames from the supplied native STR effects *
+*                   and send independent server-authoritative mutations.   *
+*                   Skill pages 1 and 2 accept the stock Skill Tree's      *
+*                   native drag payload for attack and support slots. It   *
+*                   sends 0x0BF8/AHUI requests and receives snapshots      *
+*                   multiplexed through 0x0BEF. AHUI and PINC coexist      *
+*                   without a DLL or client-side combat logic.             *
 *                                                                          *
 \**************************************************************************/
 
@@ -40,15 +47,19 @@ const AutoCombatUIStatic = {
 	FrameConstructor: 0x0086B950,
 	FrameDeletingDestructor: 0x0086E240,
 	FrameMouseDown: 0x00880AD0,
+	FrameMouseUp: 0x00880BB0,
 	WindowSetSize: 0x00A245C0,
 	WindowAddTopLevelFront: 0x00A2D240,
 	WindowBringToFront: 0x00A4B750,
 	WindowClearSurface: 0x00A1CB30,
+	UiUpdateSurfaceDirty: 0x00A1CE48,
+	UiUpdateSurfaceDirtyResume: 0x00A1CE4F,
 	FrameVtable: 0x0102FE08,
 	FrameVtableEntries: 53,
 	FrameVtableDestructor: 0x0086E240,
 	FrameVtableDraw: 0x005DD270,
 	FrameVtableMouseDown: 0x00880AD0,
+	FrameVtableMouseUp: 0x00880BB0,
 	FrameObjectSize: 0xB4,
 	WindowWidthOffset: 0x14,
 	WindowHeightOffset: 0x18,
@@ -60,6 +71,21 @@ const AutoCombatUIStatic = {
 	WindowDirtyOffset: 0x58,
 	SurfaceWidthOffset: 0x04,
 	SurfacePixelsOffset: 0x18,
+	SurfaceAlphaOffset: 0x28,
+	TextureReadyOffset: 0x10C,
+	TextureFlagsOffset: 0x110,
+	TextureWidthOffset: 0x114,
+	TextureHeightOffset: 0x118,
+	TexturePixelsOffset: 0x11C,
+	TextureDescriptorSize: 0x120,
+	ControllerSize: 64,
+	ControllerFrameCount: 30,
+	ControllerFrameDurationMs: 50,
+	ControllerAssetPath: "Assets/AutoCombatUI",
+	ControllerBootstrapHook: 0x00C74FE1,
+	ControllerBootstrapHookBytes: "E8 EA 75 A2 FF",
+	ControllerBootstrapOriginal: 0x0069C5D0,
+	TimeGetTimeIat: 0x00FC17B0,
 	RendererWidthOffset: 0x28,
 	RendererHeightOffset: 0x2C,
 	GetTexMgr: 0x00A90350,
@@ -67,14 +93,24 @@ const AutoCombatUIStatic = {
 	LoadSurface: 0x00A8D4A0,
 	ImageDraw: 0x00A1D260,
 	TextDraw: 0x00A25A70,
+	StringFormat: 0x00529850,
 	TabItmFormat: 0x0102AC48,
 	PacketBuffer: 0x015E8198,
 	PacketSwitchTable: 0x00CAA2E0,
 	PacketDefaultHandler: 0x00CAA2B7,
 	PacketMainLoopReturn: 0x00C9E1DD,
+	ShortcutManager: 0x01213338,
+	ShortcutManagerGetActive: 0x00A75340,
+	ShortcutDragTypeOffset: 0x308,
+	ShortcutDragSkillIdOffset: 0x30C,
+	ShortcutDragSkillLevelOffset: 0x374,
+	ShortcutDragActiveOffset: 0x388,
+	ShortcutDragSkillType: 8,
+	ShortcutDragCancelMessage: 0x12,
 	ClientPacketId: 0x0BF8,
 	ServerPacketId: 0x0BEF,
 	PacketMagic: 0x49554841,
+	PincodeMagic: 0x434E4950,
 	ProtocolVersion: 1,
 	MessageOpen: 1,
 	MessageSnapshot: 2,
@@ -90,6 +126,14 @@ const AutoCombatUIStatic = {
 	SnapshotMonsterRowsOffset: 88,
 	SnapshotLootCategoriesSize: 292,
 	SnapshotLootCategoriesOffset: 288,
+	SnapshotAttackSkillRowsSize: 676,
+	SnapshotAttackSkillRowsOffset: 292,
+	SnapshotAttackSkillIconKeysSize: 932,
+	SnapshotAttackSkillIconKeysOffset: 676,
+	SnapshotSupportSkillRowsSize: 1316,
+	SnapshotSupportSkillRowsOffset: 932,
+	SnapshotSupportSkillIconKeysSize: 1572,
+	SnapshotSupportSkillIconKeysOffset: 1316,
 	MonsterDynamicRows: 5,
 	MonsterTotalRows: 6,
 	MonsterRowSize: 40,
@@ -97,9 +141,24 @@ const AutoCombatUIStatic = {
 	MonsterRowFlagsOffset: 4,
 	MonsterRowNameOffset: 8,
 	MonsterRowsSize: 200,
+	AttackSkillDynamicRows: 8,
+	AttackSkillRowSize: 48,
+	AttackSkillRowIdOffset: 0,
+	AttackSkillRowLevelOffset: 2,
+	AttackSkillRowDelayMsOffset: 4,
+	AttackSkillRowFlagsOffset: 8,
+	AttackSkillRowNameOffset: 12,
+	AttackSkillRowDelayTextOffset: 36,
+	AttackSkillRowsSize: 384,
+	SkillIconKeySize: 32,
+	SkillIconKeysSize: 256,
 	FeatureMonsterSelection: 1 << 0,
 	FeatureMonsterRows: 1 << 1,
 	FeatureLootCategories: 1 << 2,
+	FeatureAttackSkills: 1 << 3,
+	FeatureAttackSkillIcons: 1 << 4,
+	FeatureSupportSkills: 1 << 5,
+	FeatureSupportSkillIcons: 1 << 6,
 	SettingTeleportFlyWing: 4,
 	SettingTeleportSkill: 6,
 	SettingStopMelee: 7,
@@ -117,6 +176,17 @@ const AutoCombatUIStatic = {
 	SettingTpMvp: 24,
 	SettingAutostorageEnabled: 27,
 	SettingLootCategories: 36,
+	SettingAttackSkillRegister: 37,
+	SettingAttackSkillToggle: 38,
+	SettingAttackSkillDelayCycle: 39,
+	SettingSupportSkillRegister: 40,
+	SettingSupportSkillToggle: 41,
+	SettingSupportSkillDelayCycle: 42,
+	SettingAttackSkillDelaySet: 43,
+	SettingSupportSkillDelaySet: 44,
+	SettingAutoHuntEnabled: 45,
+	SettingAutoSupportEnabled: 46,
+	SettingSkillDelayInput: 47,
 	WindowWidth: 470,
 	WindowHeight: 346,
 	TitleHeight: 17,
@@ -142,7 +212,14 @@ const AutoCombatUIStatic = {
 	StateLootCategoryBits: 68,
 	StateServerFeatures: 72,
 	StateMonsterRowCount: 76,
-	StateSize: 80
+	StateAutoBattleWindow: 80,
+	StateAutoBattleDownX: 84,
+	StateAutoBattleDownY: 88,
+	StateAutoSupportWindow: 92,
+	StateAutoSupportDownX: 96,
+	StateAutoSupportDownY: 100,
+	StateControllerNextSyncTick: 104,
+	StateSize: 108
 };
 
 AutoCombatUIStatic.bytesToHex = function(bytes)
@@ -295,6 +372,15 @@ AutoCombatUIStatic.buildResourcePath = function(relativePath)
 	);
 };
 
+AutoCombatUIStatic.buildTexturePath = function(relativePath)
+{
+	// ConvPath resolves the stock effect namespace below data\\texture.
+	// Parent traversal is not supported by the GRF resolver even when its error
+	// log prints a normalized texture\\effect path.
+	return AutoCombatUIStatic.allocateBytes(
+		AutoCombatUIStatic.asciiBytes(relativePath)
+	);
+};
 AutoCombatUIStatic.allocateString = function(text)
 {
 	return AutoCombatUIStatic.allocateBytes(
@@ -313,9 +399,116 @@ AutoCombatUIStatic.pushImm = function(a, value)
 	}
 };
 
+AutoCombatUIStatic.SharedPacketRouteGlobalKey = "AutoHuntPincode.Packet0BEF.Router.Global.v1";
+
+AutoCombatUIStatic.beginSharedPacketRoute = function(patchName)
+{
+	CACHE.addUser(AutoCombatUIStatic.SharedPacketRouteGlobalKey, patchName);
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag(AutoCombatUIStatic.SharedPacketRouteGlobalKey));
+};
+
+AutoCombatUIStatic.endSharedPacketRoute = function(patchName)
+{
+	Exe.EndTag();
+	Exe.ActivePatch = patchName;
+};
 AutoCombatUIStatic.packetTableEntryVir = function(packetId)
 {
 	return AutoCombatUIStatic.PacketSwitchTable + (packetId - 0x73) * 4;
+};
+
+AutoCombatUIStatic.buildSharedPacketRouter = function(route)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x3E); a.word(AutoCombatUIStatic.ServerPacketId);
+	a.jcc(0x85, "fallback");
+	a.emit(0x66, 0x83, 0x7E, 0x02, 0x08);
+	a.jcc(0x82, "fallback");
+	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.PacketMagic);
+	a.jcc(0x84, "route_ahui");
+	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.PincodeMagic);
+	a.jcc(0x84, "route_pincode");
+	a.jmp("fallback");
+
+	a.label("route_ahui");
+	a.emit(0xA1); a.dword(route.ahuiHandlerCellVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.ahuiHandlerCellVir);
+	a.emit(0xFF, 0xE0);
+
+	a.label("route_pincode");
+	a.emit(0xA1); a.dword(route.pincodeHandlerCellVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.pincodeHandlerCellVir);
+	a.emit(0xFF, 0xE0);
+
+	a.label("fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.fallbackCellVir);
+	a.emit(0xFF, 0xE0);
+	return a;
+};
+
+AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
+{
+	const key = "AutoCombatUI.Packet0BEF.Router.v2";
+	const cached = CACHE.get(key);
+	if (cached && cached.entryVir === entryVir)
+	{
+		if (Exe.GetUint32(entryPhy) !== cached.routerVir)
+			Exe.SetUint32(entryPhy, cached.routerVir);
+		return cached;
+	}
+
+	const peerRoute = CACHE.get("InGamePincodeUI.Packet0BEF.Router.v2");
+	if (peerRoute && peerRoute.entryVir === entryVir)
+	{
+		if (Exe.GetUint32(entryPhy) !== peerRoute.routerVir)
+			Exe.SetUint32(entryPhy, peerRoute.routerVir);
+		CACHE.put(key, peerRoute);
+		return peerRoute;
+	}
+
+	const current = Exe.GetUint32(entryPhy);
+	let fallbackVir = current;
+	if (current === AutoCombatUIStatic.PacketDefaultHandler)
+		fallbackVir = AutoCombatUIStatic.PacketMainLoopReturn;
+	else if (Exe.Vir2Phy(current, CODE) < 0)
+		throw Error(
+			`AutoCombatUI: shared 0x0BEF fallback ${current.toHex(true)} is not executable`
+		);
+
+	const [dataPhy, dataVir] = Exe.Allocate(12, 4);
+	const route = {
+		entryVir,
+		ahuiHandlerCellPhy: dataPhy,
+		ahuiHandlerCellVir: dataVir,
+		pincodeHandlerCellPhy: dataPhy + 4,
+		pincodeHandlerCellVir: dataVir + 4,
+		fallbackCellPhy: dataPhy + 8,
+		fallbackCellVir: dataVir + 8,
+		fallbackVir
+	};
+	Exe.SetUint32(route.ahuiHandlerCellPhy, 0);
+	Exe.SetUint32(route.pincodeHandlerCellPhy, 0);
+	Exe.SetUint32(route.fallbackCellPhy, fallbackVir);
+	const router = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildSharedPacketRouter(route)
+	);
+	route.routerPhy = router.phy;
+	route.routerVir = router.vir;
+	if (Exe.GetUint32(entryPhy) !== current)
+		throw Error("AutoCombatUI: dispatcher entry changed while installing shared router");
+	Exe.SetUint32(entryPhy, route.routerVir);
+	CACHE.put(key, route);
+	return route;
 };
 
 AutoCombatUIStatic.resolvePacketRefs = function(_)
@@ -416,7 +609,7 @@ AutoCombatUIStatic.buildScalarSender = function(stateVir, refs)
 	return a;
 };
 
-AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, continueVir)
+AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, route)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x9C, 0x60);
@@ -486,25 +679,78 @@ AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, co
 	a.emit(0x83, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
 	a.emit(AutoCombatUIStatic.FeatureLootCategories);
 	a.label("snapshot_no_loot_categories");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotAttackSkillRowsSize);
+	a.jcc(0x82, "snapshot_no_attack_skills");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotAttackSkillRowsOffset);
+	a.emit(0xBF); a.dword(attackSkillRowsVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.AttackSkillRowsSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x83, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(AutoCombatUIStatic.FeatureAttackSkills);
+	a.label("snapshot_no_attack_skills");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotAttackSkillIconKeysSize);
+	a.jcc(0x82, "snapshot_no_attack_skill_icons");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotAttackSkillIconKeysOffset);
+	a.emit(0xBF); a.dword(attackSkillIconKeysVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.SkillIconKeysSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x83, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(AutoCombatUIStatic.FeatureAttackSkillIcons);
+	a.label("snapshot_no_attack_skill_icons");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotSupportSkillRowsSize);
+	a.jcc(0x82, "snapshot_no_support_skills");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotSupportSkillRowsOffset);
+	a.emit(0xBF); a.dword(supportSkillRowsVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.AttackSkillRowsSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x83, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(AutoCombatUIStatic.FeatureSupportSkills);
+	a.label("snapshot_no_support_skills");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotSupportSkillIconKeysSize);
+	a.jcc(0x82, "snapshot_no_support_skill_icons");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotSupportSkillIconKeysOffset);
+	a.emit(0xBF); a.dword(supportSkillIconKeysVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.SkillIconKeysSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x83, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(AutoCombatUIStatic.FeatureSupportSkillIcons);
+	a.label("snapshot_no_support_skill_icons");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateReady);
 	a.dword(1);
 	a.emit(0x8B, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateWindow);
 	a.emit(0x85, 0xFF);
-	a.jcc(0x84, "handled");
+	a.jcc(0x84, "settings_dirty_done");
 	a.emit(0xC7, 0x47, AutoCombatUIStatic.WindowDirtyOffset);
 	a.dword(1);
+	a.label("settings_dirty_done");
+	for (const windowOffset of [
+		AutoCombatUIStatic.StateAutoBattleWindow,
+		AutoCombatUIStatic.StateAutoSupportWindow
+	])
+	{
+		a.emit(0x8B, 0x3D); a.dword(stateVir + windowOffset);
+		a.emit(0x85, 0xFF);
+		a.jcc(0x84, `controller_dirty_next_${windowOffset}`);
+		a.emit(0xC7, 0x47, AutoCombatUIStatic.WindowDirtyOffset);
+		a.dword(1);
+		a.label(`controller_dirty_next_${windowOffset}`);
+	}
 	a.label("handled");
 	a.emit(0x61, 0x9D);
 	a.emit(0xB8); a.dword(AutoCombatUIStatic.PacketMainLoopReturn);
 	a.emit(0xFF, 0xE0);
 	a.label("fallback");
 	a.emit(0x61, 0x9D);
-	a.emit(0xB8); a.dword(continueVir);
+	a.emit(0xA1); a.dword(route.fallbackCellVir);
 	a.emit(0xFF, 0xE0);
 	return a;
 };
 
-AutoCombatUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVir)
+AutoCombatUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir)
 {
 	const entryVir = AutoCombatUIStatic.packetTableEntryVir(
 		AutoCombatUIStatic.ServerPacketId
@@ -512,33 +758,52 @@ AutoCombatUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVi
 	const entryPhy = Exe.Vir2Phy(entryVir, CODE);
 	if (entryPhy < 0)
 		throw Error("AutoCombatUI: could not resolve AHUI dispatcher entry");
+	AutoCombatUIStatic.beginSharedPacketRoute(_);
+	const route = AutoCombatUIStatic.ensureSharedPacketRoute(entryVir, entryPhy);
+	AutoCombatUIStatic.endSharedPacketRoute(_);
 
-	const stateKey = "AutoCombatUI.SnapshotReceiver.v5";
-	const oldState = CACHE.get(stateKey);
-	const current = Exe.GetUint32(entryPhy);
-	if (oldState && oldState.entryVir === entryVir &&
-		current === oldState.handlerVir)
-		return oldState.handlerVir;
-
-	const continueVir = current === AutoCombatUIStatic.PacketDefaultHandler
-		? AutoCombatUIStatic.PacketMainLoopReturn
-		: current;
-
+	const stateKey = "AutoCombatUI.SnapshotReceiver.v8";
 	const receiver = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildSnapshotReceiver(stateVir, monsterRowsVir, continueVir)
+		AutoCombatUIStatic.buildSnapshotReceiver(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, route)
 	);
-	Exe.SetUint32(entryPhy, receiver.vir);
+	const ahuiHandlerCellPhy = route.ahuiHandlerCellPhy;
+	const pincodeHandlerCellPhy = route.pincodeHandlerCellPhy;
+	if (!Number.isInteger(ahuiHandlerCellPhy) || !Number.isInteger(pincodeHandlerCellPhy))
+		throw Error("AutoCombatUI: shared 0x0BEF router cells are unavailable");
+	const pincodeState = CACHE.get("InGamePincodeUI.State.StockUi.v8");
+	AutoCombatUIStatic.beginSharedPacketRoute(_);
+	if (Exe.GetUint32(entryPhy) !== route.routerVir)
+		Exe.SetUint32(entryPhy, route.routerVir);
+	if (pincodeState && pincodeState.entryVir === entryVir)
+		Exe.SetUint32(pincodeHandlerCellPhy, pincodeState.handlerVir);
+	Exe.SetUint32(ahuiHandlerCellPhy, receiver.vir);
+	AutoCombatUIStatic.endSharedPacketRoute(_);
+
 	CACHE.put(stateKey, {
 		packetId: AutoCombatUIStatic.ServerPacketId,
 		entryVir,
 		handlerVir: receiver.vir,
-		continueVir,
+		continueVir: route.fallbackVir,
 		stateVir,
-		monsterRowsVir
+		monsterRowsVir,
+		attackSkillRowsVir,
+		attackSkillIconKeysVir,
+		supportSkillRowsVir,
+		supportSkillIconKeysVir,
+		routerVir: route.routerVir
 	});
 	return receiver.vir;
 };
 
+AutoCombatUIStatic.emitPreserveSurfaceAlpha = function(a, label)
+{
+	const done = `${label}_surface_alpha_done`;
+	a.emit(0x8B, 0x46, AutoCombatUIStatic.WindowSurfaceOffset);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, done);
+	a.emit(0xC6, 0x40, AutoCombatUIStatic.SurfaceAlphaOffset, 0x01);
+	a.label(done);
+};
 AutoCombatUIStatic.emitLoadSurface = function(a, pathVir, missingLabel)
 {
 	a.call(AutoCombatUIStatic.GetTexMgr);
@@ -565,6 +830,177 @@ AutoCombatUIStatic.emitDrawFull = function(a, pathVir, x, y, label)
 	a.emit(0x8B, 0xCE);
 	a.call(AutoCombatUIStatic.ImageDraw);
 	a.label(done);
+};
+
+
+AutoCombatUIStatic.readBakedTga = function(relativePath)
+{
+	const fullPath = Warp.Path + "/" + relativePath;
+	const handle = new BinFile(fullPath, 'r');
+	if (!handle.Valid)
+		throw Error(`AutoCombatUI: unable to read baked controller frame ${fullPath}`);
+	const hex = handle.ReadHex();
+	handle.Close();
+	const pairs = hex.match(/[0-9A-Fa-f]{2}/g) || [];
+	const bytes = pairs.map(value => parseInt(value, 16));
+	if (bytes.length < 18 || bytes[1] !== 0 || bytes[2] !== 2 || bytes[16] !== 32)
+		throw Error(`AutoCombatUI: unsupported baked TGA ${relativePath}`);
+	const width = bytes[12] | (bytes[13] << 8);
+	const height = bytes[14] | (bytes[15] << 8);
+	if (width !== AutoCombatUIStatic.ControllerSize ||
+		height !== AutoCombatUIStatic.ControllerSize)
+	{
+		throw Error(
+			`AutoCombatUI: baked TGA ${relativePath} is ${width}x${height}, ` +
+			`expected ${AutoCombatUIStatic.ControllerSize}x${AutoCombatUIStatic.ControllerSize}`
+		);
+	}
+	const dataOffset = 18 + bytes[0];
+	const rowBytes = width * 4;
+	if (dataOffset + rowBytes * height > bytes.length)
+		throw Error(`AutoCombatUI: truncated baked TGA ${relativePath}`);
+	const topOrigin = (bytes[17] & 0x20) !== 0;
+	const rightOrigin = (bytes[17] & 0x10) !== 0;
+	const pixels = new Array(rowBytes * height);
+	for (let y = 0; y < height; ++y)
+	{
+		const sourceY = topOrigin ? y : height - 1 - y;
+		for (let x = 0; x < width; ++x)
+		{
+			const sourceX = rightOrigin ? width - 1 - x : x;
+			const source = dataOffset + sourceY * rowBytes + sourceX * 4;
+			const target = (y * width + x) * 4;
+			pixels[target] = bytes[source];
+			pixels[target + 1] = bytes[source + 1];
+			pixels[target + 2] = bytes[source + 2];
+			pixels[target + 3] = bytes[source + 3];
+		}
+	}
+	return pixels;
+};
+
+AutoCombatUIStatic.allocateBakedSurface = function(relativePath)
+{
+	const descriptor = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.TextureDescriptorSize).fill(0), 4
+	);
+	const pixels = AutoCombatUIStatic.allocateBytes(
+		AutoCombatUIStatic.readBakedTga(relativePath), 4
+	);
+	Exe.SetUint32(
+		descriptor.phy + AutoCombatUIStatic.TextureWidthOffset,
+		AutoCombatUIStatic.ControllerSize
+	);
+	Exe.SetUint32(
+		descriptor.phy + AutoCombatUIStatic.TextureHeightOffset,
+		AutoCombatUIStatic.ControllerSize
+	);
+	Exe.SetUint32(
+		descriptor.phy + AutoCombatUIStatic.TexturePixelsOffset,
+		pixels.vir
+	);
+	return {
+		descriptorPhy: descriptor.phy,
+		descriptorVir: descriptor.vir,
+		pixelsVir: pixels.vir
+	};
+};
+
+AutoCombatUIStatic.buildBakedSurfaceInitializer = function(referencePathVir, surfaces)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.emit(0x83, 0x3D); a.dword(
+		surfaces[0].descriptorVir + AutoCombatUIStatic.TextureReadyOffset
+	); a.emit(0x01);
+	a.jcc(0x84, "baked_done");
+	AutoCombatUIStatic.emitLoadSurface(a, referencePathVir, "baked_done");
+	a.emit(0x8B, 0x98); a.dword(AutoCombatUIStatic.TextureFlagsOffset);
+	for (const surface of surfaces)
+	{
+		a.emit(0x89, 0x1D); a.dword(
+			surface.descriptorVir + AutoCombatUIStatic.TextureFlagsOffset
+		);
+		a.emit(0xC7, 0x05); a.dword(
+			surface.descriptorVir + AutoCombatUIStatic.TextureReadyOffset
+		); a.dword(1);
+	}
+	a.label("baked_done");
+	a.emit(0x61, 0x9D, 0xC3);
+	return a;
+};
+
+AutoCombatUIStatic.prepareControllerVisual = function(group, referencePath)
+{
+	const prepared = {initializers: [], surfaces: []};
+	const prepare = function(name)
+	{
+		const relativePath =
+			`${AutoCombatUIStatic.ControllerAssetPath}/${group}/${name}`;
+		const surface = AutoCombatUIStatic.allocateBakedSurface(relativePath);
+		prepared.surfaces.push(surface);
+		return surface;
+	};
+	prepared.activeFrames = [];
+	for (let index = 0; index < AutoCombatUIStatic.ControllerFrameCount; ++index)
+		prepared.activeFrames.push(prepare(`active_${index.toString().padStart(2, "0")}.tga`));
+	prepared.inactive = prepare("inactive.tga");
+	const initializer = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildBakedSurfaceInitializer(
+			referencePath.vir, prepared.surfaces
+		)
+	);
+	prepared.initializers.push(initializer.vir);
+	return prepared;
+};
+AutoCombatUIStatic.emitDrawSurface = function(a, surface, x, y)
+{
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, surface.descriptorVir);
+	AutoCombatUIStatic.pushImm(a, y);
+	AutoCombatUIStatic.pushImm(a, x);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.ImageDraw);
+};
+
+AutoCombatUIStatic.emitDrawSkillIcon = function(
+	a, fillRectVir, iconKeyVir, iconFormatVir, iconPathVir, x, y, fallbackColor, label
+)
+{
+	const missing = `${label}_missing`;
+	const done = `${label}_done`;
+	a.emit(0x80, 0x3D); a.dword(iconKeyVir); a.emit(0x00);
+	a.jcc(0x84, missing);
+	AutoCombatUIStatic.pushImm(a, iconKeyVir);
+	AutoCombatUIStatic.pushImm(a, iconFormatVir);
+	AutoCombatUIStatic.pushImm(a, iconPathVir);
+	a.call(AutoCombatUIStatic.StringFormat);
+	a.emit(0x83, 0xC4, 0x0C);
+	AutoCombatUIStatic.emitLoadSurface(a, iconPathVir, missing);
+	AutoCombatUIStatic.pushImm(a, 0);
+	a.emit(0x50);
+	AutoCombatUIStatic.pushImm(a, y);
+	AutoCombatUIStatic.pushImm(a, x);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.ImageDraw);
+	a.jmp(done);
+	a.label(missing);
+	AutoCombatUIStatic.emitFillRect(a, fillRectVir, x + 2, y + 2, 20, 20, fallbackColor);
+	a.label(done);
+};
+
+AutoCombatUIStatic.emitDrawSkillLevel = function(
+	a, fillRectVir, skillLevelVir, levelFormatVir, levelTextVir, x, y
+)
+{
+	a.emit(0x0F, 0xB7, 0x05); a.dword(skillLevelVir);
+	a.emit(0x50);
+	AutoCombatUIStatic.pushImm(a, levelFormatVir);
+	AutoCombatUIStatic.pushImm(a, levelTextVir);
+	a.call(AutoCombatUIStatic.StringFormat);
+	a.emit(0x83, 0xC4, 0x0C);
+	AutoCombatUIStatic.emitFillRect(a, fillRectVir, x + 14, y + 14, 15, 12, 0xFF486A9E);
+	AutoCombatUIStatic.emitText(a, levelTextVir, x + 17, y + 13, 10, 0x00FFFFFF);
 };
 
 AutoCombatUIStatic.emitFillRect = function(a, fillRectVir, x, y, width, height, color)
@@ -780,13 +1216,13 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "text_potion");
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage);
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "text_skill_2");
-	emitPair(strings.skillHeadings[0], strings.skillSubtitles[0], 178, 139);
+	emitPair(strings.skillHeadings[0], strings.skillSubtitles[0], 158, 83);
 	AutoCombatUIStatic.emitText(a, strings.attackSettings.vir, 177, 87, 14, 0x0078432C);
 	AutoCombatUIStatic.emitText(a, strings.normalAttack.vir, 48, 276, 14, 0x0078432C);
 	a.jmp("page_text_done");
 	a.label("text_skill_2");
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "text_skill_3");
-	emitPair(strings.skillHeadings[1], strings.skillSubtitles[1], 174, 128);
+	emitPair(strings.skillHeadings[1], strings.skillSubtitles[1], 154, 79);
 	AutoCombatUIStatic.emitText(a, strings.supportSettings.vir, 170, 87, 14, 0x0078432C);
 	a.jmp("page_text_done");
 	a.label("text_skill_3");
@@ -829,7 +1265,9 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 };
 
 AutoCombatUIStatic.emitPageControls = function(
-	a, stateVir, paths, fillRectVir, strings, monsterRowsVir
+	a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
+	attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, skillIconPathVir,
+	skillLevelTextVir
 )
 {
 	const dark = 0x00554B46;
@@ -872,6 +1310,12 @@ AutoCombatUIStatic.emitPageControls = function(
 		else if (test.kind === "bit")
 		{
 			a.emit(0xA1); a.dword(stateVir + test.offset);
+			a.emit(0xA9); a.dword(test.mask);
+			a.jcc(0x84, offLabel);
+		}
+		else if (test.kind === "mem_bit")
+		{
+			a.emit(0xA1); a.dword(test.address);
 			a.emit(0xA9); a.dword(test.mask);
 			a.jcc(0x84, offLabel);
 		}
@@ -956,17 +1400,68 @@ AutoCombatUIStatic.emitPageControls = function(
 
 	a.label("controls_skill");
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "controls_potion");
-	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage);
-	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_done");
-	const skillXs = [108, 185, 262];
-	const skillColors = [0xFFDF564C, 0xFFEF9F41, 0xFF648FDB];
-	for (let index = 0; index < 3; index++)
+	const skillXs = [108, 185, 262, 339];
+	const skillColors = [0xFFDF564C, 0xFFEF9F41, 0xFF648FDB, 0xFF9A6FD6];
+	const emitSkillGrid = function(rowBaseVir, iconKeyBaseVir, featureMask, prefix, slotBase)
 	{
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, skillXs[index], 132 + (index === 2 ? 74 : 0), 20, 20, skillColors[index]);
-		AutoCombatUIStatic.emitText(a, strings.skillLetters[index].vir, skillXs[index] + 5, 134 + (index === 2 ? 74 : 0), 14, 0x00FFFFFF);
-		AutoCombatUIStatic.emitText(a, strings.skillNames[index].vir, skillXs[index] - 4, 166 + (index === 2 ? 74 : 0), 13, dark);
-	}
+		a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+		a.emit(0xA9); a.dword(featureMask);
+		a.jcc(0x84, `${prefix}_unavailable`);
+		for (let index = 0; index < AutoCombatUIStatic.AttackSkillDynamicRows; index++)
+		{
+			const x = skillXs[index % skillXs.length];
+			const y = 132 + Math.floor(index / skillXs.length) * 74;
+			const rowVir = rowBaseVir + index * AutoCombatUIStatic.AttackSkillRowSize;
+			const iconKeyVir = iconKeyBaseVir + index * AutoCombatUIStatic.SkillIconKeySize;
+			const emptyLabel = `${prefix}_${index}_empty`;
+			const contentDoneLabel = `${prefix}_${index}_content_done`;
+			a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.AttackSkillRowIdOffset); a.emit(0);
+			a.jcc(0x84, emptyLabel);
+			AutoCombatUIStatic.emitText(a,
+				rowVir + AutoCombatUIStatic.AttackSkillRowNameOffset,
+				x - 31, y - 20, 14, dark);
+			AutoCombatUIStatic.emitDrawSkillIcon(
+				a, fillRectVir, iconKeyVir, paths.skillIconFormat.vir, skillIconPathVir,
+				x - 2, y - 2, skillColors[index % skillColors.length], `${prefix}_${index}_icon`
+			);
+			AutoCombatUIStatic.emitDrawSkillLevel(
+				a, fillRectVir,
+				rowVir + AutoCombatUIStatic.AttackSkillRowLevelOffset,
+				strings.skillLevelFormat.vir, skillLevelTextVir, x - 2, y - 2
+			);
+			a.jmp(contentDoneLabel);
+			a.label(emptyLabel);
+			AutoCombatUIStatic.emitFillRect(a, fillRectVir, x, y, 20, 20, 0xFFE8F1FC);
+			AutoCombatUIStatic.emitText(a, strings.skillEmpty.vir, x + 5, y + 2, 14, link);
+			a.label(contentDoneLabel);
+
+			AutoCombatUIStatic.emitFillRect(a, fillRectVir, x - 6, y + 31, 34, 16, 0xFF97ADCF);
+			AutoCombatUIStatic.emitFillRect(a, fillRectVir, x - 5, y + 32, 32, 14, 0xFFFFFFFF);
+			AutoCombatUIStatic.emitText(a,
+				rowVir + AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
+				x - 2, y + 32, 12, dark);
+			AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 12, dark);
+		}
+		a.jmp(`${prefix}_done`);
+		a.label(`${prefix}_unavailable`);
+		a.label(`${prefix}_done`);
+	};
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage);
+	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_skill_support");
+	emitSkillGrid(
+		attackSkillRowsVir, attackSkillIconKeysVir,
+		AutoCombatUIStatic.FeatureAttackSkills, "attack_skill", 0
+	);
+	a.label("controls_skill_normal_attack");
 	drawStateCheck({kind: "neq", offset: AutoCombatUIStatic.StateStopMelee, value: 1}, 28, 277, null, "normal_attack");
+	a.jmp("controls_done");
+
+	a.label("controls_skill_support");
+	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "controls_done");
+	emitSkillGrid(
+		supportSkillRowsVir, supportSkillIconKeysVir,
+		AutoCombatUIStatic.FeatureSupportSkills, "support_skill", 8
+	);
 	a.jmp("controls_done");
 
 	a.label("controls_potion");
@@ -1061,7 +1556,7 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.label("navigation_done");
 };
 
-AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir)
+AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, skillIconPathVir, skillLevelTextVir)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
@@ -1072,8 +1567,11 @@ AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, m
 	AutoCombatUIStatic.emitChrome(a, stateVir, fillRectVir, strings);
 	AutoCombatUIStatic.emitPageText(a, stateVir, strings);
 	AutoCombatUIStatic.emitPageControls(
-		a, stateVir, paths, fillRectVir, strings, monsterRowsVir
+		a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
+		attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, skillIconPathVir,
+		skillLevelTextVir
 	);
+
 	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
 	return a;
 };
@@ -1196,7 +1694,7 @@ AutoCombatUIStatic.emitSendScalarEqToggle = function(
 	a.call(mutationSenderVir);
 };
 
-AutoCombatUIStatic.buildMouseDown = function(stateVir, mutationSenderVir, monsterRowsVir)
+AutoCombatUIStatic.buildMouseDown = function(stateVir, mutationSenderVir, monsterRowsVir, attackSkillRowsVir, supportSkillRowsVir)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
@@ -1451,8 +1949,46 @@ AutoCombatUIStatic.buildMouseDown = function(stateVir, mutationSenderVir, monste
 	a.jmp("consume");
 	a.label("body_skill");
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "body_looting");
+	const skillXs = [108, 185, 262, 339];
+	const emitSkillMouseControls = function(featureMask, registerSetting, rowBaseVir, slotBase, prefix)
+	{
+		for (let index = 0; index < AutoCombatUIStatic.AttackSkillDynamicRows; index++)
+		{
+			const x = skillXs[index % skillXs.length];
+			const y = 132 + Math.floor(index / skillXs.length) * 74;
+			const rowVir = rowBaseVir + index * AutoCombatUIStatic.AttackSkillRowSize;
+			const selectNext = `${prefix}_select_${index}_next`;
+			AutoCombatUIStatic.emitRectGate(a, x - 16, y - 8, x + 32, y + 27, selectNext);
+			AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+				a, stateVir, mutationSenderVir, featureMask,
+				registerSetting, index, 0, `${prefix}_select_${index}`
+			);
+			AutoCombatUIStatic.emitMarkDirty(a);
+			a.jmp("consume");
+			a.label(selectNext);
+
+			const delayNext = `${prefix}_delay_${index}_next`;
+			AutoCombatUIStatic.emitRectGate(a, x - 6, y + 29, x + 28, y + 52, delayNext);
+			a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.AttackSkillRowIdOffset); a.emit(0);
+			a.jcc(0x84, delayNext);
+			AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+				a, stateVir, mutationSenderVir, featureMask,
+				AutoCombatUIStatic.SettingSkillDelayInput,
+				slotBase + index, 0, `${prefix}_delay_${index}`
+			);
+			AutoCombatUIStatic.emitMarkDirty(a);
+			a.jmp("consume");
+			a.label(delayNext);
+		}
+	};
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage); a.emit(0x01);
-	a.jcc(0x85, "consume");
+	a.jcc(0x85, "body_skill_support");
+	emitSkillMouseControls(
+		AutoCombatUIStatic.FeatureAttackSkills,
+		AutoCombatUIStatic.SettingAttackSkillRegister,
+		attackSkillRowsVir, 0,
+		"attack_skill"
+	);
 	AutoCombatUIStatic.emitRectGate(a, 20, 270, 170, 300, "consume");
 	AutoCombatUIStatic.emitSendScalarEqToggle(
 		a, stateVir, mutationSenderVir,
@@ -1461,6 +1997,18 @@ AutoCombatUIStatic.buildMouseDown = function(stateVir, mutationSenderVir, monste
 	);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
+
+	a.label("body_skill_support");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage); a.emit(0x02);
+	a.jcc(0x85, "consume");
+	emitSkillMouseControls(
+		AutoCombatUIStatic.FeatureSupportSkills,
+		AutoCombatUIStatic.SettingSupportSkillRegister,
+		supportSkillRowsVir, 8,
+		"support_skill"
+	);
+	a.jmp("consume");
+
 	a.label("body_looting");
 	a.emit(0x83, 0xF8, 0x04); a.jcc(0x85, "body_move");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage); a.emit(0x01);
@@ -1536,7 +2084,290 @@ AutoCombatUIStatic.buildMouseDown = function(stateVir, mutationSenderVir, monste
 	a.emit(0xC2, 0x08, 0x00);
 	return a;
 };
+AutoCombatUIStatic.buildMouseUp = function(stateVir, mutationSenderVir)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0x8B, 0x5D, 0x08);
+	a.emit(0x8B, 0x55, 0x0C);
+	a.emit(0x85, 0xDB); a.jcc(0x88, "base_mouse_up");
+	a.emit(0x85, 0xD2); a.jcc(0x88, "base_mouse_up");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x02);
+	a.jcc(0x85, "base_mouse_up");
 
+	const skillXs = [108, 185, 262, 339];
+	const emitSkillDropGrid = function(featureMask, registerSetting, prefix)
+	{
+		a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+		a.emit(0xA9); a.dword(featureMask);
+		a.jcc(0x84, "base_mouse_up");
+		for (let index = 0; index < AutoCombatUIStatic.AttackSkillDynamicRows; index++)
+		{
+			const x = skillXs[index % skillXs.length];
+			const y = 132 + Math.floor(index / skillXs.length) * 74;
+			const next = `${prefix}_drop_${index}_next`;
+			AutoCombatUIStatic.emitRectGate(a, x - 16, y - 8, x + 32, y + 30, next);
+
+			a.emit(0xB9); a.dword(AutoCombatUIStatic.ShortcutManager);
+			a.call(AutoCombatUIStatic.ShortcutManagerGetActive);
+			a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+			a.emit(0x8B, 0xF8);
+			a.emit(0x80, 0xBF); a.dword(AutoCombatUIStatic.ShortcutDragActiveOffset); a.emit(0x01);
+			a.jcc(0x85, "base_mouse_up");
+			a.emit(0x83, 0xBF); a.dword(AutoCombatUIStatic.ShortcutDragTypeOffset);
+			a.emit(AutoCombatUIStatic.ShortcutDragSkillType);
+			a.jcc(0x85, "base_mouse_up");
+			a.emit(0x8B, 0x87); a.dword(AutoCombatUIStatic.ShortcutDragSkillIdOffset);
+			a.emit(0x25); a.dword(0x0000FFFF);
+			a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+			a.emit(0x8B, 0x8F); a.dword(AutoCombatUIStatic.ShortcutDragSkillLevelOffset);
+			a.emit(0x81, 0xE1); a.dword(0x0000FFFF);
+			a.emit(0x85, 0xC9); a.jcc(0x84, "base_mouse_up");
+			a.emit(0xC1, 0xE1, 0x10, 0x0B, 0xC8);
+			a.emit(0x51);
+			AutoCombatUIStatic.pushImm(a, index);
+			AutoCombatUIStatic.pushImm(a, registerSetting);
+			a.call(mutationSenderVir);
+			AutoCombatUIStatic.emitMarkDirty(a);
+
+			a.emit(0x8B, 0x07);
+			AutoCombatUIStatic.pushImm(a, 0);
+			AutoCombatUIStatic.pushImm(a, 0);
+			AutoCombatUIStatic.pushImm(a, 0);
+			AutoCombatUIStatic.pushImm(a, 0);
+			AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.ShortcutDragCancelMessage);
+			a.emit(0x8B, 0xCF, 0xFF, 0x50, 0x18);
+			a.jmp("base_mouse_up");
+			a.label(next);
+		}
+	};
+
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage); a.emit(0x01);
+	a.jcc(0x85, "skill_drop_support");
+	emitSkillDropGrid(
+		AutoCombatUIStatic.FeatureAttackSkills,
+		AutoCombatUIStatic.SettingAttackSkillRegister,
+		"attack_skill"
+	);
+	a.jmp("base_mouse_up");
+
+	a.label("skill_drop_support");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage); a.emit(0x02);
+	a.jcc(0x85, "base_mouse_up");
+	emitSkillDropGrid(
+		AutoCombatUIStatic.FeatureSupportSkills,
+		AutoCombatUIStatic.SettingSupportSkillRegister,
+		"support_skill"
+	);
+
+	a.label("base_mouse_up");
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08, 0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.FrameMouseUp);
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+AutoCombatUIStatic.buildControllerDraw = function(stateVir, visual, flagBit)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	AutoCombatUIStatic.pushImm(a, 0x00000000);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.WindowClearSurface);
+	AutoCombatUIStatic.emitPreserveSurfaceAlpha(a, "controller_clear");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateFlags);
+	a.emit(0xA9); a.dword(1 << flagBit);
+	a.jcc(0x84, "controller_off");
+	a.emit(0xFF, 0x15); a.dword(AutoCombatUIStatic.TimeGetTimeIat);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(
+		AutoCombatUIStatic.ControllerFrameDurationMs
+	); a.emit(0xF7, 0xF1);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(visual.activeFrames.length); a.emit(0xF7, 0xF1);
+	for (let index = 0; index < visual.activeFrames.length; index++)
+	{
+		const next = `controller_frame_${index}_next`;
+		a.emit(0x83, 0xFA, index);
+		a.jcc(0x85, next);
+		AutoCombatUIStatic.emitDrawSurface(a, visual.activeFrames[index], 0, 0);
+		a.jmp("controller_done");
+		a.label(next);
+	}
+	a.jmp("controller_done");
+	a.label("controller_off");
+	AutoCombatUIStatic.emitDrawSurface(a, visual.inactive, 0, 0);
+	a.label("controller_done");
+	AutoCombatUIStatic.emitPreserveSurfaceAlpha(a, "controller_draw");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+AutoCombatUIStatic.buildControllerMouseDown = function(stateVir, downXOffset, downYOffset)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0x8B, 0x46, AutoCombatUIStatic.WindowXOffset, 0xA3); a.dword(stateVir + downXOffset);
+	a.emit(0x8B, 0x46, AutoCombatUIStatic.WindowYOffset, 0xA3); a.dword(stateVir + downYOffset);
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08, 0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.FrameMouseDown);
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+AutoCombatUIStatic.buildControllerMouseUp = function(
+	stateVir, mutationSenderVir, downXOffset, downYOffset, flagBit, settingId
+)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0x8B, 0x5D, 0x08, 0x8B, 0x7D, 0x0C);
+	a.emit(0x57, 0x53, 0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.FrameMouseUp);
+	a.emit(0x8B, 0x46, AutoCombatUIStatic.WindowXOffset, 0x2B, 0x05); a.dword(stateVir + downXOffset);
+	a.emit(0x99, 0x33, 0xC2, 0x2B, 0xC2, 0x83, 0xF8, 0x03);
+	a.jcc(0x87, "controller_mouse_done");
+	a.emit(0x8B, 0x46, AutoCombatUIStatic.WindowYOffset, 0x2B, 0x05); a.dword(stateVir + downYOffset);
+	a.emit(0x99, 0x33, 0xC2, 0x2B, 0xC2, 0x83, 0xF8, 0x03);
+	a.jcc(0x87, "controller_mouse_done");
+	a.emit(0x33, 0xC9, 0xA1); a.dword(stateVir + AutoCombatUIStatic.StateFlags);
+	a.emit(0xA9); a.dword(1 << flagBit);
+	a.emit(0x0F, 0x94, 0xC1);
+	AutoCombatUIStatic.pushImm(a, 0);
+	a.emit(0x51);
+	AutoCombatUIStatic.pushImm(a, settingId);
+	a.call(mutationSenderVir);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.label("controller_mouse_done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+AutoCombatUIStatic.buildControllerDestructor = function(stateVir, windowOffset)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + windowOffset);
+	a.dword(0);
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + AutoCombatUIStatic.StateReady);
+	a.dword(0);
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + AutoCombatUIStatic.StateControllerNextSyncTick);
+	a.dword(0);
+	a.jmp(AutoCombatUIStatic.FrameDeletingDestructor);
+	return a;
+};
+
+AutoCombatUIStatic.buildEnsureController = function(
+	stateVir, windowOffset, vtableVir, visual, windowId, rightInset, bottomInset
+)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x9C, 0x60);
+	for (const initializerVir of visual.initializers)
+		a.call(initializerVir);
+	for (let index = 0; index < visual.surfaces.length; index++)
+	{
+		a.emit(0x83, 0x3D); a.dword(
+			visual.surfaces[index].descriptorVir + AutoCombatUIStatic.TextureReadyOffset
+		); a.emit(0x01);
+		a.jcc(0x85, "controller_done");
+	}
+	a.emit(0x8B, 0x35); a.dword(stateVir + windowOffset);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x85, "controller_exists");
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FrameObjectSize);
+	a.call(AutoCombatUIStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "controller_done");
+	a.emit(0x8B, 0xF0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.FrameConstructor);
+	a.emit(0xC7, 0x06); a.dword(vtableVir);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.ControllerSize);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.ControllerSize);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.WindowSetSize);
+	a.emit(0xC7, 0x46, AutoCombatUIStatic.WindowIdOffset); a.dword(windowId);
+	a.emit(0x8B, 0x15); a.dword(AutoCombatUIStatic.Renderer);
+	a.emit(0x85, 0xD2);
+	a.jcc(0x84, "controller_position_ready");
+	a.emit(0x8B, 0x42, AutoCombatUIStatic.RendererWidthOffset, 0x2D); a.dword(rightInset);
+	a.emit(0x85, 0xC0); a.jcc(0x89, "controller_x_ready"); a.emit(0x33, 0xC0);
+	a.label("controller_x_ready");
+	a.emit(0x89, 0x46, AutoCombatUIStatic.WindowXOffset);
+	a.emit(0x8B, 0x42, AutoCombatUIStatic.RendererHeightOffset, 0x2D); a.dword(bottomInset);
+	a.emit(0x85, 0xC0); a.jcc(0x89, "controller_y_ready"); a.emit(0x33, 0xC0);
+	a.label("controller_y_ready");
+	a.emit(0x89, 0x46, AutoCombatUIStatic.WindowYOffset);
+	a.label("controller_position_ready");
+	a.emit(0x89, 0x35); a.dword(stateVir + windowOffset);
+	a.emit(0x56, 0xB9); a.dword(AutoCombatUIStatic.WindowManager);
+	a.call(AutoCombatUIStatic.WindowAddTopLevelFront);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("controller_done");
+	a.label("controller_exists");
+	a.emit(0xC7, 0x46, AutoCombatUIStatic.WindowVisibleOffset); a.dword(1);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.label("controller_done");
+	a.emit(0x61, 0x9D, 0xC3);
+	return a;
+};
+
+AutoCombatUIStatic.buildControllerRedrawBridge = function(autoBattleVtableVir, autoSupportVtableVir)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x9C);
+	a.emit(0x81, 0x3B); a.dword(autoBattleVtableVir);
+	a.jcc(0x84, "controller_animate");
+	a.emit(0x81, 0x3B); a.dword(autoSupportVtableVir);
+	a.jcc(0x84, "controller_animate");
+	a.emit(0x9D, 0xC7, 0x43, AutoCombatUIStatic.WindowDirtyOffset);
+	a.dword(0);
+	a.jmp(AutoCombatUIStatic.UiUpdateSurfaceDirtyResume);
+	a.label("controller_animate");
+	a.emit(0x9D, 0xC7, 0x43, AutoCombatUIStatic.WindowDirtyOffset);
+	a.dword(1);
+	a.jmp(AutoCombatUIStatic.UiUpdateSurfaceDirtyResume);
+	return a;
+};
+
+AutoCombatUIStatic.buildControllerBootstrap = function(
+	stateVir, openSenderVir, ensureAutoBattleVir, ensureAutoSupportVir
+)
+{
+	const a = AutoCombatUIStatic.asm();
+	// Preserve the original in-game render-pass call before QJS-owned work.
+	a.call(AutoCombatUIStatic.ControllerBootstrapOriginal);
+	a.emit(0x9C, 0x60);
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateReady); a.emit(0x01);
+	a.jcc(0x84, "bootstrap_controllers");
+	a.emit(0xFF, 0x15); a.dword(AutoCombatUIStatic.TimeGetTimeIat);
+	a.emit(0x8B, 0xD8, 0x2B, 0x05); a.dword(
+		stateVir + AutoCombatUIStatic.StateControllerNextSyncTick
+	);
+	a.jcc(0x88, "bootstrap_controllers");
+	a.emit(0x81, 0xC3); a.dword(2000);
+	a.emit(0x89, 0x1D); a.dword(
+		stateVir + AutoCombatUIStatic.StateControllerNextSyncTick
+	);
+	a.call(openSenderVir);
+	a.label("bootstrap_controllers");
+	a.emit(0x83, 0x3D); a.dword(
+		stateVir + AutoCombatUIStatic.StateAutoBattleWindow
+	); a.emit(0x00);
+	a.jcc(0x85, "bootstrap_support");
+	a.call(ensureAutoBattleVir);
+	a.label("bootstrap_support");
+	a.emit(0x83, 0x3D); a.dword(
+		stateVir + AutoCombatUIStatic.StateAutoSupportWindow
+	); a.emit(0x00);
+	a.jcc(0x85, "bootstrap_done");
+	a.call(ensureAutoSupportVir);
+	a.label("bootstrap_done");
+	a.emit(0x61, 0x9D, 0xC3);
+	return a;
+};
 AutoCombatUIStatic.buildDestructor = function(stateVir)
 {
 	const a = AutoCombatUIStatic.asm();
@@ -1547,7 +2378,7 @@ AutoCombatUIStatic.buildDestructor = function(stateVir)
 	return a;
 };
 
-AutoCombatUIStatic.cloneFrameVtable = function(drawVir, mouseDownVir, destructorVir)
+AutoCombatUIStatic.cloneFrameVtable = function(drawVir, mouseDownVir, mouseUpVir, destructorVir)
 {
 	const sourcePhy = Exe.Vir2Phy(AutoCombatUIStatic.FrameVtable);
 	if (sourcePhy < 0)
@@ -1558,15 +2389,21 @@ AutoCombatUIStatic.cloneFrameVtable = function(drawVir, mouseDownVir, destructor
 	Exe.SetUint32(clonePhy + 0 * 4, destructorVir);
 	Exe.SetUint32(clonePhy + 20 * 4, drawVir);
 	Exe.SetUint32(clonePhy + 25 * 4, mouseDownVir);
+	Exe.SetUint32(clonePhy + 31 * 4, mouseUpVir);
 	return {phy: clonePhy, vir: cloneVir, size: byteCount};
 };
 
-AutoCombatUIStatic.buildToggle = function(stateVir, vtableVir, openSenderVir)
+AutoCombatUIStatic.buildToggle = function(stateVir, vtableVir, openSenderVir, ensureControllerVirs)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x9C, 0x60);
 	if (Number.isInteger(openSenderVir) && openSenderVir > 0)
 		a.call(openSenderVir);
+	for (const ensureControllerVir of ensureControllerVirs)
+	{
+		if (Number.isInteger(ensureControllerVir) && ensureControllerVir > 0)
+			a.call(ensureControllerVir);
+	}
 	a.emit(0x8B, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateWindow);
 	a.emit(0x85, 0xF6);
 	a.jcc(0x85, "toggle_existing");
@@ -1625,6 +2462,7 @@ AutoCombatUIStatic.assertCode = function(label, virAddr, expectedBytes)
 		.replace(/\s+/g, " ").trim().toUpperCase();
 	if (actual !== expected)
 		throw Error(`AutoCombatUI: ${label} mismatch, got ${actual}`);
+	return phy;
 };
 
 AutoCombatUIStatic.assertVtableSlot = function(label, slot, expectedVir)
@@ -1644,6 +2482,15 @@ AutoCombatUIStatic.assertVtableSlot = function(label, slot, expectedVir)
 
 AutoCombatUIStatic.verifyNativeContracts = function()
 {
+	const controllerBootstrapPhy = AutoCombatUIStatic.assertCode(
+		"controller in-game bootstrap call",
+		AutoCombatUIStatic.ControllerBootstrapHook,
+		AutoCombatUIStatic.ControllerBootstrapHookBytes
+	);
+	AutoCombatUIStatic.assertCode(
+		"UI update dirty clear", AutoCombatUIStatic.UiUpdateSurfaceDirty,
+		"C7 43 58 00 00 00 00"
+	);
 	AutoCombatUIStatic.assertCode(
 		"UIFrameWnd constructor", AutoCombatUIStatic.FrameConstructor,
 		"55 8B EC 6A FF 68 F9 45 EA 00"
@@ -1651,6 +2498,10 @@ AutoCombatUIStatic.verifyNativeContracts = function()
 	AutoCombatUIStatic.assertCode(
 		"UIFrameWnd mouse-down handler", AutoCombatUIStatic.FrameMouseDown,
 		"55 8B EC 83 EC 08 56 8B F1"
+	);
+	AutoCombatUIStatic.assertCode(
+		"UIFrameWnd mouse-up handler", AutoCombatUIStatic.FrameMouseUp,
+		"56 8B F1 B9 E8 F4 31 01 E8"
 	);
 	AutoCombatUIStatic.assertVtableSlot(
 		"UIFrameWnd deleting destructor", 0,
@@ -1662,6 +2513,10 @@ AutoCombatUIStatic.verifyNativeContracts = function()
 	AutoCombatUIStatic.assertVtableSlot(
 		"UIFrameWnd mouse down", 25, AutoCombatUIStatic.FrameVtableMouseDown
 	);
+	AutoCombatUIStatic.assertVtableSlot(
+		"UIFrameWnd mouse up", 31, AutoCombatUIStatic.FrameVtableMouseUp
+	);
+	return {controllerBootstrapPhy};
 };
 
 AutoCombatUI = function(_)
@@ -1673,7 +2528,7 @@ AutoCombatUI = function(_)
 		throw Error("AutoCombatUI: CustomSlashCommand helper unavailable");
 
 	$$(_, 1, "Verify the native UIFrameWnd ABI and input handlers");
-	AutoCombatUIStatic.verifyNativeContracts();
+	const verified = AutoCombatUIStatic.verifyNativeContracts();
 
 	$$(_, 2, "Build client-native Auto Hunt resource paths");
 	const paths = {
@@ -1724,7 +2579,64 @@ AutoCombatUI = function(_)
 		),
 		toggleOn: AutoCombatUIStatic.buildResourcePath(
 			"autohunt\\setting_potion\\toggle_on.bmp"
-		)
+		),
+		skillIconFormat: AutoCombatUIStatic.buildResourcePath("item\\%s.bmp"),
+		autoBattle: {
+			blueGlow: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autobattle\\autobattle_blue_loop\\auto_glow_blue.tga"
+			),
+			blueGlowLine: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autobattle\\autobattle_blue_loop\\auto_glowline.tga"
+			),
+			blueOutline: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autobattle\\autobattle_blue_loop\\auto_outline.tga"
+			),
+			blueIcon: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autobattle\\autobattle_blue_loop\\auto_sword_blue.tga"
+			),
+			blueFrames: ["00", "01", "02", "03", "04", "05", "06", "07", "08"].map(index =>
+				AutoCombatUIStatic.buildTexturePath(
+					`effect\\roz_autobattle\\autobattle_blue_loop\\auto_particleline_${index}.tga`
+				)
+			),
+			redGlow: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autobattle\\autobattle_red\\auto_glow_red.tga"
+			),
+			redOutline: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autobattle\\autobattle_red\\auto_outline.tga"
+			),
+			redIcon: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autobattle\\autobattle_red\\auto_sword_red.tga"
+			)
+		},
+		autoSupport: {
+			blueGlow: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autopotion\\autopotion_blue_loop\\auto_glow_blue.tga"
+			),
+			blueGlowLine: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autopotion\\autopotion_blue_loop\\auto_glowline.tga"
+			),
+			blueOutline: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autopotion\\autopotion_blue_loop\\auto_outline.tga"
+			),
+			blueIcon: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autopotion\\autopotion_blue_loop\\auto_potion_blue.tga"
+			),
+			blueFrames: ["00", "01", "02", "03", "04", "05", "06", "07", "08"].map(index =>
+				AutoCombatUIStatic.buildTexturePath(
+					`effect\\roz_autopotion\\autopotion_blue_loop\\auto_particleline_${index}.tga`
+				)
+			),
+			redGlow: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autopotion\\autopotion_red\\auto_glow_red.tga"
+			),
+			redOutline: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autopotion\\autopotion_red\\auto_outline.tga"
+			),
+			redIcon: AutoCombatUIStatic.buildTexturePath(
+				"effect\\roz_autopotion\\autopotion_red\\auto_potion_red.tga"
+			)
+		}
 	};
 
 	const tabLabels = ["Basic", "Monster", "Skill", "Potion", "Looting", "Move", "Item"];
@@ -1761,13 +2673,13 @@ AutoCombatUI = function(_)
 		statusSettings: AutoCombatUIStatic.allocateString("Status Recovery"),
 		normalAttack: AutoCombatUIStatic.allocateString("Use Normal Attack"),
 		skillHeadings: [
-			"Set the attack skill.",
-			"Set support skills.",
+			"Configure attack skills.",
+			"Configure support skills.",
 			"Configure recovery skills."
 		].map(text => AutoCombatUIStatic.allocateString(text)),
 		skillSubtitles: [
-			"Skills are used at each configured delay time.",
-			"Support skills are used at each configured delay time.",
+			"Attack skills only. Combo and element rules set priority.",
+			"Support skills only. Slots are checked from left to right.",
 			"Set healing thresholds and status recovery skills."
 		].map(text => AutoCombatUIStatic.allocateString(text)),
 		potionHeadings: [
@@ -1803,10 +2715,13 @@ AutoCombatUI = function(_)
 		),
 		monsters: ["All Monsters", "Poring", "Drops", "Poporing", "Lunatic", "Fabre"]
 			.map(text => AutoCombatUIStatic.allocateString(text)),
-		skillLetters: ["B", "M", "P"]
-			.map(text => AutoCombatUIStatic.allocateString(text)),
-		skillNames: ["Bash", "Magnum", "Provoke"]
-			.map(text => AutoCombatUIStatic.allocateString(text)),
+
+		skillEmpty: AutoCombatUIStatic.allocateString("+"),
+		skillLevelFormat: AutoCombatUIStatic.allocateString("%u"),
+		secondsSuffix: AutoCombatUIStatic.allocateString("s"),
+		skillDelayHint: AutoCombatUIStatic.allocateString(
+			"Click a delay box and enter the interval in seconds."
+		),
 		potionPanels: ["HP Recovery", "HP Recovery", "SP Recovery", "SP Recovery"]
 			.map(text => AutoCombatUIStatic.allocateString(text)),
 		useBelow: AutoCombatUIStatic.allocateString("Auto recover when below"),
@@ -1830,6 +2745,20 @@ AutoCombatUI = function(_)
 	const monsterRows = AutoCombatUIStatic.allocateBytes(
 		new Array(AutoCombatUIStatic.MonsterRowsSize).fill(0), 4
 	);
+	const attackSkillRows = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.AttackSkillRowsSize).fill(0), 4
+	);
+	const attackSkillIconKeys = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.SkillIconKeysSize).fill(0), 4
+	);
+	const supportSkillRows = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.AttackSkillRowsSize).fill(0), 4
+	);
+	const supportSkillIconKeys = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.SkillIconKeysSize).fill(0), 4
+	);
+	const skillIconPath = AutoCombatUIStatic.allocateBytes(new Array(128).fill(0), 4);
+	const skillLevelText = AutoCombatUIStatic.allocateBytes(new Array(8).fill(0), 4);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateSkillPage, 1);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StatePotionPage, 1);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateLootingPage, 1);
@@ -1845,7 +2774,8 @@ AutoCombatUI = function(_)
 		AutoCombatUIStatic.buildScalarSender(state.vir, packetRefs)
 	);
 	const snapshotReceiverVir = AutoCombatUIStatic.installSnapshotReceiver(
-		_, state.vir, monsterRows.vir
+		_, state.vir, monsterRows.vir, attackSkillRows.vir,
+		attackSkillIconKeys.vir, supportSkillRows.vir, supportSkillIconKeys.vir
 	);
 
 	$$(_, 4, "Create the QJS-only Auto Combat UIFrameWnd renderer and input path");
@@ -1853,19 +2783,119 @@ AutoCombatUI = function(_)
 		AutoCombatUIStatic.buildFillRect()
 	);
 	const draw = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildDraw(state.vir, paths, fillRect.vir, strings, monsterRows.vir)
+		AutoCombatUIStatic.buildDraw(
+			state.vir, paths, fillRect.vir, strings, monsterRows.vir, attackSkillRows.vir,
+			attackSkillIconKeys.vir, supportSkillRows.vir, supportSkillIconKeys.vir,
+			skillIconPath.vir, skillLevelText.vir
+		)
 	);
 	const mouseDown = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildMouseDown(state.vir, scalarSender.vir, monsterRows.vir)
+		AutoCombatUIStatic.buildMouseDown(
+			state.vir, scalarSender.vir, monsterRows.vir,
+			attackSkillRows.vir, supportSkillRows.vir
+		)
+	);
+	const mouseUp = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildMouseUp(state.vir, scalarSender.vir)
 	);
 	const destructor = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildDestructor(state.vir)
 	);
 	const vtable = AutoCombatUIStatic.cloneFrameVtable(
-		draw.vir, mouseDown.vir, destructor.vir
+		draw.vir, mouseDown.vir, mouseUp.vir, destructor.vir
 	);
+	const autoBattleVisual = AutoCombatUIStatic.prepareControllerVisual(
+		"autobattle", paths.autoBattle.blueIcon
+	);
+	const autoSupportVisual = AutoCombatUIStatic.prepareControllerVisual(
+		"autopotion", paths.autoSupport.blueIcon
+	);
+	const autoBattleDraw = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerDraw(state.vir, autoBattleVisual, 12)
+	);
+	const autoBattleMouseDown = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerMouseDown(
+			state.vir, AutoCombatUIStatic.StateAutoBattleDownX,
+			AutoCombatUIStatic.StateAutoBattleDownY
+		)
+	);
+	const autoBattleMouseUp = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerMouseUp(
+			state.vir, scalarSender.vir,
+			AutoCombatUIStatic.StateAutoBattleDownX,
+			AutoCombatUIStatic.StateAutoBattleDownY,
+			12, AutoCombatUIStatic.SettingAutoHuntEnabled
+		)
+	);
+	const autoBattleDestructor = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerDestructor(
+			state.vir, AutoCombatUIStatic.StateAutoBattleWindow
+		)
+	);
+	const autoBattleVtable = AutoCombatUIStatic.cloneFrameVtable(
+		autoBattleDraw.vir, autoBattleMouseDown.vir,
+		autoBattleMouseUp.vir, autoBattleDestructor.vir
+	);
+	const ensureAutoBattle = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildEnsureController(
+			state.vir, AutoCombatUIStatic.StateAutoBattleWindow,
+			autoBattleVtable.vir, autoBattleVisual, 0x3F1, 160, 260
+		)
+	);
+	const autoSupportDraw = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerDraw(state.vir, autoSupportVisual, 3)
+	);
+	const autoSupportMouseDown = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerMouseDown(
+			state.vir, AutoCombatUIStatic.StateAutoSupportDownX,
+			AutoCombatUIStatic.StateAutoSupportDownY
+		)
+	);
+	const autoSupportMouseUp = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerMouseUp(
+			state.vir, scalarSender.vir,
+			AutoCombatUIStatic.StateAutoSupportDownX,
+			AutoCombatUIStatic.StateAutoSupportDownY,
+			3, AutoCombatUIStatic.SettingAutoSupportEnabled
+		)
+	);
+	const autoSupportDestructor = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerDestructor(
+			state.vir, AutoCombatUIStatic.StateAutoSupportWindow
+		)
+	);
+	const autoSupportVtable = AutoCombatUIStatic.cloneFrameVtable(
+		autoSupportDraw.vir, autoSupportMouseDown.vir,
+		autoSupportMouseUp.vir, autoSupportDestructor.vir
+	);
+	const ensureAutoSupport = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildEnsureController(
+			state.vir, AutoCombatUIStatic.StateAutoSupportWindow,
+			autoSupportVtable.vir, autoSupportVisual, 0x3F2, 88, 260
+		)
+	);
+	const controllerRedraw = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerRedrawBridge(
+			autoBattleVtable.vir, autoSupportVtable.vir
+		)
+	);
+	const controllerDirtyPhy = Exe.Vir2Phy(
+		AutoCombatUIStatic.UiUpdateSurfaceDirty, CODE
+	);
+	if (controllerDirtyPhy < 0)
+		throw Error("AutoCombatUI: UI dirty-clear instruction is not mapped");
+	Exe.SetJMP(controllerDirtyPhy, controllerRedraw.vir, 2);
+	const controllerBootstrap = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerBootstrap(
+			state.vir, openSender.vir, ensureAutoBattle.vir, ensureAutoSupport.vir
+		)
+	);
+	Exe.SetCALL(verified.controllerBootstrapPhy, controllerBootstrap.vir, 0);
 	const toggle = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildToggle(state.vir, vtable.vir, openSender.vir)
+		AutoCombatUIStatic.buildToggle(
+			state.vir, vtable.vir, openSender.vir,
+			[ensureAutoBattle.vir, ensureAutoSupport.vir]
+		)
 	);
 
 	$$(_, 5, "Register /autohunt directly to the static UI cave");
@@ -1891,6 +2921,7 @@ AutoCombatUI = function(_)
 			vtableVir: vtable.vir,
 			drawVir: draw.vir,
 			mouseDownVir: mouseDown.vir,
+			mouseUpVir: mouseUp.vir,
 			toggleVir: toggle.vir,
 			openSenderVir: openSender.vir,
 			scalarSenderVir: scalarSender.vir,
@@ -1899,7 +2930,10 @@ AutoCombatUI = function(_)
 			clientPacketId: AutoCombatUIStatic.ClientPacketId,
 			serverPacketId: AutoCombatUIStatic.ServerPacketId,
 			externalModules: 0,
-			serverBehavior: "snapshot-open-set-scalar",
+			serverBehavior: "snapshot-open-set-scalar-native-delay-input",
+			controllerSize: AutoCombatUIStatic.ControllerSize,
+			controllerBootstrapVir: controllerBootstrap.vir,
+			controllerAnimation: "native-str-baked-frames",
 			persistence: true
 		});
 	}

@@ -13,31 +13,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-where py >nul 2>&1
-if not errorlevel 1 (
-    echo [bridge-iat] Auditing static bridge IAT operands...
-    call :audit_bridges py -3
-    if errorlevel 1 exit /b 1
-    goto :done
-)
 
-where python >nul 2>&1
-if errorlevel 1 (
-    echo [bridge-iat] FAILED: Python was not found.
-    exit /b 1
-)
-
-echo [bridge-iat] Auditing static bridge IAT operands...
-call :audit_bridges python
-if errorlevel 1 exit /b 1
-
-:done
 echo [done] %TARGET%
 endlocal
-exit /b 0
-
-:audit_bridges
-echo [bridge-iat] bohcustoms.dll
-%* tools\fix_custom_bridge_iats.py "%TARGET%" --dll "bohcustoms.dll" --write
-if errorlevel 1 exit /b 1
 exit /b 0

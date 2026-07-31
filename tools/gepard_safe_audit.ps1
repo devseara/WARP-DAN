@@ -36,7 +36,6 @@ foreach ($patch in $bannedPatches) {
 
 $bannedDllNames = @(
     "boh.dll",
-    "bohcustoms.dll",
     "boh_weapon_sprite.dll"
 )
 
@@ -51,14 +50,12 @@ $safeSources = @(
     "Scripts/Patches/AlwaysShowNpcName.qjs",
     "Scripts/Patches/CustomExtName.qjs",
     "Scripts/Patches/CustomColoredItemName.qjs",
-    "Scripts/Patches/ImageBasedInventoryTabs.qjs",
+    "Scripts/Patches/ROGlobalZeroInventory.qjs",
     "Scripts/Patches/FpsOverlay.qjs",
     "Scripts/Patches/PingOverlay.qjs",
-    "Scripts/Patches/CustomRuneSystem.qjs",
-    "CustomDLL/src/npc_name_overlay/npc_name_overlay.cpp",
-    "CustomDLL/src/pincode_ui/pincode_ui.cpp",
-    "CustomDLL/src/customer_features.h",
-    "CustomDLL/src/boh_features.h"
+    "Scripts/Patches/InGamePincodeUI.qjs",
+    "Scripts/Patches/AutoCombatUI.qjs",
+    "Scripts/Patches/CustomRuneSystem.qjs"
 )
 
 $bannedSourcePattern = "WriteProcessMemory|CreateRemoteThread|SetWindowsHook"
@@ -79,11 +76,6 @@ foreach ($source in $safeSources) {
 }
 
 $allowedDlls = @(
-    "boh_npc_names.dll",
-    "boh_pincode_ui.dll",
-    "boh_text.dll",
-    "boh_inventory_tabs.dll",
-    "boh_fps.dll",
     "boh_rune.dll"
 )
 

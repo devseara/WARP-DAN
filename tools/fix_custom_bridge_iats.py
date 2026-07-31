@@ -26,8 +26,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("exe", type=Path, help="Patched 32-bit client EXE to repair")
     parser.add_argument(
         "--dll",
-        default="bohcustoms.dll",
-        help="Custom DLL import descriptor to use (default: bohcustoms.dll)",
+        required=True,
+        help="Custom DLL import descriptor to inspect or repair",
     )
     parser.add_argument(
         "--write",

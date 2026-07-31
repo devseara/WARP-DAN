@@ -18,11 +18,11 @@ PIN packet handlers.
    client update thread.
 3. The handler writes the stock PIN globals and reproduces the character-select
    resource/window creation path for window `0xC7` or `0xC8`.
-4. Each patch builds a complete magic-gated `0x0BEF` router in memory it owns.
-   If the peer patch is selected, its cached handler address is copied into the
-   new router before the dispatcher entry is committed. The final registrar
-   therefore owns both handler cells; unknown traffic returns to the original
-   stock target without cross-patch writes, a recv hook, or a runtime DLL.
+4. Both patches write the complete magic-gated `0x0BEF` router under the same
+   WARP global tag, `AutoHuntPincode.Packet0BEF.Router.Global.v1`. This gives
+   the router and both handler cells one shared binary owner regardless of
+   profile order. Unknown traffic returns to the original stock target without
+   a recv hook or runtime DLL.
 5. It also reproduces the scene's post-create events where required:
    - mode `3` dispatches type `6`, id `0x124` to C7, advancing the window into
      its old/new/confirm change phase; that phase submits `0x08BE` directly
@@ -43,17 +43,36 @@ transition, keeping the player on the map.
 ## AHUI/PINC Coexistence Verification
 
 On 2026-07-31, WARP generated clients in both profile selection orders. Static
-PE inspection of each output proved that dispatcher entry `0x00CAD0D0` points to
-one self-contained router with all three nonzero/valid destinations:
+PE inspection of the current main-profile output proved that dispatcher entry
+`0x00CAD0D0` points to one self-contained router with all three nonzero/valid
+destinations:
 
-- exact `AHUI` magic routes to `0x01AD17F0`;
-- exact `PINC` magic routes to `0x01ACF530`;
+- exact `AHUI` magic routes to `0x01AD1B70`;
+- exact `PINC` magic routes to `0x01ACF540`;
 - unknown traffic returns to stock continuation `0x00C9E1DD`.
 
-The order matrix is a static wiring gate. Opening the stock PIN window and using
-both Skill pages remain separate live acceptance tests.
+The router's AHUI, PINC, and fallback cells are part of the shared global tag.
+This closes the earlier failure where the later patch retained the dispatcher
+but WARP discarded the other patch's handler-cell write, leaving AHUI snapshots
+unroutable and making AutoCombatUI display its Phase 1 fallback profile.
 
+The order matrix is a static wiring gate. The user then live-validated the stock
+PIN window in-game on 2026-07-31 while the AutoHunt patch was selected. PINC is
+therefore accepted for this client; each regenerated AutoHunt EXE should still
+repeat PIN open/use as a coexistence regression gate.
 
+## In-map Cancel guard
+
+The stock event `type=6, id=0x00B9` branch normally transitions through the
+character-select scene owner at `0x0121333C`. That owner is not valid while the
+same stock PIN window is hosted over the map scene, which caused a logless
+access violation when Cancel was clicked.
+
+The QJS patch detours the stock event-handler entry at `0x008C91D0`. Only while
+an in-map PIN session is active, the exact Cancel event closes windows C7/C8,
+clears the PIN mode flags, and returns with the original callee-clean event ABI.
+All other events and every character-select invocation replay the original five
+prologue bytes and continue at `0x008C91D5`.
 ## Why the 0x08B9 Handler Is Not Called Directly
 
 The real stock `0x08B9` handler is at `0x00D221E0`; the older research address

@@ -54,7 +54,7 @@ CustomUI:
             title : AutoCombat UI (/autohunt)
             recommend : no
             author : Louis T Steinhil
-            desc : Adds a QJS-only client-native AutoCombat settings UI modeled after the supplied RO Global AutoHunt interface. /autohunt creates a draggable 470x346 UIFrameWnd with Basic, Monster, Skill (3 pages), Potion (2 pages), Looting (2 pages), Move, and Item tabs. The window loads the supplied AutoHunt BMPs through the client texture manager, sends 0x0BF8/AHUI OPEN/SET_SCALAR packets, receives AHUI snapshots multiplexed through 0x0BEF, calls no DLL, persists scalar changes on the server, and keeps combat behavior server-authoritative.
+            desc : Adds a QJS-only client-native AutoCombat settings UI modeled after the supplied RO Global AutoHunt interface. Persistent draggable AutoCombat and AutoSupport controls are created by the normal in-game render pass; /autohunt only opens or closes the 470x346 UIFrameWnd with Basic, Monster, Skill (3 pages), Potion (2 pages), Looting (2 pages), Move, and Item tabs. Active controls play 30 baked frames reconstructed from every native blue-loop STR layer, while inactive controls use the native red composition. Skill delay boxes request the stock numeric input dialog; the map server validates and persists the entered seconds. The patch calls no DLL and keeps automation behavior server-authoritative.
 
         - ROGlobalZeroUITheme:
             title : RO Global Zero UI Theme Toggle

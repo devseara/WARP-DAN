@@ -207,10 +207,6 @@ inputs:
             - type: 2
               value: 3
 
-    $fpsOverlayDLLName:
-        data: '626f68637573746f6d732e646c6c00'
-        display: "bohcustoms.dll"
-        type: 10
 
     $newOngQInfoList:
         data: '73797374656d454e5c4f6e676f696e675175657374735f454e00'

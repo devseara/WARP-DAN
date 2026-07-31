@@ -10,10 +10,16 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
   - QJS-only fixed state owns at most 256 `(GID, balloon, retry-frame)` entries and calls the native factory/setup/projection pipeline.
   - No NPC-name DLL import, runtime patch API, networking hook, or heap container is used.
 - `InGamePincodeUI.qjs`
-  - Static dispatcher-table route for `0x0BEF/PINC`.
-  - Loads `boh_pincode_ui.dll` by normal startup import.
-  - DLL creates its own Win32 keypad UI and calls WARP-provided packet sender stubs.
-  - No `ws2_32.recv`, no runtime EXE patching, no IAT/vtable/prologue patching.
+  - Static dispatcher-table route for `0x0BEF/PINC` shared safely with AHUI.
+  - QJS-emitted client-native UI and packet-sender caves preserve the stock
+    PIN flow, including Cancel, without a startup DLL.
+  - No `ws2_32.recv`, runtime patcher, custom UI DLL, or API detour is used.
+- `AutoCombatUI.qjs`
+  - QJS-only `/autohunt` window and draggable AutoCombat/AutoSupport controls.
+  - Uses the supplied red and blue textures through the native texture manager;
+    no STR runtime DLL or client-side combat logic is loaded.
+  - AHUI requests use the shared static `0x0BEF` dispatcher route and remain
+    server-authoritative.
 - `CustomExtName.qjs` / `CustomPlayerNameColor.qjs`
   - Static dispatcher-table route for the `0x0BB7/EXTN` ring.
   - A QJS-only frame cave drains into a bounded exact-text map; WARP-time GDI
@@ -63,8 +69,8 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
 - [x] QJS-only name, item-color, overlay, PIN, and inventory patches require
       no custom DLL. Deploy `boh_rune.dll` only when explicitly selecting
       `CustomRuneSystem`.
-- [x] Do not use `boh.dll` / `bohcustoms.dll` for Gepard unless a separate
-      combined build is audited with all runtime-hook features disabled.
+- [x] The retired combined BOH runtime DLL is neither selected nor imported;
+      the main-profile build no longer runs its obsolete bridge-IAT repair.
 - [x] Keep the dual-wield / weapon sprite patch out of strict profiles.
 - [x] Run `tools/gepard_safe_audit.ps1` before packaging.
 - [ ] Seal custom combined DLL builds with `CustomDLL/seal_dll.py` and keep the
