@@ -45,50 +45,89 @@ InGamePincodeUI = function(_)
 	const entryPhy = Exe.Vir2Phy(entryVir, CODE);
 	if (entryPhy < 0)
 		throw Error("InGamePincodeUI: could not resolve map packet dispatcher entry");
+	InGamePincodeUI.beginSharedPacketRoute(_);
 	const route = InGamePincodeUI.ensureSharedPacketRoute(entryVir, entryPhy, c);
-
-	const stateKey = "InGamePincodeUI.State.StockUi.v7";
 	if (Exe.GetUint32(entryPhy) !== route.routerVir)
 		Exe.SetUint32(entryPhy, route.routerVir);
+	InGamePincodeUI.endSharedPacketRoute(_);
+
+	const stateKey = "InGamePincodeUI.State.StockUi.v8";
 
 	$$(_, 2, `Allocate native PIN bridge state`);
-	const [retryPhy, retryVir] = Exe.Allocate(8, 4);
+	const [retryPhy, retryVir] = Exe.Allocate(12, 4);
 	const traceVir = retryVir + 4;
+	const activeVir = retryVir + 8;
 	Exe.SetUint32(retryPhy, 0);
 	Exe.SetUint32(retryPhy + 4, 0);
+	Exe.SetUint32(retryPhy + 8, 0);
 
 	$$(_, 3, `Allocate stock PIN window dispatcher`);
 	let stubBytes = InGamePincodeUI.makeMainStub(
-		0, retryVir, traceVir, route, c
+		0, retryVir, traceVir, activeVir, route, c
 	);
 	const [stubPhy, stubVir] = Exe.Allocate(stubBytes.length, 0x10);
 	stubBytes = InGamePincodeUI.makeMainStub(
-		stubVir, retryVir, traceVir, route, c
+		stubVir, retryVir, traceVir, activeVir, route, c
 	);
 	Exe.SetHex(stubPhy, InGamePincodeUI.bytesToHex(stubBytes));
 	const ahuiState = CACHE.get("AutoCombatUI.SnapshotReceiver.v8");
+	const ahuiHandlerCellPhy = route.ahuiHandlerCellPhy;
+	const pincodeHandlerCellPhy = route.pincodeHandlerCellPhy;
+	if (!Number.isInteger(ahuiHandlerCellPhy) || !Number.isInteger(pincodeHandlerCellPhy))
+		throw Error("InGamePincodeUI: shared 0x0BEF router cells are unavailable");
+	InGamePincodeUI.beginSharedPacketRoute(_);
 	if (ahuiState && ahuiState.entryVir === entryVir)
-		Exe.SetUint32(route.ahuiHandlerCellPhy, ahuiState.handlerVir);
-	Exe.SetUint32(route.pincodeHandlerCellPhy, stubVir);
+		Exe.SetUint32(ahuiHandlerCellPhy, ahuiState.handlerVir);
+	Exe.SetUint32(pincodeHandlerCellPhy, stubVir);
+	InGamePincodeUI.endSharedPacketRoute(_);
+
+
+	$$(_, 3.1, `Guard the stock PIN Cancel callback on the map scene`);
+	let cancelBytes = InGamePincodeUI.makeCancelHook(0, activeVir, c);
+	const [cancelPhy, cancelVir] = Exe.Allocate(cancelBytes.length, 0x10);
+	cancelBytes = InGamePincodeUI.makeCancelHook(cancelVir, activeVir, c);
+	Exe.SetHex(cancelPhy, InGamePincodeUI.bytesToHex(cancelBytes));
+	const eventHandlerPhy = Exe.Vir2Phy(c.EventHandlerVir, CODE);
+	if (eventHandlerPhy < 0)
+		throw Error("InGamePincodeUI: stock PIN event handler is not mapped");
+	Exe.SetJMP(eventHandlerPhy, cancelVir, 0);
 
 	$$(_, 4, `Register BOH PIN trigger with the shared packet router`);
+	InGamePincodeUI.beginSharedPacketRoute(_);
 	if (Exe.GetUint32(entryPhy) !== route.routerVir)
 		Exe.SetUint32(entryPhy, route.routerVir);
+	InGamePincodeUI.endSharedPacketRoute(_);
 
 	CACHE.put(stateKey, {
-		version: 7,
+		version: 8,
 		packetId: c.PacketId,
 		entryVir,
 		handlerVir: stubVir,
 		continueVir: route.fallbackVir,
 		retryVir,
 		traceVir,
+		activeVir,
+		cancelVir,
 		routerVir: route.routerVir
 	});
 
 	return true;
 };
 
+InGamePincodeUI.SharedPacketRouteGlobalKey = "AutoHuntPincode.Packet0BEF.Router.Global.v1";
+
+InGamePincodeUI.beginSharedPacketRoute = function(patchName)
+{
+	CACHE.addUser(InGamePincodeUI.SharedPacketRouteGlobalKey, patchName);
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag(InGamePincodeUI.SharedPacketRouteGlobalKey));
+};
+
+InGamePincodeUI.endSharedPacketRoute = function(patchName)
+{
+	Exe.EndTag();
+	Exe.ActivePatch = patchName;
+};
 InGamePincodeUI.Constants = {
 	PacketId: 0x0BEF,
 	PacketMinLen: 18,
@@ -121,7 +160,9 @@ InGamePincodeUI.Constants = {
 
 	SecondPasswordInputWindow: 0x00C7,
 	SecondPasswordEditWindow: 0x00C8,
-	MessageStyleVir: 0x00FDA1A0
+	MessageStyleVir: 0x00FDA1A0,
+	EventHandlerVir: 0x008C91D0,
+	CancelEventId: 0x00B9
 };
 
 InGamePincodeUI.makeAssembler = function()
@@ -196,7 +237,7 @@ InGamePincodeUI.makeAssembler = function()
 };
 
 InGamePincodeUI.makeMainStub = function(
-	stubVir, retryVir, traceVir, route, c
+	stubVir, retryVir, traceVir, activeVir, route, c
 )
 {
 	const a = InGamePincodeUI.makeAssembler();
@@ -237,6 +278,7 @@ InGamePincodeUI.makeMainStub = function(
 	function openState(mode, flag, windowId, windowPtrVir, postEventIds)
 	{
 		a.call("close_pin_windows");
+		setDword(activeVir, 1);
 		setDword(c.PinModeVir, mode);
 		setByte(c.PinUiFlagVir, flag);
 		setDword(retryVir, 0);
@@ -281,6 +323,7 @@ InGamePincodeUI.makeMainStub = function(
 
 	a.label("state_ok");
 	a.call("close_pin_windows");
+	setDword(activeVir, 0);
 	setDword(c.PinModeVir, 0);
 	setDword(retryVir, 0);
 	a.jmp("done");
@@ -315,6 +358,7 @@ InGamePincodeUI.makeMainStub = function(
 
 	a.label("state_passed");
 	a.call("close_pin_windows");
+	setDword(activeVir, 0);
 	setDword(c.PinModeVir, 1);
 	setDword(retryVir, 0);
 	a.jmp("done");
@@ -334,6 +378,7 @@ InGamePincodeUI.makeMainStub = function(
 	a.jmp("done");
 
 	a.label("wrong_limit");
+	setDword(activeVir, 0);
 	setDword(c.PinModeVir, 0);
 	pushDword(0x0773);
 	a.call("show_message_id");
@@ -453,6 +498,37 @@ InGamePincodeUI.makeMainStub = function(
 	return a.finish(stubVir);
 };
 
+InGamePincodeUI.makeCancelHook = function(hookVir, activeVir, c)
+{
+	const a = InGamePincodeUI.makeAssembler();
+	a.emit(0x83, 0x3D); a.dword(activeVir); a.emit(0x00);
+	a.jcc(0x84, "stock");
+	a.emit(0x83, 0x7C, 0x24, 0x08, 0x06);
+	a.jcc(0x85, "stock");
+	a.emit(0x81, 0x7C, 0x24, 0x0C); a.dword(c.CancelEventId);
+	a.jcc(0x85, "stock");
+
+	// The stock B9 branch transitions the character-select scene through
+	// [0121333C]. That owner is invalid while the PIN window is hosted by the
+	// map scene. Close only the two native PIN windows and return from the
+	// event callback using its original thiscall callee-clean contract.
+	a.emit(0x68); a.dword(c.SecondPasswordInputWindow);
+	a.emit(0xB9); a.dword(c.UiManagerVir);
+	a.call(c.CloseWindowVir);
+	a.emit(0x68); a.dword(c.SecondPasswordEditWindow);
+	a.emit(0xB9); a.dword(c.UiManagerVir);
+	a.call(c.CloseWindowVir);
+	a.emit(0xC7, 0x05); a.dword(activeVir); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(c.PinModeVir); a.dword(0);
+	a.emit(0xC6, 0x05); a.dword(c.PinUiFlagVir); a.emit(0);
+	a.emit(0x33, 0xC0, 0xC2, 0x18, 0x00);
+
+	a.label("stock");
+	a.emit(0x55, 0x8B, 0xEC, 0x6A, 0xFF);
+	a.jmp(c.EventHandlerVir + 5);
+	return a.finish(hookVir);
+};
+
 InGamePincodeUI.expectDword = function(vir, expected, label)
 {
 	const phy = Exe.Vir2Phy(vir);
@@ -470,6 +546,7 @@ InGamePincodeUI.validateClient = function(c)
 	InGamePincodeUI.expectDword(0x00D221E0, 0x6AEC8B55, "stock 0x08B9 handler");
 	InGamePincodeUI.expectDword(0x00D25333, 0x5FFA80A1, "character-select PIN mode dispatch");
 	InGamePincodeUI.expectDword(0x01035498, 0x008C91D0, "UISecondPasswordInputWnd event vtable");
+	InGamePincodeUI.expectDword(c.EventHandlerVir, 0x6AEC8B55, "stock PIN event handler");
 	InGamePincodeUI.expectDword(c.GetResourceManagerVir, 0x6AEC8B55, "resource manager accessor");
 	InGamePincodeUI.expectDword(c.LookupResourceVir, 0x6AEC8B55, "UI resource lookup");
 	InGamePincodeUI.expectDword(c.ResolveResourceVir, 0x6AEC8B55, "UI resource resolver");
@@ -534,6 +611,15 @@ InGamePincodeUI.ensureSharedPacketRoute = function(entryVir, entryPhy, c)
 		if (Exe.GetUint32(entryPhy) !== cached.routerVir)
 			Exe.SetUint32(entryPhy, cached.routerVir);
 		return cached;
+	}
+
+	const peerRoute = CACHE.get("AutoCombatUI.Packet0BEF.Router.v2");
+	if (peerRoute && peerRoute.entryVir === entryVir)
+	{
+		if (Exe.GetUint32(entryPhy) !== peerRoute.routerVir)
+			Exe.SetUint32(entryPhy, peerRoute.routerVir);
+		CACHE.put(key, peerRoute);
+		return peerRoute;
 	}
 
 	const current = Exe.GetUint32(entryPhy);
