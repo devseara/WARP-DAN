@@ -18,22 +18,41 @@ PIN packet handlers.
    client update thread.
 3. The handler writes the stock PIN globals and reproduces the character-select
    resource/window creation path for window `0xC7` or `0xC8`.
-4. It also reproduces the scene's post-create events where required:
+4. Each patch builds a complete magic-gated `0x0BEF` router in memory it owns.
+   If the peer patch is selected, its cached handler address is copied into the
+   new router before the dispatcher entry is committed. The final registrar
+   therefore owns both handler cells; unknown traffic returns to the original
+   stock target without cross-patch writes, a recv hook, or a runtime DLL.
+5. It also reproduces the scene's post-create events where required:
    - mode `3` dispatches type `6`, id `0x124` to C7, advancing the window into
      its old/new/confirm change phase; that phase submits `0x08BE` directly
    - mode `4` dispatches ids `0x124` and `0xB8` to C8 for first-time setup
-5. The original `UISecondPasswordInputWnd` handles mouse input and sends its
+6. The original `UISecondPasswordInputWnd` handles mouse input and sends its
    native replies through the currently active map connection:
    - `0x08B8`: check existing PIN
    - `0x08BA`: set new PIN
    - `0x08BE`: change PIN
    - `0x08C5`: request/reopen PIN window
-6. BanquetOfHeroes validates the replies and persists set/change operations
+7. BanquetOfHeroes validates the replies and persists set/change operations
    through char-server.
 
 The QJS path handles stock states `0..8`. On the third wrong attempt it shows
 the stock attempt-limit message but deliberately omits the character-select
 transition, keeping the player on the map.
+
+## AHUI/PINC Coexistence Verification
+
+On 2026-07-31, WARP generated clients in both profile selection orders. Static
+PE inspection of each output proved that dispatcher entry `0x00CAD0D0` points to
+one self-contained router with all three nonzero/valid destinations:
+
+- exact `AHUI` magic routes to `0x01AD17F0`;
+- exact `PINC` magic routes to `0x01ACF530`;
+- unknown traffic returns to stock continuation `0x00C9E1DD`.
+
+The order matrix is a static wiring gate. Opening the stock PIN window and using
+both Skill pages remain separate live acceptance tests.
+
 
 ## Why the 0x08B9 Handler Is Not Called Directly
 

@@ -22,6 +22,7 @@
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-06-21                                             *
 *                                                                          *
+*   Last Modified : 2026-07-31                                             *
 *   Description   : Opens the 2025-07-16 client's original character-      *
 *                   select PIN windows over the active in-game scene. BOH  *
 *                   map packet 0x0BEF/PINC is handled on the main client   *
@@ -44,31 +45,11 @@ InGamePincodeUI = function(_)
 	const entryPhy = Exe.Vir2Phy(entryVir, CODE);
 	if (entryPhy < 0)
 		throw Error("InGamePincodeUI: could not resolve map packet dispatcher entry");
+	const route = InGamePincodeUI.ensureSharedPacketRoute(entryVir, entryPhy, c);
 
-	const stateKey = "InGamePincodeUI.State.StockUi.v5";
-	const state = CACHE.get(stateKey);
-	const previousStockState = CACHE.get("InGamePincodeUI.State.StockUi.v4");
-	const olderStockState = CACHE.get("InGamePincodeUI.State.StockUi.v3");
-	const oldestStockState = CACHE.get("InGamePincodeUI.State.StockUi.v2");
-	const legacyDllState = CACHE.get("InGamePincodeUI.State.CustomDll.v1");
-	const legacyState = CACHE.get("InGamePincodeUI.State");
-	const current = Exe.GetUint32(entryPhy);
-
-	if (state && state.entryVir === entryVir && current === state.handlerVir)
-	{
-		$$(_, 1.1, `Native in-game PIN bridge already installed`);
-		return true;
-	}
-
-	const ownsCurrent =
-		(state && state.handlerVir === current) ||
-		(previousStockState && previousStockState.handlerVir === current) ||
-		(olderStockState && olderStockState.handlerVir === current) ||
-		(oldestStockState && oldestStockState.handlerVir === current) ||
-		(legacyDllState && legacyDllState.handlerVir === current) ||
-		(legacyState && legacyState.handlerVir === current);
-	if (current !== c.DefaultHandlerVir && !ownsCurrent)
-		throw Error(`InGamePincodeUI: packet 0x${c.PacketId.toString(16).toUpperCase()} dispatcher entry is ${current.toHex(true)}, expected ${c.DefaultHandlerVir.toHex(true)}`);
+	const stateKey = "InGamePincodeUI.State.StockUi.v7";
+	if (Exe.GetUint32(entryPhy) !== route.routerVir)
+		Exe.SetUint32(entryPhy, route.routerVir);
 
 	$$(_, 2, `Allocate native PIN bridge state`);
 	const [retryPhy, retryVir] = Exe.Allocate(8, 4);
@@ -77,23 +58,32 @@ InGamePincodeUI = function(_)
 	Exe.SetUint32(retryPhy + 4, 0);
 
 	$$(_, 3, `Allocate stock PIN window dispatcher`);
-	let stubBytes = InGamePincodeUI.makeMainStub(0, retryVir, traceVir, c);
+	let stubBytes = InGamePincodeUI.makeMainStub(
+		0, retryVir, traceVir, route, c
+	);
 	const [stubPhy, stubVir] = Exe.Allocate(stubBytes.length, 0x10);
-	stubBytes = InGamePincodeUI.makeMainStub(stubVir, retryVir, traceVir, c);
+	stubBytes = InGamePincodeUI.makeMainStub(
+		stubVir, retryVir, traceVir, route, c
+	);
 	Exe.SetHex(stubPhy, InGamePincodeUI.bytesToHex(stubBytes));
+	const ahuiState = CACHE.get("AutoCombatUI.SnapshotReceiver.v8");
+	if (ahuiState && ahuiState.entryVir === entryVir)
+		Exe.SetUint32(route.ahuiHandlerCellPhy, ahuiState.handlerVir);
+	Exe.SetUint32(route.pincodeHandlerCellPhy, stubVir);
 
-	$$(_, 4, `Route BOH PIN trigger to stock client UI`);
-	if (Exe.GetUint32(entryPhy) !== current)
-		throw Error("InGamePincodeUI: dispatcher entry changed while applying patch");
-	Exe.SetUint32(entryPhy, stubVir);
+	$$(_, 4, `Register BOH PIN trigger with the shared packet router`);
+	if (Exe.GetUint32(entryPhy) !== route.routerVir)
+		Exe.SetUint32(entryPhy, route.routerVir);
 
 	CACHE.put(stateKey, {
-		version: 5,
+		version: 7,
 		packetId: c.PacketId,
 		entryVir,
 		handlerVir: stubVir,
+		continueVir: route.fallbackVir,
 		retryVir,
-		traceVir
+		traceVir,
+		routerVir: route.routerVir
 	});
 
 	return true;
@@ -103,6 +93,7 @@ InGamePincodeUI.Constants = {
 	PacketId: 0x0BEF,
 	PacketMinLen: 18,
 	PacketMagic: 0x434E4950,
+	AhuiMagic: 0x49554841,
 	PacketBufferVir: 0x015E8198,
 	SwitchTableVir: 0x00CAA2E0,
 	DefaultHandlerVir: 0x00CAA2B7,
@@ -204,7 +195,9 @@ InGamePincodeUI.makeAssembler = function()
 	};
 };
 
-InGamePincodeUI.makeMainStub = function(stubVir, retryVir, traceVir, c)
+InGamePincodeUI.makeMainStub = function(
+	stubVir, retryVir, traceVir, route, c
+)
 {
 	const a = InGamePincodeUI.makeAssembler();
 
@@ -259,11 +252,11 @@ InGamePincodeUI.makeMainStub = function(stubVir, retryVir, traceVir, c)
 	a.emit(0x9C, 0x60);                         // PUSHFD / PUSHAD
 	a.emit(0xBE); a.dword(c.PacketBufferVir);   // MOV ESI, packet buffer
 	a.emit(0x66, 0x81, 0x3E); a.word(c.PacketId);
-	a.jcc(0x85, "done");                       // JNE
+	a.jcc(0x85, "fallback");                   // JNE
 	a.emit(0x66, 0x83, 0x7E, 0x02, c.PacketMinLen);
-	a.jcc(0x82, "done");                       // JB
+	a.jcc(0x82, "fallback");                   // JB
 	a.emit(0x81, 0x7E, 0x04); a.dword(c.PacketMagic);
-	a.jcc(0x85, "done");                       // JNE
+	a.jcc(0x85, "fallback");                   // JNE
 
 	a.emit(0x0F, 0xB7, 0x46, 0x10);            // MOVZX EAX,word [ESI+16]
 	a.emit(0x83, 0xF8, 0x08);                  // CMP EAX,8
@@ -352,6 +345,11 @@ InGamePincodeUI.makeMainStub = function(stubVir, retryVir, traceVir, c)
 	a.emit(0xFF, 0xE0);                        // JMP EAX
 
 	// void __stdcall close_pin_windows()
+	a.label("fallback");
+	a.emit(0x61, 0x9D);                        // POPAD / POPFD
+	a.emit(0xA1); a.dword(route.fallbackCellVir);
+	a.emit(0xFF, 0xE0);                        // JMP EAX
+
 	a.label("close_pin_windows");
 	pushDword(c.SecondPasswordInputWindow);
 	a.emit(0xB9); a.dword(c.UiManagerVir);
@@ -489,6 +487,90 @@ InGamePincodeUI.tableEntryVir = function(switchTableVir, packetId)
 {
 	return switchTableVir + (packetId - 0x73) * 4;
 };
+InGamePincodeUI.makeSharedPacketRouter = function(route, c)
+{
+	const a = InGamePincodeUI.makeAssembler();
+	a.emit(0x9C, 0x60);
+	a.emit(0xBE); a.dword(c.PacketBufferVir);
+	a.emit(0x66, 0x81, 0x3E); a.word(c.PacketId);
+	a.jcc(0x85, "fallback");
+	a.emit(0x66, 0x83, 0x7E, 0x02, 0x08);
+	a.jcc(0x82, "fallback");
+	a.emit(0x81, 0x7E, 0x04); a.dword(c.AhuiMagic);
+	a.jcc(0x84, "route_ahui");
+	a.emit(0x81, 0x7E, 0x04); a.dword(c.PacketMagic);
+	a.jcc(0x84, "route_pincode");
+	a.jmp("fallback");
+
+	a.label("route_ahui");
+	a.emit(0xA1); a.dword(route.ahuiHandlerCellVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.ahuiHandlerCellVir);
+	a.emit(0xFF, 0xE0);
+
+	a.label("route_pincode");
+	a.emit(0xA1); a.dword(route.pincodeHandlerCellVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.pincodeHandlerCellVir);
+	a.emit(0xFF, 0xE0);
+
+	a.label("fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.fallbackCellVir);
+	a.emit(0xFF, 0xE0);
+	return a;
+};
+
+InGamePincodeUI.ensureSharedPacketRoute = function(entryVir, entryPhy, c)
+{
+	const key = "InGamePincodeUI.Packet0BEF.Router.v2";
+	const cached = CACHE.get(key);
+	if (cached && cached.entryVir === entryVir)
+	{
+		if (Exe.GetUint32(entryPhy) !== cached.routerVir)
+			Exe.SetUint32(entryPhy, cached.routerVir);
+		return cached;
+	}
+
+	const current = Exe.GetUint32(entryPhy);
+	let fallbackVir = current;
+	if (current === c.DefaultHandlerVir)
+		fallbackVir = c.MainLoopReturnVir;
+	else if (Exe.Vir2Phy(current, CODE) < 0)
+		throw Error(
+			`InGamePincodeUI: shared 0x0BEF fallback ${current.toHex(true)} is not executable`
+		);
+
+	const [dataPhy, dataVir] = Exe.Allocate(12, 4);
+	const route = {
+		entryVir,
+		ahuiHandlerCellPhy: dataPhy,
+		ahuiHandlerCellVir: dataVir,
+		pincodeHandlerCellPhy: dataPhy + 4,
+		pincodeHandlerCellVir: dataVir + 4,
+		fallbackCellPhy: dataPhy + 8,
+		fallbackCellVir: dataVir + 8,
+		fallbackVir
+	};
+	Exe.SetUint32(route.ahuiHandlerCellPhy, 0);
+	Exe.SetUint32(route.pincodeHandlerCellPhy, 0);
+	Exe.SetUint32(route.fallbackCellPhy, fallbackVir);
+	let routerBytes = InGamePincodeUI.makeSharedPacketRouter(route, c);
+	const [routerPhy, routerVir] = Exe.Allocate(routerBytes.bytes.length, 0x10);
+	Exe.SetHex(routerPhy, InGamePincodeUI.bytesToHex(routerBytes.finish(routerVir)));
+	route.routerPhy = routerPhy;
+	route.routerVir = routerVir;
+	if (Exe.GetUint32(entryPhy) !== current)
+		throw Error("InGamePincodeUI: dispatcher entry changed while installing shared router");
+	Exe.SetUint32(entryPhy, route.routerVir);
+	CACHE.put(key, route);
+	return route;
+};
+
 
 InGamePincodeUI.validate = function()
 {
