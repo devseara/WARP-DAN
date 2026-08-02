@@ -23,7 +23,7 @@
 *                                                                          *
 *   Author(s)     : CH.C (jchcc), Neo-Mind                                 *
 *   Created Date  : 2021-01-14                                             *
-*   Last Modified : 2023-08-26                                             *
+*   Last Modified : 2026-08-02                                             *
 *                                                                          *
 \**************************************************************************/
 
@@ -348,16 +348,19 @@ NewButtonVis = function(_)
 		varName = '$newHiddenButtons';
 		title = "Hide Buttons";
 		suffix = "hidden";
-		btnChoices = Refs.Visible;
+		btnChoices = Refs.Visible.slice();
 	}
 	else //Show New Buttons
 	{
 		varName = '$newShownButtons';
 		title = "Show Buttons";
 		suffix = "shown";
-		btnChoices = Refs.Hidden;
+		btnChoices = Refs.Hidden.slice();
 	}
 
+	const autoHuntBridge = CACHE.get('AutoCombatUI.MenuButton.v1');
+	if (autoHuntBridge && Number.isInteger(autoHuntBridge.visiblePhy))
+		btnChoices.push(autoHuntBridge.label || 'Auto Hunt');
 	$$(_, 4.2, `Retrieve the user's selection`)
 	const selection = Exe.GetUserInput(varName, D_MultiChoice, title, "Choose the buttons to be " + suffix, [], {choices: btnChoices});
 	if (selection === false || selection.isEmpty())
@@ -391,6 +394,10 @@ NewButtonVis.stage = function(patchName)
 	const Refs = CACHE.get('NBV_Refs');
 
 	const {Type, IDMap, IDReg, TblAddrs} = Refs;
+	const autoHuntBridge = CACHE.get('AutoCombatUI.MenuButton.v1');
+	const autoHuntLabel = autoHuntBridge && autoHuntBridge.label
+		? autoHuntBridge.label
+		: 'Auto Hunt';
 
 	$$(_, 2.2, `Iterate through the current selection and change the value in table or add corresponding JE to code`)
 	const index = this.Members.indexOf(patchName);
@@ -399,6 +406,12 @@ NewButtonVis.stage = function(patchName)
 	let prefix = '';
 	for (const key of selection)
 	{
+		if (key === autoHuntLabel && autoHuntBridge &&
+			Number.isInteger(autoHuntBridge.visiblePhy))
+		{
+			Exe.SetUint32(autoHuntBridge.visiblePhy, index);
+			continue;
+		}
 		if (TblAddrs && TblAddrs.has(key))
 		{
 			Exe.SetInt8(TblAddrs.get(key), index);
@@ -426,6 +439,12 @@ NewButtonVis.stage = function(patchName)
 	{
 		for (const key of selection)
 		{
+			if (key === autoHuntLabel && autoHuntBridge &&
+				Number.isInteger(autoHuntBridge.visiblePhy))
+			{
+				Exe.SetUint32(autoHuntBridge.visiblePhy, otherIndex);
+				continue;
+			}
 			if (TblAddrs && TblAddrs.has(key))
 			{
 				Exe.SetInt8(TblAddrs.get(key), otherIndex);

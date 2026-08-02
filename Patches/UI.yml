@@ -51,10 +51,10 @@ CustomUI:
             desc : Adds a QJS-only ping counter at a customer-selected X/Y position. It captures the client's stock CZ_REQUEST_TIME2/ZC_NOTIFY_TIME application RTT after packet dispatch and uses the shared static renderer; no ICMP worker, recv hook or custom DLL is used.
 
         - AutoCombatUI:
-            title : AutoCombat UI (/autohunt)
+            title : AutoCombat UI
             recommend : no
             author : Louis T Steinhil
-            desc : Adds a QJS-only client-native AutoCombat settings UI modeled after the supplied RO Global AutoHunt interface. Persistent draggable AutoCombat and AutoSupport controls are created by the normal in-game render pass; /autohunt only opens or closes the 470x346 UIFrameWnd with Basic, Monster, Skill (3 pages), Potion (2 pages), Looting (2 pages), Move, and Item tabs. Active controls play 30 baked frames reconstructed from every native blue-loop STR layer, while inactive controls use the native red composition. Skill delay boxes request the stock numeric input dialog; the map server validates and persists the entered seconds. The patch calls no DLL and keeps automation behavior server-authoritative.
+            desc : Adds a QJS-only client-native AutoCombat settings UI modeled after the supplied RO Global AutoHunt interface. Persistent draggable AutoCombat and AutoSupport controls are created by the normal in-game render pass. RO Global Zero Renewal Menu adds a native Auto Hunt child button that opens or closes the 470x346 UIFrameWnd with Basic, Monster, Skill (3 pages), Potion (2 pages), Looting (2 pages), Move, and Item tabs. Active controls play 30 baked frames reconstructed from every native blue-loop STR layer, while inactive controls use the native red composition. Skill delay boxes request the stock numeric input dialog; the map server validates and persists the entered seconds. The patch calls no DLL and keeps automation behavior server-authoritative.
 
         - ROGlobalZeroUITheme:
             title : RO Global Zero UI Theme Toggle
@@ -90,7 +90,7 @@ CustomUI:
             title : RO Global Zero Renewal Menu
             recommend : no
             author : Louis T Steinhil
-            desc : Uses the shared RO Global Zero theme state to select the stock UIMenuIconWnd resources, geometry, layout, and hit testing for Classic UI or the uirenewal/menuicon bottom-right panel for New UI. Enabled native menu buttons compact into five columns. In New UI, naturally available Cash Shop, Gold PC Cafe, Roulette, and RO DEX notification windows form a native-size vertical stack below the minimap in that order, right-aligned to the minimap edge. Hidden or absent launchers consume no row and are never created or force-shown. Classic UI restores each captured native position and keeps server-driven visibility untouched. QJS-only.
+            desc : Uses the shared RO Global Zero theme state to select the stock UIMenuIconWnd resources, geometry, layout, and hit testing for Classic UI or the uirenewal/menuicon bottom-right panel for New UI. It appends a cloned native UIButton child for Auto Hunt and routes its mouse-up event directly to the AutoCombat settings toggle. Enabled controls compact into five columns. Complete 1-6-row New and Classic background textures are selected from the live visible count, so neither mode clips a taller source image. In New UI, naturally available Cash Shop, Gold PC Cafe, Roulette, and RO DEX notification windows form a native-size vertical stack below the minimap in that order, right-aligned to the minimap edge. Hidden or absent launchers consume no row and are never created or force-shown. Classic UI restores each captured native position and keeps server-driven visibility untouched. QJS-only.
 
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]

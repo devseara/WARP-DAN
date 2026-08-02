@@ -18,17 +18,17 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-19                                             *
-*   Last Modified : 2026-07-23                                             *
+*   Last Modified : 2026-08-03                                             *
 *                                                                          *
 *   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
-*                   Ragexe, redirects New UI textures to uirenewal/menuicon*
-*                   and compacts enabled stock controls into five columns. *
-*                   New UI also right-aligns naturally available Cash Shop,*
-*                   Gold PC Cafe, Roulette, and RO DEX windows in a compact *
-*                   vertical stack below the minimap. Hidden or absent      *
-*                   launchers consume no row and are never created or       *
-*                   force-shown. Classic UI restores each captured native   *
-*                   position. QJS-only.                                    *
+*                   Ragexe, appends a cloned native Auto Hunt UIButton, and *
+*                   compacts visible controls into five columns. Complete  *
+*                   one-through-six-row New/Classic textures replace the    *
+*                   stock fixed backgrounds without runtime clipping. New  *
+*                   UI also right-aligns naturally available Cash Shop,     *
+*                   Gold PC Cafe, Roulette, and RO DEX windows below the    *
+*                   minimap. Missing launchers are never force-created.     *
+*                   Classic UI restores captured native positions. QJS-only.*
 *                                                                          *
 \**************************************************************************/
 
@@ -41,6 +41,8 @@ const MenuZeroStatic = {
 		"68 33 01 00 00 8B CF E8 C5 68 00 00 85 C0 75 60 " +
 		"68 D8 00 00 00",
 	WindowVtable: 0x010281B0,
+	DrawVtableEntry: 0x01028200,
+	DrawOriginal: 0x00814150,
 	PositionVtableEntry: 0x010281C0,
 	PositionOriginal: 0x00812F80,
 	HitTestVtableEntry: 0x01028278,
@@ -51,6 +53,20 @@ const MenuZeroStatic = {
 	DisplayPointer: 0x012515F8,
 	WindowManager: 0x0131F4E8,
 	WindowManagerUpdate: 0x00A4CCF0,
+	OperatorNew: 0x00DBBC4F,
+	ButtonConstructor: 0x008172B0,
+	ButtonVtable: 0x01029820,
+	ButtonVtableEntries: 54,
+	ButtonDeletingDestructor: 0x0081A5A0,
+	ButtonMouseUp: 0x008271F0,
+	ButtonSetImage: 0x0082DAC0,
+	WindowSetImageSize: 0x00A1CB70,
+	WindowAddChild: 0x00A1B780,
+	ClientToScreen: 0x00A1EF70,
+	ShowTooltip: 0x00A753D0,
+	TooltipManager: 0x0121333C,
+	TooltipXOffset: 16,
+	TooltipYOffset: -16,
 	GetWindow: 0x00A47B90,
 	CloseWindow: 0x00A2E770,
 	CreateWindow: 0x00A39340,
@@ -85,13 +101,13 @@ const MenuZeroStatic = {
 	DescriptorLengthBytes: "8D 4D 90 6A 10 C7 45 90 00 00 00 00",
 	DescriptorPointer: 0x0081373C,
 	DescriptorPointerBytes: "68 3C 83 02 01",
-	PanelWidth: 425,
-	PanelHeight: 322,
-	ParentWidth: 428,
-	ParentHeight: 333,
+	PanelWidth: 357,
+	PanelHeight: 383,
+	ParentWidth: 360,
+	ParentHeight: 394,
 	ClassicParentWidth: 220,
-	ClassicProvisionalHeight: 197,
-	ClassicFinalHeight: 238,
+	ClassicProvisionalHeight: 283,
+	ClassicFinalHeight: 324,
 	ScreenMargin: 10,
 	MinimapRightInset: 17,
 	LauncherFirstCenterY: 204,
@@ -104,10 +120,22 @@ const MenuZeroStatic = {
 	PanelBaseHeight: 17,
 	ParentExtraHeight: 11,
 	ToggleBottomInset: 51,
-	ToggleX: 358,
-	ToggleY: 271,
+	ToggleX: 290,
+	ToggleY: 332,
 	BackgroundPathLength: 45,
 	BackgroundBufferSize: 48,
+	AutoHuntWindowId: 0x3F2,
+	AutoHuntButtonStateSize: 8,
+	NewButtonWidth: 45,
+	NewButtonHeight: 41,
+	OldButtonWidth: 32,
+	OldButtonHeight: 34,
+	OldGridX: 9,
+	OldGridY: 23,
+	OldGridStrideX: 42,
+	OldGridStrideY: 43,
+	OldPanelBaseHeight: 12,
+	ClassicParentExtraHeight: 54,
 	ChildOffsets: [0xCC, 0xD0, 0xD4],
 	TreeOffsets: [0xB4, 0xBC],
 	LauncherStateNativeRightInset: 0,
@@ -413,28 +441,267 @@ MenuZeroStatic.buildPreservedThemeLoad = function(themeLoadVir)
 	return a;
 };
 
+MenuZeroStatic.buildButtonDestructor = function(buttonStateVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x3B, 0x0D); a.dword(buttonStateVir);         // CMP ECX,[button]
+	a.jcc(0x85, "native");
+	a.emit(0xC7, 0x05); a.dword(buttonStateVir); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(buttonStateVir + 4); a.dword(0);
+	a.label("native");
+	a.jmp(MenuZeroStatic.ButtonDeletingDestructor);
+	return a;
+};
+
+MenuZeroStatic.buildButtonHover = function(textVir)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08);
+	a.emit(0x56, 0x8B, 0xF1);
+	a.emit(0x83, 0x7E, 0x28, 0x00);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0x45, 0x08, 0x85, 0xC0);
+	a.jcc(0x88, "done");
+	a.emit(0x3B, 0x46, 0x14);
+	a.jcc(0x8D, "done");
+	a.emit(0x8B, 0x45, 0x0C, 0x85, 0xC0);
+	a.jcc(0x88, "done");
+	a.emit(0x3B, 0x46, 0x18);
+	a.jcc(0x8D, "done");
+	a.emit(0x8B, 0x45, 0x08);
+	a.emit(0x83, 0xC0, s.TooltipXOffset);
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x45, 0x0C);
+	a.emit(0x83, 0xC0, s.TooltipYOffset);
+	a.emit(0x89, 0x45, 0xFC);
+	a.emit(0x8D, 0x45, 0xFC, 0x50);
+	a.emit(0x8D, 0x45, 0xF8, 0x50);
+	a.emit(0x8B, 0xCE);
+	a.call(s.ClientToScreen);
+	a.emit(0x8B, 0x0D); a.dword(s.TooltipManager);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	s.pushImmediate(a, 1);
+	s.pushImmediate(a, 0);
+	s.pushImmediate(a, -1);
+	a.emit(0xFF, 0x75, 0xFC);
+	a.emit(0xFF, 0x75, 0xF8);
+	s.pushImmediate(a, textVir);
+	a.call(s.ShowTooltip);
+	a.label("done");
+	a.emit(0x5E, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+MenuZeroStatic.buildButtonMouseUp = function(requestVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x56);                    // frame / PUSH ESI
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);       // PUSH y / PUSH x
+	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
+	a.call(MenuZeroStatic.ButtonMouseUp);               // restore stock button state
+	a.emit(0x50);                                      // preserve stock return
+	a.call(requestVir);                                // defer open/close to next UI tick
+	a.emit(0x58, 0x5E, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC2, 0x08, 0x00);                          // RET 8
+	return a;
+};
+
+MenuZeroStatic.cloneButtonVtable = function(mouseUpVir, hoverVir, destructorVir)
+{
+	const sourcePhy = Exe.Vir2Phy(MenuZeroStatic.ButtonVtable);
+	if (sourcePhy < 0)
+		throw Error("ROGlobalZeroMenu: UIButton vtable is not mapped");
+	const bytes = [];
+	for (let index = 0; index < MenuZeroStatic.ButtonVtableEntries; index++)
+	{
+		let value = Exe.GetUint32(sourcePhy + index * 4);
+		if (index === 0)
+			value = destructorVir;
+		else if (index === 28)
+			value = hoverVir;
+		else if (index === 31)
+			value = mouseUpVir;
+		for (let shift = 0; shift < 32; shift += 8)
+			bytes.push((value >>> shift) & 0xFF);
+	}
+	return MenuZeroStatic.allocateBytes(bytes, 4);
+};
+
+MenuZeroStatic.buildEnsureAutoHuntButtons = function(
+	buttonStateVir, buttonVtableVir, imagePaths, themeStateVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                                // ESI=menu parent
+	a.emit(0x83, 0x3D); a.dword(buttonStateVir); a.emit(0x00);
+	a.jcc(0x84, "create");
+	a.emit(0x39, 0x35); a.dword(buttonStateVir + 4);     // current owner == ESI?
+	a.jcc(0x84, "done");
+	a.label("create");
+	s.pushImmediate(a, 0x120);
+	a.call(s.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0xF8, 0x8B, 0xCF);
+	a.call(s.ButtonConstructor);
+	a.emit(0xC7, 0x07); a.dword(buttonVtableVir);
+	const emitImages = function(paths)
+	{
+		for (let state = 0; state < 3; state++)
+		{
+			s.pushImmediate(a, 0);
+			s.pushImmediate(a, state);
+			s.pushImmediate(a, paths[state]);
+			a.emit(0x8B, 0xCF);
+			a.call(s.ButtonSetImage);
+		}
+	};
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic_images");
+	emitImages(imagePaths.renewal);
+	a.jmp("images_ready");
+	a.label("classic_images");
+	emitImages(imagePaths.classic);
+	a.label("images_ready");
+	a.emit(0xFF, 0xB7); a.dword(0xB8);
+	a.emit(0xFF, 0xB7); a.dword(0xB4);
+	a.emit(0x8B, 0xCF);
+	a.call(s.WindowSetImageSize);
+	a.emit(0xC7, 0x47, 0x2C); a.dword(s.AutoHuntWindowId);
+	a.emit(0x57, 0x8B, 0xCE);
+	a.call(s.WindowAddChild);
+	a.emit(0x89, 0x3D); a.dword(buttonStateVir);
+	a.emit(0x89, 0x35); a.dword(buttonStateVir + 4);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+MenuZeroStatic.buildSyncAutoHuntButtons = function(
+	buttonStateVir, visibleMaskVir, visibleVir, themeStateVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                                // ESI=menu
+	a.emit(0x8B, 0x3D); a.dword(buttonStateVir);
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "done");
+	a.emit(0xC6, 0x47, 0x28, 0x00);                    // visible=false
+	a.emit(0x83, 0x3D); a.dword(visibleVir); a.emit(0x00);
+	a.jcc(0x84, "done");
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "selected");                         // Classic parent owns visibility
+	a.emit(0x80, 0x3D); a.dword(s.MenuExpandedFlag); a.emit(0x00);
+	a.jcc(0x84, "done");                             // New UI zero = collapsed
+	a.label("selected");
+	a.emit(0xC6, 0x47, 0x28, 0x01);                    // visible=true
+	a.emit(0xC7, 0x47, 0x58); a.dword(1);              // dirty=true
+	a.emit(0xA1); a.dword(visibleMaskVir);
+	a.emit(0x33, 0xD2);                                // EDX=native visible count
+	a.label("count");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "count_done");
+	a.emit(0x8D, 0x48, 0xFF, 0x23, 0xC1, 0x42);
+	a.jmp("count");
+	a.label("count_done");
+	a.emit(0x8B, 0xC2, 0x33, 0xD2);
+	a.emit(0xB9); a.dword(s.GridColumns);
+	a.emit(0xF7, 0xF1);                                // EAX=row, EDX=column
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic_position");
+	a.emit(0x6B, 0xD2, s.GridStrideX);
+	a.emit(0x83, 0xC2, s.GridX);
+	a.emit(0x6B, 0xC0, s.GridStrideY);
+	a.emit(0x83, 0xC0, s.GridY);
+	a.jmp("set_position");
+	a.label("classic_position");
+	a.emit(0x6B, 0xD2, s.OldGridStrideX);
+	a.emit(0x83, 0xC2, s.OldGridX);
+	a.emit(0x6B, 0xC0, s.OldGridStrideY);
+	a.emit(0x83, 0xC0, s.OldGridY);
+	a.label("set_position");
+	a.emit(0x50, 0x52);
+	a.emit(0x8B, 0x17, 0x8B, 0xCF);
+	a.emit(0xFF, 0x52, 0x10);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+MenuZeroStatic.buildDrawWrapper = function(syncAutoHuntVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x51);                                      // preserve menu ECX
+	a.call(syncAutoHuntVir);
+	a.emit(0x59);                                      // restore menu ECX
+	a.jmp(MenuZeroStatic.DrawOriginal);
+	return a;
+};
+
 MenuZeroStatic.buildBackgroundCopy = function(
-	backgroundVir, themeStateVir, loadThemeVir
+	backgrounds, rowCountVir, themeStateVir, loadThemeVir
 )
 {
 	const a = MenuZeroStatic.asm();
 	a.emit(0x9C, 0x60);
 	a.call(loadThemeVir);
 	a.emit(0x61, 0x9D);
+	// At BackgroundCopyBlock, EDI is a stack-local std::string, not the menu.
+	// Row measurement must remain in hooks whose native receiver is UIMenuIconWnd.
+	a.emit(0x50, 0x56);                                // preserve dest EAX / ESI
+	a.emit(0xA1); a.dword(rowCountVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "row_min_ready");
+	a.emit(0x40);
+	a.label("row_min_ready");
+	a.emit(0x83, 0xF8, backgrounds.renewal.length);
+	a.jcc(0x86, "row_max_ready");                     // JBE
+	a.emit(0xB8); a.dword(backgrounds.renewal.length);
+	a.label("row_max_ready");
+	a.emit(0x48);                                      // zero-based row
 	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
-	a.jcc(0x85, "renewal");
-	a.emit(...MenuZeroStatic.hexToBytes(MenuZeroStatic.BackgroundCopyBytes));
-	a.jmp(MenuZeroStatic.BackgroundCopyReturn);
-	a.label("renewal");
-	a.emit(0xC7, 0x47, 0x10); a.dword(MenuZeroStatic.BackgroundPathLength);
+	a.jcc(0x84, "classic");
+	for (let index = 0; index < backgrounds.renewal.length; index++)
+	{
+		a.emit(0x83, 0xF8, index);
+		a.jcc(0x84, "renewal_" + index);
+	}
+	a.jmp("renewal_0");
+	for (let index = 0; index < backgrounds.renewal.length; index++)
+	{
+		a.label("renewal_" + index);
+		a.emit(0xBE); a.dword(backgrounds.renewal[index]);
+		a.jmp("selected");
+	}
+	a.label("classic");
+	for (let index = 0; index < backgrounds.classic.length; index++)
+	{
+		a.emit(0x83, 0xF8, index);
+		a.jcc(0x84, "classic_" + index);
+	}
+	a.jmp("classic_0");
+	for (let index = 0; index < backgrounds.classic.length; index++)
+	{
+		a.label("classic_" + index);
+		a.emit(0xBE); a.dword(backgrounds.classic[index]);
+		a.jmp("selected");
+	}
+	a.label("selected");
+	a.emit(0x8B, 0x54, 0x24, 0x04);                   // EDX=saved destination
+	a.emit(0xC7, 0x47, 0x10); a.dword(backgrounds.pathLength);
 	a.emit(0xC7, 0x47, 0x14); a.dword(MenuZeroStatic.BackgroundBufferSize - 1);
-	a.emit(0x0F, 0x10, 0x05); a.dword(backgroundVir);
-	a.emit(0x0F, 0x11, 0x00);
-	a.emit(0x0F, 0x10, 0x05); a.dword(backgroundVir + 16);
-	a.emit(0x0F, 0x11, 0x40, 0x10);
-	a.emit(0x0F, 0x10, 0x05); a.dword(backgroundVir + 32);
-	a.emit(0x0F, 0x11, 0x40, 0x20);
-	a.emit(0x89, 0x07);
+	a.emit(0x0F, 0x10, 0x06);
+	a.emit(0x0F, 0x11, 0x02);
+	a.emit(0x0F, 0x10, 0x46, 0x10);
+	a.emit(0x0F, 0x11, 0x42, 0x10);
+	a.emit(0x0F, 0x10, 0x46, 0x20);
+	a.emit(0x0F, 0x11, 0x42, 0x20);
+	a.emit(0x89, 0x17);                                // destination string pointer
+	a.emit(0x5E, 0x58);                                // restore ESI / EAX
 	a.jmp(MenuZeroStatic.BackgroundCopyReturn);
 	return a;
 };
@@ -483,21 +750,21 @@ MenuZeroStatic.buildBackgroundDraw = function(themeStateVir, loadThemeVir)
 };
 
 MenuZeroStatic.buildBackgroundHeight = function(
-	measureRowsVir, panelHeightVir, themeStateVir, loadThemeVir
+	measureRowsVir, panelHeightVir, oldPanelHeightVir, themeStateVir, loadThemeVir
 )
 {
 	const a = MenuZeroStatic.asm();
 	a.emit(0x9C, 0x60);
 	a.call(loadThemeVir);
 	a.emit(0x61, 0x9D);
-	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
-	a.jcc(0x84, "classic");
 	a.emit(0x8B, 0xCF);                                // MOV ECX,EDI (menu)
 	a.call(measureRowsVir);
-	a.emit(0xFF, 0x35); a.dword(panelHeightVir);        // PUSH [panel height]
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic");
+	a.emit(0xFF, 0x35); a.dword(panelHeightVir);        // renewal full image
 	a.jmp("height_ready");
 	a.label("classic");
-	MenuZeroStatic.pushImmediate(a, 0);                 // native texture height
+	a.emit(0xFF, 0x35); a.dword(oldPanelHeightVir);     // classic full image
 	a.label("height_ready");
 	a.emit(0x80, 0x3D); a.dword(MenuZeroStatic.MenuExpandedFlag);
 	a.emit(0x00);                                      // CMP BYTE [expanded],0
@@ -798,7 +1065,10 @@ MenuZeroStatic.emitRepositionTree = function(
 	a.label(done);
 };
 
-MenuZeroStatic.buildMeasureRows = function(maskVir, panelHeightVir)
+MenuZeroStatic.buildMeasureRows = function(
+	maskVir, panelHeightVir, rowCountVir, oldPanelHeightVir, autoVisibleVir,
+	themeStateVir
+)
 {
 	const a = MenuZeroStatic.asm();
 	a.emit(0x60);                                      // PUSHAD
@@ -816,25 +1086,43 @@ MenuZeroStatic.buildMeasureRows = function(maskVir, panelHeightVir)
 	a.emit(0x42);                                      // INC EDX
 	a.jmp("measure_count");
 	a.label("measure_count_done");
+	a.emit(0x83, 0x3D); a.dword(autoVisibleVir); a.emit(0x00);
+	a.jcc(0x84, "auto_counted");
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "append_auto");                    // Classic parent owns visibility
+	a.emit(0x80, 0x3D); a.dword(MenuZeroStatic.MenuExpandedFlag); a.emit(0x00);
+	a.jcc(0x84, "auto_counted");                     // New UI zero = collapsed
+	a.label("append_auto");
+	a.emit(0x42);                                      // append Auto Hunt
+	a.label("auto_counted");
 	a.emit(0x8B, 0xC2);                                // MOV EAX,EDX
 	a.emit(0x83, 0xC0, MenuZeroStatic.GridColumns - 1);
 	a.emit(0x33, 0xD2);                                // XOR EDX,EDX
 	a.emit(0xB9); a.dword(MenuZeroStatic.GridColumns);
 	a.emit(0xF7, 0xF1);                                // DIV ECX; EAX=rows
-	a.emit(0x85, 0xC0);                                // TEST EAX,EAX
-	a.jcc(0x85, "measure_rows_ready");
-	a.emit(0x40);                                      // INC EAX (MENU-only row)
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "measure_rows_nonzero");
+	a.emit(0x40);                                      // minimum one row
+	a.label("measure_rows_nonzero");
+	a.emit(0x83, 0xF8, 0x06);
+	a.jcc(0x86, "measure_rows_ready");                 // JBE
+	a.emit(0xB8); a.dword(6);
 	a.label("measure_rows_ready");
+	a.emit(0xA3); a.dword(rowCountVir);
 	a.emit(0x6B, 0xC0, MenuZeroStatic.GridStrideY);
 	a.emit(0x83, 0xC0, MenuZeroStatic.PanelBaseHeight);
-	a.emit(0xA3); a.dword(panelHeightVir);              // MOV [panel height],EAX
+	a.emit(0xA3); a.dword(panelHeightVir);
+	a.emit(0xA1); a.dword(rowCountVir);
+	a.emit(0x6B, 0xC0, MenuZeroStatic.OldGridStrideY);
+	a.emit(0x83, 0xC0, MenuZeroStatic.OldPanelBaseHeight);
+	a.emit(0xA3); a.dword(oldPanelHeightVir);
 	a.emit(0x61, 0xC3);                                // POPAD / RET
 	return a;
 };
 
 MenuZeroStatic.buildLayoutWrapper = function(
-	anchorVir, measureRowsVir, maskVir, panelHeightVir, themeStateVir,
-	syncLaunchersVir
+	anchorVir, measureRowsVir, maskVir, panelHeightVir, oldPanelHeightVir,
+	themeStateVir, ensureAutoHuntVir, syncAutoHuntVir, syncLaunchersVir
 )
 {
 	const a = MenuZeroStatic.asm();
@@ -846,18 +1134,19 @@ MenuZeroStatic.buildLayoutWrapper = function(
 	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
 	a.call(MenuZeroStatic.LayoutOriginal);
 	a.emit(0x50);                                      // preserve stock EAX
-	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
-	a.jcc(0x84, "finish");
-	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
+	a.emit(0x8B, 0xCE);
+	a.call(ensureAutoHuntVir);
+	a.emit(0x8B, 0xCE);
 	a.call(measureRowsVir);
-	a.emit(0xA1); a.dword(panelHeightVir);              // MOV EAX,[panel height]
-	a.emit(0x83, 0xC0, MenuZeroStatic.ParentExtraHeight);
-	a.emit(0x50);                                      // PUSH dynamic parent height
-	MenuZeroStatic.pushImmediate(a, MenuZeroStatic.ParentWidth);
-	a.emit(0x8B, 0x06);                                // MOV EAX,[ESI]
-	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
-	a.emit(0xFF, 0x50, 0x04);                          // CALL [EAX+4] (SetSize)
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic");
 
+	a.emit(0xA1); a.dword(panelHeightVir);
+	a.emit(0x83, 0xC0, MenuZeroStatic.ParentExtraHeight);
+	a.emit(0x50);                                      // PUSH renewal height
+	MenuZeroStatic.pushImmediate(a, MenuZeroStatic.ParentWidth);
+	a.emit(0x8B, 0x06, 0x8B, 0xCE);
+	a.emit(0xFF, 0x50, 0x04);                          // SetSize
 	for (let i = 0; i < MenuZeroStatic.ChildOffsets.length; i++)
 	{
 		MenuZeroStatic.emitSetChildPosition(
@@ -865,23 +1154,36 @@ MenuZeroStatic.buildLayoutWrapper = function(
 			MenuZeroStatic.ChildOffsets[i],
 			MenuZeroStatic.ToggleX,
 			panelHeightVir,
-			`toggle_${i}_done`
+			"toggle_" + i + "_done"
 		);
 	}
-
 	MenuZeroStatic.emitRepositionTree(
 		a, MenuZeroStatic.TreeOffsets[0], "tree_b4", maskVir
 	);
 	MenuZeroStatic.emitRepositionTree(
 		a, MenuZeroStatic.TreeOffsets[1], "tree_bc", maskVir
 	);
-	a.emit(0x8B, 0xCE);                                // MOV ECX,ESI
+	a.emit(0x8B, 0xCE);
+	a.call(syncAutoHuntVir);
+	a.emit(0x8B, 0xCE);
 	a.call(anchorVir);
-	a.label("finish");
+	a.jmp("sync_external");
+
+	a.label("classic");
+	a.emit(0xA1); a.dword(oldPanelHeightVir);
+	a.emit(0x83, 0xC0, MenuZeroStatic.ClassicParentExtraHeight);
+	a.emit(0x50);                                      // PUSH classic height
+	MenuZeroStatic.pushImmediate(a, MenuZeroStatic.ClassicParentWidth);
+	a.emit(0x8B, 0x06, 0x8B, 0xCE);
+	a.emit(0xFF, 0x50, 0x04);                          // SetSize
+	a.emit(0x8B, 0xCE);
+	a.call(syncAutoHuntVir);
+
+	a.label("sync_external");
 	a.call(syncLaunchersVir);
 	a.emit(0x58);                                      // restore stock EAX
-	a.emit(0x5F, 0x5E, 0x5B);                          // restore EDI/ESI/EBX
-	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
+	a.emit(0x5F, 0x5E, 0x5B);
+	a.emit(0x8B, 0xE5, 0x5D);
 	a.emit(0xC2, 0x08, 0x00);
 	return a;
 };
@@ -1187,6 +1489,11 @@ MenuZeroStatic.verifyNativeLayout = function()
 			MenuZeroStatic.FactoryCase,
 			MenuZeroStatic.FactoryBytes
 		),
+		drawVtablePhy: MenuZeroStatic.assertVtable(
+			"UIMenuIconWnd vtable[20]",
+			MenuZeroStatic.DrawVtableEntry,
+			MenuZeroStatic.DrawOriginal
+		),
 		positionVtablePhy: MenuZeroStatic.assertVtable(
 			"UIMenuIconWnd vtable[4]",
 			MenuZeroStatic.PositionVtableEntry,
@@ -1201,6 +1508,16 @@ MenuZeroStatic.verifyNativeLayout = function()
 			"UIMenuIconWnd vtable[15]",
 			MenuZeroStatic.LayoutVtableEntry,
 			MenuZeroStatic.LayoutOriginal
+		),
+		buttonDestructorVtablePhy: MenuZeroStatic.assertVtable(
+			"UIButton vtable[0]",
+			MenuZeroStatic.ButtonVtable,
+			MenuZeroStatic.ButtonDeletingDestructor
+		),
+		buttonMouseUpVtablePhy: MenuZeroStatic.assertVtable(
+			"UIButton vtable[31]",
+			MenuZeroStatic.ButtonVtable + 31 * 4,
+			MenuZeroStatic.ButtonMouseUp
 		),
 		backgroundCopyPhy: MenuZeroStatic.assertCode(
 			"background std::string copy block",
@@ -1296,6 +1613,17 @@ ROGlobalZeroMenu = function(_)
 		Warp.SetPatchState("MoveShopIcon", false);
 	const themeEnabledVir = theme.stateVir +
 		(Number.isInteger(theme.enabledOffset) ? theme.enabledOffset : 0);
+	const autoHuntBridge = CACHE.get("AutoCombatUI.MenuButton.v1");
+	if (!autoHuntBridge || !Number.isInteger(autoHuntBridge.toggleVir) ||
+		!Number.isInteger(autoHuntBridge.requestVir) ||
+		!Number.isInteger(autoHuntBridge.visibleVir))
+	{
+		throw Error("ROGlobalZeroMenu: AutoCombatUI must run first");
+	}
+	const autoHuntHoverText = "Auto Hunt";
+	const autoHuntHover = MenuZeroStatic.allocateBytes(
+		MenuZeroStatic.asciiBytes(autoHuntHoverText)
+	);
 
 	$$(_, 1, "Verify menu, launcher, visibility, and layout seams");
 	const verified = MenuZeroStatic.verifyNativeLayout();
@@ -1310,30 +1638,84 @@ ROGlobalZeroMenu = function(_)
 		);
 	}
 	const descriptor = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("chatting"));
-	const backgroundBytes = MenuZeroStatic.buildResourceBytes(
-		prefix,
-		"uirenewal\\menuicon\\bg_menu.tga",
-		false
-	);
-	if (backgroundBytes.length !== MenuZeroStatic.BackgroundPathLength)
+	const backgrounds = {
+		renewal: [],
+		classic: [],
+		pathLength: 0
+	};
+	for (let row = 1; row <= 6; row++)
 	{
-		throw Error(
-			`ROGlobalZeroMenu: bg_menu path length ${backgroundBytes.length}, ` +
-			`expected ${MenuZeroStatic.BackgroundPathLength}`
-		);
+		for (const spec of [
+			{key: "renewal", relative: "uirenewal\\menuicon\\bg_m" + row + ".tga"},
+			{key: "classic", relative: "uirenewal\\menuicon\\bg_o" + row + ".tga"}
+		])
+		{
+			const bytes = MenuZeroStatic.buildResourceBytes(
+				prefix, spec.relative, false
+			);
+			if (backgrounds.pathLength === 0)
+				backgrounds.pathLength = bytes.length;
+			else if (bytes.length !== backgrounds.pathLength)
+			{
+				throw Error(
+					"ROGlobalZeroMenu: row background paths must have equal length"
+				);
+			}
+			if (bytes.length >= MenuZeroStatic.BackgroundBufferSize)
+				throw Error("ROGlobalZeroMenu: row background path exceeds buffer");
+			while (bytes.length < MenuZeroStatic.BackgroundBufferSize)
+				bytes.push(0);
+			backgrounds[spec.key].push(
+				MenuZeroStatic.allocateBytes(bytes, 0x10).vir
+			);
+		}
 	}
-	while (backgroundBytes.length < MenuZeroStatic.BackgroundBufferSize)
-		backgroundBytes.push(0);
-	const background = MenuZeroStatic.allocateBytes(backgroundBytes, 0x10);
+	const buttonPathSpecs = {
+		renewal: [
+			"uirenewal\\menuicon\\bt_autohunt_normal.bmp",
+			"uirenewal\\menuicon\\bt_autohunt_mouseon.bmp",
+			"uirenewal\\menuicon\\bt_autohunt_pressed.bmp"
+		],
+		classic: [
+			"uirenewal\\menuicon\\bt_autohunt_old_normal.bmp",
+			"uirenewal\\menuicon\\bt_autohunt_old_mouseon.bmp",
+			"uirenewal\\menuicon\\bt_autohunt_old_pressed.bmp"
+		]
+	};
+	const buttonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const relative of buttonPathSpecs[key])
+		{
+			buttonImagePaths[key].push(
+				MenuZeroStatic.allocateBytes(
+					MenuZeroStatic.buildResourceBytes(prefix, relative)
+				).vir
+			);
+		}
+	}
+	const buttonState = MenuZeroStatic.allocateBytes(
+		new Array(MenuZeroStatic.AutoHuntButtonStateSize).fill(0),
+		4
+	);
+	const oldPanelHeight = 6 * MenuZeroStatic.OldGridStrideY +
+		MenuZeroStatic.OldPanelBaseHeight;
 	const layoutState = MenuZeroStatic.allocateBytes([
 		0, 0, 0, 0,
 		MenuZeroStatic.PanelHeight & 0xFF,
 		(MenuZeroStatic.PanelHeight >>> 8) & 0xFF,
 		(MenuZeroStatic.PanelHeight >>> 16) & 0xFF,
-		(MenuZeroStatic.PanelHeight >>> 24) & 0xFF
+		(MenuZeroStatic.PanelHeight >>> 24) & 0xFF,
+		6, 0, 0, 0,
+		oldPanelHeight & 0xFF,
+		(oldPanelHeight >>> 8) & 0xFF,
+		(oldPanelHeight >>> 16) & 0xFF,
+		(oldPanelHeight >>> 24) & 0xFF
 	], 4);
 	const visibleMaskVir = layoutState.vir;
 	const panelHeightVir = layoutState.vir + 4;
+	const rowCountVir = layoutState.vir + 8;
+	const oldPanelHeightVir = layoutState.vir + 12;
 	const launcherState = MenuZeroStatic.allocateBytes(
 		new Array(
 			MenuZeroStatic.ManagedWindows.length *
@@ -1343,6 +1725,35 @@ ROGlobalZeroMenu = function(_)
 	);
 	const loadTheme = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildPreservedThemeLoad(theme.loadVir)
+	);
+	const buttonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(buttonState.vir)
+	);
+	const buttonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonMouseUp(autoHuntBridge.requestVir)
+	);
+	const buttonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(autoHuntHover.vir)
+	);
+	const buttonVtable = MenuZeroStatic.cloneButtonVtable(
+		buttonMouseUp.vir, buttonHover.vir, buttonDestructor.vir
+	);
+	const ensureAutoHunt = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureAutoHuntButtons(
+			buttonState.vir, buttonVtable.vir, buttonImagePaths,
+			theme.stateVir
+		)
+	);
+	const syncAutoHunt = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncAutoHuntButtons(
+			buttonState.vir,
+			visibleMaskVir,
+			autoHuntBridge.visibleVir,
+			theme.stateVir
+		)
+	);
+	const drawWrapper = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildDrawWrapper(syncAutoHunt.vir)
 	);
 	const syncLaunchers = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildSyncLaunchers(
@@ -1370,14 +1781,22 @@ ROGlobalZeroMenu = function(_)
 
 	$$(_, 3, "Inject compact menu reflow and under-minimap launchers");
 	const measureRows = MenuZeroStatic.buildMeasureRows(
-		visibleMaskVir, panelHeightVir
+		visibleMaskVir,
+		panelHeightVir,
+		rowCountVir,
+		oldPanelHeightVir,
+		autoHuntBridge.visibleVir,
+		theme.stateVir
 	);
 	const [measureRowsPhy, measureRowsVir] = Exe.Allocate(
 		measureRows.bytes.length, 0x10
 	);
 	Exe.SetHex(measureRowsPhy, measureRows.finish(measureRowsVir));
 	const backgroundCopy = MenuZeroStatic.buildBackgroundCopy(
-		background.vir, theme.stateVir, theme.loadVir
+		backgrounds,
+		rowCountVir,
+		theme.stateVir,
+		theme.loadVir
 	);
 	const [backgroundCopyPhy, backgroundCopyVir] = Exe.Allocate(
 		backgroundCopy.bytes.length, 0x10
@@ -1391,7 +1810,11 @@ ROGlobalZeroMenu = function(_)
 	);
 	Exe.SetHex(backgroundDrawPhy, backgroundDraw.finish(backgroundDrawVir));
 	const backgroundHeight = MenuZeroStatic.buildBackgroundHeight(
-		measureRowsVir, panelHeightVir, theme.stateVir, theme.loadVir
+		measureRowsVir,
+		panelHeightVir,
+		oldPanelHeightVir,
+		theme.stateVir,
+		theme.loadVir
 	);
 	const [backgroundHeightPhy, backgroundHeightVir] = Exe.Allocate(
 		backgroundHeight.bytes.length, 0x10
@@ -1440,7 +1863,10 @@ ROGlobalZeroMenu = function(_)
 		measureRowsVir,
 		visibleMaskVir,
 		panelHeightVir,
+		oldPanelHeightVir,
 		theme.stateVir,
+		ensureAutoHunt.vir,
+		syncAutoHunt.vir,
 		syncLaunchers.vir
 	);
 	const [layoutWrapperPhy, layoutWrapperVir] = Exe.Allocate(
@@ -1517,6 +1943,7 @@ ROGlobalZeroMenu = function(_)
 	Exe.SetCALL(verified.provisionalSizePhy + 5, sizeSelectors.provisionalWidth.vir, 0);
 	Exe.SetCALL(verified.finalSizePhy, sizeSelectors.finalHeight.vir, 0);
 	Exe.SetCALL(verified.finalSizePhy + 5, sizeSelectors.finalWidth.vir, 0);
+	Exe.SetUint32(verified.drawVtablePhy, drawWrapper.vir);
 	Exe.SetUint32(verified.positionVtablePhy, positionWrapperVir);
 	Exe.SetUint32(verified.hitTestVtablePhy, hitTestWrapperVir);
 	Exe.SetUint32(verified.layoutVtablePhy, layoutWrapperVir);
@@ -1555,10 +1982,12 @@ ROGlobalZeroMenu = function(_)
 			});
 		}
 		PatchDiagnostics.add("ROGlobalZeroMenu.QjsOnly", {
-			version: 2,
+			version: 3,
 			menuWindowId: MenuZeroStatic.WindowId,
 			nativeDispatcherVir: MenuZeroStatic.NativeDispatcher,
 			factoryCaseVir: MenuZeroStatic.FactoryCase,
+			drawVtableVir: MenuZeroStatic.DrawVtableEntry,
+			drawWrapperVir: drawWrapper.vir,
 			positionVtableVir: MenuZeroStatic.PositionVtableEntry,
 			positionWrapperVir,
 			positionWrapperSize: positionWrapper.bytes.length,
@@ -1580,6 +2009,24 @@ ROGlobalZeroMenu = function(_)
 			measureRowsSize: measureRows.bytes.length,
 			visibleMaskVir,
 			panelHeightVir,
+			oldPanelHeightVir,
+			rowCountVir,
+			autoHunt: {
+				windowId: MenuZeroStatic.AutoHuntWindowId,
+				hoverText: autoHuntHoverText,
+				hoverTextVir: autoHuntHover.vir,
+				requestVir: autoHuntBridge.requestVir,
+				visibleVir: autoHuntBridge.visibleVir,
+				toggleVir: autoHuntBridge.toggleVir,
+				buttonStateVir: buttonState.vir,
+				buttonVtableVir: buttonVtable.vir,
+				buttonDestructorVir: buttonDestructor.vir,
+				buttonMouseUpVir: buttonMouseUp.vir,
+				buttonHoverVir: buttonHover.vir,
+				ensureVir: ensureAutoHunt.vir,
+				syncVir: syncAutoHunt.vir,
+				positionPolicy: "after all visible native buttons"
+			},
 			themeStateVir: theme.stateVir,
 			themeEnabledVir,
 			themeLoadBridgeVir: loadTheme.vir,
@@ -1596,8 +2043,12 @@ ROGlobalZeroMenu = function(_)
 			externalCashShopPolicy: "natural visibility; first stack slot",
 			rodexNotificationPolicy: "natural visibility; fourth stack slot",
 			missingLauncherPolicy: "query only; never create",
-			backgroundPathVir: background.vir,
-			backgroundPathLength: MenuZeroStatic.BackgroundPathLength,
+			backgroundPathVirs: {
+				renewal: backgrounds.renewal,
+				classic: backgrounds.classic
+			},
+			backgroundPathLength: backgrounds.pathLength,
+			backgroundPolicy: "complete row-specific texture; never clipped",
 			descriptorVir: descriptor.vir,
 			descriptorName: "chatting",
 			descriptorLengthVir,

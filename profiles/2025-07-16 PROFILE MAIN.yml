@@ -123,6 +123,8 @@ inputs:
               value: "Twitter (SNS)"
             - type: 10
               value: "Booking"
+            - type: 10
+              value: "Auto Hunt"
 
     $newspopup:
         data: '53797374656d454e5c53706f7075705f454e2e6c756200'

@@ -17,12 +17,12 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-08-01                                             *
+*   Last Modified : 2026-08-02                                             *
 *                                                                          *
 *   Description   : Adds a QJS-only, client-native Auto Combat settings    *
 *                   preview to the 2025-07-16 Ragexe. Persistent controls  *
-*                   are created by the normal in-game UI render pass;     *
-*                   /autohunt only opens or closes the settings window.   *
+*                   are created by the normal in-game UI render pass. The *
+*                   renewed system menu owns the settings-window button;  *
 *                   470x346 UIFrameWnd on the game UI thread, preserving   *
 *                   native focus, hit testing, drag capture, and window    *
 *                   ownership. Its native canvas loads the supplied Global *
@@ -50,7 +50,6 @@ const AutoCombatUIStatic = {
 	FrameMouseUp: 0x00880BB0,
 	WindowSetSize: 0x00A245C0,
 	WindowAddTopLevelFront: 0x00A2D240,
-	WindowBringToFront: 0x00A4B750,
 	WindowClearSurface: 0x00A1CB30,
 	UiUpdateSurfaceDirty: 0x00A1CE48,
 	UiUpdateSurfaceDirtyResume: 0x00A1CE4F,
@@ -69,6 +68,8 @@ const AutoCombatUIStatic = {
 	WindowVisibleOffset: 0x28,
 	WindowIdOffset: 0x2C,
 	WindowDirtyOffset: 0x58,
+	WindowDragStateOffset: 0x38,
+	WindowDragIdle: 0xFF,
 	SurfaceWidthOffset: 0x04,
 	SurfacePixelsOffset: 0x18,
 	SurfaceAlphaOffset: 0x28,
@@ -88,6 +89,8 @@ const AutoCombatUIStatic = {
 	ControllerBootstrapHookBytes: "E8 EA 75 A2 FF",
 	ControllerBootstrapOriginal: 0x0069C5D0,
 	TimeGetTimeIat: 0x00FC17B0,
+	MenuToggleDelayMs: 75,
+	MenuToggleStateSize: 8,
 	RendererWidthOffset: 0x28,
 	RendererHeightOffset: 0x2C,
 	GetTexMgr: 0x00A90350,
@@ -170,6 +173,8 @@ const AutoCombatUIStatic = {
 	RecoverySkillFirstX: 307,
 	RecoverySkillSpacing: 50,
 	RecoverySkillY: 133,
+	HealingSkillDelaySlot: 16,
+	RecoverySkillDelaySlotBase: 17,
 	FeatureMonsterSelection: 1 << 0,
 	FeatureMonsterRows: 1 << 1,
 	FeatureLootCategories: 1 << 2,
@@ -1605,6 +1610,12 @@ AutoCombatUIStatic.emitPageControls = function(
 			strings.skillLevelFormat.vir, skillLevelTextVir, x - 2, y - 2
 		);
 		a.label(emptyLabel);
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, x - 6, y + 31, 34, 16, 0xFF97ADCF);
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, x - 4, y + 33, 30, 12, 0xFFFFFFFF);
+		AutoCombatUIStatic.emitText(a,
+			rowVir + AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
+			x - 1, y + 32, 12, dark);
+		AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 12, dark);
 	};
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage);
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_skill_support");
@@ -1885,7 +1896,10 @@ AutoCombatUIStatic.emitSendScalarEqToggle = function(
 	a.call(mutationSenderVir);
 };
 
-AutoCombatUIStatic.buildMouseDown = function(stateVir, mutationSenderVir, monsterRowsVir, attackSkillRowsVir, supportSkillRowsVir)
+AutoCombatUIStatic.buildMouseDown = function(
+	stateVir, mutationSenderVir, monsterRowsVir, attackSkillRowsVir,
+	supportSkillRowsVir, healingSkillRowVir, recoverySkillRowsVir
+)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
@@ -2227,28 +2241,50 @@ AutoCombatUIStatic.buildMouseDown = function(stateVir, mutationSenderVir, monste
 	a.label("body_skill_recovery");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage); a.emit(0x03);
 	a.jcc(0x85, "consume");
-	AutoCombatUIStatic.emitRectGate(a, 210, 117, 258, 165, "recovery_clear_0_next");
-	AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
-		a, stateVir, mutationSenderVir, AutoCombatUIStatic.FeatureRecoverySkills,
-		AutoCombatUIStatic.SettingHealSkillRegister, 0, 0, "healing_skill_clear"
+	const emitRecoveryMouseControl = function(
+		rowVir, x, registerSetting, registerSlot, delaySlot, prefix
+	)
+	{
+		const clearNext = `${prefix}_clear_next`;
+		AutoCombatUIStatic.emitRectGate(a, x - 16, 117, x + 32, 161, clearNext);
+		AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+			a, stateVir, mutationSenderVir, AutoCombatUIStatic.FeatureRecoverySkills,
+			registerSetting, registerSlot, 0, `${prefix}_clear`
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(clearNext);
+
+		const delayNext = `${prefix}_delay_next`;
+		AutoCombatUIStatic.emitRectGate(a, x - 6, 162, x + 28, 185, delayNext);
+		a.emit(0x83, 0x3D);
+		a.dword(rowVir + AutoCombatUIStatic.AttackSkillRowIdOffset);
+		a.emit(0);
+		a.jcc(0x84, delayNext);
+		AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+			a, stateVir, mutationSenderVir, AutoCombatUIStatic.FeatureRecoverySkills,
+			AutoCombatUIStatic.SettingSkillDelayInput,
+			delaySlot, 0, `${prefix}_delay`
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(delayNext);
+	};
+	emitRecoveryMouseControl(
+		healingSkillRowVir, AutoCombatUIStatic.HealingSkillX,
+		AutoCombatUIStatic.SettingHealSkillRegister, 0,
+		AutoCombatUIStatic.HealingSkillDelaySlot, "healing_skill"
 	);
-	AutoCombatUIStatic.emitMarkDirty(a);
-	a.jmp("consume");
-	a.label("recovery_clear_0_next");
 	for (let index = 0; index < AutoCombatUIStatic.RecoverySkillDynamicRows; index++)
 	{
 		const x = AutoCombatUIStatic.RecoverySkillFirstX +
 			index * AutoCombatUIStatic.RecoverySkillSpacing;
-		const next = `recovery_clear_${index + 1}_next`;
-		AutoCombatUIStatic.emitRectGate(a, x - 16, 117, x + 32, 165, next);
-		AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
-			a, stateVir, mutationSenderVir, AutoCombatUIStatic.FeatureRecoverySkills,
-			AutoCombatUIStatic.SettingRecoverySkillRegister, index, 0,
-			`recovery_skill_${index}_clear`
+		emitRecoveryMouseControl(
+			recoverySkillRowsVir + index * AutoCombatUIStatic.AttackSkillRowSize,
+			x, AutoCombatUIStatic.SettingRecoverySkillRegister, index,
+			AutoCombatUIStatic.RecoverySkillDelaySlotBase + index,
+			`recovery_skill_${index}`
 		);
-		AutoCombatUIStatic.emitMarkDirty(a);
-		a.jmp("consume");
-		a.label(next);
 	}
 	AutoCombatUIStatic.emitRectGate(a, 56, 153, 190, 176, "consume");
 	a.emit(0x8B, 0xC3, 0x83, 0xE8, 0x38, 0x6B, 0xC0, 0x64);
@@ -2720,14 +2756,41 @@ AutoCombatUIStatic.buildControllerRedrawBridge = function(controllerVtableVir)
 	return a;
 };
 
+AutoCombatUIStatic.buildMenuToggleRequest = function(pendingVir)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0xFF, 0x15); a.dword(AutoCombatUIStatic.TimeGetTimeIat);
+	a.emit(0x83, 0xC0, AutoCombatUIStatic.MenuToggleDelayMs);
+	a.emit(0xA3); a.dword(pendingVir + 4);
+	a.emit(0xC7, 0x05); a.dword(pendingVir); a.dword(1);
+	a.emit(0xC3);
+	return a;
+};
+
 AutoCombatUIStatic.buildControllerBootstrap = function(
-	stateVir, openSenderVir, ensureControllerVir
+	stateVir, openSenderVir, ensureControllerVir, pendingVir, toggleVir,
+	getAsyncKeyStateIat
 )
 {
 	const a = AutoCombatUIStatic.asm();
 	// Preserve the original in-game render-pass call before QJS-owned work.
 	a.call(AutoCombatUIStatic.ControllerBootstrapOriginal);
 	a.emit(0x9C, 0x60);
+	// A menu button mouse-up queues the toggle. Creating a top-level frame
+	// inside the native mouse dispatch leaks the dispatch's drag state into the
+	// new frame; consume it here on the next render/update tick instead.
+	a.emit(0x83, 0x3D); a.dword(pendingVir); a.emit(0x00);
+	a.jcc(0x84, "bootstrap_sync");
+	AutoCombatUIStatic.pushImm(a, 0x01);               // VK_LBUTTON
+	a.emit(0xFF, 0x15); a.dword(getAsyncKeyStateIat);
+	a.emit(0x66, 0xA9, 0x00, 0x80);                   // physical button still down?
+	a.jcc(0x85, "bootstrap_sync");
+	a.emit(0xFF, 0x15); a.dword(AutoCombatUIStatic.TimeGetTimeIat);
+	a.emit(0x2B, 0x05); a.dword(pendingVir + 4);
+	a.jcc(0x88, "bootstrap_sync");                    // wait past dispatch boundary
+	a.emit(0xC7, 0x05); a.dword(pendingVir); a.dword(0);
+	a.call(toggleVir);
+	a.label("bootstrap_sync");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateReady); a.emit(0x01);
 	a.jcc(0x84, "bootstrap_controller");
 	a.emit(0xFF, 0x15); a.dword(AutoCombatUIStatic.TimeGetTimeIat);
@@ -2823,13 +2886,14 @@ AutoCombatUIStatic.buildToggle = function(stateVir, vtableVir, openSenderVir, en
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("done");
 	a.label("toggle_existing");
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.FrameMouseUp);
+	a.emit(0xC7, 0x46, AutoCombatUIStatic.WindowDragStateOffset);
+	a.dword(AutoCombatUIStatic.WindowDragIdle);
 	a.emit(0x80, 0x76, AutoCombatUIStatic.WindowVisibleOffset, 0x01);
 	AutoCombatUIStatic.emitMarkDirty(a);
-	a.emit(0x83, 0x7E, AutoCombatUIStatic.WindowVisibleOffset, 0x00);
-	a.jcc(0x84, "done");
-	a.emit(0x56);
-	a.emit(0xB9); a.dword(AutoCombatUIStatic.WindowManager);
-	a.call(AutoCombatUIStatic.WindowBringToFront);
 	a.label("done");
 	a.emit(0x61, 0x9D, 0xC3);
 	return a;
@@ -2912,6 +2976,9 @@ AutoCombatUI = function(_)
 
 	$$(_, 1, "Verify the native UIFrameWnd ABI and input handlers");
 	const verified = AutoCombatUIStatic.verifyNativeContracts();
+	const getAsyncKeyStateIat = Exe.FindFunc("GetAsyncKeyState", "USER32.dll");
+	if (!Number.isInteger(getAsyncKeyStateIat) || getAsyncKeyStateIat < 0)
+		throw Error("AutoCombatUI: GetAsyncKeyState import not found");
 
 	$$(_, 2, "Build client-native Auto Hunt resource paths");
 	const paths = {
@@ -3213,7 +3280,8 @@ AutoCombatUI = function(_)
 	const mouseDown = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildMouseDown(
 			state.vir, scalarSender.vir, monsterRows.vir,
-			attackSkillRows.vir, supportSkillRows.vir
+			attackSkillRows.vir, supportSkillRows.vir,
+			healingSkillRow.vir, recoverySkillRows.vir
 		)
 	);
 	const mouseUp = AutoCombatUIStatic.allocateCode(
@@ -3276,20 +3344,37 @@ AutoCombatUI = function(_)
 	if (controllerDirtyPhy < 0)
 		throw Error("AutoCombatUI: UI dirty-clear instruction is not mapped");
 	Exe.SetJMP(controllerDirtyPhy, controllerRedraw.vir, 2);
-	const controllerBootstrap = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildControllerBootstrap(
-			state.vir, openSender.vir, ensureController.vir
-		)
-	);
-	Exe.SetCALL(verified.controllerBootstrapPhy, controllerBootstrap.vir, 0);
 	const toggle = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildToggle(
 			state.vir, vtable.vir, openSender.vir, [ensureController.vir]
 		)
 	);
+	const menuTogglePending = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.MenuToggleStateSize).fill(0), 4
+	);
+	const menuToggleRequest = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildMenuToggleRequest(menuTogglePending.vir)
+	);
+	const controllerBootstrap = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildControllerBootstrap(
+			state.vir, openSender.vir, ensureController.vir,
+			menuTogglePending.vir, toggle.vir, getAsyncKeyStateIat
+		)
+	);
+	Exe.SetCALL(verified.controllerBootstrapPhy, controllerBootstrap.vir, 0);
+	const menuButtonVisible = AutoCombatUIStatic.allocateBytes([1, 0, 0, 0], 4);
+	CACHE.put("AutoCombatUI.MenuButton.v1", {
+		toggleVir: toggle.vir,
+		requestVir: menuToggleRequest.vir,
+		pendingVir: menuTogglePending.vir,
+		visibleVir: menuButtonVisible.vir,
+		visiblePhy: menuButtonVisible.phy,
+		label: "Auto Hunt"
+	});
 
-	$$(_, 5, "Register /autohunt directly to the static UI cave");
-	CustomSlashCommand.register(`${_}.SlashCommand`, {
+	// Keep one test-cycle fallback. Remove after the native menu click is
+	// accepted in-game so a bad client ABI cannot strand the settings UI.
+	CustomSlashCommand.register(_ + ".SlashCommand", {
 		command: "/autohunt",
 		targetVir: toggle.vir
 	});
@@ -3299,7 +3384,8 @@ AutoCombatUI = function(_)
 	{
 		PatchDiagnostics.add("AutoCombatUI.QjsOnly", {
 			buildDate: Exe.BuildDate,
-			command: "/autohunt",
+			opener: "ROGlobalZeroMenu.AutoHuntButton",
+			fallbackCommand: "/autohunt",
 			nativeHost: "UIFrameWnd",
 			windowSize: [
 				AutoCombatUIStatic.WindowWidth,
@@ -3313,6 +3399,9 @@ AutoCombatUI = function(_)
 			mouseDownVir: mouseDown.vir,
 			mouseUpVir: mouseUp.vir,
 			toggleVir: toggle.vir,
+			menuToggleRequestVir: menuToggleRequest.vir,
+			menuTogglePendingVir: menuTogglePending.vir,
+			menuButtonVisibleVir: menuButtonVisible.vir,
 			openSenderVir: openSender.vir,
 			scalarSenderVir: scalarSender.vir,
 			snapshotReceiverVir,

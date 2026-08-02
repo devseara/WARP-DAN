@@ -36,13 +36,13 @@ ButtonVis:
             title : Hide Buttons (New UI)
             recommend : no
             author : Neo-Mind,Skylove,Cremané
-            desc : Hides selected buttons below the HP/SP bars in the Basic Info Window (new UI style). Useful for removing buttons for features your server does not support.
+            desc : Hides selected buttons below the HP/SP bars in the Basic Info Window (new UI style). When AutoCombatUI is selected, Auto Hunt is also offered and controls the synthetic native menu child. Useful for removing buttons for features your server does not support.
         
         - ShowNewButtons:
             title : Show Buttons (New UI)
             recommend : no
             author : Neo-Mind,Skylove,Cremané
-            desc : Restores selected hidden buttons below the HP/SP bars in the Basic Info Window (new UI style). Use to bring back buttons that were removed in newer client versions.
+            desc : Restores selected hidden buttons below the HP/SP bars in the Basic Info Window (new UI style). When AutoCombatUI is selected, Auto Hunt is also offered and controls the synthetic native menu child. Use to bring back buttons that were removed in newer client versions.
 
 CharCreation:
     title : CHARACTER CREATION
