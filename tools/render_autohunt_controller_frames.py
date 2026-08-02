@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bake Ragnarok STR controller effects into QJS-friendly 64x64 TGA frames."""
+"""Bake Ragnarok STR controller effects into QJS-friendly TGA frames."""
 
 from __future__ import annotations
 
@@ -179,7 +179,8 @@ def blend(canvas: Image.Image, sprite: Image.Image, position: tuple[int, int],
 	canvas.paste(composite, (clip_left, clip_top))
 
 
-def render_frame(effect: StrEffect, root: Path, frame: int, size: int) -> Image.Image:
+def render_frame(effect: StrEffect, root: Path, frame: int, size: int,
+		scale: float) -> Image.Image:
 	canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
 	texture_cache: dict[str, Image.Image] = {}
 	for layer in effect.layers:
@@ -190,14 +191,14 @@ def render_frame(effect: StrEffect, root: Path, frame: int, size: int) -> Image.
 		if name not in texture_cache:
 			texture_cache[name] = Image.open(root / name).convert("RGBA")
 		image = texture_cache[name]
-		width = max(1, round(max(key.xy[:4]) - min(key.xy[:4])))
-		height = max(1, round(max(key.xy[4:]) - min(key.xy[4:])))
+		width = max(1, round((max(key.xy[:4]) - min(key.xy[:4])) * scale))
+		height = max(1, round((max(key.xy[4:]) - min(key.xy[4:])) * scale))
 		image = image.resize((width, height), Image.Resampling.LANCZOS)
 		image = tint(image, key.color)
 		if abs(key.angle) > 0.001:
 			image = image.rotate(-key.angle, resample=Image.Resampling.BICUBIC, expand=True)
-		center_x = size / 2.0 + key.offset[0] - 320.0
-		center_y = size / 2.0 + key.offset[1] - 240.0
+		center_x = size / 2.0 + (key.offset[0] - 320.0) * scale
+		center_y = size / 2.0 + (key.offset[1] - 240.0) * scale
 		position = (round(center_x - image.width / 2.0),
 			round(center_y - image.height / 2.0))
 		blend(canvas, image, position, key.source_alpha, key.destination_alpha)
@@ -205,7 +206,7 @@ def render_frame(effect: StrEffect, root: Path, frame: int, size: int) -> Image.
 
 
 def bake(effect_dir: Path, str_name: str, output_dir: Path, size: int,
-		frame_count: int, inactive: bool = False) -> None:
+		frame_count: int, scale: float, inactive: bool = False) -> None:
 	effect = load_str(effect_dir / str_name)
 	output_dir.mkdir(parents=True, exist_ok=True)
 	if inactive:
@@ -214,7 +215,7 @@ def bake(effect_dir: Path, str_name: str, output_dir: Path, size: int,
 		frames = [round(index * effect.max_frame / frame_count)
 			for index in range(frame_count)]
 	for index, source_frame in enumerate(frames):
-		image = render_frame(effect, effect_dir, source_frame, size)
+		image = render_frame(effect, effect_dir, source_frame, size, scale)
 		name = "inactive.tga" if inactive else f"active_{index:02d}.tga"
 		image.save(output_dir / name, format="TGA", compression=None)
 
@@ -225,15 +226,16 @@ def main() -> None:
 	parser.add_argument("--autopotion", type=Path, required=True)
 	parser.add_argument("--output", type=Path,
 		default=Path("Assets/AutoCombatUI"))
-	parser.add_argument("--size", type=int, default=64)
+	parser.add_argument("--size", type=int, default=72)
+	parser.add_argument("--scale", type=float, default=1.2)
 	parser.add_argument("--frames", type=int, default=30)
 	args = parser.parse_args()
 	for name, root in (("autobattle", args.autobattle),
 			("autopotion", args.autopotion)):
 		bake(root / f"{name}_blue_loop", f"{name}_blue_loop.str",
-			args.output / name, args.size, args.frames)
+			args.output / name, args.size, args.frames, args.scale)
 		bake(root / f"{name}_red", f"{name}_red.str",
-			args.output / name, args.size, args.frames, inactive=True)
+			args.output / name, args.size, args.frames, args.scale, inactive=True)
 
 
 if __name__ == "__main__":

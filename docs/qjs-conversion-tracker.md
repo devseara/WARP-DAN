@@ -30,7 +30,7 @@ Status meanings:
 | FPS overlay | Implemented, test required | QJS-only post-Present cave counts native frames and draws at prompted X/Y coordinates through existing Win32 imports. No D3D proxy or custom DLL. |
 | Ping overlay | Implemented, test required | QJS-only `0x0360/0x007F` application RTT capture feeds the shared prompted-position renderer. No ICMP, recv hook or custom DLL. |
 | In-game PIN keypad | Working | QJS-only shared `0x0BEF/PINC` route and client-native keypad flow; Cancel and normal PIN entry are live-confirmed with no PIN UI DLL. |
-| AutoHunt UI | Implemented, active-loop live test required | QJS-only seven-tab AHUI, native Skill Tree drag/drop, server-backed profiles, and independent draggable AutoCombat/AutoSupport controls. The controls are created by the in-game render pass without `/autohunt`; their 30-frame active animation is baked from all native STR layers and transforms. |
+| AutoHunt UI | Implemented, role/recovery live test required | QJS-only seven-tab AHUI, native Skill Tree drag/drop, server-backed attack/support/healing/status-recovery roles, page-3 HP threshold slider, and one draggable AutoCombat/AutoSupport control group with independent left/right actions. The group is created by the in-game render pass without `/autohunt`; its 30-frame active animation is baked from all native STR layers and transforms. |
 | HatEffect world occlusion | Working | `AllHatEffectsWorldDepthOracle.qjs` preserves the original screen-space STR renderer and apparent scale. Live-accepted v4.2 uses Ragnarok's Y-up matrix coefficients for upper-vertex depth and a bounded four-native-quantum contact tolerance. It remains scoped to HatEffects; native world `.str` NPCs retain stock behavior. |
 
 ## Fluent emoji checklist
@@ -55,12 +55,17 @@ Status meanings:
 - [x] Share the static `0x0BEF` dispatcher safely with the in-game PIN route.
 - [x] Expose Basic, Monster, three Skill, two Potion, two Looting, Move, and Item pages.
 - [x] Accept native Skill Tree drag payloads and persist slot skill, level, and interval server-side.
-- [x] Keep AutoCombat and AutoSupport as independent draggable 64x64 controllers.
+- [x] Classify skills authoritatively as attack, support, healing, status recovery, or unsupported; reject wrong-page drops and recheck roles at runtime.
+- [x] Return wrong-page skill-registration failures through an append-only 1900-byte snapshot result and show `This skill cannot be registered on this page.` without duplicating role rules in QJS.
+- [x] Back Skill page 3/3 with one healing slot, three status-recovery slots, and a server-persisted 0-100 HP threshold slider; align dynamic icons and the HP fill to the baked 470x308 page artwork.
+- [x] Treat `autohunt.bson` as the native-layout oracle: `ApplySkin`/`DefaultBg`, a 17px title bar, 11x11 system Base/Close controls, and 42x20 three-state Reset/Close buttons. Preserve its control sizes and edge insets when adapting the original 330px root to the 470px Global artwork.
+- [ ] Live-confirm Meteor Assault on page 1, wrong-page modal/reversion, page-3 role restrictions and alignment, threshold persistence, native header/footer control rendering, and status-gated recovery casting.
+- [x] Group the 72x72 AutoCombat and AutoSupport halves into one draggable 144x72 controller while preserving independent toggles.
 - [x] Use red textures while inactive and the blue loop textures while active.
 - [x] Bake all 17 native STR layers, including six moving particle sprites and both 0/180-degree particle-line layers, into a 30-frame/20 FPS loop.
 - [x] Preserve native per-layer position, scale, rotation, color, and apparent icon size instead of scaling every 128x128 texture to the controller canvas.
-- [x] Create and server-sync both controllers from the normal in-game render pass; `/autohunt` only toggles the settings window.
-- [ ] Live-confirm the complete particle revolution, natural controller size, dragging, toggling, relog, map change, Alt+Tab, and clean exit.
+- [x] Create and server-sync the grouped controller from the normal in-game render pass; `/autohunt` only toggles the settings window.
+- [ ] Live-confirm both complete particle revolutions, grouped dragging, independent left/right toggling, relog, map change, Alt+Tab, and clean exit.
 
 ## Native FPS/Ping overlay checklist
 
