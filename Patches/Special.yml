@@ -132,7 +132,7 @@ CustomSkills:
             title : Enable Custom Item Name Colors (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : "For the profiled 2025-07-16 and 2026-02-19 Ragexe clients, routes packet 0x0BDD to a bounded ICOL table and applies anchored exact item-title colors through a guarded TextOutW cave. Inventory matching accepts stock slotless and slotted quantity forms. Color Enchant Grade Prefixes conditionally coalesces the native post-grade endpoint so grade color owns the complete decorated title. Matched dark shadows are suppressed and grade quantity tails are omitted. No text DLL, recv hook, API detour, or cross-call continuation is used."
+            desc : "For the profiled 2025-07-16 and 2026-02-19 Ragexe clients, routes packet 0x0BDD to bounded ICOL tables. Producer hooks prefer the optional ICL2 ItemId trailer where CItem is available, then fall back to exact legacy ItemName records for old servers and text-only surfaces. Inventory matching accepts stock slotless and slotted quantity forms. Color Enchant Grade Prefixes conditionally coalesces the native post-grade endpoint so grade color owns the complete decorated title. Matched dark shadows are suppressed and grade quantity tails are omitted. No text DLL, recv hook, API detour, or cross-call continuation is used."
 
         - CustomPlayerNameColor:
             title : Enable Custom Player Name Colors (QJS-only)

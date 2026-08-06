@@ -52,6 +52,9 @@ class Profile:
     set_text_color_iat: int
     wide_to_multi_iat: int
     item_tooltip_stock: int
+    item_id_getter: int
+    inventory_caller_item_offset: int
+    equipment_caller_item_offset: int
     item_label_sites: tuple[int, ...]
     ground_tooltip_stock: int
     ground_sites: tuple[int, ...]
@@ -60,6 +63,8 @@ class Profile:
     balloon_styled_stock: int
     balloon_styled_sites: tuple[int, ...]
     grade_title_formatter: int
+    item_title_formatter: int
+    item_title_formatter_prologue: bytes
     grade_title_formatter_sites: tuple[int, int]
     grade_title_guard_bytes: tuple[bytes, bytes]
     grade_boundary_append_site: int
@@ -82,6 +87,9 @@ PROFILES = {
         set_text_color_iat=0x00FC10E0,
         wide_to_multi_iat=0x00FC1204,
         item_tooltip_stock=0x00A753D0,
+        item_id_getter=0x005D98A0,
+        inventory_caller_item_offset=0x138,
+        equipment_caller_item_offset=0x230,
         item_label_sites=(
             0x0094D594,
             0x0094D639,
@@ -97,6 +105,10 @@ PROFILES = {
         balloon_styled_stock=0x00A26540,
         balloon_styled_sites=(0x00826503,),
         grade_title_formatter=0x006A2AC0,
+        item_title_formatter=0x008A0570,
+        item_title_formatter_prologue=bytes.fromhex(
+            "55 8B EC 51 53 56 57"
+        ),
         grade_title_formatter_sites=(0x008A0620, 0x008A0822),
         grade_title_guard_bytes=(
             bytes.fromhex(
@@ -126,6 +138,9 @@ PROFILES = {
         set_text_color_iat=0x010C7130,
         wide_to_multi_iat=0x010C7244,
         item_tooltip_stock=0x00AD6510,
+        item_id_getter=0x005FCCF0,
+        inventory_caller_item_offset=0x138,
+        equipment_caller_item_offset=0x230,
         item_label_sites=(
             0x00987744,
             0x009877E9,
@@ -141,6 +156,10 @@ PROFILES = {
         balloon_styled_stock=0x00A84E30,
         balloon_styled_sites=(0x0085E1E3,),
         grade_title_formatter=0x006D5780,
+        item_title_formatter=0x008DA690,
+        item_title_formatter_prologue=bytes.fromhex(
+            "55 8B EC 51 53 56 57"
+        ),
         grade_title_formatter_sites=(0x008DA740, 0x008DA942),
         grade_title_guard_bytes=(
             bytes.fromhex(
@@ -297,6 +316,28 @@ class SourceChecks:
 
         text_out = extract_js_function(item, "ItemColorStatic.buildTextOut")
         lookup = extract_js_function(item, "ItemColorStatic.buildLookup")
+        lookup_id = extract_js_function(item, "ItemColorStatic.buildLookupId")
+        lookup_grade = extract_js_function(
+            item, "ItemColorStatic.buildLookupGrade"
+        )
+        producer_color_match = extract_js_function(
+            item, "ItemColorStatic.buildProducerColorMatch"
+        )
+        register_rendered_name = extract_js_function(
+            item, "ItemColorStatic.buildRegisterRenderedName"
+        )
+        item_title_formatter = extract_js_function(
+            item, "ItemColorStatic.buildItemTitleFormatter"
+        )
+        item_title_trampoline = extract_js_function(
+            item, "ItemColorStatic.buildItemTitleFormatterTrampoline"
+        )
+        item_tooltip = extract_js_function(
+            item, "ItemColorStatic.buildItemTooltip"
+        )
+        ground_tooltip = extract_js_function(
+            item, "ItemColorStatic.buildGroundTooltip"
+        )
         drain = extract_js_function(item, "ItemColorStatic.buildDrain")
         create_config = extract_js_function(
             item, "ItemColorStatic.createGradeConfig"
@@ -313,11 +354,25 @@ class SourceChecks:
         patch_boundaries = extract_js_function(
             item, "ItemColorStatic.patchGradeTitleBoundaries"
         )
+        patch_item_title = extract_js_function(
+            item, "ItemColorStatic.patchItemTitleFormatter"
+        )
         text_out_code = strip_js_comments(text_out)
         lookup_code = strip_js_comments(lookup)
+        lookup_id_code = strip_js_comments(lookup_id)
+        lookup_grade_code = strip_js_comments(lookup_grade)
+        producer_color_match_code = strip_js_comments(producer_color_match)
+        register_rendered_name_code = strip_js_comments(
+            register_rendered_name
+        )
+        item_title_formatter_code = strip_js_comments(item_title_formatter)
+        item_title_trampoline_code = strip_js_comments(item_title_trampoline)
+        item_tooltip_code = strip_js_comments(item_tooltip)
+        ground_tooltip_code = strip_js_comments(ground_tooltip)
         append_gate_code = strip_js_comments(append_gate)
         inline_gate_code = strip_js_comments(inline_gate)
         patch_boundaries_code = strip_js_comments(patch_boundaries)
+        patch_item_title_code = strip_js_comments(patch_item_title)
 
         forbidden_renderer_tokens = (
             "GetTextExtentPoint32",
@@ -403,21 +458,28 @@ class SourceChecks:
                 r"a\.call\s*\(\s*previousTextOutVir\s*\)", text_out
             )
         ]
+        native_foreground_at = text_out.find('a.label("foreground_policy")')
         foreground_at = text_out.find('a.label("draw_foreground")')
         stock_at = text_out.find('a.label("draw_stock")')
         return_at = text_out.find('a.label("return")')
         self.require(
-            len(downstream_calls) == 2,
-            "TextOutW bridge must have exactly one foreground and one stock "
-            "downstream call site",
+            len(downstream_calls) == 4,
+            "TextOutW bridge must have exactly one native balloon shadow, "
+            "one producer-owned balloon foreground, one custom foreground, "
+            "and one stock downstream call site",
         )
         self.require(
-            foreground_at >= 0
+            native_foreground_at >= 0
+            and foreground_at > native_foreground_at
             and stock_at > foreground_at
-            and downstream_calls[0] > foreground_at
-            and downstream_calls[0] < stock_at
-            and downstream_calls[1] > stock_at,
-            "custom foreground is not a single contiguous TextOutW span",
+            and downstream_calls[0] < native_foreground_at
+            and downstream_calls[1] > native_foreground_at
+            and downstream_calls[1] < foreground_at
+            and downstream_calls[2] > foreground_at
+            and downstream_calls[2] < stock_at
+            and downstream_calls[3] > stock_at,
+            "TextOutW balloon-shadow/producer/custom/stock branches are not "
+            "mutually exclusive single-span draws",
         )
         foreground = text_out[foreground_at:stock_at]
         self.require(
@@ -455,8 +517,9 @@ class SourceChecks:
             )
 
         apply_color_at = text_out.find('a.label("apply_color")')
-        shadow_end = foreground_at
+        shadow_end = native_foreground_at
         shadow = text_out[apply_color_at:shadow_end]
+        suppress_dark_at = shadow.find('a.label("suppress_dark_pass")')
         self.require(
             apply_color_at > item_lookup_at and shadow_end > apply_color_at,
             "matched color/shadow path is missing",
@@ -467,17 +530,22 @@ class SourceChecks:
             "dark-pass RGB threshold or HDC restoration is missing",
         )
         self.require(
+            "stateVir + ItemColorStatic.StateBalloonScope" in shadow
+            and suppress_dark_at >= 0
+            and shadow.find("a.call(previousTextOutVir)")
+            < suppress_dark_at,
+            "semantic item-balloon dark pass does not restore and draw its "
+            "native outline before the non-balloon suppression branch",
+        )
+        self.require(
             re.search(
                 r"a\.emit\s*\(\s*0xB8\s*\)\s*;\s*a\.dword\s*\(\s*1\s*\)"
                 r"\s*;\s*a\.jmp\s*\(\s*\"return\"\s*\)",
-                shadow,
+                shadow[suppress_dark_at:],
             )
             is not None,
-            "matched dark pass does not return TRUE before drawing",
-        )
-        self.require(
-            "previousTextOutVir" not in shadow,
-            "matched dark/shadow path still calls downstream TextOutW",
+            "Inventory/Alt+Q/Item Description dark pass is not suppressed "
+            "after the balloon-only outline branch",
         )
 
         self.require(
@@ -485,6 +553,28 @@ class SourceChecks:
             and 'a.label("normal_suffix")' in lookup
             and 'a.label("slot_suffix")' in lookup,
             "exact base-item and canonical suffix matching are missing",
+        )
+        self.require(
+            "ItemColorStatic.EntryDynamicTitle" in lookup_code
+            and 'a.label("dynamic_fragment")' in lookup_code
+            and 'a.label("dynamic_prefix_compare")' in lookup_code
+            and 'a.label("dynamic_suffix_compare")' in lookup_code
+            and "0x83, 0xF8, 0x03" in lookup_code
+            and "0x83, 0xF9, 0x03" in lookup_code,
+            "producer-derived wrapped Alt+Q prefix/suffix matching is missing "
+            "or is not restricted to dynamic title records",
+        )
+        self.require(
+            "a.emit(0x6A, 0x03" in text_out_code
+            and text_out_code.find("a.emit(0x6A, 0x03")
+            > text_out_code.find('a.label("item_lookup")')
+            and "stateVir + ItemColorStatic.StateBalloonScope"
+            in text_out_code[
+                text_out_code.find('a.label("item_lookup")'):
+                text_out_code.find('a.label("apply_color")')
+            ],
+            "TextOutW does not use the current-span-only dynamic fragment "
+            "fallback for non-balloon wrapped titles",
         )
         suffix_at = lookup_code.find('a.label("normal_suffix")')
         space_at = lookup_code.find('a.label("space_suffix")', suffix_at)
@@ -531,6 +621,198 @@ class SourceChecks:
             "server-label" in drain and "without trusting server text" in drain,
             "numeric grade parser no longer explicitly rejects server-label "
             "authority",
+        )
+        self.require(
+            "PacketV2Magic: 0x324C4349" in item
+            and "PacketV2Version: 2" in item
+            and "PacketV2RecordSize: 12" in item
+            and "PacketV2KindItem: 0" in item
+            and "PacketV2KindGrade: 1" in item,
+            "ICL2 typed trailer constants are missing",
+        )
+        v2_parse_at = drain.find('a.label("parse_v2")')
+        v2_item_at = drain.find('a.label("v2_item")')
+        v2_grade_at = drain.find('a.label("v2_grade")')
+        publish_at = drain.find('a.label("publish")')
+        self.require(
+            0 <= v2_parse_at < v2_item_at < v2_grade_at < publish_at
+            and "ItemColorStatic.PacketV2Magic" in drain[v2_parse_at:publish_at]
+            and "ItemColorStatic.PacketV2RecordSize" in drain[v2_parse_at:publish_at]
+            and "stateVir + ItemColorStatic.StateItemIdCount" in drain,
+            "drain does not parse the backward-compatible ICL2 trailer after "
+            "legacy names",
+        )
+        self.require(
+            "itemIdTableVir" in drain[v2_item_at:v2_grade_at]
+            and "ItemColorStatic.ItemIdEntryItemId" in drain[v2_item_at:v2_grade_at]
+            and "ItemColorStatic.ItemIdEntrySize" in drain[v2_item_at:v2_grade_at],
+            "ICL2 item records are not stored in the bounded item-id table",
+        )
+        self.require(
+            'a.label("v2_grade_registry_loop")' in drain
+            and 'a.label("v2_grade_label_scan")' in drain
+            and "ItemColorStatic.EntryGrade" in drain[v2_grade_at:publish_at],
+            "ICL2 grade records are not resolved numerically through the "
+            "active label registry",
+        )
+        self.require(
+            "stateVir + ItemColorStatic.StateItemIdCount" in lookup_id_code
+            and "ItemColorStatic.ItemIdEntryItemId" in lookup_id_code
+            and "ItemColorStatic.ItemIdEntrySize" in lookup_id_code
+            and "strstr" not in lookup_id_code.lower()
+            and "substring" not in lookup_id_code.lower(),
+            "item-id lookup table is missing or uses text matching",
+        )
+        self.require(
+            "stateVir + ItemColorStatic.StateCount" in lookup_grade_code
+            and "ItemColorStatic.EntryGrade" in lookup_grade_code
+            and "a.emit(0xC1, 0xE8, 0x08, 0x3B, 0xC6)"
+            in lookup_grade_code
+            and "strstr" not in lookup_grade_code.lower(),
+            "numeric grade lookup is missing or falls back to grade text",
+        )
+        self.require(
+            "ItemColorStatic.TablePacketCapacity" in drain
+            and "stateVir + ItemColorStatic.StateDynamicNext" in drain
+            and drain.count("a.emit(0x83, 0xC8, ItemColorStatic.EntryGrade)")
+            >= 2,
+            "packet grade records do not retain numeric grade identity or "
+            "reserve the bounded native-title cache",
+        )
+        self.require(
+            "ItemColorStatic.ItemIdGetter" in item_title_formatter_code
+            and "a.call(lookupGradeVir)" in item_title_formatter_code
+            and "a.call(lookupIdVir)" in item_title_formatter_code
+            and item_title_formatter_code.find("a.call(lookupGradeVir)")
+            < item_title_formatter_code.find("a.call(lookupIdVir)")
+            and "a.call(registerNameVir)" in item_title_formatter_code
+            and "a.emit(0x89, 0x02)" in item_title_formatter_code
+            and "0xC2, 0x20, 0x00" in item_title_formatter_code,
+            "native CItem title formatter does not apply grade then ItemId "
+            "and canonicalize the exact rendered title",
+        )
+        self.require(
+            "ItemColorStatic.NameCapacity - 1"
+            in register_rendered_name_code
+            and "ItemColorStatic.TableCapacity"
+            in register_rendered_name_code
+            and "ItemColorStatic.TableDynamicCapacity"
+            in register_rendered_name_code
+            and "ItemColorStatic.EntryDynamic"
+            in register_rendered_name_code
+            and 'a.label("dedupe_loop")' in register_rendered_name_code
+            and 'a.label("ring_index")' in register_rendered_name_code,
+            "native rendered-title recognition cache is not bounded, "
+            "deduplicated, ring-replaced, and recognition-only",
+        )
+        self.require(
+            "stateVir + ItemColorStatic.StateItemIdCount"
+            in producer_color_match_code
+            and "ItemColorStatic.ItemIdEntrySize"
+            in producer_color_match_code
+            and "ItemColorStatic.EntryGrade"
+            in producer_color_match_code,
+            "foreground ownership does not recognize native ItemId/grade "
+            "COLORREF values",
+        )
+        self.require(
+            "a.emit(0x55, 0x8B, 0xEC, 0x51, 0x53, 0x56, 0x57)"
+            in item_title_trampoline_code
+            and "ItemColorStatic.ItemTitleFormatter + 7"
+            in item_title_trampoline_code
+            and "Exe.SetJMP(entryPhy, state.itemTitleFormatterVir, 0)"
+            in patch_item_title_code
+            and "Exe.SetNOPs(entryPhy + 5, 2)" in patch_item_title_code
+            and "ItemTitleFormatterPrologue" in patch_item_title_code,
+            "native item-title formatter trampoline/prologue gate is missing",
+        )
+
+        for function_name, function_code in (
+            ("ItemTooltip", item_tooltip_code),
+            ("GroundTooltip", ground_tooltip_code),
+        ):
+            grade_probe_at = function_code.find("a.call(lookupVir)")
+            id_lookup_at = function_code.find('a.label("id_lookup")')
+            id_call_at = function_code.find("a.call(lookupIdVir)")
+            legacy_label_at = function_code.find('a.label("legacy_lookup")')
+            legacy_call_at = function_code.find(
+                "a.call(lookupVir)", legacy_label_at
+            )
+            self.require(
+                0
+                <= grade_probe_at
+                < id_lookup_at
+                < id_call_at
+                < legacy_label_at
+                < legacy_call_at,
+                f"{function_name} does not give grade ownership first, then "
+                "ItemId, then legacy ItemName fallback",
+            )
+            self.require(
+                "ItemColorStatic.ItemIdGetter" in function_code
+                and "lookupIdVir" in function_code
+                and "a.call(registerNameVir)" in function_code,
+                f"{function_name} does not use the native CItem item-id "
+                "accessor and register its exact producer title",
+            )
+
+        self.require(
+            "0x53, 0x56, 0x57, 0x51" in item_tooltip_code
+            and "0x59, 0x5F, 0x5E, 0x5B" in item_tooltip_code
+            and "a.jmp(ItemColorStatic.ItemTooltipShow)"
+            in item_tooltip_code,
+            "ItemTooltip bridge must preserve incoming thiscall ECX across "
+            "all drain/lookups and restore it before the stock tail jump",
+        )
+        self.require(
+            'a.label("foreground_policy")' in text_out_code
+            and "stateVir + ItemColorStatic.StateBalloonScope"
+            in text_out_code
+            and "a.call(producerColorMatchVir)" in text_out_code
+            and "ItemColorStatic.EntryDynamic" in text_out_code
+            and text_out_code.count(
+                'a.jcc(0x84, "draw_foreground")'
+            )
+            >= 2
+            and text_out_code.count(
+                'a.jcc(0x85, "draw_producer_foreground")'
+            )
+            >= 1
+            and "a.emit(0xC7, 0x45, 0xE8)" in text_out_code
+            and text_out_code.find('a.label("foreground_policy")')
+            < text_out_code.find('a.label("draw_foreground")'),
+            "dynamic CItem titles do not own final TextOut foreground while "
+            "semantic balloon draws preserve their producer ItemId color",
+        )
+        self.require(
+            "InventoryCallerItemOffset" in item_tooltip
+            and "EquipmentCallerItemOffset" in item_tooltip
+            and "callVir + 5" in item_tooltip,
+            "inventory/equipment ItemId bridge is not tied to profiled "
+            "producer callsites",
+        )
+        inventory_this_at = item_tooltip_code.find(
+            'a.label("caller_inventory")'
+        )
+        equipment_this_at = item_tooltip_code.find(
+            'a.label("caller_equipment")'
+        )
+        have_item_at = item_tooltip_code.find(
+            'a.label("caller_have_item")'
+        )
+        inventory_this = item_tooltip_code[
+            inventory_this_at:equipment_this_at
+        ]
+        equipment_this = item_tooltip_code[equipment_this_at:have_item_at]
+        self.require(
+            0 <= inventory_this_at < equipment_this_at < have_item_at
+            and "a.emit(0x8D, 0x88)" in inventory_this
+            and "a.emit(0x8D, 0x88)" in equipment_this
+            and "a.emit(0x8B, 0x88)" not in inventory_this
+            and "a.emit(0x8B, 0x88)" not in equipment_this,
+            "inventory/equipment ItemId bridge must LEA the profiled inline "
+            "CItem locals; MOV dereferences the first field as an invalid "
+            "ItemIdGetter this pointer and crashes on hover",
         )
 
         self.require(
@@ -760,8 +1042,9 @@ def profile_source_contract_matches(block: str, profile: Profile) -> bool:
     def hex_field(name: str, value: int) -> bool:
         return (
             re.search(
-                rf"\b{re.escape(name)}\s*:\s*0x{value:08X}\b",
+                rf"\b{re.escape(name)}\s*:\s*0x0*{value:X}\b",
                 block,
+                re.IGNORECASE,
             )
             is not None
         )
@@ -795,6 +1078,20 @@ def profile_source_contract_matches(block: str, profile: Profile) -> bool:
 
     return (
         hex_field("GradeTitleFormatter", profile.grade_title_formatter)
+        and hex_field("ItemTitleFormatter", profile.item_title_formatter)
+        and (
+            profile.item_title_formatter_prologue.hex(" ").upper()
+            in block
+        )
+        and hex_field("ItemIdGetter", profile.item_id_getter)
+        and hex_field(
+            "InventoryCallerItemOffset",
+            profile.inventory_caller_item_offset,
+        )
+        and hex_field(
+            "EquipmentCallerItemOffset",
+            profile.equipment_caller_item_offset,
+        )
         and address_array(
             "GradeTitleFormatterCallSites",
             profile.grade_title_formatter_sites,
@@ -1120,6 +1417,43 @@ def disassemble_bridge(image: PEImage, bridge: int) -> tuple[list[object], bytes
             "RET 14h within 4096 bytes"
         )
     return instructions, raw[:end]
+
+
+def disassemble_to_ret(
+    image: PEImage,
+    address: int,
+    accepted_operands: frozenset[str],
+    maximum: int = 0x1000,
+) -> tuple[list[object], bytes]:
+    try:
+        from capstone import (  # type: ignore[import-not-found]
+            CS_ARCH_X86,
+            CS_MODE_32,
+            Cs,
+        )
+    except ImportError as exc:
+        raise ContractFailure(
+            "PE checks require capstone; run with .venv\\Scripts\\python.exe"
+        ) from exc
+
+    raw = image.read_up_to(address, maximum)
+    engine = Cs(CS_ARCH_X86, CS_MODE_32)
+    engine.detail = True
+    instructions: list[object] = []
+    end = 0
+    for instruction in engine.disasm(raw, address):
+        instructions.append(instruction)
+        end = int(instruction.address + instruction.size - address)
+        if (
+            instruction.mnemonic == "ret"
+            and instruction.op_str.lower() in accepted_operands
+        ):
+            return instructions, raw[:end]
+    rendered = ", ".join(sorted(accepted_operands))
+    raise ContractFailure(
+        f"{image.path.name}: function at 0x{address:08X} has no accepted "
+        f"RET ({rendered}) within {maximum} bytes"
+    )
 
 
 def disassemble_prefix(
@@ -1617,6 +1951,129 @@ def verify_pe_case(case: CaseSpec) -> str:
             "SetTextColor sites (set, dark restore, foreground restore)"
         )
 
+    direct_call_counts: Counter[int] = Counter(
+        target
+        for instruction in instructions
+        if instruction.mnemonic == "call"
+        and (target := instruction_immediate(instruction)) is not None
+    )
+    downstream_targets = [
+        target for target, count in direct_call_counts.items() if count == 4
+    ]
+    if len(downstream_targets) != 1:
+        raise ContractFailure(
+            f"{image.path.name}: TextOutW bridge does not contain exactly four "
+            "calls to one downstream renderer (balloon outline, producer "
+            "foreground, custom foreground, stock)"
+        )
+
+    fragment_lookup = None
+    for index, instruction in enumerate(instructions):
+        if (
+            instruction.mnemonic != "push"
+            or instruction_immediate(instruction) != 3
+        ):
+            continue
+        for candidate in instructions[index + 1:index + 6]:
+            if candidate.mnemonic != "call":
+                continue
+            target = instruction_immediate(candidate)
+            if target is None or not image.is_executable(target):
+                continue
+            try:
+                _, candidate_bytes = disassemble_to_ret(
+                    image,
+                    target,
+                    frozenset({""}),
+                )
+            except ContractFailure:
+                continue
+            if (
+                bytes.fromhex("F7 47 08 04 00 00 00")
+                in candidate_bytes
+                and bytes.fromhex("83 F9 03") in candidate_bytes
+                and bytes.fromhex("03 5F 04 2B D9") in candidate_bytes
+            ):
+                fragment_lookup = target
+                break
+        if fragment_lookup is not None:
+            break
+    if fragment_lookup is None:
+        raise ContractFailure(
+            f"{image.path.name}: final TextOutW bridge lacks the mode-3 "
+            "dynamic-title-only anchored prefix/suffix lookup used by wrapped "
+            "Alt+Q labels"
+        )
+
+    title_wrapper = relative_target(
+        image,
+        profile.item_title_formatter,
+        0xE9,
+        "native CItem title formatter bridge",
+    )
+    if image.read(profile.item_title_formatter + 5, 2) != b"\x90\x90":
+        raise ContractFailure(
+            f"{image.path.name}: CItem title formatter bridge lacks two "
+            "trailing NOPs"
+        )
+    if not image.is_executable(title_wrapper):
+        raise ContractFailure(
+            f"{image.path.name}: CItem title formatter bridge "
+            f"0x{title_wrapper:08X} is not executable"
+        )
+    title_instructions, title_bytes = disassemble_to_ret(
+        image, title_wrapper, frozenset({"0x20", "32"})
+    )
+    title_calls = {
+        target
+        for instruction in title_instructions
+        if instruction.mnemonic == "call"
+        and (target := instruction_immediate(instruction)) is not None
+    }
+    if profile.item_id_getter not in title_calls:
+        raise ContractFailure(
+            f"{image.path.name}: CItem title formatter bridge does not call "
+            f"ItemIdGetter 0x{profile.item_id_getter:08X}"
+        )
+    if bytes.fromhex("0F B7 86 88 00 00 00") not in title_bytes:
+        raise ContractFailure(
+            f"{image.path.name}: CItem title formatter bridge does not read "
+            "the numeric enchant grade from CItem+88h"
+        )
+    if bytes.fromhex("6A 04 FF 75 F0 50 FF 75 F4 E8") not in title_bytes:
+        raise ContractFailure(
+            f"{image.path.name}: CItem title formatter bridge does not mark "
+            "its exact generated text as a dynamic title record"
+        )
+    trampoline = None
+    for target in title_calls:
+        if (
+            image.is_executable(target)
+            and image.read(target, len(profile.item_title_formatter_prologue))
+            == profile.item_title_formatter_prologue
+            and image.read(
+                target + len(profile.item_title_formatter_prologue), 1
+            )
+            == b"\xE9"
+        ):
+            resume = relative_target(
+                image,
+                target + len(profile.item_title_formatter_prologue),
+                0xE9,
+                "CItem title formatter trampoline resume",
+            )
+            if resume == (
+                profile.item_title_formatter
+                + len(profile.item_title_formatter_prologue)
+            ):
+                trampoline = target
+                break
+    if trampoline is None:
+        raise ContractFailure(
+            f"{image.path.name}: CItem title formatter bridge has no exact "
+            "stock-prologue trampoline"
+        )
+
     validate_surface_group(
         image,
         profile.item_label_sites,
@@ -1695,9 +2152,11 @@ def verify_pe_case(case: CaseSpec) -> str:
         for grade, label in grade_config.labels
     )
     return (
-        f"bridge=0x{bridge:08X}, grade_mode={grade_config.mode}, "
+        f"bridge=0x{bridge:08X}, title=0x{title_wrapper:08X}, "
+        f"grade_mode={grade_config.mode}, "
         f"labels=[{label_summary}], grade_gates="
         f"0x{append_gate:08X}/0x{inline_gate:08X}, "
+        f"wrapped_lookup=0x{fragment_lookup:08X}, "
         f"instructions={len(instructions)}"
     )
 

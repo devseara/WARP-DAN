@@ -69,9 +69,36 @@ MUST preserve and verify all of these rules:
   infer continuation from another draw or use alignment/extent heuristics.
 - Omit the exact stock quantity tail from grade-matched Inventory labels;
   `[Epic] Knife [3]: 1 ea.` renders as `[Epic] Knife [3]`.
-- Suppress matched black/dark shadow draws by returning success without
-  drawing. Never preserve or recolor the shadow.
+- Suppress matched black/dark draws for Inventory/Alt+Q rows and Item
+  Description titles by returning success without drawing. Semantic item
+  balloons are the explicit exception: restore and draw their original dark
+  pass once so hover/ground titles retain the stock outline; never recolor it.
 - Restore the original HDC color after every custom foreground draw.
+- On Inventory/drop balloon foreground passes, preserve the ItemId-aware
+  producer color. The shared TextOut bridge may use an exact legacy name match
+  to recognize and suppress the dark pass, but it must not replace a non-dark
+  producer color. A matching enchant grade is the only override. This keeps
+  duplicate client display names distinct (for example, green ItemId 1201 and
+  gold ItemId 1202, both named `Knife`).
+- `ItemId` plus `Color` must be sufficient for Inventory hover, ground titles,
+  persistent Alt+Q equipment rows, and Item Description titles. Hook the
+  profiled native CItem title formatter (`0x008A0570`/`0x008DA690`): execute
+  its exact seven-byte prologue through a trampoline, run stock, apply numeric
+  grade before ItemId to the arg2 COLORREF output, and register the exact
+  generated title with that CItem-derived color.
+- Do not assume the formatter arg2 COLORREF reaches final rendering. The 2026
+  Alt+Q builders discard it and cache only the generated text; Item Description
+  uses a segmented title renderer. ID-only final-draw ownership therefore comes
+  from the exact byte span emitted by the native producer, not from
+  server/rAthena names. Keep the dynamic cache bounded, deduplicated, and
+  ring-replaced; a matching dynamic record must own final foreground color and
+  dark-pass suppression. Semantic Inventory/drop balloon scopes preserve their
+  already-applied ItemId foreground and native dark outline.
+- Long Alt+Q titles may be split into two independent TextOut spans. Resolve
+  each current span only as an anchored prefix or suffix of a dynamic title
+  registered by the native CItem formatter. Never use legacy ItemName
+  substrings, middle-fragment matching, coordinates, timers, or cross-draw
+  continuation.
 - Match the base item exactly after recognized client decorations. `Knife`
   must not match `Zeny Knife`. Inventory grammar must cover all three anchored
   forms: `Name <count> ea.`, `Name: <count> ea.`, and
@@ -79,10 +106,23 @@ MUST preserve and verify all of these rules:
 - Use stock `D/C/B/A` labels unless `CustomEnchantGradeLabels` is selected.
   Parse `_GRADE_<n>_<server-label>` by number and ignore the server label.
 - Patch selection order must not change grade mode or label resolution.
-- `itemInfo.lua` may validate/canonicalize configured display names offline,
-  but render hooks must not parse Lua. The current `0x0BDD` protocol is
-  name-keyed and Item Description exposes no item ID; ID-first matching
-  requires a versioned packet and upstream producer-hook migration.
+- Render hooks must not parse `itemInfo.lua`. The `0x0BDD` protocol is
+  backward-compatible: optional explicit legacy `ItemName` records stay
+  first, and the ICL2 trailer carries typed ItemId and numeric grade records.
+  Producer hooks with a live `CItem*` must prefer ItemId. The server must not
+  synthesize missing ItemName from rAthena `item_db`; explicit ItemName remains
+  available only for old clients or unprofiled text-only surfaces.
+- Inventory and Equipment producer hooks receive inline caller-frame `CItem`
+  locals, not pointer-valued locals. Use `LEA` for the profiled
+  `[ebp-0x138]`/`[ebp-0x230]` receivers before `ItemIdGetter`; using `MOV`
+  dereferences the first field and crashes on hover. Ground title receives a
+  real `CItem*` argument and is intentionally different.
+- `ItemTooltipShow` is `thiscall`. Its bridge must save the incoming `ECX`
+  before any packet drain or lookup calls and restore that exact receiver
+  immediately before the stock tail jump; otherwise every hover enters the
+  native constructor with a clobbered `this` pointer.
+- rAthena `item_db` display names are never render identity and may differ
+  from client capitalization/localization. Do not auto-fill missing ItemName.
 
 Run the checked-in item/grade contract verifier and the complete two-client
 matrix before considering the change complete. Static checks are not enough to
@@ -92,6 +132,15 @@ suppression, and both target clients require live screenshot acceptance.
 
 Minimum source gate:
 `.\.venv\Scripts\python.exe tools\verify_item_grade_color_contract.py --source-only`.
+
+Accepted 2026 ItemId item-color live baseline (2026-07-31):
+`roid_20260219_item_color_dual_weapon_v11.exe` / deployed `roid.exe`, SHA-256
+`80A8C8F37E7F74961CC30184862EF1EEDA6AB9BC0E0047EC6964F359753E5FA0`.
+It confirms Inventory/Equipment, one-line and wrapped Alt+Q, Item Description,
+hover balloon, ground-item title, and native balloon-outline behavior for the
+current item-color/stock-label vector. Any renderer/shared-TextOut change must
+rebuild and repeat these live vectors. This hash does not accept the
+dual-weapon patch or the remaining grade/custom-label/order matrix.
 
 ## Key APIs
 - `Exe.SetHex/SetUint32/SetUint16/SetNOPs/SetJMP/SetCALL` — binary writes (use `SAFETY.*` wrappers)

@@ -69,9 +69,14 @@ MUST preserve and verify all of these rules:
   infer continuation from another draw or use alignment/extent heuristics.
 - Omit the exact stock quantity tail from grade-matched Inventory labels;
   `[Epic] Knife [3]: 1 ea.` renders as `[Epic] Knife [3]`.
-- Suppress matched black/dark shadow draws by returning success without
-  drawing. Never preserve or recolor the shadow.
+- Suppress matched black/dark draws for Inventory/Alt+Q rows and Item
+  Description titles. Semantic item balloons instead restore and draw their
+  original dark pass once so hover/ground titles retain the stock outline;
+  never recolor it.
 - Restore the original HDC color after every custom foreground draw.
+- Resolve long two-line Alt+Q titles from each current span only: accept an
+  anchored prefix or suffix of a dynamic title registered by the native CItem
+  formatter. Never use legacy-name substrings or cross-draw continuation.
 - Match the base item exactly after recognized client decorations. `Knife`
   must not match `Zeny Knife`. Inventory grammar must cover all three anchored
   forms: `Name <count> ea.`, `Name: <count> ea.`, and
@@ -80,9 +85,11 @@ MUST preserve and verify all of these rules:
   Parse `_GRADE_<n>_<server-label>` by number and ignore the server label.
 - Patch selection order must not change grade mode or label resolution.
 - `itemInfo.lua` may validate/canonicalize configured display names offline,
-  but render hooks must not parse Lua. The current `0x0BDD` protocol is
-  name-keyed and Item Description exposes no item ID; ID-first matching
-  requires a versioned packet and upstream producer-hook migration.
+  but render hooks must not parse Lua. The `0x0BDD` protocol is
+  backward-compatible: legacy `ItemName` records stay first, and the optional
+  `ICL2` trailer carries typed `ItemId` and numeric grade records. Producer
+  hooks with a live `CItem*` must prefer `ItemId`; final text-only surfaces
+  continue to use exact legacy `ItemName` fallback.
 
 Run the checked-in item/grade contract verifier and the complete two-client
 matrix before considering the change complete. Static checks are not enough to
@@ -92,6 +99,15 @@ suppression, and both target clients require live screenshot acceptance.
 
 Minimum source gate:
 `.\.venv\Scripts\python.exe tools\verify_item_grade_color_contract.py --source-only`.
+
+Accepted 2026 ItemId item-color live baseline (2026-07-31):
+`roid_20260219_item_color_dual_weapon_v11.exe` / deployed `roid.exe`, SHA-256
+`80A8C8F37E7F74961CC30184862EF1EEDA6AB9BC0E0047EC6964F359753E5FA0`.
+It confirms Inventory/Equipment, one-line and wrapped Alt+Q, Item Description,
+hover balloon, ground-item title, and native balloon-outline behavior for the
+current item-color/stock-label vector. Any renderer/shared-TextOut change must
+rebuild and repeat these live vectors. This hash does not accept the
+dual-weapon patch or the remaining grade/custom-label/order matrix.
 
 ## Key APIs
 - `Exe.SetHex/SetUint32/SetUint16/SetNOPs/SetJMP/SetCALL` — binary writes (use `SAFETY.*` wrappers)

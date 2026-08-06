@@ -1,3 +1,43 @@
+# 2026 ItemId color renderer live checkpoint (July 31, 2026)
+
+> **Accepted binary checkpoint.** Re-WARP from the current source is required
+> to reproduce this behavior from another clean client.
+
+The user live-confirmed the current 2026 ItemId item-color renderer in
+`roid_20260219_item_color_dual_weapon_v11.exe` and the deployed `roid.exe`.
+Both files are byte-identical:
+
+- SHA-256:
+  `80A8C8F37E7F74961CC30184862EF1EEDA6AB9BC0E0047EC6964F359753E5FA0`;
+- accepted surfaces: Inventory/Equipment, one-line and wrapped Alt+Q,
+  Item Description, hover balloon, and ground-item title;
+- accepted cases: ItemId-only entries, duplicate display names with distinct
+  colors, long wrapped equipment names, exact foreground ownership,
+  window-title dark-pass suppression, and the native semantic item-balloon
+  outline.
+
+The 2026 Alt+Q path can wrap a persistent item title into two independent
+`TextOutW` spans after discarding the formatter's COLORREF. Each current span
+is therefore resolved only as an anchored prefix or suffix of an exact dynamic
+title registered by the native `CItem` formatter. No cross-call continuation,
+coordinate heuristic, or legacy-name substring is used.
+
+Semantic item balloons are intentionally different from window titles. Their
+matched foreground is colorized, but the original dark pass is restored and
+drawn once to retain the stock outline. Inventory/Alt+Q and Item Description
+dark passes remain suppressed. The patch remains QJS-only and introduces no
+custom item-color DLL.
+
+The source contract verifier reports 81 passing checks, and the accepted PE
+passes the final-PE bridge, title-producer, stock-label, endpoint-gate, and
+wrapped-title checks. This checkpoint is scoped to the current 2026 item-color
+vector. The complete two-client enchant-grade/custom-label/patch-order visual
+matrix remains a separate gate. The executable also contains the separately
+selected dual-weapon patch; this acceptance does not change that patch's
+documented visual status.
+
+---
+
 # Dual-weapon generic-sprite regression recovery (July 26, 2026)
 
 > **2026-07-27 correction — visual status is NOT WORKING.** Live tests
@@ -159,7 +199,8 @@ The renderer contract is now explicit and enforced:
 - exact matching covers `Name <count> ea.`, `Name: <count> ea.`, and
   `Name [<slots>]: <count> ea.` without permitting substrings;
 - the exact grade-matched Inventory quantity tail is omitted;
-- matched dark/shadow draws return success without drawing;
+- matched Inventory/Alt+Q/Item Description dark draws return success without
+  drawing; semantic item balloons retain their original dark outline;
 - foreground draws restore the original HDC color;
 - no cross-call grade continuation or extent/alignment title splitting exists;
 - stock `D/C/B/A` labels are used unless `CustomEnchantGradeLabels` is
@@ -176,14 +217,16 @@ acceptance matrix are documented in
 [`docs/item-grade-color-renderer-contract.md`](docs/item-grade-color-renderer-contract.md).
 The final-PE verifier requires the endpoint gates as well as the TextOut
 bridge, so the previously broken executable can no longer pass. Inventory,
-Alt+Q, and Item Description remain live-visual acceptance gates before this
-feature returns to “Working.”
+Alt+Q, Item Description, wrapped titles, and balloon outlines remain
+live-visual acceptance gates before a build is marked Working.
 
 The user live-confirmed the reported 2025 Item Description and slotless
 Inventory regressions fixed in the full main-profile artifact
 `2025-07-16_Ragexe_175220998_item_grade_fixed.exe` (SHA-256
 `365A40D70865D8992E34473DBBE96BECBDB917CBEAEDD4E49F83FE57A6E21686`).
-The complete 2026 live-visual matrix remains pending.
+The reported 2026 item-color surfaces were subsequently accepted in the
+July 31 checkpoint above. The complete grade/custom-label/order matrix remains
+pending.
 
 ---
 

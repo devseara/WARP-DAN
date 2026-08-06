@@ -41,27 +41,40 @@ Target clients are the profiled 2025-07-16 and 2026-02-19 Ragexe builds.
    count so the quantity tail is omitted. The source buffer is not modified.
    `[Epic] Knife [3]: 1 ea.` therefore renders as `[Epic] Knife [3]`.
 
-4. **Matched dark/shadow passes are suppressed.**
-   If an item or grade title matches and the original HDC color is a dark
-   shadow layer (all RGB channels are at most `0x20`), the bridge restores the
-   HDC color and returns `TRUE` without calling the downstream `TextOutW`.
-   This is required for Inventory/hover text and Item Description titles and
-   is also the consistent rule for the other intercepted item-title surfaces.
-   A shadow must never be preserved, recolored, or redrawn.
+4. **Window-title shadows are suppressed; item-balloon outlines remain stock.**
+   If an item or grade title matches and the original HDC color is a dark layer
+   (all RGB channels are at most `0x20`), Inventory/Alt+Q rows and Item
+   Description titles restore the HDC color and return `TRUE` without drawing.
+   A semantic item-balloon scope is the explicit exception: restore the
+   original dark COLORREF and draw the same current span/count exactly once so
+   hover and ground labels retain their native outline. Never recolor it.
 
 5. **Foreground color is scoped to one call.**
    A foreground match sets the selected COLORREF, draws exactly once, and
    restores the original HDC color before returning. Color state must not leak
    to later UI text.
 
-6. **There is no continuation state.**
+6. **ItemId-aware producers own duplicate display names.**
+   Inventory/drop balloon producers select item color directly from the ICL2
+   ItemId table while they still have a live `CItem*`; their non-dark HDC
+   foreground must be preserved. Persistent-title surfaces are different:
+   the profiled Alt+Q builders discard the formatter COLORREF output and cache
+   only the generated text, while Item Description passes the title through a
+   segmented renderer. The native formatter must therefore register its exact
+   generated title together with the grade/ItemId-selected COLORREF, and a
+   matching dynamic record must own the final `TextOutW` foreground. A matching
+   enchant-grade color remains the only override over ItemId color. Window
+   title dark passes remain suppressed; semantic item balloons retain stock
+   outlines.
+
+7. **There is no continuation state.**
    Never carry a grade color, pointer, length, HDC, coordinate, or timestamp
    from one draw call into another. The native endpoint gate is controlled
    only by the shared grade-mode flag; it does not infer a relationship
    between draw calls. Alt+Q wrapping and adjacent UI labels must be resolved
    from the current span only.
 
-7. **Base-item matching is exact.**
+8. **Base-item matching is exact.**
    Strip only client-owned canonical decorations while matching:
 
    - one leading `[Label] ` grade token;
@@ -75,7 +88,13 @@ Target clients are the profiled 2025-07-16 and 2026-02-19 Ragexe builds.
    color `Zeny Knife`. A slotless item such as `Angra manyu: 1 ea.` must still
    resolve to the exact `Angra manyu` ICOL record.
 
-8. **Client patch state controls visible grade labels.**
+   Stock Alt+Q can wrap one producer-derived title into two independent
+   `TextOutW` spans. After exact matching fails, each current span may match
+   only an anchored prefix or suffix of a dynamic title registered by the
+   native `CItem` formatter. Legacy packet-name entries, middle substrings,
+   coordinates, timers, and cross-draw continuation remain forbidden.
+
+9. **Client patch state controls visible grade labels.**
    `_GRADE_<n>_<server-label>` is parsed by numeric grade. The textual server
    suffix is ignored.
 
@@ -84,12 +103,12 @@ Target clients are the profiled 2025-07-16 and 2026-02-19 Ragexe builds.
    - `CustomEnchantGradeLabels` enabled: the same numeric grades resolve
      through the exact configured `Inputs/enchant_grade.yml` map.
 
-9. **Patch order cannot affect behavior.**
+10. **Patch order cannot affect behavior.**
    The grade-color mode and active label registry are runtime configuration
    owned by the item-color patch. Selecting the companion patches before or
    after `CustomColoredItemName` must produce the same effective state.
 
-10. **Other text owners remain isolated.**
+11. **Other text owners remain isolated.**
     Exact EXTN entity-name spans and complete Fluent Emoji tokens bypass item
     matching. The item renderer must not consume, recolor, or suppress them.
 
@@ -97,27 +116,90 @@ Target clients are the profiled 2025-07-16 and 2026-02-19 Ragexe builds.
 
 | Patch | Responsibility |
 |---|---|
-| `CustomColoredItemName` | Owns the bounded ICOL table, exact item matching, conditional native post-grade endpoint gates, non-splitting TextOut bridge, foreground color scoping, quantity omission, and matched-shadow suppression. |
+| `CustomColoredItemName` | Owns the optional bounded ICOL legacy-name table, bounded ICL2 ItemId table, native `CItem*` title-formatter bridge, bounded exact rendered-title recognition ring, current-span-only wrapped Alt+Q matching, conditional native post-grade endpoint gates, non-splitting TextOut bridge, foreground color scoping, quantity omission, window-title shadow suppression, and native item-balloon outlines. |
 | `CustomColoredEnchantGradeName` | Enables numeric grade-entry lookup and gives a matching grade color precedence over the complete decorated title. |
 | `CustomEnchantGradeLabels` | Replaces the client formatter labels and publishes that exact numeric label map to the item renderer. It is the only switch that activates custom label words. |
 
 ## Item identity and `itemInfo.lua`
 
-The current `0x0BDD` wire format and ICOL table are name-keyed. The final
-Inventory/Equipment, ground, Alt+Q, and Item Description draw paths do not all
-expose an item ID; the Item Description `UITransBalloonText` path contains
-formatted text, length, color, and style only.
+The `0x0BDD` wire format is backward-compatible. The packet begins with an
+optional legacy `ItemName` table for explicitly configured old-client
+fallbacks, then may append an `ICL2` trailer:
 
-`identifiedDisplayName` from `itemInfo.lua` can therefore be used by tooling
-or the server as a one-time canonical-name validation and alias source, but it
-must not be parsed from Lua inside a render hook. It would not repair native
-title fragmentation, and duplicate display names remain ambiguous.
+```text
+u32 magic      = 'ICL2'
+u16 version    = 2
+u16 recordSize = 12
+u32 count
+records[count] = { u8 kind, u8 flags, u16 reserved, u32 key, u32 rgb }
+```
 
-A future ID-first renderer requires a versioned `0x0BDD` schema carrying item
-IDs plus scoped hooks at every upstream item-object producer. Until that
-protocol migration is implemented end to end, the required runtime fallback
-is the bounded exact-name grammar in this document. Substring matching is
-never an acceptable substitute.
+`kind = 0` is an item color keyed by authoritative `ItemId`. `kind = 1` is a
+numeric enchant-grade color keyed by grade number. Producer hooks that still
+have a live `CItem*` must prefer the ID table. An entry containing only
+`ItemId` and `Color` must color Inventory hover, ground titles, persistent
+Alt+Q equipment rows, and Item Description titles without a configured name.
+`ItemName` remains accepted solely as an explicit compatibility fallback.
+
+The profiled Inventory and Equipment title producers construct `CItem` as an
+inline EBP-frame local (`[ebp-0x138]` and `[ebp-0x230]`, respectively). The
+bridge must use `LEA` to pass the address of that local as the native
+`ItemIdGetter` `this` pointer. `MOV ecx,[ebp-offset]` is forbidden: it treats
+the first `CItem` field as a pointer and crashes when hover rendering calls the
+getter. The ground-title producer already passes a real `CItem*` argument and
+must not apply the inline-local rule.
+
+`ItemTooltipShow` is a native `thiscall`. Its producer bridge must preserve the
+incoming `ECX` before calling the packet drain, grade lookup, ItemId getter, or
+name lookup, and restore that exact receiver immediately before tail-jumping
+to the stock function. A balanced bridge stack is not sufficient if `ECX` is
+clobbered; the stock tooltip constructor dereferences it on every hover.
+
+The profiled native item-title formatter receives `CItem*` as arg1 and a base
+title COLORREF output as arg2. It also produces title text and segment
+boundaries through its remaining output arguments. Its bridge must execute the
+exact displaced seven-byte prologue through a trampoline, run the complete
+stock formatter, then select a matching numeric grade first and ItemId second.
+This producer is the shared identity point for persistent Alt+Q rows and Item
+Description titles.
+
+Do not assume that writing arg2 alone colors these surfaces. The 2026 Alt+Q
+builders at `0x00996950`, `0x00996AF0`, and `0x00996C90` call the formatter,
+then discard its COLORREF local and retain only the generated title string.
+Item Description consumes the formatter outputs through the segmented title
+renderer. The final `TextOutW` bridge must therefore apply the COLORREF stored
+with the exact CItem-derived dynamic title.
+
+For exact final-draw ownership without server names, each ItemId-aware producer
+registers the exact byte span emitted by the client itself. The normal title
+formatter records `[start,*cursor)`; Inventory/Equipment hover and ground
+producers record their already formatted label and bounded length. Dynamic
+records are distinct from legacy packet-name records: their color was selected
+from a live `CItem*`, so they own the matching final foreground and shadow
+suppression. Semantic Inventory/drop balloon scopes continue to preserve their
+already-applied native foreground instead of recoloring it by text, and retain
+their original dark outline.
+
+The recognition cache is bounded and deduplicated. Packet names occupy at most
+the first 224 entries; native titles use the remaining bounded tail and a
+32-entry replacement ring once the table is full. No pointer, length, HDC,
+coordinate, timer, or grade continuation survives a draw. Window-title dark
+passes are suppressed. A non-dark dynamic title uses its stored CItem-derived
+COLORREF; a semantic balloon preserves its producer foreground and stock dark
+outline. This is what
+keeps green ItemId 1201 and gold ItemId 1202 distinct even though both are
+displayed as `Knife`.
+
+Final text-only surfaces with no profiled `CItem*` producer may still use an
+explicit legacy `ItemName`. Matching remains exact and anchored; this is not
+permission to use substring matching. The server must not synthesize
+`ItemName` from rAthena `item_db`, because capitalization and localization can
+differ from `itemInfo.lua` (`Angra Manyu` versus `Angra manyu`).
+
+`identifiedDisplayName` from `itemInfo.lua` can be used by tooling or the
+server as a one-time canonical-name validation and alias source, but it must
+not be parsed from Lua inside a render hook. Lua parsing would not repair
+native title fragmentation, and duplicate display names remain ambiguous.
 
 ## Forbidden implementations
 
@@ -131,7 +213,8 @@ Do not reintroduce any of these:
 - cross-call grade continuation or timing heuristics;
 - substring item matching;
 - trusting the server label inside `_GRADE_<n>_<server-label>`;
-- drawing or recoloring a matched black outline/shadow;
+- drawing or recoloring a matched Inventory/Alt+Q/Item Description shadow;
+- suppressing or recoloring a semantic item balloon's original dark outline;
 - including `: <digits> ea.` in a grade-colored draw span;
 - DLL imports or runtime API detours for item/grade coloring.
 
@@ -151,7 +234,13 @@ Expected results:
 
 | Configuration | Input draw text | Expected visible text and color |
 |---|---|---|
-| Item color only | `Knife` | `Knife`, green, one foreground draw, no dark draw |
+| Item color only; window title | `Knife` | `Knife`, green, one foreground draw, no dark draw |
+| Item color only; ICL2 ID only | item ID `1201`, visible `Knife` | `Knife`, green from ItemId with no legacy ItemName |
+| Item color only; duplicate display name | item ID `1202`, visible `Knife [4]` | hover, Alt+Q, and Item Description title gold; never ItemId 1201 green |
+| Item color only; ID-only alias | item ID `1599`, client-visible `Angra manyu`, server `Angra Manyu` | complete title red without a configured ItemName |
+| Item color only; ID-only headgear | item ID `5374`, visible `Gigantic Majestic Goat` | persistent Alt+Q row and Item Description title purple |
+| Item color only; wrapped Alt+Q | producer title `Gigantic Majestic Goat`, two current draw spans | both anchored title fragments purple; adjacent UI text remains stock |
+| Item balloon outline | colored hover/ground title | colored center plus original native dark outline |
 | Item color only; slotless Inventory | `Angra manyu: 1 ea.` | complete label red from the exact `Angra manyu` record |
 | Item color only; slotted Inventory | `Knife [3]: 1 ea.` | complete label green from the exact `Knife` record |
 | Grade colors; stock labels | `[C] Knife` | complete title magenta |
@@ -166,7 +255,9 @@ Every vector must also assert:
 - no unknown UTF-16 units;
 - no detached or separately colored `]`;
 - no overlapping or duplicated span;
-- no black shadow for a matched title;
+- no black shadow for a matched Inventory/Alt+Q/Item Description title;
+- the original native dark outline is retained for a matched semantic item
+  balloon;
 - the original HDC color is restored;
 - no custom DLL import is introduced.
 
@@ -181,6 +272,7 @@ Run the vectors for both target clients across:
 - stock grade labels and custom grade labels;
 - item-only mode and item-plus-grade mode;
 - distinct item and grade colors;
+- ICL2 ItemId-only packets, legacy `ItemName` packets, and mixed packets;
 - every ordering of `CustomColoredItemName`,
   `CustomColoredEnchantGradeName`, and `CustomEnchantGradeLabels`;
 - Inventory hover, Inventory/Equipment rows, Alt+Q, Item Description title,
@@ -199,8 +291,22 @@ a PE with only the TextOut bridge is an incomplete and failing build.
   `365A40D70865D8992E34473DBBE96BECBDB917CBEAEDD4E49F83FE57A6E21686`.
   This confirms the reported Item Description grade-precedence and slotless
   Inventory color regressions are fixed in the full main-profile build.
-- **2026-02-19:** static source/final-PE and patch-order matrix pass; live
-  visual acceptance remains pending.
+- **2026-02-19:** the current ItemId item-color vector was live-confirmed by
+  the user on 2026-07-31 with
+  `roid_20260219_item_color_dual_weapon_v11.exe` / deployed `roid.exe`,
+  SHA-256
+  `80A8C8F37E7F74961CC30184862EF1EEDA6AB9BC0E0047EC6964F359753E5FA0`.
+  The accepted surfaces are Inventory/Equipment, one-line and wrapped Alt+Q,
+  Item Description, hover balloon, and ground-item title. The accepted behavior
+  includes ID-only records, duplicate display-name separation, exact selected
+  colors, suppression of window-title dark passes, and retention of the stock
+  semantic item-balloon outline.
+
+  This is a scoped acceptance of the current 2026 item-color/stock-label
+  vector. It does not replace the required live matrix for enchant-grade
+  colors, custom grade labels, both patch orders, or the other target client.
+  The executable name includes the separately selected dual-weapon patch; this
+  checkpoint does not change that patch's documented visual status.
 
 Run the checked-in static gate with:
 

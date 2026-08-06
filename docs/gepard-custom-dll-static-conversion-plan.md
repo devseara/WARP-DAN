@@ -21,7 +21,7 @@ Rule of thumb for every conversion:
 | AlwaysShowNpcName | None | Former DLL frame renderer | Converted again: bounded QJS-only EXTN table and native balloon frame cave at `0x00C7642D` |
 | InGamePincodeUI | `boh_pincode_ui.dll` | None | Already strict-safe |
 | CustomExtName / CustomPlayerNameColor | None | Former DLL maps and global GDI text matching | Converted: bounded EXTN exact-text map plus WARP-time GDI call-site caves; mob title/name rows stay stock-owned |
-| CustomColoredItemName | None | Former passive GDI wrappers | Converted: QJS-only bounded exact ICOL table, anchored slotless/slotted Inventory grammar, conditional native post-grade endpoint gates, and one EXE-resident title bridge. Grade color wins a complete decorated title, grade-matched Inventory quantities are omitted, and matched dark draws are suppressed. See the normative renderer contract. |
+| CustomColoredItemName | None | Former passive GDI wrappers | Converted: QJS-only bounded ICOL legacy-name table plus ICL2 ItemId table, anchored slotless/slotted Inventory grammar, conditional native post-grade endpoint gates, and one EXE-resident title bridge. Producer hooks prefer ItemId where CItem is available. Grade color wins a complete decorated title, grade-matched Inventory quantities are omitted, and matched dark draws are suppressed. See the normative renderer contract. |
 | FpsOverlay / PingOverlay | None | Former D3D proxy, layered window and ICMP worker | Converted again: QJS-only post-Present renderer plus stock application-packet RTT capture |
 | ROGlobalZeroInventory | None | Former DLL-owned draw/input handlers | Converted again: pure-QJS native caves, renewal tooltips, and Zeny underlay |
 | CustomRuneSystem visuals | `boh_rune.dll` | Runtime call/JMP patches and dynamic surface vtable swap | Converted: WARP-time call/prologue/surface bridges |
@@ -60,7 +60,8 @@ Working behavior:
 
 - Transport is already on dispatcher-table routes:
   - `0x0BB7 -> EXTN` ring.
-  - `0x0BDD -> ICOL` single-slot block.
+  - `0x0BDD -> ICOL` single-slot block; legacy ItemName records may be
+    followed by an `ICL2` ItemId/numeric-grade trailer.
 - Runtime risk is in `item_color/colored_itemname.cpp`:
   - `InstallTextOutHook`, `InstallExtTextOutHook`, `InstallDrawTextHook`,
     `InstallDrawTextExHook`, `InstallGetTextExtentHook`.

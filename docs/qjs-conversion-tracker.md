@@ -24,7 +24,7 @@ Status meanings:
 | Always-show NPC names | Working | QJS-only bounded EXTN balloon renderer and static `/shownpcname`, with live-confirmed one-byte persistence in `savedata/shownpcname.dat`. |
 | Extended names | Working | QJS-only EXTN ring drain feeds a bounded exact-text map. Mob details use the official `0x0ADF` Group Title/ID row above the independently rendered stock mob name. |
 | Player-name colors | Working | QJS-only EXTN exact-text entries apply RGB around matching non-shadow player-name draws and restore the original GDI color afterward. |
-| Item-name colors | 2025 live-confirmed; 2026 live validation pending | QJS-only `0x0BDD` ICOL drain, bounded exact item/grade table, anchored slotless/slotted Inventory grammar, conditional native post-grade endpoint gates, and a non-splitting static TextOutW bridge. A matching grade color wins the complete decorated title, grade quantities are omitted, and matched dark draws are suppressed. See the normative renderer contract; do not use split spans or cross-call grade continuation. |
+| Item-name colors | Working for accepted 2025/2026 vectors | QJS-only `0x0BDD` ICOL/ICL2 drain, bounded ItemId/name/grade tables, anchored slotless/slotted Inventory grammar, conditional native post-grade endpoint gates, and a non-splitting static TextOutW bridge. The 2026 ItemId vector is live-confirmed across Inventory/Equipment, one-line and wrapped Alt+Q, Item Description, hover balloon, and ground-item title, including duplicate display names and the restored stock item-balloon outline. A matching grade color wins the complete decorated title, grade quantities are omitted, and window-title dark draws are suppressed. The full two-client grade/custom-label/order matrix remains a separate acceptance gate. See the normative renderer contract; do not use split spans or cross-call grade continuation. |
 | Fluent emoji | Working (NPC menus) | QJS-only manifest table and EXE-resident GDI+ draw/measure caves support `:shortcode:`, compact `@shortcode@`, and raw Unicode aliases. Compact menu icons, sizing, colors, and mixed text/icon rows are live-confirmed; no custom DLL or API detour is used. |
 | Rune visual system | Planned | Translate the existing static bridge handlers to native caves and bake configuration at patch time. |
 | FPS overlay | Implemented, test required | QJS-only post-Present cave counts native frames and draws at prompted X/Y coordinates through existing Win32 imports. No D3D proxy or custom DLL. |
@@ -223,6 +223,7 @@ Status meanings:
 - [x] Remove `ColoredItemNameVisualInit`, `BohTextOutW`, and `BohGetTextExtentPoint32W` imports from the patch.
 - [x] Reuse the dispatcher-table `0x0BDD` ICOL block without `recv` or system-API hooks.
 - [x] Parse the packet into the bounded 256-entry UTF-8 exact-name/color table used by both profiled clients.
+- [x] Parse the optional backward-compatible `ICL2` trailer into a bounded ItemId/color table and prefer ItemId on producer hooks that still have a live `CItem*`.
 - [x] Parse `_GRADE_<n>_<server-label>` numerically, ignore the server label, and resolve the active client label from patch state.
 - [x] Chain after the EXTN/player-color TextOutW bridge regardless of profile order.
 - [x] Give a matching grade color precedence over the complete decorated title; the item database is only a fallback.
@@ -230,16 +231,22 @@ Status meanings:
 - [x] Keep the TextOut bridge non-splitting and free of cross-call continuation.
 - [x] Accept anchored `Name <count> ea.`, `Name: <count> ea.`, and `Name [<slots>]: <count> ea.` Inventory forms.
 - [x] Omit the exact Inventory quantity tail from grade-matched titles while retaining the slot suffix.
-- [x] Suppress matched dark/shadow draws and restore the HDC color after the one foreground draw.
+- [x] Suppress matched Inventory/Alt+Q/Item Description dark draws, retain the
+      original dark outline for semantic item balloons, and restore the HDC
+      color after every custom foreground draw.
+- [x] Match each two-line Alt+Q span only as an anchored prefix/suffix of the
+      exact dynamic title emitted by the native CItem formatter.
 - [x] Match exact base items after recognized decorations; `Knife` must not match `Zeny Knife`.
 - [x] Disable the compiled item-color module for the next combined DLL rebuild.
 - [x] Build the full profile and verify the output has no item-color/text-bridge BOH imports.
 - [x] Live-confirm the reported 2025 regressions: slotless
       `Angra manyu: 1 ea.` exact color and one grade-owned Item Description
       title instead of independently colored `[Epic]` / `Knife` fragments.
-- [ ] Repeat the reported Inventory, Alt+Q, and Item Description checks on the
-      2026 client, including quantity omission, unknown glyphs/detached `]`,
-      and matched-shadow suppression.
+- [x] Complete the reported 2026 Inventory, Alt+Q, Item Description, and item
+      balloon checks. The user live-confirmed the ItemId-only Knife variants,
+      long wrapped `Gigantic Majestic Goat` Alt+Q title, exact foreground
+      colors, window-title dark-pass suppression, and native balloon-outline
+      retention in the 2026-07-31 checkpoint.
 - [ ] Complete the remaining all-surface visual matrix for stock `D/C/B/A`,
       custom label maps, both patch orders, and distinct grade/item colors.
 - [x] Confirm color-list refresh, map change, relog, F12, Alt+Tab and clean exit.
@@ -251,8 +258,12 @@ The complete non-negotiable behavior and acceptance matrix are in
 artifact SHA-256
 `365A40D70865D8992E34473DBBE96BECBDB917CBEAEDD4E49F83FE57A6E21686`;
 the reported Item Description grade-precedence and slotless Inventory failures
-were fixed. The unchecked items above remain open for the complete 2026 and
-all-surface visual matrix.
+were fixed. The current 2026 ItemId item-color vector was accepted on
+2026-07-31 in `roid_20260219_item_color_dual_weapon_v11.exe` / `roid.exe`,
+SHA-256
+`80A8C8F37E7F74961CC30184862EF1EEDA6AB9BC0E0047EC6964F359753E5FA0`.
+The unchecked item above remains open for the complete two-client
+grade/custom-label/order matrix.
 
 ## HatEffect renderer gates
 

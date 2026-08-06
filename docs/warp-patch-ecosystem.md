@@ -99,21 +99,23 @@ A newer, more surgical approach for routing custom packets to shared memory bloc
 5. Patch the dispatcher table entry to point to the new handler
 6. Handler copies packet data from the stock buffer into the shared block, then continues
 
-`ICOL` and `HATF` use the legacy 4096-byte single slot. `EXTN` uses a 1024-slot
+`ICOL` and `HATF` use the legacy 4096-byte single slot. `ICOL` packets keep
+the legacy name table first and may append an `ICL2` typed trailer for
+ItemId-first item colors and numeric grade records. `EXTN` uses a 1024-slot
 ring (`16-byte header + 1024 * 1024-byte slots`) so initial-login, warp, and
 view-entry bursts remain available until the QJS frame consumers run.
 
 **Current routes (07-16):**
 | Route | Packet ID | Magic | Purpose |
 |-------|-----------|-------|---------|
-| ICOL  | 0x0BDD    | 0x49434F4C | Item name colors |
+| ICOL  | 0x0BDD    | 0x49434F4C | Item colors; legacy names plus optional `ICL2` ItemId trailer |
 | EXTN  | 0x0BB7    | 0x4558544E | Extended character names (1024-slot ring) |
 **Custom patch import behavior:**
 - `CustomDLL.qjs`: Generic DLL adder (user provides DLLSpec.yml)
 - `CustomRuneSystem.qjs`: Prompts for `boh.dll` or `boh_rune.dll`
 - `CustomExtName.qjs`: QJS-only bounded EXTN exact-text map; no custom DLL import
 - `CustomPlayerNameColor.qjs`: QJS-only exact player-name color scope; no custom DLL import
-- `CustomColoredItemName.qjs`: QJS-only bounded ICOL exact-name renderer; no custom DLL import. Anchored matching covers stock slotless/slotted Inventory quantity forms. A matching grade color conditionally coalesces the native post-grade endpoint and owns the complete decorated title; Inventory quantity tails are omitted for grade matches, and matched dark draws are suppressed. The normative contract is `docs/item-grade-color-renderer-contract.md`.
+- `CustomColoredItemName.qjs`: QJS-only bounded ICOL renderer; no custom DLL import. Producer hooks prefer `ICL2` ItemId records where `CItem*` is available, then fall back to exact legacy ItemName matching for old servers and text-only surfaces. Anchored matching covers stock slotless/slotted Inventory quantity forms. A matching grade color conditionally coalesces the native post-grade endpoint and owns the complete decorated title; Inventory quantity tails are omitted for grade matches, and matched dark draws are suppressed. The normative contract is `docs/item-grade-color-renderer-contract.md`.
 - `FpsOverlay.qjs`: QJS-only post-Present frame counter and prompted-position static GDI renderer
 - `AlwaysShowNpcName.qjs`: QJS-only bounded EXTN table, native balloon frame cave, and static `/shownpcname` toggle
 - `ROGlobalZeroInventory.qjs`: QJS-only native inventory layout, tabs, tooltips, and Zeny/weight panel
@@ -669,7 +671,7 @@ and console. Convention: `<Section>.<Subsection>.<Step>` numbering.
 | Multiple GRFs | GRFsFromIni | None |
 | Custom jobs | CustomJobs, IncrViewID | JobInfo Lua files required |
 | Custom skills | CustomPlayerSkills | SkillInfo Lua files required |
-| Custom items (colors) | CustomColoredItemName | No custom DLL; server 0x0BDD ICOL support required; exact display-name keys with anchored stock suffix grammar |
+| Custom items (colors) | CustomColoredItemName | No custom DLL; server 0x0BDD ICOL support required; ItemId-first `ICL2` records with exact ItemName fallback |
 | Extended names and player colors | CustomExtName, CustomPlayerNameColor | No custom DLL; server 0x0BB7 EXTN support required |
 | Colored enchant-grade item titles | CustomColoredItemName, CustomColoredEnchantGradeName | Server numeric `_GRADE_<n>_*` ICOL entries; conditional native endpoint gate makes grade color override the complete decorated title without cross-call state |
 | Custom enchant-grade label words | CustomEnchantGradeLabels | `Inputs/enchant_grade.yml`; otherwise the renderer uses stock D/C/B/A |

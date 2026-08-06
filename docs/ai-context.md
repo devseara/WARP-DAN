@@ -1,14 +1,15 @@
 # rAthena AI Context — Banquet of Heroes
 
-> **Current item/grade renderer authority (2026-07-24):**
+> **Current item/grade renderer authority (2026-07-31):**
 > `docs/item-grade-color-renderer-contract.md` is normative. Earlier material
 > in this file about `boh.dll`/`boh_text.dll`, substring matching, split grade
 > spans, cross-call continuation, preserving/recoloring shadows, or excluding
 > Item Description titles is retained only as investigation history and is
 > superseded. The QJS renderer uses anchored exact matching, grade-over-item
 > precedence for the complete decorated title, conditional native post-grade
-> endpoint coalescing, grade quantity omission, and matched-dark-draw
-> suppression.
+> endpoint coalescing, grade quantity omission, matched window-title
+> dark-draw suppression, and preservation of the native semantic item-balloon
+> outline.
 
 ## Server
 - **rAthena branch**: BanquetOfHeroes (custom fork)
@@ -1981,8 +1982,10 @@ This section supersedes every earlier item-color "final" state in this file.
   continuation is allowed.
 - The exact grade-matched Inventory quantity tail is omitted:
   `[Epic] Knife [3]: 1 ea.` renders as `[Epic] Knife [3]`.
-- A matched dark/shadow call returns success without drawing. The foreground
-  is drawn once and the original HDC color is restored.
+- A matched Inventory/Alt+Q/Item Description dark call returns success without
+  drawing. A semantic item balloon instead restores and draws its original
+  dark pass once. The foreground is drawn once and the original HDC color is
+  restored.
 - Base-item matching is exact after recognized client decorations; `Knife`
   never matches `Zeny Knife`. Inventory matching accepts all complete stock
   forms: `Name <count> ea.`, `Name: <count> ea.`, and
@@ -2007,15 +2010,82 @@ replays the stock append; nonzero mode skips the post-grade endpoint. Do not
 replace this with timers, coordinates, text extents, HDC matching, or a color
 carried from one TextOut call to another.
 
-### Item identity limit
+### Historical item identity limit (superseded 2026-07-31)
 
-The current `0x0BDD` payload is name-keyed, and the final Item Description
-`UITransBalloonText` path exposes formatted text/length/color/style but no item
-ID. `itemInfo.lua` `identifiedDisplayName` is useful for offline
-canonicalization or server validation, not per-draw parsing. A true ID-first
-implementation requires a versioned packet schema and scoped upstream hooks
-for every Inventory, Equipment, ground, Alt+Q, and Item Description producer.
+The old `0x0BDD` payload was name-keyed, and the final Item Description
+`UITransBalloonText` path exposed formatted text/length/color/style but no item
+ID. That limitation was removed by the backward-compatible ICL2 trailer,
+scoped upstream `CItem*` producer hooks, and the exact dynamic-title table
+documented in the accepted checkpoint below. `itemInfo.lua`
+`identifiedDisplayName` remains useful only for offline canonicalization or
+server validation, never per-draw parsing.
 
 The authoritative invariants, forbidden implementations, regression vectors,
 and two-client acceptance matrix are in
 `docs/item-grade-color-renderer-contract.md`.
+
+## Accepted 2026 ItemId Item-Color Renderer Checkpoint (2026-07-31)
+
+This section supersedes the earlier **Item identity limit** and every note in
+this file that describes the 2026 item-color renderer as pending, name-only, or
+unable to carry ItemId identity to the requested surfaces.
+
+### Accepted artifact and scope
+
+- Client: profiled `2026-02-19` Ragexe.
+- Artifact names:
+  `roid_20260219_item_color_dual_weapon_v11.exe` and deployed `roid.exe`.
+- Both files are byte-identical, SHA-256
+  `80A8C8F37E7F74961CC30184862EF1EEDA6AB9BC0E0047EC6964F359753E5FA0`.
+- User live acceptance: Inventory/Equipment, one-line and wrapped Alt+Q,
+  Item Description, hover balloon, and ground-item title.
+- Confirmed regressions closed: ID-only configured colors, duplicate
+  client-visible names with distinct ItemIds, long wrapped equipment names,
+  correct foreground colors, no unwanted window-title shadow, and restored
+  stock item-balloon outline.
+
+This acceptance is scoped to the current 2026 item-color/stock-grade-label
+vector. It does not claim that the complete two-client enchant-grade,
+custom-grade-label, and patch-order matrix has received live acceptance. The
+artifact also contains the independently selected dual-weapon patch; its
+presence in the filename does not alter that patch's separate status.
+
+### Current identity and rendering architecture
+
+- Packet `0x0BDD` remains backward-compatible. Explicit legacy `ItemName`
+  records remain optional, and the `ICL2` trailer carries typed `ItemId` and
+  numeric grade records.
+- Producer hooks with a live `CItem*` prefer ItemId. The native title formatter
+  registers the exact generated UTF-16 title and its grade/ItemId-selected
+  COLORREF in a bounded dynamic table.
+- Persistent Alt+Q and segmented Item Description paths do not rely on the
+  formatter COLORREF surviving to the final draw. Exact dynamic title records
+  own the final foreground.
+- Long Alt+Q titles can arrive as two independent spans. Each current span is
+  matched only as an anchored prefix or suffix of the exact registered title.
+  There is no cross-call continuation, timer, coordinate, or text-extent
+  heuristic.
+- Enchant-grade color, when configured and matched, remains the only override
+  over ItemId color for the complete decorated title.
+- Matched dark passes are suppressed for Inventory/Alt+Q and Item Description.
+  A semantic item balloon is the explicit exception: restore the original HDC
+  dark color and draw that span once so the native hover/ground outline
+  remains. Every custom foreground draw restores the original HDC color.
+- `itemInfo.lua` may validate configured names offline but is never parsed by
+  render hooks. rAthena `item_db` display names are not render identity and
+  missing `ItemName` values must not be synthesized.
+
+### Verification baseline
+
+- Source gate: 81 checks passing via
+  `tools/verify_item_grade_color_contract.py --source-only`.
+- Accepted PE profile: `2026/item/stock/item`.
+- Final-PE landmarks:
+  TextOut bridge `0x03DF73D0`, title bridge `0x03DF6DD0`,
+  grade mode `0`, stock labels `D/C/B/A`, grade gates
+  `0x03DF6D80` / `0x03DF6DA0`, and wrapped lookup `0x03DF67F0`.
+
+Any later change to the item/grade renderer or a shared `TextOutW` surface must
+rebuild the binary and repeat the accepted 2026 wrapped-Alt+Q and
+semantic-balloon-outline vectors. Source checks alone cannot preserve this
+live checkpoint.

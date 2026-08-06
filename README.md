@@ -52,8 +52,8 @@ Maintainers changing custom item or enchant-grade colors must follow the
 [normative item/grade renderer contract](docs/item-grade-color-renderer-contract.md).
 It defines grade-over-item precedence, conditional native post-grade endpoint
 coalescing, anchored slotless/slotted Inventory matching, quantity omission,
-Alt+Q span integrity, shadow suppression, and the required 2025/2026
-regression matrix.
+wrapped Alt+Q span integrity, window-title shadow suppression, native
+item-balloon outlines, and the required 2025/2026 regression matrix.
 
 You can get the WARP patcher two ways: from this repo (`win32/WARP.exe`), or by downloading it through [WARPGATE](https://mirror2.romirrors.com/downloads/Warpgate.zip).
 

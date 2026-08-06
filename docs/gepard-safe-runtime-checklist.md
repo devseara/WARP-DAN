@@ -32,7 +32,8 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
     grammar, two conditional native post-grade endpoint gates, and one
     EXE-resident `TextOutW` bridge apply item colors, give matching grade
     colors precedence over complete decorated titles, omit grade-matched
-    Inventory quantities, and suppress matched dark draws.
+    Inventory quantities, suppress window-title dark draws, and retain the
+    native dark outline only for semantic item balloons.
   - No text DLL, extent/alignment splitter, runtime hook, or API detour is
     used. See `docs/item-grade-color-renderer-contract.md`.
 - `ROGlobalZeroInventory.qjs`
