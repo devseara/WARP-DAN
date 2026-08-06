@@ -21,14 +21,14 @@
 *                                                                          *
 *   Description   : Adds a QJS-only, client-native Auto Combat settings    *
 *                   preview to the 2025-07-16 Ragexe. Persistent controls  *
-*                   are created by the normal in-game UI render pass. The *
-*                   renewed system menu owns the settings-window button;  *
+*                   are created by the normal in-game UI render pass. The  *
+*                   renewed system menu owns the settings-window button;   *
 *                   470x346 UIFrameWnd on the game UI thread, preserving   *
 *                   native focus, hit testing, drag capture, and window    *
 *                   ownership. Its native canvas loads the supplied Global *
 *                   AutoHunt BMPs and exposes Basic, Monster, three Skill, *
 *                   two Potion, two Looting, Move, and Item pages.         *
-*                   Separate draggable AutoBattle and AutoSupport controls  *
+*                   Separate draggable AutoBattle and AutoSupport controls *
 *                   play baked frames from the supplied native STR effects *
 *                   and send independent server-authoritative mutations.   *
 *                   Skill pages 1 and 2 accept the stock Skill Tree's      *
@@ -47,7 +47,11 @@ const AutoCombatUIStatic = {
 	FrameConstructor: 0x0086B950,
 	FrameDeletingDestructor: 0x0086E240,
 	FrameMouseDown: 0x00880AD0,
+	FrameMouseMove: 0x00880CB0,
 	FrameMouseUp: 0x00880BB0,
+	FrameMouseWheel: 0x005A8AF0,
+	WindowMainProc: 0x00A55820,
+	WindowMainProcResume: 0x00A55825,
 	WindowSetSize: 0x00A245C0,
 	WindowAddTopLevelFront: 0x00A2D240,
 	WindowClearSurface: 0x00A1CB30,
@@ -58,7 +62,9 @@ const AutoCombatUIStatic = {
 	FrameVtableDestructor: 0x0086E240,
 	FrameVtableDraw: 0x005DD270,
 	FrameVtableMouseDown: 0x00880AD0,
+	FrameVtableMouseMove: 0x00880CB0,
 	FrameVtableMouseUp: 0x00880BB0,
+	FrameVtableMouseWheel: 0x005A8AF0,
 	FrameObjectSize: 0xB4,
 	WindowWidthOffset: 0x14,
 	WindowHeightOffset: 0x18,
@@ -97,8 +103,16 @@ const AutoCombatUIStatic = {
 	ConvPath: 0x00A9F030,
 	LoadSurface: 0x00A8D4A0,
 	ImageDraw: 0x00A1D260,
+	ImageDrawRect: 0x00A1D2B0,
 	TextDraw: 0x00A25A70,
 	StringFormat: 0x00529850,
+	ItemInfoManager: 0x0159C088,
+	ItemInfoLookup: 0x00A7E780,
+	ItemInfoIdentifiedResourceOffset: 0x58,
+	ItemInfoStringCapacityOffset: 0x14,
+	ClientToScreen: 0x00A1EF70,
+	ShowTooltip: 0x00A753D0,
+	TooltipManager: 0x0121333C,
 	TabItmFormat: 0x0102AC48,
 	PacketBuffer: 0x015E8198,
 	PacketSwitchTable: 0x00CAA2E0,
@@ -110,6 +124,7 @@ const AutoCombatUIStatic = {
 	ShortcutDragSkillIdOffset: 0x30C,
 	ShortcutDragSkillLevelOffset: 0x374,
 	ShortcutDragActiveOffset: 0x388,
+	ShortcutDragItemType: 1,
 	ShortcutDragSkillType: 8,
 	ShortcutDragCancelMessage: 0x12,
 	ClientPacketId: 0x0BF8,
@@ -143,18 +158,38 @@ const AutoCombatUIStatic = {
 	SnapshotMutationResultSize: 1900,
 	SnapshotMutationResultOffset: 1896,
 	SnapshotMutationSettingOffset: 1898,
+	SnapshotLootDetailsSize: 1908,
+	SnapshotLootDetailsOffset: 1900,
+	SnapshotItemRowsSize: 2292,
+	SnapshotItemRowsOffset: 1908,
+	SnapshotItemIconKeysSize: 2548,
+	SnapshotItemIconKeysOffset: 2292,
+	SnapshotPotionRowsSize: 2740,
+	SnapshotPotionRowsOffset: 2548,
+	SnapshotPotionIconKeysSize: 2868,
+	SnapshotPotionIconKeysOffset: 2740,
+	SnapshotAdditionalMonsterRowsSize: 3468,
+	SnapshotAdditionalMonsterRowsOffset: 2868,
+	SnapshotMoveRowsSize: 3660,
+	SnapshotMoveRowsOffset: 3468,
+	SnapshotMoveIconKeysSize: 3788,
+	SnapshotMoveIconKeysOffset: 3660,
+	SnapshotBasicThresholdsSize: 3792,
+	SnapshotBasicThresholdsOffset: 3788,
 	SnapshotHealHpThresholdOffset: 1572,
 	SnapshotHealingSkillRowOffset: 1576,
 	SnapshotHealingSkillIconKeyOffset: 1624,
 	SnapshotRecoverySkillRowsOffset: 1656,
 	SnapshotRecoverySkillIconKeysOffset: 1800,
-	MonsterDynamicRows: 5,
-	MonsterTotalRows: 6,
+	MonsterDynamicRows: 20,
+	MonsterTotalRows: 21,
 	MonsterRowSize: 40,
 	MonsterRowIdOffset: 0,
 	MonsterRowFlagsOffset: 4,
 	MonsterRowNameOffset: 8,
-	MonsterRowsSize: 200,
+	MonsterRowsSize: 800,
+	MonsterVisibleRows: 5,
+	MonsterScrollMaximum: 15,
 	AttackSkillDynamicRows: 8,
 	AttackSkillRowSize: 48,
 	AttackSkillRowIdOffset: 0,
@@ -170,9 +205,78 @@ const AutoCombatUIStatic = {
 	RecoverySkillRowsSize: 144,
 	RecoverySkillIconKeysSize: 96,
 	HealingSkillX: 226,
+	ItemDynamicRows: 8,
+	ItemRowSize: 48,
+	ItemRowIdOffset: 0,
+	ItemRowDelayMsOffset: 4,
+	ItemRowFlagsOffset: 8,
+	ItemRowNameOffset: 12,
+	ItemRowDelayTextOffset: 36,
+	ItemRowsSize: 384,
+	ItemIconKeysSize: 256,
+	PotionDynamicRows: 4,
+	PotionRowSize: 48,
+	PotionRowIdOffset: 0,
+	PotionRowMinHpOffset: 4,
+	PotionRowMinSpOffset: 6,
+	PotionRowFlagsOffset: 8,
+	PotionRowUiSlotOffset: 12,
+	PotionRowQuantityOffset: 14,
+	PotionRowNameOffset: 16,
+	PotionRowThresholdTextOffset: 40,
+	PotionRowsSize: 192,
+	PotionIconKeysSize: 128,
+	MoveDynamicRows: 4,
+	MoveRowSize: 48,
+	MoveRowIdOffset: 0,
+	MoveRowLevelOffset: 4,
+	MoveRowKindOffset: 6,
+	MoveRowFlagsOffset: 8,
+	MoveRowNameOffset: 12,
+	MoveRowsSize: 192,
+	MoveIconKeysSize: 128,
+	MoveKindItem: 1,
+	MoveKindSkill: 2,
 	RecoverySkillFirstX: 307,
 	RecoverySkillSpacing: 50,
 	RecoverySkillY: 133,
+	HealingSliderGroupX: 35,
+	HealingSliderGroupY: 153,
+	HealingSliderArrowWidth: 14,
+	HealingSliderArrowHeight: 20,
+	HealingSliderTrackX: 56,
+	HealingSliderTrackY: 158,
+	HealingSliderTrackWidth: 135,
+	HealingSliderThumbY: 155,
+	HealingSliderThumbTravel: 121,
+	HealingSliderRightArrowX: 198,
+	HealingSliderStep: 10,
+	HealingSliderHoverTop: 153,
+	HealingSliderHoverBottom: 173,
+	FooterButtonY: 321,
+	FooterResetX: 5,
+	BasicVisibleRows: 5,
+	BasicOptionCount: 10,
+	BasicScrollMaximum: 5,
+	BasicFirstY: 111,
+	BasicRowSpacing: 38,
+	BasicScrollX: 459,
+	BasicScrollTop: 93,
+	BasicScrollBottom: 306,
+	LootSliderGroupX: 118,
+	LootSliderGroupY: 149,
+	LootSliderTrackX: 132,
+	LootSliderTrackY: 155,
+	LootSliderTrackWidth: 205,
+	LootSliderThumbY: 152,
+	LootSliderThumbTravel: 191,
+	LootSliderRightArrowX: 337,
+	LootSliderMaximum: 90,
+	LootSliderStep: 10,
+	LootSliderHoverTop: 149,
+	LootSliderHoverBottom: 169,
+	BuffItemDelaySlotBase: 20,
+	FooterCloseX: 423,
 	HealingSkillDelaySlot: 16,
 	RecoverySkillDelaySlotBase: 17,
 	FeatureMonsterSelection: 1 << 0,
@@ -184,8 +288,17 @@ const AutoCombatUIStatic = {
 	FeatureSupportSkillIcons: 1 << 6,
 	FeatureRecoverySkills: 1 << 7,
 	MutationResultSkillNotAllowed: 1,
+	MutationResultRegistrationNotAllowed: 2,
 	SettingTeleportFlyWing: 4,
 	SettingTeleportSkill: 6,
+	FeatureItemRows: 1 << 8,
+	FeatureItemIcons: 1 << 9,
+	FeatureLootDetails: 1 << 10,
+	FeaturePotionRows: 1 << 11,
+	FeaturePotionIcons: 1 << 12,
+	FeatureMoveRows: 1 << 13,
+	FeatureMoveIcons: 1 << 14,
+	FeatureBasicThresholds: 1 << 15,
 	SettingStopMelee: 7,
 	SettingReturnSavePoint: 9,
 	SettingReset: 10,
@@ -199,7 +312,9 @@ const AutoCombatUIStatic = {
 	SettingActionOnEnd: 22,
 	SettingMonsterSurround: 23,
 	SettingTpMvp: 24,
+	SettingTpMiniBoss: 25,
 	SettingAutostorageEnabled: 27,
+	SettingTpChampion: 35,
 	SettingLootCategories: 36,
 	SettingAttackSkillRegister: 37,
 	SettingAttackSkillToggle: 38,
@@ -219,6 +334,19 @@ const AutoCombatUIStatic = {
 	WindowHeight: 346,
 	TitleHeight: 17,
 	TabsBottom: 38,
+	SettingLootWeightLimit: 53,
+	SettingLootWeaponFilter: 54,
+	SettingLootArmorFilter: 55,
+	SettingBuffItemRegister: 56,
+	SettingBuffItemDelaySet: 57,
+	SettingPotionRegister: 58,
+	SettingPotionThreshold: 59,
+	SettingPotionToggle: 60,
+	SettingLootOptionInput: 61,
+	SettingMoveItemRegister: 62,
+	SettingMoveSkillRegister: 63,
+	SettingBasicInput: 64,
+	SettingLootLimitAction: 65,
 	ContentHeight: 308,
 	StateWindow: 0,
 	StateTab: 4,
@@ -250,7 +378,20 @@ const AutoCombatUIStatic = {
 	StateHealHpThreshold: 108,
 	StateSkillRejectVisible: 112,
 	StatePressedControl: 116,
-	StateSize: 120
+	StateHoverControl: 120,
+	StateBasicScroll: 124,
+	StateLootWeightLimit: 128,
+	StateLootFilterFlags: 132,
+	StateLootWeaponOptionMin: 136,
+	StateLootArmorOptionMin: 140,
+	StateMonsterScroll: 144,
+	StateRejectSetting: 148,
+	StateMonsterThumbY: 152,
+	StateNormalAttackSpThreshold: 156,
+	StateStopAttackSpThreshold: 160,
+	StateTeleportNoMobSeconds: 164,
+	StateLootDropdown: 168,
+	StateSize: 172
 };
 
 AutoCombatUIStatic.bytesToHex = function(bytes)
@@ -642,7 +783,7 @@ AutoCombatUIStatic.buildScalarSender = function(stateVir, refs)
 	return a;
 };
 
-AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, route)
+AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, route)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x9C, 0x60);
@@ -677,6 +818,9 @@ AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, at
 	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateMonsterSurround);
 	a.emit(0x8B, 0x46, 0x2C);
 	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateTeleportNoMobDelay);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(1000);
+	a.emit(0xF7, 0xF1);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateTeleportNoMobSeconds);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
 	a.dword(0);
 	a.emit(0x66, 0x83, 0x7E, 0x02); a.emit(AutoCombatUIStatic.SnapshotMonsterBitsSize);
@@ -691,15 +835,47 @@ AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, at
 	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotMonsterRowsSize);
 	a.jcc(0x82, "snapshot_no_monster_rows");
 	a.emit(0x0F, 0xB7, 0x46, AutoCombatUIStatic.SnapshotMonsterRowCountOffset);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotAdditionalMonsterRowsSize);
+	a.jcc(0x82, "snapshot_monster_cap_base");
 	a.emit(0x83, 0xF8, AutoCombatUIStatic.MonsterDynamicRows);
 	a.jcc(0x86, "snapshot_monster_row_count_ok");
 	a.emit(0xB8); a.dword(AutoCombatUIStatic.MonsterDynamicRows);
+	a.jmp("snapshot_monster_row_count_ok");
+	a.label("snapshot_monster_cap_base");
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.MonsterVisibleRows);
+	a.jcc(0x86, "snapshot_monster_row_count_ok");
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.MonsterVisibleRows);
 	a.label("snapshot_monster_row_count_ok");
 	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+	a.emit(0x8B, 0xC8);
+	a.emit(0x83, 0xE9, AutoCombatUIStatic.MonsterVisibleRows);
+	a.jcc(0x89, "snapshot_monster_scroll_nonnegative");
+	a.emit(0x33, 0xC9);
+	a.label("snapshot_monster_scroll_nonnegative");
+	a.emit(0x83, 0xF9, AutoCombatUIStatic.MonsterScrollMaximum);
+	a.jcc(0x8E, "snapshot_monster_scroll_limit_ready");
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.MonsterScrollMaximum);
+	a.label("snapshot_monster_scroll_limit_ready");
+	a.emit(0x39, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+	a.jcc(0x8E, "snapshot_monster_scroll_clamped");
+	a.emit(0x89, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+	a.label("snapshot_monster_scroll_clamped");
 	a.emit(0x8D, 0x76, AutoCombatUIStatic.SnapshotMonsterRowsOffset);
 	a.emit(0xBF); a.dword(monsterRowsVir);
-	a.emit(0xB9); a.dword(AutoCombatUIStatic.MonsterRowsSize / 4);
+	a.emit(0xB9); a.dword((AutoCombatUIStatic.MonsterVisibleRows * AutoCombatUIStatic.MonsterRowSize) / 4);
 	a.emit(0xF3, 0xA5);
+	a.emit(0x33, 0xC0);
+	a.emit(0xBF); a.dword(monsterRowsVir + (AutoCombatUIStatic.MonsterVisibleRows * AutoCombatUIStatic.MonsterRowSize));
+	a.emit(0xB9); a.dword(((AutoCombatUIStatic.MonsterDynamicRows - AutoCombatUIStatic.MonsterVisibleRows) * AutoCombatUIStatic.MonsterRowSize) / 4);
+	a.emit(0xF3, 0xAB);
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotAdditionalMonsterRowsSize);
+	a.jcc(0x82, "snapshot_no_additional_monster_rows");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotAdditionalMonsterRowsOffset);
+	a.emit(0xBF); a.dword(monsterRowsVir + (AutoCombatUIStatic.MonsterVisibleRows * AutoCombatUIStatic.MonsterRowSize));
+	a.emit(0xB9); a.dword(((AutoCombatUIStatic.MonsterDynamicRows - AutoCombatUIStatic.MonsterVisibleRows) * AutoCombatUIStatic.MonsterRowSize) / 4);
+	a.emit(0xF3, 0xA5);
+	a.label("snapshot_no_additional_monster_rows");
 	a.emit(0x83, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
 	a.emit(AutoCombatUIStatic.FeatureMonsterRows);
 	a.label("snapshot_no_monster_rows");
@@ -782,12 +958,98 @@ AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, at
 	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
 	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotMutationResultSize);
 	a.jcc(0x82, "snapshot_no_mutation_result");
-	a.emit(0x66, 0x83, 0xBE); a.dword(AutoCombatUIStatic.SnapshotMutationResultOffset);
-	a.emit(AutoCombatUIStatic.MutationResultSkillNotAllowed);
-	a.jcc(0x85, "snapshot_no_mutation_result");
+	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoCombatUIStatic.SnapshotMutationResultOffset);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "snapshot_no_mutation_result");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateSkillRejectVisible);
 	a.dword(1);
+	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoCombatUIStatic.SnapshotMutationResultOffset + 2);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateRejectSetting);
 	a.label("snapshot_no_mutation_result");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotLootDetailsSize);
+	a.jcc(0x82, "snapshot_no_loot_details");
+	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoCombatUIStatic.SnapshotLootDetailsOffset);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootWeightLimit);
+	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoCombatUIStatic.SnapshotLootDetailsOffset + 2);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootFilterFlags);
+	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoCombatUIStatic.SnapshotLootDetailsOffset + 4);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin);
+	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoCombatUIStatic.SnapshotLootDetailsOffset + 6);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootArmorOptionMin);
+	a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.dword(AutoCombatUIStatic.FeatureLootDetails);
+	a.label("snapshot_no_loot_details");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotItemRowsSize);
+	a.jcc(0x82, "snapshot_no_item_rows");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotItemRowsOffset);
+	a.emit(0xBF); a.dword(itemRowsVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.ItemRowsSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.dword(AutoCombatUIStatic.FeatureItemRows);
+	a.label("snapshot_no_item_rows");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotItemIconKeysSize);
+	a.jcc(0x82, "snapshot_no_item_icons");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotItemIconKeysOffset);
+	a.emit(0xBF); a.dword(itemIconKeysVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.ItemIconKeysSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.dword(AutoCombatUIStatic.FeatureItemIcons);
+	a.label("snapshot_no_item_icons");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotPotionRowsSize);
+	a.jcc(0x82, "snapshot_no_potion_rows");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotPotionRowsOffset);
+	a.emit(0xBF); a.dword(potionRowsVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.PotionRowsSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.dword(AutoCombatUIStatic.FeaturePotionRows);
+	a.label("snapshot_no_potion_rows");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotPotionIconKeysSize);
+	a.jcc(0x82, "snapshot_no_potion_icons");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotPotionIconKeysOffset);
+	a.emit(0xBF); a.dword(potionIconKeysVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.PotionIconKeysSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.dword(AutoCombatUIStatic.FeaturePotionIcons);
+	a.label("snapshot_no_potion_icons");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotMoveRowsSize);
+	a.jcc(0x82, "snapshot_no_move_rows");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotMoveRowsOffset);
+	a.emit(0xBF); a.dword(moveRowsVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.MoveRowsSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.dword(AutoCombatUIStatic.FeatureMoveRows);
+	a.label("snapshot_no_move_rows");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotMoveIconKeysSize);
+	a.jcc(0x82, "snapshot_no_move_icons");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotMoveIconKeysOffset);
+	a.emit(0xBF); a.dword(moveIconKeysVir);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.MoveIconKeysSize / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.dword(AutoCombatUIStatic.FeatureMoveIcons);
+	a.label("snapshot_no_move_icons");
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotBasicThresholdsSize);
+	a.jcc(0x82, "snapshot_no_basic_thresholds");
+	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoCombatUIStatic.SnapshotBasicThresholdsOffset);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateNormalAttackSpThreshold);
+	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoCombatUIStatic.SnapshotBasicThresholdsOffset + 2);
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateStopAttackSpThreshold);
+	a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.dword(AutoCombatUIStatic.FeatureBasicThresholds);
+	a.label("snapshot_no_basic_thresholds");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateReady);
 	a.dword(1);
 	a.emit(0x8B, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateWindow);
@@ -816,7 +1078,7 @@ AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, at
 	return a;
 };
 
-AutoCombatUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir)
+AutoCombatUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir)
 {
 	const entryVir = AutoCombatUIStatic.packetTableEntryVir(
 		AutoCombatUIStatic.ServerPacketId
@@ -828,9 +1090,9 @@ AutoCombatUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVi
 	const route = AutoCombatUIStatic.ensureSharedPacketRoute(entryVir, entryPhy);
 	AutoCombatUIStatic.endSharedPacketRoute(_);
 
-	const stateKey = "AutoCombatUI.SnapshotReceiver.v9";
+	const stateKey = "AutoCombatUI.SnapshotReceiver.v11";
 	const receiver = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildSnapshotReceiver(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, route)
+		AutoCombatUIStatic.buildSnapshotReceiver(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, route)
 	);
 	const ahuiHandlerCellPhy = route.ahuiHandlerCellPhy;
 	const pincodeHandlerCellPhy = route.pincodeHandlerCellPhy;
@@ -860,6 +1122,10 @@ AutoCombatUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVi
 		healingSkillIconKeyVir,
 		recoverySkillRowsVir,
 		recoverySkillIconKeysVir,
+		itemRowsVir,
+		itemIconKeysVir,
+		potionRowsVir,
+		potionIconKeysVir,
 		routerVir: route.routerVir
 	});
 	return receiver.vir;
@@ -900,6 +1166,17 @@ AutoCombatUIStatic.emitDrawFull = function(a, pathVir, x, y, label)
 	AutoCombatUIStatic.pushImm(a, x);
 	a.emit(0x8B, 0xCE);
 	a.call(AutoCombatUIStatic.ImageDraw);
+	a.label(done);
+};
+
+AutoCombatUIStatic.emitDrawColorKeyFull = function(a, pathVir, x, y, label)
+{
+	const done = `${label}_done`;
+	AutoCombatUIStatic.emitLoadSurface(a, pathVir, done);
+	AutoCombatUIStatic.pushImm(a, y);
+	AutoCombatUIStatic.pushImm(a, x);
+	a.emit(0x50, 0x56);
+	a.call(AutoCombatUIStatic.ColorKeyBlitVir);
 	a.label(done);
 };
 
@@ -1035,6 +1312,51 @@ AutoCombatUIStatic.emitDrawSurface = function(a, surface, x, y)
 	a.call(AutoCombatUIStatic.ImageDraw);
 };
 
+AutoCombatUIStatic.buildColorKeyBlit = function()
+{
+	const a = AutoCombatUIStatic.asm();
+	// stdcall(window, sourceTexture, x, y). AutoHunt renders into one opaque
+	// parent surface, so use a local magenta color-key copy instead of changing
+	// the stock ImageDraw behavior used by the Skill Bar and every other UI.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x76, AutoCombatUIStatic.WindowSurfaceOffset, 0x85, 0xF6);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0x7E, AutoCombatUIStatic.SurfacePixelsOffset, 0x85, 0xFF);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0x5E, AutoCombatUIStatic.SurfaceWidthOffset, 0x85, 0xDB);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0x45, 0x14, 0x0F, 0xAF, 0xC3, 0x03, 0x45, 0x10);
+	a.emit(0x8D, 0x3C, 0x87, 0x89, 0x7D, 0xFC);
+	a.emit(0xC1, 0xE3, 0x02, 0x89, 0x5D, 0xEC);
+	a.emit(0x8B, 0x75, 0x0C, 0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x86); a.dword(AutoCombatUIStatic.TextureWidthOffset);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x89, 0x45, 0xF4, 0x8D, 0x04, 0x85); a.dword(0);
+	a.emit(0x89, 0x45, 0xE8);
+	a.emit(0x8B, 0x86); a.dword(AutoCombatUIStatic.TextureHeightOffset);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x89, 0x45, 0xF0);
+	a.emit(0x8B, 0xB6); a.dword(AutoCombatUIStatic.TexturePixelsOffset);
+	a.emit(0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x89, 0x75, 0xF8);
+	a.label("row");
+	a.emit(0x8B, 0x7D, 0xFC, 0x8B, 0x75, 0xF8, 0x8B, 0x4D, 0xF4);
+	a.label("pixel");
+	a.emit(0x8B, 0x06, 0x8B, 0xD0, 0x81, 0xE2); a.dword(0x00FFFFFF);
+	a.emit(0x81, 0xFA); a.dword(0x00FF00FF);
+	a.jcc(0x84, "skip_pixel");
+	a.emit(0x89, 0x07);
+	a.label("skip_pixel");
+	a.emit(0x83, 0xC6, 0x04, 0x83, 0xC7, 0x04, 0x49);
+	a.jcc(0x85, "pixel");
+	a.emit(0x01, 0x5D, 0xFC, 0x8B, 0x45, 0xE8, 0x01, 0x45, 0xF8);
+	a.emit(0xFF, 0x4D, 0xF0); a.jcc(0x85, "row");
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x10, 0x00);
+	return a;
+};
+
 AutoCombatUIStatic.emitDrawSkillIcon = function(
 	a, fillRectVir, iconKeyVir, iconFormatVir, iconPathVir, x, y, fallbackColor, label
 )
@@ -1049,18 +1371,67 @@ AutoCombatUIStatic.emitDrawSkillIcon = function(
 	a.call(AutoCombatUIStatic.StringFormat);
 	a.emit(0x83, 0xC4, 0x0C);
 	AutoCombatUIStatic.emitLoadSurface(a, iconPathVir, missing);
-	AutoCombatUIStatic.pushImm(a, 0);
-	a.emit(0x50);
 	AutoCombatUIStatic.pushImm(a, y);
 	AutoCombatUIStatic.pushImm(a, x);
-	a.emit(0x8B, 0xCE);
-	a.call(AutoCombatUIStatic.ImageDraw);
+	a.emit(0x50, 0x56);
+	a.call(AutoCombatUIStatic.ColorKeyBlitVir);
 	a.jmp(done);
 	a.label(missing);
 	AutoCombatUIStatic.emitFillRect(a, fillRectVir, x + 2, y + 2, 20, 20, fallbackColor);
 	a.label(done);
 };
 
+AutoCombatUIStatic.buildItemIconResolver = function()
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x56);
+	a.emit(0x8B, 0x35); a.dword(AutoCombatUIStatic.ItemInfoManager);
+	a.emit(0x85, 0xF6); a.jcc(0x84, "missing");
+	// CItemInfoMgr's native map lookup takes a pointer to the item ID and
+	// returns its item-info node. Identified inventory resources are stored as
+	// std::string at node + 0x58, exactly as used by the stock Item Bar.
+	a.emit(0x8D, 0x45, 0x08, 0x50, 0x8D, 0x4E, 0x08);
+	a.call(AutoCombatUIStatic.ItemInfoLookup);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "missing");
+	a.emit(0x83, 0xC0); a.emit(AutoCombatUIStatic.ItemInfoIdentifiedResourceOffset);
+	a.emit(0x83, 0x78); a.emit(AutoCombatUIStatic.ItemInfoStringCapacityOffset); a.emit(0x10);
+	a.jcc(0x82, "done");
+	a.emit(0x8B, 0x00);
+	a.jmp("done");
+	a.label("missing");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5E, 0x5D, 0xC2, 0x04, 0x00);
+	return a;
+};
+
+AutoCombatUIStatic.emitDrawItemIcon = function(
+	a, fillRectVir, itemIdVir, itemResolverVir, iconFormatVir, iconPathVir,
+	x, y, fallbackColor, label
+)
+{
+	const missing = `${label}_missing`;
+	const done = `${label}_done`;
+	a.emit(0xA1); a.dword(itemIdVir);
+	a.emit(0x85, 0xC0); a.jcc(0x84, missing);
+	a.emit(0x50);
+	a.call(itemResolverVir);
+	a.emit(0x85, 0xC0); a.jcc(0x84, missing);
+	a.emit(0x50);
+	AutoCombatUIStatic.pushImm(a, iconFormatVir);
+	AutoCombatUIStatic.pushImm(a, iconPathVir);
+	a.call(AutoCombatUIStatic.StringFormat);
+	a.emit(0x83, 0xC4, 0x0C);
+	AutoCombatUIStatic.emitLoadSurface(a, iconPathVir, missing);
+	AutoCombatUIStatic.pushImm(a, y);
+	AutoCombatUIStatic.pushImm(a, x);
+	a.emit(0x50, 0x56);
+	a.call(AutoCombatUIStatic.ColorKeyBlitVir);
+	a.jmp(done);
+	a.label(missing);
+	AutoCombatUIStatic.emitFillRect(a, fillRectVir, x + 2, y + 2, 20, 20, fallbackColor);
+	a.label(done);
+};
 AutoCombatUIStatic.emitDrawSkillLevel = function(
 	a, fillRectVir, skillLevelVir, levelFormatVir, levelTextVir, x, y
 )
@@ -1090,31 +1461,57 @@ AutoCombatUIStatic.emitHorizontalSlider = function(
 	a, fillRectVir, valueVir, x, y, width, label
 )
 {
+	// Draw a dark outer rail, a white inset, and a pale empty track. The
+	// supplied BSON already contains the rounded field; these inset layers
+	// increase contrast without spilling beyond that native outline.
+	AutoCombatUIStatic.emitFillRect(
+		a, fillRectVir, x - 1, y - 2, width + 2, 7, 0xFF6A82A4
+	);
+	AutoCombatUIStatic.emitFillRect(
+		a, fillRectVir, x, y - 1, width, 5, 0xFFFFFFFF
+	);
+	AutoCombatUIStatic.emitFillRect(
+		a, fillRectVir, x + 1, y, width - 2, 3, 0xFFDCE8F6
+	);
+
 	a.emit(0x53);
 	a.emit(0xA1); a.dword(valueVir);
 	a.emit(0x83, 0xF8, 0x64);
 	a.jcc(0x86, `${label}_clamped`);
 	a.emit(0xB8); a.dword(100);
 	a.label(`${label}_clamped`);
-	a.emit(0x69, 0xC0); a.dword(width);
+	a.emit(0x69, 0xC0); a.dword(width - 2);
 	a.emit(0x33, 0xD2, 0xB9); a.dword(100);
 	a.emit(0xF7, 0xF1);
 	a.emit(0x8B, 0xD8);
 	a.emit(0x85, 0xDB);
 	a.jcc(0x84, `${label}_fill_done`);
-	AutoCombatUIStatic.pushImm(a, 0xFF6FA3D9);
+	AutoCombatUIStatic.pushImm(a, 0xFF4F91D7);
 	AutoCombatUIStatic.pushImm(a, 3);
 	a.emit(0x53);
 	AutoCombatUIStatic.pushImm(a, y);
-	AutoCombatUIStatic.pushImm(a, x);
+	AutoCombatUIStatic.pushImm(a, x + 1);
 	a.emit(0x56);
 	a.call(fillRectVir);
 	a.label(`${label}_fill_done`);
-	a.emit(0x8D, 0x83); a.dword(x - 2);
-	AutoCombatUIStatic.pushImm(a, 0xFFFFFFFF);
-	AutoCombatUIStatic.pushImm(a, 9);
+
+	// Keep the thumb entirely inside the rail at both 0% and 100%.
+	a.emit(0x81, 0xFB); a.dword(width - 3);
+	a.jcc(0x86, `${label}_thumb_clamped`);
+	a.emit(0xBB); a.dword(width - 3);
+	a.label(`${label}_thumb_clamped`);
+	a.emit(0x8D, 0x83); a.dword(x - 1);
+	AutoCombatUIStatic.pushImm(a, 0xFF4C6384);
+	AutoCombatUIStatic.pushImm(a, 7);
 	AutoCombatUIStatic.pushImm(a, 5);
-	AutoCombatUIStatic.pushImm(a, y - 3);
+	AutoCombatUIStatic.pushImm(a, y - 2);
+	a.emit(0x50, 0x56);
+	a.call(fillRectVir);
+	a.emit(0x8D, 0x83); a.dword(x);
+	AutoCombatUIStatic.pushImm(a, 0xFFFFFFFF);
+	AutoCombatUIStatic.pushImm(a, 5);
+	AutoCombatUIStatic.pushImm(a, 3);
+	AutoCombatUIStatic.pushImm(a, y - 1);
 	a.emit(0x50, 0x56);
 	a.call(fillRectVir);
 	a.emit(0x5B);
@@ -1135,6 +1532,443 @@ AutoCombatUIStatic.emitText = function(a, textVir, x, y, height, color)
 	AutoCombatUIStatic.pushImm(a, x);
 	a.emit(0x8B, 0xCE);
 	a.call(AutoCombatUIStatic.TextDraw);
+};
+
+AutoCombatUIStatic.emitCenteredText = function(
+	a, textVir, left, y, width, height, color, maxChars, label
+)
+{
+	if (!Number.isInteger(textVir) || textVir <= 0)
+		throw Error("AutoCombatUI: invalid centered text pointer");
+	a.emit(0x53);
+	a.emit(0xBB); a.dword(textVir);
+	a.emit(0x33, 0xC0);
+	a.label(`${label}_length_loop`);
+	a.emit(0x80, 0x3C, 0x03, 0x00);
+	a.jcc(0x84, `${label}_length_done`);
+	a.emit(0x40, 0x83, 0xF8, maxChars);
+	a.jcc(0x82, `${label}_length_loop`);
+	a.label(`${label}_length_done`);
+	a.emit(0x6B, 0xC0, 0x06);
+	a.emit(0xBB); a.dword(width);
+	a.emit(0x2B, 0xD8, 0xD1, 0xFB);
+	a.emit(0x81, 0xC3); a.dword(left);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, color);
+	AutoCombatUIStatic.pushImm(a, height);
+	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, textVir);
+	AutoCombatUIStatic.pushImm(a, y);
+	a.emit(0x53, 0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.TextDraw);
+	a.emit(0x5B);
+};
+
+AutoCombatUIStatic.emitDrawNativeHealingSlider = function(
+	a, stateVir, paths, fillRectVir, valueVir, label
+)
+{
+	const drawArrow = function(controlId, normal, over, pressed, x, suffix)
+	{
+		const hover = `${label}_${suffix}_hover`;
+		const normalDraw = `${label}_${suffix}_normal`;
+		const done = `${label}_${suffix}_done`;
+		a.emit(0x83, 0x3D);
+		a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
+		a.emit(controlId);
+		a.jcc(0x85, hover);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, pressed.vir, x, AutoCombatUIStatic.HealingSliderGroupY,
+			`${label}_${suffix}_pressed_draw`
+		);
+		a.jmp(done);
+		a.label(hover);
+		a.emit(0x83, 0x3D);
+		a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+		a.emit(controlId);
+		a.jcc(0x85, normalDraw);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, over.vir, x, AutoCombatUIStatic.HealingSliderGroupY,
+			`${label}_${suffix}_over_draw`
+		);
+		a.jmp(done);
+		a.label(normalDraw);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, normal.vir, x, AutoCombatUIStatic.HealingSliderGroupY,
+			`${label}_${suffix}_normal_draw`
+		);
+		a.label(done);
+	};
+
+	// The BSON already owns the empty rounded rail. Draw only the clipped
+	// native gauge, thumb, and arrows so the controls do not double its border.
+	const gaugeMissing = `${label}_gauge_missing`;
+	AutoCombatUIStatic.emitLoadSurface(a, paths.sliderGaugeHp.vir, gaugeMissing);
+	a.emit(0x53, 0x8B, 0xD8);
+	a.emit(0xA1); a.dword(valueVir);
+	a.emit(0x83, 0xF8, 0x64);
+	a.jcc(0x86, `${label}_gauge_value_clamped`);
+	a.emit(0xB8); a.dword(100);
+	a.label(`${label}_gauge_value_clamped`);
+	a.emit(0x69, 0xC0); a.dword(AutoCombatUIStatic.HealingSliderThumbTravel);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(100);
+	a.emit(0xF7, 0xF1, 0x83, 0xC0, 0x07);
+	// ImageDrawRect(x, y, surface, alpha, useFullRect, sx, sy, sw, sh).
+	AutoCombatUIStatic.pushImm(a, 9);
+	a.emit(0x50);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	a.emit(0x53);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.HealingSliderTrackY);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.HealingSliderTrackX);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.ImageDrawRect);
+	a.emit(0x5B);
+	a.label(gaugeMissing);
+
+	const thumbMissing = `${label}_thumb_missing`;
+	a.emit(0x53);
+	AutoCombatUIStatic.emitLoadSurface(a, paths.sliderThumbHp.vir, thumbMissing);
+	a.emit(0x8B, 0xD8);
+	a.emit(0xA1); a.dword(valueVir);
+	a.emit(0x83, 0xF8, 0x64);
+	a.jcc(0x86, `${label}_thumb_value_clamped`);
+	a.emit(0xB8); a.dword(100);
+	a.label(`${label}_thumb_value_clamped`);
+	a.emit(0x69, 0xC0); a.dword(AutoCombatUIStatic.HealingSliderThumbTravel);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(100);
+	a.emit(0xF7, 0xF1);
+	a.emit(0x05); a.dword(AutoCombatUIStatic.HealingSliderTrackX);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.HealingSliderThumbY);
+	a.emit(0x50, 0x53, 0x56);
+	a.call(AutoCombatUIStatic.ColorKeyBlitVir);
+	a.label(thumbMissing);
+	a.emit(0x5B);
+
+	drawArrow(
+		5, paths.sliderLeft, paths.sliderLeftOver, paths.sliderLeftPressed,
+		AutoCombatUIStatic.HealingSliderGroupX, "left"
+	);
+	drawArrow(
+		6, paths.sliderRight, paths.sliderRightOver, paths.sliderRightPressed,
+		AutoCombatUIStatic.HealingSliderRightArrowX, "right"
+	);
+};
+
+AutoCombatUIStatic.emitDrawNativePotionSlider = function(
+	a, stateVir, paths, fillRectVir, valueVir, isSp, groupX, groupY,
+	controlBase, label
+)
+{
+	const trackX = groupX + 14;
+	const trackY = groupY + 5;
+	const rightX = groupX + 149;
+	const thumbY = groupY + 2;
+	const gaugePath = isSp ? paths.sliderGaugeSp : paths.sliderGaugeHp;
+	const thumbPath = isSp ? paths.sliderThumbSp : paths.sliderThumbHp;
+	const drawArrow = function(controlId, normal, over, pressed, x, suffix)
+	{
+		const hover = `${label}_${suffix}_hover`;
+		const normalDraw = `${label}_${suffix}_normal`;
+		const done = `${label}_${suffix}_done`;
+		a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
+		a.emit(controlId);
+		a.jcc(0x85, hover);
+		AutoCombatUIStatic.emitDrawColorKeyFull(a, pressed.vir, x, groupY,
+			`${label}_${suffix}_pressed_draw`);
+		a.jmp(done);
+		a.label(hover);
+		a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+		a.emit(controlId);
+		a.jcc(0x85, normalDraw);
+		AutoCombatUIStatic.emitDrawColorKeyFull(a, over.vir, x, groupY,
+			`${label}_${suffix}_over_draw`);
+		a.jmp(done);
+		a.label(normalDraw);
+		AutoCombatUIStatic.emitDrawColorKeyFull(a, normal.vir, x, groupY,
+			`${label}_${suffix}_normal_draw`);
+		a.label(done);
+	};
+
+	const gaugeMissing = `${label}_gauge_missing`;
+	AutoCombatUIStatic.emitLoadSurface(a, gaugePath.vir, gaugeMissing);
+	a.emit(0x53, 0x8B, 0xD8);
+	a.emit(0x0F, 0xB7, 0x05); a.dword(valueVir);
+	a.emit(0x83, 0xF8, 0x64);
+	a.jcc(0x86, `${label}_gauge_value_clamped`);
+	a.emit(0xB8); a.dword(100);
+	a.label(`${label}_gauge_value_clamped`);
+	a.emit(0x69, 0xC0); a.dword(AutoCombatUIStatic.HealingSliderThumbTravel);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(100);
+	a.emit(0xF7, 0xF1, 0x83, 0xC0, 0x07);
+	AutoCombatUIStatic.pushImm(a, 9);
+	a.emit(0x50);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	a.emit(0x53);
+	AutoCombatUIStatic.pushImm(a, trackY);
+	AutoCombatUIStatic.pushImm(a, trackX);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.ImageDrawRect);
+	a.emit(0x5B);
+	a.label(gaugeMissing);
+
+	const thumbMissing = `${label}_thumb_missing`;
+	a.emit(0x53);
+	AutoCombatUIStatic.emitLoadSurface(a, thumbPath.vir, thumbMissing);
+	a.emit(0x8B, 0xD8);
+	a.emit(0x0F, 0xB7, 0x05); a.dword(valueVir);
+	a.emit(0x83, 0xF8, 0x64);
+	a.jcc(0x86, `${label}_thumb_value_clamped`);
+	a.emit(0xB8); a.dword(100);
+	a.label(`${label}_thumb_value_clamped`);
+	a.emit(0x69, 0xC0); a.dword(AutoCombatUIStatic.HealingSliderThumbTravel);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(100);
+	a.emit(0xF7, 0xF1);
+	a.emit(0x05); a.dword(trackX);
+	AutoCombatUIStatic.pushImm(a, thumbY);
+	a.emit(0x50, 0x53, 0x56);
+	a.call(AutoCombatUIStatic.ColorKeyBlitVir);
+	a.label(thumbMissing);
+	a.emit(0x5B);
+
+	drawArrow(controlBase, paths.sliderLeft, paths.sliderLeftOver,
+		paths.sliderLeftPressed, groupX, "left");
+	drawArrow(controlBase + 1, paths.sliderRight, paths.sliderRightOver,
+		paths.sliderRightPressed, rightX, "right");
+};
+AutoCombatUIStatic.emitDrawNativeLootSlider = function(
+	a, stateVir, paths, fillRectVir, valueVir, label
+)
+{
+	const drawArrow = function(controlId, normal, over, pressed, x, suffix)
+	{
+		const hover = `${label}_${suffix}_hover`;
+		const normalDraw = `${label}_${suffix}_normal`;
+		const done = `${label}_${suffix}_done`;
+		a.emit(0x83, 0x3D);
+		a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
+		a.emit(controlId);
+		a.jcc(0x85, hover);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, pressed.vir, x, AutoCombatUIStatic.LootSliderGroupY,
+			`${label}_${suffix}_pressed_draw`
+		);
+		a.jmp(done);
+		a.label(hover);
+		a.emit(0x83, 0x3D);
+		a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+		a.emit(controlId);
+		a.jcc(0x85, normalDraw);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, over.vir, x, AutoCombatUIStatic.LootSliderGroupY,
+			`${label}_${suffix}_over_draw`
+		);
+		a.jmp(done);
+		a.label(normalDraw);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, normal.vir, x, AutoCombatUIStatic.LootSliderGroupY,
+			`${label}_${suffix}_normal_draw`
+		);
+		a.label(done);
+	};
+
+	const gaugeMissing = `${label}_gauge_missing`;
+	AutoCombatUIStatic.emitLoadSurface(a, paths.sliderGaugeLoot.vir, gaugeMissing);
+	a.emit(0x53, 0x8B, 0xD8);
+	a.emit(0xA1); a.dword(valueVir);
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.LootSliderMaximum);
+	a.jcc(0x86, `${label}_gauge_value_clamped`);
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.LootSliderMaximum);
+	a.label(`${label}_gauge_value_clamped`);
+	a.emit(0x69, 0xC0); a.dword(AutoCombatUIStatic.LootSliderThumbTravel);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(AutoCombatUIStatic.LootSliderMaximum);
+	a.emit(0xF7, 0xF1, 0x83, 0xC0, 0x07);
+	AutoCombatUIStatic.pushImm(a, 9);
+	a.emit(0x50);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, 0);
+	a.emit(0x53);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.LootSliderTrackY);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.LootSliderTrackX);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.ImageDrawRect);
+	a.emit(0x5B);
+	a.label(gaugeMissing);
+
+	const thumbMissing = `${label}_thumb_missing`;
+	a.emit(0x53);
+	AutoCombatUIStatic.emitLoadSurface(a, paths.sliderThumbHp.vir, thumbMissing);
+	a.emit(0x8B, 0xD8);
+	a.emit(0xA1); a.dword(valueVir);
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.LootSliderMaximum);
+	a.jcc(0x86, `${label}_thumb_value_clamped`);
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.LootSliderMaximum);
+	a.label(`${label}_thumb_value_clamped`);
+	a.emit(0x69, 0xC0); a.dword(AutoCombatUIStatic.LootSliderThumbTravel);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(AutoCombatUIStatic.LootSliderMaximum);
+	a.emit(0xF7, 0xF1);
+	a.emit(0x05); a.dword(AutoCombatUIStatic.LootSliderTrackX);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.LootSliderThumbY);
+	a.emit(0x50, 0x53, 0x56);
+	a.call(AutoCombatUIStatic.ColorKeyBlitVir);
+	a.label(thumbMissing);
+	a.emit(0x5B);
+
+	drawArrow(
+		8, paths.sliderLeft, paths.sliderLeftOver,
+		paths.sliderLeftPressed, AutoCombatUIStatic.LootSliderGroupX, "left"
+	);
+	drawArrow(
+		9, paths.sliderRight, paths.sliderRightOver,
+		paths.sliderRightPressed, AutoCombatUIStatic.LootSliderRightArrowX, "right"
+	);
+};
+
+AutoCombatUIStatic.emitDrawColorKeyStateY = function(
+	a, pathVir, x, stateYVir, yOffset, label
+)
+{
+	const done = `${label}_done`;
+	AutoCombatUIStatic.emitLoadSurface(a, pathVir, done);
+	a.emit(0x8B, 0x15); a.dword(stateYVir);
+	if (yOffset !== 0)
+	{
+		a.emit(0x81, 0xC2); a.dword(yOffset);
+	}
+	a.emit(0x52);
+	AutoCombatUIStatic.pushImm(a, x);
+	a.emit(0x50, 0x56);
+	a.call(AutoCombatUIStatic.ColorKeyBlitVir);
+	a.label(done);
+};
+
+AutoCombatUIStatic.emitScrollbar = function(
+	a, stateVir, paths, stateOffset, maximum, thumbMiddleCount, label
+)
+{
+	AutoCombatUIStatic.emitDrawColorKeyFull(
+		a, paths.scrollUp.vir, AutoCombatUIStatic.BasicScrollX,
+		AutoCombatUIStatic.BasicScrollTop, `${label}_scroll_up_draw`
+	);
+	for (let y = AutoCombatUIStatic.BasicScrollTop + 3;
+		y < AutoCombatUIStatic.BasicScrollBottom; y += 3)
+	{
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, paths.scrollTrack.vir, AutoCombatUIStatic.BasicScrollX, y,
+			`${label}_scroll_track_${y}`
+		);
+	}
+	AutoCombatUIStatic.emitDrawColorKeyFull(
+		a, paths.scrollDown.vir, AutoCombatUIStatic.BasicScrollX,
+		AutoCombatUIStatic.BasicScrollBottom, `${label}_scroll_down_draw`
+	);
+	for (let offset = 0; offset <= maximum; offset++)
+	{
+		const next = `${label}_scroll_thumb_${offset}_next`;
+		a.emit(0x83, 0x3D); a.dword(stateVir + stateOffset);
+		a.emit(offset);
+		a.jcc(0x85, next);
+		const thumbHeight = 6 + thumbMiddleCount * 3;
+		const thumbTop = AutoCombatUIStatic.BasicScrollTop + 3;
+		const thumbTravel = AutoCombatUIStatic.BasicScrollBottom - thumbTop - thumbHeight;
+		const y = thumbTop + Math.round(offset * thumbTravel / maximum);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, paths.scrollThumbUp.vir, AutoCombatUIStatic.BasicScrollX, y,
+			`${label}_scroll_thumb_${offset}_up`
+		);
+		for (let middle = 0; middle < thumbMiddleCount; middle++)
+			AutoCombatUIStatic.emitDrawColorKeyFull(
+				a, paths.scrollThumbMid.vir, AutoCombatUIStatic.BasicScrollX,
+				y + 3 + middle * 3, `${label}_scroll_thumb_${offset}_mid_${middle}`
+			);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, paths.scrollThumbDown.vir, AutoCombatUIStatic.BasicScrollX,
+			y + 3 + thumbMiddleCount * 3,
+			`${label}_scroll_thumb_${offset}_down`
+		);
+		a.label(next);
+	}
+};
+AutoCombatUIStatic.emitMonsterScrollbar = function(a, stateVir, paths)
+{
+	const label = "monster";
+	AutoCombatUIStatic.emitDrawColorKeyFull(
+		a, paths.scrollUp.vir, AutoCombatUIStatic.BasicScrollX,
+		AutoCombatUIStatic.BasicScrollTop, `${label}_scroll_up_draw`
+	);
+	for (let y = AutoCombatUIStatic.BasicScrollTop + 3;
+		y < AutoCombatUIStatic.BasicScrollBottom; y += 3)
+	{
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, paths.scrollTrack.vir, AutoCombatUIStatic.BasicScrollX, y,
+			`${label}_scroll_track_${y}`
+		);
+	}
+	AutoCombatUIStatic.emitDrawColorKeyFull(
+		a, paths.scrollDown.vir, AutoCombatUIStatic.BasicScrollX,
+		AutoCombatUIStatic.BasicScrollBottom, `${label}_scroll_down_draw`
+	);
+
+	const middleCount = 15;
+	const thumbHeight = 6 + middleCount * 3;
+	const thumbTop = AutoCombatUIStatic.BasicScrollTop + 3;
+	const thumbTravel = AutoCombatUIStatic.BasicScrollBottom - thumbTop - thumbHeight;
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+	a.emit(0x83, 0xE8, AutoCombatUIStatic.MonsterVisibleRows);
+	a.jcc(0x89, "monster_thumb_limit_nonnegative");
+	a.emit(0x33, 0xC0);
+	a.label("monster_thumb_limit_nonnegative");
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.MonsterScrollMaximum);
+	a.jcc(0x8E, "monster_thumb_limit_ready");
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.MonsterScrollMaximum);
+	a.label("monster_thumb_limit_ready");
+	a.emit(0x8B, 0xC8, 0x85, 0xC9);
+	a.jcc(0x85, "monster_thumb_scale");
+	a.emit(0xB8); a.dword(thumbTop);
+	a.jmp("monster_thumb_store");
+	a.label("monster_thumb_scale");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+	a.emit(0x69, 0xC0); a.dword(thumbTravel);
+	a.emit(0x33, 0xD2, 0xF7, 0xF1);
+	a.emit(0x05); a.dword(thumbTop);
+	a.label("monster_thumb_store");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateMonsterThumbY);
+	AutoCombatUIStatic.emitDrawColorKeyStateY(
+		a, paths.scrollThumbUp.vir, AutoCombatUIStatic.BasicScrollX,
+		stateVir + AutoCombatUIStatic.StateMonsterThumbY, 0,
+		"monster_scroll_thumb_up"
+	);
+	for (let middle = 0; middle < middleCount; ++middle)
+	{
+		AutoCombatUIStatic.emitDrawColorKeyStateY(
+			a, paths.scrollThumbMid.vir, AutoCombatUIStatic.BasicScrollX,
+			stateVir + AutoCombatUIStatic.StateMonsterThumbY, 3 + middle * 3,
+			`monster_scroll_thumb_mid_${middle}`
+		);
+	}
+	AutoCombatUIStatic.emitDrawColorKeyStateY(
+		a, paths.scrollThumbDown.vir, AutoCombatUIStatic.BasicScrollX,
+		stateVir + AutoCombatUIStatic.StateMonsterThumbY,
+		3 + middleCount * 3, "monster_scroll_thumb_down"
+	);
+};
+
+AutoCombatUIStatic.emitFormatUint = function(a, valueVir, formatVir, textVir)
+{
+	a.emit(0xFF, 0x35); a.dword(valueVir);
+	AutoCombatUIStatic.pushImm(a, formatVir);
+	AutoCombatUIStatic.pushImm(a, textVir);
+	a.call(AutoCombatUIStatic.StringFormat);
+	a.emit(0x83, 0xC4, 0x0C);
 };
 
 AutoCombatUIStatic.buildFillRect = function()
@@ -1241,8 +2075,7 @@ AutoCombatUIStatic.emitBody = function(a, stateVir, paths)
 	);
 	a.jmp("body_done");
 	a.label("body_move");
-	a.emit(0x83, 0xF8, 0x05);
-	a.jcc(0x85, "body_item");
+	a.emit(0x83, 0xF8, 0x05); a.jcc(0x85, "body_item");
 	AutoCombatUIStatic.emitDrawFull(
 		a, paths.move.vir, 0, AutoCombatUIStatic.TabsBottom, "body_move_page"
 	);
@@ -1256,11 +2089,9 @@ AutoCombatUIStatic.emitBody = function(a, stateVir, paths)
 
 AutoCombatUIStatic.emitChrome = function(a, stateVir, paths, fillRectVir, strings)
 {
-	AutoCombatUIStatic.emitFillRect(a, fillRectVir, 0, 0, 470, 17, 0xFF7E97BE);
-	AutoCombatUIStatic.emitFillRect(a, fillRectVir, 1, 1, 468, 15, 0xFFDDEBFA);
-	for (let y = 3; y < 15; y += 2)
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 2, y, 466, 1, 0xFFEEF5FD);
-	AutoCombatUIStatic.emitFillRect(a, fillRectVir, 0, 16, 470, 1, 0xFF7892BA);
+	AutoCombatUIStatic.emitDrawFull(
+		a, paths.titleBar.vir, 0, 0, "native_title_bar"
+	);
 	const drawTitleButton = function(controlId, normal, pressed, x, label)
 	{
 		const normalLabel = `${label}_normal`;
@@ -1268,13 +2099,19 @@ AutoCombatUIStatic.emitChrome = function(a, stateVir, paths, fillRectVir, string
 		a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 		a.emit(controlId);
 		a.jcc(0x85, normalLabel);
-		AutoCombatUIStatic.emitDrawFull(a, pressed.vir, x, 3, `${label}_pressed_draw`);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, pressed.vir, x, 3, `${label}_pressed_draw`
+		);
 		a.jmp(doneLabel);
 		a.label(normalLabel);
-		AutoCombatUIStatic.emitDrawFull(a, normal.vir, x, 3, `${label}_normal_draw`);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, normal.vir, x, 3, `${label}_normal_draw`
+		);
 		a.label(doneLabel);
 	};
-	AutoCombatUIStatic.emitDrawFull(a, paths.sysBaseOff.vir, 3, 3, "title_base_left");
+	AutoCombatUIStatic.emitDrawColorKeyFull(
+		a, paths.sysBaseOff.vir, 3, 3, "title_base_left"
+	);
 	drawTitleButton(3, paths.sysBaseOff, paths.sysBaseOn, 441, "title_minimize");
 	drawTitleButton(4, paths.sysCloseOff, paths.sysCloseOn, 456, "title_close");
 	AutoCombatUIStatic.emitText(a, strings.windowTitle.vir, 167, 1, 12, 0x0078432C);
@@ -1315,8 +2152,14 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 {
 	const emitPair = function(heading, subtitle, headingX, subtitleX)
 	{
-		AutoCombatUIStatic.emitText(a, heading.vir, headingX, 42, 15, 0x0078432C);
-		AutoCombatUIStatic.emitText(a, subtitle.vir, subtitleX, 60, 14, 0x00B27E41);
+		AutoCombatUIStatic.emitCenteredText(
+			a, heading.vir, 0, 42, AutoCombatUIStatic.WindowWidth, 15,
+			0x0078432C, 72, `page_heading_${heading.vir}`
+		);
+		AutoCombatUIStatic.emitCenteredText(
+			a, subtitle.vir, 0, 60, AutoCombatUIStatic.WindowWidth, 14,
+			0x00B27E41, 80, `page_subtitle_${subtitle.vir}`
+		);
 	};
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateTab);
 	a.emit(0x83, 0xF8, 0x00); a.jcc(0x85, "text_monster");
@@ -1384,9 +2227,44 @@ AutoCombatUIStatic.emitSkillRejectDialog = function(a, stateVir, fillRectVir, st
 	AutoCombatUIStatic.emitFillRect(a, fillRectVir, 38, 128, 396, 96, 0xFFA8B4C4);
 	AutoCombatUIStatic.emitFillRect(a, fillRectVir, 37, 126, 396, 96, 0xFFB7C6D9);
 	AutoCombatUIStatic.emitFillRect(a, fillRectVir, 39, 128, 392, 92, 0xFFFFFFFF);
-	AutoCombatUIStatic.emitText(
-		a, strings.skillReject.vir, 96, 165, 15, 0x00554B46
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateRejectSetting);
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.SettingPotionRegister);
+	a.jcc(0x85, "registration_reject_item_test");
+	AutoCombatUIStatic.emitCenteredText(
+		a, strings.potionReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
+		"registration_reject_potion"
 	);
+	a.jmp("registration_reject_text_done");
+	a.label("registration_reject_item_test");
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.SettingBuffItemRegister);
+	a.jcc(0x85, "registration_reject_move_item_test");
+	AutoCombatUIStatic.emitCenteredText(
+		a, strings.itemReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
+		"registration_reject_item"
+	);
+	a.jmp("registration_reject_text_done");
+	a.label("registration_reject_move_item_test");
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.SettingMoveItemRegister);
+	a.jcc(0x85, "registration_reject_move_skill_test");
+	AutoCombatUIStatic.emitCenteredText(
+		a, strings.moveItemReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
+		"registration_reject_move_item"
+	);
+	a.jmp("registration_reject_text_done");
+	a.label("registration_reject_move_skill_test");
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.SettingMoveSkillRegister);
+	a.jcc(0x85, "registration_reject_skill");
+	AutoCombatUIStatic.emitCenteredText(
+		a, strings.moveSkillReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
+		"registration_reject_move_skill"
+	);
+	a.jmp("registration_reject_text_done");
+	a.label("registration_reject_skill");
+	AutoCombatUIStatic.emitCenteredText(
+		a, strings.skillReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
+		"registration_reject_skill"
+	);
+	a.label("registration_reject_text_done");
 	a.label("skill_reject_dialog_done");
 };
 
@@ -1399,21 +2277,34 @@ AutoCombatUIStatic.emitFooterButtons = function(a, stateVir, paths)
 		a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 		a.emit(controlId);
 		a.jcc(0x85, normalLabel);
-		AutoCombatUIStatic.emitDrawFull(a, pressed.vir, x, 326, `${label}_pressed_draw`);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, pressed.vir, x, AutoCombatUIStatic.FooterButtonY,
+			`${label}_pressed_draw`
+		);
 		a.jmp(doneLabel);
 		a.label(normalLabel);
-		AutoCombatUIStatic.emitDrawFull(a, normal.vir, x, 326, `${label}_normal_draw`);
+		AutoCombatUIStatic.emitDrawColorKeyFull(
+			a, normal.vir, x, AutoCombatUIStatic.FooterButtonY,
+			`${label}_normal_draw`
+		);
 		a.label(doneLabel);
 	};
-	drawButton(1, paths.btnReset, paths.btnResetPressed, 5, "footer_reset");
-	drawButton(2, paths.btnClose, paths.btnClosePressed, 418, "footer_close");
+	drawButton(
+		1, paths.btnReset, paths.btnResetPressed,
+		AutoCombatUIStatic.FooterResetX, "footer_reset"
+	);
+	drawButton(
+		2, paths.btnClose, paths.btnClosePressed,
+		AutoCombatUIStatic.FooterCloseX, "footer_close"
+	);
 };
 
 AutoCombatUIStatic.emitPageControls = function(
 	a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
 	attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
-	healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, skillIconPathVir,
-	skillLevelTextVir
+	healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir,
+	itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir,
+	itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir
 )
 {
 	const dark = 0x00554B46;
@@ -1502,12 +2393,70 @@ AutoCombatUIStatic.emitPageControls = function(
 
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateTab);
 	a.emit(0x83, 0xF8, 0x00); a.jcc(0x85, "controls_monster");
-	drawStateCheck({kind: "eq", offset: AutoCombatUIStatic.StateStopMelee, value: 2}, 28, 143, strings.basicOptions[0], "basic_0");
-	drawStateCheck({kind: "eq", offset: AutoCombatUIStatic.StateStopMelee, value: 1}, 28, 177, strings.basicOptions[1], "basic_1");
-	drawStateCheck({kind: "nonzero", offset: AutoCombatUIStatic.StateTeleportNoMobDelay}, 28, 211, strings.basicOptions[2], "basic_2");
-	drawStateCheck({kind: "nonzero", offset: AutoCombatUIStatic.StateMonsterSurround}, 28, 245, strings.basicOptions[3], "basic_3");
-	drawStateCheck({kind: "flag", mask: 1 << 7}, 28, 279, strings.basicOptions[4], "basic_4");
-	AutoCombatUIStatic.emitText(a, strings.basicNormal.vir, 48, 160, 13, link);
+	const basicTests = [
+		{kind: "eq", offset: AutoCombatUIStatic.StateStopMelee, value: 2},
+		{kind: "eq", offset: AutoCombatUIStatic.StateStopMelee, value: 1},
+		{kind: "nonzero", offset: AutoCombatUIStatic.StateTeleportNoMobDelay},
+		{kind: "nonzero", offset: AutoCombatUIStatic.StateMonsterSurround},
+		{kind: "flag", mask: 1 << 7},
+		{kind: "flag", mask: 1 << 8},
+		{kind: "flag", mask: 1 << 9},
+		{kind: "flag", mask: 1 << 10},
+		{kind: "flag", mask: 1 << 0},
+		{kind: "flag", mask: 1 << 2}
+	];
+	const basicValueOffsets = [
+		AutoCombatUIStatic.StateNormalAttackSpThreshold,
+		AutoCombatUIStatic.StateStopAttackSpThreshold,
+		AutoCombatUIStatic.StateTeleportNoMobSeconds,
+		AutoCombatUIStatic.StateMonsterSurround
+	];
+	const basicValueX = [151, 151, 275, 180];
+	const basicValueWidth = [37, 37, 37, 37];
+	const drawBasicNumericOption = function(option, y, id)
+	{
+		drawStateCheck(basicTests[option], 28, y, null, `${id}_check`);
+		AutoCombatUIStatic.emitText(a, strings.basicPrefixes[option].vir, 48, y - 2, 14, dark);
+		const boxX = basicValueX[option];
+		const boxWidth = basicValueWidth[option];
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, boxX, y - 3, boxWidth, 19, 0xFFB7C3D2);
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, boxX + 1, y - 2, boxWidth - 2, 17, 0xFFFFFFFF);
+		AutoCombatUIStatic.emitFormatUint(
+			a, stateVir + basicValueOffsets[option], strings.skillLevelFormat.vir,
+			lootWeaponTextVir
+		);
+		AutoCombatUIStatic.emitCenteredText(
+			a, lootWeaponTextVir, boxX, y - 2, boxWidth, 14, dark, 5,
+			`${id}_value`
+		);
+		AutoCombatUIStatic.emitText(
+			a, strings.basicSuffixes[option].vir, boxX + boxWidth + 5, y - 2, 14, dark
+		);
+	};
+	for (let scroll = 0; scroll <= AutoCombatUIStatic.BasicScrollMaximum; scroll++)
+	{
+		const next = `basic_window_${scroll}_next`;
+		a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll);
+		a.emit(scroll);
+		a.jcc(0x85, next);
+		for (let row = 0; row < AutoCombatUIStatic.BasicVisibleRows; row++)
+		{
+			const option = scroll + row;
+			const y = AutoCombatUIStatic.BasicFirstY + row * AutoCombatUIStatic.BasicRowSpacing;
+			if (option < 4)
+				drawBasicNumericOption(option, y, `basic_${scroll}_${option}`);
+			else
+				drawStateCheck(
+					basicTests[option], 28, y,
+					strings.basicOptions[option], `basic_${scroll}_${option}`
+				);
+		}
+		a.label(next);
+	}
+	AutoCombatUIStatic.emitScrollbar(
+		a, stateVir, paths, AutoCombatUIStatic.StateBasicScroll,
+		AutoCombatUIStatic.BasicScrollMaximum, 33, "basic"
+	);
 	a.jmp("controls_done");
 
 	a.label("controls_monster");
@@ -1516,25 +2465,35 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.emit(0xA9); a.dword(AutoCombatUIStatic.FeatureMonsterRows);
 	a.jcc(0x84, "controls_monster_static");
 	drawMonsterRow(1, strings.monsters[0].vir, 87, "dynamic_all");
-	for (let index = 0; index < AutoCombatUIStatic.MonsterDynamicRows; index++)
+	for (let scroll = 0; scroll <= AutoCombatUIStatic.MonsterScrollMaximum; scroll++)
 	{
-		const visibleLabel = `monster_dynamic_${index}_visible`;
-		const skipLabel = `monster_dynamic_${index}_skip`;
-		a.emit(0x83, 0x3D);
-		a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
-		a.emit(index + 1);
-		a.jcc(0x83, visibleLabel);
-		a.jmp(skipLabel);
-		a.label(visibleLabel);
-		drawMonsterRow(
-			1 << (index + 1),
-			monsterRowsVir + index * AutoCombatUIStatic.MonsterRowSize +
-				AutoCombatUIStatic.MonsterRowNameOffset,
-			87 + (index + 1) * 38,
-			`dynamic_${index}`
-		);
-		a.label(skipLabel);
+		const windowNext = `monster_draw_window_${scroll}_next`;
+		a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+		a.emit(scroll);
+		a.jcc(0x85, windowNext);
+		for (let row = 0; row < AutoCombatUIStatic.MonsterVisibleRows; row++)
+		{
+			const index = scroll + row;
+			const visibleLabel = `monster_dynamic_${scroll}_${index}_visible`;
+			const skipLabel = `monster_dynamic_${scroll}_${index}_skip`;
+			a.emit(0x83, 0x3D);
+			a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+			a.emit(index + 1);
+			a.jcc(0x83, visibleLabel);
+			a.jmp(skipLabel);
+			a.label(visibleLabel);
+			drawMonsterRow(
+				1 << (index + 1),
+				monsterRowsVir + index * AutoCombatUIStatic.MonsterRowSize +
+					AutoCombatUIStatic.MonsterRowNameOffset,
+				125 + row * 38,
+				`dynamic_${scroll}_${index}`
+			);
+			a.label(skipLabel);
+		}
+		a.label(windowNext);
 	}
+	AutoCombatUIStatic.emitMonsterScrollbar(a, stateVir, paths);
 	a.jmp("controls_done");
 	a.label("controls_monster_static");
 	for (let index = 0; index < strings.monsters.length; index++)
@@ -1563,9 +2522,6 @@ AutoCombatUIStatic.emitPageControls = function(
 			const contentDoneLabel = `${prefix}_${index}_content_done`;
 			a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.AttackSkillRowIdOffset); a.emit(0);
 			a.jcc(0x84, emptyLabel);
-			AutoCombatUIStatic.emitText(a,
-				rowVir + AutoCombatUIStatic.AttackSkillRowNameOffset,
-				x - 31, y - 20, 14, dark);
 			AutoCombatUIStatic.emitDrawSkillIcon(
 				a, fillRectVir, iconKeyVir, paths.skillIconFormat.vir, skillIconPathVir,
 				x - 2, y - 2, skillColors[index % skillColors.length], `${prefix}_${index}_icon`
@@ -1581,12 +2537,13 @@ AutoCombatUIStatic.emitPageControls = function(
 			AutoCombatUIStatic.emitText(a, strings.skillEmpty.vir, x + 5, y + 2, 14, link);
 			a.label(contentDoneLabel);
 
-			AutoCombatUIStatic.emitFillRect(a, fillRectVir, x - 6, y + 31, 34, 16, 0xFF97ADCF);
-			AutoCombatUIStatic.emitFillRect(a, fillRectVir, x - 4, y + 33, 30, 12, 0xFFFFFFFF);
-			AutoCombatUIStatic.emitText(a,
-				rowVir + AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
-				x - 1, y + 32, 12, dark);
-			AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 12, dark);
+			// The BSON owns the interval field artwork; draw only its live value.
+			AutoCombatUIStatic.emitCenteredText(
+				a, rowVir + AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
+				x - 6, y + 32, 34, 14, dark, 8,
+				`${prefix}_${index}_delay_text`
+			);
+			AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
 		}
 		a.jmp(`${prefix}_done`);
 		a.label(`${prefix}_unavailable`);
@@ -1597,9 +2554,6 @@ AutoCombatUIStatic.emitPageControls = function(
 		const emptyLabel = `${prefix}_empty`;
 		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.AttackSkillRowIdOffset); a.emit(0);
 		a.jcc(0x84, emptyLabel);
-		AutoCombatUIStatic.emitText(a,
-			rowVir + AutoCombatUIStatic.AttackSkillRowNameOffset,
-			x - 30, y - 20, 12, dark);
 		AutoCombatUIStatic.emitDrawSkillIcon(
 			a, fillRectVir, iconKeyVir, paths.skillIconFormat.vir, skillIconPathVir,
 			x - 2, y - 2, color, `${prefix}_icon`
@@ -1610,12 +2564,13 @@ AutoCombatUIStatic.emitPageControls = function(
 			strings.skillLevelFormat.vir, skillLevelTextVir, x - 2, y - 2
 		);
 		a.label(emptyLabel);
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, x - 6, y + 31, 34, 16, 0xFF97ADCF);
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, x - 4, y + 33, 30, 12, 0xFFFFFFFF);
-		AutoCombatUIStatic.emitText(a,
-			rowVir + AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
-			x - 1, y + 32, 12, dark);
-		AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 12, dark);
+		// The BSON owns the interval field artwork; draw only its live value.
+		AutoCombatUIStatic.emitCenteredText(
+			a, rowVir + AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
+			x - 6, y + 32, 34, 14, dark, 8,
+			`${prefix}_delay_text`
+		);
+		AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
 	};
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage);
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_skill_support");
@@ -1657,9 +2612,10 @@ AutoCombatUIStatic.emitPageControls = function(
 			`recovery_skill_${index}`
 		);
 	}
-	AutoCombatUIStatic.emitHorizontalSlider(
-		a, fillRectVir, stateVir + AutoCombatUIStatic.StateHealHpThreshold,
-		56, 158, 134, "heal_hp_slider"
+	AutoCombatUIStatic.emitDrawNativeHealingSlider(
+		a, stateVir, paths, fillRectVir,
+		stateVir + AutoCombatUIStatic.StateHealHpThreshold,
+		"heal_hp_slider"
 	);
 	a.jmp("controls_done");
 
@@ -1667,46 +2623,208 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.emit(0x83, 0xF8, 0x03); a.jcc(0x85, "controls_looting");
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StatePotionPage);
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_done");
-	for (let index = 0; index < 4; index++)
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoCombatUIStatic.FeaturePotionRows);
+	a.jcc(0x84, "controls_done");
+	for (let index = 0; index < AutoCombatUIStatic.PotionDynamicRows; index++)
 	{
 		const x = index % 2 === 0 ? 21 : 247;
 		const y = index < 2 ? 89 : 200;
-		AutoCombatUIStatic.emitDrawFull(a, paths.toggleOn.vir, x + 182, y, `potion_toggle_${index}`);
+		const groupX = index % 2 === 0 ? 21 : 247;
+		const groupY = y + 64;
+		const rowVir = potionRowsVir + index * AutoCombatUIStatic.PotionRowSize;
+
+		const toggleOff = `potion_toggle_${index}_off`;
+		const toggleDone = `potion_toggle_${index}_done`;
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.PotionRowIdOffset); a.emit(0);
+		a.jcc(0x84, toggleOff);
+		a.emit(0xF7, 0x05); a.dword(rowVir + AutoCombatUIStatic.PotionRowFlagsOffset);
+		a.dword(1);
+		a.jcc(0x84, toggleOff);
+		AutoCombatUIStatic.emitDrawFull(a, paths.toggleOn.vir, x + 182, y,
+			`potion_toggle_${index}_on_draw`);
+		a.jmp(toggleDone);
+		a.label(toggleOff);
+		AutoCombatUIStatic.emitDrawFull(a, paths.toggleOff.vir, x + 182, y,
+			`potion_toggle_${index}_off_draw`);
+		a.label(toggleDone);
 		AutoCombatUIStatic.emitText(a, strings.potionPanels[index].vir, x + 70, y, 14, blue);
 		AutoCombatUIStatic.emitText(a, strings.useBelow.vir, x + 16, y + 39, 13, dark);
-	}
-	a.jmp("controls_done");
+		AutoCombatUIStatic.emitDrawNativePotionSlider(
+			a, stateVir, paths, fillRectVir,
+			rowVir + (index < 2 ? AutoCombatUIStatic.PotionRowMinHpOffset :
+				AutoCombatUIStatic.PotionRowMinSpOffset),
+			index >= 2, groupX, groupY, 20 + index * 2,
+			`potion_slider_${index}`
+		);
+		const iconDone = `potion_${index}_icon_slot_done`;
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.PotionRowIdOffset); a.emit(0);
+		a.jcc(0x84, iconDone);
+		AutoCombatUIStatic.emitDrawItemIcon(
+			a, fillRectVir, rowVir + AutoCombatUIStatic.PotionRowIdOffset,
+			itemResolverVir, paths.skillIconFormat.vir, skillIconPathVir,
+			x + 174, y + 65, 0xFF648FDB, `potion_${index}_icon`
+		);
+		a.label(iconDone);
+	}	a.jmp("controls_done");
 
 	a.label("controls_looting");
 	a.emit(0x83, 0xF8, 0x04); a.jcc(0x85, "controls_move");
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage);
-	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_done");
-	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 0}, 28, 226, strings.lootOptions[0], "loot_0");
-	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 1}, 136, 226, strings.lootOptions[1], "loot_1");
-	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 2}, 232, 226, strings.lootOptions[2], "loot_2");
-	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 3}, 354, 226, strings.lootOptions[3], "loot_3");
+	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_looting_details");
 	AutoCombatUIStatic.emitText(a, strings.weightNote.vir, 37, 78, 13, dark);
+	AutoCombatUIStatic.emitDrawNativeLootSlider(
+		a, stateVir, paths, fillRectVir,
+		stateVir + AutoCombatUIStatic.StateLootWeightLimit, "loot_weight_slider"
+	);
+	drawStateCheck(
+		{kind: "bit", offset: AutoCombatUIStatic.StateLootFilterFlags, mask: 1 << 0},
+		55, 207, strings.lootWeaponPrefix, "loot_weapon_filter"
+	);
+	drawStateCheck(
+		{kind: "bit", offset: AutoCombatUIStatic.StateLootFilterFlags, mask: 1 << 1},
+		55, 233, strings.lootArmorPrefix, "loot_armor_filter"
+	);
+	const drawLootChoice = function(valueVir, y, prefix)
+	{
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 215, y, 132, 19, 0xFFFFFFFF);
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 215, y, 132, 1, 0xFF9AAAC0);
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 215, y + 18, 132, 1, 0xFF9AAAC0);
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 215, y, 1, 19, 0xFF9AAAC0);
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 346, y, 1, 19, 0xFF9AAAC0);
+		for (let option = 0; option <= 5; option++)
+		{
+			const next = `${prefix}_${option}_next`;
+			a.emit(0x83, 0x3D); a.dword(valueVir); a.emit(option);
+			a.jcc(0x85, next);
+			AutoCombatUIStatic.emitText(
+				a, strings.lootOptionChoices[option].vir, 220, y + 2, 12, dark
+			);
+			a.label(next);
+		}
+		AutoCombatUIStatic.emitText(a, strings.lootDropdownArrow.vir, 335, y + 2, 12, dark);
+	};
+	drawLootChoice(
+		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin, 199, "loot_weapon_choice"
+	);
+	drawLootChoice(
+		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin, 225, "loot_armor_choice"
+	);
+	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 352, 201, 13, dark);
+	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 352, 227, 13, dark);
+	AutoCombatUIStatic.emitText(a, strings.lootRuleHint.vir, 116, 256, 12, link);
+	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 0}, 38, 289, strings.lootOptions[0], "loot_0");
+	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 1}, 147, 289, strings.lootOptions[1], "loot_1");
+	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 2}, 244, 289, strings.lootOptions[2], "loot_2");
+	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 3}, 365, 289, strings.lootOptions[3], "loot_3");
+	a.jmp("controls_done");
+	a.label("controls_looting_details");
+	drawStateCheck(
+		{kind: "bit", offset: AutoCombatUIStatic.StateLootFilterFlags, mask: 1 << 2},
+		47, 135, strings.lootReturn, "loot_limit_return"
+	);
+	AutoCombatUIStatic.emitText(a, strings.lootReturnHint.vir, 67, 158, 13, link);
+	drawStateCheck(
+		{kind: "bit", offset: AutoCombatUIStatic.StateLootFilterFlags, mask: 1 << 3},
+		47, 211, strings.lootContinue, "loot_limit_continue"
+	);
+	AutoCombatUIStatic.emitText(a, strings.lootContinueHint.vir, 67, 234, 13, link);
 	a.jmp("controls_done");
 
 	a.label("controls_move");
 	a.emit(0x83, 0xF8, 0x05); a.jcc(0x85, "controls_item");
-	drawStateCheck({kind: "flag", mask: 1 << 6}, 129, 116, null, "move_0");
-	drawStateCheck({kind: "flag", mask: 1 << 5}, 277, 116, null, "move_1");
-	drawStateCheck({kind: "flag", mask: 1 << 1}, 129, 211, null, "move_2");
-	drawStateCheck({kind: "nonzero", offset: AutoCombatUIStatic.StateActionOnEnd}, 277, 211, null, "move_3");
-	AutoCombatUIStatic.emitText(a, strings.registerItem.vir, 116, 146, 13, dark);
-	AutoCombatUIStatic.emitText(a, strings.registerSkill.vir, 265, 146, 13, dark);
-	AutoCombatUIStatic.emitText(a, strings.registerItem.vir, 116, 241, 13, dark);
-	AutoCombatUIStatic.emitText(a, strings.registerSkill.vir, 265, 241, 13, dark);
-	a.jmp("controls_done");
-
-	a.label("controls_item");
-	const itemXs = [108, 185, 262];
-	for (let index = 0; index < 3; index++)
+	const moveSlots = [
+		{x: 156, y: 125, checkX: 134, labelX: 132, labelY: 159},
+		{x: 302, y: 125, checkX: 280, labelX: 278, labelY: 159},
+		{x: 156, y: 220, checkX: 134, labelX: 132, labelY: 254},
+		{x: 302, y: 220, checkX: 280, labelX: 278, labelY: 254}
+	];
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoCombatUIStatic.FeatureMoveRows);
+	a.jcc(0x84, "controls_move_done");
+	for (let index = 0; index < moveSlots.length; index++)
 	{
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, itemXs[index], 122 + (index === 2 ? 74 : 0), 20, 20, skillColors[index]);
-		AutoCombatUIStatic.emitText(a, strings.itemLetters[index].vir, itemXs[index] + 5, 124 + (index === 2 ? 74 : 0), 14, 0x00FFFFFF);
+		const slot = moveSlots[index];
+		const rowVir = moveRowsVir + index * AutoCombatUIStatic.MoveRowSize;
+		const iconKeyVir = moveIconKeysVir + index * AutoCombatUIStatic.SkillIconKeySize;
+		const empty = `move_${index}_empty`;
+		const skill = `move_${index}_skill`;
+		const iconDone = `move_${index}_icon_done`;
+		AutoCombatUIStatic.emitText(
+			a, strings.moveDescriptions[index].vir, slot.labelX,
+			slot.labelY, 12, dark
+		);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.MoveRowIdOffset); a.emit(0);
+		a.jcc(0x84, empty);
+		a.emit(0x66, 0x83, 0x3D);
+		a.dword(rowVir + AutoCombatUIStatic.MoveRowKindOffset);
+		a.emit(AutoCombatUIStatic.MoveKindItem);
+		a.jcc(0x85, skill);
+		AutoCombatUIStatic.emitDrawItemIcon(
+			a, fillRectVir, rowVir + AutoCombatUIStatic.MoveRowIdOffset,
+			itemResolverVir, paths.skillIconFormat.vir, skillIconPathVir,
+			slot.x, slot.y, skillColors[index % skillColors.length],
+			`move_${index}_item_icon`
+		);
+		a.jmp(iconDone);
+		a.label(skill);
+		a.emit(0x66, 0x83, 0x3D);
+		a.dword(rowVir + AutoCombatUIStatic.MoveRowKindOffset);
+		a.emit(AutoCombatUIStatic.MoveKindSkill);
+		a.jcc(0x85, empty);
+		AutoCombatUIStatic.emitDrawSkillIcon(
+			a, fillRectVir, iconKeyVir, paths.skillIconFormat.vir, skillIconPathVir,
+			slot.x, slot.y, skillColors[index % skillColors.length],
+			`move_${index}_skill_icon`
+		);
+		a.label(iconDone);
+		AutoCombatUIStatic.emitDrawSkillLevel(
+			a, fillRectVir, rowVir + AutoCombatUIStatic.MoveRowLevelOffset,
+			strings.skillLevelFormat.vir, skillLevelTextVir, slot.x, slot.y
+		);
+		drawStateCheck(
+			{kind: "mem_bit", address: rowVir + AutoCombatUIStatic.MoveRowFlagsOffset, mask: 1},
+			slot.checkX, slot.y + 5, null, `move_${index}`
+		);
+		a.label(empty);
 	}
+	a.label("controls_move_done");
+	a.jmp("controls_done");
+	a.label("controls_item");
+	const itemXs = [108, 185, 262, 339];
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoCombatUIStatic.FeatureItemRows);
+	a.jcc(0x84, "controls_item_return");
+	for (let index = 0; index < AutoCombatUIStatic.ItemDynamicRows; index++)
+	{
+		const x = itemXs[index % itemXs.length];
+		const y = 121 + Math.floor(index / itemXs.length) * 74;
+		const rowVir = itemRowsVir + index * AutoCombatUIStatic.ItemRowSize;
+
+		const empty = `buff_item_${index}_empty`;
+		const done = `buff_item_${index}_done`;
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.ItemRowIdOffset); a.emit(0);
+		a.jcc(0x84, empty);
+		AutoCombatUIStatic.emitDrawItemIcon(
+			a, fillRectVir, rowVir + AutoCombatUIStatic.ItemRowIdOffset,
+			itemResolverVir, paths.skillIconFormat.vir, skillIconPathVir,
+			x, y, skillColors[index % skillColors.length], `buff_item_${index}_icon`
+		);
+		AutoCombatUIStatic.emitDrawSkillLevel(
+			a, fillRectVir, rowVir + AutoCombatUIStatic.ItemRowFlagsOffset + 2,
+			strings.skillLevelFormat.vir, skillLevelTextVir, x, y
+		);
+		a.jmp(done);
+		a.label(empty);
+		AutoCombatUIStatic.emitText(a, strings.skillEmpty.vir, x + 5, y + 2, 14, link);
+		a.label(done);
+		AutoCombatUIStatic.emitCenteredText(
+			a, rowVir + AutoCombatUIStatic.ItemRowDelayTextOffset,
+			x - 6, y + 32, 34, 14, dark, 8, `buff_item_${index}_delay`
+		);
+		AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
+	}
+	a.label("controls_item_return");
 	drawStateCheck({kind: "nonzero", offset: AutoCombatUIStatic.StateActionOnEnd}, 28, 275, strings.returnTown, "item_return");
 	a.label("controls_done");
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateTab);
@@ -1755,7 +2873,55 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.label("navigation_done");
 };
 
-AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, skillIconPathVir, skillLevelTextVir)
+AutoCombatUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, strings)
+{
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x04);
+	a.jcc(0x85, "loot_dropdown_done");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage); a.emit(0x01);
+	a.jcc(0x85, "loot_dropdown_done");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.emit(0x01);
+	a.jcc(0x85, "loot_dropdown_armor_test");
+
+	const emitPopup = function(currentVir, top, prefix)
+	{
+		for (let option = 0; option <= 5; option++)
+		{
+			const y = top + option * 17;
+			const normal = `${prefix}_${option}_normal`;
+			const backgroundDone = `${prefix}_${option}_background_done`;
+			a.emit(0x83, 0x3D); a.dword(currentVir); a.emit(option);
+			a.jcc(0x85, normal);
+			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 215, y, 132, 17, 0xFFD8E7FA);
+			a.jmp(backgroundDone);
+			a.label(normal);
+			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 215, y, 132, 17, 0xFFFFFFFF);
+			a.label(backgroundDone);
+			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 215, y, 132, 1, 0xFF9AAAC0);
+			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 215, y, 1, 17, 0xFF9AAAC0);
+			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 346, y, 1, 17, 0xFF9AAAC0);
+			if (option === 5)
+				AutoCombatUIStatic.emitFillRect(a, fillRectVir, 215, y + 16, 132, 1, 0xFF9AAAC0);
+			AutoCombatUIStatic.emitText(
+				a, strings.lootOptionChoices[option].vir, 220, y + 1, 12, 0x0078432C
+			);
+		}
+	};
+
+	emitPopup(
+		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin,
+		218, "loot_dropdown_weapon"
+	);
+	a.jmp("loot_dropdown_done");
+	a.label("loot_dropdown_armor_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.emit(0x02);
+	a.jcc(0x85, "loot_dropdown_done");
+	emitPopup(
+		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin,
+		123, "loot_dropdown_armor"
+	);
+	a.label("loot_dropdown_done");
+};
+AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
@@ -1768,9 +2934,11 @@ AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, m
 	AutoCombatUIStatic.emitPageControls(
 		a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
 		attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
-		healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, skillIconPathVir,
-		skillLevelTextVir
+		healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir,
+		itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir,
+		itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir
 	);
+	AutoCombatUIStatic.emitLootDropdown(a, stateVir, fillRectVir, strings);
 	AutoCombatUIStatic.emitSkillRejectDialog(a, stateVir, fillRectVir, strings);
 	AutoCombatUIStatic.emitFooterButtons(a, stateVir, paths);
 
@@ -1896,9 +3064,532 @@ AutoCombatUIStatic.emitSendScalarEqToggle = function(
 	a.call(mutationSenderVir);
 };
 
+AutoCombatUIStatic.buildNativeSliderMouseMove = function(
+	stateVir, percentFormatVir, percentTextVir, potionRowsVir,
+	attackSkillRowsVir, supportSkillRowsVir, healingSkillRowVir,
+	recoverySkillRowsVir, moveRowsVir, itemRowsVir,
+	skillTooltipFormatVir, moveSkillTooltipFormatVir, itemTooltipFormatVir,
+	hoverTextVir
+)
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	// Preserve the native frame drag/capture path while the title is moving.
+	a.emit(0x80, 0x7E, AutoCombatUIStatic.WindowDragStateOffset, AutoCombatUIStatic.WindowDragIdle);
+	a.jcc(0x85, "pass");
+	a.emit(0x8B, 0x5D, 0x08);
+	a.emit(0x8B, 0x55, 0x0C);
+
+	const emitSlotTooltip = function(rowVir, idOffset, nameOffset, levelOffset,
+		delayOffset, kind, left, top, right, bottom, hoverId, prefix)
+	{
+		const next = `${prefix}_next`;
+		AutoCombatUIStatic.emitRectGate(a, left, top, right, bottom, next);
+		a.emit(0x83, 0x3D); a.dword(rowVir + idOffset); a.emit(0);
+		a.jcc(0x84, next);
+		if (kind === "skill")
+		{
+			AutoCombatUIStatic.pushImm(a, rowVir + delayOffset);
+			a.emit(0x0F, 0xB7, 0x05); a.dword(rowVir + levelOffset);
+			a.emit(0x50);
+			AutoCombatUIStatic.pushImm(a, rowVir + nameOffset);
+			AutoCombatUIStatic.pushImm(a, skillTooltipFormatVir);
+			AutoCombatUIStatic.pushImm(a, hoverTextVir);
+			a.call(AutoCombatUIStatic.StringFormat);
+			a.emit(0x83, 0xC4, 0x14);
+			a.emit(0xB8); a.dword(hoverTextVir);
+		}
+		else if (kind === "move_skill")
+		{
+			a.emit(0x0F, 0xB7, 0x05); a.dword(rowVir + levelOffset);
+			a.emit(0x50);
+			AutoCombatUIStatic.pushImm(a, rowVir + nameOffset);
+			AutoCombatUIStatic.pushImm(a, moveSkillTooltipFormatVir);
+			AutoCombatUIStatic.pushImm(a, hoverTextVir);
+			a.call(AutoCombatUIStatic.StringFormat);
+			a.emit(0x83, 0xC4, 0x10);
+			a.emit(0xB8); a.dword(hoverTextVir);
+		}
+		else if (kind === "item")
+		{
+			a.emit(0x0F, 0xB7, 0x05); a.dword(rowVir + levelOffset);
+			a.emit(0x50);
+			AutoCombatUIStatic.pushImm(a, rowVir + nameOffset);
+			AutoCombatUIStatic.pushImm(a, itemTooltipFormatVir);
+			AutoCombatUIStatic.pushImm(a, hoverTextVir);
+			a.call(AutoCombatUIStatic.StringFormat);
+			a.emit(0x83, 0xC4, 0x10);
+			a.emit(0xB8); a.dword(hoverTextVir);
+		}
+		else
+		{
+			a.emit(0xB8); a.dword(rowVir + nameOffset);
+		}
+		a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+		a.dword(hoverId);
+		a.jmp("show_slot_tooltip");
+		a.label(next);
+	};
+
+	const skillXs = [108, 185, 262, 339];
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x02);
+	a.jcc(0x85, "hover_potion_tab");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage); a.emit(0x01);
+	a.jcc(0x85, "hover_support_skills");
+	for (let index = 0; index < AutoCombatUIStatic.AttackSkillDynamicRows; index++)
+	{
+		const x = skillXs[index % 4];
+		const y = 132 + Math.floor(index / 4) * 74;
+		emitSlotTooltip(
+			attackSkillRowsVir + index * AutoCombatUIStatic.AttackSkillRowSize,
+			AutoCombatUIStatic.AttackSkillRowIdOffset,
+			AutoCombatUIStatic.AttackSkillRowNameOffset,
+			AutoCombatUIStatic.AttackSkillRowLevelOffset,
+			AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
+			"skill", x - 4, y - 4, x + 34, y + 34,
+			100 + index, `hover_attack_${index}`
+		);
+	}
+	a.jmp("slider_hover_test");
+	a.label("hover_support_skills");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage); a.emit(0x02);
+	a.jcc(0x85, "hover_recovery_skills");
+	for (let index = 0; index < AutoCombatUIStatic.AttackSkillDynamicRows; index++)
+	{
+		const x = skillXs[index % 4];
+		const y = 132 + Math.floor(index / 4) * 74;
+		emitSlotTooltip(
+			supportSkillRowsVir + index * AutoCombatUIStatic.AttackSkillRowSize,
+			AutoCombatUIStatic.AttackSkillRowIdOffset,
+			AutoCombatUIStatic.AttackSkillRowNameOffset,
+			AutoCombatUIStatic.AttackSkillRowLevelOffset,
+			AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
+			"skill", x - 4, y - 4, x + 34, y + 34,
+			110 + index, `hover_support_${index}`
+		);
+	}
+	a.jmp("slider_hover_test");
+	a.label("hover_recovery_skills");
+	emitSlotTooltip(
+		healingSkillRowVir, AutoCombatUIStatic.AttackSkillRowIdOffset,
+		AutoCombatUIStatic.AttackSkillRowNameOffset,
+		AutoCombatUIStatic.AttackSkillRowLevelOffset,
+		AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
+		"skill", 222, 129, 260, 167, 120, "hover_healing"
+	);
+	for (let index = 0; index < AutoCombatUIStatic.RecoverySkillDynamicRows; index++)
+	{
+		const x = AutoCombatUIStatic.RecoverySkillFirstX +
+			index * AutoCombatUIStatic.RecoverySkillSpacing;
+		emitSlotTooltip(
+			recoverySkillRowsVir + index * AutoCombatUIStatic.AttackSkillRowSize,
+			AutoCombatUIStatic.AttackSkillRowIdOffset,
+			AutoCombatUIStatic.AttackSkillRowNameOffset,
+			AutoCombatUIStatic.AttackSkillRowLevelOffset,
+			AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
+			"skill", x - 4, 129, x + 34, 167,
+			121 + index, `hover_recovery_${index}`
+		);
+	}
+	a.jmp("slider_hover_test");
+
+	a.label("hover_potion_tab");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x03);
+	a.jcc(0x85, "hover_move_tab");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePotionPage); a.emit(0x01);
+	a.jcc(0x85, "slider_hover_test");
+	for (let index = 0; index < AutoCombatUIStatic.PotionDynamicRows; index++)
+	{
+		const x = (index % 2 === 0 ? 21 : 247) + 174;
+		const y = (index < 2 ? 89 : 200) + 65;
+		emitSlotTooltip(
+			potionRowsVir + index * AutoCombatUIStatic.PotionRowSize,
+			AutoCombatUIStatic.PotionRowIdOffset,
+			AutoCombatUIStatic.PotionRowNameOffset,
+			AutoCombatUIStatic.PotionRowQuantityOffset, 0,
+			"item", x - 4, y - 4, x + 36, y + 36,
+			130 + index, `hover_potion_${index}`
+		);
+	}
+	a.jmp("slider_hover_test");
+
+	a.label("hover_move_tab");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x05);
+	a.jcc(0x85, "hover_item_tab");
+	const moveAnchors = [[156, 125], [302, 125], [156, 220], [302, 220]];
+	for (let index = 0; index < AutoCombatUIStatic.MoveDynamicRows; index++)
+	{
+		const rowVir = moveRowsVir + index * AutoCombatUIStatic.MoveRowSize;
+		const x = moveAnchors[index][0];
+		const y = moveAnchors[index][1];
+		const itemNext = `hover_move_${index}_skill_test`;
+		a.emit(0x66, 0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.MoveRowKindOffset);
+		a.emit(AutoCombatUIStatic.MoveKindItem);
+		a.jcc(0x85, itemNext);
+		emitSlotTooltip(
+			rowVir, AutoCombatUIStatic.MoveRowIdOffset,
+			AutoCombatUIStatic.MoveRowNameOffset,
+			AutoCombatUIStatic.MoveRowLevelOffset, 0,
+			"item", x - 4, y - 4, x + 36, y + 36,
+			140 + index, `hover_move_item_${index}`
+		);
+		a.label(itemNext);
+		emitSlotTooltip(
+			rowVir, AutoCombatUIStatic.MoveRowIdOffset,
+			AutoCombatUIStatic.MoveRowNameOffset,
+			AutoCombatUIStatic.MoveRowLevelOffset, 0,
+			"move_skill", x - 4, y - 4, x + 36, y + 36,
+			140 + index, `hover_move_skill_${index}`
+		);
+	}
+	a.jmp("slider_hover_test");
+
+	a.label("hover_item_tab");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x06);
+	a.jcc(0x85, "slider_hover_test");
+	for (let index = 0; index < AutoCombatUIStatic.ItemDynamicRows; index++)
+	{
+		const x = skillXs[index % 4];
+		const y = 121 + Math.floor(index / 4) * 74;
+		emitSlotTooltip(
+			itemRowsVir + index * AutoCombatUIStatic.ItemRowSize,
+			AutoCombatUIStatic.ItemRowIdOffset,
+			AutoCombatUIStatic.ItemRowNameOffset,
+			AutoCombatUIStatic.ItemRowFlagsOffset + 2, 0,
+			"item", x - 4, y - 4, x + 36, y + 36,
+			150 + index, `hover_item_${index}`
+		);
+	}
+
+	a.label("slider_hover_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x02);
+	a.jcc(0x85, "potion_slider_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage); a.emit(0x03);
+	a.jcc(0x85, "clear_hover");
+	a.emit(0x8B, 0x5D, 0x08);
+	a.emit(0x8B, 0x55, 0x0C);
+
+	// Once the track is pressed, continue updating even if the pointer leaves
+	// the rail vertically. The thumb is clamped to the native 0..100 travel.
+	a.emit(0x83, 0x3D);
+	a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
+	a.emit(0x07);
+	a.jcc(0x84, "drag_update");
+
+	a.emit(0x81, 0xFA); a.dword(AutoCombatUIStatic.HealingSliderHoverTop);
+	a.jcc(0x8C, "clear_hover");
+	a.emit(0x81, 0xFA); a.dword(AutoCombatUIStatic.HealingSliderHoverBottom);
+	a.jcc(0x8F, "clear_hover");
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.HealingSliderGroupX);
+	a.jcc(0x8C, "clear_hover");
+	a.emit(0x81, 0xFB); a.dword(
+		AutoCombatUIStatic.HealingSliderGroupX + AutoCombatUIStatic.HealingSliderArrowWidth
+	);
+	a.jcc(0x8E, "hover_left");
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.HealingSliderRightArrowX);
+	a.jcc(0x8D, "right_test");
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.HealingSliderTrackX);
+	a.jcc(0x8C, "clear_hover");
+	a.emit(0x81, 0xFB); a.dword(
+		AutoCombatUIStatic.HealingSliderTrackX + AutoCombatUIStatic.HealingSliderTrackWidth
+	);
+	a.jcc(0x8F, "clear_hover");
+	a.emit(0xB8); a.dword(7);
+	a.jmp("set_hover_tooltip");
+
+	a.label("right_test");
+	a.emit(0x81, 0xFB); a.dword(
+		AutoCombatUIStatic.HealingSliderRightArrowX + AutoCombatUIStatic.HealingSliderArrowWidth
+	);
+	a.jcc(0x8F, "clear_hover");
+	a.emit(0xB8); a.dword(6);
+	a.jmp("set_hover_done");
+
+	a.label("hover_left");
+	a.emit(0xB8); a.dword(5);
+	a.jmp("set_hover_done");
+
+	a.label("drag_update");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.dword(7);
+	a.emit(0x8B, 0xC3);
+	a.emit(0x3D); a.dword(AutoCombatUIStatic.HealingSliderTrackX);
+	a.jcc(0x8D, "drag_high_test");
+	a.emit(0x33, 0xC0);
+	a.jmp("drag_store");
+	a.label("drag_high_test");
+	a.emit(0x3D); a.dword(
+		AutoCombatUIStatic.HealingSliderTrackX + AutoCombatUIStatic.HealingSliderThumbTravel
+	);
+	a.jcc(0x8E, "drag_scale");
+	a.emit(0xB8); a.dword(100);
+	a.jmp("drag_store");
+	a.label("drag_scale");
+	a.emit(0x2D); a.dword(AutoCombatUIStatic.HealingSliderTrackX);
+	a.emit(0x6B, 0xC0, 0x64, 0x33, 0xD2, 0xB9);
+	a.dword(AutoCombatUIStatic.HealingSliderThumbTravel);
+	a.emit(0xF7, 0xF1);
+	a.label("drag_store");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("show_tooltip");
+
+	a.label("set_hover_tooltip");
+	a.emit(0x3B, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+	a.jcc(0x84, "show_tooltip");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("show_tooltip");
+
+	a.label("set_hover_done");
+	a.emit(0x3B, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+	a.jcc(0x84, "done");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("done");
+
+	a.label("potion_slider_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x03);
+	a.jcc(0x85, "loot_slider_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePotionPage); a.emit(0x01);
+	a.jcc(0x85, "clear_hover");
+	a.emit(0x8B, 0x5D, 0x08);
+	a.emit(0x8B, 0x55, 0x0C);
+	for (let index = 0; index < AutoCombatUIStatic.PotionDynamicRows; index++)
+	{
+		const next = `potion_drag_${index}_next`;
+		const drag = `potion_drag_${index}_active`;
+		const scale = `potion_drag_${index}_scale`;
+		const high = `potion_drag_${index}_high`;
+		const store = `potion_drag_${index}_store`;
+		const groupX = index % 2 === 0 ? 21 : 247;
+		const groupY = (index < 2 ? 89 : 200) + 64;
+		const trackX = groupX + 14;
+		const rightX = groupX + 149;
+		const rowVir = potionRowsVir + index * AutoCombatUIStatic.PotionRowSize;
+		const valueVir = rowVir + (index < 2 ? AutoCombatUIStatic.PotionRowMinHpOffset :
+			AutoCombatUIStatic.PotionRowMinSpOffset);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.PotionRowIdOffset); a.emit(0);
+		a.jcc(0x84, next);
+		a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
+		a.emit(40 + index);
+		a.jcc(0x84, drag);
+		a.emit(0x81, 0xFA); a.dword(groupY);
+		a.jcc(0x8C, next);
+		a.emit(0x81, 0xFA); a.dword(groupY + AutoCombatUIStatic.HealingSliderArrowHeight);
+		a.jcc(0x8F, next);
+		a.emit(0x81, 0xFB); a.dword(groupX);
+		a.jcc(0x8C, next);
+		a.emit(0x81, 0xFB); a.dword(rightX + AutoCombatUIStatic.HealingSliderArrowWidth);
+		a.jcc(0x8F, next);
+		a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+		a.dword(40 + index);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.emit(0x0F, 0xB7, 0x05); a.dword(valueVir);
+		a.jmp("show_potion_tooltip");
+		a.label(drag);
+		a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+		a.dword(40 + index);
+		a.emit(0x8B, 0xC3);
+		a.emit(0x3D); a.dword(trackX);
+		a.jcc(0x8D, high);
+		a.emit(0x33, 0xC0);
+		a.jmp(store);
+		a.label(high);
+		a.emit(0x3D); a.dword(trackX + AutoCombatUIStatic.HealingSliderThumbTravel);
+		a.jcc(0x8E, scale);
+		a.emit(0xB8); a.dword(100);
+		a.jmp(store);
+		a.label(scale);
+		a.emit(0x2D); a.dword(trackX);
+		a.emit(0x6B, 0xC0, 0x64, 0x33, 0xD2, 0xB9);
+		a.dword(AutoCombatUIStatic.HealingSliderThumbTravel);
+		a.emit(0xF7, 0xF1);
+		a.label(store);
+		a.emit(0x66, 0xA3); a.dword(valueVir);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("show_potion_tooltip");
+		a.label(next);
+	}
+	a.jmp("clear_hover");
+
+	a.label("show_potion_tooltip");
+	a.emit(0x50);
+	AutoCombatUIStatic.pushImm(a, percentFormatVir);
+	AutoCombatUIStatic.pushImm(a, percentTextVir);
+	a.call(AutoCombatUIStatic.StringFormat);
+	a.emit(0x83, 0xC4, 0x0C);
+	a.emit(0x8B, 0x45, 0x08, 0x83, 0xC0, 0x0A, 0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x45, 0x0C, 0x83, 0xE8, 0x18, 0x89, 0x45, 0xFC);
+	a.emit(0x8D, 0x45, 0xFC, 0x50, 0x8D, 0x45, 0xF8, 0x50);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.ClientToScreen);
+	a.emit(0x8B, 0x0D); a.dword(AutoCombatUIStatic.TooltipManager);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, -1);
+	a.emit(0xFF, 0x75, 0xFC, 0xFF, 0x75, 0xF8);
+	AutoCombatUIStatic.pushImm(a, percentTextVir);
+	a.call(AutoCombatUIStatic.ShowTooltip);
+	a.jmp("done");	a.label("loot_slider_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x04);
+	a.jcc(0x85, "clear_hover");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage); a.emit(0x01);
+	a.jcc(0x85, "clear_hover");
+	a.emit(0x8B, 0x5D, 0x08);
+	a.emit(0x8B, 0x55, 0x0C);
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
+	a.emit(0x0A);
+	a.jcc(0x84, "loot_drag_update");
+	a.emit(0x81, 0xFA); a.dword(AutoCombatUIStatic.LootSliderHoverTop);
+	a.jcc(0x8C, "clear_hover");
+	a.emit(0x81, 0xFA); a.dword(AutoCombatUIStatic.LootSliderHoverBottom);
+	a.jcc(0x8F, "clear_hover");
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.LootSliderGroupX);
+	a.jcc(0x8C, "clear_hover");
+	a.emit(0x81, 0xFB); a.dword(
+		AutoCombatUIStatic.LootSliderGroupX + AutoCombatUIStatic.HealingSliderArrowWidth
+	);
+	a.jcc(0x8E, "loot_hover_left");
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.LootSliderRightArrowX);
+	a.jcc(0x8D, "loot_right_test");
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.LootSliderTrackX);
+	a.jcc(0x8C, "clear_hover");
+	a.emit(0x81, 0xFB); a.dword(
+		AutoCombatUIStatic.LootSliderTrackX + AutoCombatUIStatic.LootSliderTrackWidth
+	);
+	a.jcc(0x8F, "clear_hover");
+	a.emit(0xB8); a.dword(10);
+	a.jmp("loot_set_hover_tooltip");
+
+	a.label("loot_right_test");
+	a.emit(0x81, 0xFB); a.dword(
+		AutoCombatUIStatic.LootSliderRightArrowX + AutoCombatUIStatic.HealingSliderArrowWidth
+	);
+	a.jcc(0x8F, "clear_hover");
+	a.emit(0xB8); a.dword(9);
+	a.jmp("loot_set_hover_done");
+	a.label("loot_hover_left");
+	a.emit(0xB8); a.dword(8);
+	a.jmp("loot_set_hover_done");
+
+	a.label("loot_drag_update");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.dword(10);
+	a.emit(0x8B, 0xC3);
+	a.emit(0x3D); a.dword(AutoCombatUIStatic.LootSliderTrackX);
+	a.jcc(0x8D, "loot_drag_high_test");
+	a.emit(0x33, 0xC0);
+	a.jmp("loot_drag_store");
+	a.label("loot_drag_high_test");
+	a.emit(0x3D); a.dword(
+		AutoCombatUIStatic.LootSliderTrackX + AutoCombatUIStatic.LootSliderThumbTravel
+	);
+	a.jcc(0x8E, "loot_drag_scale");
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.LootSliderMaximum);
+	a.jmp("loot_drag_store");
+	a.label("loot_drag_scale");
+	a.emit(0x2D); a.dword(AutoCombatUIStatic.LootSliderTrackX);
+	a.emit(0x69, 0xC0); a.dword(AutoCombatUIStatic.LootSliderMaximum);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(AutoCombatUIStatic.LootSliderThumbTravel);
+	a.emit(0xF7, 0xF1);
+	a.label("loot_drag_store");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootWeightLimit);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("show_loot_tooltip");
+
+	a.label("loot_set_hover_tooltip");
+	a.emit(0x3B, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+	a.jcc(0x84, "show_loot_tooltip");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("show_loot_tooltip");
+	a.label("loot_set_hover_done");
+	a.emit(0x3B, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+	a.jcc(0x84, "done");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("done");
+
+	a.label("show_loot_tooltip");
+	a.emit(0xFF, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateLootWeightLimit);
+	AutoCombatUIStatic.pushImm(a, percentFormatVir);
+	AutoCombatUIStatic.pushImm(a, percentTextVir);
+	a.call(AutoCombatUIStatic.StringFormat);
+	a.emit(0x83, 0xC4, 0x0C);
+	a.emit(0x8B, 0x45, 0x08, 0x83, 0xC0, 0x0A, 0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x45, 0x0C, 0x83, 0xE8, 0x18, 0x89, 0x45, 0xFC);
+	a.emit(0x8D, 0x45, 0xFC, 0x50, 0x8D, 0x45, 0xF8, 0x50);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.ClientToScreen);
+	a.emit(0x8B, 0x0D); a.dword(AutoCombatUIStatic.TooltipManager);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, -1);
+	a.emit(0xFF, 0x75, 0xFC, 0xFF, 0x75, 0xF8);
+	AutoCombatUIStatic.pushImm(a, percentTextVir);
+	a.call(AutoCombatUIStatic.ShowTooltip);
+	a.jmp("done");
+
+	a.label("show_slot_tooltip");
+	a.emit(0x89, 0x45, 0xF4);
+	a.emit(0x8B, 0x45, 0x08, 0x83, 0xC0, 0x0A, 0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x45, 0x0C, 0x83, 0xE8, 0x18, 0x89, 0x45, 0xFC);
+	a.emit(0x8D, 0x45, 0xFC, 0x50, 0x8D, 0x45, 0xF8, 0x50);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.ClientToScreen);
+	a.emit(0x8B, 0x0D); a.dword(AutoCombatUIStatic.TooltipManager);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, -1);
+	a.emit(0xFF, 0x75, 0xFC, 0xFF, 0x75, 0xF8, 0xFF, 0x75, 0xF4);
+	a.call(AutoCombatUIStatic.ShowTooltip);
+	a.jmp("done");
+
+	a.label("clear_hover");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.emit(0x00);
+	a.jcc(0x84, "pass");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.dword(0);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("pass");
+
+	a.label("show_tooltip");
+	a.emit(0xFF, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
+	AutoCombatUIStatic.pushImm(a, percentFormatVir);
+	AutoCombatUIStatic.pushImm(a, percentTextVir);
+	a.call(AutoCombatUIStatic.StringFormat);
+	a.emit(0x83, 0xC4, 0x0C);
+	a.emit(0x8B, 0x45, 0x08, 0x83, 0xC0, 0x0A, 0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x45, 0x0C, 0x83, 0xE8, 0x18, 0x89, 0x45, 0xFC);
+	a.emit(0x8D, 0x45, 0xFC, 0x50, 0x8D, 0x45, 0xF8, 0x50);
+	a.emit(0x8B, 0xCE);
+	a.call(AutoCombatUIStatic.ClientToScreen);
+	a.emit(0x8B, 0x0D); a.dword(AutoCombatUIStatic.TooltipManager);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, 0);
+	AutoCombatUIStatic.pushImm(a, -1);
+	a.emit(0xFF, 0x75, 0xFC, 0xFF, 0x75, 0xF8);
+	AutoCombatUIStatic.pushImm(a, percentTextVir);
+	a.call(AutoCombatUIStatic.ShowTooltip);
+
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	a.label("pass");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.jmp(AutoCombatUIStatic.FrameMouseMove);
+	return a;
+};
+
 AutoCombatUIStatic.buildMouseDown = function(
 	stateVir, mutationSenderVir, monsterRowsVir, attackSkillRowsVir,
-	supportSkillRowsVir, healingSkillRowVir, recoverySkillRowsVir
+	supportSkillRowsVir, healingSkillRowVir, recoverySkillRowsVir, itemRowsVir,
+	potionRowsVir, moveRowsVir
 )
 {
 	const a = AutoCombatUIStatic.asm();
@@ -1909,6 +3600,64 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.jcc(0x88, "consume");
 	a.emit(0x85, 0xD2);
 	a.jcc(0x88, "consume");
+
+	// An open random-option popup owns the first click so its rows cannot
+	// click through into the Looting page underneath it.
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.emit(0);
+	a.jcc(0x84, "loot_dropdown_check_done");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x04);
+	a.jcc(0x85, "loot_dropdown_close");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage); a.emit(0x01);
+	a.jcc(0x85, "loot_dropdown_close");
+
+	const emitLootDropdownSelection = function(
+		minimumVir, settingId, filterMask, top, prefix
+	)
+	{
+		for (let option = 0; option <= 5; option++)
+		{
+			const next = `${prefix}_${option}_next`;
+			AutoCombatUIStatic.emitRectGate(
+				a, 215, top + option * 17, 347, top + (option + 1) * 17, next
+			);
+			a.emit(0xC7, 0x05); a.dword(minimumVir); a.dword(option);
+			a.emit(0x33, 0xC9);
+			a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateLootFilterFlags);
+			a.emit(0xA9); a.dword(filterMask);
+			a.emit(0x0F, 0x95, 0xC1);
+			AutoCombatUIStatic.pushImm(a, option);
+			a.emit(0x51);
+			AutoCombatUIStatic.pushImm(a, settingId);
+			a.call(mutationSenderVir);
+			a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown);
+			a.dword(0);
+			AutoCombatUIStatic.emitMarkDirty(a);
+			a.jmp("consume");
+			a.label(next);
+		}
+	};
+
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.emit(0x01);
+	a.jcc(0x85, "loot_dropdown_armor_click");
+	emitLootDropdownSelection(
+		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin,
+		AutoCombatUIStatic.SettingLootWeaponFilter, 1 << 0,
+		218, "loot_dropdown_weapon_click"
+	);
+	a.jmp("loot_dropdown_close");
+	a.label("loot_dropdown_armor_click");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.emit(0x02);
+	a.jcc(0x85, "loot_dropdown_close");
+	emitLootDropdownSelection(
+		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin,
+		AutoCombatUIStatic.SettingLootArmorFilter, 1 << 1,
+		123, "loot_dropdown_armor_click_row"
+	);
+	a.label("loot_dropdown_close");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(0);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("loot_dropdown_check_done");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSkillRejectVisible);
 	a.emit(0);
 	a.jcc(0x84, "title_test");
@@ -1947,6 +3696,8 @@ AutoCombatUIStatic.buildMouseDown = function(
 		a.jcc(0x8D, next);
 		a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateTab);
 		a.dword(index);
+		a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown);
+		a.dword(0);
 		AutoCombatUIStatic.emitMarkDirty(a);
 		a.jmp("consume");
 		a.label(next);
@@ -1955,20 +3706,20 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.label("footer_test");
 	a.emit(0x81, 0xFA); a.dword(319);
 	a.jcc(0x8C, "body_click");
-	a.emit(0x81, 0xFA); a.dword(326);
+	a.emit(0x81, 0xFA); a.dword(AutoCombatUIStatic.FooterButtonY);
 	a.jcc(0x8C, "page_nav_test");
-	a.emit(0x81, 0xFB); a.dword(5);
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.FooterResetX);
 	a.jcc(0x8C, "footer_close_test");
-	a.emit(0x81, 0xFB); a.dword(48);
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.FooterResetX + 42);
 	a.jcc(0x8D, "footer_close_test");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 	a.dword(1);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("footer_close_test");
-	a.emit(0x81, 0xFB); a.dword(418);
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.FooterCloseX);
 	a.jcc(0x8C, "page_nav_test");
-	a.emit(0x81, 0xFB); a.dword(461);
+	a.emit(0x81, 0xFB); a.dword(AutoCombatUIStatic.FooterCloseX + 42);
 	a.jcc(0x8D, "page_nav_test");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 	a.dword(2);
@@ -2022,49 +3773,109 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.jcc(0x8D, "consume");
 	a.emit(0xFF, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage);
 	a.label("page_changed");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(0);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("body_click");
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateTab);
 	a.emit(0x83, 0xF8, 0x00); a.jcc(0x85, "body_monster");
-	for (let index = 0; index < 5; index++)
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.BasicScrollX - 5, AutoCombatUIStatic.BasicScrollTop - 5,
+		AutoCombatUIStatic.BasicScrollX + 10, AutoCombatUIStatic.BasicScrollTop + 12,
+		"body_basic_scroll_down"
+	);
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll); a.emit(0);
+	a.jcc(0x8E, "consume");
+	a.emit(0xFF, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_basic_scroll_down");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.BasicScrollX - 5, AutoCombatUIStatic.BasicScrollBottom - 8,
+		AutoCombatUIStatic.BasicScrollX + 10, AutoCombatUIStatic.BasicScrollBottom + 10,
+		"body_basic_rows"
+	);
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll);
+	a.emit(AutoCombatUIStatic.BasicScrollMaximum);
+	a.jcc(0x8D, "consume");
+	a.emit(0xFF, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_basic_rows");
+	const emitBasicAction = function(option, prefix)
 	{
-		const next = `body_basic_${index}_next`;
-		AutoCombatUIStatic.emitRectGate(
-			a, 20, 136 + index * 34, 455, 166 + index * 34, next
-		);
-		if (index === 0)
+		if (option === 0)
 			AutoCombatUIStatic.emitSendScalarEqToggle(
-				a, stateVir, mutationSenderVir,
-				AutoCombatUIStatic.StateStopMelee, 2,
-				AutoCombatUIStatic.SettingStopMelee, 0, 2, "basic_0"
+				a, stateVir, mutationSenderVir, AutoCombatUIStatic.StateStopMelee, 2,
+				AutoCombatUIStatic.SettingStopMelee, 0, 2, prefix
 			);
-		else if (index === 1)
+		else if (option === 1)
 			AutoCombatUIStatic.emitSendScalarEqToggle(
-				a, stateVir, mutationSenderVir,
-				AutoCombatUIStatic.StateStopMelee, 1,
-				AutoCombatUIStatic.SettingStopMelee, 0, 1, "basic_1"
+				a, stateVir, mutationSenderVir, AutoCombatUIStatic.StateStopMelee, 1,
+				AutoCombatUIStatic.SettingStopMelee, 0, 1, prefix
 			);
-		else if (index === 2)
+		else if (option === 2)
 			AutoCombatUIStatic.emitSendScalarEqToggle(
 				a, stateVir, mutationSenderVir,
 				AutoCombatUIStatic.StateTeleportNoMobDelay, 0,
-				AutoCombatUIStatic.SettingTeleportNoMobDelay, 10000, 0, "basic_2"
+				AutoCombatUIStatic.SettingTeleportNoMobDelay, 10000, 0, prefix
 			);
-		else if (index === 3)
+		else if (option === 3)
 			AutoCombatUIStatic.emitSendScalarEqToggle(
 				a, stateVir, mutationSenderVir,
 				AutoCombatUIStatic.StateMonsterSurround, 0,
-				AutoCombatUIStatic.SettingMonsterSurround, 10, 0, "basic_3"
+				AutoCombatUIStatic.SettingMonsterSurround, 10, 0, prefix
 			);
 		else
+		{
+			const settings = [
+				AutoCombatUIStatic.SettingTpMvp,
+				AutoCombatUIStatic.SettingTpMiniBoss,
+				AutoCombatUIStatic.SettingTpChampion,
+				AutoCombatUIStatic.SettingAggressive,
+				AutoCombatUIStatic.SettingAcceptParty,
+				AutoCombatUIStatic.SettingTokenSiegfried
+			];
+			const masks = [1 << 7, 1 << 8, 1 << 9, 1 << 10, 1 << 0, 1 << 2];
 			AutoCombatUIStatic.emitSendScalarFlagToggle(
-				a, stateVir, mutationSenderVir,
-				AutoCombatUIStatic.SettingTpMvp, 1 << 7
+				a, stateVir, mutationSenderVir, settings[option - 4], masks[option - 4]
 			);
-		AutoCombatUIStatic.emitMarkDirty(a);
-		a.jmp("consume");
-		a.label(next);
+		}
+	};
+	const basicInputX = [151, 151, 275, 180];
+	for (let scroll = 0; scroll <= AutoCombatUIStatic.BasicScrollMaximum; scroll++)
+	{
+		const windowNext = `body_basic_window_${scroll}_next`;
+		a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll);
+		a.emit(scroll);
+		a.jcc(0x85, windowNext);
+		for (let row = 0; row < AutoCombatUIStatic.BasicVisibleRows; row++)
+		{
+			const option = scroll + row;
+			const next = `body_basic_${scroll}_${option}_next`;
+			const top = AutoCombatUIStatic.BasicFirstY + row * AutoCombatUIStatic.BasicRowSpacing;
+			if (option < 4)
+			{
+				const rowAction = `body_basic_${scroll}_${option}_row_action`;
+				AutoCombatUIStatic.emitRectGate(
+					a, basicInputX[option], top - 5,
+					basicInputX[option] + 37, top + 20, rowAction
+				);
+				AutoCombatUIStatic.pushImm(a, 0);
+				AutoCombatUIStatic.pushImm(a, option);
+				AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.SettingBasicInput);
+				a.call(mutationSenderVir);
+				AutoCombatUIStatic.emitMarkDirty(a);
+				a.jmp("consume");
+				a.label(rowAction);
+			}
+			AutoCombatUIStatic.emitRectGate(a, 20, top - 5, 453, top + 25, next);
+			emitBasicAction(option, `basic_${scroll}_${option}`);
+			AutoCombatUIStatic.emitMarkDirty(a);
+			a.jmp("consume");
+			a.label(next);
+		}
+		a.label(windowNext);
 	}
 	a.jmp("consume");
 	a.label("body_monster");
@@ -2074,7 +3885,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.jcc(0x84, "body_monster_static");
 	AutoCombatUIStatic.emitRectGate(a, 14, 87, 455, 125, "body_monster_dynamic_all_next");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
-	a.dword(0x3F);
+	a.dword(0x1FFFFF);
 	AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
 		a, stateVir, mutationSenderVir,
 		AutoCombatUIStatic.FeatureMonsterSelection,
@@ -2084,49 +3895,88 @@ AutoCombatUIStatic.buildMouseDown = function(
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("body_monster_dynamic_all_next");
-	for (let index = 0; index < AutoCombatUIStatic.MonsterDynamicRows; index++)
-	{
-		const next = `body_monster_dynamic_${index}_next`;
-		const turnOn = `body_monster_dynamic_${index}_turn_on`;
-		const mask = 1 << (index + 1);
-		a.emit(0x83, 0x3D);
-		a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
-		a.emit(index + 1);
-		a.jcc(0x82, next);
-		AutoCombatUIStatic.emitRectGate(
-			a, 14, 87 + (index + 1) * 38, 455, 125 + (index + 1) * 38, next
-		);
-		a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
-		a.emit(0xA9); a.dword(mask);
-		a.jcc(0x84, turnOn);
-		a.emit(0x81, 0x25); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
-		a.dword((~mask) >>> 0);
-		AutoCombatUIStatic.emitSendScalarPairMemIfFeature(
-			a, stateVir, mutationSenderVir,
-			AutoCombatUIStatic.FeatureMonsterSelection,
-			AutoCombatUIStatic.SettingMonsterSelection,
-			monsterRowsVir + index * AutoCombatUIStatic.MonsterRowSize +
-				AutoCombatUIStatic.MonsterRowIdOffset,
-			1, `monster_dynamic_${index}_off`
-		);
-		AutoCombatUIStatic.emitMarkDirty(a);
-		a.jmp("consume");
-		a.label(turnOn);
-		a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
-		a.dword(mask);
-		AutoCombatUIStatic.emitSendScalarPairMemIfFeature(
-			a, stateVir, mutationSenderVir,
-			AutoCombatUIStatic.FeatureMonsterSelection,
-			AutoCombatUIStatic.SettingMonsterSelection,
-			monsterRowsVir + index * AutoCombatUIStatic.MonsterRowSize +
-				AutoCombatUIStatic.MonsterRowIdOffset,
-			0, `monster_dynamic_${index}_on`
-		);
-		AutoCombatUIStatic.emitMarkDirty(a);
-		a.jmp("consume");
-		a.label(next);
-	}
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.BasicScrollX - 5, AutoCombatUIStatic.BasicScrollTop - 5,
+		AutoCombatUIStatic.BasicScrollX + 10, AutoCombatUIStatic.BasicScrollTop + 12,
+		"body_monster_scroll_down"
+	);
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll); a.emit(0);
+	a.jcc(0x8E, "consume");
+	a.emit(0xFF, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
+	a.label("body_monster_scroll_down");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.BasicScrollX - 5, AutoCombatUIStatic.BasicScrollBottom - 8,
+		AutoCombatUIStatic.BasicScrollX + 10, AutoCombatUIStatic.BasicScrollBottom + 10,
+		"body_monster_rows"
+	);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+	a.emit(0x83, 0xE8, AutoCombatUIStatic.MonsterVisibleRows);
+	a.jcc(0x89, "body_monster_scroll_down_nonnegative");
+	a.emit(0x33, 0xC0);
+	a.label("body_monster_scroll_down_nonnegative");
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.MonsterScrollMaximum);
+	a.jcc(0x8E, "body_monster_scroll_down_limit_ready");
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.MonsterScrollMaximum);
+	a.label("body_monster_scroll_down_limit_ready");
+	a.emit(0x39, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+	a.jcc(0x8D, "consume");
+	a.emit(0xFF, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("body_monster_rows");
+	for (let scroll = 0; scroll <= AutoCombatUIStatic.MonsterScrollMaximum; scroll++)
+	{
+		const windowNext = `body_monster_window_${scroll}_next`;
+		a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+		a.emit(scroll);
+		a.jcc(0x85, windowNext);
+		for (let row = 0; row < AutoCombatUIStatic.MonsterVisibleRows; row++)
+		{
+			const index = scroll + row;
+			const next = `body_monster_dynamic_${scroll}_${index}_next`;
+			const turnOn = `body_monster_dynamic_${scroll}_${index}_turn_on`;
+			const mask = 1 << (index + 1);
+			a.emit(0x83, 0x3D);
+			a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+			a.emit(index + 1);
+			a.jcc(0x82, next);
+			AutoCombatUIStatic.emitRectGate(
+				a, 14, 125 + row * 38, 455, 163 + row * 38, next
+			);
+			a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+			a.emit(0xA9); a.dword(mask);
+			a.jcc(0x84, turnOn);
+			a.emit(0x81, 0x25); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+			a.dword((~mask) >>> 0);
+			AutoCombatUIStatic.emitSendScalarPairMemIfFeature(
+				a, stateVir, mutationSenderVir,
+				AutoCombatUIStatic.FeatureMonsterSelection,
+				AutoCombatUIStatic.SettingMonsterSelection,
+				monsterRowsVir + index * AutoCombatUIStatic.MonsterRowSize +
+					AutoCombatUIStatic.MonsterRowIdOffset,
+				1, `monster_dynamic_${scroll}_${index}_off`
+			);
+			AutoCombatUIStatic.emitMarkDirty(a);
+			a.jmp("consume");
+			a.label(turnOn);
+			a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterBits);
+			a.dword(mask);
+			AutoCombatUIStatic.emitSendScalarPairMemIfFeature(
+				a, stateVir, mutationSenderVir,
+				AutoCombatUIStatic.FeatureMonsterSelection,
+				AutoCombatUIStatic.SettingMonsterSelection,
+				monsterRowsVir + index * AutoCombatUIStatic.MonsterRowSize +
+					AutoCombatUIStatic.MonsterRowIdOffset,
+				0, `monster_dynamic_${scroll}_${index}_on`
+			);
+			AutoCombatUIStatic.emitMarkDirty(a);
+			a.jmp("consume");
+			a.label(next);
+		}
+		a.label(windowNext);
+	}	a.jmp("consume");
 	a.label("body_monster_static");
 	const monsterIds = [0, 1002, 1113, 1031, 1063, 1007];
 	for (let index = 0; index < monsterIds.length; index++)
@@ -2177,7 +4027,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	}
 	a.jmp("consume");
 	a.label("body_skill");
-	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "body_looting");
+	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "body_potion");
 	const skillXs = [108, 185, 262, 339];
 	const emitSkillMouseControls = function(featureMask, registerSetting, rowBaseVir, slotBase, prefix)
 	{
@@ -2286,48 +4136,318 @@ AutoCombatUIStatic.buildMouseDown = function(
 			`recovery_skill_${index}`
 		);
 	}
-	AutoCombatUIStatic.emitRectGate(a, 56, 153, 190, 176, "consume");
-	a.emit(0x8B, 0xC3, 0x83, 0xE8, 0x38, 0x6B, 0xC0, 0x64);
-	a.emit(0x33, 0xD2, 0xB9); a.dword(134);
-	a.emit(0xF7, 0xF1);
-	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
-	AutoCombatUIStatic.pushImm(a, 0);
-	a.emit(0xFF, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
-	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.SettingHealHpThreshold);
-	a.call(mutationSenderVir);
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.HealingSliderGroupX,
+		AutoCombatUIStatic.HealingSliderGroupY,
+		AutoCombatUIStatic.HealingSliderGroupX + AutoCombatUIStatic.HealingSliderArrowWidth,
+		AutoCombatUIStatic.HealingSliderGroupY + AutoCombatUIStatic.HealingSliderArrowHeight,
+		"healing_slider_right_press"
+	);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(5);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 
+	a.label("healing_slider_right_press");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.HealingSliderRightArrowX,
+		AutoCombatUIStatic.HealingSliderGroupY,
+		AutoCombatUIStatic.HealingSliderRightArrowX + AutoCombatUIStatic.HealingSliderArrowWidth,
+		AutoCombatUIStatic.HealingSliderGroupY + AutoCombatUIStatic.HealingSliderArrowHeight,
+		"healing_slider_track_press"
+	);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(6);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+
+	a.label("healing_slider_track_press");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.HealingSliderTrackX,
+		AutoCombatUIStatic.HealingSliderHoverTop,
+		AutoCombatUIStatic.HealingSliderTrackX + AutoCombatUIStatic.HealingSliderTrackWidth,
+		AutoCombatUIStatic.HealingSliderHoverBottom, "consume"
+	);
+	a.emit(0x8B, 0xC3);
+	a.emit(0x3D); a.dword(
+		AutoCombatUIStatic.HealingSliderTrackX + AutoCombatUIStatic.HealingSliderThumbTravel
+	);
+	a.jcc(0x8E, "healing_slider_press_scale");
+	a.emit(0xB8); a.dword(100);
+	a.jmp("healing_slider_press_store");
+	a.label("healing_slider_press_scale");
+	a.emit(0x2D); a.dword(AutoCombatUIStatic.HealingSliderTrackX);
+	a.emit(0x6B, 0xC0, 0x64, 0x33, 0xD2, 0xB9);
+	a.dword(AutoCombatUIStatic.HealingSliderThumbTravel);
+	a.emit(0xF7, 0xF1);
+	a.label("healing_slider_press_store");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(7);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.dword(7);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+
+	a.label("body_potion");
+	a.emit(0x83, 0xF8, 0x03); a.jcc(0x85, "body_looting");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePotionPage); a.emit(0x01);
+	a.jcc(0x85, "consume");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoCombatUIStatic.FeaturePotionRows);
+	a.jcc(0x84, "consume");
+	for (let index = 0; index < AutoCombatUIStatic.PotionDynamicRows; index++)
+	{
+		const panelX = index % 2 === 0 ? 21 : 247;
+		const panelY = index < 2 ? 89 : 200;
+		const groupX = index % 2 === 0 ? 21 : 247;
+		const groupY = panelY + 64;
+		const trackX = groupX + 14;
+		const rightX = groupX + 149;
+		const rowVir = potionRowsVir + index * AutoCombatUIStatic.PotionRowSize;
+		const valueVir = rowVir + (index < 2 ? AutoCombatUIStatic.PotionRowMinHpOffset :
+			AutoCombatUIStatic.PotionRowMinSpOffset);
+
+		const toggleNext = `potion_${index}_toggle_next`;
+		AutoCombatUIStatic.emitRectGate(
+			a, panelX + 178, panelY - 2, panelX + 220, panelY + 19, toggleNext
+		);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.PotionRowIdOffset); a.emit(0);
+		a.jcc(0x84, toggleNext);
+		a.emit(0xA1); a.dword(rowVir + AutoCombatUIStatic.PotionRowFlagsOffset);
+		a.emit(0x83, 0xE0, 0x01, 0x83, 0xF0, 0x01, 0x50);
+		AutoCombatUIStatic.pushImm(a, index);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.SettingPotionToggle);
+		a.call(mutationSenderVir);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(toggleNext);
+
+		const clearNext = `potion_${index}_clear_next`;
+		AutoCombatUIStatic.emitRectGate(
+			a, panelX + 171, panelY + 49, panelX + 220, panelY + 94, clearNext
+		);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.PotionRowIdOffset); a.emit(0);
+		a.jcc(0x84, clearNext);
+		AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+			a, stateVir, mutationSenderVir, AutoCombatUIStatic.FeaturePotionRows,
+			AutoCombatUIStatic.SettingPotionRegister, index, 0,
+			`potion_${index}_clear`
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(clearNext);
+
+		const leftNext = `potion_${index}_left_next`;
+		AutoCombatUIStatic.emitRectGate(
+			a, groupX, groupY,
+			groupX + AutoCombatUIStatic.HealingSliderArrowWidth,
+			groupY + AutoCombatUIStatic.HealingSliderArrowHeight, leftNext
+		);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.PotionRowIdOffset); a.emit(0);
+		a.jcc(0x84, leftNext);
+		a.emit(0x0F, 0xB7, 0x05); a.dword(valueVir);
+		a.emit(0x83, 0xE8, AutoCombatUIStatic.HealingSliderStep);
+		a.jcc(0x89, `potion_${index}_left_store`);
+		a.emit(0x33, 0xC0);
+		a.label(`potion_${index}_left_store`);
+		a.emit(0x66, 0xA3); a.dword(valueVir);
+		a.emit(0x50);
+		AutoCombatUIStatic.pushImm(a, index);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.SettingPotionThreshold);
+		a.call(mutationSenderVir);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(leftNext);
+
+		const rightNext = `potion_${index}_right_next`;
+		AutoCombatUIStatic.emitRectGate(
+			a, rightX, groupY,
+			rightX + AutoCombatUIStatic.HealingSliderArrowWidth,
+			groupY + AutoCombatUIStatic.HealingSliderArrowHeight, rightNext
+		);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.PotionRowIdOffset); a.emit(0);
+		a.jcc(0x84, rightNext);
+		a.emit(0x0F, 0xB7, 0x05); a.dword(valueVir);
+		a.emit(0x83, 0xC0, AutoCombatUIStatic.HealingSliderStep);
+		a.emit(0x83, 0xF8, 0x64);
+		a.jcc(0x86, `potion_${index}_right_store`);
+		a.emit(0xB8); a.dword(100);
+		a.label(`potion_${index}_right_store`);
+		a.emit(0x66, 0xA3); a.dword(valueVir);
+		a.emit(0x50);
+		AutoCombatUIStatic.pushImm(a, index);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.SettingPotionThreshold);
+		a.call(mutationSenderVir);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(rightNext);
+
+		const trackNext = `potion_${index}_track_next`;
+		AutoCombatUIStatic.emitRectGate(
+			a, trackX, groupY, trackX + AutoCombatUIStatic.HealingSliderTrackWidth,
+			groupY + AutoCombatUIStatic.HealingSliderArrowHeight, trackNext
+		);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.PotionRowIdOffset); a.emit(0);
+		a.jcc(0x84, trackNext);
+		a.emit(0x8B, 0xC3);
+		a.emit(0x3D); a.dword(trackX + AutoCombatUIStatic.HealingSliderThumbTravel);
+		a.jcc(0x8E, `potion_${index}_track_scale`);
+		a.emit(0xB8); a.dword(100);
+		a.jmp(`potion_${index}_track_store`);
+		a.label(`potion_${index}_track_scale`);
+		a.emit(0x2D); a.dword(trackX);
+		a.emit(0x6B, 0xC0, 0x64, 0x33, 0xD2, 0xB9);
+		a.dword(AutoCombatUIStatic.HealingSliderThumbTravel);
+		a.emit(0xF7, 0xF1);
+		a.label(`potion_${index}_track_store`);
+		a.emit(0x66, 0xA3); a.dword(valueVir);
+		a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
+		a.dword(40 + index);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(trackNext);
+	}
+	a.jmp("consume");
 	a.label("body_looting");
 	a.emit(0x83, 0xF8, 0x04); a.jcc(0x85, "body_move");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage); a.emit(0x01);
-	a.jcc(0x85, "consume");
-	const lootRects = [
-		[20, 128],
-		[128, 224],
-		[224, 346],
-		[346, 455]
-	];
+	a.jcc(0x85, "body_looting_details");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.LootSliderGroupX,
+		AutoCombatUIStatic.LootSliderGroupY,
+		AutoCombatUIStatic.LootSliderGroupX + AutoCombatUIStatic.HealingSliderArrowWidth,
+		AutoCombatUIStatic.LootSliderGroupY + AutoCombatUIStatic.HealingSliderArrowHeight,
+		"loot_slider_right_press"
+	);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(8);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("loot_slider_right_press");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.LootSliderRightArrowX,
+		AutoCombatUIStatic.LootSliderGroupY,
+		AutoCombatUIStatic.LootSliderRightArrowX + AutoCombatUIStatic.HealingSliderArrowWidth,
+		AutoCombatUIStatic.LootSliderGroupY + AutoCombatUIStatic.HealingSliderArrowHeight,
+		"loot_slider_track_press"
+	);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(9);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("loot_slider_track_press");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.LootSliderTrackX, AutoCombatUIStatic.LootSliderHoverTop,
+		AutoCombatUIStatic.LootSliderTrackX + AutoCombatUIStatic.LootSliderTrackWidth,
+		AutoCombatUIStatic.LootSliderHoverBottom, "loot_filter_weapon"
+	);
+	a.emit(0x8B, 0xC3);
+	a.emit(0x3D); a.dword(AutoCombatUIStatic.LootSliderTrackX + AutoCombatUIStatic.LootSliderThumbTravel);
+	a.jcc(0x8E, "loot_slider_press_scale");
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.LootSliderMaximum);
+	a.jmp("loot_slider_press_store");
+	a.label("loot_slider_press_scale");
+	a.emit(0x2D); a.dword(AutoCombatUIStatic.LootSliderTrackX);
+	a.emit(0x69, 0xC0); a.dword(AutoCombatUIStatic.LootSliderMaximum);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(AutoCombatUIStatic.LootSliderThumbTravel);
+	a.emit(0xF7, 0xF1);
+	a.label("loot_slider_press_store");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootWeightLimit);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(10);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.dword(10);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+
+	const emitLootFilterToggle = function(mask, settingId, minimumVir, prefix)
+	{
+		const enable = `${prefix}_enable`;
+		const call = `${prefix}_call`;
+		a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateLootFilterFlags);
+		a.emit(0xA9); a.dword(mask);
+		a.jcc(0x84, enable);
+		a.emit(0x81, 0x25); a.dword(stateVir + AutoCombatUIStatic.StateLootFilterFlags);
+		a.dword((~mask) >>> 0);
+		a.emit(0x33, 0xC0);
+		a.jmp(call);
+		a.label(enable);
+		a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateLootFilterFlags);
+		a.dword(mask);
+		a.emit(0xB8); a.dword(1);
+		a.label(call);
+		a.emit(0xFF, 0x35); a.dword(minimumVir);
+		a.emit(0x50);
+		AutoCombatUIStatic.pushImm(a, settingId);
+		a.call(mutationSenderVir);
+	};
+	a.label("loot_filter_weapon");
+	AutoCombatUIStatic.emitRectGate(a, 46, 200, 235, 227, "loot_filter_armor");
+	emitLootFilterToggle(1 << 0, AutoCombatUIStatic.SettingLootWeaponFilter,
+		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin, "loot_weapon_filter");
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("loot_filter_armor");
+	AutoCombatUIStatic.emitRectGate(a, 46, 226, 235, 253, "loot_weapon_minimum");
+	emitLootFilterToggle(1 << 1, AutoCombatUIStatic.SettingLootArmorFilter,
+		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin, "loot_armor_filter");
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+
+	a.label("loot_weapon_minimum");
+	AutoCombatUIStatic.emitRectGate(a, 215, 199, 347, 218, "loot_armor_minimum");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(1);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("loot_armor_minimum");
+	AutoCombatUIStatic.emitRectGate(a, 215, 225, 347, 244, "loot_categories");
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(2);
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
+	a.label("loot_categories");
+	const lootRects = [[30, 138], [138, 235], [235, 357], [357, 465]];
 	for (let index = 0; index < lootRects.length; index++)
 	{
 		const next = `body_looting_${index}_next`;
-		AutoCombatUIStatic.emitRectGate(a, lootRects[index][0], 218, lootRects[index][1], 250, next);
+		AutoCombatUIStatic.emitRectGate(a, lootRects[index][0], 281, lootRects[index][1], 315, next);
 		a.emit(0x81, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateLootCategoryBits);
 		a.dword(1 << index);
 		AutoCombatUIStatic.emitSendScalarPairMem(
-			a, mutationSenderVir,
-			AutoCombatUIStatic.SettingLootCategories,
-			stateVir + AutoCombatUIStatic.StateLootCategoryBits,
-			0
+			a, mutationSenderVir, AutoCombatUIStatic.SettingLootCategories,
+			stateVir + AutoCombatUIStatic.StateLootCategoryBits, 0
 		);
 		AutoCombatUIStatic.emitMarkDirty(a);
 		a.jmp("consume");
 		a.label(next);
 	}
 	a.jmp("consume");
+	a.label("body_looting_details");
+	const emitLootLimitAction = function(actionBit, actionValue, top, bottom, prefix)
+	{
+		const enable = `${prefix}_enable`;
+		const send = `${prefix}_send`;
+		AutoCombatUIStatic.emitRectGate(a, 39, top, 431, bottom, `${prefix}_next`);
+		a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateLootFilterFlags);
+		a.emit(0xA9); a.dword(actionBit);
+		a.jcc(0x84, enable);
+		a.emit(0x81, 0x25); a.dword(stateVir + AutoCombatUIStatic.StateLootFilterFlags);
+		a.dword(0xFFFFFFF3);
+		a.emit(0x33, 0xC0);
+		a.jmp(send);
+		a.label(enable);
+		a.emit(0x81, 0x25); a.dword(stateVir + AutoCombatUIStatic.StateLootFilterFlags);
+		a.dword(0xFFFFFFF3);
+		a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateLootFilterFlags);
+		a.dword(actionBit);
+		a.emit(0xB8); a.dword(actionValue);
+		a.label(send);
+		AutoCombatUIStatic.pushImm(a, 0);
+		a.emit(0x50);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.SettingLootLimitAction);
+		a.call(mutationSenderVir);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(`${prefix}_next`);
+	};
+	emitLootLimitAction(1 << 2, 1, 126, 193, "loot_limit_return_click");
+	emitLootLimitAction(1 << 3, 2, 202, 269, "loot_limit_continue_click");
+	a.jmp("consume");
 	a.label("body_move");
 	a.emit(0x83, 0xF8, 0x05); a.jcc(0x85, "body_item");
-	AutoCombatUIStatic.emitRectGate(a, 118, 108, 155, 140, "body_move_1");
+	AutoCombatUIStatic.emitRectGate(a, 132, 120, 180, 157, "body_move_1");
 	AutoCombatUIStatic.emitSendScalarFlagToggle(
 		a, stateVir, mutationSenderVir,
 		AutoCombatUIStatic.SettingTeleportFlyWing, 1 << 6
@@ -2335,7 +4455,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("body_move_1");
-	AutoCombatUIStatic.emitRectGate(a, 266, 108, 303, 140, "body_move_2");
+	AutoCombatUIStatic.emitRectGate(a, 278, 120, 326, 157, "body_move_2");
 	AutoCombatUIStatic.emitSendScalarFlagToggle(
 		a, stateVir, mutationSenderVir,
 		AutoCombatUIStatic.SettingTeleportSkill, 1 << 5
@@ -2343,15 +4463,16 @@ AutoCombatUIStatic.buildMouseDown = function(
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("body_move_2");
-	AutoCombatUIStatic.emitRectGate(a, 118, 203, 155, 235, "body_move_3");
-	AutoCombatUIStatic.emitSendScalarFlagToggle(
+	AutoCombatUIStatic.emitRectGate(a, 132, 215, 180, 252, "body_move_3");
+	AutoCombatUIStatic.emitSendScalarEqToggle(
 		a, stateVir, mutationSenderVir,
-		AutoCombatUIStatic.SettingReturnSavePoint, 1 << 1
+		AutoCombatUIStatic.StateActionOnEnd, 0,
+		AutoCombatUIStatic.SettingActionOnEnd, 1, 0, "return_item"
 	);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("body_move_3");
-	AutoCombatUIStatic.emitRectGate(a, 266, 203, 303, 235, "consume");
+	AutoCombatUIStatic.emitRectGate(a, 278, 215, 326, 252, "consume");
 	AutoCombatUIStatic.emitSendScalarEqToggle(
 		a, stateVir, mutationSenderVir,
 		AutoCombatUIStatic.StateActionOnEnd, 0,
@@ -2361,6 +4482,38 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.jmp("consume");
 	a.label("body_item");
 	a.emit(0x83, 0xF8, 0x06); a.jcc(0x85, "consume");
+	const itemXs = [108, 185, 262, 339];
+	for (let index = 0; index < AutoCombatUIStatic.ItemDynamicRows; index++)
+	{
+		const x = itemXs[index % itemXs.length];
+		const y = 121 + Math.floor(index / itemXs.length) * 74;
+		const rowVir = itemRowsVir + index * AutoCombatUIStatic.ItemRowSize;
+		const clearNext = `body_item_${index}_clear_next`;
+		AutoCombatUIStatic.emitRectGate(a, x - 16, y - 8, x + 32, y + 27, clearNext);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.ItemRowIdOffset); a.emit(0);
+		a.jcc(0x84, clearNext);
+		AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+			a, stateVir, mutationSenderVir, AutoCombatUIStatic.FeatureItemRows,
+			AutoCombatUIStatic.SettingBuffItemRegister, index, 0,
+			`buff_item_${index}_clear`
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(clearNext);
+		const delayNext = `body_item_${index}_delay_next`;
+		AutoCombatUIStatic.emitRectGate(a, x - 6, y + 29, x + 28, y + 52, delayNext);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.ItemRowIdOffset); a.emit(0);
+		a.jcc(0x84, delayNext);
+		AutoCombatUIStatic.emitSendScalarPairConstIfFeature(
+			a, stateVir, mutationSenderVir, AutoCombatUIStatic.FeatureItemRows,
+			AutoCombatUIStatic.SettingSkillDelayInput,
+			AutoCombatUIStatic.BuffItemDelaySlotBase + index, 0,
+			`buff_item_${index}_delay`
+		);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.jmp("consume");
+		a.label(delayNext);
+	}
 	AutoCombatUIStatic.emitRectGate(a, 20, 268, 235, 300, "consume");
 	AutoCombatUIStatic.emitSendScalarEqToggle(
 		a, stateVir, mutationSenderVir,
@@ -2374,7 +4527,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	return a;
 };
 
-AutoCombatUIStatic.buildMouseUp = function(stateVir, mutationSenderVir)
+AutoCombatUIStatic.buildMouseUp = function(stateVir, mutationSenderVir, potionRowsVir)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
@@ -2389,7 +4542,11 @@ AutoCombatUIStatic.buildMouseUp = function(stateVir, mutationSenderVir)
 	a.dword(0);
 	a.emit(0x83, 0xF8, 0x01);
 	a.jcc(0x85, "pressed_footer_close");
-	AutoCombatUIStatic.emitRectGate(a, 5, 326, 48, 346, "pressed_done");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.FooterResetX, AutoCombatUIStatic.FooterButtonY,
+		AutoCombatUIStatic.FooterResetX + 42,
+		AutoCombatUIStatic.FooterButtonY + 20, "pressed_done"
+	);
 	AutoCombatUIStatic.emitSendScalarConst(
 		a, mutationSenderVir, AutoCombatUIStatic.SettingReset, 1
 	);
@@ -2397,7 +4554,11 @@ AutoCombatUIStatic.buildMouseUp = function(stateVir, mutationSenderVir)
 	a.label("pressed_footer_close");
 	a.emit(0x83, 0xF8, 0x02);
 	a.jcc(0x85, "pressed_title_minimize");
-	AutoCombatUIStatic.emitRectGate(a, 418, 326, 461, 346, "pressed_done");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.FooterCloseX, AutoCombatUIStatic.FooterButtonY,
+		AutoCombatUIStatic.FooterCloseX + 42,
+		AutoCombatUIStatic.FooterButtonY + 20, "pressed_done"
+	);
 	a.emit(0xC7, 0x46, AutoCombatUIStatic.WindowVisibleOffset); a.dword(0);
 	a.jmp("pressed_done");
 	a.label("pressed_title_minimize");
@@ -2408,13 +4569,276 @@ AutoCombatUIStatic.buildMouseUp = function(stateVir, mutationSenderVir)
 	a.jmp("pressed_done");
 	a.label("pressed_title_close");
 	a.emit(0x83, 0xF8, 0x04);
-	a.jcc(0x85, "pressed_done");
+	a.jcc(0x85, "pressed_slider_left");
 	AutoCombatUIStatic.emitRectGate(a, 456, 0, 468, 17, "pressed_done");
 	a.emit(0xC7, 0x46, AutoCombatUIStatic.WindowVisibleOffset); a.dword(0);
+	a.jmp("pressed_done");
+
+	a.label("pressed_slider_left");
+	a.emit(0x83, 0xF8, 0x05);
+	a.jcc(0x85, "pressed_slider_right");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.HealingSliderGroupX,
+		AutoCombatUIStatic.HealingSliderGroupY,
+		AutoCombatUIStatic.HealingSliderGroupX + AutoCombatUIStatic.HealingSliderArrowWidth,
+		AutoCombatUIStatic.HealingSliderGroupY + AutoCombatUIStatic.HealingSliderArrowHeight,
+		"pressed_done"
+	);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
+	a.emit(0x83, 0xE8, AutoCombatUIStatic.HealingSliderStep);
+	a.jcc(0x89, "pressed_slider_left_store");
+	a.emit(0x33, 0xC0);
+	a.label("pressed_slider_left_store");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
+	AutoCombatUIStatic.emitSendScalarPairMem(
+		a, mutationSenderVir, AutoCombatUIStatic.SettingHealHpThreshold,
+		stateVir + AutoCombatUIStatic.StateHealHpThreshold, 0
+	);
+	a.jmp("pressed_done");
+
+	a.label("pressed_slider_right");
+	a.emit(0x83, 0xF8, 0x06);
+	a.jcc(0x85, "pressed_slider_track");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.HealingSliderRightArrowX,
+		AutoCombatUIStatic.HealingSliderGroupY,
+		AutoCombatUIStatic.HealingSliderRightArrowX + AutoCombatUIStatic.HealingSliderArrowWidth,
+		AutoCombatUIStatic.HealingSliderGroupY + AutoCombatUIStatic.HealingSliderArrowHeight,
+		"pressed_done"
+	);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
+	a.emit(0x83, 0xC0, AutoCombatUIStatic.HealingSliderStep);
+	a.emit(0x83, 0xF8, 0x64);
+	a.jcc(0x86, "pressed_slider_right_store");
+	a.emit(0xB8); a.dword(100);
+	a.label("pressed_slider_right_store");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
+	AutoCombatUIStatic.emitSendScalarPairMem(
+		a, mutationSenderVir, AutoCombatUIStatic.SettingHealHpThreshold,
+		stateVir + AutoCombatUIStatic.StateHealHpThreshold, 0
+	);
+	a.jmp("pressed_done");
+
+	a.label("pressed_slider_track");
+	a.emit(0x83, 0xF8, 0x07);
+	a.jcc(0x85, "pressed_loot_slider_left");
+	AutoCombatUIStatic.emitSendScalarPairMem(
+		a, mutationSenderVir, AutoCombatUIStatic.SettingHealHpThreshold,
+		stateVir + AutoCombatUIStatic.StateHealHpThreshold, 0
+	);
+	a.jmp("pressed_done");
+
+	a.label("pressed_loot_slider_left");
+	a.emit(0x83, 0xF8, 0x08);
+	a.jcc(0x85, "pressed_loot_slider_right");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.LootSliderGroupX, AutoCombatUIStatic.LootSliderGroupY,
+		AutoCombatUIStatic.LootSliderGroupX + AutoCombatUIStatic.HealingSliderArrowWidth,
+		AutoCombatUIStatic.LootSliderGroupY + AutoCombatUIStatic.HealingSliderArrowHeight,
+		"pressed_done"
+	);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateLootWeightLimit);
+	a.emit(0x83, 0xE8, AutoCombatUIStatic.LootSliderStep);
+	a.jcc(0x89, "pressed_loot_slider_left_store");
+	a.emit(0x33, 0xC0);
+	a.label("pressed_loot_slider_left_store");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootWeightLimit);
+	AutoCombatUIStatic.emitSendScalarPairMem(
+		a, mutationSenderVir, AutoCombatUIStatic.SettingLootWeightLimit,
+		stateVir + AutoCombatUIStatic.StateLootWeightLimit, 0
+	);
+	a.jmp("pressed_done");
+
+	a.label("pressed_loot_slider_right");
+	a.emit(0x83, 0xF8, 0x09);
+	a.jcc(0x85, "pressed_loot_slider_track");
+	AutoCombatUIStatic.emitRectGate(
+		a, AutoCombatUIStatic.LootSliderRightArrowX, AutoCombatUIStatic.LootSliderGroupY,
+		AutoCombatUIStatic.LootSliderRightArrowX + AutoCombatUIStatic.HealingSliderArrowWidth,
+		AutoCombatUIStatic.LootSliderGroupY + AutoCombatUIStatic.HealingSliderArrowHeight,
+		"pressed_done"
+	);
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateLootWeightLimit);
+	a.emit(0x83, 0xC0, AutoCombatUIStatic.LootSliderStep);
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.LootSliderMaximum);
+	a.jcc(0x86, "pressed_loot_slider_right_store");
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.LootSliderMaximum);
+	a.label("pressed_loot_slider_right_store");
+	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootWeightLimit);
+	AutoCombatUIStatic.emitSendScalarPairMem(
+		a, mutationSenderVir, AutoCombatUIStatic.SettingLootWeightLimit,
+		stateVir + AutoCombatUIStatic.StateLootWeightLimit, 0
+	);
+	a.jmp("pressed_done");
+
+	a.label("pressed_loot_slider_track");
+	a.emit(0x83, 0xF8, 0x0A);
+	a.jcc(0x85, "pressed_potion_slider");
+	AutoCombatUIStatic.emitSendScalarPairMem(
+		a, mutationSenderVir, AutoCombatUIStatic.SettingLootWeightLimit,
+		stateVir + AutoCombatUIStatic.StateLootWeightLimit, 0
+	);
+	a.jmp("pressed_done");
+
+	a.label("pressed_potion_slider");
+	for (let index = 0; index < AutoCombatUIStatic.PotionDynamicRows; index++)
+	{
+		const next = `pressed_potion_slider_${index}_next`;
+		const rowVir = potionRowsVir + index * AutoCombatUIStatic.PotionRowSize;
+		const valueVir = rowVir + (index < 2 ? AutoCombatUIStatic.PotionRowMinHpOffset :
+			AutoCombatUIStatic.PotionRowMinSpOffset);
+		a.emit(0x83, 0xF8, 40 + index);
+		a.jcc(0x85, next);
+		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.PotionRowIdOffset); a.emit(0);
+		a.jcc(0x84, "pressed_done");
+		a.emit(0x0F, 0xB7, 0x05); a.dword(valueVir);
+		a.emit(0x50);
+		AutoCombatUIStatic.pushImm(a, index);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.SettingPotionThreshold);
+		a.call(mutationSenderVir);
+		a.jmp("pressed_done");
+		a.label(next);
+	}
 	a.label("pressed_done");
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("base_mouse_up");
 	a.label("skill_drop_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x03);
+	a.jcc(0x85, "potion_drop_item_tab_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePotionPage); a.emit(0x01);
+	a.jcc(0x85, "base_mouse_up");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoCombatUIStatic.FeaturePotionRows);
+	a.jcc(0x84, "base_mouse_up");
+	for (let index = 0; index < AutoCombatUIStatic.PotionDynamicRows; index++)
+	{
+		const panelX = index % 2 === 0 ? 21 : 247;
+		const panelY = index < 2 ? 89 : 200;
+		const next = `potion_item_drop_${index}_next`;
+		AutoCombatUIStatic.emitRectGate(
+			a, panelX + 166, panelY + 43, panelX + 224, panelY + 101, next
+		);
+		a.emit(0xB9); a.dword(AutoCombatUIStatic.ShortcutManager);
+		a.call(AutoCombatUIStatic.ShortcutManagerGetActive);
+		a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+		a.emit(0x8B, 0xF8);
+		a.emit(0x83, 0xBF); a.dword(AutoCombatUIStatic.ShortcutDragTypeOffset);
+		a.emit(AutoCombatUIStatic.ShortcutDragItemType);
+		a.jcc(0x85, "base_mouse_up");
+		a.emit(0x8B, 0x87); a.dword(AutoCombatUIStatic.ShortcutDragSkillIdOffset);
+		a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+		a.emit(0x50);
+		AutoCombatUIStatic.pushImm(a, index);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.SettingPotionRegister);
+		a.call(mutationSenderVir);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.emit(0x8B, 0x07);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.ShortcutDragCancelMessage);
+		a.emit(0x8B, 0xCF, 0xFF, 0x50, 0x18);
+		a.jmp("base_mouse_up");
+		a.label(next);
+	}
+	a.jmp("base_mouse_up");
+	a.label("potion_drop_item_tab_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x05);
+	a.jcc(0x85, "move_drop_item_tab_test");
+	const moveDropSlots = [
+		{x: 156, y: 125, type: AutoCombatUIStatic.ShortcutDragItemType,
+			setting: AutoCombatUIStatic.SettingMoveItemRegister, slot: 0},
+		{x: 302, y: 125, type: AutoCombatUIStatic.ShortcutDragSkillType,
+			setting: AutoCombatUIStatic.SettingMoveSkillRegister, slot: 0},
+		{x: 156, y: 220, type: AutoCombatUIStatic.ShortcutDragItemType,
+			setting: AutoCombatUIStatic.SettingMoveItemRegister, slot: 1},
+		{x: 302, y: 220, type: AutoCombatUIStatic.ShortcutDragSkillType,
+			setting: AutoCombatUIStatic.SettingMoveSkillRegister, slot: 1}
+	];
+	for (let index = 0; index < moveDropSlots.length; index++)
+	{
+		const slot = moveDropSlots[index];
+		const next = `move_drop_${index}_next`;
+		AutoCombatUIStatic.emitRectGate(
+			a, slot.x - 24, slot.y - 16, slot.x + 24, slot.y + 32, next
+		);
+		a.emit(0xB9); a.dword(AutoCombatUIStatic.ShortcutManager);
+		a.call(AutoCombatUIStatic.ShortcutManagerGetActive);
+		a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+		a.emit(0x8B, 0xF8);
+		a.emit(0x83, 0xBF); a.dword(AutoCombatUIStatic.ShortcutDragTypeOffset);
+		a.emit(slot.type);
+		a.jcc(0x85, "base_mouse_up");
+		a.emit(0x8B, 0x87); a.dword(AutoCombatUIStatic.ShortcutDragSkillIdOffset);
+		if (slot.type === AutoCombatUIStatic.ShortcutDragSkillType) {
+			a.emit(0x25); a.dword(0x0000FFFF);
+			a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+			a.emit(0x8B, 0x8F); a.dword(AutoCombatUIStatic.ShortcutDragSkillLevelOffset);
+			a.emit(0x81, 0xE1); a.dword(0x0000FFFF);
+			a.emit(0x85, 0xC9); a.jcc(0x84, "base_mouse_up");
+			a.emit(0xC1, 0xE1, 0x10, 0x0B, 0xC8);
+			a.emit(0x51);
+		} else {
+			a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+			a.emit(0x50);
+		}
+		AutoCombatUIStatic.pushImm(a, slot.slot);
+		AutoCombatUIStatic.pushImm(a, slot.setting);
+		a.call(mutationSenderVir);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.emit(0x8B, 0x07);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.ShortcutDragCancelMessage);
+		a.emit(0x8B, 0xCF, 0xFF, 0x50, 0x18);
+		a.jmp("base_mouse_up");
+		a.label(next);
+	}
+	a.jmp("base_mouse_up");
+
+	a.label("move_drop_item_tab_test");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x06);
+	a.jcc(0x85, "skill_drop_tab_test");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoCombatUIStatic.FeatureItemRows);
+	a.jcc(0x84, "base_mouse_up");
+	const itemXs = [108, 185, 262, 339];
+	for (let index = 0; index < AutoCombatUIStatic.ItemDynamicRows; index++)
+	{
+		const x = itemXs[index % itemXs.length];
+		const y = 121 + Math.floor(index / itemXs.length) * 74;
+		const next = `buff_item_drop_${index}_next`;
+		AutoCombatUIStatic.emitRectGate(a, x - 24, y - 16, x + 24, y + 32, next);
+		a.emit(0xB9); a.dword(AutoCombatUIStatic.ShortcutManager);
+		a.call(AutoCombatUIStatic.ShortcutManagerGetActive);
+		a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+		a.emit(0x8B, 0xF8);
+		a.emit(0x83, 0xBF); a.dword(AutoCombatUIStatic.ShortcutDragTypeOffset);
+		a.emit(AutoCombatUIStatic.ShortcutDragItemType);
+		a.jcc(0x85, "base_mouse_up");
+		a.emit(0x8B, 0x87); a.dword(AutoCombatUIStatic.ShortcutDragSkillIdOffset);
+		a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+		a.emit(0x50);
+		AutoCombatUIStatic.pushImm(a, index);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.SettingBuffItemRegister);
+		a.call(mutationSenderVir);
+		AutoCombatUIStatic.emitMarkDirty(a);
+		a.emit(0x8B, 0x07);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, 0);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.ShortcutDragCancelMessage);
+		a.emit(0x8B, 0xCF, 0xFF, 0x50, 0x18);
+		a.jmp("base_mouse_up");
+		a.label(next);
+	}
+	a.jmp("base_mouse_up");
+
+	a.label("skill_drop_tab_test");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateTab); a.emit(0x02);
 	a.jcc(0x85, "base_mouse_up");
 
@@ -2814,9 +5238,74 @@ AutoCombatUIStatic.buildControllerBootstrap = function(
 	return a;
 };
 
+AutoCombatUIStatic.buildWindowProcTrampoline = function()
+{
+	const a = AutoCombatUIStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x6A, 0xFF);
+	a.jmp(AutoCombatUIStatic.WindowMainProcResume);
+	return a;
+};
+
+AutoCombatUIStatic.buildMouseWheel = function(stateVir)
+{
+	const a = AutoCombatUIStatic.asm();
+	// UIFrameWnd vtable slot 35 receives the client's signed wheel direction
+	// through its internal input dispatcher. Negative scrolls down; positive
+	// scrolls up. This is the same ABI used by stock scrollable client windows.
+	a.emit(0x55, 0x8B, 0xEC, 0x56, 0x8B, 0xF1);
+	a.emit(0x83, 0x7D, 0x08, 0x00); a.jcc(0x84, "return");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateTab);
+	a.emit(0x83, 0xF8, 0x01); a.jcc(0x87, "return");
+	a.emit(0x83, 0x7D, 0x08, 0x00); a.jcc(0x8C, "wheel_down");
+
+	// Positive wheel direction: move the visible window toward its first row.
+	a.emit(0x85, 0xC0); a.jcc(0x85, "monster_up");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll);
+	a.emit(0x00); a.jcc(0x8E, "handled");
+	a.emit(0xFF, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll);
+	a.jmp("handled");
+	a.label("monster_up");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+	a.emit(0x00); a.jcc(0x8E, "handled");
+	a.emit(0xFF, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+	a.jmp("handled");
+
+	// Negative wheel direction: advance by one row, bounded to actual content.
+	a.label("wheel_down");
+	a.emit(0x85, 0xC0); a.jcc(0x85, "monster_down");
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll);
+	a.emit(AutoCombatUIStatic.BasicScrollMaximum); a.jcc(0x8D, "handled");
+	a.emit(0xFF, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateBasicScroll);
+	a.jmp("handled");
+	a.label("monster_down");
+	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateMonsterRowCount);
+	a.emit(0x83, 0xE8, AutoCombatUIStatic.MonsterVisibleRows);
+	a.jcc(0x89, "monster_limit_nonnegative");
+	a.emit(0x33, 0xC0);
+	a.label("monster_limit_nonnegative");
+	a.emit(0x83, 0xF8, AutoCombatUIStatic.MonsterScrollMaximum);
+	a.jcc(0x8E, "monster_limit_ready");
+	a.emit(0xB8); a.dword(AutoCombatUIStatic.MonsterScrollMaximum);
+	a.label("monster_limit_ready");
+	a.emit(0x39, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+	a.jcc(0x8D, "handled");
+	a.emit(0xFF, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateMonsterScroll);
+
+	a.label("handled");
+	a.emit(0xC7, 0x46, AutoCombatUIStatic.WindowDirtyOffset); a.dword(1);
+	a.label("return");
+	a.emit(0x5E, 0x5D, 0xC2, 0x04, 0x00);
+	return a;
+};
 AutoCombatUIStatic.buildDestructor = function(stateVir)
 {
 	const a = AutoCombatUIStatic.asm();
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown);
+	a.dword(0);
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
+	a.dword(0);
 	a.emit(0xC7, 0x05);
 	a.dword(stateVir + AutoCombatUIStatic.StateWindow);
 	a.dword(0);
@@ -2824,7 +5313,9 @@ AutoCombatUIStatic.buildDestructor = function(stateVir)
 	return a;
 };
 
-AutoCombatUIStatic.cloneFrameVtable = function(drawVir, mouseDownVir, mouseUpVir, destructorVir)
+AutoCombatUIStatic.cloneFrameVtable = function(
+	drawVir, mouseDownVir, mouseUpVir, destructorVir, mouseMoveVir, mouseWheelVir
+)
 {
 	const sourcePhy = Exe.Vir2Phy(AutoCombatUIStatic.FrameVtable);
 	if (sourcePhy < 0)
@@ -2835,7 +5326,11 @@ AutoCombatUIStatic.cloneFrameVtable = function(drawVir, mouseDownVir, mouseUpVir
 	Exe.SetUint32(clonePhy + 0 * 4, destructorVir);
 	Exe.SetUint32(clonePhy + 20 * 4, drawVir);
 	Exe.SetUint32(clonePhy + 25 * 4, mouseDownVir);
+	if (Number.isInteger(mouseMoveVir) && mouseMoveVir > 0)
+		Exe.SetUint32(clonePhy + 28 * 4, mouseMoveVir);
 	Exe.SetUint32(clonePhy + 31 * 4, mouseUpVir);
+	if (Number.isInteger(mouseWheelVir) && mouseWheelVir > 0)
+		Exe.SetUint32(clonePhy + 35 * 4, mouseWheelVir);
 	return {phy: clonePhy, vir: cloneVir, size: byteCount};
 };
 
@@ -2850,6 +5345,8 @@ AutoCombatUIStatic.buildToggle = function(stateVir, vtableVir, openSenderVir, en
 		if (Number.isInteger(ensureControllerVir) && ensureControllerVir > 0)
 			a.call(ensureControllerVir);
 	}
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.dword(0);
 	a.emit(0x8B, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateWindow);
 	a.emit(0x85, 0xF6);
 	a.jcc(0x85, "toggle_existing");
@@ -2939,16 +5436,35 @@ AutoCombatUIStatic.verifyNativeContracts = function()
 		"C7 43 58 00 00 00 00"
 	);
 	AutoCombatUIStatic.assertCode(
+		"clipped image draw", AutoCombatUIStatic.ImageDrawRect,
+		"55 8B EC 56 8B 71 24"
+	);	AutoCombatUIStatic.assertCode(
+		"Item Bar item-info lookup", AutoCombatUIStatic.ItemInfoLookup,
+		"55 8B EC 6A FF 68 9D 54 EF 00"
+	);
+	AutoCombatUIStatic.assertCode(
 		"UIFrameWnd constructor", AutoCombatUIStatic.FrameConstructor,
 		"55 8B EC 6A FF 68 F9 45 EA 00"
+	);
+	const windowMainProcPhy = AutoCombatUIStatic.assertCode(
+		"main window procedure", AutoCombatUIStatic.WindowMainProc,
+		"55 8B EC 6A FF"
 	);
 	AutoCombatUIStatic.assertCode(
 		"UIFrameWnd mouse-down handler", AutoCombatUIStatic.FrameMouseDown,
 		"55 8B EC 83 EC 08 56 8B F1"
 	);
 	AutoCombatUIStatic.assertCode(
+		"UIFrameWnd mouse-move handler", AutoCombatUIStatic.FrameMouseMove,
+		"C2 08 00"
+	);
+	AutoCombatUIStatic.assertCode(
 		"UIFrameWnd mouse-up handler", AutoCombatUIStatic.FrameMouseUp,
 		"56 8B F1 B9 E8 F4 31 01 E8"
+	);
+	AutoCombatUIStatic.assertCode(
+		"UIFrameWnd mouse-wheel handler", AutoCombatUIStatic.FrameMouseWheel,
+		"C2 04 00"
 	);
 	AutoCombatUIStatic.assertVtableSlot(
 		"UIFrameWnd deleting destructor", 0,
@@ -2961,9 +5477,15 @@ AutoCombatUIStatic.verifyNativeContracts = function()
 		"UIFrameWnd mouse down", 25, AutoCombatUIStatic.FrameVtableMouseDown
 	);
 	AutoCombatUIStatic.assertVtableSlot(
+		"UIFrameWnd mouse move", 28, AutoCombatUIStatic.FrameVtableMouseMove
+	);
+	AutoCombatUIStatic.assertVtableSlot(
 		"UIFrameWnd mouse up", 31, AutoCombatUIStatic.FrameVtableMouseUp
 	);
-	return {controllerBootstrapPhy};
+	AutoCombatUIStatic.assertVtableSlot(
+		"UIFrameWnd mouse wheel", 35, AutoCombatUIStatic.FrameVtableMouseWheel
+	);
+	return {controllerBootstrapPhy, windowMainProcPhy};
 };
 
 AutoCombatUI = function(_)
@@ -2982,6 +5504,9 @@ AutoCombatUI = function(_)
 
 	$$(_, 2, "Build client-native Auto Hunt resource paths");
 	const paths = {
+		titleBar: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_default\\title_bar.bmp"
+		),
 		basic: AutoCombatUIStatic.buildResourcePath(
 			"autohunt\\setting_default\\bg_default_autohunt.bmp"
 		),
@@ -3033,6 +5558,62 @@ AutoCombatUI = function(_)
 		btnClose: AutoCombatUIStatic.buildResourcePath("autohunt\\btn_close.bmp"),
 		btnCloseOver: AutoCombatUIStatic.buildResourcePath("autohunt\\btn_close_a.bmp"),
 		btnClosePressed: AutoCombatUIStatic.buildResourcePath("autohunt\\btn_close_b.bmp"),
+		sliderGaugeHp: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\slider_gage_hp.bmp"
+		),
+		sliderGaugeSp: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\slider_gage_sp.bmp"
+		),
+		sliderGaugeLoot: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_looting\\slider_gage_looting.bmp"
+		),
+		itemSlot: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\itemslot_autohunt.bmp"
+		),
+		itemSlotBuff: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_item\\itemslot_2.bmp"
+		),
+		scrollUp: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\scrollbar_arrow_upper_autohunt.bmp"
+		),
+		scrollDown: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\scrollbar_arrow_down_autohunt.bmp"
+		),
+		scrollTrack: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\scroll_bg_mid_autohunt.bmp"
+		),
+		scrollThumbUp: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\scroll_thumb_up_autohunt.bmp"
+		),
+		scrollThumbMid: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\scroll_thumb_mid_autohunt.bmp"
+		),
+		scrollThumbDown: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\scroll_thumb_down_autohunt.bmp"
+		),
+		sliderThumbHp: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\slider_thumb_hp.bmp"
+		),		sliderThumbSp: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\slider_thumb_sp.bmp"
+		),
+		sliderLeft: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\chr_arrow_l_out.bmp"
+		),
+		sliderLeftOver: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\chr_arrow_l_over.bmp"
+		),
+		sliderLeftPressed: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\chr_arrow_l_press.bmp"
+		),
+		sliderRight: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\chr_arrow_r_out.bmp"
+		),
+		sliderRightOver: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\chr_arrow_r_over.bmp"
+		),
+		sliderRightPressed: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\chr_arrow_r_press.bmp"
+		),
 		checkboxOn: AutoCombatUIStatic.buildResourcePath(
 			"autohunt\\checkbox_on_autohunt.bmp"
 		),
@@ -3047,6 +5628,8 @@ AutoCombatUI = function(_)
 		),
 		toggleOn: AutoCombatUIStatic.buildResourcePath(
 			"autohunt\\setting_potion\\toggle_on.bmp"
+		),		toggleOff: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_potion\\toggle_off.bmp"
 		),
 		skillIconFormat: AutoCombatUIStatic.buildResourcePath("item\\%s.bmp"),
 		autoBattle: {
@@ -3120,16 +5703,28 @@ AutoCombatUI = function(_)
 	const subtitles = [
 		"Automatic hunting settings are saved separately for each character.",
 		"Select monsters to prioritize or ignore.",
-		"Skills are used at each configured delay time.",
-		"Items with equal recovery ratios are used from left to right.",
+		"Skills are used at each configured [Delay Time].",
+		"If recovery ratios are the same, items are used from left to right.",
 		"Automatically loot items of the checked types.",
 		"You can set teleport and return methods.",
-		"Registered buff items are used at each configured delay."
+		"Uses buff items registered in slots at each configured [Delay Time]."
 	];
 	const strings = {
 		windowTitle: AutoCombatUIStatic.allocateString("AUTO HUNT SETTINGS"),
 		skillReject: AutoCombatUIStatic.allocateString(
 			"This skill cannot be registered on this page."
+		),
+		itemReject: AutoCombatUIStatic.allocateString(
+			"This item cannot be registered on this page."
+		),
+		potionReject: AutoCombatUIStatic.allocateString(
+			"Only HP or SP recovery items can be registered here."
+		),
+		moveItemReject: AutoCombatUIStatic.allocateString(
+			"Only Fly Wings or Butterfly Wings can be registered here."
+		),
+		moveSkillReject: AutoCombatUIStatic.allocateString(
+			"Only Teleport or Warp Portal can be registered here."
 		),
 		leftGlyph: AutoCombatUIStatic.allocateString("o"),
 		minimize: AutoCombatUIStatic.allocateString("-"),
@@ -3159,16 +5754,16 @@ AutoCombatUI = function(_)
 			"Configure status recovery items."
 		].map(text => AutoCombatUIStatic.allocateString(text)),
 		potionSubtitles: [
-			"Items with equal recovery ratios are used from left to right.",
+			"If recovery ratios are the same, items are used from left to right.",
 			"Register items used to remove harmful status effects."
 		].map(text => AutoCombatUIStatic.allocateString(text)),
 		lootingHeadings: [
 			"Configure looting behavior.",
-			"Configure detailed item looting."
+			"Configure weight-limit behavior."
 		].map(text => AutoCombatUIStatic.allocateString(text)),
 		lootingSubtitles: [
 			"Automatically loot items of the checked types.",
-			"Use the item list to define detailed pickup rules."
+			"Choose what Auto Hunt does when the weight limit is reached."
 		].map(text => AutoCombatUIStatic.allocateString(text)),
 		statusPotion: AutoCombatUIStatic.allocateString("Status Recovery Item"),
 		weight: AutoCombatUIStatic.allocateString("Weight Settings"),
@@ -3177,10 +5772,27 @@ AutoCombatUI = function(_)
 		buffItems: AutoCombatUIStatic.allocateString("Buff Item Settings"),
 		basicOptions: [
 			"When SP is below 10%, use only normal attacks.",
-			"When SP is below 5%, stop attacking and moving.",
-			"Teleport if combat does not occur for 10 seconds.",
-			"Teleport if more than 10 monsters are on screen.",
-			"Teleport when an MVP boss monster appears."
+			"When SP is below 5%, stop attacking and auto move.",
+			"Use teleport if combat does not occur for 10 seconds.",
+			"Use teleport if more than 10 monsters are on screen.",
+			"Use teleport when an MVP boss monster appears.",
+			"Use teleport when a mini-boss monster appears.",
+			"Use teleport when a champion monster appears.",
+			"Aggressively target nearby hostile monsters.",
+			"Accept party invitations automatically.",
+			"Use a Token of Siegfried when defeated."
+		].map(text => AutoCombatUIStatic.allocateString(text)),
+		basicPrefixes: [
+			"When SP is below",
+			"When SP is below",
+			"Use teleport if combat does not occur for",
+			"Use teleport if more than"
+		].map(text => AutoCombatUIStatic.allocateString(text)),
+		basicSuffixes: [
+			"%, only normal attacks are used.",
+			"%, stop attacking and auto move.",
+			"seconds.",
+			"monsters are on the screen."
 		].map(text => AutoCombatUIStatic.allocateString(text)),
 		basicNormal: AutoCombatUIStatic.allocateString(
 			"Normal Attack is used when configured skills cannot be used."
@@ -3190,6 +5802,10 @@ AutoCombatUI = function(_)
 
 		skillEmpty: AutoCombatUIStatic.allocateString("+"),
 		skillLevelFormat: AutoCombatUIStatic.allocateString("%u"),
+		skillTooltipFormat: AutoCombatUIStatic.allocateString("%.23s Use Lv %u (Every %s s)"),
+		moveSkillTooltipFormat: AutoCombatUIStatic.allocateString("%.23s Use Lv %u"),
+		itemTooltipFormat: AutoCombatUIStatic.allocateString("%.23s x%u"),
+		sliderPercentFormat: AutoCombatUIStatic.allocateString("%u%%"),
 		secondsSuffix: AutoCombatUIStatic.allocateString("s"),
 		skillDelayHint: AutoCombatUIStatic.allocateString(
 			"Click a delay box and enter the interval in seconds."
@@ -3200,12 +5816,32 @@ AutoCombatUI = function(_)
 		lootOptions: ["Consumable", "Cards", "Miscellaneous", "Costume"]
 			.map(text => AutoCombatUIStatic.allocateString(text)),
 		weightNote: AutoCombatUIStatic.allocateString(
-			"Automatic looting stops when character weight reaches the limit."
+			"Automatic looting stops when character weight reaches the configured limit."
+		),
+		lootWeaponPrefix: AutoCombatUIStatic.allocateString("Loot only weapons with"),
+		lootArmorPrefix: AutoCombatUIStatic.allocateString("Loot only armor with"),
+		lootOptionSuffix: AutoCombatUIStatic.allocateString("or more."),
+		lootRuleHint: AutoCombatUIStatic.allocateString(
+			"Choose the minimum random-option count."
+		),
+		lootOptionChoices: ["0 Random Options", "1 Random Option", "2 Random Options",
+			"3 Random Options", "4 Random Options", "5 Random Options"
+		].map(text => AutoCombatUIStatic.allocateString(text)),
+		lootDropdownArrow: AutoCombatUIStatic.allocateString("v"),
+		lootReturn: AutoCombatUIStatic.allocateString("Return to Town Settings"),
+		lootReturnHint: AutoCombatUIStatic.allocateString(
+			"Return to town when the configured weight limit is reached."
+		),
+		lootContinue: AutoCombatUIStatic.allocateString("Continue hunting without looting"),
+		lootContinueHint: AutoCombatUIStatic.allocateString(
+			"Keep hunting, but stop picking up items at the configured limit."
 		),
 		registerItem: AutoCombatUIStatic.allocateString("Register Item"),
 		registerSkill: AutoCombatUIStatic.allocateString("Register Skill"),
-		itemLetters: ["H", "S", "B"]
-			.map(text => AutoCombatUIStatic.allocateString(text)),
+		moveDescriptions: [
+			"Register Item", "Register Skill", "Register Item", "Register Skill"
+		].map(text => AutoCombatUIStatic.allocateString(text)),
+
 		returnTown: AutoCombatUIStatic.allocateString("Return to Town Settings"),
 		reset: AutoCombatUIStatic.allocateString("Reset"),
 		close: AutoCombatUIStatic.allocateString("Close")
@@ -3241,14 +5877,40 @@ AutoCombatUI = function(_)
 	const recoverySkillIconKeys = AutoCombatUIStatic.allocateBytes(
 		new Array(AutoCombatUIStatic.RecoverySkillIconKeysSize).fill(0), 4
 	);
+	const itemRows = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.ItemRowsSize).fill(0), 4
+	);
+	const itemIconKeys = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.ItemIconKeysSize).fill(0), 4
+	);
+	const potionRows = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.PotionRowsSize).fill(0), 4
+	);
+	const potionIconKeys = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.PotionIconKeysSize).fill(0), 4
+	);
+	const moveRows = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.MoveRowsSize).fill(0), 4
+	);
+	const moveIconKeys = AutoCombatUIStatic.allocateBytes(
+		new Array(AutoCombatUIStatic.MoveIconKeysSize).fill(0), 4
+	);
 	const skillIconPath = AutoCombatUIStatic.allocateBytes(new Array(128).fill(0), 4);
 	const skillLevelText = AutoCombatUIStatic.allocateBytes(new Array(8).fill(0), 4);
+	const sliderPercentText = AutoCombatUIStatic.allocateBytes(new Array(16).fill(0), 4);
+	const hoverText = AutoCombatUIStatic.allocateBytes(new Array(256).fill(0), 4);
+	const lootWeaponText = AutoCombatUIStatic.allocateBytes(new Array(8).fill(0), 4);
+	const lootArmorText = AutoCombatUIStatic.allocateBytes(new Array(8).fill(0), 4);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateSkillPage, 1);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StatePotionPage, 1);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateLootingPage, 1);
+
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateMonsterBits, 0x07);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateLootCategoryBits, 0x0F);
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateHealHpThreshold, 50);
+	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateLootWeightLimit, 90);
+	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateNormalAttackSpThreshold, 10);
+	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateStopAttackSpThreshold, 5);
 
 	$$(_, 3, "Create the AutoHunt UI AHUI packet sender and snapshot receiver");
 	const packetRefs = AutoCombatUIStatic.resolvePacketRefs(_);
@@ -3262,36 +5924,61 @@ AutoCombatUI = function(_)
 		_, state.vir, monsterRows.vir, attackSkillRows.vir,
 		attackSkillIconKeys.vir, supportSkillRows.vir, supportSkillIconKeys.vir,
 		healingSkillRow.vir, healingSkillIconKey.vir, recoverySkillRows.vir,
-		recoverySkillIconKeys.vir
+		recoverySkillIconKeys.vir, itemRows.vir, itemIconKeys.vir,
+		potionRows.vir, potionIconKeys.vir, moveRows.vir, moveIconKeys.vir
 	);
 
 	$$(_, 4, "Create the QJS-only Auto Combat UIFrameWnd renderer and input path");
 	const fillRect = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildFillRect()
 	);
+	const colorKeyBlit = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildColorKeyBlit()
+	);
+	AutoCombatUIStatic.ColorKeyBlitVir = colorKeyBlit.vir;
+	const itemResolver = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildItemIconResolver()
+	);
 	const draw = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildDraw(
 			state.vir, paths, fillRect.vir, strings, monsterRows.vir, attackSkillRows.vir,
 			attackSkillIconKeys.vir, supportSkillRows.vir, supportSkillIconKeys.vir,
 			healingSkillRow.vir, healingSkillIconKey.vir, recoverySkillRows.vir,
-			recoverySkillIconKeys.vir, skillIconPath.vir, skillLevelText.vir
+			recoverySkillIconKeys.vir, itemRows.vir, itemIconKeys.vir, potionRows.vir,
+			potionIconKeys.vir, moveRows.vir, moveIconKeys.vir, itemResolver.vir,
+			skillIconPath.vir, skillLevelText.vir, lootWeaponText.vir, lootArmorText.vir
 		)
 	);
 	const mouseDown = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildMouseDown(
 			state.vir, scalarSender.vir, monsterRows.vir,
 			attackSkillRows.vir, supportSkillRows.vir,
-			healingSkillRow.vir, recoverySkillRows.vir
+			healingSkillRow.vir, recoverySkillRows.vir, itemRows.vir,
+			potionRows.vir, moveRows.vir
+		)
+	);
+	const sliderHover = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildNativeSliderMouseMove(
+			state.vir, strings.sliderPercentFormat.vir, sliderPercentText.vir,
+			potionRows.vir, attackSkillRows.vir, supportSkillRows.vir,
+			healingSkillRow.vir, recoverySkillRows.vir, moveRows.vir,
+			itemRows.vir, strings.skillTooltipFormat.vir,
+			strings.moveSkillTooltipFormat.vir, strings.itemTooltipFormat.vir,
+			hoverText.vir
 		)
 	);
 	const mouseUp = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildMouseUp(state.vir, scalarSender.vir)
+		AutoCombatUIStatic.buildMouseUp(state.vir, scalarSender.vir, potionRows.vir)
+	);
+	const mouseWheel = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildMouseWheel(state.vir)
 	);
 	const destructor = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildDestructor(state.vir)
 	);
 	const vtable = AutoCombatUIStatic.cloneFrameVtable(
-		draw.vir, mouseDown.vir, mouseUp.vir, destructor.vir
+		draw.vir, mouseDown.vir, mouseUp.vir, destructor.vir, sliderHover.vir,
+		mouseWheel.vir
 	);
 	const autoBattleVisual = AutoCombatUIStatic.prepareControllerVisual(
 		"autobattle", paths.autoBattle.blueIcon
