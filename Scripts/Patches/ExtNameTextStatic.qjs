@@ -70,6 +70,29 @@ ExtNameTextStatic = {
 	PacketMagic: 0x4558544E
 };
 
+ExtNameTextStatic.writeFeatures = function(state)
+{
+	if (!state || !Number.isInteger(state.statePhy) ||
+		!Number.isInteger(state.features) ||
+		typeof state.ownerPatch !== "string" || state.ownerPatch.length === 0)
+		throw Error("ExtNameTextStatic: invalid shared feature state");
+
+	const owner = Exe.ActivePatch;
+	if (owner !== state.ownerPatch)
+		Exe.SetActivePatch(state.ownerPatch);
+	try
+	{
+		Exe.SetUint32(
+			state.statePhy + ExtNameTextStatic.StateFeatures,
+			state.features
+		);
+	}
+	finally
+	{
+		Exe.ActivePatch = owner;
+	}
+};
+
 ExtNameTextStatic.selectProfile = function()
 {
 	const profileId = RagexeClientProfile.Id;
@@ -837,6 +860,8 @@ ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 	const previousFeatures = state && Number.isInteger(state.features)
 		? state.features
 		: 0;
+	const previousOwner = state && typeof state.ownerPatch === "string" &&
+		state.ownerPatch.length > 0 ? state.ownerPatch : _;
 
 	const callerPhy = ExtNameStaticAsm.assertCode(
 		"frame caller prefix",
@@ -922,12 +947,10 @@ ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 		previousTarget,
 		callerPhy,
 		extnVir,
+		ownerPatch: previousOwner,
 		features: previousFeatures
 	};
-	Exe.SetUint32(
-		statePhy + ExtNameTextStatic.StateFeatures,
-		previousFeatures
-	);
+	ExtNameTextStatic.writeFeatures(state);
 	CACHE.put("ExtNameTextStatic.State", state);
 	ExtNameTextStatic.patchTextSurfaces(state, false);
 	CACHE.put("ExtNameTextStatic.State", state);
@@ -937,6 +960,7 @@ ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 		const current = CACHE.get("ExtNameTextStatic.State");
 		if (!current || !Number.isInteger(current.stateVir))
 			return false;
+		ExtNameTextStatic.writeFeatures(current);
 		ExtNameTextStatic.patchFrameCaller(current.callerPhy, current.bridgeVir);
 		ExtNameTextStatic.patchTextSurfaces(
 			current,
@@ -984,14 +1008,12 @@ ExtNameTextStatic.enableEmoji = function(_, renderer)
 			wideScratchVir,
 			findWideVir: missing.virAddr,
 			features: 0,
+			ownerPatch: _,
 			minimal: true
 		};
 	}
 	state.features |= ExtNameTextStatic.FeatureEmoji;
-	Exe.SetUint32(
-		state.statePhy + ExtNameTextStatic.StateFeatures,
-		state.features
-	);
+	ExtNameTextStatic.writeFeatures(state);
 	CACHE.put("ExtNameTextStatic.State", state);
 	ExtNameTextStatic.patchTextSurfaces(
 		state,
@@ -1034,10 +1056,7 @@ ExtNameTextStatic.enable = function(_, feature)
 
 	const state = ExtNameTextStatic.ensureInstalled(_, extn.blockVir);
 	state.features |= feature;
-	Exe.SetUint32(
-		state.statePhy + ExtNameTextStatic.StateFeatures,
-		state.features
-	);
+	ExtNameTextStatic.writeFeatures(state);
 	if ((feature & ExtNameTextStatic.FeatureColors) !== 0)
 		ExtNameTextStatic.patchTextSurfaces(state, true);
 	CACHE.put("ExtNameTextStatic.State", state);
