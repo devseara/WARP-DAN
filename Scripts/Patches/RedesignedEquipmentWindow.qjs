@@ -24,11 +24,9 @@
 *   Created Date  : 2026-08-09                                             *
 *   Last Modified : 2026-08-09                                             *
 *                                                                          *
-*   Description   : Installs the controlled Equipment UI phase-twenty-two  *
-*                   for the 2025-07-16 client. It draws General/Costume    *
-*                   assets, routes the renewal rail through the native     *
-*                   mode event, and docks the native Swap child over       *
-*                   bg_swap.png while preserving native item and packet    *
+*   Description   : Backports the renewal Equipment UI to the 2025-07-16   *
+*                   client using supplied assets while preserving native   *
+*                   item, Costume, Swap, tooltip, drag, and packet         *
 *                   ownership.                                             *
 *                                                                          *
 \**************************************************************************/
@@ -145,8 +143,6 @@ RedesignedEquipmentWindow = function(_)
 };
 
 RedesignedEquipmentWindow.BuildDate = 20250716;
-RedesignedEquipmentWindow.PreserveLegacyTabOwnership = true;
-RedesignedEquipmentWindow.RemapSwapAmmunition = false;
 
 RedesignedEquipmentWindow.uiPrefix = function()
 {
@@ -166,25 +162,15 @@ RedesignedEquipmentWindow.Assets = [
 	'bg_primary.png',
 	'bg_primary2.png',
 	'bg_swap.png',
-	'ibox_costume.png',
-	'ibox_gear.png',
-	'ibox_gearcircle.png',
 	'ibox_shadow.png',
-	'ibox_swap.png',
 	'icon_cart.png',
 	'icon_falcon.png',
 	'icon_peco.png',
 	'menu_primary.png',
 	'menu_secundary.png',
-	'swapb_out.png',
-	'swapb_over.png',
-	'swapb_press.png',
 	'swapr_out.png',
 	'swapr_over.png',
-	'swapr_press.png',
-	'unnequip_out.png',
-	'unnequip_over.png',
-	'unnequip_press.png'
+	'swapr_press.png'
 ];
 
 RedesignedEquipmentWindow.conflicts = [
@@ -217,7 +203,7 @@ RedesignedEquipmentWindow.patchEquipmentLayers = function(
 )
 {
 	$$(_, 1.3, 'Draw the supplied Equipment assets as native runtime layers');
-	let addr = RedesignedEquipmentWindow.findUnique(
+	const addr = RedesignedEquipmentWindow.findUnique(
 		'8B 86 F4 00 00 00 8B CE 83 C0 11 50 6A 00 E8 ?? ?? ?? ?? 8B 86 F0 00 00 00',
 		'Equipment base-background draw position'
 	);
@@ -412,17 +398,6 @@ RedesignedEquipmentWindow.patchWindowGeometry = function(_)
 		'Equipment initializer tab-height delta'
 	);
 	Exe.SetUint32(addr + 11, 0);
-
-	if (RedesignedEquipmentWindow.PreserveLegacyTabOwnership)
-		return;
-
-
-	$$(_, 2.3, 'Detach the legacy General/Costume/Title tab child');
-	addr = RedesignedEquipmentWindow.findUnique(
-		'FF B7 EC 00 00 00 8B CF E8 49 61 17 00',
-		'Equipment horizontal tab AddChildDirect call'
-	);
-	Exe.SetNOPs(addr, 13);
 };
 
 RedesignedEquipmentWindow.patchLegacyTabVisibility = function(_)
@@ -556,7 +531,7 @@ RedesignedEquipmentWindow.patchEquipmentDragShadow = function(_)
 RedesignedEquipmentWindow.patchCostumeBody = function(_)
 {
 	$$(_, 3.4, 'Suppress the stock Costume panel while retaining its native item renderer');
-	let addr = RedesignedEquipmentWindow.findUnique(
+	const addr = RedesignedEquipmentWindow.findUnique(
 		'83 BB F0 00 00 00 01 75 36 E8 ?? ?? ?? ?? 68 ?? ?? ?? ??',
 		'Costume stock-panel branch'
 	);
@@ -578,13 +553,13 @@ RedesignedEquipmentWindow.patchAmmunitionSlot = function(_)
 	);
 	Exe.SetHex(legacyAmmoAddr + 7, 'EB 52');
 
-	let hookAddr = RedesignedEquipmentWindow.findUnique(
+	const hookAddr = RedesignedEquipmentWindow.findUnique(
 		'83 BB F0 00 00 00 01 8B 83 B4 00 00 00 56 75 75 85 C0',
 		'Equipment renderer slot lookup'
 	) + 13;
-	let returnVir = Exe.Phy2Vir(hookAddr + 5, CODE);
+	const returnVir = Exe.Phy2Vir(hookAddr + 5, CODE);
 	const generalTargetVir = Exe.Phy2Vir(hookAddr + 3 + 0x75, CODE);
-	let parts = [
+	const parts = [
 		[
 			'83 BB F0 00 00 00 00',
 			JNE(Filler(1, 1)),
@@ -603,7 +578,7 @@ RedesignedEquipmentWindow.patchAmmunitionSlot = function(_)
 			JMP(Filler(4))
 		].join(' ')
 	];
-	let [, normalTarget, replayTarget] = MapAddrs(parts);
+	const [, normalTarget, replayTarget] = MapAddrs(parts);
 	AutoHook(hookAddr, parts, {
 		nops: 0,
 		localTgts: {
@@ -1007,42 +982,6 @@ RedesignedEquipmentWindow.patchSwapPane = function(_, swapVir)
 	});
 
 	$$(_, 4.7, 'Move native Swap item sprites onto bg_swap.png and suppress stock labels');
-	if (RedesignedEquipmentWindow.RemapSwapAmmunition)
-	{
-	hookAddr = RedesignedEquipmentWindow.findUnique(
-		'53 8D 85 44 FB FF FF C6 85 43 FB FF FF 01',
-		'Equipment Swap item lookup'
-	);
-	returnVir = Exe.Phy2Vir(hookAddr + 7, CODE);
-	parts = [
-		[
-			'83 FB 01',
-			JNE(Filler(1, 1)),
-			'6A 0F',
-			JMP(Filler(2, 1))
-		].join(' '),
-
-		' 53',
-
-		[
-			' 8D 85 44 FB FF FF',
-			JMP(Filler(3))
-		].join(' ')
-	];
-	let [, swapNormalSlotTarget, swapLookupReplayTarget] = MapAddrs(parts);
-	AutoHook(hookAddr, parts, {
-		nops: 0,
-		localTgts: {
-			'1,1': swapNormalSlotTarget,
-			'2,1': swapLookupReplayTarget
-		},
-		targets: {
-			3: returnVir
-		}
-	});
-
-	}
-
 	addr = RedesignedEquipmentWindow.findUnique(
 		'C7 85 2C FB FF FF 06 00 00 00 C7 85 30 FB FF FF FA 00 00 00 C7 85 24 FB FF FF 22 00 00 00 C7 85 28 FB FF FF AD 00 00 00',
 		'Equipment Swap row coordinate table'
@@ -1347,6 +1286,13 @@ RedesignedEquipmentWindow.patchFooterControls = function(_)
 	Exe.SetHex(itemsRefreshAddr,
 		'BF AB 00 00 00 83 3D BC FF 5F 01 00 8B 01 8B 50 10 B8 9A 01 00 00 ' +
 		'0F 4F C7 BF A7 00 00 00 50 57');
+
+	$$(_, 3.445, 'Retain the native Cart Items hover after Cart activation');
+	const itemsTooltipAddr = RedesignedEquipmentWindow.findUnique(
+		'83 3D BC FF 5F 01 00 8B B7 D0 00 00 00 7E 0F 68 ED 00 00 00',
+		'Equipment native Items tooltip assignment'
+	);
+	Exe.SetNOPs(itemsTooltipAddr + 13, 2);
 };
 RedesignedEquipmentWindow.patchEquipmentHitTest = function(_)
 {

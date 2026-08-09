@@ -1,7 +1,7 @@
 # Equipment UI redesign contract
 
 Target client: 2025-07-16 (`Exe.BuildDate === 20250716`).
-## Current controlled baseline: v32
+## Current production contract
 
 The current patch selection enables the General and Costume visual layers,
 280x240 main-window size, main-row geometry, matching hit geometry, the
@@ -87,10 +87,13 @@ the 24x22 Cart base horizontally while placing its bottom edge immediately
 above the Cart icon at `y=191`. When Cart is inactive, the same native
 condition moves the control to `y=410`, outside the Equipment window, removing
 both its artwork and hit target while retaining the native child object and
-handler. Parent-owned status areas retain the `Release Falcon`, `Release
-Pecopeco`, and `Release Cart` balloons and stock `0xF8` release dispatch; the
-Cart-conditioned Items child retains its
-stock tooltip and `0xF9` interaction.
+handler. The constructor always assigns the stock message `0xED` tooltip to
+that child, even when Cart is initially inactive, so later Cart activation
+restores the original `Cart Items [Alt+W]` native balloon without adding a
+custom tooltip renderer. Parent-owned status areas retain the `Release Falcon`,
+`Release Pecopeco`, and `Release Cart` balloons and stock `0xF8` release
+dispatch; the Cart-conditioned Items child retains its stock `0xF9`
+interaction.
 
 The status renderer, footer click bridge, and mouse-hover bridge use rel32 near
 conditional exits for their stock fallbacks. These caves exceed the signed
