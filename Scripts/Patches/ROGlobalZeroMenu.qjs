@@ -125,7 +125,7 @@ const MenuZeroStatic = {
 	BackgroundPathLength: 45,
 	BackgroundBufferSize: 48,
 	AutoHuntWindowId: 0x3F2,
-	AutoHuntButtonStateSize: 8,
+	AutoHuntButtonStateSize: 12,
 	NewButtonWidth: 45,
 	NewButtonHeight: 41,
 	OldButtonWidth: 32,
@@ -448,6 +448,7 @@ MenuZeroStatic.buildButtonDestructor = function(buttonStateVir)
 	a.jcc(0x85, "native");
 	a.emit(0xC7, 0x05); a.dword(buttonStateVir); a.dword(0);
 	a.emit(0xC7, 0x05); a.dword(buttonStateVir + 4); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(buttonStateVir + 8); a.dword(0xFFFFFFFF);
 	a.label("native");
 	a.jmp(MenuZeroStatic.ButtonDeletingDestructor);
 	return a;
@@ -530,17 +531,18 @@ MenuZeroStatic.cloneButtonVtable = function(mouseUpVir, hoverVir, destructorVir)
 };
 
 MenuZeroStatic.buildEnsureAutoHuntButtons = function(
-	buttonStateVir, buttonVtableVir, imagePaths, themeStateVir
+	buttonStateVir, buttonVtableVir, imagePaths, themeStateVir, loadThemeVir
 )
 {
 	const s = MenuZeroStatic;
 	const a = s.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
 	a.emit(0x8B, 0xF1);                                // ESI=menu parent
+	a.call(loadThemeVir);
 	a.emit(0x83, 0x3D); a.dword(buttonStateVir); a.emit(0x00);
 	a.jcc(0x84, "create");
 	a.emit(0x39, 0x35); a.dword(buttonStateVir + 4);     // current owner == ESI?
-	a.jcc(0x84, "done");
+	a.jcc(0x84, "refresh");
 	a.label("create");
 	s.pushImmediate(a, 0x120);
 	a.call(s.OperatorNew);
@@ -560,34 +562,52 @@ MenuZeroStatic.buildEnsureAutoHuntButtons = function(
 			a.call(s.ButtonSetImage);
 		}
 	};
-	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
-	a.jcc(0x84, "classic_images");
-	emitImages(imagePaths.renewal);
-	a.jmp("images_ready");
-	a.label("classic_images");
-	emitImages(imagePaths.classic);
-	a.label("images_ready");
-	a.emit(0xFF, 0xB7); a.dword(0xB8);
-	a.emit(0xFF, 0xB7); a.dword(0xB4);
-	a.emit(0x8B, 0xCF);
-	a.call(s.WindowSetImageSize);
+	const emitThemeImages = function(prefix)
+	{
+		a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+		a.jcc(0x84, prefix + "_classic_images");
+		emitImages(imagePaths.renewal);
+		a.jmp(prefix + "_images_ready");
+		a.label(prefix + "_classic_images");
+		emitImages(imagePaths.classic);
+		a.label(prefix + "_images_ready");
+		a.emit(0xFF, 0xB7); a.dword(0xB8);
+		a.emit(0xFF, 0xB7); a.dword(0xB4);
+		a.emit(0x8B, 0xCF);
+		a.call(s.WindowSetImageSize);
+	};
+	emitThemeImages("create");
 	a.emit(0xC7, 0x47, 0x2C); a.dword(s.AutoHuntWindowId);
 	a.emit(0x57, 0x8B, 0xCE);
 	a.call(s.WindowAddChild);
 	a.emit(0x89, 0x3D); a.dword(buttonStateVir);
 	a.emit(0x89, 0x35); a.dword(buttonStateVir + 4);
+	a.emit(0xA1); a.dword(themeStateVir);
+	a.emit(0xA3); a.dword(buttonStateVir + 8);
+	a.jmp("done");
+
+	a.label("refresh");
+	a.emit(0x8B, 0x3D); a.dword(buttonStateVir);
+	a.emit(0xA1); a.dword(themeStateVir);
+	a.emit(0x39, 0x05); a.dword(buttonStateVir + 8);
+	a.jcc(0x84, "done");
+	emitThemeImages("refresh");
+	a.emit(0xA1); a.dword(themeStateVir);
+	a.emit(0xA3); a.dword(buttonStateVir + 8);
+	a.emit(0xC7, 0x47, 0x58); a.dword(1);
 	a.label("done");
 	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
 	return a;
 };
 MenuZeroStatic.buildSyncAutoHuntButtons = function(
-	buttonStateVir, visibleMaskVir, visibleVir, themeStateVir
+	buttonStateVir, visibleMaskVir, visibleVir, themeStateVir, loadThemeVir
 )
 {
 	const s = MenuZeroStatic;
 	const a = s.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
 	a.emit(0x8B, 0xF1);                                // ESI=menu
+	a.call(loadThemeVir);
 	a.emit(0x8B, 0x3D); a.dword(buttonStateVir);
 	a.emit(0x85, 0xFF);
 	a.jcc(0x84, "done");
@@ -632,6 +652,7 @@ MenuZeroStatic.buildSyncAutoHuntButtons = function(
 	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
 	return a;
 };
+
 MenuZeroStatic.buildDrawWrapper = function(syncAutoHuntVir)
 {
 	const a = MenuZeroStatic.asm();
@@ -1342,7 +1363,7 @@ MenuZeroStatic.buildSyncLaunchers = function(
 };
 
 MenuZeroStatic.buildPostMakeWindow = function(
-	launcherStateVir, syncVir
+	launcherStateVir, syncVir, layoutVir
 )
 {
 	const s = MenuZeroStatic;
@@ -1384,7 +1405,13 @@ MenuZeroStatic.buildPostMakeWindow = function(
 	a.emit(0x8B, 0x75, 0xEC);                        // created/existing menu
 	a.emit(0x85, 0xF6);
 	a.jcc(0x84, "done");
-	a.call(syncVir);
+	// MakeWindow can recreate the menu after a map change while the previous
+	// menu was closed. Re-run the complete layout path so the row-specific
+	// background, native dimensions, Auto Hunt child, and launcher anchors all
+	// match the newly created window instead of inheriting stale geometry.
+	a.emit(0x6A, 0x00, 0x6A, 0x00, 0x8B, 0xCE);
+	a.call(layoutVir);
+	a.emit(0xC7, 0x46, 0x58); a.dword(1);            // force full redraw
 
 	a.label("done");
 	a.emit(0x61, 0x9D);
@@ -1695,7 +1722,7 @@ ROGlobalZeroMenu = function(_)
 		}
 	}
 	const buttonState = MenuZeroStatic.allocateBytes(
-		new Array(MenuZeroStatic.AutoHuntButtonStateSize).fill(0),
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF],
 		4
 	);
 	const oldPanelHeight = 6 * MenuZeroStatic.OldGridStrideY +
@@ -1741,7 +1768,7 @@ ROGlobalZeroMenu = function(_)
 	const ensureAutoHunt = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildEnsureAutoHuntButtons(
 			buttonState.vir, buttonVtable.vir, buttonImagePaths,
-			theme.stateVir
+			theme.stateVir, loadTheme.vir
 		)
 	);
 	const syncAutoHunt = MenuZeroStatic.allocateCode(
@@ -1749,7 +1776,7 @@ ROGlobalZeroMenu = function(_)
 			buttonState.vir,
 			visibleMaskVir,
 			autoHuntBridge.visibleVir,
-			theme.stateVir
+			theme.stateVir, loadTheme.vir
 		)
 	);
 	const drawWrapper = MenuZeroStatic.allocateCode(
@@ -1876,7 +1903,8 @@ ROGlobalZeroMenu = function(_)
 	const postMakeWindow = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildPostMakeWindow(
 			launcherState.vir,
-			syncLaunchers.vir
+			syncLaunchers.vir,
+			layoutWrapperVir
 		)
 	);
 	let goldIndex = -1;

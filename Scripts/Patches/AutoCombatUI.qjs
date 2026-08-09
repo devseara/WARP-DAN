@@ -1442,8 +1442,9 @@ AutoCombatUIStatic.emitDrawSkillLevel = function(
 	AutoCombatUIStatic.pushImm(a, levelTextVir);
 	a.call(AutoCombatUIStatic.StringFormat);
 	a.emit(0x83, 0xC4, 0x0C);
-	AutoCombatUIStatic.emitFillRect(a, fillRectVir, x + 14, y + 14, 15, 12, 0xFF486A9E);
-	AutoCombatUIStatic.emitText(a, levelTextVir, x + 17, y + 13, 10, 0x00FFFFFF);
+	// Match the stock shortcut bar: the level/quantity is black text over the
+	// icon itself, without the blue badge that made the value look custom.
+	AutoCombatUIStatic.emitText(a, levelTextVir, x + 17, y + 13, 12, 0x00000000);
 };
 
 AutoCombatUIStatic.emitFillRect = function(a, fillRectVir, x, y, width, height, color)
@@ -2202,7 +2203,10 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateLootingPage);
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "text_looting_2");
 	emitPair(strings.lootingHeadings[0], strings.lootingSubtitles[0], 159, 112);
-	AutoCombatUIStatic.emitText(a, strings.weight.vir, 198, 104, 14, 0x0078432C);
+	AutoCombatUIStatic.emitCenteredText(
+		a, strings.weight.vir, 84, 104, 320, 12, 0x0078432C, 3,
+		"looting_weight_heading"
+	);
 	a.jmp("page_text_done");
 	a.label("text_looting_2");
 	emitPair(strings.lootingHeadings[1], strings.lootingSubtitles[1], 142, 118);
@@ -2319,7 +2323,7 @@ AutoCombatUIStatic.emitPageControls = function(
 		if (label)
 			AutoCombatUIStatic.emitText(a, label.vir, x + 20, y - 2, 14, dark);
 	};
-	const drawStateCheck = function(test, x, y, label, id)
+	const drawStateCheck = function(test, x, y, label, id, fontSize = 14)
 	{
 		const offLabel = `control_check_${id}_off`;
 		const doneLabel = `control_check_${id}_done`;
@@ -2366,7 +2370,7 @@ AutoCombatUIStatic.emitPageControls = function(
 		);
 		a.label(doneLabel);
 		if (label)
-			AutoCombatUIStatic.emitText(a, label.vir, x + 20, y - 2, 14, dark);
+			AutoCombatUIStatic.emitText(a, label.vir, x + 20, y - 2, fontSize, dark);
 	};
 	const drawMonsterRow = function(mask, textVir, y, id)
 	{
@@ -2679,11 +2683,11 @@ AutoCombatUIStatic.emitPageControls = function(
 	);
 	drawStateCheck(
 		{kind: "bit", offset: AutoCombatUIStatic.StateLootFilterFlags, mask: 1 << 0},
-		55, 207, strings.lootWeaponPrefix, "loot_weapon_filter"
+		55, 206, strings.lootWeaponPrefix, "loot_weapon_filter", 12
 	);
 	drawStateCheck(
 		{kind: "bit", offset: AutoCombatUIStatic.StateLootFilterFlags, mask: 1 << 1},
-		55, 233, strings.lootArmorPrefix, "loot_armor_filter"
+		55, 232, strings.lootArmorPrefix, "loot_armor_filter", 12
 	);
 	const drawLootChoice = function(valueVir, y, prefix)
 	{
@@ -2705,13 +2709,13 @@ AutoCombatUIStatic.emitPageControls = function(
 		AutoCombatUIStatic.emitText(a, strings.lootDropdownArrow.vir, 335, y + 2, 12, dark);
 	};
 	drawLootChoice(
-		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin, 199, "loot_weapon_choice"
+		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin, 202, "loot_weapon_choice"
 	);
 	drawLootChoice(
-		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin, 225, "loot_armor_choice"
+		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin, 228, "loot_armor_choice"
 	);
-	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 352, 201, 13, dark);
-	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 352, 227, 13, dark);
+	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 352, 204, 12, dark);
+	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 352, 230, 12, dark);
 	AutoCombatUIStatic.emitText(a, strings.lootRuleHint.vir, 116, 256, 12, link);
 	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 0}, 38, 289, strings.lootOptions[0], "loot_0");
 	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 1}, 147, 289, strings.lootOptions[1], "loot_1");
@@ -2721,14 +2725,14 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.label("controls_looting_details");
 	drawStateCheck(
 		{kind: "bit", offset: AutoCombatUIStatic.StateLootFilterFlags, mask: 1 << 2},
-		47, 135, strings.lootReturn, "loot_limit_return"
+		47, 219, strings.lootReturn, "loot_limit_return"
 	);
-	AutoCombatUIStatic.emitText(a, strings.lootReturnHint.vir, 67, 158, 13, link);
+	AutoCombatUIStatic.emitText(a, strings.lootReturnHint.vir, 67, 240, 13, link);
 	drawStateCheck(
 		{kind: "bit", offset: AutoCombatUIStatic.StateLootFilterFlags, mask: 1 << 3},
-		47, 211, strings.lootContinue, "loot_limit_continue"
+		47, 271, strings.lootContinue, "loot_limit_continue"
 	);
-	AutoCombatUIStatic.emitText(a, strings.lootContinueHint.vir, 67, 234, 13, link);
+	AutoCombatUIStatic.emitText(a, strings.lootContinueHint.vir, 67, 292, 13, link);
 	a.jmp("controls_done");
 
 	a.label("controls_move");
@@ -2830,46 +2834,12 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateTab);
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x8C, "navigation_done");
 	a.emit(0x83, 0xF8, 0x04); a.jcc(0x8F, "navigation_done");
-	for (let row = 0; row < 7; row++)
-	{
-		const width = row + 1;
-		AutoCombatUIStatic.emitFillRect(
-			a, fillRectVir, 211 - row, 319 + row, width, 1, 0xFF486A9E
-		);
-		AutoCombatUIStatic.emitFillRect(
-			a, fillRectVir, 259, 319 + row, width, 1, 0xFF486A9E
-		);
-	}
-	for (let row = 0; row < 6; row++)
-	{
-		const width = 6 - row;
-		AutoCombatUIStatic.emitFillRect(
-			a, fillRectVir, 206 + row, 326 + row, width, 1, 0xFF486A9E
-		);
-		AutoCombatUIStatic.emitFillRect(
-			a, fillRectVir, 259, 326 + row, width, 1, 0xFF486A9E
-		);
-	}
-	for (let row = 0; row < 5; row++)
-	{
-		const width = row + 1;
-		AutoCombatUIStatic.emitFillRect(
-			a, fillRectVir, 209 - row, 321 + row, width, 1, 0xFF9FD8F2
-		);
-		AutoCombatUIStatic.emitFillRect(
-			a, fillRectVir, 261, 321 + row, width, 1, 0xFF9FD8F2
-		);
-	}
-	for (let row = 0; row < 4; row++)
-	{
-		const width = 4 - row;
-		AutoCombatUIStatic.emitFillRect(
-			a, fillRectVir, 206 + row, 326 + row, width, 1, 0xFF9FD8F2
-		);
-		AutoCombatUIStatic.emitFillRect(
-			a, fillRectVir, 261, 326 + row, width, 1, 0xFF9FD8F2
-		);
-	}
+	AutoCombatUIStatic.emitDrawColorKeyFull(
+		a, paths.sliderLeft.vir, 204, 318, "page_navigation_left"
+	);
+	AutoCombatUIStatic.emitDrawColorKeyFull(
+		a, paths.sliderRight.vir, 257, 318, "page_navigation_right"
+	);
 	a.label("navigation_done");
 };
 
@@ -2909,7 +2879,7 @@ AutoCombatUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, strings
 
 	emitPopup(
 		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin,
-		218, "loot_dropdown_weapon"
+		221, "loot_dropdown_weapon"
 	);
 	a.jmp("loot_dropdown_done");
 	a.label("loot_dropdown_armor_test");
@@ -2917,7 +2887,7 @@ AutoCombatUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, strings
 	a.jcc(0x85, "loot_dropdown_done");
 	emitPopup(
 		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin,
-		123, "loot_dropdown_armor"
+		126, "loot_dropdown_armor"
 	);
 	a.label("loot_dropdown_done");
 };
@@ -3642,7 +3612,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	emitLootDropdownSelection(
 		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin,
 		AutoCombatUIStatic.SettingLootWeaponFilter, 1 << 0,
-		218, "loot_dropdown_weapon_click"
+		221, "loot_dropdown_weapon_click"
 	);
 	a.jmp("loot_dropdown_close");
 	a.label("loot_dropdown_armor_click");
@@ -3651,7 +3621,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	emitLootDropdownSelection(
 		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin,
 		AutoCombatUIStatic.SettingLootArmorFilter, 1 << 1,
-		123, "loot_dropdown_armor_click_row"
+		126, "loot_dropdown_armor_click_row"
 	);
 	a.label("loot_dropdown_close");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(0);
@@ -4375,25 +4345,25 @@ AutoCombatUIStatic.buildMouseDown = function(
 		a.call(mutationSenderVir);
 	};
 	a.label("loot_filter_weapon");
-	AutoCombatUIStatic.emitRectGate(a, 46, 200, 235, 227, "loot_filter_armor");
+	AutoCombatUIStatic.emitRectGate(a, 46, 200, 210, 227, "loot_filter_armor");
 	emitLootFilterToggle(1 << 0, AutoCombatUIStatic.SettingLootWeaponFilter,
 		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin, "loot_weapon_filter");
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("loot_filter_armor");
-	AutoCombatUIStatic.emitRectGate(a, 46, 226, 235, 253, "loot_weapon_minimum");
+	AutoCombatUIStatic.emitRectGate(a, 46, 226, 210, 253, "loot_weapon_minimum");
 	emitLootFilterToggle(1 << 1, AutoCombatUIStatic.SettingLootArmorFilter,
 		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin, "loot_armor_filter");
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 
 	a.label("loot_weapon_minimum");
-	AutoCombatUIStatic.emitRectGate(a, 215, 199, 347, 218, "loot_armor_minimum");
+	AutoCombatUIStatic.emitRectGate(a, 215, 202, 347, 221, "loot_armor_minimum");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(1);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("loot_armor_minimum");
-	AutoCombatUIStatic.emitRectGate(a, 215, 225, 347, 244, "loot_categories");
+	AutoCombatUIStatic.emitRectGate(a, 215, 228, 347, 247, "loot_categories");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(2);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
@@ -4442,8 +4412,8 @@ AutoCombatUIStatic.buildMouseDown = function(
 		a.jmp("consume");
 		a.label(`${prefix}_next`);
 	};
-	emitLootLimitAction(1 << 2, 1, 126, 193, "loot_limit_return_click");
-	emitLootLimitAction(1 << 3, 2, 202, 269, "loot_limit_continue_click");
+	emitLootLimitAction(1 << 2, 1, 210, 258, "loot_limit_return_click");
+	emitLootLimitAction(1 << 3, 2, 262, 315, "loot_limit_continue_click");
 	a.jmp("consume");
 	a.label("body_move");
 	a.emit(0x83, 0xF8, 0x05); a.jcc(0x85, "body_item");
