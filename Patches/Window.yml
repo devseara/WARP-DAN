@@ -130,6 +130,18 @@ CustomEquipWin:
             author : Functor, CH.C (jchcc), Andrei (4144), X-EcutiOnner, CrazyBebop
             desc : Disables the Equipment Attribute (Properties) button in the Equipment Window so clicking it does nothing. Use on servers where the Equipment Properties panel is not applicable.
 
+RedesignedEquipWin:
+    title : Redesigned Alt+Q Equipment Window
+    mutex : true
+    color : steelblue
+
+    patches:
+        - RedesignedEquipmentWindow:
+            title : Backport Equipment UI Assets
+            recommend : no
+            author : Louis T Steinhil
+            desc : Controlled phase-twenty-two build using bg.png, bg_primary.png, bg_primary2.png, bg_swap.png, and ibox_shadow.png. Selects the full footer Arrow circle before the stock body-only picker prefilter, pins its balloon when Swap expands the parent, positions native btn_items immediately above icon_cart.png only while Cart is active, remaps the native drag-compatible shadow to the renewal slot grid, and preserves Costume, Swap, item/provider/picker, release, and equip/unequip packet ownership. Disable NoEquipSwap and NoEquipWinTitle before selecting this patch.
+
 CustomExpBars:
     title : EXP BAR CUSTOMIZATION
     mutex : false

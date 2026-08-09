@@ -250,6 +250,11 @@ inputs:
         display: "systemEN\\RecommendedQuests_EN"
         type: 10
 
+    $copyRedesignedEquipmentAssets:
+        data: ''
+        display: "true"
+        type: 10
+
 patches:
     - AllowPL2Leave
     - AllowGuildInClan
@@ -373,3 +378,4 @@ patches:
     - DisConnToLogin
     - SNSButtonURL
     - BookingButtonGuide
+    - RedesignedEquipmentWindow

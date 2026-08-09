@@ -1,0 +1,1731 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-08-09                                             *
+*   Last Modified : 2026-08-09                                             *
+*                                                                          *
+*   Description   : Installs the controlled Equipment UI phase-twenty-two  *
+*                   for the 2025-07-16 client. It draws General/Costume    *
+*                   assets, routes the renewal rail through the native     *
+*                   mode event, and docks the native Swap child over       *
+*                   bg_swap.png while preserving native item and packet    *
+*                   ownership.                                             *
+*                                                                          *
+\**************************************************************************/
+
+RedesignedEquipmentWindow = function(_)
+{
+	const name = 'RedesignedEquipmentWindow';
+	$$(_, 1, 'Install the asset-backed renewal Equipment body');
+
+	if (RedesignedEquipmentWindow.conflicts.some(patch =>
+	{
+		try
+		{
+			return Warp.GetPatchState(patch);
+		}
+		catch (e)
+		{
+			return false;
+		}
+	}))
+		throw Error(`${name}: disable NoEquipSwap and NoEquipWinTitle first`);
+
+	const assetPrefix = RedesignedEquipmentWindow.uiPrefix() +
+		'\\uirenewal\\equipmentui\\';
+	const background = assetPrefix + 'bg.png';
+	const backgroundVir = RedesignedEquipmentWindow.writeCString(background);
+	const primaryVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'bg_primary.png');
+	const primary2Vir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'bg_primary2.png');
+	const swapVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'bg_swap.png');
+	const menuPrimaryVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'menu_primary.png');
+	const menuSecondaryVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'menu_secundary.png');
+	const iconFalconVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'icon_falcon.png');
+	const iconPecoVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'icon_peco.png');
+	const iconCartVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'icon_cart.png');
+	const shadowVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'ibox_shadow.png');
+	const redirects = [
+		{
+			label: 'viewed-character equipment body',
+			legacy: RedesignedEquipmentWindow.uiPrefix() + '\\basic_interface\\equipwin_bg.bmp',
+			replacement: background,
+			replacementVir: backgroundVir,
+			opcodes: ['B8', 'B9']
+		},
+		{
+			label: 'local-character equipment body',
+			legacy: RedesignedEquipmentWindow.uiPrefix() + '\\basic_interface\\equipwin_bg2.bmp',
+			replacement: background,
+			replacementVir: backgroundVir,
+			opcodes: ['B8', 'B9']
+		},
+		{
+			label: 'Equipment compatible-slot shadow',
+			legacy: RedesignedEquipmentWindow.uiPrefix() + '\\basic_interface\\item_invert.bmp',
+			replacement: assetPrefix + 'ibox_shadow.png',
+			replacementVir: shadowVir,
+			opcodes: ['68']
+		},
+		{
+			label: 'Swap normal button',
+			legacy: RedesignedEquipmentWindow.uiPrefix() + '\\swap_equipment\\btn_change2_normal.bmp',
+			replacement: assetPrefix + 'swapr_out.png',
+			opcodes: ['68', 'BA']
+		},
+		{
+			label: 'Swap hover button',
+			legacy: RedesignedEquipmentWindow.uiPrefix() + '\\swap_equipment\\btn_change2_over.bmp',
+			replacement: assetPrefix + 'swapr_over.png',
+			opcodes: ['68', 'B8']
+		},
+		{
+			label: 'Swap pressed button',
+			legacy: RedesignedEquipmentWindow.uiPrefix() + '\\swap_equipment\\btn_change2_press.bmp',
+			replacement: assetPrefix + 'swapr_press.png',
+			opcodes: ['68', 'B8']
+		},
+		{
+			label: 'Swap disabled button',
+			legacy: RedesignedEquipmentWindow.uiPrefix() + '\\swap_equipment\\btn_change2_disable.bmp',
+			replacement: assetPrefix + 'swapr_out.png',
+			opcodes: ['BB']
+		}
+	];
+
+	for (const spec of redirects)
+		RedesignedEquipmentWindow.redirect(_, spec);
+
+	RedesignedEquipmentWindow.patchEquipmentLayers(
+		_, primaryVir, primary2Vir, menuPrimaryVir, menuSecondaryVir,
+		iconFalconVir, iconPecoVir, iconCartVir
+	);
+	RedesignedEquipmentWindow.patchSurfaceModeLock(_);
+	RedesignedEquipmentWindow.patchWindowGeometry(_);
+	RedesignedEquipmentWindow.patchLegacyTabVisibility(_);
+	RedesignedEquipmentWindow.patchEquipmentRows(_);
+	RedesignedEquipmentWindow.patchEquipmentDragShadow(_);
+	RedesignedEquipmentWindow.patchCostumeBody(_);
+	RedesignedEquipmentWindow.patchAmmunitionSlot(_);
+	RedesignedEquipmentWindow.patchFooterControls(_);
+	RedesignedEquipmentWindow.patchEquipmentHitTest(_);
+	RedesignedEquipmentWindow.patchLeftRailSelectors(_);
+	RedesignedEquipmentWindow.patchSwapPane(_, swapVir);
+
+	if (!Warp.TestMode)
+		Exe.GetUserInput(
+			'$copyRedesignedEquipmentAssets',
+			D_Bool,
+			'Copy Equipment UI Assets',
+			'Copy the redesigned Equipment UI assets into the target client data folder?',
+			true
+		);
+
+	$$(_, 5, 'Keep stock item identity, Costume, Swap, tooltip, drag, and packet ownership');
+	return true;
+};
+
+RedesignedEquipmentWindow.BuildDate = 20250716;
+RedesignedEquipmentWindow.PreserveLegacyTabOwnership = true;
+RedesignedEquipmentWindow.RemapSwapAmmunition = false;
+
+RedesignedEquipmentWindow.uiPrefix = function()
+{
+	return String.fromCharCode(
+		0xC0, 0xAF, 0xC0, 0xFA, 0xC0, 0xCE, 0xC5, 0xCD,
+		0xC6, 0xE4, 0xC0, 0xCC, 0xBD, 0xBA
+	);
+};
+
+RedesignedEquipmentWindow.AssetPath = 'Images/EquipmentUI';
+RedesignedEquipmentWindow.TargetPath =
+	'data/texture/' + RedesignedEquipmentWindow.uiPrefix() +
+	'/uirenewal/equipmentui';
+
+RedesignedEquipmentWindow.Assets = [
+	'bg.png',
+	'bg_primary.png',
+	'bg_primary2.png',
+	'bg_swap.png',
+	'ibox_costume.png',
+	'ibox_gear.png',
+	'ibox_gearcircle.png',
+	'ibox_shadow.png',
+	'ibox_swap.png',
+	'icon_cart.png',
+	'icon_falcon.png',
+	'icon_peco.png',
+	'menu_primary.png',
+	'menu_secundary.png',
+	'swapb_out.png',
+	'swapb_over.png',
+	'swapb_press.png',
+	'swapr_out.png',
+	'swapr_over.png',
+	'swapr_press.png',
+	'unnequip_out.png',
+	'unnequip_over.png',
+	'unnequip_press.png'
+];
+
+RedesignedEquipmentWindow.conflicts = [
+	'NoEquipSwap',
+	'NoEquipWinTitle'
+];
+
+RedesignedEquipmentWindow.P32 = function(value)
+{
+	const bytes = [
+		value & 0xFF,
+		(value >>> 8) & 0xFF,
+		(value >>> 16) & 0xFF,
+		(value >>> 24) & 0xFF
+	];
+	return bytes.map(byte => byte.toString(16).padStart(2, '0')).join(' ').toUpperCase();
+};
+
+RedesignedEquipmentWindow.findUnique = function(pattern, label)
+{
+	const matches = Exe.FindHexN(pattern);
+	if (matches.length !== 1)
+		throw Error(`RedesignedEquipmentWindow: ${label}: expected one match, found ${matches.length}`);
+	return matches[0];
+};
+
+RedesignedEquipmentWindow.patchEquipmentLayers = function(
+	_, primaryVir, primary2Vir, menuPrimaryVir, menuSecondaryVir,
+	iconFalconVir, iconPecoVir, iconCartVir
+)
+{
+	$$(_, 1.3, 'Draw the supplied Equipment assets as native runtime layers');
+	let addr = RedesignedEquipmentWindow.findUnique(
+		'8B 86 F4 00 00 00 8B CE 83 C0 11 50 6A 00 E8 ?? ?? ?? ?? 8B 86 F0 00 00 00',
+		'Equipment base-background draw position'
+	);
+	Exe.SetUint8(addr + 10, 0);
+
+	const hookAddr = RedesignedEquipmentWindow.findUnique(
+		'8B 86 F0 00 00 00 83 F8 02 0F 85 A3 00 00 00',
+		'Equipment layered-body insertion point'
+	);
+	const returnVir = Exe.Phy2Vir(hookAddr + 6, CODE);
+	const parts = [
+		[
+			'60',
+			'BF ' + RedesignedEquipmentWindow.P32(primary2Vir),
+			'BD ' + RedesignedEquipmentWindow.P32(menuPrimaryVir),
+			'83 BE B4 00 00 00 00',              // viewed characters use Primary2
+			JNE(Filler(1, 1)),
+			'83 BE F0 00 00 00 01',              // Costume mode uses Primary2
+			JE(Filler(2, 1)),
+			'BF ' + RedesignedEquipmentWindow.P32(primaryVir),
+			JMP(Filler(1, 1))
+		].join(' '),
+
+		' BD ' + RedesignedEquipmentWindow.P32(menuSecondaryVir),
+
+		[
+			' 57',                               // body resource path
+			CALL(Filler(10)),
+			'83 C4 04',
+			'8B CB',
+			'50',
+			CALL(Filler(11)),
+			'85 C0',
+			JE(Filler(3, 1)),
+			'6A 00 50 6A 11 6A 22 8B CE',       // x=34, y=17
+			CALL(Filler(12))
+		].join(' '),
+
+		[
+			' 55',                               // selected menu resource path
+			CALL(Filler(10)),
+			'83 C4 04',
+			'8B CB',
+			'50',
+			CALL(Filler(11)),
+			'85 C0',
+			JE(Filler(4, 1)),
+			'6A 00 50 6A 11 6A 00 8B CE',       // x=0, y=17
+			CALL(Filler(12))
+		].join(' '),
+
+		[
+			' 83 BE B4 00 00 00 00',            // local character only
+			JNE(Filler(9)),
+			'83 BE F0 00 00 00 00',             // General mode only
+			JNE(Filler(9)),
+			'A1 B4 B2 5F 01',                    // native option state
+			'A8 10',                              // Falcon
+			JNE(Filler(5, 1)),
+			'A8 20',                              // Peco/Riding
+			JNE(Filler(6, 1)),
+			JMP(Filler(8, 1))
+		].join(' '),
+
+		[
+			' BF ' + RedesignedEquipmentWindow.P32(iconFalconVir),
+			'BD 90 00 00 00',                    // x=144
+			JMP(Filler(7, 1))
+		].join(' '),
+
+		[
+			' BF ' + RedesignedEquipmentWindow.P32(iconPecoVir),
+			'BD 91 00 00 00',                    // x=145
+			JMP(Filler(7, 1))
+		].join(' '),
+
+		[
+			' 57',
+			CALL(Filler(10)),
+			'83 C4 04',
+			'8B CB 50',
+			CALL(Filler(11)),
+			'85 C0',
+			JE(Filler(8, 1)),
+			'6A 00 50 68 BF 00 00 00 55 8B CE', // y=191, selected x
+			CALL(Filler(12))
+		].join(' '),
+
+		[
+			' 83 3D BC FF 5F 01 00',            // native Cart presence
+			JLE(Filler(9)),
+			'68 ' + RedesignedEquipmentWindow.P32(iconCartVir),
+			CALL(Filler(10)),
+			'83 C4 04',
+			'8B CB 50',
+			CALL(Filler(11)),
+			'85 C0',
+			JE(Filler(9)),
+			'6A 00 50 68 BF 00 00 00 68 AA 00 00 00 8B CE', // x=170, y=191
+			CALL(Filler(12))
+		].join(' '),
+
+		[
+			' 61',
+			'8B 86 F0 00 00 00',                // replay stock mode load
+			JMP(Filler(13))
+		].join(' ')
+	];
+	const [,
+		costumeTarget,
+		bodyTarget,
+		menuTarget,
+		statusTarget,
+		falconTarget,
+		pecoTarget,
+		mountDrawTarget,
+		cartTarget,
+		doneTarget
+	] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 0,
+		localTgts: {
+			'1,1': bodyTarget,
+			'2,1': costumeTarget,
+			'3,1': menuTarget,
+			'4,1': statusTarget,
+			'5,1': falconTarget,
+			'6,1': pecoTarget,
+			'7,1': mountDrawTarget,
+			'8,1': cartTarget,
+			9: doneTarget
+		},
+		targets: {
+			10: 0x00A9F030,
+			11: 0x00A8D4A0,
+			12: 0x00A1D260,
+			13: returnVir
+		}
+	});
+};
+RedesignedEquipmentWindow.patchSurfaceModeLock = function(_)
+{
+	$$(_, 1.4, 'Lock the Equipment backing surface to stock tiled mode');
+	let hookAddr = RedesignedEquipmentWindow.findUnique(
+		'8B 8E 24 01 00 00 85 C9 74 14 8B 01 6A 00 6A 00 6A 00 6A 00 6A 3C 6A 00 FF 90 94 00 00 00 8B 4D F4 64 89 0D 00 00 00 00',
+		'Equipment draw epilogue'
+	);
+	hookAddr += 30;
+	const returnVir = Exe.Phy2Vir(hookAddr + 10, CODE);
+	const parts = [
+		[
+			'8B 46 24',                         // current backing surface
+			'85 C0',
+			JE(Filler(1, 1)),
+			'C6 40 28 00'                       // force two-tile mode before flush
+		].join(' '),
+
+		[
+			' 8B 4D F4',                        // replay SEH unlink
+			'64 89 0D 00 00 00 00',
+			JMP(Filler(2))
+		].join(' ')
+	];
+	const [, replayTarget] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 5,
+		localTgts: {
+			'1,1': replayTarget
+		},
+		targets: {
+			2: returnVir
+		}
+	});
+};
+RedesignedEquipmentWindow.patchWindowGeometry = function(_)
+{
+	$$(_, 2.1, 'Resize Alt+Q directly to 280x240');
+	let addr = RedesignedEquipmentWindow.findUnique(
+		'C7 45 FC FF FF FF FF 8B C8 68 A7 00 00 00 89 87 E0 01 00 00 68 18 01 00 00',
+		'Equipment factory dimensions'
+	);
+	Exe.SetUint32(addr + 10, 0xF0);
+	$$(_, 2.2, 'Remove the inherited 20-pixel tab offset');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'C7 86 D8 00 00 00 00 00 00 00 C7 86 F0 00 00 00 00 00 00 00 C7 86 F4 00 00 00 14 00 00 00',
+		'Equipment constructor tab offset'
+	);
+	Exe.SetUint32(addr + 26, 0);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'33 F6 33 C0 89 B5 64 FF FF FF B9 14 00 00 00 8B 97 B4 00 00 00 85 D2',
+		'Equipment initializer tab-height delta'
+	);
+	Exe.SetUint32(addr + 11, 0);
+
+	if (RedesignedEquipmentWindow.PreserveLegacyTabOwnership)
+		return;
+
+
+	$$(_, 2.3, 'Detach the legacy General/Costume/Title tab child');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'FF B7 EC 00 00 00 8B CF E8 49 61 17 00',
+		'Equipment horizontal tab AddChildDirect call'
+	);
+	Exe.SetNOPs(addr, 13);
+};
+
+RedesignedEquipmentWindow.patchLegacyTabVisibility = function(_)
+{
+	$$(_, 2.2, 'Retain parent ownership of the legacy tab child while hiding it');
+	const hookAddr = RedesignedEquipmentWindow.findUnique(
+		'FF B7 EC 00 00 00 8B CF E8 49 61 17 00',
+		'Equipment horizontal tab AddChildDirect call'
+	);
+	const returnVir = Exe.Phy2Vir(hookAddr + 12, CODE);
+	const parts = [
+		[
+			'FF B7 EC 00 00 00',                // child argument
+			'8B CF',                            // parent receiver
+			CALL(Filler(10)),                   // replay AddChildDirect
+			'50',                               // preserve its return value
+			'8B 8F EC 00 00 00',                // legacy tab child
+			'85 C9',
+			JE(Filler(1, 1)),
+			'8B 11',
+			'6A 00',
+			'FF 52 38'                          // child->SetVisible(false)
+		].join(' '),
+
+		[
+			'58',
+			JMP(Filler(11))
+		].join(' ')
+	];
+	const [, resumeTarget] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 8,
+		localTgts: {
+			'1,1': resumeTarget
+		},
+		targets: {
+			10: 0x00A1B780,
+			11: returnVir
+		}
+	});
+};
+
+RedesignedEquipmentWindow.patchEquipmentRows = function(_)
+{
+	$$(_, 3.1, 'Move native item sprites onto the renewal slot grid');
+	let addr = RedesignedEquipmentWindow.findUnique(
+		'C7 85 C8 FA FF FF 06 00 00 00 C7 85 CC FA FF FF FB 00 00 00 C7 85 B8 FA FF FF 1C 00 00 00 C7 85 BC FA FF FF A7 00 00 00',
+		'Equipment row coordinate table'
+	);
+	Exe.SetUint32(addr + 6, 58);
+	Exe.SetUint32(addr + 16, 227);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'6B C1 1A 8B FE 83 C2 2C 83 E7 FC 8B CB',
+		'Equipment lower-row spacing'
+	);
+	Exe.SetUint8(addr + 2, 0x23);
+	Exe.SetUint8(addr + 7, 0x42);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8D 42 12 50 FF B4 8D C8 FA FF FF 8B CB E8 19 90 FD FF',
+		'Equipment first-row vertical position'
+	);
+	Exe.SetUint8(addr + 2, 0x1F);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B CE 83 E1 03 6B D1 1A 8B 8B F4 00 00 00 83 C1 38',
+		'Equipment lower-row overlay spacing'
+	);
+	Exe.SetUint8(addr + 7, 0x23);
+	Exe.SetUint8(addr + 16, 0x4E);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B 93 F4 00 00 00 8B CE 6A 01 83 E1 03 83 C2 1E',
+		'Equipment first-row overlay position'
+	);
+	Exe.SetUint8(addr + 15, 0x2B);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8D 4B 01 8B 9D C4 FA FF FF 6B C9 1A 6A 01 8B 92 F4 00 00 00 50 8B 85 D4 FA FF FF 03 CA 83 FE 08 0F 43 CA 83 C1 12',
+		'Equipment empty-slot overlay grid'
+	);
+	Exe.SetUint8(addr + 11, 0x23);
+	Exe.SetUint8(addr + 37, 0x1F);
+
+	$$(_, 3.2, 'Suppress legacy item-name rows without removing item objects');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'83 C0 05 50 E8 93 F6 FF FF 8B BD D0 FA FF FF EB 38',
+		'Equipment lower-row label call'
+	);
+	Exe.SetHex(addr + 4, '83 C4 1C 90 90');
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'83 C0 05 50 E8 53 F6 FF FF 33 C0 66 3B 85 60 FB FF FF',
+		'Equipment first-row label call'
+	);
+	Exe.SetHex(addr + 4, '83 C4 1C 90 90');
+
+	$$(_, 3.3, 'Pin the stock character preview to the primary-canvas center');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'99 2B C2 D1 F8 68 95 00 00 00 40 50 56 E8 C2 8C EF FF',
+		'Equipment character-preview center'
+	);
+	Exe.SetHex(addr, '33 C0 B0 9B 99');         // X=155, then stock INC -> 156
+};
+
+RedesignedEquipmentWindow.patchEquipmentDragShadow = function(_)
+{
+	$$(_, 3.35, 'Align the native compatible-slot shadow with the renewal slot grid');
+	let addr = RedesignedEquipmentWindow.findUnique(
+		'C7 85 D4 FE FF FF 04 00 00 00 8D BE B8 00 00 00 C7 85 D8 FE FF FF F8 00 00 00 BB 03 00 00 00',
+		'Equipment compatible-slot shadow columns'
+	);
+	Exe.SetUint32(addr + 6, 56);
+	Exe.SetUint32(addr + 22, 225);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'6B C8 1A 8B 86 F4 00 00 00 83 C0 33',
+		'Equipment compatible-slot shadow lower rows'
+	);
+	Exe.SetUint8(addr + 2, 0x23);
+	Exe.SetUint8(addr + 11, 0x40);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B 86 F4 00 00 00 83 C0 19 50 81 E2 03 00 00 80',
+		'Equipment compatible-slot shadow first row'
+	);
+	Exe.SetUint8(addr + 8, 0x1D);
+};
+
+RedesignedEquipmentWindow.patchCostumeBody = function(_)
+{
+	$$(_, 3.4, 'Suppress the stock Costume panel while retaining its native item renderer');
+	let addr = RedesignedEquipmentWindow.findUnique(
+		'83 BB F0 00 00 00 01 75 36 E8 ?? ?? ?? ?? 68 ?? ?? ?? ??',
+		'Costume stock-panel branch'
+	);
+	if (Exe.GetUint8(addr + 7) !== 0x75)
+		throw Error('RedesignedEquipmentWindow: Costume stock-panel branch changed');
+	Exe.SetUint8(addr + 7, 0xEB);
+
+	$$(_, 3.45, 'Retain native Show Equip and View Costumes checkbox visibility');
+};
+
+RedesignedEquipmentWindow.patchAmmunitionSlot = function(_)
+{
+	$$(_, 3.5, 'Preserve native item-provider identities and route ammunition');
+
+	$$(_, 3.51, 'Suppress the separate width-relative legacy ammunition preview');
+	const legacyAmmoAddr = RedesignedEquipmentWindow.findUnique(
+		'83 BD E4 FE FF FF 00 76 52 6A 00 8D 85 E0 FE FF FF',
+		'Equipment legacy ammunition preview'
+	);
+	Exe.SetHex(legacyAmmoAddr + 7, 'EB 52');
+
+	let hookAddr = RedesignedEquipmentWindow.findUnique(
+		'83 BB F0 00 00 00 01 8B 83 B4 00 00 00 56 75 75 85 C0',
+		'Equipment renderer slot lookup'
+	) + 13;
+	let returnVir = Exe.Phy2Vir(hookAddr + 5, CODE);
+	const generalTargetVir = Exe.Phy2Vir(hookAddr + 3 + 0x75, CODE);
+	let parts = [
+		[
+			'83 BB F0 00 00 00 00',
+			JNE(Filler(1, 1)),
+			'83 FE 0A',
+			JNE(Filler(1, 1)),
+			'6A 0F',
+			JMP(Filler(2, 1))
+		].join(' '),
+
+		' 56',
+
+		[
+			' 83 BB F0 00 00 00 01',
+			JNE(Filler(3)),
+			'85 C0',
+			JMP(Filler(4))
+		].join(' ')
+	];
+	let [, normalTarget, replayTarget] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 0,
+		localTgts: {
+			'1,1': normalTarget,
+			'2,1': replayTarget
+		},
+		targets: {
+			3: generalTargetVir,
+			4: returnVir
+		}
+	});
+
+	RedesignedEquipmentWindow.patchAmmunitionRenderGeometry(_);
+	RedesignedEquipmentWindow.patchAmmunitionHitTest(_);
+	RedesignedEquipmentWindow.patchAmmunitionHoverLabel(_);
+};
+
+
+RedesignedEquipmentWindow.patchAmmunitionRenderGeometry = function(_)
+{
+	$$(_, 3.55, 'Add a General-only ammunition render pass at the footer arrow circle');
+	let hookAddr = RedesignedEquipmentWindow.findUnique(
+		'83 FE 0A 0F 8C 48 FC FF FF 8B 4D F4 64 89 0D 00 00 00 00',
+		'Equipment item-loop bound'
+	);
+	let parts = [
+		[
+			'83 BB F0 00 00 00 00',
+			JNE(Filler(1, 1)),
+			'83 FE 0B',
+			JL(Filler(10)),
+			JMP(Filler(11))
+		].join(' '),
+
+		[
+			' 83 FE 0A',
+			JL(Filler(10)),
+			JMP(Filler(11))
+		].join(' ')
+	];
+	const [, stockBoundTarget] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 4,
+		localTgts: {
+			'1,1': stockBoundTarget
+		},
+		targets: {
+			10: 0x00897E70,
+			11: 0x00898228
+		}
+	});
+
+	const coordinateSites = [
+		{
+			pattern: '8D 42 12 50 FF B4 8D C8 FA FF FF 8B CB E8 ?? ?? ?? ??',
+			label: 'Equipment ammunition item coordinates',
+			replay: '8D 42 1F 50 FF B4 8D C8 FA FF FF',
+			length: 11,
+			y: 191,
+			returnVir: 0x00898020
+		},
+		{
+			pattern: '8B CE 6A 01 83 E1 03 83 C2 1E 50 52 FF B4 8D C8 FA FF FF 8B CB E8 ?? ?? ?? ??',
+			offset: 11,
+			label: 'Equipment ammunition status-overlay coordinates',
+			replay: '52 FF B4 8D C8 FA FF FF',
+			length: 8,
+			y: 203,
+			returnVir: 0x00898125
+		},
+		{
+			pattern: '51 FF B4 85 C8 FA FF FF 8B CB E8 ?? ?? ?? ??',
+			label: 'Equipment ammunition item-overlay coordinates',
+			replay: '51 FF B4 85 C8 FA FF FF',
+			length: 8,
+			y: 191,
+			returnVir: 0x008981E4
+		}
+	];
+	for (const spec of coordinateSites)
+	{
+		hookAddr = RedesignedEquipmentWindow.findUnique(spec.pattern, spec.label) + (spec.offset ?? 0);
+		parts = [
+			[
+				'83 FE 0A',
+				JNE(Filler(1, 1)),
+				'68 ' + RedesignedEquipmentWindow.P32(spec.y),
+				'6A 75',
+				JMP(Filler(2))
+			].join(' '),
+
+			[
+				' ' + spec.replay,
+				JMP(Filler(2))
+			].join(' ')
+		];
+		const [, stockCoordinateTarget] = MapAddrs(parts);
+		AutoHook(hookAddr, parts, {
+			nops: spec.length - 5,
+			localTgts: {
+				'1,1': stockCoordinateTarget
+			},
+			targets: {
+				2: spec.returnVir
+			}
+		});
+	}
+
+	$$(_, 3.57, 'End the synthetic ammunition row after its fixed footer item draw');
+	hookAddr = RedesignedEquipmentWindow.findUnique(
+		'8B CB E8 ?? ?? ?? ?? 6A 0C 6A 00 6A 00 8D 85 D8 FA FF FF',
+		'Equipment ammunition post-item draw'
+	) + 7;
+	parts = [
+		[
+			'83 FE 0A',
+			JE(Filler(1, 1)),
+			'6A 0C 6A 00 6A 00',
+			JMP(Filler(2))
+		].join(' '),
+
+		' ' + JMP(Filler(3))
+	];
+	const [, ammunitionDoneTarget] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 1,
+		localTgts: {
+			'1,1': ammunitionDoneTarget
+		},
+		targets: {
+			2: 0x0089802D,
+			3: 0x008981F1
+		}
+	});
+};
+
+RedesignedEquipmentWindow.patchAmmunitionHitTest = function(_)
+{
+	$$(_, 3.6, 'Select native slot 15 before the stock body-only vertical prefilter');
+	const pickerStarts = Exe.FindHexN(
+		'8B 4D 10 83 CE FF C7 45 EC 00 00 00 00 8B 98 F4 00 00 00 8D 43 11'
+	);
+	if (pickerStarts.length !== 2)
+		throw Error(`RedesignedEquipmentWindow: expected two ammunition picker starts, found ${pickerStarts.length}`);
+
+	const pickerReturnVirs = [0x0089E546, 0x0089ED5E];
+	for (let index = 0; index < pickerStarts.length; ++index)
+	{
+		const hookAddr = pickerStarts[index];
+		const stockVir = Exe.Phy2Vir(hookAddr + 13, CODE);
+		const parts = [
+			[
+				'83 B8 F0 00 00 00 00',              // General mode only
+				JNE(Filler(1, 1)),
+				'81 7D 0C 75 00 00 00',              // local x >= 117
+				JL(Filler(1, 1)),
+				'81 7D 0C 8D 00 00 00',              // local x < 141
+				JGE(Filler(1, 1)),
+				'8B 4D 10',
+				'8B 98 F4 00 00 00',
+				'8D 93 BF 00 00 00',                 // screen y >= window top + 191
+				'3B CA',
+				JL(Filler(1, 1)),
+				'8D 93 D7 00 00 00',                 // screen y < window top + 215
+				'3B CA',
+				JGE(Filler(1, 1)),
+				'C7 45 EC 00 00 00 00',
+				'BE 0F 00 00 00',
+				JMP(Filler(2))
+			].join(' '),
+
+			[
+				' 8B 4D 10',                         // replay overwritten stock initialization
+				'83 CE FF',
+				'C7 45 EC 00 00 00 00',
+				JMP(Filler(3))
+			].join(' ')
+		];
+		const [, stockTarget] = MapAddrs(parts);
+		AutoHook(hookAddr, parts, {
+			nops: 8,
+			localTgts: {
+				'1,1': stockTarget
+			},
+			targets: {
+				2: pickerReturnVirs[index],
+				3: stockVir
+			}
+		});
+	}
+};
+
+RedesignedEquipmentWindow.patchAmmunitionHoverLabel = function(_)
+{
+	$$(_, 3.63, 'Pin the Arrow balloon anchor to the closed primary-canvas position');
+	const anchorAddr = RedesignedEquipmentWindow.findUnique(
+		'8B 47 14 99 2B C2 D1 F8 83 E8 14 89 85 C0 FD FF FF',
+		'Equipment center-column tooltip anchor'
+	);
+	Exe.SetHex(anchorAddr, 'B8 78 00 00 00 90 90 90 90 90 90');
+
+	$$(_, 3.65, 'Prefix the ammunition label before its native tooltip CALL');
+	const formatVir = RedesignedEquipmentWindow.writeCString('Unequip %s');
+	const [bufferPhy, bufferVir] = Exe.Allocate(0x400, 0x10);
+	Exe.SetUint8(bufferPhy, 0);
+
+	const hoverStart = RedesignedEquipmentWindow.findUnique(
+		'55 8B EC 6A FF 68 BF 13 EB 00 64 A1 00 00 00 00 50 81 EC 40 02 00 00',
+		'Equipment mouse-move handler for ammunition balloon'
+	);
+	const hoverEnd = RedesignedEquipmentWindow.findUnique(
+		'55 8B EC 6A FF 68 2E 14 EB 00 64 A1 00 00 00 00 50 81 EC 3C 01 00 00',
+		'Equipment mouse-move handler boundary'
+	);
+	const labelPointerSites = Exe.FindHexN('83 78 14 10 72 02 8B 00')
+		.filter(addr => addr >= hoverStart && addr < hoverEnd);
+	if (labelPointerSites.length !== 4)
+		throw Error(`RedesignedEquipmentWindow: expected four local Equipment label-pointer sites, found ${labelPointerSites.length}`);
+
+	for (const hookAddr of labelPointerSites)
+	{
+		const returnVir = Exe.Phy2Vir(hookAddr + 8, CODE);
+		const parts = [
+			[
+				'83 78 14 10',                     // replay std::string SSO check
+				JAE(Filler(1, 1)),
+				JMP(Filler(2, 1))
+			].join(' '),
+
+			' 8B 00',                             // long string data pointer
+
+			[
+				' 81 7D 08 75 00 00 00',          // local x >= 117
+				JL(Filler(4, 1)),
+				'81 7D 08 8D 00 00 00',           // local x < 141
+				JGE(Filler(4, 1)),
+				'81 7D 0C BF 00 00 00',           // local y >= 191
+				JL(Filler(4, 1)),
+				'81 7D 0C D7 00 00 00',           // local y < 215
+				JGE(Filler(4, 1)),
+				JMP(Filler(3, 1))
+			].join(' '),
+
+			[
+				' 60',
+				'8B 44 24 1C',                     // current native item label
+				'50',
+				'68 ' + RedesignedEquipmentWindow.P32(formatVir),
+				'68 ' + RedesignedEquipmentWindow.P32(bufferVir),
+				'FF 15 2C 16 FC 00',               // USER32!wsprintfA IAT
+				'83 C4 0C',
+				'61',
+				'B8 ' + RedesignedEquipmentWindow.P32(bufferVir)
+			].join(' '),
+
+			' ' + JMP(Filler(10))
+		];
+		const [,
+			longStringTarget,
+			coordinateTarget,
+			formatTarget,
+			doneTarget
+		] = MapAddrs(parts);
+		AutoHook(hookAddr, parts, {
+			nops: 3,
+			localTgts: {
+				'1,1': longStringTarget,
+				'2,1': coordinateTarget,
+				'3,1': formatTarget,
+				'4,1': doneTarget
+			},
+			targets: {
+				10: returnVir
+			}
+		});
+	}
+};
+RedesignedEquipmentWindow.patchSwapPane = function(_, swapVir)
+{
+	$$(_, 4.5, 'Dock the native Equipment Swap child at the right edge');
+	let hookAddr = RedesignedEquipmentWindow.findUnique(
+		'8B 8E D8 00 00 00 8B 06 81 C1 A7 00 00 00 89 4D D4',
+		'Equipment Swap open dimensions'
+	);
+	let returnAddr = RedesignedEquipmentWindow.findUnique(
+		'8B 8E 24 01 00 00 85 C9 0F 85 8D 00 00 00',
+		'Equipment Swap open continuation'
+	);
+	let code = [
+		'8B 06 8B CE',
+		'68 F0 00 00 00',                    // height=240
+		'68 7E 01 00 00',                    // width=382
+		'FF 50 04',
+		'C7 45 D4 F0 00 00 00',
+		JMP(Filler(1))
+	].join(' ');
+	AutoHook(hookAddr, code, {
+		nops: 0,
+		targets: {
+			1: Exe.Phy2Vir(returnAddr, CODE)
+		}
+	});
+
+	let addr = RedesignedEquipmentWindow.findUnique(
+		'68 B3 00 00 00 68 18 01 00 00 89 86 24 01 00 00',
+		'Equipment Swap child dimensions'
+	);
+	Exe.SetUint32(addr + 1, 240);
+	Exe.SetUint32(addr + 6, 102);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'68 A7 00 00 00 6A 00 FF D0 8B 86 24 01 00 00',
+		'Equipment Swap child position'
+	);
+	Exe.SetHex(addr, '6A 00 68 18 01 00 00'); // x=280, y=0
+
+	hookAddr = RedesignedEquipmentWindow.findUnique(
+		'8B 86 24 01 00 00 8B CE FF 75 D4 C7 40 30 00 00 00 00 8B 06',
+		'Equipment Swap close dimensions'
+	);
+	let returnVir = Exe.Phy2Vir(hookAddr + 0x1A, CODE);
+	code = [
+		'8B 86 24 01 00 00',
+		'C7 40 30 00 00 00 00',
+		'8B 06 8B CE',
+		'68 F0 00 00 00',                    // height=240
+		'68 18 01 00 00',                    // width=280
+		'FF 50 04',
+		JMP(Filler(1))
+	].join(' ');
+	AutoHook(hookAddr, code, {
+		nops: 0,
+		targets: {
+			1: returnVir
+		}
+	});
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B 87 B8 00 00 00 68 9B 00 00 00 6A 51 C7 80 20 01 00 00',
+		'Equipment Swap apply-button position'
+	);
+	Exe.SetUint32(addr + 7, 220);
+	Exe.SetUint8(addr + 12, 31);
+
+	$$(_, 4.6, 'Render bg_swap.png and retain the native Swap item loop');
+	hookAddr = RedesignedEquipmentWindow.findUnique(
+		'8B 87 BC 00 00 00 83 F8 01 75 74',
+		'Equipment Swap background renderer'
+	);
+	returnAddr = RedesignedEquipmentWindow.findUnique(
+		'8B CF E8 ?? ?? ?? ?? 8B 8D 44 FE FF FF A1 8C B2 5F 01',
+		'Equipment Swap item-renderer call'
+	);
+	let parts = [
+		[
+			'60',
+			CALL(Filler(10)),
+			'8B D8',
+			'68 ' + RedesignedEquipmentWindow.P32(swapVir),
+			CALL(Filler(11)),
+			'83 C4 04',
+			'8B CB 50',
+			CALL(Filler(12)),
+			'85 C0',
+			JE(Filler(1, 1)),
+			'6A 00 50 6A 00 6A 00 8B CF',
+			CALL(Filler(13))
+		].join(' '),
+
+		[
+			' 61',
+			JMP(Filler(14))
+		].join(' ')
+	];
+	let [, swapBackgroundDone] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 0,
+		localTgts: {
+			'1,1': swapBackgroundDone
+		},
+		targets: {
+			10: 0x00A90350,
+			11: 0x00A9F030,
+			12: 0x00A8D4A0,
+			13: 0x00A1D260,
+			14: Exe.Phy2Vir(returnAddr, CODE)
+		}
+	});
+
+	hookAddr = RedesignedEquipmentWindow.findUnique(
+		'8B 8D 44 FE FF FF A1 8C B2 5F 01 8B B7 C0 00 00 00',
+		'Equipment Swap stock preview renderer'
+	);
+	returnAddr = hookAddr + 0x199; // profiled renderer cleanup at 0x007F9831
+
+	AutoHook(hookAddr, JMP(Filler(1)), {
+		nops: 0,
+		targets: {
+			1: Exe.Phy2Vir(returnAddr, CODE)
+		}
+	});
+
+	$$(_, 4.7, 'Move native Swap item sprites onto bg_swap.png and suppress stock labels');
+	if (RedesignedEquipmentWindow.RemapSwapAmmunition)
+	{
+	hookAddr = RedesignedEquipmentWindow.findUnique(
+		'53 8D 85 44 FB FF FF C6 85 43 FB FF FF 01',
+		'Equipment Swap item lookup'
+	);
+	returnVir = Exe.Phy2Vir(hookAddr + 7, CODE);
+	parts = [
+		[
+			'83 FB 01',
+			JNE(Filler(1, 1)),
+			'6A 0F',
+			JMP(Filler(2, 1))
+		].join(' '),
+
+		' 53',
+
+		[
+			' 8D 85 44 FB FF FF',
+			JMP(Filler(3))
+		].join(' ')
+	];
+	let [, swapNormalSlotTarget, swapLookupReplayTarget] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 0,
+		localTgts: {
+			'1,1': swapNormalSlotTarget,
+			'2,1': swapLookupReplayTarget
+		},
+		targets: {
+			3: returnVir
+		}
+	});
+
+	}
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'C7 85 2C FB FF FF 06 00 00 00 C7 85 30 FB FF FF FA 00 00 00 C7 85 24 FB FF FF 22 00 00 00 C7 85 28 FB FF FF AD 00 00 00',
+		'Equipment Swap row coordinate table'
+	);
+	Exe.SetUint32(addr + 6, 14);
+	Exe.SetUint32(addr + 16, 60);
+	Exe.SetUint32(addr + 26, 14);
+	Exe.SetUint32(addr + 36, 60);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'6B C0 1A 8B FB 83 E7 FC 83 C0 30',
+		'Equipment Swap lower-row spacing'
+	);
+	Exe.SetUint8(addr + 2, 0x23);
+	Exe.SetUint8(addr + 10, 0x42);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'6B C7 1A 8B CE 83 C0 30',
+		'Equipment Swap lower-row overlay spacing'
+	);
+	Exe.SetUint8(addr + 2, 0x23);
+	Exe.SetUint8(addr + 7, 0x42);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'6B C7 1A 8B CE 83 C0 3C',
+		'Equipment Swap lower-row grade-overlay spacing'
+	);
+	Exe.SetUint8(addr + 2, 0x23);
+	Exe.SetUint8(addr + 7, 0x4E);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'6A 16 FF B4 85 2C FB FF FF E8 ?? ?? ?? ??',
+		'Equipment Swap first-row position'
+	);
+	Exe.SetUint8(addr + 1, 31);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'6A 00 6A 01 50 6A 16 FF B5 38 FB FF FF',
+		'Equipment Swap first-row overlay position'
+	);
+	Exe.SetUint8(addr + 6, 31);
+
+	const labelCalls = [
+		'E8 9D EC 09 00',
+		'E8 E6 EB 09 00',
+		'E8 4F EA 09 00',
+		'E8 39 E9 09 00'
+	];
+	for (let i = 0; i < labelCalls.length; i++)
+	{
+		addr = RedesignedEquipmentWindow.findUnique(
+			labelCalls[i],
+			`Equipment Swap stock label call ${i + 1}`
+		);
+		Exe.SetHex(addr, '83 C4 1C 90 90');
+	}
+
+	$$(_, 4.8, 'Align Swap hover, click, drag, and ammunition routing');
+	hookAddr = RedesignedEquipmentWindow.findUnique(
+		'55 8B EC 56 8B C1 83 CE FF 57 8B 7D 0C',
+		'Equipment Swap hover picker'
+	);
+	parts = [
+		[
+			'53 56',
+			'8B B1 BC 00 00 00',
+			'8B 44 24 0C',
+			'83 F8 0C',
+			JL(Filler(1, 1)),
+			'83 F8 2C',
+			JL(Filler(2, 1)),
+			'83 F8 3A',
+			JL(Filler(1, 1)),
+			'83 F8 5A',
+			JGE(Filler(1, 1)),
+			'BB 01 00 00 00',
+			JMP(Filler(3, 1))
+		].join(' '),
+
+		' 33 DB',
+
+		[
+			' 8B 44 24 10',
+			'2D 1D 00 00 00',
+			'3D AE 00 00 00',
+			JA(Filler(1, 1)),
+			'33 D2 B9 23 00 00 00 F7 F1',
+			'85 DB',
+			JNE(Filler(4, 1)),
+			'85 C0',
+			JNE(Filler(5, 1)),
+			'B8 08 00 00 00',
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' 48',
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' 85 C0',
+			JNE(Filler(7, 1)),
+			'B8 09 00 00 00',
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' 83 C0 03',
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		' 5E 5B C2 08 00',
+
+		' 83 C8 FF 5E 5B C2 08 00'
+	];
+	let [,
+		swapHoverLeftTarget,
+		swapHoverYTarget,
+		swapHoverLeftLowerTarget,
+		swapHoverRightTarget,
+		swapHoverRightLowerTarget,
+		swapHoverDoneTarget,
+		swapHoverInvalidTarget
+	] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 0,
+		localTgts: {
+			'1,1': swapHoverInvalidTarget,
+			'2,1': swapHoverLeftTarget,
+			'3,1': swapHoverYTarget,
+			'4,1': swapHoverRightTarget,
+			'5,1': swapHoverLeftLowerTarget,
+			'6,1': swapHoverDoneTarget,
+			'7,1': swapHoverRightLowerTarget
+		}
+	});
+
+	hookAddr = RedesignedEquipmentWindow.findUnique(
+		'3B 7B 18 7F 7E 8D 57 EA 81 FA 81 00 00 00',
+		'Equipment Swap click-picker mapping'
+	);
+	returnAddr = RedesignedEquipmentWindow.findUnique(
+		'56 8B 75 08 8B CB 56 E8 29 00 00 00',
+		'Equipment Swap click-picker continuation'
+	);
+	parts = [
+		[
+			'8B 45 0C',
+			'83 F8 0C',
+			JL(Filler(1, 1)),
+			'83 F8 2C',
+			JL(Filler(2, 1)),
+			'83 F8 3A',
+			JL(Filler(1, 1)),
+			'83 F8 5A',
+			JGE(Filler(1, 1)),
+			'BA 01 00 00 00',
+			JMP(Filler(3, 1))
+		].join(' '),
+
+		' 33 D2',
+
+		[
+			' 8B C7',
+			'2D 1D 00 00 00',
+			'3D AE 00 00 00',
+			JA(Filler(1, 1)),
+			'52 33 D2 B9 23 00 00 00 F7 F1 5A',
+			'8B F0 85 D2',
+			JNE(Filler(4, 1)),
+			'85 F6',
+			JNE(Filler(5, 1)),
+			'BE 08 00 00 00',
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' 4E',
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' 85 F6',
+			JNE(Filler(7, 1)),
+			'BE 09 00 00 00',
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' 83 C6 03',
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		' ' + JMP(Filler(8)),
+
+		[
+			' 83 CE FF',
+			JMP(Filler(8))
+		].join(' ')
+	];
+	let [,
+		swapClickLeftTarget,
+		swapClickYTarget,
+		swapClickLeftLowerTarget,
+		swapClickRightTarget,
+		swapClickRightLowerTarget,
+		swapClickDoneTarget,
+		swapClickInvalidTarget
+	] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 0,
+		localTgts: {
+			'1,1': swapClickInvalidTarget,
+			'2,1': swapClickLeftTarget,
+			'3,1': swapClickYTarget,
+			'4,1': swapClickRightTarget,
+			'5,1': swapClickLeftLowerTarget,
+			'6,1': swapClickDoneTarget,
+			'7,1': swapClickRightLowerTarget
+		},
+		targets: {
+			8: Exe.Phy2Vir(returnAddr, CODE)
+		}
+	});
+};
+RedesignedEquipmentWindow.patchFooterControls = function(_)
+{
+	$$(_, 3.4, 'Move native Equipment action controls onto the footer baseline');
+
+	$$(_, 3.42, 'Hide the legacy Off artwork while retaining its native release event');
+	const offControlAddr = RedesignedEquipmentWindow.findUnique(
+		'8B 8E D0 00 00 00 6A 01 8B 01 FF 90 D4 00 00 00 8B 8E CC 00 00 00 6A 01 8B 01 FF 90 D4 00 00 00',
+		'Equipment native Off control visibility'
+	);
+	if (Exe.GetUint8(offControlAddr + 23) !== 1)
+		throw Error('RedesignedEquipmentWindow: Equipment native Off visibility changed');
+	Exe.SetUint8(offControlAddr + 23, 0);
+
+	const controls = [
+		{
+			pattern: '8B 8F 2C 01 00 00 68 A7 00 00 00 68 C1 00 00 00 8B 01 FF 50 10',
+			label: 'Equipment-change control'
+		},
+		{
+			pattern: '8B 8F 30 01 00 00 68 A7 00 00 00 68 EB 00 00 00 8B 01 FF 50 10',
+			label: 'Unequip-all control'
+		},
+		{
+			pattern: '8B 8F 38 01 00 00 68 A7 00 00 00 68 A0 00 00 00 8B 01 FF 50 10',
+			label: 'Apply control'
+		},
+		{
+			pattern: '8B 8F 3C 01 00 00 68 A7 00 00 00 68 DC 00 00 00 8B 01 FF 50 10',
+			label: 'Close control'
+		}
+	];
+	for (const control of controls)
+	{
+		const addr = RedesignedEquipmentWindow.findUnique(control.pattern, control.label);
+		Exe.SetUint32(addr + 7, 220);
+	}
+
+	const addr = RedesignedEquipmentWindow.findUnique(
+		'FF 35 48 49 20 01 FF 35 44 49 20 01 8B 01 FF 50 10',
+		'Equipment-ability control coordinates'
+	);
+	const yVir = Exe.GetUint32(addr + 2);
+	const yPhy = Exe.Vir2Phy(yVir);
+	if (Exe.GetUint32(yPhy) !== 0xA7)
+		throw Error('RedesignedEquipmentWindow: Equipment-ability Y coordinate changed');
+	Exe.SetUint32(yPhy, 220);
+
+	$$(_, 3.44, 'Place native Items above Cart and hide it with Cart inactive');
+	const itemsXAddr = RedesignedEquipmentWindow.findUnique(
+		'D1 FE 68 20 01 00 00 83 EE 0E 89 85 68 FF FF FF',
+		'Equipment native Items constructor X position'
+	);
+	Exe.SetHex(itemsXAddr + 7, '83 C6 1B');
+
+	const itemsAddr = RedesignedEquipmentWindow.findUnique(
+		'B8 AA 00 00 00 0F 4F C7 03 85 68 FF FF FF 50 56 FF D2',
+		'Equipment native Items constructor position'
+	);
+	if (Exe.GetUint32(itemsAddr - 16) !== 0xFFFFFFC4)
+		throw Error('RedesignedEquipmentWindow: Items constructor offset changed');
+	Exe.SetUint32(itemsAddr - 16, 0xFFFFFFBB);
+
+	const itemsLayoutAddr = RedesignedEquipmentWindow.findUnique(
+		'B9 C4 FF FF FF 8B 50 10 B8 AA 00 00 00 0F 4F C1 8B 8E D0 00 00 00 03 45 CC 50 57 FF D2',
+		'Equipment native Items primary layout position'
+	);
+	Exe.SetHex(itemsLayoutAddr,
+		'BF AB 00 00 00 8B 50 10 B8 9A 01 00 00 0F 4F C7 ' +
+		'BF A7 00 00 00 90 90 90 90');
+
+	const itemsRefreshAddr = RedesignedEquipmentWindow.findUnique(
+		'BF C4 FF FF FF 83 3D BC FF 5F 01 00 8B 01 8B 50 10 B8 AA 00 00 00 ' +
+		'0F 4F C7 03 45 D0 50 FF 75 CC FF D2',
+		'Equipment native Items refresh layout position'
+	);
+	Exe.SetHex(itemsRefreshAddr,
+		'BF AB 00 00 00 83 3D BC FF 5F 01 00 8B 01 8B 50 10 B8 9A 01 00 00 ' +
+		'0F 4F C7 BF A7 00 00 00 50 57');
+};
+RedesignedEquipmentWindow.patchEquipmentHitTest = function(_)
+{
+	$$(_, 4.1, 'Align native item hit testing with the renewal slots');
+	let addr = RedesignedEquipmentWindow.findUnique(
+		'8B 98 F4 00 00 00 8D 43 11 3B C8 0F 8C D4 00 00 00',
+		'Equipment hit-test upper origin'
+	);
+	Exe.SetUint8(addr + 8, 0x1D);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8D 83 91 00 00 00 3B C8 0F 8F C6 00 00 00',
+		'Equipment hit-test lower bound'
+	);
+	Exe.SetUint32(addr + 2, 0xC6);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B 7D 0C 83 FF 06 7C 05 83 FF 6A 7C 15 81 FF AA 00 00 00',
+		'Equipment hit-test column bounds'
+	);
+	Exe.SetUint8(addr + 5, 56);
+	Exe.SetUint8(addr + 10, 86);
+	Exe.SetUint32(addr + 15, 225);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B 45 F0 8B 40 14 83 E8 06 3B F8 7D 45',
+		'Equipment right-slot hit-test bound'
+	);
+	Exe.SetUint8(addr + 8, 25);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'2B CB B8 4F EC C4 4E 83 E9 11 F7 E9 B8 61 60 60 60 C1 FA 03',
+		'Equipment hit-test row divisor'
+	);
+	Exe.SetUint32(addr + 3, 0x3A83A83B);
+	Exe.SetUint8(addr + 9, 0x1D);
+
+	$$(_, 4.2, 'Align native click and double-click hit testing with the renewal slots');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B 98 F4 00 00 00 8D 43 11 3B C8 0F 8C CC 00 00 00',
+		'Equipment click-picker upper origin'
+	);
+	Exe.SetUint8(addr + 8, 0x1D);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8D 83 91 00 00 00 3B C8 0F 8F BE 00 00 00',
+		'Equipment click-picker lower bound'
+	);
+	Exe.SetUint32(addr + 2, 0xC6);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B 7D 0C 83 FF 06 7C 05 83 FF 1E 7C 0B 8D 87 05 FF FF FF 83 F8 17 77 47',
+		'Equipment click-picker column bounds'
+	);
+	Exe.SetUint8(addr + 5, 58);
+	Exe.SetUint8(addr + 10, 82);
+	Exe.SetUint32(addr + 15, 0xFFFFFF1D);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'2B CB B8 4F EC C4 4E 83 E9 11 F7 E9 B8 BF BF 8C 82',
+		'Equipment click-picker row divisor'
+	);
+	Exe.SetUint32(addr + 3, 0x3A83A83B);
+	Exe.SetUint8(addr + 9, 0x1D);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'B8 BF BF 8C 82 C1 FA 03 8B F2 C1 EE 1F 03 F2 F7 EF 03 D7 C1 FA 07',
+		'Equipment click-picker side divisor'
+	);
+	Exe.SetUint32(addr + 1, 0x905A3864);
+};
+
+RedesignedEquipmentWindow.patchLeftRailSelectors = function(_)
+{
+	$$(_, 4.3, 'Route renewal rail and footer actions through native Equipment events');
+	const hookAddr = RedesignedEquipmentWindow.findUnique(
+		'55 8B EC 6A FF 68 C6 12 EB 00 64 A1 00 00 00 00 50 81 EC 08 01 00 00',
+		'Equipment left-button handler'
+	);
+	const returnVir = Exe.Phy2Vir(hookAddr + 5, CODE);
+	const eventVir = 0x008BF7D0;
+	const parts = [
+		[
+			'83 B9 B4 00 00 00 00',            // local character only
+			JNE(Filler(6)),
+			'83 B9 F0 00 00 00 00',            // General mode for footer actions
+			JNE(Filler(1, 1)),
+			'8B 44 24 08',                      // local y
+			'3D BF 00 00 00',
+			JL(Filler(1, 1)),
+			'3D D7 00 00 00',
+			JGE(Filler(6)),
+			'8B 44 24 04',                      // local x
+			'3D 90 00 00 00',
+			JL(Filler(6)),
+			'3D A7 00 00 00',
+			JL(Filler(3, 1)),                    // Falcon/Peco cell
+			'3D AB 00 00 00',
+			JL(Filler(6)),
+			'3D C3 00 00 00',
+			JGE(Filler(6)),
+			'83 3D BC FF 5F 01 00',            // Cart cell is active
+			JG(Filler(4, 1)),
+			JMP(Filler(6))
+		].join(' '),
+
+		[
+			' 83 7C 24 04 22',                 // x < 34: renewal rail
+			JAE(Filler(6)),
+			'8B 44 24 08 83 F8 11',            // y >= 17
+			JL(Filler(6)),
+			'83 F8 55',                         // y < 85
+			JGE(Filler(6)),
+			'83 F8 33',                         // first rail cell is General
+			JL(Filler(2, 1)),
+			'B8 01 00 00 00',                  // Costume index
+			JMP(Filler(5, 1))
+		].join(' '),
+
+		[
+			' 33 C0',                           // General index
+			JMP(Filler(5, 1))
+		].join(' '),
+
+		[
+			' A1 B4 B2 5F 01',                 // native option state
+			'A8 30',                            // Falcon or Peco/Riding
+			JNE(Filler(4, 1)),
+			JMP(Filler(6))
+		].join(' '),
+
+		[
+			' 6A 00 6A 00 6A 00 68 F8 00 00 00 6A 06 6A 00',
+			CALL(Filler(10)),                   // stock click 0x06, control 0xF8
+			'33 C0 C2 08 00'
+		].join(' '),
+
+		[
+			' 6A 00 6A 00 6A 00 50 6A 16 6A 00',
+			CALL(Filler(10)),                   // stock mode notification
+			'33 C0 C2 08 00'
+		].join(' '),
+
+		[
+			' 55 8B EC 6A FF',                 // replay the stock prologue
+			JMP(Filler(11))
+		].join(' ')
+	];
+	const [,
+		railTarget,
+		generalTarget,
+		mountTarget,
+		releaseTarget,
+		railDispatchTarget,
+		stockTarget
+	] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 0,
+		localTgts: {
+			'1,1': railTarget,
+			'2,1': generalTarget,
+			'3,1': mountTarget,
+			'4,1': releaseTarget,
+			'5,1': railDispatchTarget,
+			6: stockTarget
+		},
+		targets: {
+			10: eventVir,
+			11: returnVir
+		}
+	});
+
+	RedesignedEquipmentWindow.patchLeftRailHoverLabels(_);
+};
+RedesignedEquipmentWindow.patchLeftRailHoverLabels = function(_)
+{
+	$$(_, 4.4, 'Show native cursor-relative rail and footer action balloons');
+	const generalTextVir = RedesignedEquipmentWindow.writeCString('General Equipment');
+	const costumeTextVir = RedesignedEquipmentWindow.writeCString('Costume Equipment');
+	const falconTextVir = RedesignedEquipmentWindow.writeCString('Release Falcon');
+	const pecoTextVir = RedesignedEquipmentWindow.writeCString('Release Pecopeco');
+	const cartTextVir = RedesignedEquipmentWindow.writeCString('Release Cart');
+	const hookAddr = RedesignedEquipmentWindow.findUnique(
+		'55 8B EC 6A FF 68 BF 13 EB 00 64 A1 00 00 00 00 50 81 EC 40 02 00 00',
+		'Equipment mouse-move handler'
+	);
+	const returnVir = Exe.Phy2Vir(hookAddr + 5, CODE);
+	const parts = [
+		[
+			'60',
+			'8B 44 24 28',                       // local mouse y after PUSHAD
+			'3D BF 00 00 00',
+			JL(Filler(1, 1)),
+			'3D D7 00 00 00',
+			JGE(Filler(7)),
+			'83 B9 B4 00 00 00 00',             // local character only
+			JNE(Filler(7)),
+			'83 B9 F0 00 00 00 00',             // General mode only
+			JNE(Filler(7)),
+			'8B 54 24 24',                       // local mouse x
+			'81 FA 90 00 00 00',
+			JL(Filler(7)),                    // ammunition retains item tooltip
+			'81 FA A7 00 00 00',
+			JL(Filler(3, 1)),                    // Falcon/Peco cell
+			'81 FA AB 00 00 00',
+			JL(Filler(7)),
+			'81 FA C3 00 00 00',
+			JGE(Filler(7)),
+			'83 3D BC FF 5F 01 00',             // Cart is present
+			JLE(Filler(7)),
+			'BF ' + RedesignedEquipmentWindow.P32(cartTextVir),
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' 83 7C 24 24 22',                  // x < 34 after PUSHAD
+			JAE(Filler(7)),
+			'83 F8 11',                          // y >= 17
+			JL(Filler(7)),
+			'83 F8 55',                          // y < 85
+			JGE(Filler(7)),
+			'83 F8 33',                          // first rail cell is General
+			JL(Filler(2, 1)),
+			'BF ' + RedesignedEquipmentWindow.P32(costumeTextVir),
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' BF ' + RedesignedEquipmentWindow.P32(generalTextVir),
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' A1 B4 B2 5F 01',                  // native option state
+			'A8 10',                             // Falcon
+			JNE(Filler(4, 1)),
+			'A8 20',                             // Peco/Riding
+			JNE(Filler(5, 1)),
+			JMP(Filler(7))
+		].join(' '),
+
+		[
+			' BF ' + RedesignedEquipmentWindow.P32(falconTextVir),
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' BF ' + RedesignedEquipmentWindow.P32(pecoTextVir),
+			JMP(Filler(6, 1))
+		].join(' '),
+
+		[
+			' 8B 44 24 24',                     // local mouse x
+			'83 E8 10',                          // native control-tooltip offset
+			'8B 5C 24 28',                      // local mouse y
+			'83 EB 0D',                          // native control-tooltip offset
+			'8B F1',                             // preserve Equipment receiver
+			'83 EC 08',
+			'89 04 24 89 5C 24 04',
+			'8D 04 24 8D 5C 24 04 53 50 8B CE',
+			CALL(Filler(10)),                    // convert to screen coordinates
+			'8B 04 24 8B 5C 24 04',
+			'8B 0D 3C 33 21 01',                // global tooltip manager
+			'6A 01 6A 01 6A FF 53 50 57',      // native control-tooltip flags
+			CALL(Filler(11)),
+			'83 C4 08'
+		].join(' '),
+
+		[
+			' 61',
+			'55 8B EC 6A FF',                    // replay the stock prologue
+			JMP(Filler(12))
+		].join(' ')
+	];
+	const [,
+		railTarget,
+		generalTarget,
+		mountTarget,
+		falconTarget,
+		pecoTarget,
+		tooltipTarget,
+		originalTarget
+	] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 0,
+		localTgts: {
+			'1,1': railTarget,
+			'2,1': generalTarget,
+			'3,1': mountTarget,
+			'4,1': falconTarget,
+			'5,1': pecoTarget,
+			'6,1': tooltipTarget,
+			7: originalTarget
+		},
+		targets: {
+			10: 0x00A1EF70,
+			11: 0x00A753D0,
+			12: returnVir
+		}
+	});
+};
+RedesignedEquipmentWindow.writeCString = function(text)
+{
+	const [phy, vir] = Exe.Allocate(text.length + 1, 0x10);
+	for (let i = 0; i < text.length; i++)
+		Exe.SetUint8(phy + i, text.charCodeAt(i) & 0xFF);
+	Exe.SetUint8(phy + text.length, 0);
+	return vir;
+};
+
+RedesignedEquipmentWindow.redirect = function(_, spec)
+{
+	const label = `RedesignedEquipmentWindow: ${spec.label}`;
+	$$(_, 1.1, `Find the legacy ${spec.label} resource`);
+	const oldVir = Exe.FindText(spec.legacy, CASE_INSENSITIVE);
+	if (oldVir < 0)
+		throw Error(`${label}: legacy resource string not found`);
+
+	const newVir = spec.replacementVir ?? RedesignedEquipmentWindow.writeCString(spec.replacement);
+	const refs = new Set();
+	for (const opcode of spec.opcodes)
+	{
+		const pattern = opcode + ' ' + RedesignedEquipmentWindow.P32(oldVir);
+		for (const addr of Exe.FindHexN(pattern))
+			refs.add(addr);
+	}
+
+	if (refs.size === 0)
+		throw Error(`${label}: no immediate resource references found`);
+
+	$$(_, 1.2, `Redirect ${refs.size} immediate resource reference(s)`);
+	for (const addr of refs)
+	{
+		const opcode = Exe.GetUint8(addr);
+		if (opcode !== 0x68 && (opcode < 0xB8 || opcode > 0xBF))
+			throw Error(`${label}: unexpected immediate opcode at ${addr.toHex(true)}`);
+		if (Exe.GetUint32(addr + 1) !== oldVir)
+			throw Error(`${label}: legacy pointer changed before patch`);
+		Exe.SetUint32(addr + 1, newVir);
+	}
+};
+
+RedesignedEquipmentWindow.onApplied = function()
+{
+	if (Warp.TestMode || !Exe.GetSavedInput('$copyRedesignedEquipmentAssets'))
+		return;
+
+	const source = Warp.Path + RedesignedEquipmentWindow.AssetPath;
+	const clientDir = System.DirPath(Warp.TgtExe);
+	const target = clientDir + '/' + RedesignedEquipmentWindow.TargetPath;
+	if (!System.MkDir(target))
+		throw Error(`RedesignedEquipmentWindow: unable to create ${target}`);
+
+	for (const file of RedesignedEquipmentWindow.Assets)
+	{
+		if (!System.Copy(source + '/' + file, target + '/' + file, true))
+			throw Error(`RedesignedEquipmentWindow: unable to copy ${file}`);
+	}
+};
+
+RedesignedEquipmentWindow.validate = function()
+{
+	if (Exe.BuildDate !== RedesignedEquipmentWindow.BuildDate)
+		return false;
+
+	for (const patch of RedesignedEquipmentWindow.conflicts)
+	{
+		try
+		{
+			if (Warp.GetPatchState(patch))
+				return false;
+		}
+		catch (e)
+		{
+			// Older WARP runtimes may not expose the optional patch-state query.
+		}
+	}
+
+	const prefix = RedesignedEquipmentWindow.uiPrefix();
+	return Exe.FindText(prefix + '\\basic_interface\\equipwin_bg.bmp', CASE_INSENSITIVE) > 0 &&
+		Exe.FindText(prefix + '\\basic_interface\\equipwin_bg2.bmp', CASE_INSENSITIVE) > 0;
+};
