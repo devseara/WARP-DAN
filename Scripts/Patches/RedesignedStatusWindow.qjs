@@ -1,0 +1,2303 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-08-10                                             *
+*   Last Modified : 2026-08-10                                             *
+*                                                                          *
+*   Description   : Backports the supplied renewal Alt+A Status and Trait  *
+*                   assets to the 2025-07-16 client, stages Status/Trait  *
+*                   changes with minus/OK/Cancel controls, and commits via *
+*                   the client's native server-authoritative packet path.  *
+*                                                                          *
+\**************************************************************************/
+
+RedesignedStatusWindow = function(_)
+{
+	const name = 'RedesignedStatusWindow';
+	$$(_, 1, 'Install the asset-backed renewal Alt+A Status window');
+
+	if (RedesignedStatusWindow.isPatchSelected('HideTraitStatusButton'))
+		throw Error(`${name}: disable HideTraitStatusButton first`);
+
+	const assetPrefix = RedesignedStatusWindow.uiPrefix() +
+		'\\uirenewal\\statusui\\';
+	const bgStatusVir = RedesignedStatusWindow.writeCString(
+		assetPrefix + 'bg_status_body.bmp'
+	);
+	const bgTraitVir = RedesignedStatusWindow.writeCString(
+		assetPrefix + 'bg_trait_body.bmp'
+	);
+	const tabStatsOutVir = RedesignedStatusWindow.writeCString(
+		assetPrefix + 'tab_stats_out.png'
+	);
+	const tabStatsPressVir = RedesignedStatusWindow.writeCString(
+		assetPrefix + 'tab_stats_press.png'
+	);
+	const tabTraitOutVir = RedesignedStatusWindow.writeCString(
+		assetPrefix + 'tab_trait_out.png'
+	);
+	const tabTraitPressVir = RedesignedStatusWindow.writeCString(
+		assetPrefix + 'tab_trait_press.png'
+	);
+	const menuStatsVir = RedesignedStatusWindow.writeCString(
+		assetPrefix + 'menu_stats.png'
+	);
+	const menuTraitVir = RedesignedStatusWindow.writeCString(
+		assetPrefix + 'menu_trait.png'
+	);
+	const minusVir = RedesignedStatusWindow.writeCString(
+		assetPrefix + 'm.png'
+	);
+	const okPaths = ['ok_out.png', 'ok_over.png', 'ok_press.png', 'ok_off.png']
+		.map(file => RedesignedStatusWindow.writeCString(assetPrefix + file));
+	const cancelPaths = [
+		'cancel_out.png', 'cancel_over.png',
+		'cancel_press.png', 'cancel_off.png'
+	].map(file => RedesignedStatusWindow.writeCString(assetPrefix + file));
+	const tabStatVir = RedesignedStatusWindow.writeCString('Stat');
+	const tabTraitVir = RedesignedStatusWindow.writeCString('Trait');
+	const tabEmptyVir = RedesignedStatusWindow.writeCString('');
+	const topTooltipStrings = [];
+	for (const text of [
+		'Physical Damage', 'Physical Defense', 'Vitality Defense',
+		'Magical Damage', 'Magical Defense', 'Intelligence Defense',
+		'Hit Rate', 'Flee Rate', 'Perfect Dodge',
+		'Critical Rate', 'Critical Damage', 'Attack Speed', 'Move Speed'
+	])
+		topTooltipStrings.push(RedesignedStatusWindow.writeCString(text));
+	const state = RedesignedStatusWindow.guard(
+		'runtime state',
+		() => RedesignedStatusWindow.allocateRuntimeState()
+	);
+	try
+	{
+		if (RedesignedStatusWindow.isPatchSelected('DisableTraitStatusButton') ||
+			CACHE.get('RedesignedStatusWindow.DisableTraitSelected'))
+			Exe.SetUint8(state.disableTraitPhy, 1);
+	}
+	catch (e)
+	{
+		// Older WARP hosts may not expose a readable missing-key value.
+	}
+	CACHE.put('RedesignedStatusWindow.State', state);
+	const totalCostVir = RedesignedStatusWindow.guard(
+		'Status total-cost cave',
+		() => RedesignedStatusWindow.buildTotalCost(state)
+	);
+	const traitTotalVir = RedesignedStatusWindow.guard(
+		'Trait total-cost cave',
+		() => RedesignedStatusWindow.buildTraitTotal(state)
+	);
+	const maxParameterVir = RedesignedStatusWindow.guard(
+		'max-parameter cave',
+		() => RedesignedStatusWindow.buildMaxParameter()
+	);
+	const statusPacketVir = RedesignedStatusWindow.guard(
+		'native Status packet sender',
+		() => RedesignedStatusWindow.buildStatusPacketSender()
+	);
+	const traitPacketVir = RedesignedStatusWindow.guard(
+		'native Trait packet sender',
+		() => RedesignedStatusWindow.buildTraitPacketSender()
+	);
+	const statusRendererVir = RedesignedStatusWindow.guard(
+		'Status renderer cave',
+		() => RedesignedStatusWindow.buildStatusRenderer(
+			state, totalCostVir
+		)
+	);
+	const traitRendererVir = RedesignedStatusWindow.guard(
+		'Trait renderer cave',
+		() => RedesignedStatusWindow.buildTraitRenderer(
+			state, traitTotalVir
+		)
+	);
+	const titleAlphaVir = RedesignedStatusWindow.guard(
+		'native title alpha repair',
+		() => RedesignedStatusWindow.buildOpaqueRegionRepair(17, 2, 60, 15)
+	);
+	const dynamicAlphaVir = RedesignedStatusWindow.guard(
+		'native Trait value alpha repair',
+		() => RedesignedStatusWindow.buildDynamicOpaqueRegionRepair()
+	);
+	const controlsVisibleVir = RedesignedStatusWindow.guard(
+		'control visibility cave',
+		() => RedesignedStatusWindow.buildControlVisibility(state)
+	);
+
+	RedesignedStatusWindow.redirect(_, {
+		label: 'Status background',
+		legacy: RedesignedStatusWindow.uiPrefix() +
+			'\\statuswnd\\w_statwin_bg.bmp',
+		replacementVir: bgStatusVir,
+		opcodes: ['B8']
+	});
+	RedesignedStatusWindow.redirect(_, {
+		label: 'Trait background',
+		legacy: RedesignedStatusWindow.uiPrefix() +
+			'\\statuswnd\\w_ex_statwin_bg.bmp',
+		replacementVir: bgTraitVir,
+		opcodes: ['BF', '68']
+	});
+	RedesignedStatusWindow.redirect(_, {
+		label: 'Trait tab normal',
+		legacy: RedesignedStatusWindow.uiPrefix() +
+			'\\statuswnd\\expand_on_normal.bmp',
+		replacementVir: tabTraitOutVir,
+		opcodes: ['68', 'BB']
+	});
+	RedesignedStatusWindow.redirect(_, {
+		label: 'Trait tab pressed',
+		legacy: RedesignedStatusWindow.uiPrefix() +
+			'\\statuswnd\\expand_on_press.bmp',
+		replacementVir: tabTraitPressVir,
+		opcodes: ['68', 'BF']
+	});
+	RedesignedStatusWindow.redirect(_, {
+		label: 'Stats tab normal',
+		legacy: RedesignedStatusWindow.uiPrefix() +
+			'\\statuswnd\\expand_off_normal.bmp',
+		replacementVir: tabStatsOutVir,
+		opcodes: ['BB']
+	});
+	RedesignedStatusWindow.redirect(_, {
+		label: 'Stats tab pressed',
+		legacy: RedesignedStatusWindow.uiPrefix() +
+			'\\statuswnd\\expand_off_press.bmp',
+		replacementVir: tabStatsPressVir,
+		opcodes: ['BF']
+	});
+
+	RedesignedStatusWindow.guard(
+		'increment resource',
+		() => RedesignedStatusWindow.patchIncrementResource(
+			_, assetPrefix + 'p.png'
+		)
+	);
+	RedesignedStatusWindow.guard(
+		'rail renderer',
+		() => RedesignedStatusWindow.patchRender(
+			_, menuStatsVir, menuTraitVir, titleAlphaVir
+		)
+	);
+	RedesignedStatusWindow.guard(
+		'Status renderer geometry',
+		() => RedesignedStatusWindow.patchRenderGeometry(
+			_, state, statusRendererVir, traitRendererVir, dynamicAlphaVir
+		)
+	);
+	RedesignedStatusWindow.guard(
+		'native control geometry',
+		() => RedesignedStatusWindow.patchControlGeometry(_)
+	);
+	RedesignedStatusWindow.guard(
+		'staged controls',
+		() => RedesignedStatusWindow.patchStagedControls(
+			_, state, totalCostVir, traitTotalVir, maxParameterVir,
+			statusPacketVir, traitPacketVir, {
+				minus: [minusVir, minusVir, minusVir, minusVir],
+				ok: okPaths,
+				cancel: cancelPaths
+			}
+		)
+	);
+	RedesignedStatusWindow.guard(
+		'tab behavior',
+		() => RedesignedStatusWindow.patchTabBehavior(
+			_, state, controlsVisibleVir, tabEmptyVir
+		)
+	);
+	RedesignedStatusWindow.guard(
+		'tooltips',
+		() => RedesignedStatusWindow.patchTooltips(
+			_, topTooltipStrings, tabStatVir, tabTraitVir
+		)
+	);
+
+	if (!Warp.TestMode)
+		Exe.GetUserInput(
+			'$copyRedesignedStatusAssets',
+			D_Bool,
+			'Copy Status UI Assets',
+			'Copy the redesigned Status UI assets into the target client data folder?',
+			true
+		);
+
+	$$(_, 6, 'Stage base stats and commit through native server requests');
+	return true;
+};
+
+RedesignedStatusWindow.BuildDate = 20250716;
+
+RedesignedStatusWindow.AssetPath = 'Images/BohStatusUI';
+
+RedesignedStatusWindow.TargetPath = function()
+{
+	return 'data/texture/' + RedesignedStatusWindow.uiPrefix() +
+		'/uirenewal/statusui';
+};
+
+RedesignedStatusWindow.Assets = [
+	'bg_status_body.bmp',
+	'bg_trait_body.bmp',
+	'menu_stats.png',
+	'menu_trait.png',
+	'm.png',
+	'p.png',
+	'ok_out.png',
+	'ok_over.png',
+	'ok_press.png',
+	'ok_off.png',
+	'cancel_out.png',
+	'cancel_over.png',
+	'cancel_press.png',
+	'cancel_off.png',
+	'tab_stats_out.png',
+	'tab_stats_press.png',
+	'tab_trait_out.png',
+	'tab_trait_press.png',
+];
+
+RedesignedStatusWindow.uiPrefix = function()
+{
+	return String.fromCharCode(
+		0xC0, 0xAF, 0xC0, 0xFA, 0xC0, 0xCE, 0xC5, 0xCD,
+		0xC6, 0xE4, 0xC0, 0xCC, 0xBD, 0xBA
+	);
+};
+
+RedesignedStatusWindow.isPatchSelected = function(patch)
+{
+	try
+	{
+		return Warp.GetPatchState(patch);
+	}
+	catch (e)
+	{
+		return false;
+	}
+};
+
+RedesignedStatusWindow.guard = function(label, action)
+{
+	try
+	{
+		return action();
+	}
+	catch (e)
+	{
+		throw Error('RedesignedStatusWindow ' + label + ': ' + String(e));
+	}
+};
+RedesignedStatusWindow.P32 = function(value)
+{
+	const bytes = [
+		value & 0xFF,
+		(value >>> 8) & 0xFF,
+		(value >>> 16) & 0xFF,
+		(value >>> 24) & 0xFF
+	];
+	return bytes.map(byte => byte.toString(16).padStart(2, '0'))
+		.join(' ').toUpperCase();
+};
+
+RedesignedStatusWindow.findUnique = function(pattern, label, from, to)
+{
+	const first = from ?? 0;
+	const last = to ?? Exe.FileSize;
+	const matches = Exe.FindHexN(pattern, first, last);
+	if (matches.length !== 1)
+		throw Error(
+			`RedesignedStatusWindow: ${label}: expected one match, found ${matches.length}`
+		);
+	return matches[0];
+};
+
+RedesignedStatusWindow.writeCString = function(text)
+{
+	const [phy, vir] = Exe.Allocate(text.length + 1, 0x10);
+	for (let i = 0; i < text.length; i++)
+		Exe.SetUint8(phy + i, text.charCodeAt(i) & 0xFF);
+	Exe.SetUint8(phy + text.length, 0);
+	return vir;
+};
+
+RedesignedStatusWindow.bytesToHex = function(bytes)
+{
+	return bytes.map(value =>
+		(value & 0xFF).toString(16).padStart(2, '0')
+	).join(' ');
+};
+
+RedesignedStatusWindow.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+				bytes.push(value & 0xFF);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error('RedesignedStatusWindow: duplicate label ' + name);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			bytes.push(opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === 'string' &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(
+						'RedesignedStatusWindow: unresolved label ' + fixup.target
+					);
+				const targetVir = typeof fixup.target === 'string'
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				const nextVir = baseVir + fixup.pos + 4;
+				put32(out, fixup.pos, targetVir - nextVir);
+			}
+			return RedesignedStatusWindow.bytesToHex(out);
+		}
+	};
+};
+
+RedesignedStatusWindow.allocateCode = function(a)
+{
+	const [phy, vir] = Exe.Allocate(a.bytes.length, 0x10);
+	Exe.SetHex(phy, a.finish(vir));
+	return vir;
+};
+
+RedesignedStatusWindow.pushImm = function(a, value)
+{
+	a.emit(0x68);
+	a.dword(value);
+};
+
+RedesignedStatusWindow.allocateRuntimeState = function()
+{
+	const [phy, vir] = Exe.Allocate(116, 0x10);
+	for (let offset = 0; offset < 116; offset += 4)
+		Exe.SetUint32(phy + offset, 0);
+	return {
+		pendingVir: vir,
+		traitPendingVir: vir + 24,
+		controlsVir: vir + 48,
+		traitControlsVir: vir + 80,
+		disableTraitPhy: phy + 112,
+		disableTraitVir: vir + 112
+	};
+};
+
+RedesignedStatusWindow.buildOpaqueRegionRepair = function(x, y, width, height)
+{
+	const a = RedesignedStatusWindow.asm();
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1);        // Preserve / ESI=UIWindow
+	a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0);        // Surface
+	a.jcc(0x84, 'done');
+	a.emit(0x8B, 0x78, 0x18, 0x85, 0xFF);        // Pixel buffer
+	a.jcc(0x84, 'done');
+	a.emit(0x8B, 0x58, 0x04);                    // Surface width
+	a.emit(0xBA); a.dword(y);
+	a.emit(0x0F, 0xAF, 0xD3);
+	a.emit(0x81, 0xC2); a.dword(x);
+	a.emit(0x8D, 0x3C, 0x97);
+	a.emit(0xBA); a.dword(height);
+	a.label('row');
+	a.emit(0xB9); a.dword(width);
+	a.emit(0x8B, 0xC7);
+	a.label('pixel');
+	a.emit(0xC6, 0x40, 0x03, 0xFF);              // Restore opaque alpha
+	a.emit(0x83, 0xC0, 0x04, 0x49);
+	a.jcc(0x85, 'pixel');
+	a.emit(0x8D, 0x3C, 0x9F, 0x4A);
+	a.jcc(0x85, 'row');
+	a.label('done');
+	a.emit(0x5F, 0x5E, 0x5B, 0xC3);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+
+RedesignedStatusWindow.buildDynamicOpaqueRegionRepair = function()
+{
+	const a = RedesignedStatusWindow.asm();
+	// thiscall UIWindow*, stdcall(x, y, width, height). This is the dynamic
+	// counterpart of buildOpaqueRegionRepair for stock Trait TextOut calls.
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x71, 0x24, 0x85, 0xF6);
+	a.jcc(0x84, 'done');
+	a.emit(0x8B, 0x7E, 0x18, 0x85, 0xFF);
+	a.jcc(0x84, 'done');
+	a.emit(0x8B, 0x5E, 0x04);
+	a.emit(0x8B, 0x55, 0x0C, 0x0F, 0xAF, 0xD3);
+	a.emit(0x03, 0x55, 0x08, 0x8D, 0x3C, 0x97);
+	a.emit(0x8B, 0x55, 0x14, 0x85, 0xD2);
+	a.jcc(0x8E, 'done');
+	a.label('row');
+	a.emit(0x8B, 0x4D, 0x10, 0x85, 0xC9);
+	a.jcc(0x8E, 'done');
+	a.emit(0x8B, 0xC7);
+	a.label('pixel');
+	a.emit(0xC6, 0x40, 0x03, 0xFF);
+	a.emit(0x83, 0xC0, 0x04, 0x49);
+	a.jcc(0x85, 'pixel');
+	a.emit(0x8D, 0x3C, 0x9F, 0x4A);
+	a.jcc(0x85, 'row');
+	a.label('done');
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x10, 0x00);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+RedesignedStatusWindow.buildMaxParameter = function()
+{
+	const a = RedesignedStatusWindow.asm();
+	let rangeIndex = 0;
+	const emitRange = function(first, last, target)
+	{
+		const next = 'range_next_' + rangeIndex++;
+		a.emit(0x81, 0xFA); a.dword(first);
+		a.jcc(0x82, next);
+		a.emit(0x81, 0xFA); a.dword(last);
+		a.jcc(0x86, target);
+		a.label(next);
+	};
+	const emitEqual = function(value, target)
+	{
+		a.emit(0x81, 0xFA); a.dword(value);
+		a.jcc(0x84, target);
+	};
+
+	// SP_CLASS is the server-provided client job id.  These groups mirror
+	// BanquetOfHeroes player.conf and pc_maxparameter(): baby precedence,
+	// then summoner/extended/fourth/third, then the 99-point default.
+	RedesignedStatusWindow.pushImm(a, 0x13);
+	a.emit(0xB9); a.dword(0x015FA3C0);
+	a.call(0x0089D340);
+	a.emit(0x8B, 0xD0);
+
+	emitRange(4096, 4112, 'cap_117');
+	emitEqual(4191, 'cap_117');
+	emitRange(4241, 4242, 'cap_117');
+	emitEqual(4244, 'cap_117');
+
+	emitRange(4023, 4045, 'cap_80');
+	emitEqual(4220, 'cap_80');
+	emitRange(4222, 4229, 'cap_80');
+	emitEqual(4238, 'cap_80');
+
+	emitRange(4054, 4087, 'cap_130');
+	emitEqual(4190, 'cap_130');
+	emitRange(4211, 4212, 'cap_130');
+	emitEqual(4215, 'cap_130');
+	emitEqual(4218, 'cap_130');
+	emitRange(4239, 4240, 'cap_130');
+	emitEqual(4243, 'cap_130');
+	emitRange(4252, 4264, 'cap_130');
+	emitRange(4278, 4281, 'cap_130');
+	emitRange(4302, 4308, 'cap_130');
+	emitEqual(4316, 'cap_130');
+	emitRange(4332, 4344, 'cap_130');
+
+	a.emit(0xB8); a.dword(99);
+	a.emit(0xC3);
+	a.label('cap_80');
+	a.emit(0xB8); a.dword(80);
+	a.emit(0xC3);
+	a.label('cap_117');
+	a.emit(0xB8); a.dword(117);
+	a.emit(0xC3);
+	a.label('cap_130');
+	a.emit(0xB8); a.dword(130);
+	a.emit(0xC3);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+RedesignedStatusWindow.buildTotalCost = function(state)
+{
+	const a = RedesignedStatusWindow.asm();
+	a.emit(0x53, 0x56, 0x57, 0x55);
+	a.emit(0x33, 0xFF, 0x33, 0xF6);
+	a.label('stat');
+	a.emit(0x8B, 0x0C, 0xB5); a.dword(state.pendingVir);
+	a.emit(0x8B, 0x1C, 0xB5); a.dword(0x015FBA24);
+	a.label('point');
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, 'next');
+	a.emit(0x83, 0xFB, 0x64);
+	a.jcc(0x8D, 'high');
+	a.emit(0x8B, 0xC3, 0x48, 0x99);
+	a.emit(0xBD); a.dword(10);
+	a.emit(0xF7, 0xFD, 0x83, 0xC0, 0x02);
+	a.jmp('add');
+	a.label('high');
+	a.emit(0x8B, 0xC3, 0x83, 0xE8, 0x64, 0x99);
+	a.emit(0xBD); a.dword(5);
+	a.emit(0xF7, 0xFD, 0xC1, 0xE0, 0x02, 0x83, 0xC0, 0x10);
+	a.label('add');
+	a.emit(0x03, 0xF8, 0x43, 0x49);
+	a.jmp('point');
+	a.label('next');
+	a.emit(0x46, 0x83, 0xFE, 0x06);
+	a.jcc(0x8C, 'stat');
+	a.emit(0x8B, 0xC7, 0x5D, 0x5F, 0x5E, 0x5B, 0xC3);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+
+RedesignedStatusWindow.buildTraitTotal = function(state)
+{
+	const a = RedesignedStatusWindow.asm();
+	a.emit(0x33, 0xC0);
+	for (let i = 0; i < 6; i++)
+	{
+		a.emit(0x03, 0x05);
+		a.dword(state.traitPendingVir + i * 4);
+	}
+	a.emit(0xC3);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+
+RedesignedStatusWindow.buildTraitRenderer = function(state, traitTotalVir)
+{
+	const a = RedesignedStatusWindow.asm();
+	const formatOneVir = RedesignedStatusWindow.writeCString('%d');
+	const formatBonusVir = RedesignedStatusWindow.writeCString('+%d');
+	const bufferOffset = 0xC0;
+	const drawTextVir = 0x00A25A70;
+	const drawTextRightVir = 0x00A27B50;
+	const nativeFontIndex = 1;
+	const nativeValueHeight = 14;
+	const nativeCompactHeight = 12;
+	const traitStatusIds = [0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 0xE0];
+	const bonusValues = [
+		0x01602360, 0x01602364, 0x01602368,
+		0x0160236C, 0x01602370, 0x01602374
+	];
+	const requirementValues = [
+		0x01602378, 0x01602380, 0x01602388,
+		0x01602390, 0x01602398, 0x016023A0
+	];
+	let alphaRegionId = 0;
+
+	const format = function(valueCount, formatVir)
+	{
+		RedesignedStatusWindow.pushImm(a, formatVir);
+		a.emit(0x8D, 0x45, bufferOffset, 0x50);
+		a.call(0x00529850);
+		a.emit(0x83, 0xC4, (valueCount + 2) * 4);
+	};
+	const makeOpaque = function(x, y, width, height)
+	{
+		const id = alphaRegionId++;
+		const row = 'trait_alpha_row_' + id;
+		const pixel = 'trait_alpha_pixel_' + id;
+		const done = 'trait_alpha_done_' + id;
+		a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0);
+		a.jcc(0x84, done);
+		a.emit(0x8B, 0x78, 0x18, 0x85, 0xFF);
+		a.jcc(0x84, done);
+		a.emit(0x8B, 0x58, 0x04);
+		a.emit(0xBA); a.dword(y);
+		a.emit(0x0F, 0xAF, 0xD3);
+		a.emit(0x81, 0xC2); a.dword(x);
+		a.emit(0x8D, 0x3C, 0x97);
+		a.emit(0xBA); a.dword(height);
+		a.label(row);
+		a.emit(0xB9); a.dword(width);
+		a.emit(0x8B, 0xC7);
+		a.label(pixel);
+		a.emit(0xC6, 0x40, 0x03, 0xFF);
+		a.emit(0x83, 0xC0, 0x04, 0x49);
+		a.jcc(0x85, pixel);
+		a.emit(0x8D, 0x3C, 0x9F, 0x4A);
+		a.jcc(0x85, row);
+		a.label(done);
+	};
+	const drawLeft = function(x, y, width, height)
+	{
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, 0x00000000);
+		RedesignedStatusWindow.pushImm(a, height);
+		RedesignedStatusWindow.pushImm(a, nativeFontIndex);
+		RedesignedStatusWindow.pushImm(a, 0);
+		a.emit(0x8D, 0x45, bufferOffset, 0x50);
+		RedesignedStatusWindow.pushImm(a, y);
+		RedesignedStatusWindow.pushImm(a, x);
+		a.emit(0x8B, 0xCE);
+		a.call(drawTextVir);
+		makeOpaque(x, y, width, height);
+	};
+	const drawRight = function(x, y, width, height)
+	{
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, 0x00000000);
+		RedesignedStatusWindow.pushImm(a, height);
+		RedesignedStatusWindow.pushImm(a, nativeFontIndex);
+		RedesignedStatusWindow.pushImm(a, 0);
+		a.emit(0x8D, 0x45, bufferOffset, 0x50);
+		RedesignedStatusWindow.pushImm(a, y);
+		RedesignedStatusWindow.pushImm(a, x);
+		a.emit(0x8B, 0xCE);
+		a.call(drawTextRightVir);
+		makeOpaque(x - width, y, width, height);
+	};
+
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x60, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);
+	for (let i = 0; i < 6; i++)
+	{
+		RedesignedStatusWindow.pushImm(a, traitStatusIds[i]);
+		a.emit(0xB9); a.dword(0x015FA3C0);
+		a.call(0x0089D340);
+		a.emit(0x03, 0x05); a.dword(state.traitPendingVir + i * 4);
+		a.emit(0x50);
+		format(1, formatOneVir);
+		drawLeft(85, 126 + i * 16, 32, nativeValueHeight);
+
+		const bonusDone = 'trait_bonus_done_' + i;
+		a.emit(0xA1); a.dword(bonusValues[i]);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x8E, bonusDone);
+		a.emit(0x50);
+		format(1, formatBonusVir);
+		drawLeft(124, 126 + i * 16, 32, nativeValueHeight);
+		a.label(bonusDone);
+
+		const reqZero = 'trait_req_zero_' + i;
+		const reqReady = 'trait_req_ready_' + i;
+		RedesignedStatusWindow.pushImm(a, traitStatusIds[i]);
+		a.emit(0xB9); a.dword(0x015FA3C0);
+		a.call(0x0089D340);
+		a.emit(0x03, 0x05); a.dword(state.traitPendingVir + i * 4);
+		a.emit(0x83, 0xF8, 0x6E);
+		a.jcc(0x8D, reqZero);
+		a.emit(0xA1); a.dword(requirementValues[i]);
+		a.jmp(reqReady);
+		a.label(reqZero);
+		a.emit(0x33, 0xC0);
+		a.label(reqReady);
+		a.emit(0x50);
+		format(1, formatOneVir);
+		drawRight(174, 128 + i * 16, 32, nativeCompactHeight);
+	}
+
+	RedesignedStatusWindow.pushImm(a, 0xE7);
+	a.emit(0xB9); a.dword(0x015FA3C0);
+	a.call(0x0089D340);
+	a.emit(0x8B, 0xD8);
+	a.call(traitTotalVir);
+	a.emit(0x2B, 0xD8, 0x85, 0xDB);
+	a.jcc(0x89, 'trait_points_ready');
+	a.emit(0x33, 0xDB);
+	a.label('trait_points_ready');
+	a.emit(0x53);
+	format(1, formatOneVir);
+	drawRight(265, 152, 40, nativeCompactHeight);
+
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+RedesignedStatusWindow.buildStatusRenderer = function(state, totalCostVir)
+{
+	const a = RedesignedStatusWindow.asm();
+	const formatOneVir = RedesignedStatusWindow.writeCString('%d');
+	const formatBonusVir = RedesignedStatusWindow.writeCString('+%d');
+	const formatPairVir = RedesignedStatusWindow.writeCString('%d + %d');
+	const bufferOffset = 0xC0;
+	const drawTextVir = 0x00A25A70;
+	const drawTextRightVir = 0x00A27B50;
+	const nativeFontIndex = 1;
+	const nativeValueHeight = 14;
+	const nativeCompactHeight = 12;
+	// The asset underlines are at y=38,59,80,101. Keep each native glyph
+	// bottom adjacent to its own line by following the same 21-pixel cadence.
+	const derivedRows = [27, 48, 69, 90];
+	const baseValues = [
+		0x015FBA24, 0x015FBA28, 0x015FBA2C,
+		0x015FBA30, 0x015FBA34, 0x015FBA38
+	];
+	const bonusValues = [
+		0x015FBA0C, 0x015FBA10, 0x015FBA14,
+		0x015FBA18, 0x015FBA1C, 0x015FBA20
+	];
+	let alphaRegionId = 0;
+
+	const format = function(valueCount, formatVir)
+	{
+		RedesignedStatusWindow.pushImm(a, formatVir);
+		a.emit(0x8D, 0x45, bufferOffset, 0x50);
+		a.call(0x00529850);
+		a.emit(0x83, 0xC4, (valueCount + 2) * 4);
+	};
+	const makeOpaque = function(x, y, width, height)
+	{
+		const id = alphaRegionId++;
+		const row = 'alpha_row_' + id;
+		const pixel = 'alpha_pixel_' + id;
+		const done = 'alpha_done_' + id;
+
+		// UIWindow::TextOutA uses GDI on a 32-bit DIB. GDI writes the RGB
+		// coverage correctly but clears the destination alpha byte. The Status
+		// value cells are opaque, so restore alpha exactly as the proven renewed
+		// EXP renderer does after drawing its dynamic level text.
+		a.emit(0x8B, 0x46, 0x24);                  // MOV EAX,[ESI+surface]
+		a.emit(0x85, 0xC0);                        // TEST EAX,EAX
+		a.jcc(0x84, done);
+		a.emit(0x8B, 0x78, 0x18);                  // MOV EDI,[EAX+pixels]
+		a.emit(0x85, 0xFF);                        // TEST EDI,EDI
+		a.jcc(0x84, done);
+		a.emit(0x8B, 0x58, 0x04);                  // MOV EBX,[EAX+width]
+		a.emit(0xBA); a.dword(y);                  // MOV EDX,y
+		a.emit(0x0F, 0xAF, 0xD3);                  // IMUL EDX,EBX
+		a.emit(0x81, 0xC2); a.dword(x);            // ADD EDX,x
+		a.emit(0x8D, 0x3C, 0x97);                  // LEA EDI,[EDI+EDX*4]
+		a.emit(0xBA); a.dword(height);             // MOV EDX,height
+		a.label(row);
+		a.emit(0xB9); a.dword(width);              // MOV ECX,width
+		a.emit(0x8B, 0xC7);                        // MOV EAX,EDI
+		a.label(pixel);
+		a.emit(0xC6, 0x40, 0x03, 0xFF);            // alpha=255
+		a.emit(0x83, 0xC0, 0x04, 0x49);            // next pixel / DEC ECX
+		a.jcc(0x85, pixel);
+		a.emit(0x8D, 0x3C, 0x9F, 0x4A);            // next row / DEC EDX
+		a.jcc(0x85, row);
+		a.label(done);
+	};
+	const drawLeft = function(x, y, width, height)
+	{
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, 0x00000000);
+		RedesignedStatusWindow.pushImm(a, height);
+		RedesignedStatusWindow.pushImm(a, nativeFontIndex);
+		RedesignedStatusWindow.pushImm(a, 0);
+		a.emit(0x8D, 0x45, bufferOffset, 0x50);
+		RedesignedStatusWindow.pushImm(a, y);
+		RedesignedStatusWindow.pushImm(a, x);
+		a.emit(0x8B, 0xCE);
+		a.call(drawTextVir);
+		makeOpaque(x, y, width, height);
+	};
+	const drawRight = function(x, y, width, height)
+	{
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, 0x00000000);
+		RedesignedStatusWindow.pushImm(a, height);
+		RedesignedStatusWindow.pushImm(a, nativeFontIndex);
+		RedesignedStatusWindow.pushImm(a, 0);
+		a.emit(0x8D, 0x45, bufferOffset, 0x50);
+		RedesignedStatusWindow.pushImm(a, y);
+		RedesignedStatusWindow.pushImm(a, x);
+		a.emit(0x8B, 0xCE);
+		a.call(drawTextRightVir);
+		makeOpaque(x - width, y, width, height);
+	};
+	const emitRequirement = function(index)
+	{
+		const high = 'req_high_' + index;
+		const ready = 'req_ready_' + index;
+		a.emit(0xA1); a.dword(baseValues[index]);
+		a.emit(0x03, 0x05); a.dword(state.pendingVir + index * 4);
+		a.emit(0x83, 0xF8, 0x64);
+		a.jcc(0x8D, high);
+		a.emit(0x48, 0x99, 0xB9); a.dword(10);
+		a.emit(0xF7, 0xF9, 0x83, 0xC0, 0x02);
+		a.jmp(ready);
+		a.label(high);
+		a.emit(0x83, 0xE8, 0x64, 0x99, 0xB9); a.dword(5);
+		a.emit(0xF7, 0xF9, 0xC1, 0xE0, 0x02, 0x83, 0xC0, 0x10);
+		a.label(ready);
+		a.emit(0x50);
+		format(1, formatOneVir);
+	};
+
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x60, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);
+
+	for (let i = 0; i < 6; i++)
+	{
+		a.emit(0xA1); a.dword(baseValues[i]);
+		a.emit(0x03, 0x05); a.dword(state.pendingVir + i * 4);
+		a.emit(0x50);
+		format(1, formatOneVir);
+		drawLeft(85, 126 + i * 16, 32, nativeValueHeight);
+
+		a.emit(0xFF, 0x35); a.dword(bonusValues[i]);
+		format(1, formatBonusVir);
+		drawLeft(124, 126 + i * 16, 32, nativeValueHeight);
+
+		emitRequirement(i);
+		drawRight(174, 128 + i * 16, 32, nativeCompactHeight);
+	}
+
+	a.call(totalCostVir);
+	a.emit(0x8B, 0x15); a.dword(0x015FB9F4);
+	a.emit(0x2B, 0xD0, 0x85, 0xD2);
+	a.jcc(0x89, 'points_ready');
+	a.emit(0x33, 0xD2);
+	a.label('points_ready');
+	a.emit(0x52);
+	format(1, formatOneVir);
+	drawRight(265, 152, 40, nativeCompactHeight);
+
+	const drawMemory = function(address, x, y, width)
+	{
+		a.emit(0xFF, 0x35); a.dword(address);
+		format(1, formatOneVir);
+		drawRight(x, y, width, nativeValueHeight);
+	};
+
+	const drawPair = function(first, second, x, y)
+	{
+		a.emit(0xFF, 0x35); a.dword(second);
+		a.emit(0xFF, 0x35); a.dword(first);
+		format(2, formatPairVir);
+		drawRight(x, y, 56, nativeValueHeight);
+	};
+
+	drawPair(0x015FBA58, 0x015FBA6C, 147, derivedRows[0]);
+	drawMemory(0x015FBA64, 207, derivedRows[0], 28);
+	drawMemory(0x015FBA68, 267, derivedRows[0], 28);
+	drawPair(0x015FBA74, 0x015FBA70, 147, derivedRows[1]);
+	drawMemory(0x015FBA5C, 207, derivedRows[1], 28);
+	drawMemory(0x015FBA78, 267, derivedRows[1], 28);
+	// Match the Physical Damage convention: every lower value is right
+	// aligned to the end of its underline, never centered in the cell.
+	drawMemory(0x015FBA7C, 88, derivedRows[2], 28);
+	drawMemory(0x015FBA80, 206, derivedRows[2], 28);
+	drawMemory(0x015FBA88, 263, derivedRows[2], 28);
+	drawMemory(0x015FBA84, 88, derivedRows[3], 28);
+
+	RedesignedStatusWindow.pushImm(a, 0xE6);
+	a.emit(0xB9); a.dword(0x015FA3C0);
+	a.call(0x0089D340);
+	a.emit(0x50);
+	format(1, formatOneVir);
+	drawRight(147, derivedRows[3], 28, nativeValueHeight);
+
+	a.emit(0xB8); a.dword(2000);
+	a.emit(0x2B, 0x05); a.dword(0x015FBA54);
+	a.emit(0x99, 0xB9); a.dword(10);
+	a.emit(0xF7, 0xF9, 0x50);
+	format(1, formatOneVir);
+	drawRight(206, derivedRows[3], 28, nativeValueHeight);
+
+	RedesignedStatusWindow.pushImm(a, 0);
+	a.emit(0xB9); a.dword(0x015FA3C0);
+	a.call(0x0089D340);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, 'speed_zero');
+	a.emit(0x8B, 0xC8, 0xB8); a.dword(10000);
+	a.emit(0x33, 0xD2, 0xF7, 0xF1);
+	a.jmp('speed_ready');
+	a.label('speed_zero');
+	a.emit(0x33, 0xC0);
+	a.label('speed_ready');
+	a.emit(0x50);
+	format(1, formatOneVir);
+	drawRight(263, derivedRows[3], 28, nativeValueHeight);
+
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+RedesignedStatusWindow.buildControlVisibility = function(state)
+{
+	const a = RedesignedStatusWindow.asm();
+	const positions = [
+		[207, 126], [207, 142], [207, 158],
+		[207, 174], [207, 190], [207, 206],
+		[224, 190], [224, 210]
+	];
+	const emitPage = function(page, controlsVir)
+	{
+		for (let i = 0; i < positions.length; i++)
+		{
+			const hidden = page + '_hidden_' + i;
+			const move = page + '_move_' + i;
+			const next = page + '_next_' + i;
+			a.emit(0x8B, 0x0D); a.dword(controlsVir + i * 4);
+			a.emit(0x85, 0xC9);
+			a.jcc(0x84, next);
+			a.emit(0x80, 0xBE, 0xFC, 0x00, 0x00, 0x00, 0x01);
+			a.jcc(page === 'status' ? 0x84 : 0x85, hidden);
+			RedesignedStatusWindow.pushImm(a, positions[i][1]);
+			RedesignedStatusWindow.pushImm(a, positions[i][0]);
+			a.jmp(move);
+			a.label(hidden);
+			RedesignedStatusWindow.pushImm(a, -100);
+			RedesignedStatusWindow.pushImm(a, -100);
+			a.label(move);
+			a.emit(0x8B, 0x01, 0xFF, 0x50, 0x10);
+			a.label(next);
+		}
+	};
+	a.emit(0x53, 0x56, 0x8B, 0xF1);
+	emitPage('status', state.controlsVir);
+	emitPage('trait', state.traitControlsVir);
+	a.emit(0x5E, 0x5B, 0xC3);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+
+RedesignedStatusWindow.redirect = function(_, spec)
+{
+	const label = `RedesignedStatusWindow: ${spec.label}`;
+	$$(_, 1.1, `Redirect ${spec.label}`);
+	const oldVir = Exe.FindText(spec.legacy, CASE_INSENSITIVE);
+	if (oldVir < 0)
+		throw Error(`${label}: legacy resource string not found`);
+
+	const refs = new Set();
+	for (const opcode of spec.opcodes)
+	{
+		const pattern = opcode + ' ' + RedesignedStatusWindow.P32(oldVir);
+		for (const addr of Exe.FindHexN(pattern, 0, Exe.FileSize))
+			refs.add(addr);
+	}
+	if (refs.size === 0)
+		throw Error(`${label}: no immediate resource references found`);
+
+	for (const addr of refs)
+	{
+		const opcode = Exe.GetUint8(addr);
+		if (opcode !== 0x68 && (opcode < 0xB8 || opcode > 0xBF))
+			throw Error(`${label}: unexpected immediate opcode at ${addr.toHex(true)}`);
+		if (Exe.GetUint32(addr + 1) !== oldVir)
+			throw Error(`${label}: resource pointer changed before patch`);
+		Exe.SetUint32(addr + 1, spec.replacementVir);
+	}
+};
+
+RedesignedStatusWindow.patchIncrementResource = function(_, replacement)
+{
+	$$(_, 1.2, 'Redirect the Status-only increment control sprite');
+	const legacy = RedesignedStatusWindow.uiPrefix() +
+		'\\basic_interface\\arw_right.bmp';
+	if (replacement.length > legacy.length)
+		throw Error('RedesignedStatusWindow: increment resource path is too long');
+	const oldVir = Exe.FindText(legacy, CASE_INSENSITIVE);
+	if (oldVir < 0)
+		throw Error('RedesignedStatusWindow: native stat increment resource not found');
+
+	const refs = Exe.FindHexN(
+		'0F 10 05 ' + RedesignedStatusWindow.P32(oldVir),
+		Exe.Vir2Phy(0x008AED10, CODE),
+		Exe.Vir2Phy(0x008AF150, CODE)
+	);
+	if (refs.length !== 2)
+		throw Error(
+			'RedesignedStatusWindow: expected two increment resource loads, found ' +
+			refs.length
+		);
+
+	Exe.SetText(Exe.Vir2Phy(oldVir), replacement + '\x00');
+};
+
+RedesignedStatusWindow.patchRender = function(
+	_, menuStatsVir, menuTraitVir, titleAlphaVir
+)
+{
+	$$(_, 2.1, 'Draw the selected tab rail and isolate the active page renderer');
+	const hookAddr = RedesignedStatusWindow.findUnique(
+		'A1 24 BA 5F 01 BE 17 00 00 00 89 45 C0',
+		'Status value renderer entry'
+	);
+	const returnVir = Exe.Phy2Vir(hookAddr + 5, CODE);
+	const parts = [
+		[
+			'60',
+			'BF ' + RedesignedStatusWindow.P32(menuStatsVir),
+			'80 BB FC 00 00 00 01',
+			JNE(Filler(1, 1)),
+			'BF ' + RedesignedStatusWindow.P32(menuTraitVir)
+		].join(' '),
+
+		[
+			' 57',
+			CALL(Filler(10)),
+			'83 C4 04',
+			'8B CE 50', // A8D4A0 this = native image manager preserved in ESI
+			CALL(Filler(11)),
+			'85 C0',
+			JE(Filler(2, 1)),
+			'6A 00 50 6A 11 6A 00 8B CB',
+			CALL(Filler(12))
+		].join(' '),
+
+		[
+			' 8B CB',
+			CALL(Filler(15)),
+			'61',
+			'80 BB FC 00 00 00 01',
+			JE(Filler(3, 1)),
+			'A1 24 BA 5F 01',
+			JMP(Filler(13))
+		].join(' '),
+
+		' ' + JMP(Filler(14))
+	];
+	const [, drawTarget, doneTarget, traitTarget] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 0,
+		localTgts: {
+			'1,1': drawTarget,
+			'2,1': doneTarget,
+			'3,1': traitTarget
+		},
+		targets: {
+			10: 0x00A9F030,
+			11: 0x00A8D4A0,
+			12: 0x00A1D260,
+			13: returnVir,
+			14: 0x008B6D68,
+			15: titleAlphaVir
+		}
+	});
+};
+
+RedesignedStatusWindow.createCoordinateAdjuster = function(
+	targetVir, deltaX, deltaY, color
+)
+{
+	const parts = [];
+	if (deltaX !== 0)
+		parts.push('81 44 24 04 ' + RedesignedStatusWindow.P32(deltaX));
+	if (deltaY !== 0)
+		parts.push('81 44 24 08 ' + RedesignedStatusWindow.P32(deltaY));
+	if (color !== undefined)
+		parts.push('C7 44 24 1C ' + RedesignedStatusWindow.P32(color));
+	parts.push(JMP(Filler(1)));
+	const code = parts.join(' ');
+	const [, wrapperVir] = AutoHook(null, code, {
+		targets: {1: targetVir}
+	});
+	return wrapperVir;
+};
+
+RedesignedStatusWindow.createYAdjuster = function(targetVir, delta, color)
+{
+	return RedesignedStatusWindow.createCoordinateAdjuster(
+		targetVir, 0, delta, color
+	);
+};
+
+RedesignedStatusWindow.createOpaqueCoordinateAdjuster = function(
+	targetVir, alphaVir, deltaX, deltaY, color,
+	regionWidth, regionHeight, rightAligned, argumentBytes
+)
+{
+	const a = RedesignedStatusWindow.asm();
+	const argumentCount = argumentBytes / 4;
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C);
+	a.emit(0x89, 0x4D, 0xFC);
+	a.emit(0x8B, 0x45, 0x08);
+	if (deltaX !== 0)
+	{
+		a.emit(0x05);
+		a.dword(deltaX);
+	}
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x45, 0x0C);
+	if (deltaY !== 0)
+	{
+		a.emit(0x05);
+		a.dword(deltaY);
+	}
+	a.emit(0x89, 0x45, 0xF4);
+	for (let index = argumentCount - 1; index >= 0; index--)
+	{
+		if (index === 0)
+			a.emit(0xFF, 0x75, 0xF8);
+		else if (index === 1)
+			a.emit(0xFF, 0x75, 0xF4);
+		else if (index === 6 && color !== undefined)
+			RedesignedStatusWindow.pushImm(a, color);
+		else
+			a.emit(0xFF, 0x75, 0x08 + index * 4);
+	}
+	a.emit(0x8B, 0x4D, 0xFC);
+	a.call(targetVir);
+	a.emit(0x50);
+	RedesignedStatusWindow.pushImm(a, regionHeight);
+	RedesignedStatusWindow.pushImm(a, regionWidth);
+	a.emit(0xFF, 0x75, 0xF4);
+	a.emit(0x8B, 0x45, 0xF8);
+	if (rightAligned)
+	{
+		a.emit(0x2D);
+		a.dword(regionWidth);
+	}
+	a.emit(0x50, 0x8B, 0x4D, 0xFC);
+	a.call(alphaVir);
+	a.emit(0x58, 0x8B, 0xE5, 0x5D, 0xC2);
+	a.emit(argumentBytes & 0xFF, (argumentBytes >>> 8) & 0xFF);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+
+RedesignedStatusWindow.redirectCall = function(
+	callVir, expectedTarget, replacementTarget, label
+)
+{
+	const callPhy = Exe.Vir2Phy(callVir, CODE);
+	if (callPhy < 0 || Exe.GetUint8(callPhy) !== 0xE8)
+		throw Error(`RedesignedStatusWindow: ${label}: CALL opcode changed`);
+	const current = callVir + 5 + Exe.GetInt32(callPhy + 1);
+	if (current !== expectedTarget)
+		throw Error(
+			`RedesignedStatusWindow: ${label}: expected ${expectedTarget.toHex(true)}, got ${current.toHex(true)}`
+		);
+	Exe.SetCALL(callPhy, replacementTarget);
+};
+
+RedesignedStatusWindow.patchPush = function(vir, expected, replacement, label)
+{
+	const phy = Exe.Vir2Phy(vir, CODE);
+	const opcode = Exe.GetUint8(phy);
+	if (opcode === 0x6A)
+	{
+		if ((Exe.GetUint8(phy + 1) & 0xFF) !== (expected & 0xFF) ||
+			replacement < -128 || replacement > 127)
+			throw Error(`RedesignedStatusWindow: ${label}: imm8 changed or overflowed`);
+		Exe.SetUint8(phy + 1, replacement & 0xFF);
+		return;
+	}
+	if (opcode === 0x68)
+	{
+		if (Exe.GetUint32(phy + 1) !== (expected >>> 0))
+			throw Error(`RedesignedStatusWindow: ${label}: imm32 changed`);
+		Exe.SetUint32(phy + 1, replacement >>> 0);
+		return;
+	}
+	throw Error(`RedesignedStatusWindow: ${label}: expected PUSH immediate`);
+};
+
+RedesignedStatusWindow.patchRenderGeometry = function(
+	_, state, statusRendererVir, traitRendererVir, dynamicAlphaVir
+)
+{
+	$$(_, 2.2, 'Render opaque projected Status values and aligned Trait values');
+	const drawText = 0x00A25A70;
+	const drawTextRight = 0x00A27B50;
+	const textColor = 0;
+	const [, noTextVir] = AutoHook(null, 'C2 24 00', {});
+	const [, noRightVir] = AutoHook(null, 'C2 20 00', {});
+
+	const rightDark = RedesignedStatusWindow.createOpaqueCoordinateAdjuster(
+		drawTextRight, dynamicAlphaVir, 0, 0, textColor,
+		56, 14, true, 0x20
+	);
+
+	for (const callVir of [
+		0x008B67E9, 0x008B684B, 0x008B6895, 0x008B68ED, 0x008B6934
+	])
+		RedesignedStatusWindow.redirectCall(
+			callVir, drawText, noTextVir, 'stock Status base value'
+		);
+	for (const callVir of [
+		0x008B69E8, 0x008B6A4D, 0x008B6AA7, 0x008B6AFB,
+		0x008B6B4F, 0x008B6BA9, 0x008B6C03, 0x008B6C5D,
+		0x008B6CC8, 0x008B6D1C, 0x008B6D63
+	])
+		RedesignedStatusWindow.redirectCall(
+			callVir, drawTextRight, noRightVir, 'stock Status value'
+		);
+
+	for (const callVir of [0x008B6F89, 0x008B7045, 0x008B7089])
+		RedesignedStatusWindow.redirectCall(
+			callVir, drawText, noTextVir, 'stock Trait projected value'
+		);
+	for (const callVir of [0x008B6FDE, 0x008B733F])
+		RedesignedStatusWindow.redirectCall(
+			callVir, drawTextRight, noRightVir, 'stock Trait projected value'
+		);
+	for (const callVir of [
+		0x008B710F, 0x008B716A, 0x008B71C5, 0x008B7220,
+		0x008B7282, 0x008B72E4
+	])
+		RedesignedStatusWindow.redirectCall(
+			callVir, drawTextRight, rightDark, 'Trait derived value'
+		);
+
+	for (const [vir, expected, value, label] of [
+		[0x008B6F87, 0x24, 85, 'Trait base column'],
+		[0x008B7041, 0x31, 124, 'Trait bonus column'],
+		[0x008B7087, 0x36, 124, 'Trait bonus wide column'],
+		[0x008B7103, 143, 35, 'P.Atk y'],
+		[0x008B7108, 189, 141, 'P.Atk x'],
+		[0x008B715E, 159, 58, 'S.Matk y'],
+		[0x008B7163, 189, 141, 'S.Matk x'],
+		[0x008B71B9, 175, 81, 'H.Plus y'],
+		[0x008B71BE, 189, 251, 'H.Plus x'],
+		[0x008B7214, 191, 81, 'C.Rate y'],
+		[0x008B7219, 189, 141, 'C.Rate x'],
+		[0x008B7276, 143, 35, 'Res y'],
+		[0x008B727B, 275, 251, 'Res x'],
+		[0x008B72D8, 159, 58, 'Mres y'],
+		[0x008B72DD, 275, 251, 'Mres x'],
+		[0x008B7333, 207, 162, 'Trait point y'],
+		[0x008B7338, 275, 268, 'Trait point x']
+	])
+		RedesignedStatusWindow.patchPush(vir, expected, value, label);
+
+	let hookAddr = RedesignedStatusWindow.findUnique(
+		'83 3D 98 C1 59 01 00 74 2C',
+		'projected Status renderer'
+	);
+	let returnVir = Exe.Phy2Vir(hookAddr + 7, CODE);
+	RedesignedStatusWindow.installHook(
+		hookAddr,
+		7,
+		[
+			'60 8B CB',
+			CALL(Filler(10)),
+			'61 83 3D 98 C1 59 01 00',
+			JMP(Filler(11))
+		].join(' '),
+		{10: statusRendererVir, 11: returnVir},
+		'projected Status renderer'
+	);
+
+	hookAddr = RedesignedStatusWindow.findUnique(
+		'A1 60 23 60 01 8B 0D 7C 23 60 01',
+		'projected Trait renderer',
+		Exe.Vir2Phy(0x008B6D68, CODE),
+		Exe.Vir2Phy(0x008B6E00, CODE)
+	);
+	returnVir = Exe.Phy2Vir(hookAddr + 5, CODE);
+	RedesignedStatusWindow.installHook(
+		hookAddr,
+		5,
+		[
+			'60 8B CB',
+			CALL(Filler(10)),
+			'61 A1 60 23 60 01',
+			JMP(Filler(11))
+		].join(' '),
+		{10: traitRendererVir, 11: returnVir},
+		'projected Trait renderer'
+	);
+};
+RedesignedStatusWindow.installHook = function(
+	hookAddr, consumed, code, targets, label
+)
+{
+	if (consumed < 5)
+		throw Error(`RedesignedStatusWindow: ${label}: hook consumes fewer than five bytes`);
+	AutoHook(hookAddr, code, {
+		nops: consumed - 5,
+		targets
+	});
+};
+
+RedesignedStatusWindow.patchControlGeometry = function(_)
+{
+	$$(_, 3.1, 'Move native stat increment controls and hide the inactive page');
+	let hookAddr = RedesignedStatusWindow.findUnique(
+		'FF 75 88 6A 4E 8B 01 FF 50 10',
+		'base increment initial position'
+	);
+	let returnVir = Exe.Phy2Vir(hookAddr + 10, CODE);
+	RedesignedStatusWindow.installHook(
+		hookAddr,
+		10,
+		[
+			'8B 55 88 83 C2 66 52 68 BC 00 00 00 8B 01 FF 50 10',
+			JMP(Filler(1))
+		].join(' '),
+		{1: returnVir},
+		'base increment initial position'
+	);
+
+	hookAddr = RedesignedStatusWindow.findUnique(
+		'FF 75 8C 6A 4E 8B 01 FF 50 10',
+		'Trait increment initial position'
+	);
+	returnVir = Exe.Phy2Vir(hookAddr + 10, CODE);
+	RedesignedStatusWindow.installHook(
+		hookAddr,
+		10,
+		['6A 9C 6A 9C 8B 01 FF 50 10', JMP(Filler(1))].join(' '),
+		{1: returnVir},
+		'Trait increment initial position'
+	);
+
+	const refreshFrom = Exe.Vir2Phy(0x008CB823, CODE);
+	const refreshTo = Exe.Vir2Phy(0x008CB963, CODE);
+	hookAddr = RedesignedStatusWindow.findUnique(
+		'8B 00 85 C0 74 0D 39 05 F4 B9 5F 01',
+		'base increment visibility gate',
+		refreshFrom,
+		refreshTo
+	);
+	RedesignedStatusWindow.installHook(
+		hookAddr,
+		6,
+		[
+			'80 BE FC 00 00 00 01',
+			JE(Filler(1)),
+			'8B 00 85 C0',
+			JE(Filler(1)),
+			JMP(Filler(2))
+		].join(' '),
+		{1: 0x008CB883, 2: 0x008CB876},
+		'base increment visibility gate'
+	);
+
+	hookAddr = RedesignedStatusWindow.findUnique(
+		'57 6A 4E EB 04 6A 9C 6A 9C 8B 0B',
+		'base increment active position',
+		refreshFrom,
+		refreshTo
+	);
+	RedesignedStatusWindow.installHook(
+		hookAddr,
+		5,
+		['8D 57 66 52 68 BC 00 00 00', JMP(Filler(1))].join(' '),
+		{1: 0x008CB887},
+		'base increment active position'
+	);
+
+	hookAddr = RedesignedStatusWindow.findUnique(
+		'83 3B 00 8B 0C 3E 8B 01 75 0C 83 7B 04 00 75 06 ' +
+		'6A 9C 6A 9C EB 03 52 6A 4E FF 50 10',
+		'Trait increment refresh block',
+		refreshFrom,
+		refreshTo
+	);
+	returnVir = Exe.Phy2Vir(hookAddr + 28, CODE);
+	const traitMoveParts = [
+		[
+			'8B 0C 3E 85 C9',
+			JE(Filler(10)),
+			'8B 01 80 BE FC 00 00 00 01',
+			JNE(Filler(1, 1)),
+			'83 3B 00',
+			JNE(Filler(2, 1)),
+			'83 7B 04 00',
+			JNE(Filler(2, 1))
+		].join(' '),
+		[' 6A 9C 6A 9C', JMP(Filler(3, 1))].join(' '),
+		' 8D 52 ED 52 68 BC 00 00 00',
+		[' FF 50 10', JMP(Filler(10))].join(' ')
+	];
+	const [, traitHiddenTarget, traitShownTarget, traitMoveTarget] =
+		MapAddrs(traitMoveParts);
+	AutoHook(hookAddr, traitMoveParts, {
+		nops: 23,
+		localTgts: {
+			'1,1': traitHiddenTarget,
+			'2,1': traitShownTarget,
+			'3,1': traitMoveTarget
+		},
+		targets: {10: returnVir}
+	});
+};
+
+RedesignedStatusWindow.buildStatusPacketSender = function()
+{
+	const a = RedesignedStatusWindow.asm();
+	// stdcall(statusId, amount). This is the exact CZ_REQUEST_ACT2 packet:
+	// uint16 0x00BB, uint16 status id, uint8 amount. Use the client's native
+	// packet object and send method so encryption, buffering, and socket order
+	// remain stock while avoiding the UI event handler's one-request gate.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x56);
+	a.emit(0x66, 0xC7, 0x45, 0xF8, 0xBB, 0x00);
+	a.emit(0x8B, 0x45, 0x08, 0x66, 0x89, 0x45, 0xFA);
+	a.emit(0x8B, 0x45, 0x0C, 0x88, 0x45, 0xFC);
+	a.call(0x00C14D60);
+	a.emit(0x8B, 0xF0, 0x85, 0xF6);
+	a.jcc(0x84, 'failed');
+	a.emit(0x8D, 0x45, 0xF8, 0x50);
+	RedesignedStatusWindow.pushImm(a, 5);
+	a.emit(0x8B, 0xCE);
+	a.call(0x00C14920);
+	a.emit(0xB8); a.dword(1);
+	a.jmp('done');
+	a.label('failed');
+	a.emit(0x33, 0xC0);
+	a.label('done');
+	a.emit(0x5E, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+RedesignedStatusWindow.buildTraitPacketSender = function()
+{
+	const a = RedesignedStatusWindow.asm();
+	// stdcall(statusId, amount). Exact PACKET_CZ_ADVANCED_STATUS_CHANGE:
+	// int16 0x0B24, int16 SP_POW..SP_CRT, int16 positive amount.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x56);
+	a.emit(0x66, 0xC7, 0x45, 0xF8, 0x24, 0x0B);
+	a.emit(0x8B, 0x45, 0x08, 0x66, 0x89, 0x45, 0xFA);
+	a.emit(0x8B, 0x45, 0x0C, 0x66, 0x89, 0x45, 0xFC);
+	a.call(0x00C14D60);
+	a.emit(0x8B, 0xF0, 0x85, 0xF6);
+	a.jcc(0x84, 'failed');
+	a.emit(0x8D, 0x45, 0xF8, 0x50);
+	RedesignedStatusWindow.pushImm(a, 6);
+	a.emit(0x8B, 0xCE);
+	a.call(0x00C14920);
+	a.emit(0xB8); a.dword(1);
+	a.jmp('done');
+	a.label('failed');
+	a.emit(0x33, 0xC0);
+	a.label('done');
+	a.emit(0x5E, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+
+RedesignedStatusWindow.buildStagedDispatch = function(
+	state, totalCostVir, traitTotalVir, maxParameterVir,
+	statusPacketVir, traitPacketVir
+)
+{
+	const a = RedesignedStatusWindow.asm();
+	const nativePlusIds = [0xCD, 0xCE, 0xCF, 0xD0, 0xD2, 0xD1];
+	const statusIds = [0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12];
+	const traitNativePlusIds = [0x227, 0x228, 0x229, 0x22A, 0x22B, 0x22C];
+	const traitStatusIds = [0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 0xE0];
+	a.emit(0x53, 0x56, 0x57, 0x55, 0x8B, 0xF1, 0x8B, 0xD8, 0x8B, 0xEA);
+
+	a.emit(0x85, 0xED);
+	a.jcc(0x84, 'identity_ready');
+	for (let i = 0; i < 6; i++)
+	{
+		const next = 'status_native_child_next_' + i;
+		a.emit(0x8B, 0x86); a.dword(0xB4 + i * 4);
+		a.emit(0x3B, 0xE8);
+		a.jcc(0x85, next);
+		a.emit(0xBB); a.dword(nativePlusIds[i]);
+		a.jmp('identity_ready');
+		a.label(next);
+	}
+	for (let i = 0; i < 6; i++)
+	{
+		const next = 'trait_native_child_next_' + i;
+		a.emit(0x8B, 0x86); a.dword(0xE0 + i * 4);
+		a.emit(0x3B, 0xE8);
+		a.jcc(0x85, next);
+		a.emit(0xBB); a.dword(traitNativePlusIds[i]);
+		a.jmp('identity_ready');
+		a.label(next);
+	}
+	for (let i = 0; i < 8; i++)
+	{
+		const next = 'status_custom_child_next_' + i;
+		a.emit(0xA1); a.dword(state.controlsVir + i * 4);
+		a.emit(0x3B, 0xE8);
+		a.jcc(0x85, next);
+		a.emit(0xBB); a.dword(0x7F0 + i);
+		a.jmp('identity_ready');
+		a.label(next);
+	}
+	for (let i = 0; i < 8; i++)
+	{
+		const next = 'trait_custom_child_next_' + i;
+		a.emit(0xA1); a.dword(state.traitControlsVir + i * 4);
+		a.emit(0x3B, 0xE8);
+		a.jcc(0x85, next);
+		a.emit(0xBB); a.dword(0x800 + i);
+		a.jmp('identity_ready');
+		a.label(next);
+	}
+
+	a.label('identity_ready');
+	a.emit(0x81, 0xFB); a.dword(0x226);
+	a.jcc(0x85, 'page_check');
+	a.emit(0x80, 0x3D); a.dword(state.disableTraitVir); a.emit(0x00);
+	a.jcc(0x85, 'handled');
+	a.jmp('not_handled');
+
+	a.label('page_check');
+	a.emit(0x80, 0xBE, 0xFC, 0x00, 0x00, 0x00, 0x01);
+	a.jcc(0x84, 'trait_page');
+
+	a.label('status_page');
+	a.emit(0x81, 0xFB); a.dword(0xCD);
+	a.jcc(0x82, 'status_minus');
+	a.emit(0x81, 0xFB); a.dword(0xD2);
+	a.jcc(0x87, 'status_minus');
+	a.emit(0x8B, 0xFB, 0x81, 0xEF); a.dword(0xCD);
+	a.emit(0x83, 0xFF, 0x04);
+	a.jcc(0x85, 'status_plus_check_dex');
+	a.emit(0xBF); a.dword(5);
+	a.jmp('status_plus_ready');
+	a.label('status_plus_check_dex');
+	a.emit(0x83, 0xFF, 0x05);
+	a.jcc(0x85, 'status_plus_ready');
+	a.emit(0xBF); a.dword(4);
+	a.label('status_plus_ready');
+	a.emit(0x83, 0x3C, 0xBD); a.dword(0x015FBA3C); a.emit(0x00);
+	a.jcc(0x84, 'handled');
+	a.call(maxParameterVir);
+	a.emit(0x8B, 0xD0);
+	a.emit(0x8B, 0x04, 0xBD); a.dword(0x015FBA24);
+	a.emit(0x03, 0x04, 0xBD); a.dword(state.pendingVir);
+	a.emit(0x3B, 0xC2);
+	a.jcc(0x8D, 'handled');
+	a.emit(0xFF, 0x04, 0xBD); a.dword(state.pendingVir);
+	a.call(totalCostVir);
+	a.emit(0x3B, 0x05); a.dword(0x015FB9F4);
+	a.jcc(0x8E, 'refresh');
+	a.emit(0xFF, 0x0C, 0xBD); a.dword(state.pendingVir);
+	a.jmp('handled');
+
+	a.label('status_minus');
+	a.emit(0x81, 0xFB); a.dword(0x7F0);
+	a.jcc(0x82, 'status_commands');
+	a.emit(0x81, 0xFB); a.dword(0x7F5);
+	a.jcc(0x87, 'status_commands');
+	a.emit(0x8B, 0xFB, 0x81, 0xEF); a.dword(0x7F0);
+	a.emit(0x8B, 0x04, 0xBD); a.dword(state.pendingVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, 'handled');
+	a.emit(0xFF, 0x0C, 0xBD); a.dword(state.pendingVir);
+	a.jmp('refresh');
+
+	a.label('status_commands');
+	a.emit(0x81, 0xFB); a.dword(0x7F6);
+	a.jcc(0x84, 'status_commit');
+	a.emit(0x81, 0xFB); a.dword(0x7F7);
+	a.jcc(0x85, 'not_handled');
+	a.jmp('status_clear');
+
+	a.label('status_commit');
+	a.call(totalCostVir);
+	a.emit(0x3B, 0x05); a.dword(0x015FB9F4);
+	a.jcc(0x8F, 'handled');
+	for (let i = 0; i < 6; i++)
+	{
+		const next = 'status_commit_next_' + i;
+		a.emit(0x8B, 0x15); a.dword(state.pendingVir + i * 4);
+		a.emit(0x85, 0xD2);
+		a.jcc(0x84, next);
+		a.emit(0x52);
+		RedesignedStatusWindow.pushImm(a, statusIds[i]);
+		a.call(statusPacketVir);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, next);
+		a.emit(0xC7, 0x05); a.dword(state.pendingVir + i * 4); a.dword(0);
+		a.label(next);
+	}
+	a.jmp('refresh');
+
+	a.label('status_clear');
+	for (let i = 0; i < 6; i++)
+	{
+		a.emit(0xC7, 0x05); a.dword(state.pendingVir + i * 4); a.dword(0);
+	}
+	a.jmp('refresh');
+
+	a.label('trait_page');
+	a.emit(0x81, 0xFB); a.dword(0x227);
+	a.jcc(0x82, 'trait_minus');
+	a.emit(0x81, 0xFB); a.dword(0x22C);
+	a.jcc(0x87, 'trait_minus');
+	a.emit(0x8B, 0xFB, 0x81, 0xEF); a.dword(0x227);
+	a.emit(0x8D, 0x87); a.dword(0xDB);
+	a.emit(0x50, 0xB9); a.dword(0x015FA3C0);
+	a.call(0x0089D340);
+	a.emit(0x03, 0x04, 0xBD); a.dword(state.traitPendingVir);
+	a.emit(0x83, 0xF8, 0x6E);
+	a.jcc(0x8D, 'handled');
+	a.emit(0xFF, 0x04, 0xBD); a.dword(state.traitPendingVir);
+	a.call(traitTotalVir);
+	a.emit(0x8B, 0xD8);
+	RedesignedStatusWindow.pushImm(a, 0xE7);
+	a.emit(0xB9); a.dword(0x015FA3C0);
+	a.call(0x0089D340);
+	a.emit(0x3B, 0xD8);
+	a.jcc(0x8E, 'refresh');
+	a.emit(0xFF, 0x0C, 0xBD); a.dword(state.traitPendingVir);
+	a.jmp('handled');
+
+	a.label('trait_minus');
+	a.emit(0x81, 0xFB); a.dword(0x800);
+	a.jcc(0x82, 'trait_commands');
+	a.emit(0x81, 0xFB); a.dword(0x805);
+	a.jcc(0x87, 'trait_commands');
+	a.emit(0x8B, 0xFB, 0x81, 0xEF); a.dword(0x800);
+	a.emit(0x8B, 0x04, 0xBD); a.dword(state.traitPendingVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, 'handled');
+	a.emit(0xFF, 0x0C, 0xBD); a.dword(state.traitPendingVir);
+	a.jmp('refresh');
+
+	a.label('trait_commands');
+	a.emit(0x81, 0xFB); a.dword(0x806);
+	a.jcc(0x84, 'trait_commit');
+	a.emit(0x81, 0xFB); a.dword(0x807);
+	a.jcc(0x85, 'not_handled');
+	a.jmp('trait_clear');
+
+	a.label('trait_commit');
+	a.call(traitTotalVir);
+	a.emit(0x8B, 0xD8);
+	RedesignedStatusWindow.pushImm(a, 0xE7);
+	a.emit(0xB9); a.dword(0x015FA3C0);
+	a.call(0x0089D340);
+	a.emit(0x3B, 0xD8);
+	a.jcc(0x8F, 'handled');
+	for (let i = 0; i < 6; i++)
+	{
+		const next = 'trait_commit_next_' + i;
+		a.emit(0x8B, 0x15); a.dword(state.traitPendingVir + i * 4);
+		a.emit(0x85, 0xD2);
+		a.jcc(0x84, next);
+		a.emit(0x52);
+		RedesignedStatusWindow.pushImm(a, traitStatusIds[i]);
+		a.call(traitPacketVir);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, next);
+		a.emit(0xC7, 0x05); a.dword(state.traitPendingVir + i * 4); a.dword(0);
+		a.label(next);
+	}
+	a.jmp('refresh');
+
+	a.label('trait_clear');
+	for (let i = 0; i < 6; i++)
+	{
+		a.emit(0xC7, 0x05); a.dword(state.traitPendingVir + i * 4); a.dword(0);
+	}
+
+	a.label('refresh');
+	a.emit(0x8B, 0x06, 0x8B, 0xCE, 0xFF, 0x90);
+	a.dword(0x98);
+	a.label('handled');
+	a.emit(0xB8); a.dword(1);
+	a.jmp('done');
+	a.label('not_handled');
+	a.emit(0x33, 0xC0);
+	a.label('done');
+	a.emit(0x5D, 0x5F, 0x5E, 0x5B, 0xC3);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+RedesignedStatusWindow.buildControlBuilder = function(state, resources)
+{
+	const a = RedesignedStatusWindow.asm();
+	const controls = [];
+	const addPage = function(controlsVir, uuidBase, visible)
+	{
+		for (let i = 0; i < 6; i++)
+			controls.push({
+				slot: controlsVir + i * 4,
+				paths: resources.minus,
+				x: visible ? 207 : -100,
+				y: visible ? 126 + i * 16 : -100,
+				uuid: uuidBase + i
+			});
+		controls.push({
+			slot: controlsVir + 24,
+			paths: resources.ok,
+			x: visible ? 224 : -100,
+			y: visible ? 190 : -100,
+			uuid: uuidBase + 6
+		});
+		controls.push({
+			slot: controlsVir + 28,
+			paths: resources.cancel,
+			x: visible ? 224 : -100,
+			y: visible ? 210 : -100,
+			uuid: uuidBase + 7
+		});
+	};
+	addPage(state.controlsVir, 0x7F0, true);
+	addPage(state.traitControlsVir, 0x800, false);
+
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1);
+	for (let i = 0; i < 6; i++)
+	{
+		a.emit(0xC7, 0x05); a.dword(state.pendingVir + i * 4); a.dword(0);
+		a.emit(0xC7, 0x05); a.dword(state.traitPendingVir + i * 4); a.dword(0);
+	}
+
+	for (let i = 0; i < controls.length; i++)
+	{
+		const control = controls[i];
+		const slot = control.slot;
+		const next = 'control_next_' + i;
+		RedesignedStatusWindow.pushImm(a, 0x120);
+		a.call(0x00DBBC4F);
+		a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+		a.jcc(0x84, next);
+		a.emit(0x8B, 0xC8);
+		a.call(0x008172B0);
+		a.emit(0xA3); a.dword(slot);
+
+		for (let stateIndex = 0; stateIndex < control.paths.length; stateIndex++)
+		{
+			a.emit(0x8B, 0x0D); a.dword(slot);
+			RedesignedStatusWindow.pushImm(a, 0);
+			RedesignedStatusWindow.pushImm(a, stateIndex);
+			RedesignedStatusWindow.pushImm(a, control.paths[stateIndex]);
+			a.call(0x0082DAC0);
+		}
+
+		a.emit(0xA1); a.dword(slot);
+		a.emit(0x8B, 0xC8);
+		a.emit(0xFF, 0xB0, 0xB8, 0x00, 0x00, 0x00);
+		a.emit(0xFF, 0xB0, 0xB4, 0x00, 0x00, 0x00);
+		a.call(0x00A1CB70);
+
+		a.emit(0x8B, 0x0D); a.dword(slot);
+		RedesignedStatusWindow.pushImm(a, control.y);
+		RedesignedStatusWindow.pushImm(a, control.x);
+		a.emit(0x8B, 0x01, 0xFF, 0x50, 0x10);
+
+		a.emit(0x8B, 0x0D); a.dword(slot);
+		RedesignedStatusWindow.pushImm(a, control.uuid);
+		a.emit(0x8B, 0x01, 0xFF, 0x90, 0xB4, 0x00, 0x00, 0x00);
+
+		a.emit(0xFF, 0x35); a.dword(slot);
+		a.emit(0x8B, 0xCE);
+		a.call(0x00A1B780);
+		a.label(next);
+	}
+	a.emit(0x5F, 0x5E, 0x5B, 0xC3);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+RedesignedStatusWindow.patchStagedControls = function(
+	_, state, totalCostVir, traitTotalVir, maxParameterVir,
+	statusPacketVir, traitPacketVir, resources
+)
+{
+	$$(_, 3.2, 'Add staged minus, OK, and Cancel controls');
+	const builderVir = RedesignedStatusWindow.buildControlBuilder(
+		state, resources
+	);
+	const dispatchVir = RedesignedStatusWindow.buildStagedDispatch(
+		state, totalCostVir, traitTotalVir, maxParameterVir,
+		statusPacketVir, traitPacketVir
+	);
+
+	let hookAddr = RedesignedStatusWindow.findUnique(
+		'8B 46 18 89 86 CC 00 00 00',
+		'Status OnCreate epilogue',
+		Exe.Vir2Phy(0x008AED10, CODE),
+		Exe.Vir2Phy(0x008AF2A4, CODE)
+	);
+	let returnVir = Exe.Phy2Vir(hookAddr + 9, CODE);
+	RedesignedStatusWindow.installHook(
+		hookAddr,
+		9,
+		[
+			'60 8B CE',
+			CALL(Filler(10)),
+			'61 8B 46 18 89 86 CC 00 00 00',
+			JMP(Filler(11))
+		].join(' '),
+		{10: builderVir, 11: returnVir},
+		'Status staged-control construction'
+	);
+
+	hookAddr = RedesignedStatusWindow.findUnique(
+		'3D 26 02 00 00',
+		'Status click UUID switch',
+		Exe.Vir2Phy(0x008CBA50, CODE),
+		Exe.Vir2Phy(0x008CBA70, CODE)
+	);
+	const disabledOpcode = Exe.GetUint8(hookAddr + 5);
+	const disabledBeforeRedesign = disabledOpcode === 0x90 ||
+		disabledOpcode === 0xEB;
+	if (disabledBeforeRedesign)
+		Exe.SetUint8(state.disableTraitPhy, 1);
+	const dispatchParts = [
+		'50 52 8B D3 8B CE',
+		CALL(Filler(10)),
+		'85 C0 5A 58',
+		JNE(Filler(11)),
+		'3D 26 02 00 00',
+		JG(Filler(12)),
+		JE(Filler(13)),
+		JMP(Filler(14))
+	];
+	const dispatchTargets = {
+		10: dispatchVir,
+		11: 0x008CBE79,
+		12: 0x008CBCE9,
+		13: 0x008CBC56,
+		14: 0x008CBA6D
+	};
+	RedesignedStatusWindow.installHook(
+		hookAddr,
+		5,
+		dispatchParts.join(' '),
+		dispatchTargets,
+		'Status staged-control dispatch'
+	);
+};
+RedesignedStatusWindow.patchTabBehavior = function(
+	_, state, controlsVisibleVir, tabEmptyVir
+)
+{
+	$$(_, 3.3, 'Convert the native Trait expander into fixed-height page tabs');
+	const collapsed = Exe.FindHexN(
+		'68 8D 00 00 00 68 18 01 00 00',
+		0,
+		Exe.FileSize
+	);
+	if (collapsed.length !== 2)
+		throw Error(
+			'RedesignedStatusWindow: expected two 280x141 sites, found ' +
+			collapsed.length
+		);
+	for (const addr of collapsed)
+		Exe.SetUint32(addr + 1, 253);
+	const expanded = RedesignedStatusWindow.findUnique(
+		'68 F1 00 00 00 68 18 01 00 00',
+		'280x241 Trait geometry'
+	);
+	Exe.SetUint32(expanded + 1, 253);
+
+	const initialTab = RedesignedStatusWindow.findUnique(
+		'8B 8E F8 00 00 00 6A 79 6A 02 8B 01 FF 50 10',
+		'initial Trait tab position'
+	);
+	Exe.SetUint8(initialTab + 7, 50);
+	Exe.SetUint8(initialTab + 9, 0);
+
+	const initialTooltip = RedesignedStatusWindow.findUnique(
+		'68 1D 0E 00 00 E8 ?? ?? ?? ?? 8B D0',
+		'initial Trait tab tooltip',
+		Exe.Vir2Phy(0x008AF180, CODE),
+		Exe.Vir2Phy(0x008AF210, CODE)
+	);
+	const initialCallVir = Exe.Phy2Vir(initialTooltip + 5, CODE);
+	const initialTarget = initialCallVir + 5 + Exe.GetInt32(initialTooltip + 6);
+	if (initialTarget !== 0x00A9ED30)
+		throw Error('RedesignedStatusWindow: initial tab MsgStr call changed');
+	// MsgStr is cdecl and the stock path executes ADD ESP,4 after this site.
+	// Keep one argument on the stack while returning the empty caption directly.
+	Exe.SetHex(
+		initialTooltip,
+		'68 ' + RedesignedStatusWindow.P32(tabEmptyVir) +
+		' B8 ' + RedesignedStatusWindow.P32(tabEmptyVir)
+	);
+
+	const toggleFrom = Exe.Vir2Phy(0x008CBC56, CODE);
+	const toggleTo = Exe.Vir2Phy(0x008CBCE9, CODE);
+	const hookAddr = RedesignedStatusWindow.findUnique(
+		'8B 46 18 89 86 CC 00 00 00 E9',
+		'tab toggle epilogue',
+		toggleFrom,
+		toggleTo
+	);
+	const returnVir = Exe.Phy2Vir(hookAddr + 9, CODE);
+	const parts = [
+		[
+			'8B 8E F8 00 00 00',
+			'80 BE FC 00 00 00 01',
+			JE(Filler(1, 1)),
+			'6A 32 BF ' + RedesignedStatusWindow.P32(tabEmptyVir),
+			JMP(Filler(2, 1))
+		].join(' '),
+
+		' 6A 11 BF ' + RedesignedStatusWindow.P32(tabEmptyVir),
+
+		[
+			' 6A 00 8B 11 FF 52 10',
+			'8B D7 33 C0'
+		].join(' '),
+
+		[
+			' 80 3C 02 00',
+			JE(Filler(4, 1)),
+			'40',
+			JMP(Filler(3, 1))
+		].join(' '),
+
+		[
+			' 50 52',
+			'8B 8E F8 00 00 00 81 C1 20 01 00 00',
+			CALL(Filler(11)),
+			'60 8B CE',
+			CALL(Filler(13)),
+			'61',
+			'8B 46 18 89 86 CC 00 00 00',
+			'8B 06 8B CE',
+			'6A 00 6A 00 6A 00 6A 00 6A 23 56',
+			'FF 90 94 00 00 00',
+			JMP(Filler(12))
+		].join(' ')
+	];
+	const [, statsTarget, positionTarget, strlenTarget, assignTarget] =
+		MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 4,
+		localTgts: {
+			'1,1': statsTarget,
+			'2,1': positionTarget,
+			'3,1': strlenTarget,
+			'4,1': assignTarget
+		},
+		targets: {
+			11: 0x004F1940,
+			12: returnVir,
+			13: controlsVisibleVir
+		}
+	});
+};
+RedesignedStatusWindow.allocateCoordinates = function(points)
+{
+	if (points.length !== 2)
+		throw Error('RedesignedStatusWindow: coordinate block must contain two points');
+	const [phy, vir] = Exe.Allocate(16, 0x10);
+	Exe.SetUint32(phy, points[0][0] >>> 0);
+	Exe.SetUint32(phy + 4, points[0][1] >>> 0);
+	Exe.SetUint32(phy + 8, points[1][0] >>> 0);
+	Exe.SetUint32(phy + 12, points[1][1] >>> 0);
+	return vir;
+};
+
+RedesignedStatusWindow.redirectCoordinateBlock = function(
+	oldVir, points, from, to, label
+)
+{
+	const replacementVir = RedesignedStatusWindow.allocateCoordinates(points);
+	const addr = RedesignedStatusWindow.findUnique(
+		'0F 28 05 ' + RedesignedStatusWindow.P32(oldVir),
+		label,
+		from,
+		to
+	);
+	Exe.SetUint32(addr + 3, replacementVir);
+};
+
+RedesignedStatusWindow.allocateTopTooltipTable = function(strings)
+{
+	const points = [
+		[43, 24, 107], [151, 24, 59], [210, 24, 60],
+		[43, 42, 107], [151, 42, 59], [210, 42, 60],
+		[43, 60, 107], [161, 60, 59], [220, 60, 50],
+		[43, 78, 59], [102, 78, 59],
+		[161, 78, 59], [220, 78, 50]
+	];
+	if (strings.length !== points.length)
+		throw Error('RedesignedStatusWindow: top tooltip string count changed');
+	const [phy, vir] = Exe.Allocate(points.length * 16, 0x10);
+	for (let i = 0; i < points.length; i++)
+	{
+		Exe.SetUint32(phy + i * 16, points[i][0]);
+		Exe.SetUint32(phy + i * 16 + 4, points[i][1]);
+		Exe.SetUint32(phy + i * 16 + 8, points[i][2]);
+		Exe.SetUint32(phy + i * 16 + 12, strings[i]);
+	}
+	return vir;
+};
+
+RedesignedStatusWindow.buildTopTooltip = function(tableVir, entryCount)
+{
+	const a = RedesignedStatusWindow.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08);
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0x80, 0xBE, 0xFC, 0x00, 0x00, 0x00, 0x01);
+	a.jcc(0x84, 'not_found');
+	a.emit(0xBB); a.dword(tableVir);
+	a.emit(0x33, 0xFF);
+	a.label('entry');
+	a.emit(0x8B, 0x03);
+	a.emit(0x3B, 0x45, 0x08);
+	a.jcc(0x8F, 'next');
+	a.emit(0x03, 0x43, 0x08);
+	a.emit(0x3B, 0x45, 0x08);
+	a.jcc(0x8E, 'next');
+	a.emit(0x8B, 0x43, 0x04);
+	a.emit(0x3B, 0x45, 0x0C);
+	a.jcc(0x8F, 'next');
+	a.emit(0x83, 0xC0, 0x0C);
+	a.emit(0x3B, 0x45, 0x0C);
+	a.jcc(0x8E, 'next');
+
+	a.emit(0x8B, 0x03);
+	a.emit(0x2B, 0x86, 0xDC, 0x00, 0x00, 0x00);
+	a.emit(0x89, 0x45, 0xFC);
+	a.emit(0x8B, 0x43, 0x04);
+	a.emit(0x03, 0x86, 0xD4, 0x00, 0x00, 0x00);
+	a.emit(0x2B, 0x86, 0xD8, 0x00, 0x00, 0x00);
+	a.emit(0x83, 0xE8, 0x13, 0x89, 0x45, 0xF8);
+	a.emit(0x8D, 0x45, 0xF8, 0x50);
+	a.emit(0x8D, 0x45, 0xFC, 0x50);
+	a.emit(0x8B, 0xCE);
+	a.call(0x00A1EF70);
+	a.emit(0x8B, 0x0D); a.dword(0x0121333C);
+	RedesignedStatusWindow.pushImm(a, 1);
+	RedesignedStatusWindow.pushImm(a, 1);
+	RedesignedStatusWindow.pushImm(a, -1);
+	a.emit(0xFF, 0x75, 0xF8, 0xFF, 0x75, 0xFC);
+	a.emit(0xFF, 0x73, 0x0C);
+	a.call(0x00A753D0);
+	a.emit(0xB8); a.dword(1);
+	a.jmp('done');
+
+	a.label('next');
+	a.emit(0x83, 0xC3, 0x10, 0x47);
+	a.emit(0x81, 0xFF); a.dword(entryCount);
+	a.jcc(0x8C, 'entry');
+	a.label('not_found');
+	a.emit(0x33, 0xC0);
+	a.label('done');
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return RedesignedStatusWindow.allocateCode(a);
+};
+RedesignedStatusWindow.patchTooltips = function(
+	_, topTooltipStrings, tabStatVir, tabTraitVir
+)
+{
+	$$(_, 4.1, 'Relocate every native Status and Trait hover tooltip');
+	const from = Exe.Vir2Phy(0x008BA610, CODE);
+	const to = Exe.Vir2Phy(0x008BA9BF, CODE);
+	const statusPoints = [
+		[38, 126], [38, 142], [38, 158], [38, 174],
+		[38, 190], [38, 206], [-100, -100], [-100, -100],
+		[-100, -100], [-100, -100], [197, 133], [-100, -100],
+		[-100, -100], [-100, -100], [-100, -100], [-100, -100]
+	];
+	const statusSources = [
+		0x010371E0, 0x01037240, 0x010372B0, 0x010371C0,
+		0x01037220, 0x010372A0, 0x010371D0, 0x01037230
+	];
+	for (let i = 0; i < statusSources.length; i++)
+		RedesignedStatusWindow.redirectCoordinateBlock(
+			statusSources[i],
+			[statusPoints[i * 2], statusPoints[i * 2 + 1]],
+			from,
+			to,
+			`Status tooltip coordinate block ${i}`
+		);
+
+	const traitPoints = [
+		[38, 126], [38, 142], [38, 158], [38, 174],
+		[38, 190], [38, 206], [57, 32], [57, 55],
+		[170, 78], [57, 78], [197, 133], [170, 32]
+	];
+	const traitSources = [
+		0x01037330, 0x01037380, 0x010373F0,
+		0x01037320, 0x01037370, 0x01037310
+	];
+	for (let i = 0; i < traitSources.length; i++)
+		RedesignedStatusWindow.redirectCoordinateBlock(
+			traitSources[i],
+			[traitPoints[i * 2], traitPoints[i * 2 + 1]],
+			from,
+			to,
+			`Trait tooltip coordinate block ${i}`
+		);
+
+	const finalTrait = RedesignedStatusWindow.findUnique(
+		'C7 45 B4 C2 00 00 00 0F 28 05 ?? ?? ?? ?? 0F 11 85 74 FF FF FF C7 45 B8 A1 00 00 00',
+		'final Mres tooltip coordinate',
+		from,
+		to
+	);
+	Exe.SetUint32(finalTrait + 3, 170);
+	Exe.SetUint32(finalTrait + 24, 55);
+
+	const topTableVir = RedesignedStatusWindow.allocateTopTooltipTable(
+		topTooltipStrings
+	);
+	const topTooltipVir = RedesignedStatusWindow.buildTopTooltip(
+		topTableVir, topTooltipStrings.length
+	);
+	const topHook = RedesignedStatusWindow.findUnique(
+		'8B 7D 0C 83 C4 40 8B 5D 08 33 F6',
+		'custom top-stat tooltip entry',
+		from,
+		to
+	);
+	const topReturnVir = Exe.Phy2Vir(topHook + 9, CODE);
+	RedesignedStatusWindow.installHook(
+		topHook,
+		9,
+		[
+			'8B 7D 0C 83 C4 40 8B 5D 08',
+			'57 53 8B 8D 30 FF FF FF',
+			CALL(Filler(10)),
+			'85 C0',
+			JNE(Filler(11)),
+			JMP(Filler(12))
+		].join(' '),
+		{10: topTooltipVir, 11: 0x008BA80B, 12: topReturnVir},
+		'custom top-stat tooltips'
+	);
+	$$(_, 4.2, 'Prevent Status tooltips from winning while the Trait page is active');
+	const hookAddr = RedesignedStatusWindow.findUnique(
+		'66 0F 1F 44 00 00 8B 8C F5 3C FF FF FF',
+		'Status tooltip hit-test entry',
+		from,
+		to
+	);
+	const code = [
+		'8B 85 30 FF FF FF',
+		'80 B8 FC 00 00 00 01',
+		JE(Filler(1)),
+		JMP(Filler(2))
+	].join(' ');
+	RedesignedStatusWindow.installHook(
+		hookAddr,
+		6,
+		code,
+		{1: 0x008BA80B, 2: 0x008BA780},
+		'Status tooltip page gate'
+	);
+	RedesignedStatusWindow.patchTabHoverLabels(
+		_, tabStatVir, tabTraitVir
+	);
+};
+
+RedesignedStatusWindow.patchTabHoverLabels = function(
+	_, tabStatVir, tabTraitVir
+)
+{
+	$$(_, 4.3, 'Show cursor-relative native Stat and Trait tab balloons');
+	const hookAddr = RedesignedStatusWindow.findUnique(
+		'55 8B EC 81 EC D0 00 00 00 A1 24 B9 22 01',
+		'Status mouse-move handler'
+	);
+	const returnVir = Exe.Phy2Vir(hookAddr + 9, CODE);
+	const parts = [
+		[
+			'60',
+			'83 7C 24 24 22',
+			JAE(Filler(3)),
+			'8B 44 24 28',
+			'80 B9 FC 00 00 00 01',
+			JE(Filler(1, 1)),
+			'83 F8 32',
+			JL(Filler(3)),
+			'83 F8 53',
+			JGE(Filler(3)),
+			'BF ' + RedesignedStatusWindow.P32(tabTraitVir),
+			JMP(Filler(2, 1))
+		].join(' '),
+
+		[
+			' 83 F8 11',
+			JL(Filler(3)),
+			'83 F8 32',
+			JGE(Filler(3)),
+			'BF ' + RedesignedStatusWindow.P32(tabStatVir),
+			JMP(Filler(2, 1))
+		].join(' '),
+
+		[
+			' 8B 44 24 24',
+			'83 E8 10',
+			'8B 5C 24 28',
+			'83 EB 0D',
+			'8B F1',
+			'83 EC 08',
+			'89 04 24 89 5C 24 04',
+			'8D 04 24 8D 5C 24 04 53 50 8B CE',
+			CALL(Filler(10)),
+			'8B 04 24 8B 5C 24 04',
+			'8B 0D 3C 33 21 01',
+			'6A 01 6A 01 6A FF 53 50 57',
+			CALL(Filler(11)),
+			'83 C4 08'
+		].join(' '),
+
+		[
+			' 61',
+			'55 8B EC 81 EC D0 00 00 00',
+			JMP(Filler(12))
+		].join(' ')
+	];
+	const [, statTarget, tooltipTarget, originalTarget] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 4,
+		localTgts: {
+			'1,1': statTarget,
+			'2,1': tooltipTarget,
+			3: originalTarget
+		},
+		targets: {
+			10: 0x00A1EF70,
+			11: 0x00A753D0,
+			12: returnVir
+		}
+	});
+};
+
+RedesignedStatusWindow.onApplied = function()
+{
+	if (Warp.TestMode || !Exe.GetSavedInput('$copyRedesignedStatusAssets'))
+		return;
+
+	const source = Warp.Path + RedesignedStatusWindow.AssetPath;
+	const clientDir = System.DirPath(Warp.TgtExe);
+	const target = clientDir + '/' + RedesignedStatusWindow.TargetPath();
+	if (!System.MkDir(target))
+		throw Error(`RedesignedStatusWindow: unable to create ${target}`);
+	for (const file of RedesignedStatusWindow.Assets)
+	{
+		if (!System.Copy(source + '/' + file, target + '/' + file, true))
+			throw Error(`RedesignedStatusWindow: unable to copy ${file}`);
+	}
+};
+
+RedesignedStatusWindow.validate = function()
+{
+	if (Exe.BuildDate !== RedesignedStatusWindow.BuildDate ||
+		RedesignedStatusWindow.isPatchSelected('HideTraitStatusButton'))
+		return false;
+
+	const prefix = RedesignedStatusWindow.uiPrefix();
+	return Exe.FindText(
+		prefix + '\\statuswnd\\w_statwin_bg.bmp',
+		CASE_INSENSITIVE
+	) > 0 && Exe.FindText(
+		prefix + '\\statuswnd\\w_ex_statwin_bg.bmp',
+		CASE_INSENSITIVE
+	) > 0;
+};

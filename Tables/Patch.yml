@@ -250,3 +250,5 @@
 376 : ROGlobalZeroInventory
 377 : ROGlobalZeroExpBar
 378 : RedesignedEquipmentWindow
+379 : RedesignedStatusWindow
+380 : DisableTraitStatusButton

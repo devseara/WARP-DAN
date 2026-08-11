@@ -142,6 +142,18 @@ RedesignedEquipWin:
             author : Louis T Steinhil
             desc : Backports the renewal Alt+Q Equipment window using bg.png, bg_primary.png, bg_primary2.png, bg_swap.png, and ibox_shadow.png. Selects the full footer Arrow circle before the stock body-only picker prefilter, pins its balloon when Swap expands the parent, positions native btn_items immediately above icon_cart.png only while Cart is active, remaps the native drag-compatible shadow to the renewal slot grid, and preserves Costume, Swap, item/provider/picker, release, and equip/unequip packet ownership. Disable NoEquipSwap and NoEquipWinTitle before selecting this patch.
 
+RedesignedStatusWin:
+    title : Redesigned Alt+A Status Window
+    mutex : true
+    color : steelblue
+
+    patches:
+        - RedesignedStatusWindow:
+            title : Backport Status UI Assets
+            recommend : no
+            author : Louis T Steinhil
+            desc : Backports the supplied renewal Alt+A Stats and Trait tabs to the 2025-07-16 client. Adds independent staged plus/minus allocation with OK and Cancel to both pages, commits through the native server-authoritative Status and Trait packets, preserves all native row tooltips, adds hover-only Stat/Trait tab balloons, and routes the Trait tab through Disable Trait Status Button when selected. Hide Trait Status Button is incompatible because this redesign reuses the native Trait control.
+
 CustomExpBars:
     title : EXP BAR CUSTOMIZATION
     mutex : false

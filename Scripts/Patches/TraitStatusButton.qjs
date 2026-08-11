@@ -32,6 +32,52 @@
 DisableTraitStatusButton = function() {
     const _ = 'DisableTraitStatusButton : ';
 
+    // RedesignedStatusWindow owns the profiled 0x226 dispatcher bridge. Share
+    // its byte flag instead of scanning code that has already been detoured.
+    try {
+        CACHE.put('RedesignedStatusWindow.DisableTraitSelected', true);
+        const redesigned = CACHE.get('RedesignedStatusWindow.State');
+        if (redesigned && redesigned.disableTraitPhy !== undefined) {
+            Exe.SetUint8(redesigned.disableTraitPhy, 1);
+            $$(_ + '1.0 - Routed through RedesignedStatusWindow');
+            return true;
+        }
+    }
+    catch (e) {
+        // Preserve the standalone legacy scan in older WARP hosts.
+    }
+    // CACHE visibility varies between WARP patch invocations. If the redesign
+    // already owns the native UUID switch, follow its bridge to the emitted
+    // dispatcher and set the single profiled shared gate directly.
+    try {
+        const hookPhy = Exe.Vir2Phy(0x008CBA5C, CODE);
+        if (hookPhy >= 0 && Exe.GetUint8(hookPhy) === 0xE9) {
+            const bridgeVir = 0x008CBA61 + Exe.GetInt32(hookPhy + 1);
+            const bridgePhy = Exe.Vir2Phy(bridgeVir);
+            const callPhy = bridgePhy + 6;
+            if (bridgePhy >= 0 && Exe.GetUint8(callPhy) === 0xE8) {
+                const dispatchVir = bridgeVir + 11 + Exe.GetInt32(callPhy + 1);
+                const dispatchPhy = Exe.Vir2Phy(dispatchVir);
+                const matches = Exe.FindHexN(
+                    '80 3D ?? ?? ?? ?? 00',
+                    dispatchPhy,
+                    Math.min(dispatchPhy + 0x600, Exe.FileSize)
+                );
+                if (matches.length === 1) {
+                    const flagVir = Exe.GetUint32(matches[0] + 2);
+                    const flagPhy = Exe.Vir2Phy(flagVir);
+                    if (flagPhy >= 0 && Exe.GetUint8(flagPhy) <= 1) {
+                        Exe.SetUint8(flagPhy, 1);
+                        $$(_ + '1.0b - Routed through emitted redesign gate');
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    catch (e) {
+        // Fall through to the standalone legacy signature.
+    }
     $$(_ + '1.1 - Find the UUID comparison - Extended search with debugging');
     
     // Valores conhecidos + novos valores possíveis para clientes mais recentes

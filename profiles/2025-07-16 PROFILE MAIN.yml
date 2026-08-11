@@ -255,6 +255,11 @@ inputs:
         display: "true"
         type: 10
 
+    $copyRedesignedStatusAssets:
+        data: ''
+        display: "true"
+        type: 10
+
 patches:
     - AllowPL2Leave
     - AllowGuildInClan
@@ -379,3 +384,4 @@ patches:
     - SNSButtonURL
     - BookingButtonGuide
     - RedesignedEquipmentWindow
+    - RedesignedStatusWindow
