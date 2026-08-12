@@ -116,25 +116,27 @@ status ID `0xDB..0xE0`, and positive `int16` amount. It uses the same native
 packet object and sender as Status. Direct packet submission is required for
 mixed-row commits and preserves the server's authoritative validation.
 
-All dynamic Status values and every relocated Trait value use the client's native
-`UIWindow::TextOutA` renderers at `0x00A25A70` and `0x00A27B50`, with native font selector 1.
-Profiled stock calls use height 14 for Base, Bonus, and derived values and
-height 12 for Req and Status Points. The fade was not a font or text-
-color defect: GDI writes correct RGB coverage into this 32-bit DIB but clears
-the destination alpha byte for the affected pixels. Once the PNG rail marks
-the parent surface alpha-capable, those zero-alpha glyph pixels are blended as
-transparent. After every value draw, the Status renderer or Trait call wrapper restores alpha
-to 255 over the corresponding opaque value cell. This is the same surface repair used by
-`ROGlobalZeroExpBar` for its native dynamic text and requires no glyph assets,
-process-wide font hook, or duplicate draw pass.
-The native title label is drawn by the base-window path before the PNG rail,
+All dynamic Status values and every relocated Trait value use the client native
+UIWindow TextOutA renderers at 0x00A25A70 and 0x00A27B50, with native font
+selector 1 and height 14 for Base, Bonus, Req, point totals, and derived values.
+The fade was not a font or text-color defect: GDI writes correct RGB coverage
+into this 32-bit DIB but clears the destination alpha byte for the affected
+pixels. Once the PNG rail marks the parent surface alpha-capable, those
+zero-alpha glyph pixels blend as transparent. Before every draw, the renderer
+measures the formatted string through the native text-width routine at
+0x00A21C90. After the draw it restores alpha to 255 over exactly that measured
+glyph span plus both antialias edges. Longer Req and point totals therefore
+cannot escape a fixed-width repair region or switch to a compact font. This is
+the same surface repair model used by ROGlobalZeroExpBar and requires no glyph
+assets, process-wide font hook, or duplicate draw pass.The native title label is drawn by the base-window path before the PNG rail,
 so it requires a separate alpha repair over `(17,2)..(76,16)` after the rail
 draw. This applies on both Status and Trait pages without replacing or
 redrawing the title font.
 
-Base and Bonus left anchors are x=85 and x=124, and the required value uses right edge x=174. Base values, requirements, and remaining Status Points are
-projected from the pending counters. Status Points use right edge x=265 and
-y=152 so the number lies inside the asset's x=223..269, y=151..166 box. The
+Base and Bonus left anchors are x=85 and x=124, and the required value uses
+right edge x=174 at y=126+16n. Base values, requirements, and remaining Status
+Points are projected from the pending counters. Status Points use right edge
+x=265 and y=151 inside the asset's x=223..269, y=151..166 box. The
 four derived rows draw at y=27, 48, 69, and 90 with the same native 14-pixel
 font and baseline contract. These positions follow the asset's 21-pixel row
 cadence and place each glyph bottom directly above its underline at y=38, 59,
@@ -151,9 +153,9 @@ H.Plus/C.Rate draw at y=35, 58, and 81, preserving the same 11-pixel
 text-origin-to-underline relationship as Status. Their right edges are the
 actual underline endpoints x=141 and x=251. The native selector 1 and 14-pixel
 height remain unchanged for derived values. Projected Trait Base and Bonus use
-left anchors x=85/x=124; Req uses right edge x=174 with height 12. Trait Points
-use the same right edge x=265 and y=152 as Status Points, and every projected
-draw restores alpha to 255.
+left anchors x=85/x=124; Req uses right edge x=174 at y=126+16n with height 14.
+Trait Points use right edge x=265 and y=151, and every projected draw restores
+alpha to 255 over the measured glyph span.
 
 ## Tooltip contract
 

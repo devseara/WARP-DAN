@@ -618,9 +618,10 @@ RedesignedStatusWindow.buildTraitRenderer = function(state, traitTotalVir)
 	const bufferOffset = 0xC0;
 	const drawTextVir = 0x00A25A70;
 	const drawTextRightVir = 0x00A27B50;
+	const textWidthVir = 0x00A21C90;
 	const nativeFontIndex = 1;
 	const nativeValueHeight = 14;
-	const nativeCompactHeight = 12;
+	const nativeCompactHeight = 14;
 	const traitStatusIds = [0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 0xE0];
 	const bonusValues = [
 		0x01602360, 0x01602364, 0x01602368,
@@ -631,6 +632,8 @@ RedesignedStatusWindow.buildTraitRenderer = function(state, traitTotalVir)
 		0x01602390, 0x01602398, 0x016023A0
 	];
 	let alphaRegionId = 0;
+	let measureId = 0;
+	const measuredWidthOffset = 0xBC; // [EBP-0x44], outside the text buffer
 
 	const format = function(valueCount, formatVir)
 	{
@@ -639,24 +642,50 @@ RedesignedStatusWindow.buildTraitRenderer = function(state, traitTotalVir)
 		a.call(0x00529850);
 		a.emit(0x83, 0xC4, (valueCount + 2) * 4);
 	};
-	const makeOpaque = function(x, y, width, height)
+	const measureText = function(height)
+	{
+		const id = measureId++;
+		const ready = 'trait_measure_ready_' + id;
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, height);
+		RedesignedStatusWindow.pushImm(a, nativeFontIndex);
+		RedesignedStatusWindow.pushImm(a, 0);
+		a.emit(0x8D, 0x45, bufferOffset, 0x50);
+		a.emit(0x8B, 0xCE);
+		a.call(textWidthVir);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x8F, ready);
+		a.emit(0xB8); a.dword(1);
+		a.label(ready);
+		a.emit(0x83, 0xC0, 0x02); // cover both antialiased glyph edges
+		a.emit(0x89, 0x45, measuredWidthOffset);
+	};
+	const makeOpaque = function(x, y, height, rightAligned)
 	{
 		const id = alphaRegionId++;
 		const row = 'trait_alpha_row_' + id;
 		const pixel = 'trait_alpha_pixel_' + id;
 		const done = 'trait_alpha_done_' + id;
+
+		// TextOutA clears destination alpha. Follow the current glyph width so
+		// a value crossing a digit boundary cannot escape the repaired span.
 		a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0);
 		a.jcc(0x84, done);
 		a.emit(0x8B, 0x78, 0x18, 0x85, 0xFF);
 		a.jcc(0x84, done);
 		a.emit(0x8B, 0x58, 0x04);
+		a.emit(0x8B, 0x4D, measuredWidthOffset, 0x85, 0xC9);
+		a.jcc(0x8E, done);
 		a.emit(0xBA); a.dword(y);
 		a.emit(0x0F, 0xAF, 0xD3);
 		a.emit(0x81, 0xC2); a.dword(x);
+		if (rightAligned)
+			a.emit(0x2B, 0x55, measuredWidthOffset);
 		a.emit(0x8D, 0x3C, 0x97);
 		a.emit(0xBA); a.dword(height);
 		a.label(row);
-		a.emit(0xB9); a.dword(width);
+		a.emit(0x8B, 0x4D, measuredWidthOffset);
 		a.emit(0x8B, 0xC7);
 		a.label(pixel);
 		a.emit(0xC6, 0x40, 0x03, 0xFF);
@@ -668,6 +697,7 @@ RedesignedStatusWindow.buildTraitRenderer = function(state, traitTotalVir)
 	};
 	const drawLeft = function(x, y, width, height)
 	{
+		measureText(height);
 		RedesignedStatusWindow.pushImm(a, 0);
 		RedesignedStatusWindow.pushImm(a, 0);
 		RedesignedStatusWindow.pushImm(a, 0x00000000);
@@ -679,10 +709,11 @@ RedesignedStatusWindow.buildTraitRenderer = function(state, traitTotalVir)
 		RedesignedStatusWindow.pushImm(a, x);
 		a.emit(0x8B, 0xCE);
 		a.call(drawTextVir);
-		makeOpaque(x, y, width, height);
+		makeOpaque(x, y, height, false);
 	};
 	const drawRight = function(x, y, width, height)
 	{
+		measureText(height);
 		RedesignedStatusWindow.pushImm(a, 0);
 		RedesignedStatusWindow.pushImm(a, 0x00000000);
 		RedesignedStatusWindow.pushImm(a, height);
@@ -693,9 +724,8 @@ RedesignedStatusWindow.buildTraitRenderer = function(state, traitTotalVir)
 		RedesignedStatusWindow.pushImm(a, x);
 		a.emit(0x8B, 0xCE);
 		a.call(drawTextRightVir);
-		makeOpaque(x - width, y, width, height);
+		makeOpaque(x, y, height, true);
 	};
-
 	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x60, 0x53, 0x56, 0x57);
 	a.emit(0x8B, 0xF1);
 	for (let i = 0; i < 6; i++)
@@ -732,7 +762,7 @@ RedesignedStatusWindow.buildTraitRenderer = function(state, traitTotalVir)
 		a.label(reqReady);
 		a.emit(0x50);
 		format(1, formatOneVir);
-		drawRight(174, 128 + i * 16, 32, nativeCompactHeight);
+		drawRight(174, 126 + i * 16, 32, nativeCompactHeight);
 	}
 
 	RedesignedStatusWindow.pushImm(a, 0xE7);
@@ -746,7 +776,7 @@ RedesignedStatusWindow.buildTraitRenderer = function(state, traitTotalVir)
 	a.label('trait_points_ready');
 	a.emit(0x53);
 	format(1, formatOneVir);
-	drawRight(265, 152, 40, nativeCompactHeight);
+	drawRight(265, 151, 40, nativeCompactHeight);
 
 	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
 	return RedesignedStatusWindow.allocateCode(a);
@@ -760,9 +790,10 @@ RedesignedStatusWindow.buildStatusRenderer = function(state, totalCostVir)
 	const bufferOffset = 0xC0;
 	const drawTextVir = 0x00A25A70;
 	const drawTextRightVir = 0x00A27B50;
+	const textWidthVir = 0x00A21C90;
 	const nativeFontIndex = 1;
 	const nativeValueHeight = 14;
-	const nativeCompactHeight = 12;
+	const nativeCompactHeight = 14;
 	// The asset underlines are at y=38,59,80,101. Keep each native glyph
 	// bottom adjacent to its own line by following the same 21-pixel cadence.
 	const derivedRows = [27, 48, 69, 90];
@@ -775,6 +806,8 @@ RedesignedStatusWindow.buildStatusRenderer = function(state, totalCostVir)
 		0x015FBA18, 0x015FBA1C, 0x015FBA20
 	];
 	let alphaRegionId = 0;
+	let measureId = 0;
+	const measuredWidthOffset = 0xBC; // [EBP-0x44], outside the text buffer
 
 	const format = function(valueCount, formatVir)
 	{
@@ -783,42 +816,62 @@ RedesignedStatusWindow.buildStatusRenderer = function(state, totalCostVir)
 		a.call(0x00529850);
 		a.emit(0x83, 0xC4, (valueCount + 2) * 4);
 	};
-	const makeOpaque = function(x, y, width, height)
+	const measureText = function(height)
+	{
+		const id = measureId++;
+		const ready = 'status_measure_ready_' + id;
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, 0);
+		RedesignedStatusWindow.pushImm(a, height);
+		RedesignedStatusWindow.pushImm(a, nativeFontIndex);
+		RedesignedStatusWindow.pushImm(a, 0);
+		a.emit(0x8D, 0x45, bufferOffset, 0x50);
+		a.emit(0x8B, 0xCE);
+		a.call(textWidthVir);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x8F, ready);
+		a.emit(0xB8); a.dword(1);
+		a.label(ready);
+		a.emit(0x83, 0xC0, 0x02); // cover both antialiased glyph edges
+		a.emit(0x89, 0x45, measuredWidthOffset);
+	};
+	const makeOpaque = function(x, y, height, rightAligned)
 	{
 		const id = alphaRegionId++;
-		const row = 'alpha_row_' + id;
-		const pixel = 'alpha_pixel_' + id;
-		const done = 'alpha_done_' + id;
+		const row = 'status_alpha_row_' + id;
+		const pixel = 'status_alpha_pixel_' + id;
+		const done = 'status_alpha_done_' + id;
 
-		// UIWindow::TextOutA uses GDI on a 32-bit DIB. GDI writes the RGB
-		// coverage correctly but clears the destination alpha byte. The Status
-		// value cells are opaque, so restore alpha exactly as the proven renewed
-		// EXP renderer does after drawing its dynamic level text.
-		a.emit(0x8B, 0x46, 0x24);                  // MOV EAX,[ESI+surface]
-		a.emit(0x85, 0xC0);                        // TEST EAX,EAX
+		// TextOutA clears destination alpha. Follow the current glyph width so
+		// a value crossing a digit boundary cannot escape the repaired span.
+		a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0);
 		a.jcc(0x84, done);
-		a.emit(0x8B, 0x78, 0x18);                  // MOV EDI,[EAX+pixels]
-		a.emit(0x85, 0xFF);                        // TEST EDI,EDI
+		a.emit(0x8B, 0x78, 0x18, 0x85, 0xFF);
 		a.jcc(0x84, done);
-		a.emit(0x8B, 0x58, 0x04);                  // MOV EBX,[EAX+width]
-		a.emit(0xBA); a.dword(y);                  // MOV EDX,y
-		a.emit(0x0F, 0xAF, 0xD3);                  // IMUL EDX,EBX
-		a.emit(0x81, 0xC2); a.dword(x);            // ADD EDX,x
-		a.emit(0x8D, 0x3C, 0x97);                  // LEA EDI,[EDI+EDX*4]
-		a.emit(0xBA); a.dword(height);             // MOV EDX,height
+		a.emit(0x8B, 0x58, 0x04);
+		a.emit(0x8B, 0x4D, measuredWidthOffset, 0x85, 0xC9);
+		a.jcc(0x8E, done);
+		a.emit(0xBA); a.dword(y);
+		a.emit(0x0F, 0xAF, 0xD3);
+		a.emit(0x81, 0xC2); a.dword(x);
+		if (rightAligned)
+			a.emit(0x2B, 0x55, measuredWidthOffset);
+		a.emit(0x8D, 0x3C, 0x97);
+		a.emit(0xBA); a.dword(height);
 		a.label(row);
-		a.emit(0xB9); a.dword(width);              // MOV ECX,width
-		a.emit(0x8B, 0xC7);                        // MOV EAX,EDI
+		a.emit(0x8B, 0x4D, measuredWidthOffset);
+		a.emit(0x8B, 0xC7);
 		a.label(pixel);
-		a.emit(0xC6, 0x40, 0x03, 0xFF);            // alpha=255
-		a.emit(0x83, 0xC0, 0x04, 0x49);            // next pixel / DEC ECX
+		a.emit(0xC6, 0x40, 0x03, 0xFF);
+		a.emit(0x83, 0xC0, 0x04, 0x49);
 		a.jcc(0x85, pixel);
-		a.emit(0x8D, 0x3C, 0x9F, 0x4A);            // next row / DEC EDX
+		a.emit(0x8D, 0x3C, 0x9F, 0x4A);
 		a.jcc(0x85, row);
 		a.label(done);
 	};
 	const drawLeft = function(x, y, width, height)
 	{
+		measureText(height);
 		RedesignedStatusWindow.pushImm(a, 0);
 		RedesignedStatusWindow.pushImm(a, 0);
 		RedesignedStatusWindow.pushImm(a, 0x00000000);
@@ -830,10 +883,11 @@ RedesignedStatusWindow.buildStatusRenderer = function(state, totalCostVir)
 		RedesignedStatusWindow.pushImm(a, x);
 		a.emit(0x8B, 0xCE);
 		a.call(drawTextVir);
-		makeOpaque(x, y, width, height);
+		makeOpaque(x, y, height, false);
 	};
 	const drawRight = function(x, y, width, height)
 	{
+		measureText(height);
 		RedesignedStatusWindow.pushImm(a, 0);
 		RedesignedStatusWindow.pushImm(a, 0x00000000);
 		RedesignedStatusWindow.pushImm(a, height);
@@ -844,7 +898,7 @@ RedesignedStatusWindow.buildStatusRenderer = function(state, totalCostVir)
 		RedesignedStatusWindow.pushImm(a, x);
 		a.emit(0x8B, 0xCE);
 		a.call(drawTextRightVir);
-		makeOpaque(x - width, y, width, height);
+		makeOpaque(x, y, height, true);
 	};
 	const emitRequirement = function(index)
 	{
@@ -881,7 +935,7 @@ RedesignedStatusWindow.buildStatusRenderer = function(state, totalCostVir)
 		drawLeft(124, 126 + i * 16, 32, nativeValueHeight);
 
 		emitRequirement(i);
-		drawRight(174, 128 + i * 16, 32, nativeCompactHeight);
+		drawRight(174, 126 + i * 16, 32, nativeCompactHeight);
 	}
 
 	a.call(totalCostVir);
@@ -892,7 +946,7 @@ RedesignedStatusWindow.buildStatusRenderer = function(state, totalCostVir)
 	a.label('points_ready');
 	a.emit(0x52);
 	format(1, formatOneVir);
-	drawRight(265, 152, 40, nativeCompactHeight);
+	drawRight(265, 151, 40, nativeCompactHeight);
 
 	const drawMemory = function(address, x, y, width)
 	{
@@ -1106,32 +1160,6 @@ RedesignedStatusWindow.patchRender = function(
 			15: titleAlphaVir
 		}
 	});
-};
-
-RedesignedStatusWindow.createCoordinateAdjuster = function(
-	targetVir, deltaX, deltaY, color
-)
-{
-	const parts = [];
-	if (deltaX !== 0)
-		parts.push('81 44 24 04 ' + RedesignedStatusWindow.P32(deltaX));
-	if (deltaY !== 0)
-		parts.push('81 44 24 08 ' + RedesignedStatusWindow.P32(deltaY));
-	if (color !== undefined)
-		parts.push('C7 44 24 1C ' + RedesignedStatusWindow.P32(color));
-	parts.push(JMP(Filler(1)));
-	const code = parts.join(' ');
-	const [, wrapperVir] = AutoHook(null, code, {
-		targets: {1: targetVir}
-	});
-	return wrapperVir;
-};
-
-RedesignedStatusWindow.createYAdjuster = function(targetVir, delta, color)
-{
-	return RedesignedStatusWindow.createCoordinateAdjuster(
-		targetVir, 0, delta, color
-	);
 };
 
 RedesignedStatusWindow.createOpaqueCoordinateAdjuster = function(

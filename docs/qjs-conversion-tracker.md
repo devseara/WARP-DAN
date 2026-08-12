@@ -30,7 +30,7 @@ Status meanings:
 | FPS overlay | Implemented, test required | QJS-only post-Present cave counts native frames and draws at prompted X/Y coordinates through existing Win32 imports. No D3D proxy or custom DLL. |
 | Ping overlay | Implemented, test required | QJS-only `0x0360/0x007F` application RTT capture feeds the shared prompted-position renderer. No ICMP, recv hook or custom DLL. |
 | In-game PIN keypad | Working | QJS-only shared `0x0BEF/PINC` route and client-native keypad flow; Cancel and normal PIN entry are live-confirmed with no PIN UI DLL. |
-| AutoHunt UI | Implemented, functional-tab live test required | QJS-only seven-tab AHUI with native menu entry, Skill Tree and inventory drag/drop, append-only server profile snapshots, scrollable Basic/Monster views, server-backed Potion/Looting page 1, Item intervals, and one draggable AutoCombat/AutoSupport controller. PINC coexistence and menu behavior are live-confirmed; the new functional-tab slice still needs relog/runtime acceptance. |
+| AutoHunt UI | Implemented, functional-tab live test required | QJS-only seven-tab AHUI with native menu entry, Skill Tree and inventory drag/drop, the append-only 3,792-byte server profile snapshot, scrollable Basic/Monster views, server-backed Potion page 1 and both Looting pages, Item intervals, and one draggable AutoCombat/AutoSupport controller. PINC coexistence and base menu behavior are live-confirmed; the current native-text, exhausted-slot, Looting-page-2, controller map-sync, and functional-tab slice still needs a complete relog/runtime acceptance pass. |
 | HatEffect world occlusion | Working | `AllHatEffectsWorldDepthOracle.qjs` preserves the original screen-space STR renderer and apparent scale. Live-accepted v4.2 uses Ragnarok's Y-up matrix coefficients for upper-vertex depth and a bounded four-native-quantum contact tolerance. It remains scoped to HatEffects; native world `.str` NPCs retain stock behavior. |
 
 ## Fluent emoji checklist
@@ -62,9 +62,12 @@ Status meanings:
 - [x] Back Basic with ten server-owned settings and Monster with up to twenty current-map rows, each in a five-row native scrollbar/mouse-wheel viewport.
 - [x] Back Potion page 1 with four HP/SP item slots, ON/OFF state, persisted thresholds, verified native inventory drag/drop, measured 135x9 HP/SP gauge geometry, exact-percent hover, empty-slot mutation guards, arrow/track input, and continuous slider dragging.
 - [x] Back Looting page 1 with a persisted 0-90 weight limit, the native BSON's exact 205x9 `slider_gage_looting.bmp` gauge and 191px thumb travel, exact-percent hover, stock numeric input for weapon/armor random-option minimums, and independent Consumable/Card/Miscellaneous/Costume toggles.
+- [x] Back Looting page 2 with explicit Fight First/Loot First priority (`setting=13`) and Return to Town/Continue Without Loot weight-limit actions (`setting=65`); preserve those choices through the server-owned profile snapshot.
 - [x] Back Item with eight persisted buff-item slots, native inventory drag/drop, exact per-slot delay input, and stock Item Bar icon resolution by numeric item ID through the client item-info manager.
 - [x] Accept native Move drops through settings `62`/`63`: configured Fly-Wing equivalents, Butterfly Wing (`602`), Teleport level 1/2, and Warp Portal on the return slot. The server validates the exact dragged inventory slot or learned skill level, persists four exact rows with preference types `42..45`, snapshots those rows independently, and maps enabled return selections onto the existing `action_on_end=1` compatibility path.
-- [ ] Implement Potion page 2 status-recovery items, Looting page 2 item-list rules, distinct runtime execution policies for the persisted Move return methods, and per-tab Reset semantics.
+- [x] Use native text measurement and bold rendering for centered headings, native-sized hover-only item/skill labels, and lower-right quantity/learned-level overlays matching the Item Bar and Skill Bar.
+- [x] Clear exhausted Potion, Move-item, and Item rows when a snapshot reports zero inventory quantity; current Banquet servers omit those rows at the source, while the QJS guard keeps older snapshots visually correct.
+- [ ] Implement Potion page 2 status-recovery items, distinct runtime execution policies for the persisted Move return methods, and per-tab Reset semantics.
 - [x] Treat native item drag payload `ShortcutManager+0x30C` as a client inventory index, convert it with the server's `server_index()` helper, and validate the exact occupied slot before resolving its item ID. Invalid Potion/Move/Item registrations return typed snapshot feedback instead of warning-only rejection.
 - [x] Route `WM_MOUSEWHEEL` to Basic/Monster whenever the AutoHunt window is visible on those tabs; desktop mouse coordinates cannot be safely compared with renderer-space `UIFrameWnd` coordinates across DPI and viewport transforms.
 - [x] Treat autohunt.bson as the native-layout oracle: ApplySkin/DefaultBg, a 17px title bar, 11x11 system Base/Close controls, and 42x20 three-state Reset/Close buttons. Preserve its control sizes and edge insets when adapting the original 330px root to the 470px Global artwork.
@@ -77,8 +80,16 @@ Status meanings:
 - [x] Use red textures while inactive and the blue loop textures while active.
 - [x] Bake all 17 native STR layers, including six moving particle sprites and both 0/180-degree particle-line layers, into a 30-frame/20 FPS loop.
 - [x] Preserve native per-layer position, scale, rotation, color, and apparent icon size instead of scaling every 128x128 texture to the controller canvas.
-- [x] Create and server-sync the grouped controller from the normal in-game render pass; the renewed menu button is the intended settings-window entry point.
+- [x] Preserve and clamp the grouped controller position across map/UI recreation so it remains a top-level control instead of inheriting a stale menu-relative position.
 - [ ] Live-confirm both complete particle revolutions, grouped dragging, independent left/right toggling, relog, map change, Alt+Tab, and clean exit.
+- [x] Create and server-sync the grouped controller from the normal in-game render pass; the renewed menu button is the intended settings-window entry point.
+
+Current client/server wire contract (2026-08-12):
+
+- The snapshot is append-only and exactly 3,792 bytes. Established data through mutation feedback at byte 1,899 is unchanged; Loot detail, Item, Potion, additional Monster rows, Move rows/icons, and the two Basic SP thresholds occupy only appended ranges.
+- The client handles scalar settings through `65`. Valid UI controls must not emit unsupported/rejected warnings when paired with the matching Banquet map-server build.
+- Source/PE checks prove patch construction and protocol layout, not rendered behavior. Native alignment, drag/drop, theme switching, menu recreation, map changes, relog, and controller animation remain manual Ragexe acceptance gates.
+
 
 ## Native FPS/Ping overlay checklist
 

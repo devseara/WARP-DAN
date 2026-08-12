@@ -152,7 +152,7 @@ RedesignedStatusWin:
             title : Backport Status UI Assets
             recommend : no
             author : Louis T Steinhil
-            desc : Backports the supplied renewal Alt+A Stats and Trait tabs to the 2025-07-16 client. Adds independent staged plus/minus allocation with OK and Cancel to both pages, commits through the native server-authoritative Status and Trait packets, preserves all native row tooltips, adds hover-only Stat/Trait tab balloons, and routes the Trait tab through Disable Trait Status Button when selected. Hide Trait Status Button is incompatible because this redesign reuses the native Trait control.
+            desc : Backports the supplied renewal Alt+A Stats and Trait tabs to the 2025-07-16 client. Adds independent staged plus/minus allocation with OK and Cancel to both pages, commits through native server-authoritative Status and Trait packets, preserves native row tooltips, and adds hover-only Stat/Trait tab balloons. Dynamic Req and point totals retain native font selector 1 and height 14; glyph-width alpha repair prevents longer values from becoming transparent. Disable Trait Status Button remains supported; Hide Trait Status Button is incompatible because this redesign reuses the native Trait control.
 
 CustomExpBars:
     title : EXP BAR CUSTOMIZATION

@@ -158,11 +158,15 @@ def verify_source() -> None:
 
 	require(source.count("const nativeFontIndex = 1;") >= 2, "native font selector changed")
 	require(source.count("const nativeValueHeight = 14;") >= 2, "native value height changed")
-	require(source.count("const nativeCompactHeight = 12;") >= 2, "native compact height changed")
-	require(source.count("drawRight(265, 152, 40, nativeCompactHeight);") == 2, "Status/Trait points no longer share alignment")
+	require(source.count("const nativeCompactHeight = 14;") >= 2, "Req/Points font height changed")
+	require(source.count("drawRight(265, 151, 40, nativeCompactHeight);") == 2, "Status/Trait points no longer share alignment")
 	require("drawLeft(85, 126 + i * 16, 32, nativeValueHeight);" in source, "Trait Base alignment changed")
 	require("drawLeft(124, 126 + i * 16, 32, nativeValueHeight);" in source, "Trait Bonus alignment changed")
-	require("drawRight(174, 128 + i * 16, 32, nativeCompactHeight);" in source, "Trait Req alignment changed")
+	require("drawRight(174, 126 + i * 16, 32, nativeCompactHeight);" in source, "Trait Req alignment changed")
+	require(source.count("const textWidthVir = 0x00A21C90;") >= 2, "dynamic glyph measurement is missing")
+	require(source.count("const measuredWidthOffset = 0xBC;") >= 2, "measured alpha span storage changed")
+	require(source.count("a.call(textWidthVir);") >= 2, "formatted value widths are no longer measured")
+	require(source.count("makeOpaque(x, y, height, true);") >= 2, "right-aligned alpha repair is no longer glyph-sized")
 	require("0x008B6FDE, 0x008B733F" in source, "stock Trait Req/Points suppression changed")
 	require("'projected Trait renderer'" in source, "projected Trait renderer hook is missing")
 
