@@ -17,7 +17,7 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-08-02                                             *
+*   Last Modified : 2026-08-16                                             *
 *                                                                          *
 *   Description   : Adds a QJS-only, client-native Auto Combat settings    *
 *                   preview to the 2025-07-16 Ragexe. Persistent controls  *
@@ -49,6 +49,9 @@ const AutoCombatUIStatic = {
 	FrameMouseDown: 0x00880AD0,
 	FrameMouseMove: 0x00880CB0,
 	FrameMouseUp: 0x00880BB0,
+	WindowCaptureGet: 0x00A32E00,
+	WindowCaptureSet: 0x00A4B750,
+	WindowCaptureRelease: 0x00A482E0,
 	FrameMouseWheel: 0x005A8AF0,
 	WindowMainProc: 0x00A55820,
 	WindowMainProcResume: 0x00A55825,
@@ -91,6 +94,7 @@ const AutoCombatUIStatic = {
 	ControllerGroupHeight: 72,
 	ControllerFrameCount: 30,
 	ControllerFrameDurationMs: 50,
+	ControllerSyncIntervalMs: 2000,
 	ControllerAssetPath: "Assets/AutoCombatUI",
 	ControllerBootstrapHook: 0x00C74FE1,
 	ControllerBootstrapHookBytes: "E8 EA 75 A2 FF",
@@ -723,7 +727,7 @@ AutoCombatUIStatic.resolvePacketRefs = function(_)
 	return refs;
 };
 
-AutoCombatUIStatic.buildOpenSender = function(stateVir, refs)
+AutoCombatUIStatic.buildSnapshotRequestSender = function(stateVir, refs, messageType)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, AutoCombatUIStatic.ClientHeaderSize);
@@ -732,7 +736,7 @@ AutoCombatUIStatic.buildOpenSender = function(stateVir, refs)
 	a.emit(0x66, 0xC7, 0x45, 0xEE); a.word(AutoCombatUIStatic.ClientHeaderSize);
 	a.emit(0xC7, 0x45, 0xF0); a.dword(AutoCombatUIStatic.PacketMagic);
 	a.emit(0x66, 0xC7, 0x45, 0xF4); a.word(AutoCombatUIStatic.ProtocolVersion);
-	a.emit(0x66, 0xC7, 0x45, 0xF6); a.word(AutoCombatUIStatic.MessageOpen);
+	a.emit(0x66, 0xC7, 0x45, 0xF6); a.word(messageType);
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateRequest);
 	a.emit(0x40);
 	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateRequest);
@@ -2603,7 +2607,7 @@ AutoCombatUIStatic.emitPageControls = function(
 		{
 			const option = scroll + row;
 			const y = AutoCombatUIStatic.BasicFirstY + row * AutoCombatUIStatic.BasicRowSpacing;
-			if (option < 4)
+			if (option < 4 && option !== 1)
 			{
 				drawBasicNumericOption(option, y, `basic_${scroll}_${option}`);
 				if (option === 0)
@@ -3112,6 +3116,12 @@ AutoCombatUIStatic.emitMarkDirty = function(a)
 {
 	a.emit(0xC7, 0x46, AutoCombatUIStatic.WindowDirtyOffset);
 	a.dword(1);
+};
+
+AutoCombatUIStatic.emitSetCapture = function(a)
+{
+	a.emit(0x56, 0xB9); a.dword(AutoCombatUIStatic.WindowManager);
+	a.call(AutoCombatUIStatic.WindowCaptureSet);
 };
 
 AutoCombatUIStatic.emitRectGate = function(a, left, top, right, bottom, failLabel)
@@ -3834,6 +3844,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.jcc(0x8C, "title_minimize_test");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 	a.dword(4);
+	AutoCombatUIStatic.emitSetCapture(a);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("title_minimize_test");
@@ -3841,6 +3852,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.jcc(0x8C, "drag_title");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 	a.dword(3);
+	AutoCombatUIStatic.emitSetCapture(a);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("drag_title");
@@ -3876,6 +3888,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.jcc(0x8D, "footer_close_test");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 	a.dword(1);
+	AutoCombatUIStatic.emitSetCapture(a);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("footer_close_test");
@@ -3885,6 +3898,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.jcc(0x8D, "page_nav_test");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 	a.dword(2);
+	AutoCombatUIStatic.emitSetCapture(a);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("page_nav_test");
@@ -4016,7 +4030,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 			const option = scroll + row;
 			const next = `body_basic_${scroll}_${option}_next`;
 			const top = AutoCombatUIStatic.BasicFirstY + row * AutoCombatUIStatic.BasicRowSpacing;
-			if (option < 4)
+			if (option < 4 && option !== 1)
 			{
 				const rowAction = `body_basic_${scroll}_${option}_row_action`;
 				AutoCombatUIStatic.emitRectGate(
@@ -4306,6 +4320,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 		"healing_slider_right_press"
 	);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(5);
+	AutoCombatUIStatic.emitSetCapture(a);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 
@@ -4318,6 +4333,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 		"healing_slider_track_press"
 	);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(6);
+	AutoCombatUIStatic.emitSetCapture(a);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 
@@ -4343,6 +4359,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.label("healing_slider_press_store");
 	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateHealHpThreshold);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(7);
+	AutoCombatUIStatic.emitSetCapture(a);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.dword(7);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
@@ -4462,6 +4479,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 		a.emit(0x66, 0xA3); a.dword(valueVir);
 		a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 		a.dword(40 + index);
+		AutoCombatUIStatic.emitSetCapture(a);
 		AutoCombatUIStatic.emitMarkDirty(a);
 		a.jmp("consume");
 		a.label(trackNext);
@@ -4479,6 +4497,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 		"loot_slider_right_press"
 	);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(8);
+	AutoCombatUIStatic.emitSetCapture(a);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("loot_slider_right_press");
@@ -4490,6 +4509,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 		"loot_slider_track_press"
 	);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(9);
+	AutoCombatUIStatic.emitSetCapture(a);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("loot_slider_track_press");
@@ -4511,6 +4531,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	a.label("loot_slider_press_store");
 	a.emit(0xA3); a.dword(stateVir + AutoCombatUIStatic.StateLootWeightLimit);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl); a.dword(10);
+	AutoCombatUIStatic.emitSetCapture(a);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.dword(10);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
@@ -4715,13 +4736,24 @@ AutoCombatUIStatic.buildMouseUp = function(stateVir, mutationSenderVir, potionRo
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
 	a.emit(0x8B, 0x5D, 0x08);
 	a.emit(0x8B, 0x55, 0x0C);
-	a.emit(0x85, 0xDB); a.jcc(0x88, "base_mouse_up");
-	a.emit(0x85, 0xD2); a.jcc(0x88, "base_mouse_up");
-	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
-	a.emit(0x85, 0xC0);
-	a.jcc(0x84, "skill_drop_test");
+	a.emit(0x8B, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
 	a.dword(0);
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "pressed_capture_done");
+	AutoCombatUIStatic.emitMarkDirty(a);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.WindowManager);
+	a.call(AutoCombatUIStatic.WindowCaptureGet);
+	a.emit(0x3B, 0xC6);
+	a.jcc(0x85, "pressed_capture_done");
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.WindowManager);
+	a.call(AutoCombatUIStatic.WindowCaptureRelease);
+	a.label("pressed_capture_done");
+	a.emit(0x85, 0xDB); a.jcc(0x88, "base_mouse_up");
+	a.emit(0x85, 0xD2); a.jcc(0x88, "base_mouse_up");
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "skill_drop_test");
+	a.emit(0x8B, 0xC7);
 	a.emit(0x83, 0xF8, 0x01);
 	a.jcc(0x85, "pressed_footer_close");
 	AutoCombatUIStatic.emitRectGate(
@@ -5506,7 +5538,7 @@ AutoCombatUIStatic.buildMenuToggleRequest = function(pendingVir)
 };
 
 AutoCombatUIStatic.buildControllerBootstrap = function(
-	stateVir, openSenderVir, ensureControllerVir, syncControllerVir,
+	stateVir, openSenderVir, resyncSenderVir, ensureControllerVir, syncControllerVir,
 	pendingVir, toggleVir, getAsyncKeyStateIat
 )
 {
@@ -5529,18 +5561,26 @@ AutoCombatUIStatic.buildControllerBootstrap = function(
 	a.emit(0xC7, 0x05); a.dword(pendingVir); a.dword(0);
 	a.call(toggleVir);
 	a.label("bootstrap_sync");
-	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateReady); a.emit(0x01);
-	a.jcc(0x84, "bootstrap_controller");
 	a.emit(0xFF, 0x15); a.dword(AutoCombatUIStatic.TimeGetTimeIat);
-	a.emit(0x8B, 0xD8, 0x2B, 0x05); a.dword(
+	a.emit(0x83, 0x3D); a.dword(
+		stateVir + AutoCombatUIStatic.StateControllerNextSyncTick
+	); a.emit(0x00);
+	a.jcc(0x84, "bootstrap_snapshot_request");
+	a.emit(0x8B, 0xD8, 0x2B, 0x1D); a.dword(
 		stateVir + AutoCombatUIStatic.StateControllerNextSyncTick
 	);
 	a.jcc(0x88, "bootstrap_controller");
-	a.emit(0x81, 0xC3); a.dword(2000);
-	a.emit(0x89, 0x1D); a.dword(
+	a.label("bootstrap_snapshot_request");
+	a.emit(0x05); a.dword(AutoCombatUIStatic.ControllerSyncIntervalMs);
+	a.emit(0xA3); a.dword(
 		stateVir + AutoCombatUIStatic.StateControllerNextSyncTick
 	);
+	a.emit(0x83, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateReady); a.emit(0x01);
+	a.jcc(0x84, "bootstrap_resync");
 	a.call(openSenderVir);
+	a.jmp("bootstrap_controller");
+	a.label("bootstrap_resync");
+	a.call(resyncSenderVir);
 	a.label("bootstrap_controller");
 	// Validate and repair the live top-level controller every render pass.
 	// A map change can mutate its geometry without destroying the object.
@@ -5618,6 +5658,7 @@ AutoCombatUIStatic.buildMouseWheel = function(stateVir)
 AutoCombatUIStatic.buildDestructor = function(stateVir)
 {
 	const a = AutoCombatUIStatic.asm();
+	a.emit(0x56, 0x8B, 0xF1);
 	a.emit(0xC7, 0x05);
 	a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown);
 	a.dword(0);
@@ -5625,8 +5666,19 @@ AutoCombatUIStatic.buildDestructor = function(stateVir)
 	a.dword(stateVir + AutoCombatUIStatic.StateHoverControl);
 	a.dword(0);
 	a.emit(0xC7, 0x05);
+	a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
+	a.dword(0);
+	a.emit(0xC7, 0x05);
 	a.dword(stateVir + AutoCombatUIStatic.StateWindow);
 	a.dword(0);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.WindowManager);
+	a.call(AutoCombatUIStatic.WindowCaptureGet);
+	a.emit(0x3B, 0xC6);
+	a.jcc(0x85, "destructor_capture_done");
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.WindowManager);
+	a.call(AutoCombatUIStatic.WindowCaptureRelease);
+	a.label("destructor_capture_done");
+	a.emit(0x8B, 0xCE, 0x5E);
 	a.jmp(AutoCombatUIStatic.FrameDeletingDestructor);
 	return a;
 };
@@ -5701,6 +5753,9 @@ AutoCombatUIStatic.buildToggle = function(stateVir, vtableVir, openSenderVir, en
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("done");
 	a.label("toggle_existing");
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + AutoCombatUIStatic.StatePressedControl);
+	a.dword(0);
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, 0);
 	a.emit(0x8B, 0xCE);
@@ -5779,6 +5834,18 @@ AutoCombatUIStatic.verifyNativeContracts = function()
 	AutoCombatUIStatic.assertCode(
 		"UIFrameWnd mouse-up handler", AutoCombatUIStatic.FrameMouseUp,
 		"56 8B F1 B9 E8 F4 31 01 E8"
+	);
+	AutoCombatUIStatic.assertCode(
+		"UIWindowManager capture getter", AutoCombatUIStatic.WindowCaptureGet,
+		"8B 81 9C 01 00 00 C3"
+	);
+	AutoCombatUIStatic.assertCode(
+		"UIWindowManager capture setter", AutoCombatUIStatic.WindowCaptureSet,
+		"55 8B EC 8B 45 08 89 81 9C 01 00 00 5D C2 04 00"
+	);
+	AutoCombatUIStatic.assertCode(
+		"UIWindowManager capture release", AutoCombatUIStatic.WindowCaptureRelease,
+		"C7 81 9C 01 00 00 00 00 00 00 C3"
 	);
 	AutoCombatUIStatic.assertCode(
 		"UIFrameWnd mouse-wheel handler", AutoCombatUIStatic.FrameMouseWheel,
@@ -6042,7 +6109,7 @@ AutoCombatUI = function(_)
 			"Only Fly Wings or Butterfly Wings can be registered here."
 		),
 		moveSkillReject: AutoCombatUIStatic.allocateString(
-			"Only Teleport or Warp Portal can be registered here."
+			"Only Teleport can be registered here; Return requires level 2."
 		),
 		leftGlyph: AutoCombatUIStatic.allocateString("o"),
 		minimize: AutoCombatUIStatic.allocateString("-"),
@@ -6112,8 +6179,8 @@ AutoCombatUI = function(_)
 			"Automatically return to town when all equipped buff items are used."
 		),
 		basicOptions: [
-			"When SP is below 10%, use only normal attacks.",
-			"When SP is below 5%, stop attacking and auto move.",
+			"Allow normal attacks when SP is below 10%.",
+			"Never use normal attacks. Skills remain enabled.",
 			"Use teleport if combat does not occur for 10 seconds.",
 			"Use Teleport if there are more than 10 monsters on the screen.",
 			"Use teleport when an MVP boss monster appears.",
@@ -6124,14 +6191,14 @@ AutoCombatUI = function(_)
 			"Use a Token of Siegfried when defeated."
 		].map(text => AutoCombatUIStatic.allocateString(text)),
 		basicPrefixes: [
-			"When SP is below",
-			"When SP is below",
+			"Allow normal attacks when SP is below",
+			"",
 			"Use teleport if combat does not occur for",
 			"Use Teleport if there are more than"
 		].map(text => AutoCombatUIStatic.allocateString(text)),
 		basicSuffixes: [
-			" %, only normal attacks are used.",
-			" %, stop attacking and auto move.",
+			" %.",
+			"",
 			"seconds.",
 			" monsters on the screen."
 		].map(text => AutoCombatUIStatic.allocateString(text)),
@@ -6263,7 +6330,14 @@ AutoCombatUI = function(_)
 	$$(_, 3, "Create the AutoHunt UI AHUI packet sender and snapshot receiver");
 	const packetRefs = AutoCombatUIStatic.resolvePacketRefs(_);
 	const openSender = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildOpenSender(state.vir, packetRefs)
+		AutoCombatUIStatic.buildSnapshotRequestSender(
+			state.vir, packetRefs, AutoCombatUIStatic.MessageOpen
+		)
+	);
+	const resyncSender = AutoCombatUIStatic.allocateCode(
+		AutoCombatUIStatic.buildSnapshotRequestSender(
+			state.vir, packetRefs, AutoCombatUIStatic.MessageResync
+		)
 	);
 	const scalarSender = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildScalarSender(state.vir, packetRefs)
@@ -6395,7 +6469,7 @@ AutoCombatUI = function(_)
 	);
 	const controllerBootstrap = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildControllerBootstrap(
-			state.vir, openSender.vir, ensureController.vir,
+			state.vir, openSender.vir, resyncSender.vir, ensureController.vir,
 			syncController.vir, menuTogglePending.vir, toggle.vir,
 			getAsyncKeyStateIat
 		)
@@ -6442,13 +6516,14 @@ AutoCombatUI = function(_)
 			menuTogglePendingVir: menuTogglePending.vir,
 			menuButtonVisibleVir: menuButtonVisible.vir,
 			openSenderVir: openSender.vir,
+			resyncSenderVir: resyncSender.vir,
 			scalarSenderVir: scalarSender.vir,
 			snapshotReceiverVir,
 			monsterRowsVir: monsterRows.vir,
 			clientPacketId: AutoCombatUIStatic.ClientPacketId,
 			serverPacketId: AutoCombatUIStatic.ServerPacketId,
 			externalModules: 0,
-			serverBehavior: "snapshot-open-set-scalar-native-delay-input",
+			serverBehavior: "snapshot-open-resync-set-scalar-native-delay-input",
 			controllerSize: AutoCombatUIStatic.ControllerSize,
 			controllerGroupSize: [
 				AutoCombatUIStatic.ControllerGroupWidth,
