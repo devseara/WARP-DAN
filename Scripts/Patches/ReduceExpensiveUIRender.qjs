@@ -483,12 +483,15 @@ ReduceExpensiveUIRender.buildSkillTreeRepaintGate = function(stateVir)
 	// LGRO test change (2026-07-20): the skipped DrawContent also owns the avatar draw at
 	// 0x00978287, and the preview's frame index is timer-derived, so a gate with no time
 	// input freezes the character preview on idle frames. A minimum repaint interval keeps
-	// it animating. The full DrawContent runs, so its render-node clear at 0x00977EBE still
-	// happens and the preview composites cleanly.
+	// it animating, and because the whole DrawContent runs on those frames it repaints
+	// cleanly.
 	//
-	// NOTE: do NOT "fix" this by calling the avatar draw directly on the skip path. That
-	// skips the node-list clear, so each new head is drawn over the retained one and the
-	// hair ghosts. Verified broken on a live client.
+	// NOTE: do NOT "fix" this by calling the avatar draw directly on the skip path. Verified
+	// broken on a live client - the head ghosts. DrawContent is immediate-mode and begins by
+	// repainting the panel with CUIComponent__DrawFilledRect; that fill is what erases the
+	// previous frame. Drawing the avatar without it composites the new head onto the old
+	// pixels. (The call at 0x00977EBE is CUIComponent__NotifyParentDraw, the standard parent
+	// notification made by ~160 UI draw sites, not a render-node clear.)
 	if (gate.repaintFloorMs > 0)
 	{
 		a.emit(0xFF, 0x15); a.dword(gate.tickCountIatVir);            // CALL [GetTickCount]
