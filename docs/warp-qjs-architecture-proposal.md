@@ -272,27 +272,19 @@ patch forever.
 
 ---
 
-## Concrete Example: Dual-Wield Patch Rewritten
+## Concrete Non-Example: Dual-Wield Weapon Sprites
 
-**Current approach:** ~90 lines of QJS with raw hex, manual rel32 computation,
-shared slot workarounds, guard bypassing, and repeated crash debugging.
+The dual-wield patch must not be presented as an easy `InterceptCall` success
+case. Intercepting the item classifier or improving hook syntax does not create
+independent hand anchors or convert the precomposed ACT5 pair raster into two
+original item layers.
 
-**With all three layers:**
-
-```javascript
-Exe.InterceptCall(0x00D424B7, {
-    replace: function(ctx) {
-        let offItem = Exe.ReadU32(ctx.edi + 0x444);
-        return Exe.Call(0xD8A1D0, {
-            this: 0x15FA3C0,
-            args: [offItem]
-        });
-    }
-});
-```
-
-That's it. The InterceptCall generates the stub, computes all offsets, installs the
-JMP at patch time, and the replace callback runs at render time via Layer 2 bridge.
+Repeated live tests rejected resource-slot, action-remap, pose, synthetic
+texture, and final-draw hand-layer implementations even when their PE and
+offline sprite gates passed. This feature is therefore abandoned as a QJS
+implementation. The stock generic dual/off-hand renderer is the accepted
+fallback, and this failure should remain an architecture constraint rather than
+a framework demonstration.
 
 ---
 

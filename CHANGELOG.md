@@ -1,3 +1,232 @@
+# Dual-wield QJS abandonment (August 21, 2026)
+
+Live testing rejected the final native-draw hand-layer candidate
+`7F877D0B8333AA4774A4249E4D71770C8D3FE0B6ECE1349B8CAD13B4842C1A1E`:
+it reproduced the same visible failure despite passing QJS syntax, PE hook,
+relocation, import, mirror-oracle, and offline preview gates. Those checks are
+not accepted as proof of Ragexe hand placement.
+
+The project is abandoning the QJS implementation. The active
+`AllowDualCustomWeaponSprites.qjs` is restored to the verified 5.7 KB zero-write
+fail-closed source (`4D52B89F...`). Stock generic dual/off-hand artwork and its
+native placement are the accepted behavior. The historical attempts below are
+retained only to prevent repeating rejected approaches.
+
+# Dual-wield pixel-compositor feasibility gate (August 20, 2026)
+
+A complete 4,032-frame alpha-mask oracle now covers Assassin, Guillotine
+Cross, and Shadow Cross; both genders; all native pair types; idle/attack;
+all directions; and all frames. Only 48 frames are exact rigid unions of two
+generic singles. There are 3,912 separable frames and 120 frames with no
+independently provable second silhouette.
+
+A widened sword/axe failure has a 72-pixel ACT5 target versus a 195-pixel
+two-single union, producing 123 spill pixels and zero exclusive axe pixels.
+All 36 pair ACTs have zero anchors; body and item ACTs contain only one.
+Coordinate-only two-layer composition is rejected.
+
+Static RE identified packed CPU sprite pixels in CSprite, unpacker `0x00729650`,
+and `CTexMgr::CreateTexture` at `0x005685A0`. A generalized QJS solution now
+requires a new runtime composite-texture subsystem with palette conversion,
+clipping/masking, texture lifetime/cache, and device-reset reconstruction.
+The active QJS and deployed client remain fail-closed stock generic.
+
+Oracle SHA-256:
+`C947543EBFBBFE687702EBF954C660221A060277F7AE615CC8D10A76CABF2BA8`.
+# Dual-wield fail-closed restoration (August 20, 2026)
+
+Live screenshots disproved the remaining ACT5=main/ACT6=off assumption.
+The stock trace identifies ACT5 as the precomposed pair raster and ACT6 as
+its attack overlay, explaining why the mapped off-hand appeared correct only
+during attack stance while primary and idle placement remained wrong.
+
+`AllowDualCustomWeaponSprites` now verifies the four profiled stock renderer
+sites and performs zero EXE writes. The experimental hook/compositor code was
+removed from the active QJS. Standard Profile Main is byte-identical to a
+temporary build with the patch selection removed.
+
+Safe Profile Main SHA-256:
+`C40A90F65D779931405D089C230119E66F9C53337D49C60C914939555730ED22`.
+The deployed client therefore uses the native generic pair with its correct
+placement while a generalized original-sprite compositor remains unaccepted.
+# SPR/ACT identity crash correction (August 20, 2026)
+
+The SPR-only build crashed in the native draw routine at `0x00C40C41`.
+Disassembly at `0x00605D1D..0x00605D39` proves the renderer used the
+generic ACT's sprite kind/index against an item-specific SPR, producing an
+invalid sprite metadata pointer. The live client was immediately restored from
+the pre-rewrite backup; the failed candidate was preserved for comparison.
+
+The replacement now keeps every original SPR paired with the original ACT
+loaded by stock `PCHands.lua` and `weapontable.lub` resolution. It retains the
+stock ACT5/ACT6 resources separately as placement authorities. The final layer
+bridge copies the complete 36-byte stock layer and overwrites only the item
+sprite index and sprite kind. No coordinate, mirror, rotation, pose, origin, or
+ownership geometry is generated.
+
+Profile Main SHA-256 is
+`31AF65289ECC271D36D8CB5784A563C603AA01FC839E8B5255AE574712A6EF20`.
+The PE gate proves nine stock dwords plus two item identity dwords, paired
+SPR/ACT slot writes, safe capability publication, internal branch targets, and
+zero stale bridge operands.
+# Sprite-only dual-wield architecture correction (August 20, 2026)
+
+The stock runtime trace proves channels 5 and 6 already own separate ACT
+frames, sprite objects, and native hand transforms. The previous compositor
+replaced those ACTs and therefore replaced the correct placement it was
+trying to recover.
+
+`AllowDualCustomWeaponSprites` has been rewritten around the actual boundary.
+It now resolves each item's original SPR through the stock single-main
+`PCHands.lua` and `weapontable.lub` path, performs a final native dual/off-hand
+rebuild, and replaces only SPR slots 5 and 6. All pose/origin/ownership tables,
+actor registries, action remapping, and layer hooks have been removed.
+
+Profile Main SHA-256 is
+`131BE8C16CA5FC0E8C250594A3B9C1298F2500BC7EB9A718CE9A88A637D99F83`.
+The PE gate confirms one SPR[5] write, two SPR[6] writes, stock ACT-frame and
+layer calls, zero geometry writes, and zero stale bridge operands.
+# Physical-hand and component-identity correction (August 16, 2026)
+
+The action bridge previously reused one stack local for two different values:
+the renderer's physical main/off channel and the stock composite's component
+index. Reverse-order mixed pairs consequently selected the other hand's generic
+ACT as their transform baseline, while some off-hand-only same-class frames
+selected a null main-hand baseline. The bridge now preserves the physical hand
+in an independent local; pair classification and ownership maps modify only the
+component index.
+
+The 4,096-row actor registry now uses matching 64-entry bounded linear probes
+in the equipment and action bridges. Both searches continue across empty holes,
+so one hash collision or a cleared earlier owner no longer silently disables a
+still-live split. The resource-release and key-last publication rules are
+unchanged.
+
+The asset verifier now checks the deployed family set, all 1,344 mixed-class
+component registrations per family for local mask-optimality, and all 672
+same-class frames for separated targets with exclusive native-pixel
+contribution. This replaces the misleading assumption that separately authored
+pair and single artwork must be pixel-identical. Profile Main rebuild and PE
+disassembly pass with physical-hand/component separation and both registry
+probes present. Candidate EXE SHA-256:
+`97E88453404B86E849A2710B8BF534DFB407143347CC51140FA5C31C44995FB2`.
+Live visual acceptance remains required.
+
+# Semantic-frame and same-class hand-ownership correction (August 16, 2026)
+
+The stock-derived table was incorrectly used as an animation selector. Its
+source action/frame fields describe only which generic bitmap best explained a
+component during offline decomposition. Only 364 of 2,688 shared-family
+records and 344 of 2,688 Assassin-family records already matched the live
+semantic frame; 510 and 508 records respectively crossed actions. The runtime
+now keeps idle on `32..39`, maps dual attack to the original item's `80..87`,
+and preserves the caller's live frame for both item and generic baseline.
+
+The same-class solver also produced two correct stock locations without
+proving which was main or off hand. New 96-byte family ownership maps compare
+each preserved target with the exact same-action, same-frame native single-
+weapon layer, preferring mirror preservation and then minimum squared center
+displacement. They swap component ownership in 230 shared-family and 262
+Assassin-family frames. No coordinate, item ID, view ID, or job allowlist was
+added or guessed; mixed pairs remain assigned by the native weapon classes.
+
+Profile Main builds successfully. The PE verifier confirms semantic live-frame
+lookups, bounded same-class bit selection, the two 36,864-byte pose tables, the
+two 96-byte ownership maps, and no dual-weapon DLL dependency. Candidate EXE
+SHA-256: `3CDBC1B0E689B926686CEC10D959FEAB852B92E1AAA2AEE0A555AEE169C20C02`.
+Live visual acceptance remains required.
+
+# Native pair order and ACT-family dual-wield correction (August 15, 2026)
+
+Binary disassembly proved that native pair types `25..30` are ordered
+dagger/dagger, sword/sword, axe/axe, dagger/sword, dagger/axe, sword/axe. The
+previous offline table and runtime class map used a different order, so five of
+the six pair families consumed unrelated geometry.
+
+The deployed assets also disproved the single-family assumption. Shadow Cross
+and Guillotine Cross share one table, while the Assassin family differs in 424
+female sword-containing records. The QJS now embeds both corrected 36,864-byte
+tables and selects them from exact live generic-sword ACT fingerprints at idle
+action 32 and attack action 80. Assassin Cross follows its native Assassin
+resource without a job check. Unknown fingerprints fail back to the stock
+composite.
+
+Profile Main builds cleanly. PE audit confirms the shared and Assassin payloads
+once each, the obsolete wrong-order payload absent, all hook branches internal,
+the second non-weapon frame lookup untouched, and no dual-weapon DLL/import.
+Live visual and lifecycle acceptance remains required.
+
+# Dual-wield owned fallback and same-class separation (August 15, 2026)
+
+Reverse-engineering the profiled layer-transform switch confirmed that
+weapon channels 5, 6, and 7 intentionally bypass native anchor correction;
+the stock client has no hidden per-hand attachment record for item ACTs.
+
+The actual one-hand regression was in the offline same-class decomposition:
+repeated source actions could describe the same rendered pixels twice. Male
+sword/sword idle directions 2 and 3 consequently received transforms only
+one pixel apart. The solver now de-duplicates rendered-identical candidates,
+requires exclusive pixel contribution from both components, penalizes
+overlap, and uses separation only to resolve equal pixel evidence.
+
+The action bridge also has a new owned-visible fallback. After exact actor,
+channel, and item-ACT ownership succeeds, a later pose validation miss remaps
+only blank dual attack actions 88..95 to populated item actions 80..87.
+Idle and single attacks remain unchanged, and no transform is published.
+This prevents original weapon art from disappearing during attack or stance.
+
+The regenerated 36,864-byte payload covers all 2,688 real components. Clean
+isolated and no-DLL full builds retain all 858 stock imports; no DLL, item ID,
+view ID, or job allowlist is introduced.
+
+# QJS-only native-pose dual-wield compositor (August 14, 2026)
+
+`AllowDualCustomWeaponSprites` now retains both equipped items' original
+SPR/ACT resources and derives each hand's placement from the stock composite
+and live generic single-weapon ACTs. A 36,864-byte immutable pose table covers
+gender, native pair type 25..30, phase, direction, frame, and component. The
+strict asset gate covers all 2,688 real component frames with zero missing.
+
+The deployed full-profile build
+`3D90AB2070E391B7F3869A655E18DB575953D263F4336E4A3EFF3D0BD0621699`
+then exposed an item-animation boundary: a generic pose record can select a
+source frame that the original item ACT intentionally leaves transparent, and
+the ninth item attack frame previously fell through to blank dual actions
+`88..95`. The action bridge now validates the first item and generic layers,
+performs a bounded same-action visibility scan when the registered frame is
+transparent, and independently normalizes stock composite lookup to its native
+six idle/eight attack frames. The scan is classifier-wide and contains no item
+or job list.
+
+The crash reported on Shadow Cross was traced to the first mutable frame-token
+write: the appended address was readable/executable but not writable at
+runtime despite the `.xdiff` PE header flags. Placement state now occupies one
+page-aligned, data-only region. The bridge calls the client's existing
+`kernel32!VirtualProtect` import once to set `PAGE_READWRITE`; failure skips
+geometry publication instead of writing. This adds no DLL or import. The frame
+token now lasts for the ACT's complete native layer count, and identical cached
+main/off ACT pointers are separated by the renderer's native channel 5/6 key.
+
+The follow-up Shadow Cross crash exposed a separate x86 calling-convention bug:
+the action bridge called the native `ActGetFrame(action, frame)` without first
+duplicating those two arguments. Native `RET 8` therefore consumed the bridge
+return address and `action`; the bridge's subsequent `RET` jumped to the numeric
+frame value (`6`). The bridge now pushes explicit copies, consumes its original
+arguments with `RET 8`, and derives layer count from the native `[begin,end)`
+vector using the stock 36-byte ACT-layer stride instead of the unrelated `+2C`
+field.
+
+The implementation is static QJS/x86 only. A minimal clean-client build adds
+no DLL imports, and eligibility is controlled exclusively by the native item
+classifier and pair mapper. No item ID, view ID, job, or class allowlist is
+present. Same-class pairs are solved jointly, including stock-overlapped
+silhouettes. The 2026 safety profile performs no writes until its native pair
+mapper and generic loader are profiled. The clean 2025 build and PE/control-
+flow audits pass; live eight-direction, both-gender, all-pair, and lifecycle
+visual acceptance remains required.
+
+---
+
 # 2026 ItemId color renderer live checkpoint (July 31, 2026)
 
 > **Accepted binary checkpoint.** Re-WARP from the current source is required

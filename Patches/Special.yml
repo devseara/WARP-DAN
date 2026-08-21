@@ -51,10 +51,10 @@ CustomSpecials:
             desc : Enables custom shield sprites beyond the default set by loading shield definitions from lua files (similar to the Xray system). Required for servers with custom shield graphics.
 
         - AllowDualCustomWeaponSprites:
-            title : Dual-Wield Original Weapon Sprites [QJS]
+            title : Dual-Wield Original Weapon Sprites [ABANDONED]
             recommend : no
             author : Louis T Steinhil
-            desc : "Self-contained QJS/EXE patch for the profiled 2025-07-16 and 2026-02-19 Ragexe clients; no weapon DLL is required. The equipment hook drives the stock single-item loader for each equipped item and installs the original parallel SPR/ACT resources in native weapon slots 5 and 6 instead of generic combined types 25..30. A live-slot renderer bridge direction-preservingly maps blank item ACT actions 88..95 to populated actions 80..87. Off-hand-only equipment also receives its real item pair in slot 6. Applies to every valid item resource without an item-ID allowlist."
+            desc : "Abandoned after repeated live failures across resource-slot, action, pose, texture-compositor, and final-draw hand-layer implementations. Static PE checks and offline sprite oracles did not predict the client's actual hand placement. The active QJS is intentionally zero-write and preserves the correct stock generic dual/off-hand sprites. Selecting this patch produces no visual change."
 
         - AllHatEffectsWorldDepthOracle:
             title : All HatEffects Screen-Size World Depth [QJS]
