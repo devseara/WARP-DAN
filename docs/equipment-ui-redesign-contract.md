@@ -50,9 +50,13 @@ The Equipment body uses the original assets directly at runtime:
 No `bg_primary_legacy_body.png` or `bg_secondary_legacy_body.png` resource is
 referenced. The generated composite files were removed from the patch assets.
 
-The patch resizes the native window to 280x240 and clears both profiled sources
-of the inherited 20-pixel tab/content offset: `UIEquipWnd+0xF4` in the
-constructor and the initializer's separate height delta. The runtime body
+The patch resizes both native factories to 280x240: the local-character
+`UIEquipWnd` stored at the window manager's `+0x1E0`, and the viewed-character
+instance stored at `+0x3FC`. Leaving the second factory at its stock 167-pixel
+height clips the lower accessory rows even though the redirected body is
+240 pixels tall. The patch also clears both profiled sources of the inherited
+20-pixel tab/content offset: `UIEquipWnd+0xF4` in the constructor and the
+initializer's separate height delta. The runtime body
 continues to draw at `(34,17)`, while normal item origins now land two pixels
 inside the PNG cells, overlays land fourteen pixels inside them, and native hit
 rows start at the PNG cell boundary. The native drag-compatible slot pass keeps

@@ -8,6 +8,10 @@ Target client: 2025-07-16 (`Exe.BuildDate === 20250716`).
 client-side pending-allocation layers for the six Status and six Trait stats. The window remains
 fixed at `280x253` and switches between the supplied Status and Trait
 backgrounds through the native mode byte at `UIStatusWnd+0xFC`.
+The profiled native constructor does not initialize that byte. The redesign's
+OnCreate control builder explicitly resets it to `0` before constructing the
+page controls, so every newly allocated Alt+A window starts on Status instead
+of inheriting Trait mode from a freed instance across close/reopen cycles.
 
 The inactive page tab remains the native control at `UIStatusWnd+0xF8` with
 UUID `0x226`. `DisableTraitStatusButton` writes the redesign's shared
@@ -41,6 +45,14 @@ Runtime assets:
 - `m.png`: decrement-control sprite aligned at `(207,126+16n)`.
 - `ok_*` and `cancel_*`: out, over, press, and off states loaded into native
   UIButton slots 0 through 3.
+
+The Status plus sprite uses two native fixed-copy constructors. Each copies the
+resource string as `16 + 16 + 8 + 4` bytes through four independently encoded
+absolute operands. The redesign redirects every chunk for both constructors to
+one zero-padded private block; redirecting only the first 16-byte operand
+produces a mixed invalid path and leaves the buttons without loaded hit-area
+dimensions. The shared `basic_interface\\arw_right.bmp` string remains unchanged
+because Alt+S and other native windows also reference it.
 
 The original `bg_status.png` and `bg_trait.png` remain source assets and
 are not loaded at runtime. Drawing either full `280x253` image at the stock
