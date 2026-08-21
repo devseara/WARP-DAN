@@ -20,9 +20,9 @@
 *                                                                          *
 |**************************************************************************|
 *                                                                          *
-*   Author(s)     : Louis T Steinhil                                       *
+*   Author(s)     : Louis T Steinhil, CrazyBebop                           *
 *   Created Date  : 2026-07-02                                             *
-*   Last Modified : 2026-07-17                                             *
+*   Last Modified : 2026-07-20                                             *
 *                                                                          *
 *   Description   : Gates the 2025-07-16 ALT+S Skill Tree repaint so its   *
 *                   immediate-mode grid is rebuilt only after a render     *
@@ -51,6 +51,8 @@ ReduceExpensiveUIRender = function(_)
 {
 	$$(_, 1, `Reduce expensive UI rendering`);
 
+	ReduceExpensiveUIRender.gate.repaintFloorMs = ReduceExpensiveUIRender.askRepaintFloor(_);
+
 	ReduceExpensiveUIRender.restoreDisplayCharacterDraw(_);
 	ReduceExpensiveUIRender.preserveSkillTreeRealDraw(_);
 	ReduceExpensiveUIRender.preserveFactoryAddChild(_);
@@ -59,6 +61,49 @@ ReduceExpensiveUIRender = function(_)
 	ReduceExpensiveUIRender.installSkillTreeRepaintGate(_);
 
 	return true;
+};
+
+///
+/// \brief Ask how often the gate is allowed to repaint while the window sits idle.
+///
+/// The gate skips the whole DrawContent, which also owns the character preview draw, and the
+/// preview's frame index is timer-derived. With no time input the preview freezes on idle
+/// frames. A minimum repaint interval keeps it animating; longer intervals cost less.
+///
+ReduceExpensiveUIRender.askRepaintFloor = function(_)
+{
+	const choices = [
+		"Off - cheapest, preview freezes while idle",
+		"200 ms",
+		"400 ms",
+		"600 ms",
+		"800 ms"
+	];
+
+	const sel = Exe.GetUserInput(
+		'$skillTreeRepaintFloor',
+		D_Choice,
+		"Skill Tree idle repaint",
+		"This patch skips the Skill Tree repaint when nothing changed. That same repaint draws " +
+		"the character preview, so with no repaint the preview <b>stops animating</b> while the " +
+		"window sits idle.<br><br>" +
+		"Choose a minimum repaint interval to keep it animating. The preview sprite only advances " +
+		"about every 600 ms, so repainting faster than that redraws the same frame for no benefit. " +
+		"Longer intervals are cheaper.<br><br>" +
+		"<b>Off</b> is the cheapest and matches the original behaviour of this patch.",
+		"600 ms",
+		{ choices: choices }
+	);
+
+	if (!sel)
+	{
+		$$(_, 1.01, `Repaint interval not chosen, leaving idle repaint Off`);
+		return 0;
+	}
+
+	const ms = parseInt(sel, 10) || 0;   // the "Off" entry parses to NaN -> 0
+	$$(_, 1.01, `Skill Tree idle repaint: ${ms > 0 ? ms + "ms" : "Off"}`);
+	return ms;
 };
 
 ReduceExpensiveUIRender.normalizeHex = function(hex)
@@ -387,7 +432,9 @@ ReduceExpensiveUIRender.gate = {
 	drawContentVir: 0x00977E80,
 	vtableSlotVir: 0x0103F6B0,
 	skillPointLevelVir: 0x015FB9FC,
-	stateSize: 0x24,
+	tickCountIatVir: 0x00FC120C,   // kernel32!GetTickCount IAT slot, 24 call sites in-image
+	repaintFloorMs: 0,             // set from user input at apply time; 0 = original behaviour
+	stateSize: 0x28,
 	state: {
 		valid: 0x00,
 		self: 0x04,
@@ -397,7 +444,8 @@ ReduceExpensiveUIRender.gate = {
 		tab: 0x14,
 		scroll: 0x18,
 		points: 0x1C,
-		skillPointLevel: 0x20
+		skillPointLevel: 0x20,
+		lastTick: 0x24
 	},
 	fields: [
 		{object: 0x14, state: 0x08},
@@ -432,7 +480,23 @@ ReduceExpensiveUIRender.buildSkillTreeRepaintGate = function(stateVir)
 	a.emit(0xA1); a.dword(gate.skillPointLevelVir);
 	a.emit(0x3B, 0x05); a.dword(stateVir + gate.state.skillPointLevel);
 	a.jcc(0x85, "paint");
-	a.emit(0x5E, 0xC3);                    // unchanged: retain prior render nodes
+	// LGRO test change (2026-07-20): the skipped DrawContent also owns the avatar draw at
+	// 0x00978287, and the preview's frame index is timer-derived, so a gate with no time
+	// input freezes the character preview on idle frames. A minimum repaint interval keeps
+	// it animating. The full DrawContent runs, so its render-node clear at 0x00977EBE still
+	// happens and the preview composites cleanly.
+	//
+	// NOTE: do NOT "fix" this by calling the avatar draw directly on the skip path. That
+	// skips the node-list clear, so each new head is drawn over the retained one and the
+	// hair ghosts. Verified broken on a live client.
+	if (gate.repaintFloorMs > 0)
+	{
+		a.emit(0xFF, 0x15); a.dword(gate.tickCountIatVir);            // CALL [GetTickCount]
+		a.emit(0x2B, 0x05); a.dword(stateVir + gate.state.lastTick);  // SUB EAX,[lastTick]
+		a.emit(0x3D); a.dword(gate.repaintFloorMs);                   // CMP EAX,floor
+		a.jcc(0x83, "paint");                                         // JAE (unsigned: wrap-safe)
+	}
+	a.emit(0x5E, 0xC3);                    // unchanged grid: retain prior render nodes
 
 	a.label("paint");
 	a.emit(0x8B, 0xCE);
@@ -447,6 +511,11 @@ ReduceExpensiveUIRender.buildSkillTreeRepaintGate = function(stateVir)
 	a.emit(0xA3); a.dword(stateVir + gate.state.skillPointLevel);
 	a.emit(0xC7, 0x05); a.dword(stateVir + gate.state.valid);
 	a.emit(0x01, 0x00, 0x00, 0x00);
+	if (gate.repaintFloorMs > 0)
+	{
+		a.emit(0xFF, 0x15); a.dword(gate.tickCountIatVir);            // CALL [GetTickCount]
+		a.emit(0xA3); a.dword(stateVir + gate.state.lastTick);        // MOV [lastTick],EAX
+	}
 	a.emit(0x5E, 0xC3);
 
 	return a;
@@ -479,6 +548,19 @@ ReduceExpensiveUIRender.installSkillTreeRepaintGate = function(_)
 		0x0097828C,
 		"C6 86 71 02 00 00 00"
 	);
+
+	// The repaint floor calls kernel32!GetTickCount through the IAT. Confirm the slot really
+	// is that import by proving the client itself calls through it.
+	if (gate.repaintFloorMs > 0)
+	{
+		const slot = gate.tickCountIatVir;
+		const slotHex = [0, 8, 16, 24].map(s => ((slot >>> s) & 0xFF).toString(16).padStart(2, "0")).join(" ");
+		if (Exe.FindHex("FF 15 " + slotHex) < 0)
+			throw Error(
+				`ReduceExpensiveUIRender: no CALL DWORD PTR [0x${slot.toString(16).toUpperCase()}] in the image; ` +
+				'the GetTickCount IAT slot is wrong for this build'
+			);
+	}
 
 	let vtablePhy = -1;
 	try
