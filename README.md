@@ -5,7 +5,7 @@
 **WARP0716 development has resumed.** After a pause, the project is back open, and I'll keep working on patches as time allows.
 
 **What's been built so far:**
-- 40 recommended patches for the 2025-07-16 kRO Ragexe client
+- 41 recommended patches for the 2025-07-16 kRO Ragexe client
 - Custom Jobs system (Reforged)
 - EnableCustomFonts, fully rewritten to load .ttf fonts natively
 - Multi-connection clientinfo support
