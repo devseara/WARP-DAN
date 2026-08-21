@@ -240,7 +240,8 @@ RedesignedStatusWindow = function(_)
 			D_Bool,
 			'Copy Status UI Assets',
 			'Copy the redesigned Status UI assets into the target client data folder?',
-			true
+			true,
+			{saveDefault: true}
 		);
 
 	$$(_, 6, 'Stage base stats and commit through native server requests');
