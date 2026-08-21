@@ -15,7 +15,7 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
     PIN flow, including Cancel, without a startup DLL.
   - No `ws2_32.recv`, runtime patcher, custom UI DLL, or API detour is used.
 - `AutoCombatUI.qjs`
-  - QJS-only Auto Hunt settings window and draggable AutoCombat/AutoSupport controls. A cloned native renewed-menu UIButton opens the window; /autohunt is retained only for the first live menu-button acceptance cycle.
+  - QJS-only Auto Hunt settings window and draggable Auto-Hunt/Auto-Potion controls. A cloned native renewed-menu UIButton opens the window; /autohunt is retained only for the first live menu-button acceptance cycle.
   - Uses the supplied red and blue textures through the native texture manager;
     no STR runtime DLL or client-side combat logic is loaded.
   - AHUI requests use the shared static `0x0BEF` dispatcher route and remain
