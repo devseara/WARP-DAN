@@ -1,3 +1,26 @@
+# CrazyBebop - 2025-07-16 build (July 20, 2026)
+
+> **Patch update - re-WARP to apply.** Adds one new patch for Skill Tree performance; re-apply WARP to use it.
+
+## July 20 Update
+
+### New patch: Reduce expensive UI rendering ([#45](https://github.com/CrazyBebop/WARP0716/pull/45))
+
+The ALT+S Skill Tree rebuilds its entire icon grid every single frame, even when nothing on it has changed. This patch skips that rebuild unless something actually changed: tab, hover, scroll, skill points, window size, or the client's own dirty flag.
+
+Measured on a test client with the Skill Tree open, comparing both states on one running process: the stock client repainted on every frame and sat around 90% CPU, while the gated version repainted **zero times across 256 consecutive idle frames** and dropped under 1%.
+
+Thanks to YlenXWalker and Stingor.
+
+**Idle repaint interval.** The repaint being skipped is also what draws the character preview in the corner of the window, and that preview's animation is driven by a timer. Skipping every frame therefore leaves it frozen while the window sits idle. When you apply the patch it now asks for a minimum repaint interval:
+
+- **Off** - cheapest, the preview stops animating while idle
+- **200 / 400 / 600 / 800 ms** - preview keeps animating
+
+Default is 600 ms. The preview sprite only advances about every 600 ms, so repainting faster than that redraws the same frame for no benefit, and longer intervals cost less.
+
+---
+
 # Dual-wield QJS abandonment (August 21, 2026)
 
 Live testing rejected the final native-draw hand-layer candidate
