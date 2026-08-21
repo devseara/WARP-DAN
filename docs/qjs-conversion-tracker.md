@@ -1,6 +1,6 @@
 # DLL to QJS Conversion Tracker
 
-Target client: `2025-07-16_Ragexe_175220998`  
+Target client: `2025-07-16_Ragexe_175220998`
 Policy: static WARP/QJS patches, no runtime `recv` hook, and no custom DLL for a
 feature marked QJS-only.
 
@@ -30,7 +30,7 @@ Status meanings:
 | FPS overlay | Implemented, test required | QJS-only post-Present cave counts native frames and draws at prompted X/Y coordinates through existing Win32 imports. No D3D proxy or custom DLL. |
 | Ping overlay | Implemented, test required | QJS-only `0x0360/0x007F` application RTT capture feeds the shared prompted-position renderer. No ICMP, recv hook or custom DLL. |
 | In-game PIN keypad | Working | QJS-only shared `0x0BEF/PINC` route and client-native keypad flow; Cancel and normal PIN entry are live-confirmed with no PIN UI DLL. |
-| AutoHunt UI | Implemented, functional-tab live test required | QJS-only seven-tab AHUI with native menu entry, Skill Tree and inventory drag/drop, the append-only 3,792-byte server profile snapshot, scrollable Basic/Monster views, server-backed Potion page 1 and both Looting pages, Item intervals, and one draggable AutoCombat/AutoSupport controller. PINC coexistence and base menu behavior are live-confirmed; the current native-text, exhausted-slot, Looting-page-2, controller map-sync, and functional-tab slice still needs a complete relog/runtime acceptance pass. |
+| AutoHunt UI | Implemented, functional-tab live test required | QJS-only seven-tab AHUI with native menu entry, Skill Tree and inventory drag/drop, the append-only 3,792-byte server profile snapshot, scrollable Basic/Monster views, server-backed Potion page 1 and both Looting pages, Item intervals, and one draggable Auto-Hunt/Auto-Potion controller. Loot random-option selectors are QJS-owned dropdowns; they do not instantiate the Game Settings `CUIGroupSkin` wrapper. Auto-Hunt includes potion evaluation; Auto-Potion is a mutually exclusive potion-only mode on setting `46`. Controller coordinates persist under HKCU across character select and full client exit. PINC coexistence and base menu behavior are live-confirmed; the current potion-only runtime and functional-tab slice still need live acceptance. |
 | HatEffect world occlusion | Working | `AllHatEffectsWorldDepthOracle.qjs` preserves the original screen-space STR renderer and apparent scale. Live-accepted v4.2 uses Ragnarok's Y-up matrix coefficients for upper-vertex depth and a bounded four-native-quantum contact tolerance. It remains scoped to HatEffects; native world `.str` NPCs retain stock behavior. |
 
 ## Fluent emoji checklist
@@ -61,7 +61,7 @@ Status meanings:
 - [x] Preserve the established 1900-byte snapshot prefix; append Loot/Item/Potion fields and Monster rows 6-20 without shifting Skill or mutation-feedback offsets.
 - [x] Back Basic with ten server-owned settings and Monster with up to twenty current-map rows, each in a five-row native scrollbar/mouse-wheel viewport.
 - [x] Back Potion page 1 with four HP/SP item slots, ON/OFF state, persisted thresholds, verified native inventory drag/drop, measured 135x9 HP/SP gauge geometry, exact-percent hover, empty-slot mutation guards, arrow/track input, and continuous slider dragging.
-- [x] Back Looting page 1 with a persisted 0-90 weight limit, the native BSON's exact 205x9 `slider_gage_looting.bmp` gauge and 191px thumb travel, exact-percent hover, stock numeric input for weapon/armor random-option minimums, and independent Consumable/Card/Miscellaneous/Costume toggles.
+- [x] Back Looting page 1 with a persisted 0-90 weight limit, the native BSON's exact 205x9 `slider_gage_looting.bmp` gauge and 191px thumb travel, exact-percent hover, QJS-owned weapon/armor random-option dropdowns that send settings `54`/`55`, and independent Consumable/Card/Miscellaneous/Costume toggles. Keep these dropdowns independent of Game Settings `CUIGroupSkin` so no stock `Skin` label or lifecycle callback enters the AutoHunt frame.
 - [x] Back Looting page 2 with explicit Fight First/Loot First priority (`setting=13`) and Return to Town/Continue Without Loot weight-limit actions (`setting=65`); preserve those choices through the server-owned profile snapshot.
 - [x] Back Item with eight persisted buff-item slots, native inventory drag/drop, exact per-slot delay input, and stock Item Bar icon resolution by numeric item ID through the client item-info manager.
 - [x] Accept native Move drops through settings `62`/`63`: configured Fly-Wing equivalents, Butterfly Wing (`602`), Teleport level 1/2, and Warp Portal on the return slot. The server validates the exact dragged inventory slot or learned skill level, persists four exact rows with preference types `42..45`, snapshots those rows independently, and maps enabled return selections onto the existing `action_on_end=1` compatibility path.
@@ -74,14 +74,14 @@ Status meanings:
 - [x] Append Auto Hunt as a real cloned UIButton child of UIMenuIconWnd, with native hover/pressed images, parent ownership, a destructor-cleared pointer, and mouse-up routing to the QJS settings toggle.
 - [x] Offer Auto Hunt in both Show Buttons and Hide Buttons while keeping its visibility cell independent of the stock descriptor table.
 - [x] Generate and select complete one-through-six-row backgrounds for both 357px New UI and 220px Classic UI layouts; runtime code chooses a full image and never clips bg_menu_357x322.tga or bg_menu_old.tga.
-- [ ] Live-confirm Auto Hunt hover/press/click, menu close/reopen, Classic/New theme switching, 1-6 row Show/Hide combinations, relog, resolution change, and clean exit; then remove the temporary /autohunt fallback.
+- [ ] Live-confirm Auto Hunt hover/press/click, both Loot random-option dropdowns (open, select, outside-close), menu close/reopen, Classic/New theme switching, 1-6 row Show/Hide combinations, relog, resolution change, and clean exit; then remove the temporary /autohunt fallback.
 - [ ] Live-confirm Meteor Assault on page 1, wrong-page modal/reversion, page-3 role restrictions and alignment, threshold persistence, native header/footer control rendering, and status-gated recovery casting.
-- [x] Group the 72x72 AutoCombat and AutoSupport halves into one draggable 144x72 controller while preserving independent toggles.
+- [x] Group the 72x72 Auto-Hunt and Auto-Potion halves into one draggable 144x72 controller; server-owned setting `45` and setting `46` are mutually exclusive, while full Auto-Hunt continues evaluating active Potion-page rows.
 - [x] Use red textures while inactive and the blue loop textures while active.
 - [x] Bake all 17 native STR layers, including six moving particle sprites and both 0/180-degree particle-line layers, into a 30-frame/20 FPS loop.
 - [x] Preserve native per-layer position, scale, rotation, color, and apparent icon size instead of scaling every 128x128 texture to the controller canvas.
-- [x] Preserve and clamp the grouped controller position across map/UI recreation so it remains a top-level control instead of inheriting a stale menu-relative position.
-- [ ] Live-confirm both complete particle revolutions, grouped dragging, independent left/right toggling, relog, map change, Alt+Tab, and clean exit.
+- [x] Save grouped-controller coordinates on mouse-up/destruction under `HKCU\Software\BanquetOfHeroes\AutoHuntUI`, reload on process start, and clamp to the current render surface.
+- [ ] Live-confirm both complete particle revolutions, grouped dragging, `Start Auto-Hunt`/`Start Auto-Potion` hover text, mutual exclusion, potion use in both modes, character select, Alt+F4/relaunch, map change, Alt+Tab, and clean exit.
 - [x] Create and server-sync the grouped controller from the normal in-game render pass; the renewed menu button is the intended settings-window entry point.
 
 Current client/server wire contract (2026-08-12):

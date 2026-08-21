@@ -46,6 +46,11 @@ const GlobalUIThemeStatic = {
 	LoadSurface: 0x00A8D4A0,
 	ImageDraw: 0x00A1D260,
 	TextDraw: 0x00A25A70,
+	TextLabelConstructor: 0x00983EE0,
+	TextLabelSetText: 0x009AE0D0,
+	TextLabelSetHeight: 0x009AE040,
+	TextLabelSetBold: 0x009AE000,
+	TextLabelObjectSize: 0xFC,
 	WindowManager: 0x0131F4E8,
 	GetWindow: 0x00A47B90,
 	CloseWindow: 0x00A2E770,
@@ -70,7 +75,10 @@ const GlobalUIThemeStatic = {
 	StateCount: 16,
 	StateJobChild: 20,
 	StateBasicInfo: 24,
-	StateSize: 28,
+	StateThemeLabel: 28,
+	StateClassicLabel: 32,
+	StateNewLabel: 36,
+	StateSize: 40,
 	RowShift: 27,
 	RowX: 20,
 	RowY: 7,
@@ -359,10 +367,10 @@ GlobalUIThemeStatic.buildToggle = function(stateVir, pathVir, loadVir)
 GlobalUIThemeStatic.emitText = function(a, textVir, x, y, bold)
 {
 	GlobalUIThemeStatic.pushImm(a, 0);
-	GlobalUIThemeStatic.pushImm(a, 0);
+	GlobalUIThemeStatic.pushImm(a, bold);
 	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.Black);
 	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextHeight);
-	GlobalUIThemeStatic.pushImm(a, bold);
+	GlobalUIThemeStatic.pushImm(a, 1);
 	GlobalUIThemeStatic.pushImm(a, 0);
 	a.emit(0x68); a.dword(textVir);
 	GlobalUIThemeStatic.pushImm(a, y);
@@ -370,6 +378,7 @@ GlobalUIThemeStatic.emitText = function(a, textVir, x, y, bold)
 	a.emit(0x8B, 0xCE);
 	a.call(GlobalUIThemeStatic.TextDraw);
 };
+
 
 GlobalUIThemeStatic.emitImage = function(a, pathVir, x, y, label)
 {
@@ -396,9 +405,6 @@ GlobalUIThemeStatic.buildDraw = function(stateVir, paths, labels)
 {
 	const a = GlobalUIThemeStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
-	GlobalUIThemeStatic.emitText(a, labels.theme.vir, 0, 1, 0);
-	GlobalUIThemeStatic.emitText(a, labels.classic.vir, 88, 1, 0);
-	GlobalUIThemeStatic.emitText(a, labels.renewal.vir, 201, 1, 0);
 	a.emit(0x83, 0x3D); a.dword(stateVir + GlobalUIThemeStatic.StateEnabled); a.emit(0x00);
 	a.jcc(0x84, "classic");
 	GlobalUIThemeStatic.emitImage(
@@ -455,6 +461,12 @@ GlobalUIThemeStatic.buildChildDestructor = function(stateVir)
 	a.emit(0x3B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateChild);
 	a.jcc(0x85, "pass");
 	a.emit(0xC7, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateChild); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.dword(0);
 	a.label("pass");
 	a.jmp(GlobalUIThemeStatic.ImageButtonDeletingDestructor);
 	return a;
@@ -479,7 +491,11 @@ GlobalUIThemeStatic.cloneButtonVtable = function(
 	return {phy, vir, size: byteCount};
 };
 
-GlobalUIThemeStatic.buildCreateWrapper = function(stateVir, loadVir, buttonVtableVir)
+GlobalUIThemeStatic.buildCreateWrapper = function(
+	stateVir, loadVir, buttonVtableVir,
+	themeTextVir, themeTextLength, classicTextVir, classicTextLength,
+	newTextVir, newTextLength
+)
 {
 	const a = GlobalUIThemeStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
@@ -530,6 +546,105 @@ GlobalUIThemeStatic.buildCreateWrapper = function(stateVir, loadVir, buttonVtabl
 	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.RowY);
 	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.RowX);
 	a.emit(0x8B, 0xCB, 0xFF, 0x50, 0x10);
+	// Use the same native UIText class and +0xDC bold property as the stock
+	// Skin, Audio Setting, Mail, and other Game Settings headings.
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextLabelObjectSize);
+	a.call(GlobalUIThemeStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "attach_row");
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.TextLabelConstructor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "attach_row");
+	a.emit(0xA3); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	GlobalUIThemeStatic.pushImm(a, 13);
+	GlobalUIThemeStatic.pushImm(a, 80);
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.SetWindowSize);
+	a.emit(0xA1); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.emit(0x8B, 0x10);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	GlobalUIThemeStatic.pushImm(a, 0);
+	a.emit(0x8B, 0xC8, 0xFF, 0x52, 0x10);
+	GlobalUIThemeStatic.pushImm(a, themeTextLength);
+	a.emit(0x68); a.dword(themeTextVir);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetText);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextHeight);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetHeight);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetBold);
+	a.emit(0xFF, 0x35); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.emit(0x8B, 0xCB);
+	a.call(GlobalUIThemeStatic.AddChild);
+	a.label("attach_row");
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextLabelObjectSize);
+	a.call(GlobalUIThemeStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "classic_label_done");
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.TextLabelConstructor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "classic_label_done");
+	a.emit(0xA3); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	GlobalUIThemeStatic.pushImm(a, 13);
+	GlobalUIThemeStatic.pushImm(a, 70);
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.SetWindowSize);
+	a.emit(0xA1); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.emit(0x8B, 0x10);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	GlobalUIThemeStatic.pushImm(a, 88);
+	a.emit(0x8B, 0xC8, 0xFF, 0x52, 0x10);
+	GlobalUIThemeStatic.pushImm(a, classicTextLength);
+	a.emit(0x68); a.dword(classicTextVir);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetText);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextHeight);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetHeight);
+	GlobalUIThemeStatic.pushImm(a, 0);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetBold);
+	a.emit(0xFF, 0x35); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.emit(0x8B, 0xCB);
+	a.call(GlobalUIThemeStatic.AddChild);
+	a.label("classic_label_done");
+
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextLabelObjectSize);
+	a.call(GlobalUIThemeStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "new_label_done");
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.TextLabelConstructor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "new_label_done");
+	a.emit(0xA3); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	GlobalUIThemeStatic.pushImm(a, 13);
+	GlobalUIThemeStatic.pushImm(a, 50);
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.SetWindowSize);
+	a.emit(0xA1); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.emit(0x8B, 0x10);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	GlobalUIThemeStatic.pushImm(a, 201);
+	a.emit(0x8B, 0xC8, 0xFF, 0x52, 0x10);
+	GlobalUIThemeStatic.pushImm(a, newTextLength);
+	a.emit(0x68); a.dword(newTextVir);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetText);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextHeight);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetHeight);
+	GlobalUIThemeStatic.pushImm(a, 0);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetBold);
+	a.emit(0xFF, 0x35); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.emit(0x8B, 0xCB);
+	a.call(GlobalUIThemeStatic.AddChild);
+	a.label("new_label_done");
 	a.emit(0x53, 0x8B, 0xCF);
 	a.call(GlobalUIThemeStatic.AddChild);
 	a.emit(0x89, 0x1D); a.dword(stateVir + GlobalUIThemeStatic.StateChild);
@@ -632,7 +747,9 @@ ROGlobalZeroUITheme = function(_)
 	);
 	const createWrapper = GlobalUIThemeStatic.allocateCode(
 		GlobalUIThemeStatic.buildCreateWrapper(
-			state.vir, load.vir, buttonVtable.vir
+			state.vir, load.vir, buttonVtable.vir,
+			labels.theme.vir, 8, labels.classic.vir, 10,
+			labels.renewal.vir, 6
 		)
 	);
 
