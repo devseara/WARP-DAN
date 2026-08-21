@@ -1,5 +1,7 @@
 # WARP0716
 
+![The WARP0716 patcher](docs/images/warp0716_patcher.png)
+
 ## Development Status - Active Again
 
 **WARP0716 development has resumed.** After a pause, the project is back open, and I'll keep working on patches as time allows.
@@ -27,6 +29,8 @@ The easiest way to play is **WARPGATE**, a one-click downloader and updater.
 **[Download WARPGATE](https://mirror2.romirrors.com/downloads/Warpgate.zip)**
 
 Unzip it and run it. WARPGATE downloads the full 2025-07-16 client for you, keeps the English translation up to date (powered by [llchrisll/ROenglishRE](https://github.com/llchrisll/ROenglishRE/)), and updates itself. No manual EXE patching, no hunting down GRFs, no ClientGenerator steps. Download, run, and play.
+
+![WARPGATE](docs/images/warpgate.png)
 
 That's all most people need. The sections below are for server operators and tinkerers who want to build or customize their own client.
 
