@@ -157,7 +157,9 @@ three-column right edges. The seven lower values follow the Physical Damage
 convention and right-align against their underline endpoints: Hit/Flee/Perfect
 Dodge use x=88/206/263 on row 3; Critical Rate/Critical Damage/Attack Speed/
 Move Speed use x=88/147/206/263 on row 4. Critical Damage is read from
-`CSession::GetStatus(SP_CRATE)`; Move Speed uses `SP_SPEED` and displays
+`CSession::GetStatus(SP_CRATE)`. The profiled `SP_SPEED` update handler at
+`0x00CCF08F` bypasses that status map and writes the live raw value to
+`0x015FBA94`; Move Speed reads that global and displays
 `floor(10000 / rawSpeed)`.
 
 The Trait asset underlines are y=46, 69, and 92. P.Atk/Res, S.Matk/Mres, and
@@ -195,9 +197,10 @@ Status derived mapping:
 The four rows use y origins 24, 42, 60, and 78. Hit Rate retains the supplied
 asset's combined first-two-cell hover region, while its number is right-aligned
 at the first underline edge. Row 4 uses four independent hit regions. Critical
-Damage and Move Speed are read through the profiled status accessor as
-`SP_CRATE` and `SP_SPEED`; Move Speed displays `floor(10000 / rawSpeed)`,
-matching the client/server speed representation.
+Damage is read through the profiled status accessor as `SP_CRATE`. Move Speed
+reads the live `SP_SPEED` packet destination at `0x015FBA94` directly and
+displays `floor(10000 / rawSpeed)`, matching the client/server speed
+representation.
 
 Trait page mapping:
 

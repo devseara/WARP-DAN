@@ -92,6 +92,15 @@ def verify_source() -> None:
 	require("addPage(state.traitControlsVir, 0x800, false);" in source, "Trait custom controls changed")
 	require("emitPage('status', state.controlsVir);" in source, "Status control visibility path changed")
 	require("emitPage('trait', state.traitControlsVir);" in source, "Trait control visibility path changed")
+	asset_input = section(
+		source,
+		"Exe.GetUserInput(",
+		"$$(_, 6, 'Stage base stats",
+	)
+	require(
+		"{saveDefault: true}" in asset_input,
+		"Status asset-copy default is not persisted to exported profiles",
+	)
 
 	geometry = section(
 		source,
@@ -175,6 +184,16 @@ def verify_source() -> None:
 	derived_rows = [int(value.strip()) for value in match.group(1).split(",")]
 	require(derived_rows == [27, 48, 69, 90], "Status derived rows changed")
 	require(all(line - row == 11 for row, line in zip(derived_rows, [38, 59, 80, 101])), "Status glyphs no longer meet underlines")
+	status_renderer = section(
+		source,
+		"RedesignedStatusWindow.buildStatusRenderer = function(",
+		"RedesignedStatusWindow.buildControlVisibility = function(",
+	)
+	require("a.emit(0xA1); a.dword(0x015FBA94);" in status_renderer, "Move Speed is not bound to live SP_SPEED storage")
+	speed_renderer = section(status_renderer, "a.emit(0xA1); a.dword(0x015FBA94);", "a.emit(0x5F, 0x5E, 0x5B")
+	require("a.call(0x0089D340);" not in speed_renderer, "Move Speed regressed to the non-updated status map accessor")
+	require("a.dword(10000);" in speed_renderer and "a.emit(0x33, 0xD2, 0xF7, 0xF1);" in speed_renderer, "Move Speed conversion changed")
+
 
 	trait_y = [
 		int(value) for value in re.findall(

@@ -22,7 +22,7 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-08-10                                             *
-*   Last Modified : 2026-08-21                                             *
+*   Last Modified : 2026-08-22                                             *
 *                                                                          *
 *   Description   : Backports the supplied renewal Alt+A Status and Trait  *
 *                   assets to the 2025-07-16 client, stages Status/Trait  *
@@ -991,9 +991,7 @@ RedesignedStatusWindow.buildStatusRenderer = function(state, totalCostVir)
 	format(1, formatOneVir);
 	drawRight(206, derivedRows[3], 28, nativeValueHeight);
 
-	RedesignedStatusWindow.pushImm(a, 0);
-	a.emit(0xB9); a.dword(0x015FA3C0);
-	a.call(0x0089D340);
+	a.emit(0xA1); a.dword(0x015FBA94);
 	a.emit(0x85, 0xC0);
 	a.jcc(0x8E, 'speed_zero');
 	a.emit(0x8B, 0xC8, 0xB8); a.dword(10000);
