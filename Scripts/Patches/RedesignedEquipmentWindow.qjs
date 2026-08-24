@@ -22,12 +22,12 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-08-09                                             *
-*   Last Modified : 2026-08-21                                             *
+*   Last Modified : 2026-08-22                                             *
 *                                                                          *
 *   Description   : Backports the renewal Equipment UI to the 2025-07-16   *
 *                   client using supplied assets while preserving native   *
-*                   item, Costume, Swap, tooltip, drag, and packet         *
-*                   ownership.                                             *
+*                   Title, Damage Indicator, Costume, Swap, item, tooltip, *
+*                   drag, and packet ownership.                            *
 *                                                                          *
 \**************************************************************************/
 
@@ -55,13 +55,19 @@ RedesignedEquipmentWindow = function(_)
 	const backgroundVir = RedesignedEquipmentWindow.writeCString(background);
 	const primaryVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'bg_primary.png');
 	const primary2Vir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'bg_primary2.png');
+	const emptyVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'bg_empty.png');
 	const swapVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'bg_swap.png');
-	const menuPrimaryVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'menu_primary.png');
-	const menuSecondaryVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'menu_secundary.png');
+	const menuPrimaryVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'menu_primary_tabs.png');
+	const menuSecondaryVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'menu_costume_tabs.png');
+	const menuTitleVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'menu_title.png');
+	const menuDamageVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'menu_damage.png');
 	const iconFalconVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'icon_falcon.png');
 	const iconPecoVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'icon_peco.png');
 	const iconCartVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'icon_cart.png');
 	const shadowVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'ibox_shadow.png');
+	const damageCardVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'damage_card.bmp');
+	const damageCardHoverVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'damage_card_hover.bmp');
+	const damageCardSelectedVir = RedesignedEquipmentWindow.writeCString(assetPrefix + 'damage_card_selected.bmp');
 	const redirects = [
 		{
 			label: 'viewed-character equipment body',
@@ -114,12 +120,18 @@ RedesignedEquipmentWindow = function(_)
 		RedesignedEquipmentWindow.redirect(_, spec);
 
 	RedesignedEquipmentWindow.patchEquipmentLayers(
-		_, primaryVir, primary2Vir, menuPrimaryVir, menuSecondaryVir,
+		_, primaryVir, primary2Vir, emptyVir,
+		menuPrimaryVir, menuSecondaryVir, menuTitleVir, menuDamageVir,
 		iconFalconVir, iconPecoVir, iconCartVir
 	);
-	RedesignedEquipmentWindow.patchSurfaceModeLock(_);
+	RedesignedEquipmentWindow.patchSurfaceModeLock(
+		_, menuPrimaryVir, menuSecondaryVir, menuTitleVir, menuDamageVir
+	);
 	RedesignedEquipmentWindow.patchWindowGeometry(_);
 	RedesignedEquipmentWindow.patchLegacyTabVisibility(_);
+	RedesignedEquipmentWindow.patchExtendedTabPages(
+		_, damageCardVir, damageCardHoverVir, damageCardSelectedVir
+	);
 	RedesignedEquipmentWindow.patchEquipmentRows(_);
 	RedesignedEquipmentWindow.patchEquipmentDragShadow(_);
 	RedesignedEquipmentWindow.patchCostumeBody(_);
@@ -138,7 +150,7 @@ RedesignedEquipmentWindow = function(_)
 			true
 		);
 
-	$$(_, 5, 'Keep stock item identity, Costume, Swap, tooltip, drag, and packet ownership');
+	$$(_, 5, 'Keep stock Title, Damage, Costume, Swap, item, tooltip, and packet ownership');
 	return true;
 };
 
@@ -161,6 +173,7 @@ RedesignedEquipmentWindow.Assets = [
 	'bg.png',
 	'bg_primary.png',
 	'bg_primary2.png',
+	'bg_empty.png',
 	'bg_swap.png',
 	'ibox_shadow.png',
 	'icon_cart.png',
@@ -168,6 +181,13 @@ RedesignedEquipmentWindow.Assets = [
 	'icon_peco.png',
 	'menu_primary.png',
 	'menu_secundary.png',
+	'menu_primary_tabs.png',
+	'menu_costume_tabs.png',
+	'menu_title.png',
+	'menu_damage.png',
+	'damage_card.bmp',
+	'damage_card_hover.bmp',
+	'damage_card_selected.bmp',
 	'swapr_out.png',
 	'swapr_over.png',
 	'swapr_press.png'
@@ -198,7 +218,8 @@ RedesignedEquipmentWindow.findUnique = function(pattern, label)
 };
 
 RedesignedEquipmentWindow.patchEquipmentLayers = function(
-	_, primaryVir, primary2Vir, menuPrimaryVir, menuSecondaryVir,
+	_, primaryVir, primary2Vir, emptyVir,
+	menuPrimaryVir, menuSecondaryVir, menuTitleVir, menuDamageVir,
 	iconFalconVir, iconPecoVir, iconCartVir
 )
 {
@@ -218,16 +239,20 @@ RedesignedEquipmentWindow.patchEquipmentLayers = function(
 		[
 			'60',
 			'BF ' + RedesignedEquipmentWindow.P32(primary2Vir),
-			'BD ' + RedesignedEquipmentWindow.P32(menuPrimaryVir),
+			'BD ' + RedesignedEquipmentWindow.P32(emptyVir),
 			'83 BE B4 00 00 00 00',              // viewed characters use Primary2
 			JNE(Filler(1, 1)),
 			'83 BE F0 00 00 00 01',              // Costume mode uses Primary2
 			JE(Filler(2, 1)),
+			'83 BE F0 00 00 00 02',              // Title mode keeps its native page
+			JE(Filler(14)),
+			'83 BE F0 00 00 00 03',              // Damage mode keeps its native controls
+			JE(Filler(15)),
 			'BF ' + RedesignedEquipmentWindow.P32(primaryVir),
 			JMP(Filler(1, 1))
 		].join(' '),
 
-		' BD ' + RedesignedEquipmentWindow.P32(menuSecondaryVir),
+		' BD ' + RedesignedEquipmentWindow.P32(emptyVir),
 
 		[
 			' 57',                               // body resource path
@@ -310,6 +335,18 @@ RedesignedEquipmentWindow.patchEquipmentLayers = function(
 			' 61',
 			'8B 86 F0 00 00 00',                // replay stock mode load
 			JMP(Filler(13))
+		].join(' '),
+
+		[
+			' BD ' + RedesignedEquipmentWindow.P32(emptyVir),
+			'BF ' + RedesignedEquipmentWindow.P32(emptyVir),
+			JMP(Filler(1))
+		].join(' '),
+
+		[
+			' BD ' + RedesignedEquipmentWindow.P32(emptyVir),
+			'BF ' + RedesignedEquipmentWindow.P32(emptyVir),
+			JMP(Filler(1))
 		].join(' ')
 	];
 	const [,
@@ -321,12 +358,15 @@ RedesignedEquipmentWindow.patchEquipmentLayers = function(
 		pecoTarget,
 		mountDrawTarget,
 		cartTarget,
-		doneTarget
+		doneTarget,
+		titleTarget,
+		damageTarget
 	] = MapAddrs(parts);
 	AutoHook(hookAddr, parts, {
 		nops: 0,
 		localTgts: {
 			'1,1': bodyTarget,
+			1: bodyTarget,
 			'2,1': costumeTarget,
 			'3,1': menuTarget,
 			'4,1': statusTarget,
@@ -334,7 +374,9 @@ RedesignedEquipmentWindow.patchEquipmentLayers = function(
 			'6,1': pecoTarget,
 			'7,1': mountDrawTarget,
 			'8,1': cartTarget,
-			9: doneTarget
+			9: doneTarget,
+			14: titleTarget,
+			15: damageTarget
 		},
 		targets: {
 			10: 0x00A9F030,
@@ -344,9 +386,11 @@ RedesignedEquipmentWindow.patchEquipmentLayers = function(
 		}
 	});
 };
-RedesignedEquipmentWindow.patchSurfaceModeLock = function(_)
+RedesignedEquipmentWindow.patchSurfaceModeLock = function(
+	_, menuPrimaryVir, menuSecondaryVir, menuTitleVir, menuDamageVir
+)
 {
-	$$(_, 1.4, 'Lock the Equipment backing surface to stock tiled mode');
+	$$(_, 1.4, 'Draw late native-page rails and lock the backing surface');
 	let hookAddr = RedesignedEquipmentWindow.findUnique(
 		'8B 8E 24 01 00 00 85 C9 74 14 8B 01 6A 00 6A 00 6A 00 6A 00 6A 3C 6A 00 FF 90 94 00 00 00 8B 4D F4 64 89 0D 00 00 00 00',
 		'Equipment draw epilogue'
@@ -355,26 +399,91 @@ RedesignedEquipmentWindow.patchSurfaceModeLock = function(_)
 	const returnVir = Exe.Phy2Vir(hookAddr + 10, CODE);
 	const parts = [
 		[
-			'8B 46 24',                         // current backing surface
-			'85 C0',
+			'60',
+			'8B 86 F0 00 00 00',
+			'83 F8 00',                          // General mode
 			JE(Filler(1, 1)),
-			'C6 40 28 00'                       // force two-tile mode before flush
+			'83 F8 01',                          // Costume mode
+			JE(Filler(2, 1)),
+			'83 F8 02',                          // Title mode
+			JE(Filler(3, 1)),
+			'83 F8 03',                          // Damage Indicator mode
+			JE(Filler(4, 1)),
+			JMP(Filler(6))
 		].join(' '),
 
 		[
-			' 8B 4D F4',                        // replay SEH unlink
+			' BF ' + RedesignedEquipmentWindow.P32(menuPrimaryVir),
+			JMP(Filler(5, 1))
+		].join(' '),
+
+		[
+			' BF ' + RedesignedEquipmentWindow.P32(menuSecondaryVir),
+			JMP(Filler(5, 1))
+		].join(' '),
+
+		[
+			' BF ' + RedesignedEquipmentWindow.P32(menuTitleVir),
+			JMP(Filler(5, 1))
+		].join(' '),
+
+		' BF ' + RedesignedEquipmentWindow.P32(menuDamageVir),
+
+		[
+			CALL(Filler(10)),                    // native image manager
+			'8B D8 85 DB',
+			JE(Filler(6)),
+			'57',
+			CALL(Filler(11)),
+			'83 C4 04',
+			'8B CB 50',
+			CALL(Filler(12)),
+			'85 C0',
+			JE(Filler(6)),
+			'6A 00 50 6A 11 6A 00 8B CE',       // x=0, y=17
+			CALL(Filler(13))
+		].join(' '),
+
+		[
+			' 61',
+			'8B 46 24',                          // current backing surface
+			'85 C0',
+			JE(Filler(7, 1)),
+			'C6 40 28 00'                        // force two-tile mode before flush
+		].join(' '),
+
+		[
+			' 8B 4D F4',                         // replay SEH unlink
 			'64 89 0D 00 00 00 00',
-			JMP(Filler(2))
+			JMP(Filler(14))
 		].join(' ')
 	];
-	const [, replayTarget] = MapAddrs(parts);
+	const [,
+		primaryTarget,
+		secondaryTarget,
+		titleTarget,
+		damageTarget,
+		loadTarget,
+		doneTarget,
+		replayTarget
+	] = MapAddrs(parts);
 	AutoHook(hookAddr, parts, {
 		nops: 5,
 		localTgts: {
-			'1,1': replayTarget
+			'1,1': primaryTarget,
+			'2,1': secondaryTarget,
+			'3,1': titleTarget,
+			'4,1': damageTarget,
+			'5,1': loadTarget,
+			6: doneTarget,
+			'7,1': replayTarget
 		},
 		targets: {
-			2: returnVir
+			10: 0x00A90350,
+			11: 0x00A9F030,
+			12: 0x00A8D4A0,
+			13: 0x00A1D260,
+			14: returnVir
 		}
 	});
 };
@@ -453,6 +562,179 @@ RedesignedEquipmentWindow.patchLegacyTabVisibility = function(_)
 			11: returnVir
 		}
 	});
+};
+
+RedesignedEquipmentWindow.patchExtendedTabPages = function(_, damageCardVir, damageCardHoverVir, damageCardSelectedVir)
+{
+	$$(_, 2.3, 'Fit the native Title page inside the renewal body');
+	let addr = RedesignedEquipmentWindow.findUnique(
+		'6A 00 6A 69 8B 90 D4 00 00 00 8B 47 14 83 E8 06 50 8B 87 F4 00 00 00 83 C0 27 50 6A 03 FF D2',
+		'Equipment Title page geometry'
+	);
+	Exe.SetUint8(addr + 15, 0x25);             // width = 280 - 37 = 243
+	Exe.SetUint8(addr + 25, 0x27);             // y = 39; preserve selected-title header row
+	Exe.SetUint8(addr + 28, 0x22);             // x = 34
+
+	$$(_, 2.35, 'Center the selected-title header inside the renewal body');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B 56 14 8B 86 F4 00 00 00 83 EA 02 83 7D EC 10 6A 01 ' +
+		'0F 43 4D D8 83 C0 14 6A 00 6A 0D 6A 00 52 51 50 6A 01 8B CE E8 ?? ?? ?? ??',
+		'Equipment selected-title header geometry'
+	);
+	Exe.SetUint8(addr + 11, 0x25);             // centered width = parent width - 37 = 243
+	Exe.SetUint8(addr + 35, 0x22);             // x = 34
+
+	$$(_, 2.4, 'Align native Damage Indicator choices to 64-pixel card columns');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'85 F6 75 06 6A 08 FF D0 EB 15 8B C6 C1 E0 04 2B C6 ' +
+		'8D 04 85 1C 00 00 00 50 FF 95 ?? ?? ?? ??',
+		'Equipment Damage Indicator choice geometry'
+	);
+	Exe.SetUint8(addr + 5, 0x22);              // first control x = 34
+	Exe.SetNOPs(addr + 15, 2);                 // keep 16n before the x4 LEA => 64n
+	Exe.SetUint32(addr + 20, 0x22);            // remaining controls x = 34 + 64n
+
+	$$(_, 2.5, 'Align native Damage previews to 64-pixel card columns');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'33 C0 BB 06 00 00 00 89 45 80 89 5D 88',
+		'Equipment Damage Indicator preview first x'
+	);
+	Exe.SetUint32(addr + 3, 0x22);              // first x = 34
+
+	$$(_, 2.55, 'Map the two native scroll positions to complete three-card pages');
+	const visibleIndexHookAddr = RedesignedEquipmentWindow.findUnique(
+		'8B B7 54 01 00 00 03 F0 3B 35 60 24 60 01 0F 8D',
+		'Equipment Damage Indicator visible index'
+	);
+	const visibleIndexReturnVir = Exe.Phy2Vir(visibleIndexHookAddr + 8, CODE);
+	const visibleIndexParts = [[
+		'8B B7 54 01 00 00',                    // native scrollbar position: 0 or 1
+		'03 F6',                                // logical page start: 0 or 2
+		'03 F0',                                // current style = page start + visible slot
+		JMP(Filler(10))
+	].join(' ')];
+	AutoHook(visibleIndexHookAddr, visibleIndexParts, {
+		nops: 3,
+		targets: {
+			10: visibleIndexReturnVir
+		}
+	});
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8B 45 80 83 C3 44 40 89 5D 88 89 45 80 ' +
+		'81 FB 16 01 00 00 0F 8C',
+		'Equipment Damage Indicator preview cadence'
+	);
+	Exe.SetUint8(addr + 5, 0x40);              // next x += 64
+	Exe.SetUint32(addr + 15, 0xA3);            // stop after x=162: three complete cards
+
+	$$(_, 2.6, 'Use exact 64-pixel native Damage card states');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8D 45 D8 68 7C 5E 03 01 50 E8 ?? ?? ?? ??',
+		'Equipment Damage Indicator selected preview background'
+	);
+	Exe.SetUint32(addr + 4, damageCardSelectedVir);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8D 45 C0 68 AC 5E 03 01 50 E8 ?? ?? ?? ??',
+		'Equipment Damage Indicator hover preview background'
+	);
+	Exe.SetUint32(addr + 4, damageCardHoverVir);
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8D 45 A8 68 DC 5E 03 01 50 E8 ?? ?? ?? ??',
+		'Equipment Damage Indicator normal preview background'
+	);
+	Exe.SetUint32(addr + 4, damageCardVir);
+
+	$$(_, 2.7, 'Center Damage labels within the 64-pixel card columns');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'6A 01 68 BA BA BA 00 6A 0E 6A 00 6A 40 50 6A 45',
+		'Equipment Damage Indicator selected label foreground'
+	);
+	Exe.SetUint8(addr + 8, 0x0C);              // selected font size = 12
+	Exe.SetUint8(addr + 12, 0x40);             // centered width = 64
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'6A 00 68 BA BA BA 00 6A 0C 6A 00 6A 40 50 6A 45',
+		'Equipment Damage Indicator normal label foreground'
+	);
+	Exe.SetUint8(addr + 8, 0x0C);              // normal font size = 12
+	Exe.SetUint8(addr + 12, 0x40);             // centered width = 64
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'B9 0E 00 00 00 C6 45 84 01 EB 3F',
+		'Equipment Damage Indicator selected label shadow font'
+	);
+	Exe.SetUint32(addr + 1, 0x0C);             // selected shadow font size = 12
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'B9 0C 00 00 00 C6 45 84 00',
+		'Equipment Damage Indicator normal label shadow font'
+	);
+	Exe.SetUint32(addr + 1, 0x0C);             // normal shadow font size = 12
+
+	addr = RedesignedEquipmentWindow.findUnique(
+		'FF 75 84 68 32 32 32 00 51 6A 00 6A 40 50 6A 44',
+		'Equipment Damage Indicator label shadow width'
+	);
+	Exe.SetUint8(addr + 12, 0x40);             // centered width = 64
+
+	$$(_, 2.75, 'Match Damage card hit testing to the rendered three-card pages');
+	const damageHitTestAddr = RedesignedEquipmentWindow.findUnique(
+		'55 8B EC 53 56 57 8B 7D 0C 8B D9 8B 4D 08 33 F6 BA 06 00 00 00',
+		'Equipment Damage Indicator card hit test'
+	);
+	const damageHitTestCode = [
+		'8B 44 24 04',                          // mouse x
+		'8B 54 24 08',                          // mouse y
+		'83 FA 3A 7C 22',                       // y < 58: miss
+		'81 FA 96 00 00 00 7F 1A',              // y > 150: miss
+		'83 E8 22',                             // x -= 34
+		'3D C0 00 00 00 73 10',                 // outside three 64px columns: miss
+		'C1 E8 06',                             // visible slot = x / 64
+		'8B 91 54 01 00 00',                    // native scrollbar position: 0 or 1
+		'03 D2',                                // logical page start: 0 or 2
+		'03 C2',                                // style index = page start + visible slot
+		'C2 08 00',
+		'83 C8 FF',                             // miss: return -1
+		'C2 08 00'
+	].join(' ');
+	AutoHook(damageHitTestAddr, damageHitTestCode, {
+		nops: 0
+	});
+
+	$$(_, 2.8, 'Inset the native Damage Indicator scrollbar beside the rail');
+	const scrollHookAddr = RedesignedEquipmentWindow.findUnique(
+		'8B C8 FF 75 08 89 87 34 01 00 00 6A 00 68 99 00 00 00 ' +
+		'6A 01 E8 ?? ?? ?? ??',
+		'Equipment Damage Indicator scrollbar geometry'
+	);
+	const scrollReturnVir = Exe.Phy2Vir(scrollHookAddr + 25, CODE);
+	const scrollParts = [[
+		'8B C8',                              // native scrollbar receiver
+		'8B 55 08 83 EA 22 52',               // width = parent width - 34
+		'89 87 34 01 00 00',
+		'6A 00 68 99 00 00 00 6A 22',        // mode=0, y=153, x=34
+		CALL(Filler(10)),
+		JMP(Filler(11))
+	].join(' ')];
+	AutoHook(scrollHookAddr, scrollParts, {
+		nops: 20,
+		targets: {
+			10: 0x00843DC0,
+			11: scrollReturnVir
+		}
+	});
+
+	$$(_, 2.9, 'Configure two complete three-card Damage Indicator pages');
+	addr = RedesignedEquipmentWindow.findUnique(
+		'8D 46 FC 33 C9 85 C0 56 0F 4F C8 6A 04 51 8B 8F 34 01 00 00 ' +
+		'E8 ?? ?? ?? ??',
+		'Equipment Damage Indicator scrollbar maximum'
+	);
+	Exe.SetUint8(addr + 2, 0xFC);              // max position = max(choiceCount - 4, 0)
+	Exe.SetUint8(addr + 12, 0x03);             // visible page capacity = 3
 };
 
 RedesignedEquipmentWindow.patchEquipmentRows = function(_)
@@ -1419,11 +1701,15 @@ RedesignedEquipmentWindow.patchLeftRailSelectors = function(_)
 			JAE(Filler(6)),
 			'8B 44 24 08 83 F8 11',            // y >= 17
 			JL(Filler(6)),
-			'83 F8 55',                         // y < 85
+			'3D 99 00 00 00',                   // y < 153: four rail cells
 			JGE(Filler(6)),
 			'83 F8 33',                         // first rail cell is General
 			JL(Filler(2, 1)),
-			'B8 01 00 00 00',                  // Costume index
+			'83 F8 55',                         // second rail cell is Costume
+			JL(Filler(12)),
+			'83 F8 77',                         // third rail cell is Title
+			JL(Filler(13)),
+			'B8 03 00 00 00',                  // Damage Indicator index
 			JMP(Filler(5, 1))
 		].join(' '),
 
@@ -1454,6 +1740,16 @@ RedesignedEquipmentWindow.patchLeftRailSelectors = function(_)
 		[
 			' 55 8B EC 6A FF',                 // replay the stock prologue
 			JMP(Filler(11))
+		].join(' '),
+
+		[
+			' B8 01 00 00 00',                  // Costume index
+			JMP(Filler(5))
+		].join(' '),
+
+		[
+			' B8 02 00 00 00',                  // Title index
+			JMP(Filler(5))
 		].join(' ')
 	];
 	const [,
@@ -1462,7 +1758,9 @@ RedesignedEquipmentWindow.patchLeftRailSelectors = function(_)
 		mountTarget,
 		releaseTarget,
 		railDispatchTarget,
-		stockTarget
+		stockTarget,
+		costumeTarget,
+		titleTarget
 	] = MapAddrs(parts);
 	AutoHook(hookAddr, parts, {
 		nops: 0,
@@ -1472,7 +1770,10 @@ RedesignedEquipmentWindow.patchLeftRailSelectors = function(_)
 			'3,1': mountTarget,
 			'4,1': releaseTarget,
 			'5,1': railDispatchTarget,
-			6: stockTarget
+			5: railDispatchTarget,
+			6: stockTarget,
+			12: costumeTarget,
+			13: titleTarget
 		},
 		targets: {
 			10: eventVir,
@@ -1487,6 +1788,8 @@ RedesignedEquipmentWindow.patchLeftRailHoverLabels = function(_)
 	$$(_, 4.4, 'Show native cursor-relative rail and footer action balloons');
 	const generalTextVir = RedesignedEquipmentWindow.writeCString('General Equipment');
 	const costumeTextVir = RedesignedEquipmentWindow.writeCString('Costume Equipment');
+	const titleTextVir = RedesignedEquipmentWindow.writeCString('Title');
+	const damageTextVir = RedesignedEquipmentWindow.writeCString('Damage Indicator');
 	const falconTextVir = RedesignedEquipmentWindow.writeCString('Release Falcon');
 	const pecoTextVir = RedesignedEquipmentWindow.writeCString('Release Pecopeco');
 	const cartTextVir = RedesignedEquipmentWindow.writeCString('Release Cart');
@@ -1527,11 +1830,15 @@ RedesignedEquipmentWindow.patchLeftRailHoverLabels = function(_)
 			JAE(Filler(7)),
 			'83 F8 11',                          // y >= 17
 			JL(Filler(7)),
-			'83 F8 55',                          // y < 85
+			'3D 99 00 00 00',                    // y < 153: four rail cells
 			JGE(Filler(7)),
 			'83 F8 33',                          // first rail cell is General
 			JL(Filler(2, 1)),
-			'BF ' + RedesignedEquipmentWindow.P32(costumeTextVir),
+			'83 F8 55',                          // second rail cell is Costume
+			JL(Filler(13)),
+			'83 F8 77',                          // third rail cell is Title
+			JL(Filler(14)),
+			'BF ' + RedesignedEquipmentWindow.P32(damageTextVir),
 			JMP(Filler(6, 1))
 		].join(' '),
 
@@ -1580,6 +1887,16 @@ RedesignedEquipmentWindow.patchLeftRailHoverLabels = function(_)
 			' 61',
 			'55 8B EC 6A FF',                    // replay the stock prologue
 			JMP(Filler(12))
+		].join(' '),
+
+		[
+			' BF ' + RedesignedEquipmentWindow.P32(costumeTextVir),
+			JMP(Filler(6))
+		].join(' '),
+
+		[
+			' BF ' + RedesignedEquipmentWindow.P32(titleTextVir),
+			JMP(Filler(6))
 		].join(' ')
 	];
 	const [,
@@ -1589,7 +1906,9 @@ RedesignedEquipmentWindow.patchLeftRailHoverLabels = function(_)
 		falconTarget,
 		pecoTarget,
 		tooltipTarget,
-		originalTarget
+		originalTarget,
+		costumeTarget,
+		titleTarget
 	] = MapAddrs(parts);
 	AutoHook(hookAddr, parts, {
 		nops: 0,
@@ -1600,7 +1919,10 @@ RedesignedEquipmentWindow.patchLeftRailHoverLabels = function(_)
 			'4,1': falconTarget,
 			'5,1': pecoTarget,
 			'6,1': tooltipTarget,
-			7: originalTarget
+			6: tooltipTarget,
+			7: originalTarget,
+			13: costumeTarget,
+			14: titleTarget
 		},
 		targets: {
 			10: 0x00A1EF70,

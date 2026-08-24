@@ -3,13 +3,15 @@
 Target client: 2025-07-16 (`Exe.BuildDate === 20250716`).
 ## Current production contract
 
-The current patch selection enables the General and Costume visual layers,
-280x240 main-window size, main-row geometry, matching hit geometry, the
-draw-epilogue tiled-surface lock, safe legacy-tab hiding, footer relocation,
-native mode switching, and the docked Swap child. The stock tab child is still
-constructed and added to its native parent before `SetVisible(false)` is
-dispatched through its vtable; ownership and destruction therefore remain
-stock. General provider indices 0 through 9, render-coordinate indices, and
+The current patch selection enables General, Costume, Title, and Damage
+Indicator rail states, the 280x240 main-window size, main-row geometry,
+matching hit geometry, the draw-epilogue tiled-surface lock, safe legacy-tab
+hiding, footer relocation, native mode switching, and the docked Swap child.
+The stock four-tab child is still constructed and added to its native parent
+before `SetVisible(false)` is dispatched through its vtable; ownership and
+destruction therefore remain stock. The renewal rail re-exposes native modes
+0 through 3 without replacing their page objects or event handlers. General
+provider indices 0 through 9, render-coordinate indices, and
 both profiled picker results remain native and unpermuted. This preserves the
 live-confirmed head order: Apple of Archer in upper head, Sunglasses in middle
 head, and Romantic Leaf in lower head. Pseudo iteration 10 alone translates
@@ -40,7 +42,11 @@ The Equipment body uses the original assets directly at runtime:
 - `bg.png` (`280x240`) is the window background at `(0,0)`.
 - `bg_primary.png` (`245x202`) is the local General body at `(34,17)`.
 - `bg_primary2.png` (`245x202`) is the viewed-character and Costume body at `(34,17)`; its baked caption is `Secondary`.
-- `menu_primary.png` and `menu_secundary.png` are the selected rail at `(0,17)`.
+- `bg_empty.png` (`1x1`, transparent) suppresses slot artwork while the native Title or Damage Indicator page owns the body.
+- `menu_primary_tabs.png`, `menu_costume_tabs.png`, `menu_title.png`, and
+  `menu_damage.png` are the four selected rail states at `(0,17)`. The
+  unique General/Costume names avoid stale two-icon entries in loaded GRFs.
+- The Title medal and Damage impact glyphs use the approved generated source normalized into the existing pale periwinkle pixel palette.
 - `bg_swap.png` (`102x240`) is the native Equipment Swap child at `(280,0)` when open.
 - `ibox_shadow.png` (`32x32`) replaces the stock drag-compatible `item_invert.bmp` overlay.
 - `swapr_out.png`, `swapr_over.png`, and `swapr_press.png` retain the native Swap apply-button states.
@@ -63,18 +69,55 @@ rows start at the PNG cell boundary. The native drag-compatible slot pass keeps
 its stock `UIEquipWnd+0xB8/+0xBC/+0xC0` compatibility state and draw loop, but
 uses `ibox_shadow.png` at renewal cell origins `(56,29)/(225,29)` and
 `(56,64+35n)/(225,64+35n)` instead of the legacy `(4,25)/(248,25)` and
-26-pixel grid. The legacy horizontal tab child remains constructed and
-parent-owned, then is hidden through `SetVisible(false)`.
+26-pixel grid. The legacy horizontal four-tab child remains constructed and
+parent-owned, then is hidden through `SetVisible(false)`. General and Costume
+retain their custom Equipment bodies; Title and Damage Indicator select
+`bg_empty.png`, allowing their stock children to own the page without slot-art
+bleed-through. The native Title list moves from `(3,39)` to `(34,39)` and uses width 243.
+Keeping Y=39 preserves the native selected-title header row above the list.
+That bold header uses the same renewal bounds, X=34 and width 243, so its
+centered text aligns with the list rather than the legacy full-window center. Three complete native Damage Indicator cards are shown at `x=34+64n`: `34`,
+`98`, and `162`. Five native choices are exposed through two stable scrollbar
+positions. Rendering and hit testing both map the logical page start to
+`2*scrollPosition`: position 0 shows `Default`/`Enhanced`/`New Number`, and
+position 1 shows `New Number`/`8 Bit`/`Empty`. The native maximum remains
+`max(choiceCount-4,0)` while the visible capacity is 3, avoiding the
+unreachable center position and every partially clipped card. The three native
+64x92 card states are retained without cropping:
+`damage_card.bmp`, `damage_card_hover.bmp`, and
+`damage_card_selected.bmp`. Their native dotted rectangular edge pixels are
+preserved. Normal cards remain quiet, hover uses the lavender state, and only
+the selected card uses the green state. Every label foreground/shadow pass is
+centered inside the same 64-pixel column, with the selected label using a
+12-pixel font. This preserves the profiled layout and its visible dotted card
+separators while keeping all four checkboxes and cards aligned clear of the rail.
+`UIEquipWnd+0x134` remains the native Damage scrollbar but is initialized at
+`x=34`, `y=153`, and `width=parentWidth-34`, keeping both arrows and the
+track inside the content body instead of underneath the rail.
+
+All four selected rails are drawn at the profiled Equipment epilogue
+`0x008B3687`, after the stock mode-specific parent pass and the
+`UIEquipWnd+0x124` draw. This keeps every inactive and selected icon visible
+immediately when Alt+Q opens; drawing any rail only at the earlier body hook
+allows native page rendering to cover otherwise valid cells.
+
 The native character preview is pinned to primary-canvas X=156 instead of the
 resizable parent-window midpoint. Expanding the parent to 382 pixels for Swap
 therefore cannot move the avatar away from the renewal shadow. Mouse movement
-over the two left-rail cells shows `General Equipment` and `Costume Equipment`
-through the stock coordinate conversion and tooltip manager. Their tooltip
-origin now replays the native control offset `(mouseX-16, mouseY-13)` and native
-control flags, which places the dark balloon above the cursor like stock item
-hover. The same cells dispatch notification `0x16` with native mode 0 or 1 to
-the profiled Equipment mode handler. No replacement Costume window or item
-dataset is fabricated by the rail bridge.
+over the four local-character rail cells shows `General Equipment`,
+`Costume Equipment`, `Title`, and `Damage Indicator` through the stock
+coordinate conversion and tooltip manager. Their tooltip origin replays the
+native control offset `(mouseX-16, mouseY-13)` and native control flags, which
+places the dark balloon above the cursor like stock item hover. The cells
+dispatch notification `0x16` with native modes 0 through 3 to the profiled
+Equipment mode handler. Viewed-character windows retain only the stock-supported
+General/Costume modes. No replacement Costume, Title, or Damage page is
+fabricated by the rail bridge.
+
+The four-cell upper bound is decimal 153 and must use the imm32 encoding
+`CMP EAX,0x99` (`3D 99 00 00 00`). The shorter `83 F8 99` form sign-extends
+`0x99` to `-103`, causing every positive mouse Y to fall through to stock and
+making the entire renewal rail appear non-clickable.
 
 The five native action controls highlighted in the live screenshot retain their
 original objects and event handlers. Their Y coordinates change from 167 to the
