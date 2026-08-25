@@ -1612,6 +1612,13 @@ RedesignedStatusWindow.buildStagedDispatch = function(
 	a.jcc(0x85, 'page_check');
 	a.emit(0x80, 0x3D); a.dword(state.disableTraitVir); a.emit(0x00);
 	a.jcc(0x85, 'handled');
+	// WARP composes legacy DisableTraitStatusButton before this redesign in a
+	// separate pass. Its final EB 0A marker survives beside our UUID detour even
+	// when CACHE/DIFF addresses cannot be shared between passes.
+	a.emit(0x80, 0x3D); a.dword(0x008CBA61); a.emit(0xEB);
+	a.jcc(0x84, 'handled');
+	a.emit(0x80, 0x3D); a.dword(0x008CBA61); a.emit(0x90);
+	a.jcc(0x84, 'handled');
 	a.jmp('not_handled');
 
 	a.label('page_check');
@@ -2059,20 +2066,27 @@ RedesignedStatusWindow.patchTabBehavior = function(
 		[
 			'0F 95 C0',                           // stock page state from child
 			'80 3D ' + RedesignedStatusWindow.P32(state.disableTraitVir) + ' 00',
+			JNE(Filler(1, 1)),
+			'80 3D 61 BA 8C 00 EB',              // merged legacy disable marker
 			JE(Filler(1, 1)),
-			'30 C0'                                // disabled Trait always resolves to Status
+			'80 3D 61 BA 8C 00 90',
+			JNE(Filler(2, 1))
 		].join(' '),
 
+		' 30 C0',                                // disabled Trait always resolves to Status
+
 		[
-			' 88 86 FC 00 00 00',                 // replay the native page-state store
+			' 88 86 FC 00 00 00',                // replay the native page-state store
 			JMP(Filler(10))
 		].join(' ')
 	];
-	const [, childStateStoreTarget] = MapAddrs(childStateParts);
+	const [, childStateDisabledTarget, childStateStoreTarget] =
+		MapAddrs(childStateParts);
 	AutoHook(childStateHookAddr, childStateParts, {
 		nops: 4,
 		localTgts: {
-			'1,1': childStateStoreTarget
+			'1,1': childStateDisabledTarget,
+			'2,1': childStateStoreTarget
 		},
 		targets: {
 			10: childStateReturnVir

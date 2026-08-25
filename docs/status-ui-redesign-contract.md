@@ -20,12 +20,14 @@ before the native page toggle. `Tables/Patch.yml` registers
 `RedesignedStatusWindow` immediately before `DisableTraitStatusButton`. When
 both are selected, that application order is required: the redesign creates
 the shared gate first, then Disable Trait sets it through the emitted bridge.
-The generated clients verify gate 0 for normal and gate 1 for disabled.
-The native message-0x22 child synchronization at 0x008CBA42 can write
-UIStatusWnd+0xFC before UUID dispatch. The redesign preserves its stock
-SETNE result when Trait is enabled, but forces the result to 0 before the
-native store when the shared disable flag is set. This prevents repeated Alt+A
-hide/show cycles from reopening the disabled Trait page.
+The generated clients verify gate 0 for normal and gate 1 for disabled. WARP
+can compose the legacy Disable Trait patch in a separate pass, leaving its final
+EB 0A/NOP marker at 0x008CBA61 while DIFF allocation addresses differ between
+passes. Both the UUID dispatcher and the native message-0x22 child
+synchronization at 0x008CBA42 therefore honor either the shared flag or that
+final marker. The redesign preserves the stock SETNE result when Trait is
+enabled, but forces the result to 0 before the native store when disabled.
+This prevents repeated Alt+A hide/show cycles from reopening Trait.
 HideTraitStatusButton is incompatible because it removes or redirects the
 native control reused by this redesign.
 

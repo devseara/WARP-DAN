@@ -89,6 +89,12 @@ def verify_source() -> None:
 	require("state.traitPendingVir + i * 4" in trait_commit, "Trait OK lost per-row pending state")
 	require("a.jcc(0x84, next);" in status_commit + trait_commit, "failed sends no longer preserve pending points")
 	require("a.dword(0x6E)" in dispatch or "0x83, 0xF8, 0x6E" in dispatch, "server max_trait_parameter 110 gate is missing")
+	require(
+		dispatch.count("a.dword(0x008CBA61)") == 2
+		and "a.emit(0xEB);" in dispatch
+		and "a.emit(0x90);" in dispatch,
+		"UUID dispatcher does not honor the merged legacy Disable Trait marker",
+	)
 	require("addPage(state.controlsVir, 0x7F0, true);" in source, "Status custom controls changed")
 	require("addPage(state.traitControlsVir, 0x800, false);" in source, "Trait custom controls changed")
 	require("emitPage('status', state.controlsVir);" in source, "Status control visibility path changed")
@@ -242,7 +248,9 @@ def verify_source() -> None:
 	require(
 		"state.disableTraitVir" in tab_behavior
 		and "'0F 95 C0'" in tab_behavior
-		and "'30 C0'" in tab_behavior
+		and "'80 3D 61 BA 8C 00 EB'" in tab_behavior
+		and "'80 3D 61 BA 8C 00 90'" in tab_behavior
+		and "' 30 C0'" in tab_behavior
 		and "' 88 86 FC 00 00 00'" in tab_behavior,
 		"disabled Trait does not force native child-state sync back to Status",
 	)
