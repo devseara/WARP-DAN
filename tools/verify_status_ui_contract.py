@@ -249,8 +249,13 @@ def verify_source() -> None:
 	trait_button_source = TRAIT_BUTTON_SOURCE.read_text(encoding="utf-8")
 	require(
 		"CACHE.put('RedesignedStatusWindow.DisableTraitSelected', true);" in trait_button_source
-		and "RedesignedStatusWindow.DisableTraitSelected" in trait_button_source,
-		"TraitStatusButton is not routed through the redesign gate",
+		and "const bridgeVir = 0x008CBA61 + Exe.GetInt32(hookPhy + 1);" in trait_button_source
+		and "Exe.SetUint8(flagPhy, 1);" in trait_button_source,
+		"TraitStatusButton is not routed through the emitted redesign gate",
+	)
+	require(
+		"redesigned.disableTraitPhy" not in trait_button_source,
+		"TraitStatusButton still trusts a stale cached DIFF physical address",
 	)
 	top_hover = section(source, "RedesignedStatusWindow.buildTopTooltip = function(", "RedesignedStatusWindow.patchTooltips = function(")
 	require("tabStatVir" not in top_hover and "tabTraitVir" not in top_hover, "tab hover still depends on the unreachable late hit-test path")

@@ -32,23 +32,17 @@
 DisableTraitStatusButton = function() {
     const _ = 'DisableTraitStatusButton : ';
 
-    // RedesignedStatusWindow owns the profiled 0x226 dispatcher bridge. Share
-    // its byte flag instead of scanning code that has already been detoured.
+    // Record selection for a later RedesignedStatusWindow invocation, but do
+    // not trust cached physical addresses: WARP validation and write passes can
+    // allocate different DIFF locations. Prefer the emitted dispatcher below.
     try {
         CACHE.put('RedesignedStatusWindow.DisableTraitSelected', true);
-        const redesigned = CACHE.get('RedesignedStatusWindow.State');
-        if (redesigned && redesigned.disableTraitPhy !== undefined) {
-            Exe.SetUint8(redesigned.disableTraitPhy, 1);
-            $$(_ + '1.0 - Routed through RedesignedStatusWindow');
-            return true;
-        }
     }
     catch (e) {
         // Preserve the standalone legacy scan in older WARP hosts.
     }
-    // CACHE visibility varies between WARP patch invocations. If the redesign
-    // already owns the native UUID switch, follow its bridge to the emitted
-    // dispatcher and set the single profiled shared gate directly.
+    // If the redesign already owns the native UUID switch, follow its final
+    // bridge and set the gate embedded in the emitted dispatcher.
     try {
         const hookPhy = Exe.Vir2Phy(0x008CBA5C, CODE);
         if (hookPhy >= 0 && Exe.GetUint8(hookPhy) === 0xE9) {
