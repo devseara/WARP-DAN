@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "Scripts" / "Patches" / "RedesignedStatusWindow.qjs"
 TRAIT_TAB_OUT = ROOT / "Images" / "BohStatusUI" / "tab_trait_out.png"
+TRAIT_BUTTON_SOURCE = ROOT / "Scripts" / "Patches" / "TraitStatusButton.qjs"
 
 
 def require(condition: bool, message: str) -> None:
@@ -92,6 +93,15 @@ def verify_source() -> None:
 	require("addPage(state.traitControlsVir, 0x800, false);" in source, "Trait custom controls changed")
 	require("emitPage('status', state.controlsVir);" in source, "Status control visibility path changed")
 	require("emitPage('trait', state.traitControlsVir);" in source, "Trait control visibility path changed")
+	control_builder = section(
+		source,
+		"RedesignedStatusWindow.buildControlBuilder = function(",
+		"RedesignedStatusWindow.patchStagedControls = function(",
+	)
+	require(
+		"a.emit(0xC6, 0x86, 0xFC, 0x00, 0x00, 0x00, 0x00);" in control_builder,
+		"Alt+A OnCreate no longer resets UIStatusWnd+0xFC to Status",
+	)
 	asset_input = section(
 		source,
 		"Exe.GetUserInput(",
@@ -225,6 +235,23 @@ def verify_source() -> None:
 	tab_behavior = section(source, "RedesignedStatusWindow.patchTabBehavior = function(", "RedesignedStatusWindow.allocateCoordinates = function(points)")
 	require("P32(tabStatVir)" not in tab_behavior and "P32(tabTraitVir)" not in tab_behavior, "tab strings are still assigned as button captions")
 	require("P32(tabEmptyVir)" in tab_behavior, "empty caption assignment is missing")
+	require(
+		"'0F 95 C0 88 86 FC 00 00 00 8B 06 6A 06 6A 00'" in tab_behavior,
+		"native message-0x22 page-state hook is missing",
+	)
+	require(
+		"state.disableTraitVir" in tab_behavior
+		and "'0F 95 C0'" in tab_behavior
+		and "'30 C0'" in tab_behavior
+		and "' 88 86 FC 00 00 00'" in tab_behavior,
+		"disabled Trait does not force native child-state sync back to Status",
+	)
+	trait_button_source = TRAIT_BUTTON_SOURCE.read_text(encoding="utf-8")
+	require(
+		"CACHE.put('RedesignedStatusWindow.DisableTraitSelected', true);" in trait_button_source
+		and "RedesignedStatusWindow.DisableTraitSelected" in trait_button_source,
+		"TraitStatusButton is not routed through the redesign gate",
+	)
 	top_hover = section(source, "RedesignedStatusWindow.buildTopTooltip = function(", "RedesignedStatusWindow.patchTooltips = function(")
 	require("tabStatVir" not in top_hover and "tabTraitVir" not in top_hover, "tab hover still depends on the unreachable late hit-test path")
 	tab_hover = section(source, "RedesignedStatusWindow.patchTabHoverLabels = function(", "RedesignedStatusWindow.onApplied = function()")

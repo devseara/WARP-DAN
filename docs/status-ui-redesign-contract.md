@@ -21,7 +21,12 @@ before the native page toggle. `Tables/Patch.yml` registers
 both are selected, that application order is required: the redesign creates
 the shared gate first, then Disable Trait sets it through the emitted bridge.
 The generated clients verify gate 0 for normal and gate 1 for disabled.
-`HideTraitStatusButton` is incompatible because it removes or redirects the
+The native message-0x22 child synchronization at 0x008CBA42 can write
+UIStatusWnd+0xFC before UUID dispatch. The redesign preserves its stock
+SETNE result when Trait is enabled, but forces the result to 0 before the
+native store when the shared disable flag is set. This prevents repeated Alt+A
+hide/show cycles from reopening the disabled Trait page.
+HideTraitStatusButton is incompatible because it removes or redirects the
 native control reused by this redesign.
 
 The supplied assets are copied to:
@@ -258,7 +263,8 @@ Meister Alt+A then reaches `call [eax+0x10]` with `ECX == 0` and crashes at
 
 Any target-client update must re-profile the vtable, all resource loads,
 coordinate-immediate encodings, draw calls, control-move loops, tooltip tables,
-the native event-manager call, and the `0x226` dispatcher gate. A clean WARP
+the native event-manager call, the message-0x22 child-state gate, and the
+0x226 dispatcher gate. A clean WARP
 build is a source/static gate, not visual acceptance: Alt+A Status and Trait,
 hover-only tab balloons, all stat balloons, per-row mixed Plus projection,
 Minus, OK, Cancel, insufficient-point behavior, the 110 Trait cap, server
