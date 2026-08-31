@@ -157,3 +157,9 @@ CustomSkills:
             recommend : no
             author : Louis T Steinhil
             desc : "Handles BOH map packet 0x0BEF/PINC on the normal client update thread, loads the original character-select PIN resources, and creates the stock C7/C8 PIN window over the active in-game scene. The stock UI submits 0x08B8/0x08BA/0x08BE through the current map connection. No custom DLL, replacement keypad, API detour, or foreign UI thread is used. Target: 2025-07-16."
+
+        - ItemCollectionUI:
+            title : Enable Item Collection UI (QJS-only)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Creates the approved 760x540 white Ragnarok-style Item Collection as a native UIFrameWnd. Item art resolves dynamically from ItemId through the client identified-resource stem and collection\\<stem>.bmp. Server-authoritative 0x0BF8/COUI requests and shared 0x0BEF snapshots provide Cards, Combo Collections, Total Bonuses, deposits, withdrawals, and activation. Fixed BMP assets deploy under item_collection. No DLL, recv hook, API detour, or client-side collection authority is used. Target: 2025-07-16."

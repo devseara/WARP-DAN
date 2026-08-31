@@ -138,6 +138,7 @@ const AutoCombatUIStatic = {
 	ServerPacketId: 0x0BEF,
 	PacketMagic: 0x49554841,
 	PincodeMagic: 0x434E4950,
+	CollectionUiMagic: 0x49554F43,
 	ProtocolVersion: 1,
 	MessageOpen: 1,
 	MessageSnapshot: 2,
@@ -583,6 +584,11 @@ AutoCombatUIStatic.pushImm = function(a, value)
 };
 
 AutoCombatUIStatic.SharedPacketRouteGlobalKey = "AutoHuntPincode.Packet0BEF.Router.Global.v1";
+AutoCombatUIStatic.SharedPacketRouteCanonicalKey = "SharedPacket0BEF.Router.v3";
+AutoCombatUIStatic.SharedPacketRouteLegacyKeys = [
+	"AutoCombatUI.Packet0BEF.Router.v2",
+	"InGamePincodeUI.Packet0BEF.Router.v2"
+];
 
 AutoCombatUIStatic.beginSharedPacketRoute = function(patchName)
 {
@@ -615,6 +621,8 @@ AutoCombatUIStatic.buildSharedPacketRouter = function(route)
 	a.jcc(0x84, "route_ahui");
 	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.PincodeMagic);
 	a.jcc(0x84, "route_pincode");
+	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.CollectionUiMagic);
+	a.jcc(0x84, "route_coui");
 	a.jmp("fallback");
 
 	a.label("route_ahui");
@@ -633,6 +641,14 @@ AutoCombatUIStatic.buildSharedPacketRouter = function(route)
 	a.emit(0xA1); a.dword(route.pincodeHandlerCellVir);
 	a.emit(0xFF, 0xE0);
 
+	a.label("route_coui");
+	a.emit(0xA1); a.dword(route.couiHandlerCellVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.couiHandlerCellVir);
+	a.emit(0xFF, 0xE0);
+
 	a.label("fallback");
 	a.emit(0x61, 0x9D);
 	a.emit(0xA1); a.dword(route.fallbackCellVir);
@@ -640,48 +656,134 @@ AutoCombatUIStatic.buildSharedPacketRouter = function(route)
 	return a;
 };
 
+AutoCombatUIStatic.isSharedPacketRouteV3 = function(route, entryVir)
+{
+	return !!route && route.entryVir === entryVir &&
+		Number.isInteger(route.ahuiHandlerCellPhy) &&
+		Number.isInteger(route.ahuiHandlerCellVir) &&
+		Number.isInteger(route.pincodeHandlerCellPhy) &&
+		Number.isInteger(route.pincodeHandlerCellVir) &&
+		Number.isInteger(route.couiHandlerCellPhy) &&
+		Number.isInteger(route.couiHandlerCellVir) &&
+		Number.isInteger(route.fallbackCellPhy) &&
+		Number.isInteger(route.fallbackCellVir) &&
+		Number.isInteger(route.routerVir);
+};
+
+AutoCombatUIStatic.sharedPacketRouteCellValue = function(route, name)
+{
+	if (!route)
+		return 0;
+	const phyName = `${name}HandlerCellPhy`;
+	const virName = `${name}HandlerCellVir`;
+	if (Number.isInteger(route[phyName]))
+		return Exe.GetUint32(route[phyName]);
+	if (Number.isInteger(route[virName]))
+	{
+		const phy = Exe.Vir2Phy(route[virName]);
+		if (phy >= 0)
+			return Exe.GetUint32(phy);
+	}
+	return 0;
+};
+
+AutoCombatUIStatic.publishSharedPacketRoute = function(route)
+{
+	CACHE.put(AutoCombatUIStatic.SharedPacketRouteCanonicalKey, route);
+	for (const key of AutoCombatUIStatic.SharedPacketRouteLegacyKeys)
+		CACHE.put(key, route);
+};
+
 AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 {
-	const key = "AutoCombatUI.Packet0BEF.Router.v2";
-	const cached = CACHE.get(key);
-	if (cached && cached.entryVir === entryVir)
+	const cached = CACHE.get(AutoCombatUIStatic.SharedPacketRouteCanonicalKey);
+	if (AutoCombatUIStatic.isSharedPacketRouteV3(cached, entryVir))
 	{
 		if (Exe.GetUint32(entryPhy) !== cached.routerVir)
 			Exe.SetUint32(entryPhy, cached.routerVir);
+		AutoCombatUIStatic.publishSharedPacketRoute(cached);
 		return cached;
 	}
 
-	const peerRoute = CACHE.get("InGamePincodeUI.Packet0BEF.Router.v2");
-	if (peerRoute && peerRoute.entryVir === entryVir)
+	let legacyRoute = cached && cached.entryVir === entryVir ? cached : null;
+	for (const key of AutoCombatUIStatic.SharedPacketRouteLegacyKeys)
 	{
-		if (Exe.GetUint32(entryPhy) !== peerRoute.routerVir)
-			Exe.SetUint32(entryPhy, peerRoute.routerVir);
-		CACHE.put(key, peerRoute);
-		return peerRoute;
+		if (legacyRoute)
+			break;
+		const candidate = CACHE.get(key);
+		if (candidate && candidate.entryVir === entryVir)
+		{
+			legacyRoute = candidate;
+			break;
+		}
+	}
+	if (AutoCombatUIStatic.isSharedPacketRouteV3(legacyRoute, entryVir))
+	{
+		if (Exe.GetUint32(entryPhy) !== legacyRoute.routerVir)
+			Exe.SetUint32(entryPhy, legacyRoute.routerVir);
+		AutoCombatUIStatic.publishSharedPacketRoute(legacyRoute);
+		return legacyRoute;
 	}
 
 	const current = Exe.GetUint32(entryPhy);
 	let fallbackVir = current;
-	if (current === AutoCombatUIStatic.PacketDefaultHandler)
+	let ahuiHandlerVir = 0;
+	let pincodeHandlerVir = 0;
+	let couiHandlerVir = 0;
+	if (legacyRoute)
+	{
+		ahuiHandlerVir = AutoCombatUIStatic.sharedPacketRouteCellValue(
+			legacyRoute, "ahui"
+		);
+		pincodeHandlerVir = AutoCombatUIStatic.sharedPacketRouteCellValue(
+			legacyRoute, "pincode"
+		);
+		couiHandlerVir = AutoCombatUIStatic.sharedPacketRouteCellValue(
+			legacyRoute, "coui"
+		);
+		if (Number.isInteger(legacyRoute.fallbackCellPhy))
+			fallbackVir = Exe.GetUint32(legacyRoute.fallbackCellPhy);
+		else if (Number.isInteger(legacyRoute.fallbackVir))
+			fallbackVir = legacyRoute.fallbackVir;
+	}
+	else if (current === AutoCombatUIStatic.PacketDefaultHandler)
 		fallbackVir = AutoCombatUIStatic.PacketMainLoopReturn;
 	else if (Exe.Vir2Phy(current, CODE) < 0)
 		throw Error(
 			`AutoCombatUI: shared 0x0BEF fallback ${current.toHex(true)} is not executable`
 		);
+	if (Exe.Vir2Phy(fallbackVir, CODE) < 0)
+		throw Error(
+			`AutoCombatUI: migrated 0x0BEF fallback ${fallbackVir.toHex(true)} is not executable`
+		);
+	for (const [name, handlerVir] of [
+		["AHUI", ahuiHandlerVir], ["PINC", pincodeHandlerVir],
+		["COUI", couiHandlerVir]
+	])
+	{
+		if (handlerVir !== 0 && Exe.Vir2Phy(handlerVir, CODE) < 0)
+			throw Error(`AutoCombatUI: migrated ${name} handler is not executable`);
+	}
 
-	const [dataPhy, dataVir] = Exe.Allocate(12, 4);
+	const [dataPhy, dataVir] = Exe.Allocate(16, 4);
 	const route = {
+		version: 3,
 		entryVir,
 		ahuiHandlerCellPhy: dataPhy,
 		ahuiHandlerCellVir: dataVir,
 		pincodeHandlerCellPhy: dataPhy + 4,
 		pincodeHandlerCellVir: dataVir + 4,
-		fallbackCellPhy: dataPhy + 8,
-		fallbackCellVir: dataVir + 8,
+		couiHandlerCellPhy: dataPhy + 8,
+		couiHandlerCellVir: dataVir + 8,
+		fallbackCellPhy: dataPhy + 12,
+		fallbackCellVir: dataVir + 12,
 		fallbackVir
 	};
-	Exe.SetUint32(route.ahuiHandlerCellPhy, 0);
-	Exe.SetUint32(route.pincodeHandlerCellPhy, 0);
+	Exe.SetUint32(route.ahuiHandlerCellPhy, ahuiHandlerVir);
+	Exe.SetUint32(route.pincodeHandlerCellPhy, pincodeHandlerVir);
+	// Preserve a partially published canonical/legacy COUI cell as well. A
+	// later ItemCollectionUI installer remains the sole owner of this value.
+	Exe.SetUint32(route.couiHandlerCellPhy, couiHandlerVir);
 	Exe.SetUint32(route.fallbackCellPhy, fallbackVir);
 	const router = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildSharedPacketRouter(route)
@@ -691,7 +793,7 @@ AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 	if (Exe.GetUint32(entryPhy) !== current)
 		throw Error("AutoCombatUI: dispatcher entry changed while installing shared router");
 	Exe.SetUint32(entryPhy, route.routerVir);
-	CACHE.put(key, route);
+	AutoCombatUIStatic.publishSharedPacketRoute(route);
 	return route;
 };
 
