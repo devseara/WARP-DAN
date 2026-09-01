@@ -1,0 +1,21 @@
+from: "./2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
+to: "./tmp/item_collection_ui_renderer_coexistence_test.exe"
+inputs:
+    $copyFluentEmojiAssets:
+        data: ''
+        display: "false"
+        type: 10
+    $copyItemCollectionAssets:
+        data: ''
+        display: "false"
+        type: 10
+
+patches:
+    - CustomExtName
+    - CustomColoredEnchantGradeName
+    - CustomColoredItemName
+    - CustomPlayerNameColor
+    - FluentEmoji
+    - InGamePincodeUI
+    - AutoCombatUI
+    - ItemCollectionUI

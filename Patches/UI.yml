@@ -68,6 +68,12 @@ CustomUI:
             author : Louis T Steinhil
             desc : Adds the native-looking Classic UI / New UI switch to the Game Settings Basic tab using uirenewal/basicinfo/btn_tema_0.bmp and btn_tema_1.bmp. Its persisted state is shared by the RO Global Zero Basic Information, Experience Bar, Inventory, Status Icons V2, and Menu patches; switching themes refreshes open dependent windows immediately. QJS-only.
 
+        - ItemCollectionUI:
+            title : Enable Item Collection UI (QJS-only)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Creates the approved 760x540 white Ragnarok-style Item Collection as a native UIFrameWnd with a 15-family category dropdown, pointer-draggable scrollbar, flicker-free same-page selection, and a two-theme native RO Global/Classic menu button. Item art resolves dynamically from ItemId through the client identified-resource stem, collection\\<stem>.bmp, and stock item icons. Server-authoritative 0x0BF8/COUI requests and shared 0x0BEF snapshots provide Items, Combo Collections, Total Bonuses, deposits, withdrawals, and activation. Fixed BMP assets deploy under item_collection and uirenewal/menuicon. No DLL, recv hook, API detour, or client-side collection authority is used. Target: 2025-07-16."
+
         - ROGlobalZeroInventory:
             title : RO Global Zero Inventory
             recommend : no
@@ -96,7 +102,7 @@ CustomUI:
             title : RO Global Zero Renewal Menu
             recommend : no
             author : Louis T Steinhil
-            desc : Uses the shared RO Global Zero theme state to select stock UIMenuIconWnd behavior for Classic UI or the uirenewal/menuicon panel for New UI. Twenty-five native commands compact into five columns above one permanent control row, so close, hidden warp/teleport, and reopen always retain the same parent and surface geometry. Auto Hunt is a real native UIButton child in the first control-row slot with the correct 45x41 New or 32x34 Classic normal, hover, and pressed images; the native MENU toggle retains the final slot. Complete 1-6-row New backgrounds are selected from the live command count. Classic draws no custom full-panel background. The New MENU normal image keeps a native parent-canvas fallback. Available Cash Shop, Gold PC Cafe, Roulette, and RO DEX notification launchers stack below the minimap without being force-created. QJS-only.
+            desc : Uses the shared RO Global Zero theme state to select stock UIMenuIconWnd behavior for Classic UI or the uirenewal/menuicon panel for New UI. Twenty-five native commands compact into five columns above one permanent control row, so close, hidden warp/teleport, and reopen always retain the same parent and surface geometry. Auto Hunt and optional Item Collection are real native UIButton children in the first two control-row slots with 45x41 New or 32x34 Classic normal, hover, and pressed images; the native MENU toggle retains the final slot. Complete 1-6-row New backgrounds are selected from the live command count. Classic draws no custom full-panel background. The New MENU normal image keeps a native parent-canvas fallback. Available Cash Shop, Gold PC Cafe, Roulette, and RO DEX notification launchers stack below the minimap without being force-created. QJS-only.
 
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]

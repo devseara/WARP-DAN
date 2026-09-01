@@ -361,6 +361,9 @@ NewButtonVis = function(_)
 	const autoHuntBridge = CACHE.get('AutoCombatUI.MenuButton.v1');
 	if (autoHuntBridge && Number.isInteger(autoHuntBridge.visiblePhy))
 		btnChoices.push(autoHuntBridge.label || 'Auto Hunt');
+	const itemCollectionBridge = CACHE.get('ItemCollectionUI.MenuButton.v1');
+	if (itemCollectionBridge && Number.isInteger(itemCollectionBridge.visiblePhy))
+		btnChoices.push(itemCollectionBridge.label || 'Item Collection');
 	$$(_, 4.2, `Retrieve the user's selection`)
 	const selection = Exe.GetUserInput(varName, D_MultiChoice, title, "Choose the buttons to be " + suffix, [], {choices: btnChoices});
 	if (selection === false || selection.isEmpty())
@@ -398,6 +401,10 @@ NewButtonVis.stage = function(patchName)
 	const autoHuntLabel = autoHuntBridge && autoHuntBridge.label
 		? autoHuntBridge.label
 		: 'Auto Hunt';
+	const itemCollectionBridge = CACHE.get('ItemCollectionUI.MenuButton.v1');
+	const itemCollectionLabel = itemCollectionBridge && itemCollectionBridge.label
+		? itemCollectionBridge.label
+		: 'Item Collection';
 
 	$$(_, 2.2, `Iterate through the current selection and change the value in table or add corresponding JE to code`)
 	const index = this.Members.indexOf(patchName);
@@ -410,6 +417,12 @@ NewButtonVis.stage = function(patchName)
 			Number.isInteger(autoHuntBridge.visiblePhy))
 		{
 			Exe.SetUint32(autoHuntBridge.visiblePhy, index);
+			continue;
+		}
+		if (key === itemCollectionLabel && itemCollectionBridge &&
+			Number.isInteger(itemCollectionBridge.visiblePhy))
+		{
+			Exe.SetUint32(itemCollectionBridge.visiblePhy, index);
 			continue;
 		}
 		if (TblAddrs && TblAddrs.has(key))
@@ -443,6 +456,12 @@ NewButtonVis.stage = function(patchName)
 				Number.isInteger(autoHuntBridge.visiblePhy))
 			{
 				Exe.SetUint32(autoHuntBridge.visiblePhy, otherIndex);
+				continue;
+			}
+			if (key === itemCollectionLabel && itemCollectionBridge &&
+				Number.isInteger(itemCollectionBridge.visiblePhy))
+			{
+				Exe.SetUint32(itemCollectionBridge.visiblePhy, otherIndex);
 				continue;
 			}
 			if (TblAddrs && TblAddrs.has(key))

@@ -7,10 +7,20 @@
 - Search is a native `UIEditCtrl` child. No `GetAsyncKeyState`,
   `DispatchMessageA`, recv hook, or DLL input bridge remains.
 - Combo-member deposits resolve the owning Combos storage (Storage 11);
-  Cards-tab deposits continue to resolve the individual Items storage
+  Items-tab deposits continue to resolve the individual Items storage
   (Storage 10).
-- Navigation hides stale payloads before changing row schema. Mutations are
-  single-flight and result codes 2–14 have distinct client messages.
+- The first tab is now a general Items catalog. Its dropdown selects All, Card,
+  Weapon, Armor, Shield, Headgear, Garment, Shoes, Accessory, Consumable, Etc,
+  Ammo, Pet, Shadow, and Cash without changing the 5x3 browser geometry.
+- Schema-changing navigation hides stale payloads. Same-page item/combo SELECT
+  keeps the current rows visible and updates local focus immediately, removing
+  the brief selection flicker. Mutations remain single-flight.
+- A native Item Collection menu child occupies control-row column two beside
+  Auto Hunt in both RO Global New UI and Classic UI. Six active BMP states,
+  hit testing, tooltip, reopen, visibility, and either patch order are gated.
+- The scrollbar supports wheel paging, arrow clicks, track page-up/down, and
+  pointer-local thumb dragging. Its 24-pixel thumb is clamped to Y=128..456 and
+  cannot overlap the down arrow beginning at Y=480.
 - The isolated and AHUI/PINC coexistence builds below pass source, router,
   allocator, native-edit construction, and PE integration gates.
 
@@ -30,11 +40,17 @@
   `data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\item_collection\`.
 - Dynamic art:
   `data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\collection\<identified-resource>.bmp`.
+- Stock icon fallback:
+  `data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\item\<identified-resource>.bmp`.
 - Resolution is `ItemId -> CItemInfoMgr -> identified-resource std::string
   at node+0x58 -> collection\%s.bmp`.
-- Dynamic 75x100 art is opaque. Missing files use the copied native
-  `fallback_question_mark.bmp`; irregular controls use exact `#FF00FF`
-  color-key drawing.
+- Dynamic 75x100 art is opaque. If it is absent, the renderer centers the
+  item's stock icon; only then does it use `fallback_question_mark.bmp`.
+  Irregular controls use exact `#FF00FF` color-key drawing.
+- The WARP asset-copy choice defaults to enabled and is persisted. The patch
+  creates the `item_collection` icon directory and copies all 15 category
+  BMPs. It also copies six Item Collection menu states into
+  `uirenewal\menuicon`; source verification requires every deployed file.
 
 ### Generated live client data (outside Git)
 
@@ -45,13 +61,81 @@ tree. They are intentionally not proposed for the WARP or server commits:
 - 399 canonical `item\<identified-resource>.bmp` card icons, byte-identical
   to the stock unnamed-card icon (SHA-256
   `729E6E133BDB62FE36DBD30C831CCF93F0B76183739ED0AEC45ED9205624E64F`);
-- 49 fixed runtime files under `item_collection\`; and
+- 64 fixed runtime files under `item_collection\`, including 15 native
+  category icons; and
+- ten user-approved New/Classic Item Collection menu-button BMPs under
+  `uirenewal\menuicon` (six active states plus four compatibility aliases); and
 - the CP949-authoritative `SystemEN\itemInfo_prerenewal.lua`, SHA-256
   `C37DF7C36BC31D0135C303DEA4CF7056803671FEE66382F4BCBC7813F5F4F52E`.
 
 Recovery manifests/backups remain under
 `_codex_backup\iteminfo-cardbmp-20260831-144358\` and
 `_codex_backup\item-card-icons-20260831-153206\`.
+
+## Native menu button
+
+Item Collection publishes a menu bridge containing its toggle request and a
+shared visibility cell. `ROGlobalZeroMenu` creates a real native `UIButton`
+child in the second permanent control-row column, immediately beside Auto
+Hunt. New UI uses 45x41 normal/mouse-on/pressed states; Classic uses 32x34
+states. Both retain stock draw, tooltip, child ownership, hit testing,
+destruction, theme refresh, menu close/reopen, and map-change layout repair.
+
+The button child uses ID `0x3F4`; Auto Hunt retains `0x3F2`, and the Item
+Collection top-level frame moved to `0x3F3`. An indirect request cell permits
+Item Collection and RO Global Menu to be selected in either order. The two
+order profiles produce byte-identical PEs. Show/Hide New Buttons recognizes
+the same shared visibility cell when its bridge is available.
+
+The ten user-approved button files are staged verbatim under
+`Images/CollectionUI/source/menuicon`. The build script validates dimensions,
+24-bpp BI_RGB format, and copies them byte-for-byte; it does not redraw or
+transform the supplied art. The native child selects normal, mouse-on, and
+pressed for each theme.
+
+## Category dropdown
+
+The previous/next selector is replaced by a text-only 170x23 choice field and
+a 15-row white popup contained within the left browser pane, matching the
+Reputation and Game Settings controls. Every item family occupies exactly one
+row; there are no category icons or row dividers. The selected or hovered row
+uses the stock light-blue choice highlight. The popup renders after
+browser/detail content so it remains an overlay.
+
+Category labels must use the native renderer's NUL-terminated mode. Passing a
+fixed character count crosses into adjacent EXE-resident strings and produces
+the repeated diagonal labels seen in the rejected first dropdown build.
+
+An open popup owns the first mouse-down, matching the established Reputation
+and Auto Hunt choice behavior. A row selection closes the popup and sends one
+COUI navigation request; an outside click closes and is consumed so it cannot
+activate the grid underneath. Tab changes and window close clear dropdown
+state, and dropdown interaction releases native search focus.
+
+Target-client RTTI confirms `UIReputeWnd` at vtable `0x00FE16BC` with draw
+slot 20 at `0x005EB730`, plus `UIComboBoxEx` (`0x0102C810`) and
+`UIComboBoxV2Wnd` (`0x0102CFF8`). The patch does not instantiate those child
+classes without a complete constructor, message, and destructor profile; the
+QJS-owned popup keeps the existing frame lifecycle and static bridge boundary.
+
+### Shared text callback crash gate
+
+The reported access violation did not execute Item Collection code. The native
+Game Settings combo measured text through the shared extent bridge, whose
+`findWide` helper called cached lookup address `0x019DA6D0`; that allocation
+was all zero because its owner patch had been deselected in a later WARP GUI
+apply. The proven-bad live EXE has SHA-256
+`4CFC925D4F245E91243628BAFF26578DF502B1F620C1C010A56C91D1FA3516CE`.
+
+Shared ExtName, Fluent Emoji, ItemColor, grade-config, static-refresh, and
+cross-layer reapply state is now reusable only while its recorded owner patch
+is selected. The emoji-only minimal state also publishes the missing lookup
+stub through `lookupVir`, the field consumed by `buildFindWide`.
+
+`tools/verify_shared_text_bridge_callbacks.py` follows the final PE from the
+native extent call to `findWide` and rejects an empty or invalid lookup target.
+The focused regression profile is
+`profiles/item_collection_ui_renderer_coexistence_test.yml`.
 
 ## COUI v1 request
 
@@ -66,8 +150,8 @@ Client packet `0x0BF8`, fixed 64 bytes, little-endian:
 | 10 | u16 | message: OPEN=1, NAVIGATE=3, MUTATE=4, RESYNC=6 |
 | 12 | u32 | request ID |
 | 16 | u32 | known revision |
-| 20 | u16 | tab: Cards=0, Combos=1, Totals=2 |
-| 22 | u16 | tab-local filter |
+| 20 | u16 | tab: Items=0, Combos=1, Totals=2 |
+| 22 | u16 | packed filter: progress low byte, Items category high byte |
 | 24 | u16 | zero-based page |
 | 26 | u16 | action: select=1, deposit=2, deposit-all=3, withdraw=4, activate=5, deactivate=6 |
 | 28 | u32 | item/combo target ID |
@@ -83,6 +167,12 @@ copies at most 27 bytes into the fixed query buffer, and submits after a 250 ms
 quiet period. Clicking any other collection control or closing/destructing the
 window clears native edit focus. The complete 28-byte buffer is copied into
 every COUI request.
+
+The category byte is 0 All, 1 Card, 2 Weapon, 3 Armor, 4 Shield, 5 Headgear,
+6 Garment, 7 Shoes, 8 Accessory, 9 Consumable, 10 Etc, 11 Ammo, 12 Pet,
+13 Shadow, and 14 Cash. Combos and Totals always send category 0. Progress
+filters remain 0 All, 1 Missing/Incomplete, 2 Partial/Ready, and
+3 Completed/Active, preserving the frozen COUI v1 request size.
 
 ## COUI v1 snapshot
 
@@ -113,7 +203,7 @@ from cached collection/SQL state.
 
 Payload at offset 56:
 
-- Cards: up to 15 rows x 100 bytes. `itemId+0`, `deposited+4 u16`,
+- Items: up to 15 rows x 100 bytes. `itemId+0`, `deposited+4 u16`,
   `required+6 u16`, `flags+8`, `depositFee+12`, `withdrawFee+16`,
   `name+20 char[32]`, `bonus+52 char[48]`.
 - Combos: up to 2 rows x 400 bytes. Header is 112 bytes:
@@ -122,11 +212,12 @@ Payload at offset 56:
 - Totals: up to 20 rows x 64 bytes: `flags+0`,
   `label+4 char[32]`, `value+36 char[24]`.
 
-Card flags are complete `0x01`, partial `0x02`, can-withdraw `0x04`.
+Item flags are complete `0x01`, partial `0x02`, can-withdraw `0x04`;
+the authoritative category occupies bits 8..11 (`0x00000F00`).
 Combo flags are ready `0x01`, active `0x02`, selected `0x04`, and
 row-truncated `0x08`.
 
-The Cards browser remains 5x3. Tile shells and selection outlines are drawn
+The Items browser remains 5x3. Tile shells and selection outlines are drawn
 in a complete first pass; names, full 75x100 art, badges, and the count band
 are drawn in a second pass. This prevents a later row background from
 overpainting an earlier row's deposited/required count. The Combos browser
@@ -143,7 +234,7 @@ The client preserves the selected combo/member when the mutation snapshot
 returns, even though the request target was an item ID.
 
 Combo-tab card actions resolve the storage that owns the member through its
-`Combos` list. They must not use the normal Cards-tab resolver: the live
+`Combos` list. They must not use the normal Items-tab resolver: the live
 database places combo requirements in Storage 11 and individual card entries
 in Storage 10, and many ItemIds intentionally exist in both catalogs.
 
@@ -152,6 +243,10 @@ row-count state before the request is sent, so a 400-byte Combo payload can
 never be decoded as 100-byte Cards or 64-byte Totals rows. Mutations are
 single-flight until the persistence acknowledgement arrives. Result 1 is
 success; error results 2 through 14 have distinct client messages.
+`NAVIGATE + SELECT` is the deliberate exception: it preserves the current
+same-page payload while the clicked local selected index changes immediately.
+The authoritative snapshot still confirms selection, but no blank loading
+frame is inserted between the click and response.
 
 ## Typography and numeric formatting
 
@@ -176,6 +271,14 @@ non-positive width/height before its `DEC/JNZ` loops. It clips horizontal
 writes to `surfaceWidth - x` and vertical writes to `windowHeight - y`.
 Progress widths are additionally clamped to their logical bar width.
 
+The scrollbar rail spans Y=128..480 and the 24-pixel thumb travels exactly
+328 pixels, ending at Y=456. Mouse-down on the thumb stores the pointer offset
+without entering native window capture; mouse-move clamps visual thumb Y;
+mouse-up rounds the final position to one page and sends at
+most one navigation request. Track clicks page toward the pointer, arrows keep
+their existing one-page behavior, and wheel paging is unchanged. Thumb and
+arrow hitboxes are disjoint.
+
 The source verifier audits every injected helper's save/restore or
 `PUSHAD`/`POPAD` contract. Its paint oracle requires zero writes for `0/10`
 and `0/3` progress and verifies right/bottom edge clipping, including
@@ -198,23 +301,39 @@ replace tab, page, selection, counts, or payload.
 
 ```powershell
 powershell.exe -ExecutionPolicy Bypass -File .\tools\verify_item_collection_ui.ps1
+powershell.exe -ExecutionPolicy Bypass -File .\tools\build_item_collection_menu_buttons.ps1
 .\win32\WARP_console.exe -using .\profiles\item_collection_ui_test.yml
 .\win32\WARP_console.exe -using .\profiles\item_collection_ui_coexistence_test.yml
+.\win32\WARP_console.exe -using .\profiles\item_collection_ui_renderer_coexistence_test.yml
+.\win32\WARP_console.exe -using .\profiles\item_collection_ui_menu_order_test.yml
+.\win32\WARP_console.exe -using .\profiles\item_collection_ui_menu_reverse_order_test.yml
+python .\tools\verify_shared_text_bridge_callbacks.py .\tmp\item_collection_ui_renderer_coexistence_test.exe
+python .\tools\verify_item_collection_menu_button.py .\tmp\item_collection_ui_menu_order_test.exe
+python .\tools\verify_item_collection_menu_button.py .\tmp\item_collection_ui_menu_reverse_order_test.exe
 ```
 
-The FillRect-safe, unified-font, smooth-search, combo-member-action rebuild
-produced:
+The all-item dropdown, asset-deployment, stock-icon-fallback, FillRect-safe,
+unified-font, smooth-search, combo-member-action rebuild produced:
 
-- isolated COUI: 16,155,981 bytes, SHA-256
-  `66424245318F459A44D4A55800F1815AC20C3B39DF6602FEB1E9ED15C19D673A`;
-- combined PINC/AHUI/COUI: 17,630,029 bytes, SHA-256
-  `C489226F02E61923644F35A36249E412B75FDF39509CCF9B9E4FE1405B79DEDD`.
+- isolated COUI: 16,166,221 bytes, SHA-256
+  `D933AE4E46C6033220C4106E25CB0358EF4B1068799CC8B414BA84D01F88CF42`;
+- combined PINC/AHUI/COUI: 17,640,269 bytes, SHA-256
+  `B8FF6AF12274DDBC2DA6CEA2B843074AEA6180DC0687CD12C5FED1A2504135C9`;
+- renderer/PINC/AHUI/COUI: 21,507,917 bytes, SHA-256
+  `754B19A380B212682B78C066872960B628FE7541199C33484828EBEA85B9594A`;
+- either menu selection order: 17,659,725 bytes, identical SHA-256
+  `63C9201598BC24CECE4713F491AD7BB914F8F4F800BC84407CF27B8F48E58A3A`.
 
 These prove source, allocator, router, and PE integration only. Live Ragexe
-acceptance still requires 800x600 and larger layout, all 15 Card count bands,
+acceptance still requires 800x600 and larger layout, all 15 Item count bands,
 two full-height Combo groups per page, six-member detail, drag/close/reopen,
-all three tabs, missing art, wheel/page bounds, Cards and Combo-member
+all three tabs, all 15 item categories, collection-art and stock-item-icon
+fallbacks, wheel/page bounds, Items and Combo-member
 deposit/withdraw, combo activate/deactivate, selected-member highlighting,
 `0/10` and `0/3` progress, grouped Zeny/fees, Zeny refresh, native-UIEditCtrl
 typing/debounce, chat-to-search focus transfer, focus cleanup, pending mutation
 lockout, rapid tab switching, and coexistence with Auto Hunt and PIN.
+Live menu acceptance must cover New/Classic switching, both custom buttons,
+hover/press/click, close/reopen, map change, and Show/Hide. Scrollbar acceptance
+must cover thumb drag, both track directions, arrows, wheel, first/last page,
+and no item-selection flicker.

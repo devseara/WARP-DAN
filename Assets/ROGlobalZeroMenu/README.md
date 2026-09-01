@@ -17,6 +17,9 @@ the custom full-panel background and sizes its parent to the icon grid.
   bt_autohunt_pressed.bmp: native New UI Auto Hunt states.
 - menuicon/bt_autohunt_old_normal.bmp, bt_autohunt_old_mouseon.bmp, and
   bt_autohunt_old_pressed.bmp: native Classic Auto Hunt states.
+- Item Collection contributes a ten-file user-approved New/Classic set from
+  `Images/CollectionUI/menuicon/`; its asset-copy callback deploys all aliases
+  into this runtime namespace while the native child consumes six states.
 
 Regenerate row backgrounds with tools/render_roglobalzero_menu_backgrounds.py.
 The generator preserves the complete top and bottom caps and resizes only the
@@ -29,10 +32,10 @@ The menu has 25 native command entries in five columns. Its height is always:
     ceil(visible native commands / 5) + 1 permanent control row
 
 The permanent row prevents close, hidden warp/teleport, and reopen from
-constructing a shorter surface. Auto Hunt is a real native UIButton child in
-the first control-row column. The native MENU toggle retains the last slot.
-Auto Hunt uses stock UIButton drawing, hit testing, hover, pressed states, and
-child-tree ownership.
+constructing a shorter surface. Auto Hunt and Item Collection are real native
+UIButton children in the first and second control-row columns. The native MENU
+toggle retains the last slot. Both custom buttons use stock UIButton drawing,
+hit testing, hover, pressed states, and child-tree ownership.
 
 On create, reopen, and post-MakeWindow paths, ROGlobalZeroMenu reapplies layout
 and refreshes the WindowManager rectangle without replaying native OnCreate.

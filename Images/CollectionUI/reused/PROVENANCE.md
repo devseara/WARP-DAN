@@ -1,6 +1,6 @@
-# Card Collection reused asset provenance
+# Item Collection reused asset provenance
 
-Created 2026-08-31 for the Card Collection BMP build. This directory contains 44 source-derived BMP files only. Every bitmap was copied byte-for-byte: no resizing, palette conversion, color correction, text removal, or re-encoding was performed.
+Created 2026-08-31 for the Item Collection BMP build. This directory contains 44 source-derived BMP files only. Every bitmap was copied byte-for-byte: no resizing, palette conversion, color correction, text removal, or re-encoding was performed.
 
 Packed source archive:
 
@@ -21,6 +21,35 @@ The logical Korean directory `data\texture\유저인터페이스` is surfaced by
 | `currency/icon_zeny.bmp` | 1 | `maindata.grf::data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\basic_interface\rodexsystem\renewal\icon_zeny.bmp` | 28x25, 24-bpp RGB BMP | Icon-only Zeny bag/coin; no embedded label. |
 | `status/badge_complete.bmp` | 1 | `maindata.grf::data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\achievement_re\badge_complete.bmp` | 20x30, 24-bpp RGB BMP | Completion ribbon icon with no embedded text. |
 | `artwork/fallback_question_mark.bmp` | 1 | `maindata.grf::data\texture\유저인터페이스\collection\사과.bmp` (local path display: `...\collection\»ç°ú.bmp`) | 75x100, 24-bpp RGB BMP | Native question-mark collection artwork. Only the staged filename was normalized; pixel bytes are unchanged. Do not confuse it with `collection\apple_.bmp`, which is the real Apple artwork. |
+
+## Item category icons
+
+The 15 `icons/category_*.bmp` files preserve pixels from native client assets.
+The All icon reuses `icons/icon_collection.bmp`; the remaining icons use these
+representative item resources: Poring Card, Knife, Cotton Shirt, Guard, Poring
+Hat, Muffler, Sandals, Rosary, Red Potion, Jellopy, Arrow, Poring Egg,
+Beginner's Shadow Armor, and Battle Manual Box. Card, Headgear, Ammo, Shadow,
+and Cash originated as palette BMPs and were losslessly re-encoded as 24-bpp
+BI_RGB to satisfy the runtime pack contract; the other ten files remain native
+24-bpp copies. These are visual category markers only and do not define
+collection membership or rewards.
+
+## Item Collection menu button
+
+The user supplied and approved ten final BMPs from
+`C:\Users\Administrator\Downloads\New folder\` on 2026-09-01. Exact copies
+are staged under `source/menuicon/` and copied unchanged to `menuicon/` by
+`tools/build_item_collection_menu_buttons.ps1`.
+
+- New UI: base, disabled, normal, mouse-on, press, and pressed (45x41)
+- Classic: disabled, normal, mouse-on, and pressed (32x34)
+
+All ten files are 24-bpp BI_RGB. The native button uses normal, mouse-on, and
+pressed for each theme; the other filenames remain deployed as compatibility
+aliases. `bt_itemcollection.bmp` and `bt_itemcollection_disabled.bmp` are
+byte-identical; `bt_itemcollection_old_disabled.bmp` and
+`bt_itemcollection_old_mouseon.bmp` are also byte-identical. No pixel,
+palette, dimension, filename, or compression change is made after staging.
 
 ## Excluded after visual review
 

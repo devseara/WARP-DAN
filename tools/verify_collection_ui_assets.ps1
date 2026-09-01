@@ -106,6 +106,50 @@ $ownedAssets = [ordered]@{
 	'icons\badge_complete.bmp' = @(16, 16)
 }
 
+$categoryAssets = [ordered]@{
+	'icons\category_all.bmp' = @(16, 16)
+	'icons\category_card.bmp' = @(24, 24)
+	'icons\category_weapon.bmp' = @(24, 24)
+	'icons\category_armor.bmp' = @(24, 24)
+	'icons\category_shield.bmp' = @(24, 24)
+	'icons\category_headgear.bmp' = @(24, 24)
+	'icons\category_garment.bmp' = @(24, 24)
+	'icons\category_shoes.bmp' = @(24, 24)
+	'icons\category_accessory.bmp' = @(24, 24)
+	'icons\category_consumable.bmp' = @(24, 24)
+	'icons\category_etc.bmp' = @(24, 24)
+	'icons\category_ammo.bmp' = @(24, 24)
+	'icons\category_pet.bmp' = @(24, 24)
+	'icons\category_shadow.bmp' = @(24, 24)
+	'icons\category_cash.bmp' = @(24, 24)
+}
+
+$menuAssets = [ordered]@{
+	'menuicon\bt_itemcollection.bmp' = @(45, 41)
+	'menuicon\bt_itemcollection_disabled.bmp' = @(45, 41)
+	'menuicon\bt_itemcollection_normal.bmp' = @(45, 41)
+	'menuicon\bt_itemcollection_mouseon.bmp' = @(45, 41)
+	'menuicon\bt_itemcollection_press.bmp' = @(45, 41)
+	'menuicon\bt_itemcollection_pressed.bmp' = @(45, 41)
+	'menuicon\bt_itemcollection_old_disabled.bmp' = @(32, 34)
+	'menuicon\bt_itemcollection_old_normal.bmp' = @(32, 34)
+	'menuicon\bt_itemcollection_old_mouseon.bmp' = @(32, 34)
+	'menuicon\bt_itemcollection_old_pressed.bmp' = @(32, 34)
+}
+
+$menuSourceAssets = [ordered]@{
+	'source\menuicon\bt_itemcollection.bmp' = @(45, 41)
+	'source\menuicon\bt_itemcollection_disabled.bmp' = @(45, 41)
+	'source\menuicon\bt_itemcollection_normal.bmp' = @(45, 41)
+	'source\menuicon\bt_itemcollection_mouseon.bmp' = @(45, 41)
+	'source\menuicon\bt_itemcollection_press.bmp' = @(45, 41)
+	'source\menuicon\bt_itemcollection_pressed.bmp' = @(45, 41)
+	'source\menuicon\bt_itemcollection_old_disabled.bmp' = @(32, 34)
+	'source\menuicon\bt_itemcollection_old_normal.bmp' = @(32, 34)
+	'source\menuicon\bt_itemcollection_old_mouseon.bmp' = @(32, 34)
+	'source\menuicon\bt_itemcollection_old_pressed.bmp' = @(32, 34)
+}
+
 $ownedDimensionsValid = @{}
 foreach ($ownedAsset in $ownedAssets.GetEnumerator()) {
 	$ownedPath = Join-Path $resolvedPackRoot $ownedAsset.Key
@@ -113,6 +157,18 @@ foreach ($ownedAsset in $ownedAssets.GetEnumerator()) {
 		-Path $ownedPath `
 		-ExpectedWidth $ownedAsset.Value[0] `
 		-ExpectedHeight $ownedAsset.Value[1]
+}
+foreach ($categoryAsset in $categoryAssets.GetEnumerator()) {
+	$categoryPath = Join-Path $resolvedPackRoot $categoryAsset.Key
+	$null = Test-BitmapDimensions -Path $categoryPath -ExpectedWidth $categoryAsset.Value[0] -ExpectedHeight $categoryAsset.Value[1]
+}
+foreach ($menuAsset in $menuAssets.GetEnumerator()) {
+	$menuPath = Join-Path $resolvedPackRoot $menuAsset.Key
+	$null = Test-BitmapDimensions -Path $menuPath -ExpectedWidth $menuAsset.Value[0] -ExpectedHeight $menuAsset.Value[1]
+}
+foreach ($menuSourceAsset in $menuSourceAssets.GetEnumerator()) {
+	$menuSourcePath = Join-Path $resolvedPackRoot $menuSourceAsset.Key
+	$null = Test-BitmapDimensions -Path $menuSourcePath -ExpectedWidth $menuSourceAsset.Value[0] -ExpectedHeight $menuSourceAsset.Value[1]
 }
 
 $sourceTitlePath = Join-Path $resolvedPackRoot 'source\title_bar_470.bmp'
@@ -263,6 +319,22 @@ foreach ($ownedAsset in $ownedAssets.GetEnumerator()) {
 		Write-Host ("  {0}  {1}" -f $hash, $ownedAsset.Key.Replace('\', '/'))
 	}
 }
+Write-Host 'Category asset SHA-256:'
+foreach ($categoryAsset in $categoryAssets.GetEnumerator()) {
+	$categoryPath = Join-Path $resolvedPackRoot $categoryAsset.Key
+	if (Test-Path -LiteralPath $categoryPath -PathType Leaf) {
+		$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $categoryPath).Hash
+		Write-Host ("  {0}  {1}" -f $hash, $categoryAsset.Key.Replace('\', '/'))
+	}
+}
+Write-Host 'Item Collection menu-button SHA-256:'
+foreach ($menuAsset in $menuAssets.GetEnumerator()) {
+	$menuPath = Join-Path $resolvedPackRoot $menuAsset.Key
+	if (Test-Path -LiteralPath $menuPath -PathType Leaf) {
+		$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $menuPath).Hash
+		Write-Host ("  {0}  {1}" -f $hash, $menuAsset.Key.Replace('\', '/'))
+	}
+}
 
 if ($script:validationFailures.Count -gt 0) {
 	Write-Host ''
@@ -275,6 +347,6 @@ if ($script:validationFailures.Count -gt 0) {
 
 Write-Host ''
 Write-Host (
-	'Collection UI asset verification passed: {0} BMPs checked, 44 reused BMPs, 5 owned assets.' -f
+	'Collection UI asset verification passed: {0} BMPs checked, 44 reused controls, 15 category icons, 10 supplied menu buttons, 5 owned assets.' -f
 	$allBitmaps.Count
 )
