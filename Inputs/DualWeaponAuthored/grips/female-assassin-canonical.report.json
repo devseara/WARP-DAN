@@ -1,0 +1,73 @@
+{
+  "added_identity_records": [
+    {
+      "base_type": 6,
+      "direction": 2,
+      "dx": 0,
+      "dy": 0,
+      "family": 0,
+      "gender": 0,
+      "mirror_xor": 0,
+      "phase": 1,
+      "rotation_delta": 0,
+      "selected_frame": 5,
+      "source_key": 5,
+      "view": 6
+    },
+    {
+      "base_type": 6,
+      "direction": 3,
+      "dx": 0,
+      "dy": 0,
+      "family": 0,
+      "gender": 0,
+      "mirror_xor": 0,
+      "phase": 1,
+      "rotation_delta": 0,
+      "selected_frame": 5,
+      "source_key": 5,
+      "view": 6
+    },
+    {
+      "base_type": 6,
+      "direction": 4,
+      "dx": 0,
+      "dy": 0,
+      "family": 0,
+      "gender": 0,
+      "mirror_xor": 0,
+      "phase": 1,
+      "rotation_delta": 0,
+      "selected_frame": 5,
+      "source_key": 5,
+      "view": 6
+    },
+    {
+      "base_type": 6,
+      "direction": 5,
+      "dx": 0,
+      "dy": 0,
+      "family": 0,
+      "gender": 0,
+      "mirror_xor": 0,
+      "phase": 1,
+      "rotation_delta": 0,
+      "selected_frame": 5,
+      "source_key": 5,
+      "view": 6
+    }
+  ],
+  "output": {
+    "crc32": "886BAD23",
+    "path": "Inputs\\DualWeaponAuthored\\grips\\female-assassin-canonical.dwc2",
+    "records": 444,
+    "sha256": "4BA59F903EE992217253679D21DF1564EB150B5B62D44ADB5BCF3742A4A6A815"
+  },
+  "policy": "Four missing visible pair27 attack keys for generic axe view 6; identity reference only.",
+  "schema": "dual_weapon_canonical_grips/v1",
+  "source": {
+    "path": "tmp\\recovered_dual\\coverage\\dual_view_corrections.bin",
+    "records": 440,
+    "sha256": "22F1401096FA19107B4667C7BB04374F96E097C9EC64C244BC0A92A10A040A8C"
+  }
+}
