@@ -147,6 +147,21 @@ ExtNameTextStatic.zeroBlock = function(phyAddr, size)
 	}
 };
 
+ExtNameTextStatic.isPatchSelected = function(name)
+{
+	return typeof name === "string" && name.length > 0 &&
+		(Exe.ActivePatch === name || Warp.GetPatchState(name));
+};
+
+ExtNameTextStatic.isStateLive = function(state)
+{
+	if (!state || !Number.isInteger(state.stateVir) ||
+		!Number.isInteger(state.lookupVir) ||
+		!ExtNameTextStatic.isPatchSelected(state.ownerPatch))
+		return false;
+	return !!state.minimal || Number.isInteger(state.bridgeVir);
+};
+
 ExtNameTextStatic.buildHashAnsi = function()
 {
 	const a = ExtNameStaticAsm.asm();
@@ -772,9 +787,12 @@ ExtNameTextStatic.findApis = function(requireColor)
 
 ExtNameTextStatic.patchTextSurfaces = function(state, requireColor)
 {
+	if (!ExtNameTextStatic.isStateLive(state))
+		throw Error("ExtNameTextStatic: refusing stale text-bridge state");
 	const apis = ExtNameTextStatic.findApis(requireColor);
 	const emoji = CACHE.get("FluentEmojiStatic.State");
-	if ((state.features & ExtNameTextStatic.FeatureEmoji) !== 0 && emoji)
+	if ((state.features & ExtNameTextStatic.FeatureEmoji) !== 0 && emoji &&
+		ExtNameTextStatic.isPatchSelected(emoji.ownerPatch))
 	{
 		apis.emojiDraw = emoji.drawVir;
 		apis.emojiMeasure = emoji.measureVir;
@@ -855,13 +873,13 @@ ExtNameTextStatic.patchFrameCaller = function(callerPhy, bridgeVir)
 ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 {
 	let state = CACHE.get("ExtNameTextStatic.State");
-	if (state && Number.isInteger(state.stateVir) && !state.minimal)
+	const stateLive = ExtNameTextStatic.isStateLive(state);
+	if (stateLive && !state.minimal)
 		return state;
-	const previousFeatures = state && Number.isInteger(state.features)
+	const previousFeatures = stateLive && Number.isInteger(state.features)
 		? state.features
 		: 0;
-	const previousOwner = state && typeof state.ownerPatch === "string" &&
-		state.ownerPatch.length > 0 ? state.ownerPatch : _;
+	const previousOwner = _;
 
 	const callerPhy = ExtNameStaticAsm.assertCode(
 		"frame caller prefix",
@@ -958,7 +976,7 @@ ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 	StaticPatchRefresh.add("CustomExtName.StaticTextBridge", function()
 	{
 		const current = CACHE.get("ExtNameTextStatic.State");
-		if (!current || !Number.isInteger(current.stateVir))
+		if (!ExtNameTextStatic.isStateLive(current))
 			return false;
 		ExtNameTextStatic.writeFeatures(current);
 		ExtNameTextStatic.patchFrameCaller(current.callerPhy, current.bridgeVir);
@@ -987,7 +1005,7 @@ ExtNameTextStatic.enableEmoji = function(_, renderer)
 		throw Error("ExtNameTextStatic: emoji renderer state unavailable");
 
 	let state = CACHE.get("ExtNameTextStatic.State");
-	if (!state || !Number.isInteger(state.stateVir))
+	if (!ExtNameTextStatic.isStateLive(state))
 	{
 		const [statePhy, stateVir] = Exe.Allocate(ExtNameTextStatic.StateSize, 4);
 		ExtNameTextStatic.zeroBlock(statePhy, ExtNameTextStatic.StateSize);
@@ -1006,7 +1024,7 @@ ExtNameTextStatic.enableEmoji = function(_, renderer)
 			statePhy,
 			stateVir,
 			wideScratchVir,
-			findWideVir: missing.virAddr,
+			lookupVir: missing.virAddr,
 			features: 0,
 			ownerPatch: _,
 			minimal: true
@@ -1025,7 +1043,8 @@ ExtNameTextStatic.enableEmoji = function(_, renderer)
 		typeof ItemColorStatic.patchTextSurfaces === "function")
 	{
 		const itemState = CACHE.get("ItemColorStatic.State");
-		if (itemState && Number.isInteger(itemState.stateVir))
+		if (itemState && Number.isInteger(itemState.stateVir) &&
+			ExtNameTextStatic.isPatchSelected(itemState.ownerPatch))
 		{
 			ItemColorStatic.patchTextSurfaces(itemState);
 			CACHE.put("ItemColorStatic.State", itemState);
@@ -1068,7 +1087,8 @@ ExtNameTextStatic.enable = function(_, feature)
 		typeof ItemColorStatic.patchTextSurfaces === "function")
 	{
 		const itemState = CACHE.get("ItemColorStatic.State");
-		if (itemState && Number.isInteger(itemState.stateVir))
+		if (itemState && Number.isInteger(itemState.stateVir) &&
+			ExtNameTextStatic.isPatchSelected(itemState.ownerPatch))
 		{
 			ItemColorStatic.patchTextSurfaces(itemState);
 			CACHE.put("ItemColorStatic.State", itemState);

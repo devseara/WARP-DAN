@@ -112,6 +112,17 @@ Target clients are the profiled 2025-07-16 and 2026-02-19 Ragexe builds.
     Exact EXTN entity-name spans and complete Fluent Emoji tokens bypass item
     matching. The item renderer must not consume, recolor, or suppress them.
 
+12. **Cached executable callbacks require a selected owner.**
+    WARP GUI cache objects can survive a later apply while the patch that owns
+    their allocated code is deselected. `ExtNameTextStatic`, ItemColor, grade
+    configuration, and Fluent Emoji may reuse cached addresses only while the
+    recorded owner patch is selected in the current apply. Static refresh and
+    cross-layer reapply callbacks must enforce the same rule. The emoji-only
+    minimal state publishes its missing lookup stub through the exact
+    `lookupVir` field consumed by `buildFindWide`; never publish an unused alias.
+    A final 2025 PE must trace the native extent call through `findWide` to a
+    mapped lookup prologue, never an all-zero allocation.
+
 ## Patch responsibilities
 
 | Patch | Responsibility |

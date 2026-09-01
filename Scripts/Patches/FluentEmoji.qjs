@@ -950,7 +950,9 @@ FluentEmojiStatic.buildDraw = function(
 FluentEmojiStatic.ensureInstalled = function(_)
 {
 	let state = CACHE.get("FluentEmojiStatic.State");
-	if (state && Number.isInteger(state.drawVir))
+	if (state && Number.isInteger(state.drawVir) &&
+		Number.isInteger(state.measureVir) &&
+		ExtNameTextStatic.isPatchSelected(state.ownerPatch))
 		return state;
 	if (Exe.BuildDate !== FluentEmojiStatic.BuildDate)
 		throw Error("FluentEmoji supports only the 2025-07-16 client");
@@ -1045,6 +1047,7 @@ FluentEmojiStatic.ensureInstalled = function(_)
 			)
 		);
 		state = {
+			ownerPatch: _,
 			statePhy: stateBlock.phyAddr,
 			stateVir: stateBlock.virAddr,
 			lookupVir: lookup.virAddr,

@@ -37,6 +37,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ITEM_SOURCE = Path("Scripts/Patches/CustomColoredItemName.qjs")
 GRADE_SOURCE = Path("Scripts/Patches/CustomColoredEnchantGradeName.qjs")
 LABEL_SOURCE = Path("Scripts/Patches/CustomEnchantGradeLabels.qjs")
+EXTNAME_SOURCE = Path("Scripts/Patches/ExtNameTextStatic.qjs")
+EMOJI_SOURCE = Path("Scripts/Patches/FluentEmoji.qjs")
 
 IMAGE_FILE_MACHINE_I386 = 0x014C
 PE32_MAGIC = 0x010B
@@ -297,6 +299,48 @@ class SourceChecks:
         item = self.read_qjs(ITEM_SOURCE)
         grade = self.read_qjs(GRADE_SOURCE)
         labels = self.read_qjs(LABEL_SOURCE)
+        extname = self.read_qjs(EXTNAME_SOURCE)
+        emoji = self.read_qjs(EMOJI_SOURCE)
+
+        self.require(
+            "ExtNameTextStatic.isPatchSelected" in extname
+            and "ExtNameTextStatic.isStateLive" in extname
+            and "ExtNameTextStatic.isPatchSelected(state.ownerPatch)"
+            in extname,
+            "shared text state is not gated by current patch ownership",
+        )
+        self.require(
+            "lookupVir: missing.virAddr" in extname
+            and "findWideVir: missing.virAddr" not in extname,
+            "minimal emoji-only text state does not publish the lookup callback consumed by buildFindWide",
+        )
+        self.require(
+            "refusing stale text-bridge state" in extname
+            and "ExtNameTextStatic.isStateLive(current)" in extname,
+            "text-surface patching or static refresh can reuse stale shared callbacks",
+        )
+        self.require(
+            "ExtNameTextStatic.isPatchSelected(emoji.ownerPatch)" in extname,
+            "deselected FluentEmoji callbacks can be embedded into the shared text bridge",
+        )
+        self.require(
+            extname.count(
+                "ExtNameTextStatic.isPatchSelected(itemState.ownerPatch)"
+            )
+            == 2,
+            "an ExtName reapply path can invoke deselected cached ItemColor code",
+        )
+        self.require(
+            "ownerPatch: _" in emoji
+            and "ExtNameTextStatic.isPatchSelected(state.ownerPatch)" in emoji,
+            "FluentEmoji renderer cache is not scoped to its selected owner patch",
+        )
+        self.require(
+            "ownerPatch: _" in item
+            and "ExtNameTextStatic.isPatchSelected(state.ownerPatch)" in item
+            and "ItemColorStatic.GradeConfigOwner" in item,
+            "item-color or grade-config cache is not scoped to current patch ownership",
+        )
 
         for relative, source in (
             (ITEM_SOURCE, item),

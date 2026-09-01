@@ -191,7 +191,10 @@ ItemColorStatic.getGradeConfig = function()
 	const config = CACHE.get("ItemColorStatic.GradeConfig");
 	if (config &&
 		Number.isInteger(config.phyAddr) &&
-		Number.isInteger(config.virAddr))
+		Number.isInteger(config.virAddr) &&
+		ExtNameTextStatic.isPatchSelected(
+			CACHE.get("ItemColorStatic.GradeConfigOwner")
+		))
 		return config;
 	return null;
 };
@@ -2027,6 +2030,10 @@ ItemColorStatic.enable = function(_, icolVir)
 	const gradeConfig = ItemColorStatic.createGradeConfig(_);
 
 	let state = CACHE.get("ItemColorStatic.State");
+	if (state && (!Number.isInteger(state.lookupVir) ||
+		!Number.isInteger(state.drainVir) ||
+		!ExtNameTextStatic.isPatchSelected(state.ownerPatch)))
+		state = null;
 	if (!state || !Number.isInteger(state.stateVir))
 	{
 		const [statePhy, stateVir] = RagexeAllocationStatic.allocate(
@@ -2072,6 +2079,7 @@ ItemColorStatic.enable = function(_, icolVir)
 			ItemColorStatic.buildRegisterRenderedName(stateVir, tableVir)
 		);
 		state = {
+			ownerPatch: _,
 			statePhy,
 			stateVir,
 			tableVir,
@@ -2203,7 +2211,9 @@ ItemColorStatic.enable = function(_, icolVir)
 		StaticPatchRefresh.add("CustomColoredItemName.StaticTextBridge", function()
 		{
 			const current = CACHE.get("ItemColorStatic.State");
-			if (!current || !Number.isInteger(current.stateVir))
+			if (!current || !Number.isInteger(current.lookupVir) ||
+				!Number.isInteger(current.drainVir) ||
+				!ExtNameTextStatic.isPatchSelected(current.ownerPatch))
 				return false;
 			ItemColorStatic.patchGradeTitleBoundaries(current);
 			ItemColorStatic.patchTextSurfaces(current);
