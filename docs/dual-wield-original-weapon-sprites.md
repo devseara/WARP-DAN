@@ -1584,3 +1584,91 @@ resolving the ACT-editor duplication question above.
    already proven correct for state 6; extending to another pair is a data
    task (repeat the ACT-editor + extraction + patch cycle for that pair's
    state), not a code task.
+
+## Job-sprite compositor investigation and its conclusion - 2026-09-01
+
+A separate line of work this same day investigated whether a fundamentally
+different architecture -- computing hand placement from the job/gender body
+sprite plus a per-weapon hilt/tip landmark, instead of authoring a full
+per-pair pose table -- could eliminate the per-pair authoring cost entirely.
+Three independent hypotheses were tested against the accepted pair-28 attack
+data (128 cells), each with independent adversarial re-verification from a
+separate from-scratch parse of the source files. All three are closed:
+
+1. **Rigid rotation of one fixed hilt/tip landmark per weapon view, onto a
+   shared socket.** Falsified. Mean error 37.55px / max 106.2px across all
+   128 cells. Proof, sign/convention-independent: for a fixed hand+frame, the
+   accepted CSV's own hand-to-anchor distance varies ~6-30px across the 8
+   directions, and a rigid rotation can never change a fixed vector's
+   magnitude -- this alone rules out the model regardless of getting angle
+   sign or mirror order right.
+2. **A general kinematic/pivot search** (reach-invariance from `body_guide`,
+   a fitted-offset pivot, a rotation-derived angle predictor). All failed:
+   per-frame reach coefficient-of-variation across directions ranges 2%-65%
+   (not small); the angle from `body_guide` to the hand jumps 90-180°
+   erratically between directions instead of sweeping smoothly (rules out a
+   simple arm-swings-under-camera-rotation model); a fitted pivot offset
+   gives only 5.9%-33.8% variance reduction and needs a different offset
+   every frame to work at all (i.e. needs multi-joint kinematics, not a
+   single fixed pivot); rotation-derived angle prediction found no
+   relationship at all. One corroborated side-finding: the **raw,
+   uncorrected** authored ACT animation itself does follow a clean,
+   direction-shared, per-frame reach law -- confirmed independently on both
+   pair 28's own raw ACT layers and the separate in-progress pair-25 file. It
+   is specifically the *correction* applied on top (present at some frames,
+   not others) that resisted every model tried.
+3. **Regressing the correction itself**
+   (`correction(direction,frame,hand) = CSV_hand_absolute -
+   raw_ACT_hand_absolute`, rather than modeling absolute position).
+   Partially confirmed, independently re-verified byte-for-byte from a
+   separate ACT re-parse: 60/128 cells are exactly zero (frames 0-2, always);
+   of the 68 nonzero, a direction-pairing pattern
+   (`{0,1},{2,3},{4,5},{6,7}`) plus a "both weapons get one shared shift"
+   behavior collapses 58 of them into 17 reusable exact vectors, leaving 10
+   cells (sword-specific, frames 3-5, direction-pairs `{0,1}`/`{6,7}`)
+   genuinely irreducible to sub-pixel exactness. Net: 128 values -> 28
+   distinct exact vectors, a real ~4.6x reduction -- but no
+   physical/geometric driver was found behind the pairing (reach-correlation
+   is weak for the main hand, r=0.505, and essentially absent for the
+   off-hand, r=0.081, when reach is measured from `body_guide`; measuring
+   from `pair_guide` instead -- the layer actually established as the CSV's
+   real anchor, see below -- gives r=0.292/r=0.407 instead; both pairs of
+   numbers are real, cite whichever origin is meant). This is a compression
+   of pair-28's own already-authored data, not a predictor for a
+   not-yet-authored pair.
+
+**Corrected fact, superseding the framing implied by "body_guide" appearing
+first in the layer list above:** the accepted CSV's per-cell translation is
+authored as a delta against ACT **layer 1 (`pair_guide`)**, not layer 0
+(`body_guide`). Directly reproduced from the current files: raw ACT
+weapon-layer position vs. `layer1 + CSV_delta` reconstruction is exact in
+60/128 cells (mean drift 9.71px, max 35.51px on the rest); vs.
+`layer0 + CSV_delta` it is exact in 0/128 cells (mean 34.52px, max 61.4px).
+`layer0` (`body_guide`) tracks the torso and has no reliable correlation with
+either weapon's position.
+
+**Settled conclusion:** the job-sprite compositor's central premise --
+translation computed for free from a shared job/gender socket, eliminating
+per-pair authoring -- does not hold, in any form tested across all three
+hypotheses. The keepable results are: rotation matches the item's own baked
+ACT rotation in 116/128 cells, and mirror matches directly in all 128 --
+both real, free simplifications applicable to any future pair. Translation
+remains a per-pair-per-cell authored/extracted quantity, same cost as pair
+28 has today; the 28-vector correction compression above may aid
+*reproducing* an already-authored pair's data more compactly but does not
+remove the authoring step for a new one.
+
+**Repository state from this investigation:** `tools/dual_weapon_formats/`
+(promoted ACT/SPR/GRF readers, `weapontable.lub` parser, DWR3/DWC2 struct
+helpers, the correction-regression analysis and its independent verifier) and
+`Inputs/DualWeaponAuthored/sockets/` are committed
+(`43ed714`, `009f3e5`, `2b2273a`). This document and the Stage-1 diagnostic
+reports (`tools/_stage1_validation_report.json`,
+`tools/_stage1_translation_model_v2_report.json`,
+`tools/dual_socket_extract.py`, `tools/dual_hilt_fit_validate.py`,
+`tools/fit_pivot_offset.py`) are committed in the same range. Production
+`AllowDualCustomWeaponSprites.qjs` (pair 28) was not touched by any of this
+work. No new runtime port has been started; the next step, if pursued, is a
+`prepare_hand` v2 built on the settled per-pair-translation +
+free-rotation/mirror model, validated against pair 28's own golden data
+before any new pair is attempted.
