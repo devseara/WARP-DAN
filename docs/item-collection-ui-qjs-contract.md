@@ -1,6 +1,6 @@
 # Item Collection QJS contract
 
-## Checkpoint — 2026-09-01
+## Checkpoint — 2026-09-02
 
 - Client and server source contracts are implemented; live acceptance remains
   required after rebuilding map-server and repatching the client.
@@ -15,6 +15,12 @@
 - Schema-changing navigation hides stale payloads. Same-page item/combo SELECT
   keeps the current rows visible and updates local focus immediately, removing
   the brief selection flicker. Mutations remain single-flight.
+- Empty filter results exit selection resolution before its decrementing loop.
+  This fixes the Combo Collections -> Ready access violation at `0x01C6F8E7`
+  when `rowCount=0` and a prior combo ID was still cached.
+- Snapshot-pending pages draw the supplied 166x124 `chrome/loading.bmp`
+  NOW LOADING frame instead of request text. The supplied ACT/SPR pair is
+  staged and deployed as the authoritative animation source.
 - A native Item Collection menu child occupies control-row column two beside
   Auto Hunt in both RO Global New UI and Classic UI. Six active BMP states,
   hit testing, tooltip, reopen, visibility, and either patch order are gated.
@@ -49,7 +55,8 @@
   Irregular controls use exact `#FF00FF` color-key drawing.
 - The WARP asset-copy choice defaults to enabled and is persisted. The patch
   creates the `item_collection` icon directory and copies all 15 category
-  BMPs. It also copies six Item Collection menu states into
+  BMPs, the loading BMP, and its ACT/SPR source pair. It also copies six Item
+  Collection menu states into
   `uirenewal\menuicon`; source verification requires every deployed file.
 
 ### Generated live client data (outside Git)
@@ -61,8 +68,9 @@ tree. They are intentionally not proposed for the WARP or server commits:
 - 399 canonical `item\<identified-resource>.bmp` card icons, byte-identical
   to the stock unnamed-card icon (SHA-256
   `729E6E133BDB62FE36DBD30C831CCF93F0B76183739ED0AEC45ED9205624E64F`);
-- 64 fixed runtime files under `item_collection\`, including 15 native
-  category icons; and
+- 67 fixed runtime files under `item_collection\`, including 15 native
+  category icons plus `loading.bmp`, `nowloading.act`, and
+  `nowloading.spr`; and
 - ten user-approved New/Classic Item Collection menu-button BMPs under
   `uirenewal\menuicon` (six active states plus four compatibility aliases); and
 - the CP949-authoritative `SystemEN\itemInfo_prerenewal.lua`, SHA-256
@@ -92,6 +100,32 @@ The ten user-approved button files are staged verbatim under
 24-bpp BI_RGB format, and copies them byte-for-byte; it does not redraw or
 transform the supplied art. The native child selects normal, mouse-on, and
 pressed for each theme.
+
+If WARP is applied to an already-patched full client, the build-time CACHE
+handshake may no longer exist even though the native optional button and Item
+Collection toggle still do. ItemCollectionUI therefore has a unique-signature
+fallback that reconnects the request/visibility cells. Ambiguous matches are a
+hard error. For an existing binary, `tools/fix_item_collection_menu_route.py`
+creates a separate repaired EXE and never overwrites its input.
+
+The 2026-09-02 supplied EXE had request cell `0x01C60F8C=0` and a valid
+toggle at `0x01C83060`. The repaired copy changes only that route, the
+visibility byte, and PE checksum. `verify_item_collection_menu_button.py`
+confirms the repaired indirect target begins with `PUSHFD/PUSHAD`.
+
+## Empty-filter crash gate and loading state
+
+The selection resolver used a decrementing `ECX` loop after clamping the
+maximum row count, but did not reject zero. A Ready filter with no matching
+combos retained a local parent combo ID, entered the loop with `ECX=0`,
+underflowed to `0xFFFFFFFF`, and scanned 400-byte rows beyond the payload.
+The injected sequence now performs `TEST ECX,ECX / JE selection_done`
+before either the 100-byte Item or 400-byte Combo loop.
+
+The loading UI uses the opaque 166x124 BMP safety frame at logical
+`(179,234)`. Native ACT/SPR construction is intentionally not introduced into
+the QJS-owned frame lifecycle; the supplied sources are retained and deployed
+without mutation.
 
 ## Category dropdown
 
@@ -246,7 +280,8 @@ success; error results 2 through 14 have distinct client messages.
 `NAVIGATE + SELECT` is the deliberate exception: it preserves the current
 same-page payload while the clicked local selected index changes immediately.
 The authoritative snapshot still confirms selection, but no blank loading
-frame is inserted between the click and response.
+frame is inserted between the click and response. Schema-changing navigation
+shows the NOW LOADING BMP until the authoritative snapshot arrives.
 
 ## Typography and numeric formatting
 
@@ -310,19 +345,20 @@ powershell.exe -ExecutionPolicy Bypass -File .\tools\build_item_collection_menu_
 python .\tools\verify_shared_text_bridge_callbacks.py .\tmp\item_collection_ui_renderer_coexistence_test.exe
 python .\tools\verify_item_collection_menu_button.py .\tmp\item_collection_ui_menu_order_test.exe
 python .\tools\verify_item_collection_menu_button.py .\tmp\item_collection_ui_menu_reverse_order_test.exe
+python .\tools\fix_item_collection_menu_route.py <patched.exe> --output <fixed.exe>
 ```
 
 The all-item dropdown, asset-deployment, stock-icon-fallback, FillRect-safe,
 unified-font, smooth-search, combo-member-action rebuild produced:
 
 - isolated COUI: 16,166,221 bytes, SHA-256
-  `D933AE4E46C6033220C4106E25CB0358EF4B1068799CC8B414BA84D01F88CF42`;
+  `1A1FB6B4E6C2492DE7580A8CA19D4291F35F8CBDF126DF44E9C2D1DC62D92F25`;
 - combined PINC/AHUI/COUI: 17,640,269 bytes, SHA-256
-  `B8FF6AF12274DDBC2DA6CEA2B843074AEA6180DC0687CD12C5FED1A2504135C9`;
+  `349FA086DE50CEDB86D87936AEA6D2DE9F54B40CD28F49AF09C387607755F3A2`;
 - renderer/PINC/AHUI/COUI: 21,507,917 bytes, SHA-256
-  `754B19A380B212682B78C066872960B628FE7541199C33484828EBEA85B9594A`;
+  `D2F0F3D6F8F510D75E5CEC9BFA94DEECB2615B612AF496F43C95DD8305E2BBD0`;
 - either menu selection order: 17,659,725 bytes, identical SHA-256
-  `63C9201598BC24CECE4713F491AD7BB914F8F4F800BC84407CF27B8F48E58A3A`.
+  `872AC821F45FE09F6C8D6B16FB7DF7135B2CD8DC355B5A5C7B4352DB26BE5B72`.
 
 These prove source, allocator, router, and PE integration only. Live Ragexe
 acceptance still requires 800x600 and larger layout, all 15 Item count bands,

@@ -101,6 +101,7 @@ if (-not (Test-Path -LiteralPath $resolvedPackRoot -PathType Container)) {
 $ownedAssets = [ordered]@{
 	'chrome\title_bar_760.bmp' = @(760, 17)
 	'chrome\bg_collection.bmp' = @(760, 523)
+	'chrome\loading.bmp' = @(166, 124)
 	'icons\icon_collection.bmp' = @(16, 16)
 	'icons\badge_locked.bmp' = @(16, 16)
 	'icons\badge_complete.bmp' = @(16, 16)
@@ -176,6 +177,23 @@ $sourceTitleDimensionsValid = Test-BitmapDimensions -Path $sourceTitlePath -Expe
 
 $fallbackPath = Join-Path $resolvedPackRoot 'reused\artwork\fallback_question_mark.bmp'
 $null = Test-BitmapDimensions -Path $fallbackPath -ExpectedWidth 75 -ExpectedHeight 100
+
+foreach ($animationAsset in @(
+	@('chrome\nowloading.act', 'AC'),
+	@('chrome\nowloading.spr', 'SP')
+)) {
+	$animationPath = Join-Path $resolvedPackRoot $animationAsset[0]
+	if (-not (Test-Path -LiteralPath $animationPath -PathType Leaf)) {
+		Add-ValidationFailure "Missing loading animation source: $($animationAsset[0])"
+		continue
+	}
+	$magic = [Text.Encoding]::ASCII.GetString(
+		[IO.File]::ReadAllBytes($animationPath), 0, 2
+	)
+	if ($magic -ne $animationAsset[1]) {
+		Add-ValidationFailure "Invalid loading animation magic: $($animationAsset[0])"
+	}
+}
 
 $reusedRoot = Join-Path $resolvedPackRoot 'reused'
 if (-not (Test-Path -LiteralPath $reusedRoot -PathType Container)) {
@@ -347,6 +365,6 @@ if ($script:validationFailures.Count -gt 0) {
 
 Write-Host ''
 Write-Host (
-	'Collection UI asset verification passed: {0} BMPs checked, 44 reused controls, 15 category icons, 10 supplied menu buttons, 5 owned assets.' -f
+	'Collection UI asset verification passed: {0} BMPs checked, 44 reused controls, 15 category icons, 10 supplied menu buttons, 6 owned assets, ACT/SPR sources valid.' -f
 	$allBitmaps.Count
 )

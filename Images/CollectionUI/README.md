@@ -26,6 +26,8 @@ base, disabled, and press aliases are retained for compatibility.
 |---|---:|---|
 | `chrome/title_bar_760.bmp` | 760×17 | Approved AutoHunt title bar, extended only through its repeat-safe center. |
 | `chrome/bg_collection.bmp` | 760×523 | White opaque body with native blue-gray edge. |
+| `chrome/loading.bmp` | 166×124 | Safe static NOW LOADING frame displayed while a snapshot is pending. |
+| `chrome/nowloading.act/.spr` | Source pair | Supplied native animation sources staged for provenance; runtime uses the BMP safety frame. |
 | `icons/icon_collection.bmp` | 16×16 | Title icon. |
 | `icons/badge_locked.bmp` | 16×16 | Missing-card semantic overlay. |
 | `icons/badge_complete.bmp` | 16×16 | Completed-item semantic overlay. |

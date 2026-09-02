@@ -824,6 +824,7 @@ ItemCollectionUIStatic.buildSnapshotReceiver = function(stateVir, payloadVir)
 	a.emit(0x8B, 0x15); a.dword(stateVir + c.StateSelectedId);
 	a.emit(0x85, 0xD2); a.jcc(0x84, "selection_done");
 	a.emit(0x8B, 0x0D); a.dword(stateVir + c.StateRowCount);
+	a.emit(0x85, 0xC9); a.jcc(0x84, "selection_done");
 	a.emit(0x83, 0xF9, c.CardRows); a.jcc(0x86, "selection_count_ok");
 	a.emit(0xB9); a.dword(c.CardRows);
 	a.label("selection_count_ok");
@@ -2077,9 +2078,7 @@ ItemCollectionUIStatic.buildDraw = function(
 
 	a.emit(0x83, 0x3D); a.dword(stateVir + c.StateReady); a.emit(0);
 	a.jcc(0x85, "draw_ready");
-	c.emitCenteredText(
-		a, strings.loading.vir, 13, 270, 497, 0xFF566278, 0
-	);
+	c.emitDrawFull(a, paths.loading.vir, 179, 234, "collection_loading");
 	a.jmp("draw_pages_done");
 	a.label("draw_ready");
 	a.emit(0x83, 0x3D); a.dword(stateVir + c.StateTab); a.emit(0);
@@ -3064,6 +3063,9 @@ ItemCollectionUIStatic.AssetDirectories = [
 ItemCollectionUIStatic.Assets = [
 	"chrome/title_bar_760.bmp",
 	"chrome/bg_collection.bmp",
+	"chrome/loading.bmp",
+	"chrome/nowloading.act",
+	"chrome/nowloading.spr",
 	"icons/icon_collection.bmp",
 	"icons/badge_locked.bmp",
 	"icons/badge_complete.bmp",
@@ -3195,6 +3197,7 @@ ItemCollectionUI = function(_)
 	const paths = {
 		title: resource("chrome\\title_bar_760.bmp"),
 		body: resource("chrome\\bg_collection.bmp"),
+		loading: resource("chrome\\loading.bmp"),
 		icon: resource("icons\\icon_collection.bmp"),
 		badgeLocked: resource("icons\\badge_locked.bmp"),
 		badgeComplete: resource("icons\\badge_complete.bmp"),
@@ -3252,7 +3255,6 @@ ItemCollectionUI = function(_)
 		].map(text),
 		cardFilters: ["All", "Missing", "Partial", "Completed"].map(text),
 		comboFilters: ["All", "Incomplete", "Ready", "Active"].map(text),
-		loading: text("Requesting the account collection snapshot..."),
 		countFormat: text("%u / %u"),
 		uintFormat: text("%u"),
 		itemIdFormat: text("Item ID %u"),
@@ -3362,6 +3364,41 @@ ItemCollectionUI = function(_)
 			phy: menuRoute.visiblePhy,
 			vir: menuRoute.visibleVir
 		};
+	}
+	else
+	{
+		// A previously patched RO Global menu can outlive WARP's build-time
+		// CACHE state. Recover its unique optional Item Collection mouse-up
+		// route so reapplying this patch cannot silently hide the launcher.
+		const optionalMouseUps = Exe.FindHexN(
+			"A1 ?? ?? ?? ?? 85 C0 0F 84 ?? ?? ?? ?? FF D0 " +
+			"33 C0 8B E5 5D C2 08 00",
+			0, Exe.FileSize
+		);
+		const routeCells = [];
+		for (const mouseUpPhy of optionalMouseUps)
+		{
+			const requestCellVir = Exe.GetUint32(mouseUpPhy + 1);
+			const requestCellPhy = Exe.Vir2Phy(requestCellVir);
+			if (requestCellPhy < 0)
+				continue;
+			const visible = Exe.GetUint32(requestCellPhy + 4);
+			if (visible > 1)
+				continue;
+			routeCells.push({requestCellPhy, requestCellVir});
+		}
+		if (routeCells.length > 1)
+			throw Error("ItemCollectionUI: ambiguous RO Global menu route");
+		if (routeCells.length === 1)
+		{
+			const recovered = routeCells[0];
+			Exe.SetUint32(recovered.requestCellPhy, toggle.vir);
+			Exe.SetUint32(recovered.requestCellPhy + 4, 1);
+			menuButtonVisible = {
+				phy: recovered.requestCellPhy + 4,
+				vir: recovered.requestCellVir + 4
+			};
+		}
 	}
 
 	CustomSlashCommand.register(_ + ".SlashCommand", {

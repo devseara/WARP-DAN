@@ -21,6 +21,13 @@ Owned:
     Width: 760
     Height: 523
     Opaque: true
+  Loading:
+    File: chrome/loading.bmp
+    Width: 166
+    Height: 124
+    Opaque: true
+    AnimationSource: 'chrome/nowloading.act + chrome/nowloading.spr'
+    Runtime: Static safety frame shown while awaiting an authoritative snapshot.
   CollectionIcon:
     File: icons/icon_collection.bmp
     Width: 16

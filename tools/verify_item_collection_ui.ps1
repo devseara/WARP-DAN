@@ -176,11 +176,16 @@ Assert-Contains $item 'stateVir + c.StateReady); a.dword(0)' 'navigation does no
 Assert-Contains $item 'stateVir + c.StateRowCount); a.dword(0)' 'navigation does not clear stale row count'
 Assert-Contains $item '0x83, 0x7D, 0x0C, c.ActionSelect' 'same-page selection preservation gate missing'
 Assert-Contains $item 'same schema/page: no flicker' 'selection no-flicker contract missing'
+Assert-Contains $item 'a.emit(0x85, 0xC9); a.jcc(0x84, "selection_done");' 'zero-row selection loop guard missing'
+Assert-Contains $item 'loading: resource("chrome\\loading.bmp")' 'loading artwork path missing'
+Assert-True (-not $item.Contains('Requesting the account collection snapshot...')) 'obsolete loading text remains'
 Assert-Contains $item 'StateScrollbarDragOffset' 'thumb pointer offset is not retained'
 Assert-True (-not $item.Contains('a.call(c.WindowCaptureSet)')) 'scrollbar thumb still shares native title-drag capture'
 Assert-Contains $item 'c.ControlScrollbarTrack' 'scrollbar track paging is not wired'
 Assert-Contains $item 'c.ScrollbarTrackBottom - c.ScrollbarThumbHeight' 'thumb is not clamped above the down arrow'
 Assert-Contains $item 'ROGlobalZeroMenu.ItemCollectionRoute.v1' 'order-independent menu route registration missing'
+Assert-Contains $item 'A previously patched RO Global menu can outlive WARP' 'cache-independent menu route recovery missing'
+Assert-Contains $item 'ambiguous RO Global menu route' 'menu route ambiguity gate missing'
 Assert-Contains $item 'requestVir: toggle.vir' 'menu bridge does not publish Item Collection request target'
 Assert-Contains $item 'visiblePhy: menuButtonVisible.phy' 'menu bridge does not publish visibility ownership'
 Assert-Contains $item 'bt_itemcollection_old_pressed.bmp' 'Classic menu button deployment list missing'
@@ -450,6 +455,9 @@ $assets = Join-Path $repo 'Images\CollectionUI'
 $requiredAssets = @(
     'chrome\title_bar_760.bmp',
     'chrome\bg_collection.bmp',
+    'chrome\loading.bmp',
+    'chrome\nowloading.act',
+    'chrome\nowloading.spr',
     'icons\icon_collection.bmp',
     'icons\badge_locked.bmp',
     'icons\badge_complete.bmp',
