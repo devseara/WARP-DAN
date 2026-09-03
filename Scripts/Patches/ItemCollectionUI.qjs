@@ -99,6 +99,7 @@ const ItemCollectionUIStatic = {
 	ServerPacketId: 0x0BEF,
 	PacketMagic: 0x49554F43, // 'COUI'
 	AhuiMagic: 0x49554841,
+	AsuiMagic: 0x49555341,
 	PincodeMagic: 0x434E4950,
 	ProtocolVersion: 1,
 	MessageOpen: 1,
@@ -393,8 +394,9 @@ ItemCollectionUIStatic.endSharedPacketRoute = function(patchName)
 };
 
 ItemCollectionUIStatic.SharedPacketRouteCanonicalKey =
-	"SharedPacket0BEF.Router.v3";
+	"SharedPacket0BEF.Router.v4";
 ItemCollectionUIStatic.SharedPacketRouteLegacyKeys = [
+	"SharedPacket0BEF.Router.v3",
 	"AutoCombatUI.Packet0BEF.Router.v2",
 	"InGamePincodeUI.Packet0BEF.Router.v2"
 ];
@@ -410,6 +412,8 @@ ItemCollectionUIStatic.buildSharedPacketRouter = function(route)
 	a.jcc(0x82, "fallback");
 	a.emit(0x81, 0x7E, 0x04); a.dword(ItemCollectionUIStatic.AhuiMagic);
 	a.jcc(0x84, "route_ahui");
+	a.emit(0x81, 0x7E, 0x04); a.dword(ItemCollectionUIStatic.AsuiMagic);
+	a.jcc(0x84, "route_asui");
 	a.emit(0x81, 0x7E, 0x04); a.dword(ItemCollectionUIStatic.PincodeMagic);
 	a.jcc(0x84, "route_pincode");
 	a.emit(0x81, 0x7E, 0x04); a.dword(ItemCollectionUIStatic.PacketMagic);
@@ -420,6 +424,12 @@ ItemCollectionUIStatic.buildSharedPacketRouter = function(route)
 	a.emit(0x85, 0xC0); a.jcc(0x84, "fallback");
 	a.emit(0x61, 0x9D);
 	a.emit(0xA1); a.dword(route.ahuiHandlerCellVir);
+	a.emit(0xFF, 0xE0);
+	a.label("route_asui");
+	a.emit(0xA1); a.dword(route.asuiHandlerCellVir);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.asuiHandlerCellVir);
 	a.emit(0xFF, 0xE0);
 	a.label("route_pincode");
 	a.emit(0xA1); a.dword(route.pincodeHandlerCellVir);
@@ -442,7 +452,7 @@ ItemCollectionUIStatic.buildSharedPacketRouter = function(route)
 	return a;
 };
 
-ItemCollectionUIStatic.isSharedPacketRouteV3 = function(route, entryVir)
+ItemCollectionUIStatic.isSharedPacketRouteV4 = function(route, entryVir)
 {
 	return !!route && route.entryVir === entryVir &&
 		Number.isInteger(route.ahuiHandlerCellPhy) &&
@@ -451,6 +461,8 @@ ItemCollectionUIStatic.isSharedPacketRouteV3 = function(route, entryVir)
 		Number.isInteger(route.pincodeHandlerCellVir) &&
 		Number.isInteger(route.couiHandlerCellPhy) &&
 		Number.isInteger(route.couiHandlerCellVir) &&
+		Number.isInteger(route.asuiHandlerCellPhy) &&
+		Number.isInteger(route.asuiHandlerCellVir) &&
 		Number.isInteger(route.fallbackCellPhy) &&
 		Number.isInteger(route.fallbackCellVir) &&
 		Number.isInteger(route.routerVir);
@@ -489,7 +501,7 @@ ItemCollectionUIStatic.ensureSharedPacketRoute = function(_, handlerVir)
 		throw Error("ItemCollectionUI: 0x0BEF dispatcher entry is not mapped");
 	c.beginSharedPacketRoute(_);
 	const cachedRoute = CACHE.get(c.SharedPacketRouteCanonicalKey);
-	if (c.isSharedPacketRouteV3(cachedRoute, entryVir))
+	if (c.isSharedPacketRouteV4(cachedRoute, entryVir))
 	{
 		Exe.SetUint32(cachedRoute.couiHandlerCellPhy, handlerVir);
 		if (Exe.GetUint32(entryPhy) !== cachedRoute.routerVir)
@@ -509,7 +521,7 @@ ItemCollectionUIStatic.ensureSharedPacketRoute = function(_, handlerVir)
 		if (candidate && candidate.entryVir === entryVir)
 			legacy = candidate;
 	}
-	if (c.isSharedPacketRouteV3(legacy, entryVir))
+	if (c.isSharedPacketRouteV4(legacy, entryVir))
 	{
 		Exe.SetUint32(legacy.couiHandlerCellPhy, handlerVir);
 		if (Exe.GetUint32(entryPhy) !== legacy.routerVir)
@@ -523,10 +535,12 @@ ItemCollectionUIStatic.ensureSharedPacketRoute = function(_, handlerVir)
 	let fallbackVir = current;
 	let ahuiHandlerVir = 0;
 	let pincodeHandlerVir = 0;
+	let asuiHandlerVir = 0;
 	if (legacy)
 	{
 		ahuiHandlerVir = c.sharedPacketRouteCellValue(legacy, "ahui");
 		pincodeHandlerVir = c.sharedPacketRouteCellValue(legacy, "pincode");
+		asuiHandlerVir = c.sharedPacketRouteCellValue(legacy, "asui");
 		if (Number.isInteger(legacy.fallbackCellPhy))
 			fallbackVir = Exe.GetUint32(legacy.fallbackCellPhy);
 		else if (Number.isInteger(legacy.fallbackVir))
@@ -540,15 +554,15 @@ ItemCollectionUIStatic.ensureSharedPacketRoute = function(_, handlerVir)
 		);
 	if (Exe.Vir2Phy(fallbackVir, CODE) < 0)
 		throw Error("ItemCollectionUI: migrated 0x0BEF fallback is not executable");
-	for (const handler of [ahuiHandlerVir, pincodeHandlerVir])
+	for (const handler of [ahuiHandlerVir, pincodeHandlerVir, asuiHandlerVir])
 	{
 		if (handler !== 0 && Exe.Vir2Phy(handler, CODE) < 0)
 			throw Error("ItemCollectionUI: migrated peer handler is not executable");
 	}
 
-	const [cellsPhy, cellsVir] = Exe.Allocate(16, 4);
+	const [cellsPhy, cellsVir] = Exe.Allocate(20, 4);
 	const route = {
-		version: 3,
+		version: 4,
 		entryVir,
 		entryPhy,
 		ahuiHandlerCellPhy: cellsPhy,
@@ -557,13 +571,16 @@ ItemCollectionUIStatic.ensureSharedPacketRoute = function(_, handlerVir)
 		pincodeHandlerCellVir: cellsVir + 4,
 		couiHandlerCellPhy: cellsPhy + 8,
 		couiHandlerCellVir: cellsVir + 8,
-		fallbackCellPhy: cellsPhy + 12,
-		fallbackCellVir: cellsVir + 12,
+		asuiHandlerCellPhy: cellsPhy + 12,
+		asuiHandlerCellVir: cellsVir + 12,
+		fallbackCellPhy: cellsPhy + 16,
+		fallbackCellVir: cellsVir + 16,
 		fallbackVir
 	};
 	Exe.SetUint32(route.ahuiHandlerCellPhy, ahuiHandlerVir);
 	Exe.SetUint32(route.pincodeHandlerCellPhy, pincodeHandlerVir);
 	Exe.SetUint32(route.couiHandlerCellPhy, handlerVir);
+	Exe.SetUint32(route.asuiHandlerCellPhy, asuiHandlerVir);
 	Exe.SetUint32(route.fallbackCellPhy, fallbackVir);
 	const router = ItemCollectionUIStatic.allocateCode(
 		ItemCollectionUIStatic.buildSharedPacketRouter(route)

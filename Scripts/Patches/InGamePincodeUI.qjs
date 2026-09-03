@@ -119,8 +119,9 @@ InGamePincodeUI = function(_)
 };
 
 InGamePincodeUI.SharedPacketRouteGlobalKey = "AutoHuntPincode.Packet0BEF.Router.Global.v1";
-InGamePincodeUI.SharedPacketRouteCanonicalKey = "SharedPacket0BEF.Router.v3";
+InGamePincodeUI.SharedPacketRouteCanonicalKey = "SharedPacket0BEF.Router.v4";
 InGamePincodeUI.SharedPacketRouteLegacyKeys = [
+	"SharedPacket0BEF.Router.v3",
 	"AutoCombatUI.Packet0BEF.Router.v2",
 	"InGamePincodeUI.Packet0BEF.Router.v2"
 ];
@@ -142,6 +143,7 @@ InGamePincodeUI.Constants = {
 	PacketMinLen: 18,
 	PacketMagic: 0x434E4950,
 	AhuiMagic: 0x49554841,
+	AsuiMagic: 0x49555341,
 	CouiMagic: 0x49554F43,
 	PacketBufferVir: 0x015E8198,
 	SwitchTableVir: 0x00CAA2E0,
@@ -585,6 +587,8 @@ InGamePincodeUI.makeSharedPacketRouter = function(route, c)
 	a.jcc(0x82, "fallback");
 	a.emit(0x81, 0x7E, 0x04); a.dword(c.AhuiMagic);
 	a.jcc(0x84, "route_ahui");
+	a.emit(0x81, 0x7E, 0x04); a.dword(c.AsuiMagic);
+	a.jcc(0x84, "route_asui");
 	a.emit(0x81, 0x7E, 0x04); a.dword(c.PacketMagic);
 	a.jcc(0x84, "route_pincode");
 	a.emit(0x81, 0x7E, 0x04); a.dword(c.CouiMagic);
@@ -597,6 +601,14 @@ InGamePincodeUI.makeSharedPacketRouter = function(route, c)
 	a.jcc(0x84, "fallback");
 	a.emit(0x61, 0x9D);
 	a.emit(0xA1); a.dword(route.ahuiHandlerCellVir);
+	a.emit(0xFF, 0xE0);
+
+	a.label("route_asui");
+	a.emit(0xA1); a.dword(route.asuiHandlerCellVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.asuiHandlerCellVir);
 	a.emit(0xFF, 0xE0);
 
 	a.label("route_pincode");
@@ -622,7 +634,7 @@ InGamePincodeUI.makeSharedPacketRouter = function(route, c)
 	return a;
 };
 
-InGamePincodeUI.isSharedPacketRouteV3 = function(route, entryVir)
+InGamePincodeUI.isSharedPacketRouteV4 = function(route, entryVir)
 {
 	return !!route && route.entryVir === entryVir &&
 		Number.isInteger(route.ahuiHandlerCellPhy) &&
@@ -631,6 +643,8 @@ InGamePincodeUI.isSharedPacketRouteV3 = function(route, entryVir)
 		Number.isInteger(route.pincodeHandlerCellVir) &&
 		Number.isInteger(route.couiHandlerCellPhy) &&
 		Number.isInteger(route.couiHandlerCellVir) &&
+		Number.isInteger(route.asuiHandlerCellPhy) &&
+		Number.isInteger(route.asuiHandlerCellVir) &&
 		Number.isInteger(route.fallbackCellPhy) &&
 		Number.isInteger(route.fallbackCellVir) &&
 		Number.isInteger(route.routerVir);
@@ -663,7 +677,7 @@ InGamePincodeUI.publishSharedPacketRoute = function(route)
 InGamePincodeUI.ensureSharedPacketRoute = function(entryVir, entryPhy, c)
 {
 	const cached = CACHE.get(InGamePincodeUI.SharedPacketRouteCanonicalKey);
-	if (InGamePincodeUI.isSharedPacketRouteV3(cached, entryVir))
+	if (InGamePincodeUI.isSharedPacketRouteV4(cached, entryVir))
 	{
 		if (Exe.GetUint32(entryPhy) !== cached.routerVir)
 			Exe.SetUint32(entryPhy, cached.routerVir);
@@ -683,7 +697,7 @@ InGamePincodeUI.ensureSharedPacketRoute = function(entryVir, entryPhy, c)
 			break;
 		}
 	}
-	if (InGamePincodeUI.isSharedPacketRouteV3(legacyRoute, entryVir))
+	if (InGamePincodeUI.isSharedPacketRouteV4(legacyRoute, entryVir))
 	{
 		if (Exe.GetUint32(entryPhy) !== legacyRoute.routerVir)
 			Exe.SetUint32(entryPhy, legacyRoute.routerVir);
@@ -696,6 +710,7 @@ InGamePincodeUI.ensureSharedPacketRoute = function(entryVir, entryPhy, c)
 	let ahuiHandlerVir = 0;
 	let pincodeHandlerVir = 0;
 	let couiHandlerVir = 0;
+	let asuiHandlerVir = 0;
 	if (legacyRoute)
 	{
 		ahuiHandlerVir = InGamePincodeUI.sharedPacketRouteCellValue(
@@ -706,6 +721,9 @@ InGamePincodeUI.ensureSharedPacketRoute = function(entryVir, entryPhy, c)
 		);
 		couiHandlerVir = InGamePincodeUI.sharedPacketRouteCellValue(
 			legacyRoute, "coui"
+		);
+		asuiHandlerVir = InGamePincodeUI.sharedPacketRouteCellValue(
+			legacyRoute, "asui"
 		);
 		if (Number.isInteger(legacyRoute.fallbackCellPhy))
 			fallbackVir = Exe.GetUint32(legacyRoute.fallbackCellPhy);
@@ -724,16 +742,16 @@ InGamePincodeUI.ensureSharedPacketRoute = function(entryVir, entryPhy, c)
 		);
 	for (const [name, handlerVir] of [
 		["AHUI", ahuiHandlerVir], ["PINC", pincodeHandlerVir],
-		["COUI", couiHandlerVir]
+		["COUI", couiHandlerVir], ["ASUI", asuiHandlerVir]
 	])
 	{
 		if (handlerVir !== 0 && Exe.Vir2Phy(handlerVir, CODE) < 0)
 			throw Error(`InGamePincodeUI: migrated ${name} handler is not executable`);
 	}
 
-	const [dataPhy, dataVir] = Exe.Allocate(16, 4);
+	const [dataPhy, dataVir] = Exe.Allocate(20, 4);
 	const route = {
-		version: 3,
+		version: 4,
 		entryVir,
 		ahuiHandlerCellPhy: dataPhy,
 		ahuiHandlerCellVir: dataVir,
@@ -741,8 +759,10 @@ InGamePincodeUI.ensureSharedPacketRoute = function(entryVir, entryPhy, c)
 		pincodeHandlerCellVir: dataVir + 4,
 		couiHandlerCellPhy: dataPhy + 8,
 		couiHandlerCellVir: dataVir + 8,
-		fallbackCellPhy: dataPhy + 12,
-		fallbackCellVir: dataVir + 12,
+		asuiHandlerCellPhy: dataPhy + 12,
+		asuiHandlerCellVir: dataVir + 12,
+		fallbackCellPhy: dataPhy + 16,
+		fallbackCellVir: dataVir + 16,
 		fallbackVir
 	};
 	Exe.SetUint32(route.ahuiHandlerCellPhy, ahuiHandlerVir);
@@ -750,6 +770,7 @@ InGamePincodeUI.ensureSharedPacketRoute = function(entryVir, entryPhy, c)
 	// Preserve a partially published canonical/legacy COUI cell as well. A
 	// later ItemCollectionUI installer remains the sole owner of this value.
 	Exe.SetUint32(route.couiHandlerCellPhy, couiHandlerVir);
+	Exe.SetUint32(route.asuiHandlerCellPhy, asuiHandlerVir);
 	Exe.SetUint32(route.fallbackCellPhy, fallbackVir);
 	let routerBytes = InGamePincodeUI.makeSharedPacketRouter(route, c);
 	const [routerPhy, routerVir] = Exe.Allocate(routerBytes.bytes.length, 0x10);

@@ -94,6 +94,11 @@ inputs:
         display: "true"
         type: 10
 
+    $copyAutoSupportAssets:
+        data: ''
+        display: "true"
+        type: 10
+
     $copyCustomGameSettingsLua:
         data: ''
         display: "true"
@@ -339,6 +344,7 @@ patches:
     - FpsOverlay
     - PingOverlay
     - AutoCombatUI
+    - AutoSupportUI
     - AllowAPBarforAllJobs
     - ROGlobalZeroUITheme
     - ROGlobalZeroInventory

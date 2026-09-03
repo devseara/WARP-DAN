@@ -135,6 +135,7 @@ const MenuZeroStatic = {
 	BackgroundBufferSize: 48,
 	AutoHuntButtonWindowId: 0x3F2,
 	ItemCollectionButtonWindowId: 0x3F4,
+	AutoSupportButtonWindowId: 0x3F5,
 	NewButtonWidth: 45,
 	NewButtonHeight: 41,
 	OldButtonWidth: 32,
@@ -2063,6 +2064,37 @@ ROGlobalZeroMenu = function(_)
 		visibleVir: itemCollectionRoute.vir + 4
 	});
 
+	const autoSupportHoverText = "AutoSupport";
+	const autoSupportHover = MenuZeroStatic.allocateBytes(
+		MenuZeroStatic.asciiBytes(autoSupportHoverText)
+	);
+	const autoSupportBridge = CACHE.get("AutoSupportUI.MenuButton.v1");
+	if (!autoSupportBridge || !Number.isInteger(autoSupportBridge.toggleVir) ||
+		!Number.isInteger(autoSupportBridge.requestVir) ||
+		!Number.isInteger(autoSupportBridge.visibleVir))
+	{
+		throw Error("ROGlobalZeroMenu: AutoSupportUI must run first");
+	}
+	const autoSupportRequestVir = autoSupportBridge.requestVir;
+	const autoSupportVisibleVir = autoSupportBridge.visibleVir;
+	const autoSupportRoute = MenuZeroStatic.allocateBytes(
+		new Array(8).fill(0), 4
+	);
+	if (autoSupportBridge && Number.isInteger(autoSupportBridge.requestVir))
+	{
+		Exe.SetUint32(autoSupportRoute.phy, autoSupportBridge.requestVir);
+		Exe.SetUint32(autoSupportRoute.phy + 4, 1);
+		autoSupportBridge.visiblePhy = autoSupportRoute.phy + 4;
+		autoSupportBridge.visibleVir = autoSupportRoute.vir + 4;
+		CACHE.put("AutoSupportUI.MenuButton.v1", autoSupportBridge);
+	}
+	CACHE.put("ROGlobalZeroMenu.AutoSupportRoute.v1", {
+		requestCellPhy: autoSupportRoute.phy,
+		requestCellVir: autoSupportRoute.vir,
+		visiblePhy: autoSupportRoute.phy + 4,
+		visibleVir: autoSupportRoute.vir + 4
+	});
+
 	$$(_, 1, "Verify menu, launcher, visibility, and layout seams");
 	const verified = MenuZeroStatic.verifyNativeLayout();
 
@@ -2156,6 +2188,34 @@ ROGlobalZeroMenu = function(_)
 			);
 		}
 	}
+	const autoSupportButtonPathSpecs = {
+		renewal: [
+			"autosupport\\menuicon\\bt_autosupport_normal.bmp",
+			"autosupport\\menuicon\\bt_autosupport_mouseon.bmp",
+			"autosupport\\menuicon\\bt_autosupport_pressed.bmp"
+		],
+		classic: [
+			"autosupport\\menuicon\\bt_autosupport_old_normal.bmp",
+			"autosupport\\menuicon\\bt_autosupport_old_mouseon.bmp",
+			"autosupport\\menuicon\\bt_autosupport_old_pressed.bmp"
+		]
+	};
+	const autoSupportButtonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const relative of autoSupportButtonPathSpecs[key])
+		{
+			autoSupportButtonImagePaths[key].push(
+				MenuZeroStatic.allocateBytes(
+					MenuZeroStatic.buildResourceBytes(prefix, relative)
+				).vir
+			);
+		}
+	}
+	const autoSupportButtonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF],
+		4
+	);
 	const buttonState = MenuZeroStatic.allocateBytes(
 		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF],
 		4
@@ -2260,6 +2320,35 @@ ROGlobalZeroMenu = function(_)
 			itemCollectionRoute.vir + 4,
 			gridStrideYVir,
 			theme.stateVir, loadTheme.vir, 1
+		)
+	);
+	const autoSupportButtonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(autoSupportButtonState.vir)
+	);
+	const autoSupportButtonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonMouseUp(autoSupportRequestVir)
+	);
+	const autoSupportButtonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(autoSupportHover.vir)
+	);
+	const autoSupportButtonVtable = MenuZeroStatic.cloneButtonVtable(
+		autoSupportButtonMouseUp.vir, autoSupportButtonHover.vir,
+		autoSupportButtonDestructor.vir, MenuZeroStatic.ButtonDraw,
+		buttonMouseDown.vir
+	);
+	const ensureAutoSupport = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			autoSupportButtonState.vir, autoSupportButtonVtable.vir,
+			autoSupportButtonImagePaths,
+			MenuZeroStatic.AutoSupportButtonWindowId,
+			theme.stateVir, loadTheme.vir
+		)
+	);
+	const syncAutoSupport = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			autoSupportButtonState.vir, visibleMaskVir,
+			autoSupportVisibleVir, gridStrideYVir,
+			theme.stateVir, loadTheme.vir, 2
 		)
 	);
 	const syncLaunchers = MenuZeroStatic.allocateCode(
@@ -2382,7 +2471,7 @@ ROGlobalZeroMenu = function(_)
 	);
 	Exe.SetHex(positionWrapperPhy, positionWrapper.finish(positionWrapperVir));
 	const hitTestWrapper = MenuZeroStatic.buildHitTestWrapper(
-		theme.stateVir, [buttonState.vir, itemButtonState.vir]
+		theme.stateVir, [buttonState.vir, itemButtonState.vir, autoSupportButtonState.vir]
 	);
 	const [hitTestWrapperPhy, hitTestWrapperVir] = Exe.Allocate(
 		hitTestWrapper.bytes.length, 0x10
@@ -2396,8 +2485,8 @@ ROGlobalZeroMenu = function(_)
 		oldPanelHeightVir,
 		gridStrideYVir,
 		theme.stateVir,
-		[ensureAutoHunt.vir, ensureItemCollection.vir],
-		[syncAutoHunt.vir, syncItemCollection.vir],
+		[ensureAutoHunt.vir, ensureItemCollection.vir, ensureAutoSupport.vir],
+		[syncAutoHunt.vir, syncItemCollection.vir, syncAutoSupport.vir],
 		syncLaunchers.vir
 	);
 	const [applyLayoutPhy, applyLayoutVir] = Exe.Allocate(

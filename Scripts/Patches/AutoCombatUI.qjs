@@ -137,6 +137,8 @@ const AutoCombatUIStatic = {
 	ClientPacketId: 0x0BF8,
 	ServerPacketId: 0x0BEF,
 	PacketMagic: 0x49554841,
+	AutoHuntUiMagic: 0x49554841,
+	AutoSupportUiMagic: 0x49555341,
 	PincodeMagic: 0x434E4950,
 	CollectionUiMagic: 0x49554F43,
 	ProtocolVersion: 1,
@@ -584,8 +586,9 @@ AutoCombatUIStatic.pushImm = function(a, value)
 };
 
 AutoCombatUIStatic.SharedPacketRouteGlobalKey = "AutoHuntPincode.Packet0BEF.Router.Global.v1";
-AutoCombatUIStatic.SharedPacketRouteCanonicalKey = "SharedPacket0BEF.Router.v3";
+AutoCombatUIStatic.SharedPacketRouteCanonicalKey = "SharedPacket0BEF.Router.v4";
 AutoCombatUIStatic.SharedPacketRouteLegacyKeys = [
+	"SharedPacket0BEF.Router.v3",
 	"AutoCombatUI.Packet0BEF.Router.v2",
 	"InGamePincodeUI.Packet0BEF.Router.v2"
 ];
@@ -617,8 +620,10 @@ AutoCombatUIStatic.buildSharedPacketRouter = function(route)
 	a.jcc(0x85, "fallback");
 	a.emit(0x66, 0x83, 0x7E, 0x02, 0x08);
 	a.jcc(0x82, "fallback");
-	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.PacketMagic);
+	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.AutoHuntUiMagic);
 	a.jcc(0x84, "route_ahui");
+	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.AutoSupportUiMagic);
+	a.jcc(0x84, "route_asui");
 	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.PincodeMagic);
 	a.jcc(0x84, "route_pincode");
 	a.emit(0x81, 0x7E, 0x04); a.dword(AutoCombatUIStatic.CollectionUiMagic);
@@ -631,6 +636,14 @@ AutoCombatUIStatic.buildSharedPacketRouter = function(route)
 	a.jcc(0x84, "fallback");
 	a.emit(0x61, 0x9D);
 	a.emit(0xA1); a.dword(route.ahuiHandlerCellVir);
+	a.emit(0xFF, 0xE0);
+
+	a.label("route_asui");
+	a.emit(0xA1); a.dword(route.asuiHandlerCellVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "fallback");
+	a.emit(0x61, 0x9D);
+	a.emit(0xA1); a.dword(route.asuiHandlerCellVir);
 	a.emit(0xFF, 0xE0);
 
 	a.label("route_pincode");
@@ -656,7 +669,7 @@ AutoCombatUIStatic.buildSharedPacketRouter = function(route)
 	return a;
 };
 
-AutoCombatUIStatic.isSharedPacketRouteV3 = function(route, entryVir)
+AutoCombatUIStatic.isSharedPacketRouteV4 = function(route, entryVir)
 {
 	return !!route && route.entryVir === entryVir &&
 		Number.isInteger(route.ahuiHandlerCellPhy) &&
@@ -665,6 +678,8 @@ AutoCombatUIStatic.isSharedPacketRouteV3 = function(route, entryVir)
 		Number.isInteger(route.pincodeHandlerCellVir) &&
 		Number.isInteger(route.couiHandlerCellPhy) &&
 		Number.isInteger(route.couiHandlerCellVir) &&
+		Number.isInteger(route.asuiHandlerCellPhy) &&
+		Number.isInteger(route.asuiHandlerCellVir) &&
 		Number.isInteger(route.fallbackCellPhy) &&
 		Number.isInteger(route.fallbackCellVir) &&
 		Number.isInteger(route.routerVir);
@@ -697,7 +712,7 @@ AutoCombatUIStatic.publishSharedPacketRoute = function(route)
 AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 {
 	const cached = CACHE.get(AutoCombatUIStatic.SharedPacketRouteCanonicalKey);
-	if (AutoCombatUIStatic.isSharedPacketRouteV3(cached, entryVir))
+	if (AutoCombatUIStatic.isSharedPacketRouteV4(cached, entryVir))
 	{
 		if (Exe.GetUint32(entryPhy) !== cached.routerVir)
 			Exe.SetUint32(entryPhy, cached.routerVir);
@@ -717,7 +732,7 @@ AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 			break;
 		}
 	}
-	if (AutoCombatUIStatic.isSharedPacketRouteV3(legacyRoute, entryVir))
+	if (AutoCombatUIStatic.isSharedPacketRouteV4(legacyRoute, entryVir))
 	{
 		if (Exe.GetUint32(entryPhy) !== legacyRoute.routerVir)
 			Exe.SetUint32(entryPhy, legacyRoute.routerVir);
@@ -730,6 +745,7 @@ AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 	let ahuiHandlerVir = 0;
 	let pincodeHandlerVir = 0;
 	let couiHandlerVir = 0;
+	let asuiHandlerVir = 0;
 	if (legacyRoute)
 	{
 		ahuiHandlerVir = AutoCombatUIStatic.sharedPacketRouteCellValue(
@@ -740,6 +756,9 @@ AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 		);
 		couiHandlerVir = AutoCombatUIStatic.sharedPacketRouteCellValue(
 			legacyRoute, "coui"
+		);
+		asuiHandlerVir = AutoCombatUIStatic.sharedPacketRouteCellValue(
+			legacyRoute, "asui"
 		);
 		if (Number.isInteger(legacyRoute.fallbackCellPhy))
 			fallbackVir = Exe.GetUint32(legacyRoute.fallbackCellPhy);
@@ -758,16 +777,16 @@ AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 		);
 	for (const [name, handlerVir] of [
 		["AHUI", ahuiHandlerVir], ["PINC", pincodeHandlerVir],
-		["COUI", couiHandlerVir]
+		["COUI", couiHandlerVir], ["ASUI", asuiHandlerVir]
 	])
 	{
 		if (handlerVir !== 0 && Exe.Vir2Phy(handlerVir, CODE) < 0)
 			throw Error(`AutoCombatUI: migrated ${name} handler is not executable`);
 	}
 
-	const [dataPhy, dataVir] = Exe.Allocate(16, 4);
+	const [dataPhy, dataVir] = Exe.Allocate(20, 4);
 	const route = {
-		version: 3,
+		version: 4,
 		entryVir,
 		ahuiHandlerCellPhy: dataPhy,
 		ahuiHandlerCellVir: dataVir,
@@ -775,8 +794,10 @@ AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 		pincodeHandlerCellVir: dataVir + 4,
 		couiHandlerCellPhy: dataPhy + 8,
 		couiHandlerCellVir: dataVir + 8,
-		fallbackCellPhy: dataPhy + 12,
-		fallbackCellVir: dataVir + 12,
+		asuiHandlerCellPhy: dataPhy + 12,
+		asuiHandlerCellVir: dataVir + 12,
+		fallbackCellPhy: dataPhy + 16,
+		fallbackCellVir: dataVir + 16,
 		fallbackVir
 	};
 	Exe.SetUint32(route.ahuiHandlerCellPhy, ahuiHandlerVir);
@@ -784,6 +805,7 @@ AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 	// Preserve a partially published canonical/legacy COUI cell as well. A
 	// later ItemCollectionUI installer remains the sole owner of this value.
 	Exe.SetUint32(route.couiHandlerCellPhy, couiHandlerVir);
+	Exe.SetUint32(route.asuiHandlerCellPhy, asuiHandlerVir);
 	Exe.SetUint32(route.fallbackCellPhy, fallbackVir);
 	const router = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildSharedPacketRouter(route)
@@ -5798,7 +5820,8 @@ AutoCombatUIStatic.buildMenuToggleRequest = function(pendingVir)
 
 AutoCombatUIStatic.buildControllerBootstrap = function(
 	stateVir, openSenderVir, resyncSenderVir, ensureControllerVir, syncControllerVir,
-	positionLoadVir, pendingVir, toggleVir, getAsyncKeyStateIat
+	positionLoadVir, pendingVir, toggleVir, getAsyncKeyStateIat,
+	suppressControllerVir
 )
 {
 	const a = AutoCombatUIStatic.asm();
@@ -5841,6 +5864,14 @@ AutoCombatUIStatic.buildControllerBootstrap = function(
 	a.label("bootstrap_resync");
 	a.call(resyncSenderVir);
 	a.label("bootstrap_controller");
+	// AutoSupport can replace this two-tile frame with the shared three-tile
+	// AutoHunt/AutoSupport/AutoPotion controller while this bootstrap continues
+	// to own AutoHunt snapshot synchronization.
+	if (Number.isInteger(suppressControllerVir) && suppressControllerVir > 0)
+	{
+		a.emit(0x83, 0x3D); a.dword(suppressControllerVir); a.emit(0x00);
+		a.jcc(0x85, "bootstrap_done");
+	}
 	// Validate and repair the live top-level controller every render pass.
 	a.call(positionLoadVir);
 	// A map change can mutate its geometry without destroying the object.
@@ -5965,18 +5996,24 @@ AutoCombatUIStatic.cloneFrameVtable = function(
 };
 
 AutoCombatUIStatic.buildToggle = function(
-	stateVir, vtableVir, openSenderVir, ensureControllerVirs
+	stateVir, vtableVir, openSenderVir, ensureControllerVirs, suppressControllerVir
 )
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x9C, 0x60);
 	if (Number.isInteger(openSenderVir) && openSenderVir > 0)
 		a.call(openSenderVir);
+	if (Number.isInteger(suppressControllerVir) && suppressControllerVir > 0)
+	{
+		a.emit(0x83, 0x3D); a.dword(suppressControllerVir); a.emit(0x00);
+		a.jcc(0x85, "toggle_controllers_done");
+	}
 	for (const ensureControllerVir of ensureControllerVirs)
 	{
 		if (Number.isInteger(ensureControllerVir) && ensureControllerVir > 0)
 			a.call(ensureControllerVir);
 	}
+	a.label("toggle_controllers_done");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(0);
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateHoverControl); a.dword(0);
 	a.emit(0x8B, 0x35); a.dword(stateVir + AutoCombatUIStatic.StateWindow);
@@ -6764,9 +6801,13 @@ AutoCombatUI = function(_)
 	if (controllerDirtyPhy < 0)
 		throw Error("AutoCombatUI: UI dirty-clear instruction is not mapped");
 	Exe.SetJMP(controllerDirtyPhy, controllerRedraw.vir, 2);
+	const controllerSuppressed = AutoCombatUIStatic.allocateBytes(
+		[0, 0, 0, 0], 4
+	);
 	const toggle = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildToggle(
-			state.vir, vtable.vir, openSender.vir, [ensureController.vir]
+			state.vir, vtable.vir, openSender.vir, [ensureController.vir],
+			controllerSuppressed.vir
 		)
 	);
 	const menuTogglePending = AutoCombatUIStatic.allocateBytes(
@@ -6780,10 +6821,20 @@ AutoCombatUI = function(_)
 			state.vir, openSender.vir, resyncSender.vir, ensureController.vir,
 			syncController.vir, controllerPositionLoad.vir,
 			menuTogglePending.vir, toggle.vir,
-			getAsyncKeyStateIat
+			getAsyncKeyStateIat, controllerSuppressed.vir
 		)
 	);
 	Exe.SetCALL(verified.controllerBootstrapPhy, controllerBootstrap.vir, 0);
+	CACHE.put("AutoCombatUI.LifecycleHooks.v1", {
+		controllerBootstrapPhy: verified.controllerBootstrapPhy,
+		controllerBootstrapVir: controllerBootstrap.vir,
+		controllerDirtyPhy,
+		controllerVtableVir: controllerVtable.vir,
+		stateVir: state.vir,
+		scalarSenderVir: scalarSender.vir,
+		suppressControllerVir: controllerSuppressed.vir,
+		suppressControllerPhy: controllerSuppressed.phy
+	});
 	const menuButtonVisible = AutoCombatUIStatic.allocateBytes([1, 0, 0, 0], 4);
 	CACHE.put("AutoCombatUI.MenuButton.v1", {
 		toggleVir: toggle.vir,
