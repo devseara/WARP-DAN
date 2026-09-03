@@ -116,10 +116,13 @@ If you intentionally want one combined DLL to own the weapon renderer too, set
 `BOH_WEAPON_SPRITE=1` in `customer_features.h`, rebuild `boh.dll`, and use the
 same combined DLL name in the WARP prompt.
 
-The native hook route is no longer the default. `doc/dual-wield-master-reference.md`
-records the current finding: this client's dagger weapon visuals are baked into
-body ACT layers, item-specific `_1238` / `_13412` weapon layers are absent for
-the tested Assassin Cross body, and `DrawWeapon` is an arrow/projectile path for
+The native hook route is no longer the default.
+`docs/dual-wield-original-weapon-sprites.md` is the canonical status and
+handoff: the DLL route remains retired, the production QJS is fail-closed, and
+the female Assassin pair-28 v4 owner build is only a scoped test checkpoint.
+Earlier tracing found that this client's dagger weapon visuals can be baked into
+body ACT layers, item-specific `_1238` / `_13412` layers may be absent for a
+tested Assassin Cross body, and `DrawWeapon` is an arrow/projectile path for
 this case. The DLL now starts as a custom-renderer host:
 
 ```bat

@@ -1,3 +1,21 @@
+# Dual-wield v4 owner rollback checkpoint (August 28, 2026)
+
+Live testing selected
+dual_weapon_character_envelope_attack_v4_owner_20250716.exe as the closest
+working checkpoint. Its deterministic SHA-256 is
+B0C12B307F92439F4F52F8885AA4665D781D5550511BDDCC4791BE24A412DA47.
+For female Assassin pair 28 it keeps both original weapons visible, removes
+generic duplication, and preserves the accepted character-envelope occlusion
+fix. Directions 4-5 and some attack-frame X/Y/angles remain incomplete.
+
+Later live-layer, native-slot, and native-authored experiments regressed to one
+visible weapon or intermittent disappearance and are archived as rejected
+evidence. The production AllowDualCustomWeaponSprites.qjs remains the
+zero-write fail-closed patch. The canonical status and AI handoff are in
+docs/dual-wield-original-weapon-sprites.md.
+
+---
+
 # CrazyBebop - 2025-07-16 build (July 29, 2026)
 
 > **EXE update - grab the new Ragexe.** These fixes live in the injected EXE itself, not in a WARP patch, so re-WARPing the exe you already have will **not** pick them up.
@@ -58,6 +76,35 @@ Thanks to YlenXWalker and Stingor.
 Default is 600 ms. The preview sprite only advances about every 600 ms, so repainting faster than that redraws the same frame for no benefit, and longer intervals cost less.
 
 ---
+
+# Dual-wield authored physical-hand rig research (August 24, 2026)
+
+The active AllowDualCustomWeaponSprites.qjs remains the verified 5.7 KB
+zero-write fail-closed source. None of the previously rejected slot, action,
+generated-pose, synthetic-texture, or final-draw hand-layer implementations
+was reactivated.
+
+A separate QJS-only research path now treats PCHands.lua and
+weapontable.lub as resource-identity inputs and uses a project-owned physical
+main/off rig for placement. Its schema carries ordered main/off weapon types,
+so reverse-order mixed pairs cannot collapse onto one canonical component.
+Only complete two-hand lookups suppress stock ACT5; any miss draws the exact
+stock generic pair. Original item SPR and ACT metadata remain paired, ACT6 is
+never treated as an off-hand, and no texture creation, runtime GRF parsing,
+item/job allowlist, or DLL is used.
+
+The retained rejected atlases migrated into 8,322 non-release seed records:
+90.80% dual-hand coverage and 74.40% off-hand-only coverage. All seed centers,
+mirrors, and rotations round-trip to their legacy numeric inputs with zero
+mismatches, but this does not promote their rejected visual placement.
+
+Full Profile Main candidate
+dual_weapon_authored_rig_seed_v10_20250716.exe has SHA-256
+4E8489451721FA25CF418CC30E8B2D29AD46CBB9117702234FC8307D19821EFF.
+Source, QJS syntax, compact-rig, COFF relocation, hook, trampoline,
+runtime-context, import, and stale-bridge gates pass. The candidate is not
+deployed and remains unaccepted until the authored/live rig replaces seed data
+and the complete screenshot matrix passes.
 
 # Dual-wield QJS abandonment (August 21, 2026)
 
@@ -342,7 +389,7 @@ documented visual status.
 > `9B272C...`, which still overlaps and is not accepted as fixed. Exact original
 > art requires authored off-hand/dual assets or a new compositor supporting
 > job/gender/class/pose-specific transforms, masks, clipping, and ordering.
-> See [`docs/dual-wield-weapon-sprite.md`](docs/dual-wield-weapon-sprite.md).
+> See [`docs/dual-wield-original-weapon-sprites.md`](docs/dual-wield-original-weapon-sprites.md).
 
 > **Binary patch — re-WARP from a clean client required.** Executables built
 > with an older dual-weapon experiment retain its entry and render-call hooks.
@@ -455,7 +502,7 @@ native channel placement. New item IDs do not require another hard-coded
 geometry profile.
 
 The source/GRF contract and acceptance procedure are recorded in
-[`docs/dual-wield-weapon-sprite.md`](docs/dual-wield-weapon-sprite.md) and
+[`docs/dual-wield-original-weapon-sprites.md`](docs/dual-wield-original-weapon-sprites.md) and
 `tools/verify_dual_weapon_sprite_contract.py`.
 
 ---
