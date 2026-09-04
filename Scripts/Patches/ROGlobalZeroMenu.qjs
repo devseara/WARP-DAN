@@ -481,7 +481,7 @@ MenuZeroStatic.buildButtonDestructor = function(buttonStateVir)
 	return a;
 };
 
-MenuZeroStatic.buildButtonHover = function(textVir)
+MenuZeroStatic.buildButtonHover = function(textVir, localX = null, localY = null)
 {
 	const s = MenuZeroStatic;
 	const a = s.asm();
@@ -491,11 +491,25 @@ MenuZeroStatic.buildButtonHover = function(textVir)
 	a.jcc(0x84, "done");
 	// UIMenuIconWnd::HitTest can return this native child directly, so use its
 	// stable child-local anchor instead of dispatcher coordinate rewriting.
-	a.emit(0x8B, 0x46, 0x14);
-	a.emit(0x83, 0xC0, s.TooltipXOffset);
+	if (Number.isInteger(localX))
+	{
+		a.emit(0xB8); a.dword(localX);
+	}
+	else
+	{
+		a.emit(0x8B, 0x46, 0x14);
+		a.emit(0x83, 0xC0, s.TooltipXOffset);
+	}
 	a.emit(0x89, 0x45, 0xF8);
-	a.emit(0x8B, 0x46, 0x18, 0xD1, 0xE8);
-	a.emit(0x83, 0xC0, s.TooltipYOffset);
+	if (Number.isInteger(localY))
+	{
+		a.emit(0xB8); a.dword(localY);
+	}
+	else
+	{
+		a.emit(0x8B, 0x46, 0x18, 0xD1, 0xE8);
+		a.emit(0x83, 0xC0, s.TooltipYOffset);
+	}
 	a.emit(0x89, 0x45, 0xFC);
 	a.emit(0x8D, 0x45, 0xFC, 0x50);
 	a.emit(0x8D, 0x45, 0xF8, 0x50);
@@ -2329,7 +2343,7 @@ ROGlobalZeroMenu = function(_)
 		MenuZeroStatic.buildButtonMouseUp(autoSupportRequestVir)
 	);
 	const autoSupportButtonHover = MenuZeroStatic.allocateCode(
-		MenuZeroStatic.buildButtonHover(autoSupportHover.vir)
+		MenuZeroStatic.buildButtonHover(autoSupportHover.vir, 0, -20)
 	);
 	const autoSupportButtonVtable = MenuZeroStatic.cloneButtonVtable(
 		autoSupportButtonMouseUp.vir, autoSupportButtonHover.vir,

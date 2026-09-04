@@ -5791,12 +5791,20 @@ AutoCombatUIStatic.buildSyncController = function(stateVir, controllerVtableVir)
 	a.emit(0x61, 0x9D, 0xC3);
 	return a;
 };
-AutoCombatUIStatic.buildControllerRedrawBridge = function(controllerVtableVir)
+AutoCombatUIStatic.buildControllerRedrawBridge = function(
+	controllerVtableVir, mergedControllerWindowId
+)
 {
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x9C);
 	a.emit(0x81, 0x3B); a.dword(controllerVtableVir);
 	a.jcc(0x84, "controller_animate");
+	if (Number.isInteger(mergedControllerWindowId) && mergedControllerWindowId > 0)
+	{
+		a.emit(0x81, 0x7B, AutoCombatUIStatic.WindowIdOffset);
+		a.dword(mergedControllerWindowId);
+		a.jcc(0x84, "controller_animate");
+	}
 	a.emit(0x9D, 0xC7, 0x43, AutoCombatUIStatic.WindowDirtyOffset);
 	a.dword(0);
 	a.jmp(AutoCombatUIStatic.UiUpdateSurfaceDirtyResume);
@@ -6793,7 +6801,9 @@ AutoCombatUI = function(_)
 		AutoCombatUIStatic.buildSyncController(state.vir, controllerVtable.vir)
 	);
 	const controllerRedraw = AutoCombatUIStatic.allocateCode(
-		AutoCombatUIStatic.buildControllerRedrawBridge(controllerVtable.vir)
+		AutoCombatUIStatic.buildControllerRedrawBridge(
+			controllerVtable.vir, 0x3F7
+		)
 	);
 	const controllerDirtyPhy = Exe.Vir2Phy(
 		AutoCombatUIStatic.UiUpdateSurfaceDirty, CODE
@@ -6826,14 +6836,9 @@ AutoCombatUI = function(_)
 	);
 	Exe.SetCALL(verified.controllerBootstrapPhy, controllerBootstrap.vir, 0);
 	CACHE.put("AutoCombatUI.LifecycleHooks.v1", {
-		controllerBootstrapPhy: verified.controllerBootstrapPhy,
-		controllerBootstrapVir: controllerBootstrap.vir,
-		controllerDirtyPhy,
-		controllerVtableVir: controllerVtable.vir,
 		stateVir: state.vir,
 		scalarSenderVir: scalarSender.vir,
-		suppressControllerVir: controllerSuppressed.vir,
-		suppressControllerPhy: controllerSuppressed.phy
+		suppressControllerVir: controllerSuppressed.vir
 	});
 	const menuButtonVisible = AutoCombatUIStatic.allocateBytes([1, 0, 0, 0], 4);
 	CACHE.put("AutoCombatUI.MenuButton.v1", {

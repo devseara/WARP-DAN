@@ -26,7 +26,7 @@
 *                   470x346 UIFrameWnd on the game UI thread, preserving   *
 *                   native focus, hit testing, drag capture, and window    *
 *                   ownership. Its native canvas loads the supplied Global *
-*                   AutoHunt BMPs and exposes Basic, Monster, three Skill, *
+*                   AutoSupport BMPs and exposes Basic, Player, three Skill, *
 *                   two Potion, two Looting, Move, and Item pages.         *
 *                   Grouped draggable Auto-Hunt and Auto-Potion controls   *
 *                   play baked frames from the supplied native STR effects *
@@ -59,8 +59,6 @@ const AutoSupportUIStatic = {
 	WindowSetPosition: 0x00874AF0,
 	WindowAddTopLevelFront: 0x00A2D240,
 	WindowClearSurface: 0x00A1CB30,
-	UiUpdateSurfaceDirty: 0x00A1CE48,
-	UiUpdateSurfaceDirtyResume: 0x00A1CE4F,
 	FrameVtable: 0x0102FE08,
 	FrameVtableEntries: 53,
 	FrameVtableDestructor: 0x0086E240,
@@ -70,8 +68,6 @@ const AutoSupportUIStatic = {
 	FrameVtableMouseUp: 0x00880BB0,
 	FrameVtableMouseWheel: 0x005A8AF0,
 	FrameObjectSize: 0xB4,
-	WindowWidthOffset: 0x14,
-	WindowHeightOffset: 0x18,
 	WindowXOffset: 0x1C,
 	WindowYOffset: 0x20,
 	WindowSurfaceOffset: 0x24,
@@ -96,13 +92,12 @@ const AutoSupportUIStatic = {
 	ControllerFrameDurationMs: 50,
 	ControllerSyncIntervalMs: 2000,
 	ControllerAssetPath: "Assets/AutoSupportUI",
-	ControllerBootstrapHook: 0x00C74FE1,
-	ControllerBootstrapHookBytes: "E8 EA 75 A2 FF",
-	ControllerBootstrapOriginal: 0x0069C5D0,
+	ControllerBootstrapHook: 0x00C74FCC,
+	ControllerBootstrapHookBytes: "E8 EF 4C DD FF",
+	ControllerBootstrapOriginal: 0x00A49CC0,
 	TimeGetTimeIat: 0x00FC17B0,
 	MenuToggleDelayMs: 75,
 	MenuToggleStateSize: 8,
-	MenuExpandedFlag: 0x0160227C,
 	RendererWidthOffset: 0x28,
 	RendererHeightOffset: 0x2C,
 	GetTexMgr: 0x00A90350,
@@ -186,26 +181,24 @@ const AutoSupportUIStatic = {
 	SnapshotMoveIconKeysOffset: 3660,
 	SnapshotBasicThresholdsSize: 3792,
 	SnapshotBasicThresholdsOffset: 3788,
+	SnapshotStatusItemRowSize: 3840,
+	SnapshotStatusItemRowOffset: 3792,
 	SnapshotHealHpThresholdOffset: 1572,
 	SnapshotHealingSkillRowOffset: 1576,
 	SnapshotHealingSkillIconKeyOffset: 1624,
 	SnapshotRecoverySkillRowsOffset: 1656,
 	SnapshotRecoverySkillIconKeysOffset: 1800,
-	MonsterDynamicRows: 12,
-	MonsterTotalRows: 12,
+	MonsterDynamicRows: 11,
 	MonsterRowSize: 40,
 	MonsterRowIdOffset: 0,
-	MonsterRowFlagsOffset: 4,
 	MonsterRowNameOffset: 8,
 	MonsterRowsSize: 480,
 	MonsterVisibleRows: 5,
-	MonsterScrollMaximum: 7,
+	MonsterScrollMaximum: 6,
 	AttackSkillDynamicRows: 8,
 	AttackSkillRowSize: 48,
 	AttackSkillRowIdOffset: 0,
 	AttackSkillRowLevelOffset: 2,
-	AttackSkillRowDelayMsOffset: 4,
-	AttackSkillRowFlagsOffset: 8,
 	AttackSkillRowNameOffset: 12,
 	AttackSkillRowDelayTextOffset: 36,
 	AttackSkillRowsSize: 384,
@@ -233,7 +226,6 @@ const AutoSupportUIStatic = {
 	PotionRowUiSlotOffset: 12,
 	PotionRowQuantityOffset: 14,
 	PotionRowNameOffset: 16,
-	PotionRowThresholdTextOffset: 40,
 	PotionRowsSize: 192,
 	PotionIconKeysSize: 128,
 	MoveDynamicRows: 4,
@@ -266,8 +258,7 @@ const AutoSupportUIStatic = {
 	FooterButtonY: 321,
 	FooterResetX: 5,
 	BasicVisibleRows: 5,
-	BasicOptionCount: 10,
-	BasicScrollMaximum: 5,
+	BasicScrollMaximum: 4,
 	BasicFirstY: 123,
 	BasicRowSpacing: 38,
 	BasicScrollX: 459,
@@ -297,8 +288,6 @@ const AutoSupportUIStatic = {
 	FeatureSupportSkills: 1 << 5,
 	FeatureSupportSkillIcons: 1 << 6,
 	FeatureRecoverySkills: 1 << 7,
-	MutationResultSkillNotAllowed: 1,
-	MutationResultRegistrationNotAllowed: 2,
 	MutationResultNoMaster: 2,
 	MutationResultMasterOffline: 3,
 	MutationResultStartRejected: 4,
@@ -312,31 +301,22 @@ const AutoSupportUIStatic = {
 	FeatureMoveRows: 1 << 13,
 	FeatureMoveIcons: 1 << 14,
 	FeatureBasicThresholds: 1 << 15,
+	FeatureStatusItemRow: 1 << 16,
 	SettingStopMelee: 7,
-	SettingReturnSavePoint: 9,
 	SettingReset: 10,
 	SettingTokenSiegfried: 11,
 	SettingAcceptParty: 12,
 	SettingPriorityLoot: 13,
 	SettingTeleportNoMobDelay: 17,
-	SettingAggressive: 18,
-	SettingMonsterSelection: 19,
-	SettingPickupMode: 20,
+	SettingMasterSelection: 19,
 	SettingActionOnEnd: 22,
 	SettingMonsterSurround: 23,
 	SettingTpMvp: 24,
 	SettingTpMiniBoss: 25,
-	SettingAutostorageEnabled: 27,
 	SettingTpChampion: 35,
 	SettingLootCategories: 36,
 	SettingAttackSkillRegister: 37,
-	SettingAttackSkillToggle: 38,
-	SettingAttackSkillDelayCycle: 39,
 	SettingSupportSkillRegister: 40,
-	SettingSupportSkillToggle: 41,
-	SettingSupportSkillDelayCycle: 42,
-	SettingAttackSkillDelaySet: 43,
-	SettingSupportSkillDelaySet: 44,
 	SettingAutoSupportEnabled: 45,
 	SettingAutoPotionEnabled: 46,
 	SettingSkillDelayInput: 47,
@@ -351,16 +331,14 @@ const AutoSupportUIStatic = {
 	SettingLootWeaponFilter: 54,
 	SettingLootArmorFilter: 55,
 	SettingBuffItemRegister: 56,
-	SettingBuffItemDelaySet: 57,
 	SettingPotionRegister: 58,
 	SettingPotionThreshold: 59,
 	SettingPotionToggle: 60,
-	SettingLootOptionInput: 61,
 	SettingMoveItemRegister: 62,
 	SettingMoveSkillRegister: 63,
 	SettingBasicInput: 64,
 	SettingLootLimitAction: 65,
-	ContentHeight: 308,
+	SettingStatusRecoveryItemRegister: 66,
 	StateWindow: 0,
 	StateTab: 4,
 	StateSkillPage: 8,
@@ -371,9 +349,10 @@ const AutoSupportUIStatic = {
 	StateFlags: 28,
 	StateRequest: 32,
 	StateStopMelee: 36,
-	StatePickupMode: 40,
+	// Shared AHUI prefix fields retained only for append-only wire compatibility.
+	StateReservedPickupMode: 40,
 	StatePrioMode: 44,
-	StateListCounts: 48,
+	StateReservedListCounts: 48,
 	StateActionOnEnd: 52,
 	StateMonsterSurround: 56,
 	StateTeleportNoMobDelay: 60,
@@ -401,7 +380,8 @@ const AutoSupportUIStatic = {
 	StateRejectSetting: 148,
 	StateMonsterThumbY: 152,
 	StateNormalAttackSpThreshold: 156,
-	StateStopAttackSpThreshold: 160,
+	// Shared AHUI wire word retained at offset 3790; AutoSupport does not use it.
+	StateReservedStopAttackSpThreshold: 160,
 	StateTeleportNoMobSeconds: 164,
 	StateLootDropdown: 168,
 	StateControllerLastX: 172,
@@ -921,7 +901,7 @@ AutoSupportUIStatic.buildScalarSender = function(stateVir, refs)
 	return a;
 };
 
-AutoSupportUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, route)
+AutoSupportUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, statusItemRowVir, route)
 {
 	const a = AutoSupportUIStatic.asm();
 	a.emit(0x9C, 0x60);
@@ -945,11 +925,11 @@ AutoSupportUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, a
 	a.emit(0x0F, 0xB7, 0x46, 0x18);
 	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateStopMelee);
 	a.emit(0x0F, 0xB7, 0x46, 0x1A);
-	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StatePickupMode);
+	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateReservedPickupMode);
 	a.emit(0x0F, 0xB7, 0x46, 0x1C);
 	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StatePrioMode);
 	a.emit(0x0F, 0xB7, 0x46, 0x34);
-	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateListCounts);
+	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateReservedListCounts);
 	a.emit(0x0F, 0xB7, 0x46, 0x32);
 	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateActionOnEnd);
 	a.emit(0x0F, 0xB7, 0x46, 0x30);
@@ -1100,10 +1080,28 @@ AutoSupportUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, a
 	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateRejectResult);
 	a.emit(0x85, 0xC0);
 	a.jcc(0x84, "snapshot_no_mutation_result");
+	a.emit(0x0F, 0xB7, 0x86);
+	a.dword(AutoSupportUIStatic.SnapshotMutationSettingOffset);
+	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateRejectSetting);
+	for (const setting of [
+		AutoSupportUIStatic.SettingAutoSupportEnabled,
+		AutoSupportUIStatic.SettingAttackSkillRegister,
+		AutoSupportUIStatic.SettingSupportSkillRegister,
+		AutoSupportUIStatic.SettingHealSkillRegister,
+		AutoSupportUIStatic.SettingRecoverySkillRegister,
+		AutoSupportUIStatic.SettingBuffItemRegister,
+		AutoSupportUIStatic.SettingPotionRegister,
+		AutoSupportUIStatic.SettingMoveItemRegister,
+		AutoSupportUIStatic.SettingMoveSkillRegister,
+		AutoSupportUIStatic.SettingStatusRecoveryItemRegister
+	]) {
+		a.emit(0x83, 0xF8, setting);
+		a.jcc(0x84, "snapshot_show_mutation_dialog");
+	}
+	a.jmp("snapshot_no_mutation_result");
+	a.label("snapshot_show_mutation_dialog");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoSupportUIStatic.StateSkillRejectVisible);
 	a.dword(1);
-	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoSupportUIStatic.SnapshotMutationResultOffset + 2);
-	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateRejectSetting);
 	a.label("snapshot_no_mutation_result");
 	a.emit(0xBE); a.dword(AutoSupportUIStatic.PacketBuffer);
 	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoSupportUIStatic.SnapshotLootDetailsSize);
@@ -1235,10 +1233,34 @@ AutoSupportUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, a
 	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoSupportUIStatic.SnapshotBasicThresholdsOffset);
 	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateNormalAttackSpThreshold);
 	a.emit(0x0F, 0xB7, 0x86); a.dword(AutoSupportUIStatic.SnapshotBasicThresholdsOffset + 2);
-	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateStopAttackSpThreshold);
+	a.emit(0xA3); a.dword(stateVir + AutoSupportUIStatic.StateReservedStopAttackSpThreshold);
 	a.emit(0x81, 0x0D); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
 	a.dword(AutoSupportUIStatic.FeatureBasicThresholds);
 	a.label("snapshot_no_basic_thresholds");
+	a.emit(0xBE); a.dword(AutoSupportUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02);
+	a.word(AutoSupportUIStatic.SnapshotStatusItemRowSize);
+	a.jcc(0x82, "snapshot_no_status_item_row");
+	a.emit(0x8D, 0xB6); a.dword(AutoSupportUIStatic.SnapshotStatusItemRowOffset);
+	a.emit(0xBF); a.dword(statusItemRowVir);
+	a.emit(0xB9); a.dword(AutoSupportUIStatic.ItemRowSize / 4);
+	a.emit(0xF3, 0xA5);
+	// Exhausted saved items render as an empty native slot until restocked.
+	const statusItemKeep = "snapshot_status_item_keep";
+	a.emit(0x83, 0x3D);
+	a.dword(statusItemRowVir + AutoSupportUIStatic.ItemRowIdOffset); a.emit(0);
+	a.jcc(0x84, statusItemKeep);
+	a.emit(0x66, 0x83, 0x3D);
+	a.dword(statusItemRowVir + AutoSupportUIStatic.ItemRowFlagsOffset + 2); a.emit(0);
+	a.jcc(0x85, statusItemKeep);
+	a.emit(0xC7, 0x05);
+	a.dword(statusItemRowVir + AutoSupportUIStatic.ItemRowIdOffset); a.dword(0);
+	a.emit(0xC7, 0x05);
+	a.dword(statusItemRowVir + AutoSupportUIStatic.ItemRowFlagsOffset); a.dword(0);
+	a.label(statusItemKeep);
+	a.emit(0x81, 0x0D); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
+	a.dword(AutoSupportUIStatic.FeatureStatusItemRow);
+	a.label("snapshot_no_status_item_row");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoSupportUIStatic.StateReady);
 	a.dword(1);
 	a.emit(0x8B, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StateWindow);
@@ -1267,7 +1289,7 @@ AutoSupportUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, a
 	return a;
 };
 
-AutoSupportUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir)
+AutoSupportUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, statusItemRowVir)
 {
 	const entryVir = AutoSupportUIStatic.packetTableEntryVir(
 		AutoSupportUIStatic.ServerPacketId
@@ -1279,9 +1301,9 @@ AutoSupportUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsV
 	const route = AutoSupportUIStatic.ensureSharedPacketRoute(entryVir, entryPhy);
 	AutoSupportUIStatic.endSharedPacketRoute(_);
 
-	const stateKey = "AutoSupportUI.SnapshotReceiver.v11";
+	const stateKey = "AutoSupportUI.SnapshotReceiver.v12";
 	const receiver = AutoSupportUIStatic.allocateCode(
-		AutoSupportUIStatic.buildSnapshotReceiver(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, route)
+		AutoSupportUIStatic.buildSnapshotReceiver(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, statusItemRowVir, route)
 	);
 	const asuiHandlerCellPhy = route.asuiHandlerCellPhy;
 	const pincodeHandlerCellPhy = route.pincodeHandlerCellPhy;
@@ -2547,10 +2569,18 @@ AutoSupportUIStatic.emitSkillRejectDialog = function(a, stateVir, fillRectVir, s
 	a.label("registration_reject_type_test");
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateRejectSetting);
 	a.emit(0x83, 0xF8, AutoSupportUIStatic.SettingPotionRegister);
-	a.jcc(0x85, "registration_reject_item_test");
+	a.jcc(0x85, "registration_reject_status_item_test");
 	AutoSupportUIStatic.emitCenteredText(
 		a, strings.potionReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
 		"registration_reject_potion"
+	);
+	a.jmp("registration_reject_text_done");
+	a.label("registration_reject_status_item_test");
+	a.emit(0x83, 0xF8, AutoSupportUIStatic.SettingStatusRecoveryItemRegister);
+	a.jcc(0x85, "registration_reject_item_test");
+	AutoSupportUIStatic.emitCenteredText(
+		a, strings.statusItemReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
+		"registration_reject_status_item"
 	);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_item_test");
@@ -2621,7 +2651,7 @@ AutoSupportUIStatic.emitPageControls = function(
 	a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
 	attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
 	healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir,
-	itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir,
+	itemIconKeysVir, potionRowsVir, potionIconKeysVir, statusItemRowVir, moveRowsVir, moveIconKeysVir,
 	itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir
 )
 {
@@ -2719,17 +2749,18 @@ AutoSupportUIStatic.emitPageControls = function(
 		{kind: "flag", mask: 1 << 7},
 		{kind: "flag", mask: 1 << 8},
 		{kind: "flag", mask: 1 << 9},
-		{kind: "flag", mask: 1 << 10},
 		{kind: "flag", mask: 1 << 0},
 		{kind: "flag", mask: 1 << 2}
 	];
 	const basicValueOffsets = [
 		AutoSupportUIStatic.StateNormalAttackSpThreshold,
-		AutoSupportUIStatic.StateStopAttackSpThreshold,
+		AutoSupportUIStatic.StateReservedStopAttackSpThreshold,
 		AutoSupportUIStatic.StateTeleportNoMobSeconds,
 		AutoSupportUIStatic.StateMonsterSurround
 	];
-	const basicValueX = [151, 151, 284, 251];
+	// Keep the SP threshold field after the complete label. The inherited
+	// AutoHunt x=151 position overwrote "when SP is below" in AutoSupport.
+	const basicValueX = [291, 151, 284, 251];
 	const basicValueWidth = [37, 37, 37, 37];
 	const drawBasicNumericOption = function(option, y, id)
 	{
@@ -2816,14 +2847,6 @@ AutoSupportUIStatic.emitPageControls = function(
 	}
 	AutoSupportUIStatic.emitMonsterScrollbar(a, stateVir, paths);
 	a.jmp("controls_done");
-	a.label("controls_monster_static");
-	for (let index = 0; index < strings.monsters.length; index++)
-	{
-		const mask = 1 << index;
-		drawMonsterRow(mask, strings.monsters[index].vir, 87 + index * 38, `static_${index}`);
-	}
-	a.jmp("controls_done");
-
 	a.label("controls_skill");
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "controls_potion");
 	const skillXs = [108, 185, 262, 339];
@@ -2943,7 +2966,7 @@ AutoSupportUIStatic.emitPageControls = function(
 	a.label("controls_potion");
 	a.emit(0x83, 0xF8, 0x03); a.jcc(0x85, "controls_looting");
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StatePotionPage);
-	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_done");
+	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_potion_status");
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
 	a.emit(0xA9); a.dword(AutoSupportUIStatic.FeaturePotionRows);
 	a.jcc(0x84, "controls_done");
@@ -2991,7 +3014,41 @@ AutoSupportUIStatic.emitPageControls = function(
 			strings.skillLevelFormat.vir, skillLevelTextVir, x + 174, y + 65
 		);
 		a.label(iconDone);
-	}	a.jmp("controls_done");
+	}
+	a.jmp("controls_done");
+
+	a.label("controls_potion_status");
+	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "controls_done");
+	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoSupportUIStatic.FeatureStatusItemRow);
+	a.jcc(0x84, "controls_done");
+	const statusItemX = 258;
+	const statusItemY = 149;
+	const statusItemEmpty = "status_item_empty";
+	const statusItemDone = "status_item_done";
+	a.emit(0x83, 0x3D);
+	a.dword(statusItemRowVir + AutoSupportUIStatic.ItemRowIdOffset); a.emit(0);
+	a.jcc(0x84, statusItemEmpty);
+	AutoSupportUIStatic.emitCenteredText(
+		a, statusItemRowVir + AutoSupportUIStatic.ItemRowNameOffset,
+		25, 118, 215, 14, dark, 24, "status_item_name", 1
+	);
+	AutoSupportUIStatic.emitDrawItemIcon(
+		a, fillRectVir, statusItemRowVir + AutoSupportUIStatic.ItemRowIdOffset,
+		itemResolverVir, paths.skillIconFormat.vir, skillIconPathVir,
+		statusItemX, statusItemY, 0xFF648FDB, "status_item_icon"
+	);
+	AutoSupportUIStatic.emitDrawSkillLevel(
+		a, fillRectVir, statusItemRowVir + AutoSupportUIStatic.ItemRowFlagsOffset + 2,
+		strings.skillLevelFormat.vir, skillLevelTextVir, statusItemX, statusItemY
+	);
+	a.jmp(statusItemDone);
+	a.label(statusItemEmpty);
+	AutoSupportUIStatic.emitText(
+		a, strings.skillEmpty.vir, statusItemX + 5, statusItemY + 2, 14, link
+	);
+	a.label(statusItemDone);
+	a.jmp("controls_done");
 
 	a.label("controls_looting");
 	a.emit(0x83, 0xF8, 0x04); a.jcc(0x85, "controls_move");
@@ -3015,25 +3072,21 @@ AutoSupportUIStatic.emitPageControls = function(
 	);
 	const drawLootChoice = function(valueVir, y, prefix)
 	{
-		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 19, 0xFFFFFFFF);
-		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 1, 0xFF9AAAC0);
-		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, y + 18, 186, 1, 0xFF9AAAC0);
-		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, y, 1, 19, 0xFF9AAAC0);
-		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 386, y, 1, 19, 0xFF9AAAC0);
-		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 371, y + 1, 15, 17, 0xFFEAF2FC);
-		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 370, y + 1, 1, 17, 0xFF9AAAC0);
+		AutoSupportUIStatic.emitDrawFull(
+			a, paths.lootDropdown.vir, 201, y, `${prefix}_frame`
+		);
 		for (let option = 0; option <= 5; option++)
 		{
 			const next = `${prefix}_${option}_next`;
 			a.emit(0x83, 0x3D); a.dword(valueVir); a.emit(option);
 			a.jcc(0x85, next);
 			AutoSupportUIStatic.emitText(
-				a, strings.lootOptionChoices[option].vir, 206, y + 2, 12, dark
+				a, strings.lootOptionChoices[option].vir, 205, y + 1, 12, dark
 			);
 			a.label(next);
 		}
 		AutoSupportUIStatic.emitDrawColorKeyFull(
-			a, paths.scrollDown.vir, 373, y + 4, `${prefix}_arrow`
+			a, paths.lootDropdownArrow.vir, 274, y + 2, `${prefix}_arrow`
 		);
 	};
 	drawLootChoice(
@@ -3042,8 +3095,8 @@ AutoSupportUIStatic.emitPageControls = function(
 	drawLootChoice(
 		stateVir + AutoSupportUIStatic.StateLootArmorOptionMin, 224, "loot_armor_choice"
 	);
-	AutoSupportUIStatic.emitText(a, strings.lootOptionSuffix.vir, 391, 204, 12, dark);
-	AutoSupportUIStatic.emitText(a, strings.lootOptionSuffix.vir, 391, 226, 12, dark);
+	AutoSupportUIStatic.emitText(a, strings.lootOptionSuffix.vir, 294, 204, 12, dark);
+	AutoSupportUIStatic.emitText(a, strings.lootOptionSuffix.vir, 294, 226, 12, dark);
 	AutoSupportUIStatic.emitCenteredText(a, strings.lootRuleHint.vir, 20, 256, 430, 12, dark, 75, "loot_rule_hint", 1);
 	drawStateCheck({kind: "bit", offset: AutoSupportUIStatic.StateLootCategoryBits, mask: 1 << 0}, 38, 289, strings.lootOptions[0], "loot_0");
 	drawStateCheck({kind: "bit", offset: AutoSupportUIStatic.StateLootCategoryBits, mask: 1 << 1}, 147, 289, strings.lootOptions[1], "loot_1");
@@ -3057,7 +3110,7 @@ AutoSupportUIStatic.emitPageControls = function(
 	);
 	drawStateCheck(
 		{kind: "eq", offset: AutoSupportUIStatic.StatePrioMode, value: 0},
-		47, 130, strings.lootFightFirst, "loot_fight_first"
+		47, 130, strings.lootSupportFirst, "loot_support_first"
 	);
 	drawStateCheck(
 		{kind: "eq", offset: AutoSupportUIStatic.StatePrioMode, value: 1},
@@ -3150,7 +3203,7 @@ AutoSupportUIStatic.emitPageControls = function(
 	const itemXs = [108, 185, 262, 339];
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
 	a.emit(0xA9); a.dword(AutoSupportUIStatic.FeatureItemRows);
-	a.jcc(0x84, "controls_item_return");
+	a.jcc(0x84, "controls_done");
 	for (let index = 0; index < AutoSupportUIStatic.ItemDynamicRows; index++)
 	{
 		const x = itemXs[index % itemXs.length];
@@ -3180,9 +3233,6 @@ AutoSupportUIStatic.emitPageControls = function(
 		);
 		AutoSupportUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
 	}
-	a.label("controls_item_return");
-	drawStateCheck({kind: "nonzero", offset: AutoSupportUIStatic.StateActionOnEnd}, 28, 275, strings.returnTown, "item_return");
-	AutoSupportUIStatic.emitText(a, strings.itemReturnHint.vir, 48, 294, 12, link);
 	a.label("controls_done");
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateTab);
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x8C, "navigation_done");
@@ -3207,32 +3257,36 @@ AutoSupportUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, string
 
 	const emitPopup = function(currentVir, top, prefix)
 	{
+		const popupHeight = 6 * 17;
+		AutoSupportUIStatic.emitFillRect(
+			a, fillRectVir, 201, top, 88, popupHeight, 0xFFFFFFFF
+		);
 		for (let option = 0; option <= 5; option++)
 		{
 			const y = top + option * 17;
 			const normal = `${prefix}_${option}_normal`;
-			const backgroundDone = `${prefix}_${option}_background_done`;
 			a.emit(0x83, 0x3D); a.dword(currentVir); a.emit(option);
 			a.jcc(0x85, normal);
-			AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 17, 0xFFD8E7FA);
-			a.jmp(backgroundDone);
+			AutoSupportUIStatic.emitFillRect(
+				a, fillRectVir, 202, y, 86, 17, 0xFFD8E7FA
+			);
 			a.label(normal);
-			AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 17, 0xFFFFFFFF);
-			a.label(backgroundDone);
-			AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 1, 0xFF9AAAC0);
-			AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, y, 1, 17, 0xFF9AAAC0);
-			AutoSupportUIStatic.emitFillRect(a, fillRectVir, 386, y, 1, 17, 0xFF9AAAC0);
-			if (option === 5)
-				AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, y + 16, 186, 1, 0xFF9AAAC0);
 			AutoSupportUIStatic.emitText(
-				a, strings.lootOptionChoices[option].vir, 206, y + 1, 12, 0x0078432C
+				a, strings.lootOptionChoices[option].vir, 205, y + 1, 12, 0x0078432C
 			);
 		}
+		// Reputation/Game Settings-style list: one outer border and no row grid.
+		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, top, 88, 1, 0xFFC0C0C0);
+		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 201, top, 1, popupHeight, 0xFFC0C0C0);
+		AutoSupportUIStatic.emitFillRect(a, fillRectVir, 288, top, 1, popupHeight, 0xFFC0C0C0);
+		AutoSupportUIStatic.emitFillRect(
+			a, fillRectVir, 201, top + popupHeight - 1, 88, 1, 0xFFC0C0C0
+		);
 	};
 
 	emitPopup(
 		stateVir + AutoSupportUIStatic.StateLootWeaponOptionMin,
-		221, "loot_dropdown_weapon"
+		218, "loot_dropdown_weapon"
 	);
 	a.jmp("loot_dropdown_done");
 	a.label("loot_dropdown_armor_test");
@@ -3240,11 +3294,11 @@ AutoSupportUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, string
 	a.jcc(0x85, "loot_dropdown_done");
 	emitPopup(
 		stateVir + AutoSupportUIStatic.StateLootArmorOptionMin,
-		122, "loot_dropdown_armor"
+		120, "loot_dropdown_armor"
 	);
 	a.label("loot_dropdown_done");
 };
-AutoSupportUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir)
+AutoSupportUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, statusItemRowVir, moveRowsVir, moveIconKeysVir, itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir)
 {
 	const a = AutoSupportUIStatic.asm();
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
@@ -3258,7 +3312,7 @@ AutoSupportUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, 
 		a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
 		attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
 		healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir,
-		itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir,
+		itemIconKeysVir, potionRowsVir, potionIconKeysVir, statusItemRowVir, moveRowsVir, moveIconKeysVir,
 		itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir
 	);
 	AutoSupportUIStatic.emitLootDropdown(a, stateVir, fillRectVir, strings);
@@ -3391,7 +3445,7 @@ AutoSupportUIStatic.emitSendScalarEqToggle = function(
 AutoSupportUIStatic.buildNativeSliderMouseMove = function(
 	stateVir, percentFormatVir, percentTextVir, potionRowsVir,
 	attackSkillRowsVir, supportSkillRowsVir, healingSkillRowVir,
-	recoverySkillRowsVir, moveRowsVir, itemRowsVir,
+	recoverySkillRowsVir, moveRowsVir, itemRowsVir, statusItemRowVir,
 	skillTooltipFormatVir, moveSkillTooltipFormatVir, itemTooltipFormatVir,
 	hoverTextVir
 )
@@ -3522,7 +3576,7 @@ AutoSupportUIStatic.buildNativeSliderMouseMove = function(
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StateTab); a.emit(0x03);
 	a.jcc(0x85, "hover_move_tab");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StatePotionPage); a.emit(0x01);
-	a.jcc(0x85, "slider_hover_test");
+	a.jcc(0x85, "hover_status_item");
 	for (let index = 0; index < AutoSupportUIStatic.PotionDynamicRows; index++)
 	{
 		const x = (index % 2 === 0 ? 21 : 247) + 174;
@@ -3536,6 +3590,22 @@ AutoSupportUIStatic.buildNativeSliderMouseMove = function(
 			130 + index, `hover_potion_${index}`
 		);
 	}
+	a.jmp("slider_hover_test");
+	a.label("hover_status_item");
+	a.emit(0x83, 0x3D);
+	a.dword(stateVir + AutoSupportUIStatic.StatePotionPage); a.emit(0x02);
+	a.jcc(0x85, "slider_hover_test");
+	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoSupportUIStatic.FeatureStatusItemRow);
+	a.jcc(0x84, "slider_hover_test");
+	emitSlotTooltip(
+		statusItemRowVir,
+		AutoSupportUIStatic.ItemRowIdOffset,
+		AutoSupportUIStatic.ItemRowNameOffset,
+		AutoSupportUIStatic.ItemRowFlagsOffset + 2, 0,
+		"item", 254, 145, 294, 185,
+		134, "hover_status_item"
+	);
 	a.jmp("slider_hover_test");
 
 	a.label("hover_move_tab");
@@ -3914,7 +3984,7 @@ AutoSupportUIStatic.buildNativeSliderMouseMove = function(
 AutoSupportUIStatic.buildMouseDown = function(
 	stateVir, mutationSenderVir, monsterRowsVir, attackSkillRowsVir,
 	supportSkillRowsVir, healingSkillRowVir, recoverySkillRowsVir, itemRowsVir,
-	potionRowsVir, moveRowsVir
+	potionRowsVir, statusItemRowVir, moveRowsVir
 )
 {
 	const a = AutoSupportUIStatic.asm();
@@ -3944,7 +4014,7 @@ AutoSupportUIStatic.buildMouseDown = function(
 		{
 			const next = `${prefix}_${option}_next`;
 			AutoSupportUIStatic.emitRectGate(
-				a, 201, top + option * 17, 387, top + (option + 1) * 17, next
+				a, 201, top + option * 17, 289, top + (option + 1) * 17, next
 			);
 			a.emit(0xC7, 0x05); a.dword(minimumVir); a.dword(option);
 			a.emit(0x33, 0xC9);
@@ -3968,7 +4038,7 @@ AutoSupportUIStatic.buildMouseDown = function(
 	emitLootDropdownSelection(
 		stateVir + AutoSupportUIStatic.StateLootWeaponOptionMin,
 		AutoSupportUIStatic.SettingLootWeaponFilter, 1 << 0,
-		221, "loot_dropdown_weapon_click"
+		218, "loot_dropdown_weapon_click"
 	);
 	a.jmp("loot_dropdown_close");
 	a.label("loot_dropdown_armor_click");
@@ -3977,7 +4047,7 @@ AutoSupportUIStatic.buildMouseDown = function(
 	emitLootDropdownSelection(
 		stateVir + AutoSupportUIStatic.StateLootArmorOptionMin,
 		AutoSupportUIStatic.SettingLootArmorFilter, 1 << 1,
-		122, "loot_dropdown_armor_click_row"
+		120, "loot_dropdown_armor_click_row"
 	);
 	a.label("loot_dropdown_close");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoSupportUIStatic.StateLootDropdown); a.dword(0);
@@ -4158,17 +4228,16 @@ AutoSupportUIStatic.buildMouseDown = function(
 				AutoSupportUIStatic.SettingTpMvp,
 				AutoSupportUIStatic.SettingTpMiniBoss,
 				AutoSupportUIStatic.SettingTpChampion,
-				AutoSupportUIStatic.SettingAggressive,
 				AutoSupportUIStatic.SettingAcceptParty,
 				AutoSupportUIStatic.SettingTokenSiegfried
 			];
-			const masks = [1 << 7, 1 << 8, 1 << 9, 1 << 10, 1 << 0, 1 << 2];
+			const masks = [1 << 7, 1 << 8, 1 << 9, 1 << 0, 1 << 2];
 			AutoSupportUIStatic.emitSendScalarFlagToggle(
 				a, stateVir, mutationSenderVir, settings[option - 4], masks[option - 4]
 			);
 		}
 	};
-	const basicInputX = [151, 151, 284, 251];
+	const basicInputX = [291, 151, 284, 251];
 	for (let scroll = 0; scroll <= AutoSupportUIStatic.BasicScrollMaximum; scroll++)
 	{
 		const windowNext = `body_basic_window_${scroll}_next`;
@@ -4267,7 +4336,7 @@ AutoSupportUIStatic.buildMouseDown = function(
 			AutoSupportUIStatic.emitSendScalarPairMemIfFeature(
 				a, stateVir, mutationSenderVir,
 				AutoSupportUIStatic.FeatureMonsterSelection,
-				AutoSupportUIStatic.SettingMonsterSelection,
+				AutoSupportUIStatic.SettingMasterSelection,
 				monsterRowsVir + index * AutoSupportUIStatic.MonsterRowSize +
 					AutoSupportUIStatic.MonsterRowIdOffset,
 				1, `monster_dynamic_${scroll}_${index}_off`
@@ -4280,7 +4349,7 @@ AutoSupportUIStatic.buildMouseDown = function(
 			AutoSupportUIStatic.emitSendScalarPairMemIfFeature(
 				a, stateVir, mutationSenderVir,
 				AutoSupportUIStatic.FeatureMonsterSelection,
-				AutoSupportUIStatic.SettingMonsterSelection,
+				AutoSupportUIStatic.SettingMasterSelection,
 				monsterRowsVir + index * AutoSupportUIStatic.MonsterRowSize +
 					AutoSupportUIStatic.MonsterRowIdOffset,
 				0, `monster_dynamic_${scroll}_${index}_on`
@@ -4291,55 +4360,6 @@ AutoSupportUIStatic.buildMouseDown = function(
 		}
 		a.label(windowNext);
 	}	a.jmp("consume");
-	a.label("body_monster_static");
-	const monsterIds = [0, 1002, 1113, 1031, 1063, 1007];
-	for (let index = 0; index < monsterIds.length; index++)
-	{
-		const next = `body_monster_static_${index}_next`;
-		const mask = 1 << index;
-		AutoSupportUIStatic.emitRectGate(
-			a, 14, 87 + index * 38, 455, 125 + index * 38, next
-		);
-		if (index === 0)
-		{
-			a.emit(0xC7, 0x05); a.dword(stateVir + AutoSupportUIStatic.StateMonsterBits);
-			a.dword(0x3F);
-			AutoSupportUIStatic.emitSendScalarPairConstIfFeature(
-				a, stateVir, mutationSenderVir,
-				AutoSupportUIStatic.FeatureMonsterSelection,
-				AutoSupportUIStatic.SettingMonsterSelection,
-				monsterIds[index], 0, `monster_static_${index}`
-			);
-			AutoSupportUIStatic.emitMarkDirty(a);
-			a.jmp("consume");
-		}
-		a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateMonsterBits);
-		a.emit(0xA9); a.dword(mask);
-		a.jcc(0x84, `body_monster_static_${index}_turn_on`);
-		a.emit(0x81, 0x25); a.dword(stateVir + AutoSupportUIStatic.StateMonsterBits);
-		a.dword((~mask) >>> 0);
-		AutoSupportUIStatic.emitSendScalarPairConstIfFeature(
-			a, stateVir, mutationSenderVir,
-			AutoSupportUIStatic.FeatureMonsterSelection,
-			AutoSupportUIStatic.SettingMonsterSelection,
-			monsterIds[index], 1, `monster_static_${index}_off`
-		);
-		AutoSupportUIStatic.emitMarkDirty(a);
-		a.jmp("consume");
-		a.label(`body_monster_static_${index}_turn_on`);
-		a.emit(0x81, 0x0D); a.dword(stateVir + AutoSupportUIStatic.StateMonsterBits);
-		a.dword(mask);
-		AutoSupportUIStatic.emitSendScalarPairConstIfFeature(
-			a, stateVir, mutationSenderVir,
-			AutoSupportUIStatic.FeatureMonsterSelection,
-			AutoSupportUIStatic.SettingMonsterSelection,
-			monsterIds[index], 0, `monster_static_${index}_on`
-		);
-		AutoSupportUIStatic.emitMarkDirty(a);
-		a.jmp("consume");
-		a.label(next);
-	}
-	a.jmp("consume");
 	a.label("body_skill");
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "body_potion");
 	const skillXs = [108, 185, 262, 339];
@@ -4502,7 +4522,7 @@ AutoSupportUIStatic.buildMouseDown = function(
 	a.label("body_potion");
 	a.emit(0x83, 0xF8, 0x03); a.jcc(0x85, "body_looting");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StatePotionPage); a.emit(0x01);
-	a.jcc(0x85, "consume");
+	a.jcc(0x85, "body_potion_status");
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
 	a.emit(0xA9); a.dword(AutoSupportUIStatic.FeaturePotionRows);
 	a.jcc(0x84, "consume");
@@ -4619,6 +4639,27 @@ AutoSupportUIStatic.buildMouseDown = function(
 		a.label(trackNext);
 	}
 	a.jmp("consume");
+	a.label("body_potion_status");
+	a.emit(0x83, 0x3D);
+	a.dword(stateVir + AutoSupportUIStatic.StatePotionPage); a.emit(0x02);
+	a.jcc(0x85, "consume");
+	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoSupportUIStatic.FeatureStatusItemRow);
+	a.jcc(0x84, "consume");
+	AutoSupportUIStatic.emitRectGate(
+		a, 246, 139, 299, 190, "consume"
+	);
+	a.emit(0x83, 0x3D);
+	a.dword(statusItemRowVir + AutoSupportUIStatic.ItemRowIdOffset); a.emit(0);
+	a.jcc(0x84, "consume");
+	AutoSupportUIStatic.emitSendScalarPairConstIfFeature(
+		a, stateVir, mutationSenderVir,
+		AutoSupportUIStatic.FeatureStatusItemRow,
+		AutoSupportUIStatic.SettingStatusRecoveryItemRegister,
+		0, 0, "status_item_clear"
+	);
+	AutoSupportUIStatic.emitMarkDirty(a);
+	a.jmp("consume");
 	a.label("body_looting");
 	a.emit(0x83, 0xF8, 0x04); a.jcc(0x85, "body_move");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StateLootingPage); a.emit(0x01);
@@ -4702,13 +4743,13 @@ AutoSupportUIStatic.buildMouseDown = function(
 	a.jmp("consume");
 
 	a.label("loot_weapon_minimum");
-	AutoSupportUIStatic.emitRectGate(a, 201, 202, 387, 221, "loot_armor_minimum");
+	AutoSupportUIStatic.emitRectGate(a, 201, 202, 289, 218, "loot_armor_minimum");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoSupportUIStatic.StateLootDropdown);
 	a.dword(1);
 	AutoSupportUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("loot_armor_minimum");
-	AutoSupportUIStatic.emitRectGate(a, 201, 224, 387, 243, "loot_categories");
+	AutoSupportUIStatic.emitRectGate(a, 201, 224, 289, 240, "loot_categories");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoSupportUIStatic.StateLootDropdown);
 	a.dword(2);
 	AutoSupportUIStatic.emitMarkDirty(a);
@@ -4850,13 +4891,6 @@ AutoSupportUIStatic.buildMouseDown = function(
 		a.jmp("consume");
 		a.label(delayNext);
 	}
-	AutoSupportUIStatic.emitRectGate(a, 20, 268, 235, 300, "consume");
-	AutoSupportUIStatic.emitSendScalarEqToggle(
-		a, stateVir, mutationSenderVir,
-		AutoSupportUIStatic.StateActionOnEnd, 0,
-		AutoSupportUIStatic.SettingActionOnEnd, 1, 0, "item_return"
-	);
-	AutoSupportUIStatic.emitMarkDirty(a);
 	a.label("consume");
 	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
 	a.emit(0xC2, 0x08, 0x00);
@@ -5047,7 +5081,7 @@ AutoSupportUIStatic.buildMouseUp = function(stateVir, mutationSenderVir, potionR
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StateTab); a.emit(0x03);
 	a.jcc(0x85, "potion_drop_item_tab_test");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StatePotionPage); a.emit(0x01);
-	a.jcc(0x85, "base_mouse_up");
+	a.jcc(0x85, "potion_status_drop_test");
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
 	a.emit(0xA9); a.dword(AutoSupportUIStatic.FeaturePotionRows);
 	a.jcc(0x84, "base_mouse_up");
@@ -5083,6 +5117,40 @@ AutoSupportUIStatic.buildMouseUp = function(stateVir, mutationSenderVir, potionR
 		a.jmp("base_mouse_up");
 		a.label(next);
 	}
+	a.jmp("base_mouse_up");
+	a.label("potion_status_drop_test");
+	a.emit(0x83, 0x3D);
+	a.dword(stateVir + AutoSupportUIStatic.StatePotionPage); a.emit(0x02);
+	a.jcc(0x85, "base_mouse_up");
+	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
+	a.emit(0xA9); a.dword(AutoSupportUIStatic.FeatureStatusItemRow);
+	a.jcc(0x84, "base_mouse_up");
+	AutoSupportUIStatic.emitRectGate(
+		a, 246, 139, 299, 190, "base_mouse_up"
+	);
+	a.emit(0xB9); a.dword(AutoSupportUIStatic.ShortcutManager);
+	a.call(AutoSupportUIStatic.ShortcutManagerGetActive);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+	a.emit(0x8B, 0xF8);
+	a.emit(0x83, 0xBF); a.dword(AutoSupportUIStatic.ShortcutDragTypeOffset);
+	a.emit(AutoSupportUIStatic.ShortcutDragItemType);
+	a.jcc(0x85, "base_mouse_up");
+	a.emit(0x8B, 0x87); a.dword(AutoSupportUIStatic.ShortcutDragSkillIdOffset);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "base_mouse_up");
+	a.emit(0x50);
+	AutoSupportUIStatic.pushImm(a, 0);
+	AutoSupportUIStatic.pushImm(
+		a, AutoSupportUIStatic.SettingStatusRecoveryItemRegister
+	);
+	a.call(mutationSenderVir);
+	AutoSupportUIStatic.emitMarkDirty(a);
+	a.emit(0x8B, 0x07);
+	AutoSupportUIStatic.pushImm(a, 0);
+	AutoSupportUIStatic.pushImm(a, 0);
+	AutoSupportUIStatic.pushImm(a, 0);
+	AutoSupportUIStatic.pushImm(a, 0);
+	AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.ShortcutDragCancelMessage);
+	a.emit(0x8B, 0xCF, 0xFF, 0x50, 0x18);
 	a.jmp("base_mouse_up");
 	a.label("potion_drop_item_tab_test");
 	a.emit(0x83, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StateTab); a.emit(0x05);
@@ -5828,27 +5896,6 @@ AutoSupportUIStatic.buildSyncController = function(stateVir, controllerVtableVir
 	a.emit(0x61, 0x9D, 0xC3);
 	return a;
 };
-AutoSupportUIStatic.buildControllerRedrawBridge = function(controllerVtableVir, peerControllerVtableVir)
-{
-	const a = AutoSupportUIStatic.asm();
-	a.emit(0x9C);
-	a.emit(0x81, 0x3B); a.dword(controllerVtableVir);
-	a.jcc(0x84, "controller_animate");
-	if (Number.isInteger(peerControllerVtableVir) && peerControllerVtableVir > 0)
-	{
-		a.emit(0x81, 0x3B); a.dword(peerControllerVtableVir);
-		a.jcc(0x84, "controller_animate");
-	}
-	a.emit(0x9D, 0xC7, 0x43, AutoSupportUIStatic.WindowDirtyOffset);
-	a.dword(0);
-	a.jmp(AutoSupportUIStatic.UiUpdateSurfaceDirtyResume);
-	a.label("controller_animate");
-	a.emit(0x9D, 0xC7, 0x43, AutoSupportUIStatic.WindowDirtyOffset);
-	a.dword(1);
-	a.jmp(AutoSupportUIStatic.UiUpdateSurfaceDirtyResume);
-	return a;
-};
-
 AutoSupportUIStatic.buildMenuToggleRequest = function(pendingVir)
 {
 	const a = AutoSupportUIStatic.asm();
@@ -5863,15 +5910,17 @@ AutoSupportUIStatic.buildMenuToggleRequest = function(pendingVir)
 AutoSupportUIStatic.buildControllerBootstrap = function(
 	stateVir, openSenderVir, resyncSenderVir, ensureControllerVir, syncControllerVir,
 	positionLoadVir, pendingVir, toggleVir, getAsyncKeyStateIat,
-	previousBootstrapVir
+	peerSuppressControllerVir
 )
 {
 	const a = AutoSupportUIStatic.asm();
 	// Preserve the original in-game render-pass call before QJS-owned work.
-	a.call(Number.isInteger(previousBootstrapVir) && previousBootstrapVir > 0
-		? previousBootstrapVir
-		: AutoSupportUIStatic.ControllerBootstrapOriginal);
+	a.call(AutoSupportUIStatic.ControllerBootstrapOriginal);
 	a.emit(0x9C, 0x60);
+	// The dedicated hook runs immediately before AutoCombat's hook. Suppress
+	// its two-tile controller at runtime; cross-patch build-time writes are not
+	// retained by WARP for memory owned by another patch.
+	a.emit(0xC7, 0x05); a.dword(peerSuppressControllerVir); a.dword(1);
 	// A menu button mouse-up queues the toggle. Creating a top-level frame
 	// inside the native mouse dispatch leaks the dispatch's drag state into the
 	// new frame; consume it here on the next render/update tick instead.
@@ -6136,27 +6185,14 @@ AutoSupportUIStatic.verifyNativeContracts = function()
 {
 	const peerLifecycle = CACHE.get("AutoCombatUI.LifecycleHooks.v1");
 	const hasPeerLifecycle = !!peerLifecycle &&
-		Number.isInteger(peerLifecycle.controllerBootstrapPhy) &&
-		Number.isInteger(peerLifecycle.controllerBootstrapVir) &&
-		Number.isInteger(peerLifecycle.controllerDirtyPhy) &&
-		Number.isInteger(peerLifecycle.controllerVtableVir) &&
 		Number.isInteger(peerLifecycle.stateVir) &&
 		Number.isInteger(peerLifecycle.scalarSenderVir) &&
-		Number.isInteger(peerLifecycle.suppressControllerVir) &&
-		Number.isInteger(peerLifecycle.suppressControllerPhy);
-	const controllerBootstrapPhy = hasPeerLifecycle
-		? peerLifecycle.controllerBootstrapPhy
-		: AutoSupportUIStatic.assertCode(
-			"controller in-game bootstrap call",
-			AutoSupportUIStatic.ControllerBootstrapHook,
-			AutoSupportUIStatic.ControllerBootstrapHookBytes
-		);
-	const controllerDirtyPhy = hasPeerLifecycle
-		? peerLifecycle.controllerDirtyPhy
-		: AutoSupportUIStatic.assertCode(
-			"UI update dirty clear", AutoSupportUIStatic.UiUpdateSurfaceDirty,
-			"C7 43 58 00 00 00 00"
-		);
+		Number.isInteger(peerLifecycle.suppressControllerVir);
+	const controllerBootstrapPhy = AutoSupportUIStatic.assertCode(
+		"dedicated AutoSupport in-game bootstrap call",
+		AutoSupportUIStatic.ControllerBootstrapHook,
+		AutoSupportUIStatic.ControllerBootstrapHookBytes
+	);
 	AutoSupportUIStatic.assertCode(
 		"clipped image draw", AutoSupportUIStatic.ImageDrawRect,
 		"55 8B EC 56 8B 71 24"
@@ -6220,13 +6256,11 @@ AutoSupportUIStatic.verifyNativeContracts = function()
 		"UIFrameWnd mouse wheel", 35, AutoSupportUIStatic.FrameVtableMouseWheel
 	);
 	return {
-		controllerBootstrapPhy, windowMainProcPhy, controllerDirtyPhy,
-		peerBootstrapVir: hasPeerLifecycle ? peerLifecycle.controllerBootstrapVir : 0,
-		peerControllerVtableVir: hasPeerLifecycle ? peerLifecycle.controllerVtableVir : 0,
+		controllerBootstrapPhy, windowMainProcPhy, hasPeerLifecycle,
 		peerStateVir: hasPeerLifecycle ? peerLifecycle.stateVir : 0,
 		peerScalarSenderVir: hasPeerLifecycle ? peerLifecycle.scalarSenderVir : 0,
-		peerSuppressControllerVir: hasPeerLifecycle ? peerLifecycle.suppressControllerVir : 0,
-		peerSuppressControllerPhy: hasPeerLifecycle ? peerLifecycle.suppressControllerPhy : 0
+		peerSuppressControllerVir: hasPeerLifecycle
+			? peerLifecycle.suppressControllerVir : 0
 	};
 };
 
@@ -6445,6 +6479,8 @@ AutoSupportUI = function(_)
 
 	$$(_, 1, "Verify the native UIFrameWnd ABI and input handlers");
 	const verified = AutoSupportUIStatic.verifyNativeContracts();
+	if (!verified.hasPeerLifecycle)
+		throw Error("AutoSupportUI: AutoCombatUI must run first");
 	const getAsyncKeyStateIat = Exe.FindFunc("GetAsyncKeyState", "USER32.dll");
 	if (!Number.isInteger(getAsyncKeyStateIat) || getAsyncKeyStateIat < 0)
 		throw Error("AutoSupportUI: GetAsyncKeyState import not found");
@@ -6525,6 +6561,12 @@ AutoSupportUI = function(_)
 		),
 		sliderGaugeLoot: AutoSupportUIStatic.buildResourcePath(
 			"autosupport\\setting_looting\\slider_gage_looting.bmp"
+		),
+		lootDropdown: AutoSupportUIStatic.buildResourcePath(
+			"autosupport\\setting_looting\\bg_dropdown.bmp"
+		),
+		lootDropdownArrow: AutoSupportUIStatic.buildResourcePath(
+			"autosupport\\setting_looting\\btn_down_out.bmp"
 		),
 		itemSlot: AutoSupportUIStatic.buildResourcePath(
 			"autosupport\\itemslot_autohunt.bmp"
@@ -6670,7 +6712,7 @@ AutoSupportUI = function(_)
 	const headings = [
 		"Configure the automatic support feature.",
 		"Select the party player AutoSupport will follow as master.",
-		"Set the attack skill.",
+		"Assist the selected player's current monster target.",
 		"Configure recovery items to use.",
 		"Configure looting behavior.",
 		"Configure movement items.",
@@ -6679,7 +6721,7 @@ AutoSupportUI = function(_)
 	const subtitles = [
 		"AutoSupport settings are saved separately for each character.",
 		"",
-		"Skills are used at each configured [Delay Time].",
+		"Only the selected player's current monster target is attacked.",
 		"If recovery ratios are the same, items are used from left to right.",
 		"Automatically loot items of the checked types.",
 		"You can set teleport and return methods.",
@@ -6699,11 +6741,14 @@ AutoSupportUI = function(_)
 		potionReject: AutoSupportUIStatic.allocateString(
 			"Only HP or SP recovery items can be registered here."
 		),
+		statusItemReject: AutoSupportUIStatic.allocateString(
+			"Only supported status recovery items can be registered here."
+		),
 		moveItemReject: AutoSupportUIStatic.allocateString(
 			"Only Fly Wings or Butterfly Wings can be registered here."
 		),
 		moveSkillReject: AutoSupportUIStatic.allocateString(
-			"Use Teleport for movement; Return accepts Teleport 2 or Warp Portal."
+			"Use Teleport for movement; Return accepts Teleport Lv 2."
 		),
 		noMasterReject: AutoSupportUIStatic.allocateString(
 			"Select a Player-tab master before starting AutoSupport."
@@ -6731,13 +6776,13 @@ AutoSupportUI = function(_)
 			"When checked, normal attacks are used if skills cannot be used."
 		),
 		skillHeadings: [
-			"Set the attack skill.",
+			"Assist the selected player's current monster target.",
 			"Configure support skills.",
 			"Configure recovery skills."
 		].map(text => AutoSupportUIStatic.allocateString(text)),
 		skillSubtitles: [
-			"Skills are used at each configured [Delay Time].",
-			"Support skills are used at each configured [Delay Time].",
+			"Only the selected player's current monster target is attacked.",
+			"Buffs support the party; Lex uses only the master's current target.",
 			"Set healing thresholds and status recovery skills."
 		].map(text => AutoSupportUIStatic.allocateString(text)),
 		potionHeadings: [
@@ -6773,23 +6818,19 @@ AutoSupportUI = function(_)
 		),
 		useLabel: AutoSupportUIStatic.allocateString("Use"),
 		moveReturnHintLine1: AutoSupportUIStatic.allocateString(
-			"If job consumables are insufficient to perform attacks"
+			"If the configured return method is unavailable,"
 		),
 		moveReturnHintLine2: AutoSupportUIStatic.allocateString(
-			"or weight exceeds in loot settings, return settings are used."
-		),
-		itemReturnHint: AutoSupportUIStatic.allocateString(
-			"Automatically return to town when all equipped buff items are used."
+			"AutoSupport stops safely instead of using an unregistered resource."
 		),
 		basicOptions: [
 			"Allow normal attacks when SP is below 10%.",
 			"Never use normal attacks. Skills remain enabled.",
 			"Use teleport if combat does not occur for 10 seconds.",
-			"Use Teleport if there are more than 10 monsters on the screen.",
+			"Use Teleport if there are at least 10 nearby monsters.",
 			"Use teleport when an MVP boss monster appears.",
 			"Use teleport when a mini-boss monster appears.",
 			"Use teleport when a champion monster appears.",
-			"Aggressively target nearby hostile monsters.",
 			"Accept party invitations automatically.",
 			"Use a Token of Siegfried when defeated."
 		].map(text => AutoSupportUIStatic.allocateString(text)),
@@ -6797,20 +6838,17 @@ AutoSupportUI = function(_)
 			"Allow normal attacks when SP is below",
 			"",
 			"Use teleport if combat does not occur for",
-			"Use Teleport if there are more than"
+			"Use Teleport if there are at least"
 		].map(text => AutoSupportUIStatic.allocateString(text)),
 		basicSuffixes: [
 			" %.",
 			"",
 			"seconds.",
-			" monsters on the screen."
+			" nearby monsters."
 		].map(text => AutoSupportUIStatic.allocateString(text)),
 		basicNormal: AutoSupportUIStatic.allocateString(
 			"[Use Normal Attack] in [Skill Settings] must be checked."
 		),
-		monsters: ["All Monsters", "Poring", "Drops", "Poporing", "Lunatic", "Fabre"]
-			.map(text => AutoSupportUIStatic.allocateString(text)),
-
 		skillEmpty: AutoSupportUIStatic.allocateString("+"),
 		skillLevelFormat: AutoSupportUIStatic.allocateString("%u"),
 		skillTooltipFormat: AutoSupportUIStatic.allocateString("%.23s Use Lv %u (Every %s s)"),
@@ -6827,7 +6865,7 @@ AutoSupportUI = function(_)
 		lootOptions: ["Consumable", "Cards", "Miscellaneous", "Costume"]
 			.map(text => AutoSupportUIStatic.allocateString(text)),
 		weightNote: AutoSupportUIStatic.allocateString(
-			"Automatic looting is not attempted when character weight reaches 90%."
+			"Automatic looting stops at the configured weight limit."
 		),
 		lootWeaponPrefix: AutoSupportUIStatic.allocateString("Loot only weapon of"),
 		lootArmorPrefix: AutoSupportUIStatic.allocateString("Loot only armor of"),
@@ -6835,24 +6873,24 @@ AutoSupportUI = function(_)
 		lootRuleHint: AutoSupportUIStatic.allocateString(
 			"Loot equipment with at least the selected random options."
 		),
-		lootOptionChoices: ["0 Random Option", "1 Random Option", "2 Random Options",
-			"3 Random Options", "4 Random Options", "5 Random Options"
+		lootOptionChoices: ["0 options", "1 option", "2 options",
+			"3 options", "4 options", "5 options"
 		].map(text => AutoSupportUIStatic.allocateString(text)),
 		lootDropdownArrow: AutoSupportUIStatic.allocateString("v"),
 		lootPriorityHeading: AutoSupportUIStatic.allocateString("Choose action priority."),
-		lootFightFirst: AutoSupportUIStatic.allocateString(
-			"Fight First - defeat targets before picking up items."
+		lootSupportFirst: AutoSupportUIStatic.allocateString(
+			"Support First - support the selected player before picking up items."
 		),
 		lootLootFirst: AutoSupportUIStatic.allocateString(
-			"Loot First - pick up eligible items before fighting."
+			"Loot First - pick up eligible items before optional attacks."
 		),
 		lootReturn: AutoSupportUIStatic.allocateString("Return to Town Settings"),
 		lootReturnHint: AutoSupportUIStatic.allocateString(
 			"Automatically return to town when the configured weight is exceeded."
 		),
-		lootContinue: AutoSupportUIStatic.allocateString("Continue hunting without looting when the weight exceeds the limit."),
+		lootContinue: AutoSupportUIStatic.allocateString("Continue supporting without looting when the weight exceeds the limit."),
 		lootContinueHint: AutoSupportUIStatic.allocateString(
-			"When weight reaches 90%, Stop Hunting and return to town"
+			"At the configured limit, looting stops while AutoSupport continues."
 		),
 		registerItem: AutoSupportUIStatic.allocateString("Register Item"),
 		registerSkill: AutoSupportUIStatic.allocateString("Register Skill"),
@@ -6860,7 +6898,6 @@ AutoSupportUI = function(_)
 			"Register Item", "Register Skill", "Register Item", "Register Skill"
 		].map(text => AutoSupportUIStatic.allocateString(text)),
 
-		returnTown: AutoSupportUIStatic.allocateString("Return to Town Settings"),
 		reset: AutoSupportUIStatic.allocateString("Reset"),
 		close: AutoSupportUIStatic.allocateString("Close")
 	};
@@ -6913,6 +6950,9 @@ AutoSupportUI = function(_)
 	const potionIconKeys = AutoSupportUIStatic.allocateBytes(
 		new Array(AutoSupportUIStatic.PotionIconKeysSize).fill(0), 4
 	);
+	const statusItemRow = AutoSupportUIStatic.allocateBytes(
+		new Array(AutoSupportUIStatic.ItemRowSize).fill(0), 4
+	);
 	const moveRows = AutoSupportUIStatic.allocateBytes(
 		new Array(AutoSupportUIStatic.MoveRowsSize).fill(0), 4
 	);
@@ -6934,7 +6974,6 @@ AutoSupportUI = function(_)
 	Exe.SetUint32(state.phy + AutoSupportUIStatic.StateHealHpThreshold, 50);
 	Exe.SetUint32(state.phy + AutoSupportUIStatic.StateLootWeightLimit, 90);
 	Exe.SetUint32(state.phy + AutoSupportUIStatic.StateNormalAttackSpThreshold, 10);
-	Exe.SetUint32(state.phy + AutoSupportUIStatic.StateStopAttackSpThreshold, 5);
 
 	$$(_, 3, "Create the AutoSupport UI ASUI packet sender and snapshot receiver");
 	const packetRefs = AutoSupportUIStatic.resolvePacketRefs(_);
@@ -6956,7 +6995,8 @@ AutoSupportUI = function(_)
 		attackSkillIconKeys.vir, supportSkillRows.vir, supportSkillIconKeys.vir,
 		healingSkillRow.vir, healingSkillIconKey.vir, recoverySkillRows.vir,
 		recoverySkillIconKeys.vir, itemRows.vir, itemIconKeys.vir,
-		potionRows.vir, potionIconKeys.vir, moveRows.vir, moveIconKeys.vir
+		potionRows.vir, potionIconKeys.vir, moveRows.vir, moveIconKeys.vir,
+		statusItemRow.vir
 	);
 
 	$$(_, 4, "Create the QJS-only Auto Support UIFrameWnd renderer and input path");
@@ -6976,7 +7016,7 @@ AutoSupportUI = function(_)
 			attackSkillIconKeys.vir, supportSkillRows.vir, supportSkillIconKeys.vir,
 			healingSkillRow.vir, healingSkillIconKey.vir, recoverySkillRows.vir,
 			recoverySkillIconKeys.vir, itemRows.vir, itemIconKeys.vir, potionRows.vir,
-			potionIconKeys.vir, moveRows.vir, moveIconKeys.vir, itemResolver.vir,
+			potionIconKeys.vir, statusItemRow.vir, moveRows.vir, moveIconKeys.vir, itemResolver.vir,
 			skillIconPath.vir, skillLevelText.vir, lootWeaponText.vir, lootArmorText.vir
 		)
 	);
@@ -6985,7 +7025,7 @@ AutoSupportUI = function(_)
 			state.vir, scalarSender.vir, monsterRows.vir,
 			attackSkillRows.vir, supportSkillRows.vir,
 			healingSkillRow.vir, recoverySkillRows.vir, itemRows.vir,
-			potionRows.vir, moveRows.vir
+			potionRows.vir, statusItemRow.vir, moveRows.vir
 		)
 	);
 	const sliderHover = AutoSupportUIStatic.allocateCode(
@@ -6993,7 +7033,7 @@ AutoSupportUI = function(_)
 			state.vir, strings.sliderPercentFormat.vir, sliderPercentText.vir,
 			potionRows.vir, attackSkillRows.vir, supportSkillRows.vir,
 			healingSkillRow.vir, recoverySkillRows.vir, moveRows.vir,
-			itemRows.vir, strings.skillTooltipFormat.vir,
+			itemRows.vir, statusItemRow.vir, strings.skillTooltipFormat.vir,
 			strings.moveSkillTooltipFormat.vir, strings.itemTooltipFormat.vir,
 			hoverText.vir
 		)
@@ -7022,10 +7062,8 @@ AutoSupportUI = function(_)
 	const autoPotionVisual = AutoSupportUIStatic.prepareControllerVisual(
 		"autopotion", paths.autoPotion.blueIcon
 	);
-	const peerStateVir = verified.peerStateVir || state.vir;
-	const peerScalarSenderVir = verified.peerScalarSenderVir || scalarSender.vir;
-	if (verified.peerSuppressControllerPhy > 0)
-		Exe.SetUint32(verified.peerSuppressControllerPhy, 1);
+	const peerStateVir = verified.peerStateVir;
+	const peerScalarSenderVir = verified.peerScalarSenderVir;
 	const controllerDraw = AutoSupportUIStatic.allocateCode(
 		AutoSupportUIStatic.buildControllerDraw(
 			state.vir, peerStateVir, autoBattleVisual,
@@ -7089,13 +7127,6 @@ AutoSupportUI = function(_)
 	const syncController = AutoSupportUIStatic.allocateCode(
 		AutoSupportUIStatic.buildSyncController(state.vir, controllerVtable.vir)
 	);
-	const controllerRedraw = AutoSupportUIStatic.allocateCode(
-		AutoSupportUIStatic.buildControllerRedrawBridge(
-			controllerVtable.vir, verified.peerControllerVtableVir
-		)
-	);
-	const controllerDirtyPhy = verified.controllerDirtyPhy;
-	Exe.SetJMP(controllerDirtyPhy, controllerRedraw.vir, 2);
 	const toggle = AutoSupportUIStatic.allocateCode(
 		AutoSupportUIStatic.buildToggle(
 			state.vir, vtable.vir, openSender.vir, [ensureController.vir]
@@ -7112,7 +7143,8 @@ AutoSupportUI = function(_)
 			state.vir, openSender.vir, resyncSender.vir, ensureController.vir,
 			syncController.vir, controllerPositionLoad.vir,
 			menuTogglePending.vir, toggle.vir,
-			getAsyncKeyStateIat, verified.peerBootstrapVir
+			getAsyncKeyStateIat,
+			verified.peerSuppressControllerVir
 		)
 	);
 	Exe.SetCALL(verified.controllerBootstrapPhy, controllerBootstrap.vir, 0);

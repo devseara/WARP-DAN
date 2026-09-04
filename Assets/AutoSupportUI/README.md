@@ -20,15 +20,23 @@ states from `autosupport/menuicon`:
 - New UI: 45x41 normal, mouse-on, and pressed BMPs.
 - Classic UI: 32x34 old-normal, old-mouse-on, and old-pressed BMPs.
 
-The icons were generated with the built-in image tool from the stock AutoHunt
-state frames, then reduced with nearest-neighbor sampling and normalized to the
-client's magenta color key.
+The New UI states use the accepted AutoSupport heart/healing-cross artwork.
+Classic states retain the stock 32x34 frame, background, state chrome, and
+magenta corner key. Rebuild the Classic states from an extracted native menu
+folder with:
+
+    python tools/build_autosupport_classic_menu_icons.py \
+      --native-menu-root "<client>/data/texture/<user-interface>/uirenewal/menuicon"
+
+The builder derives common chrome by modal pixel across the native old-button
+states, then paints one stable heart/cross glyph for normal, hover, and press.
 
 ## Deployment
 
 `AutoSupportUI.qjs` exposes the saved `$copyAutoSupportAssets` option. Its
 `onApplied` callback creates the target directories and copies the explicit
-107-file manifest with `System.Copy`.
+107-file UI manifest and 27-file `effect/roz_autosupport` manifest with
+`System.Copy`.
 
 Validate with:
 
