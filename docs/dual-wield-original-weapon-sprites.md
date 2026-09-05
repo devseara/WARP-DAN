@@ -1,29 +1,85 @@
 # Dual-Wield Original Weapon Sprites - Production Scope and Expansion Handoff
 
-## Authority
+Current authority: [old attack motion and held hilt-to-hand pixel-edge contact](dual-weapon-edge-contacts-20260905.md). Earlier acceptance records below are historical and keep their original scope.
 
-This is the single canonical dual-wield implementation and handoff document.
-The production source is:
+Installed EXE: `4e233893...58636c`. The old attack motion and angles are restored with anatomical equipment slots; held poses use measured opaque-pixel boundary contacts. Seventeen non-Drake dagger/sword/axe views on the female Assassin Cross body are profiled. `95674dba` was rejected for hand overlap and is backed up. Live acceptance of the new edge-contact build is pending.
 
-~~~text
-Scripts/Patches/AllowDualCustomWeaponSprites.qjs
-~~~
+Male expansion: [asset audit, original generic animation previews and implementation design](dual-weapon-male-assassin-research-20260905.md). Research confirms missing held source cells in directions 2–5 for nine original views; male support is not enabled.
 
-Older experiment documents were consolidated here and removed. Diagnostic
-aliases, build profiles, generated rigs, binaries, captures, and authoring
-workspaces are intentionally not retained in the clean repository scope.
+## Historical native-coordinate correction, 2026-09-05
 
-## GitHub Desktop large-diff warning
+The historical [native-coordinate correction](dual-weapon-native-coordinate-fix-20260905.md)
+records the earlier center-based implementation. Live fields prove file ACT center `(11,-27)` becomes native pair28 layer
+`(-20,-49)` by subtracting rounded half-image extents. Working sword/dagger uses
+the accepted legacy core. Native producer `0x00C40C20`, reached through
+CGameActor vtable `0x01094810 + 0x24`, adds +1 after scaling to the second edges,
+even when mirrored. The old synthetic fixture missed both contracts.
 
-The warning is expected for the current production QJS and does not indicate
-corruption. Each generated constant is defined once, but the file is 283,189
-bytes and stores binary payloads on very large single lines. GitHub Desktop
-declines to render that diff by default.
+The corrected reference basis is generated from the exact embedded legacy rig.
+Tests match 146 valid live layer records, execute 192 native projections, and
+reproduce 288/288 failing held reference-hand cases on the rejected payload.
+The initial temporary `4ac1a812…` DWCP passes those 288 cases; this is neither a
+deployed EXE hash nor live visual acceptance. Native channel5/6 routing bypasses
+attachment-anchor adjustment at `0x00605170`, so body anchors are not the cause
+of this current bug. The linked report separates the proven coordinate fix from
+the accepted reference correction and the separately unaccepted new weapon families.
 
-The replacement implementation must not keep this source layout. Use readable
-C/CSV/JSON as authority and a small QJS loader that reads one versioned binary
-payload through the proven `BinFile`/`ReadHex` API. The generated EXE remains
-self-contained; the payload is needed only while WARP builds it.
+## Prior resource fix authority — 2026-09-05
+
+[The resource fix and executable proof](dual-weapon-resource-fix-20260905.md)
+records the earlier ownership/patching work. The patch now adds a readable compositor and a versioned external payload
+for dual/off-hand original resources. It consumes the canonical DWR3 and DWC2,
+retains actual item view IDs, and tests both hand packets before suppressing stock.
+The earlier legacy core remains only for its exact accepted pair28 family.
+
+The [byte audit](dual-wield-byte-audit-20260905.md) describes the pulled,
+pre-fix implementation. Its pair28 gate and missing off-hand-only registration
+explain the reported generic sprites; its scope statements are historical now.
+Machine-code resource tests do not establish live coordinate, frame, angle, or
+occlusion acceptance. Non-pair28 poses remain marked unaccepted.
+
+## Live rejection and coordinate erratum — 2026-09-05
+
+The current pose-transfer candidate
+`34c98e38905dc45ce568617b409b88b8cf551a1d6fecb4670258a183b1c36a21`
+has **failed live placement testing**. The user reports off-hand-only sword and
+dagger misplaced in every direction, and dagger/dagger still incorrect; the
+latest screenshots show the reported displaced poses. Sword/dagger and reversed
+dagger/sword remain the reported working reference. Read the
+[rejected candidate record](dual-weapon-pose-transfer-20260905.md) for its exact
+hash, source, emitted examples, and test limitations.
+
+The documented held `actor_target` values are weapon-center coordinates in an
+actor basis; attack `packet_delta` values are offsets from a stock weapon packet
+center. Neither table supplies anatomical hand sockets on the job sprite.
+Subtracting source ACT layer centers does not establish that their selected SPR
+images share a hilt registration. Copying the tables into a different packet
+basis requires native transform evidence, not just matching CSV integers.
+
+The rejected pose-transfer regression uses synthetic packets based on raw ACT
+centers and SPR dimensions and sets `ctx[19]=0`, so it does not execute the
+accepted legacy pair28 renderer. The later live audit now proves the raw/native
+coordinate difference and the actual legacy family match. Its 208 unchanged pair28 draws and 96 matching off-only outputs
+prove calculated-output relationships within that harness; they do not prove
+live screen geometry or hand contact.
+
+The historical job-sprite conclusion below was too broad. A sign mismatch in
+its landmark fitting was also found and fixed: the old 37.553 px mean / 106.228 px
+maximum result is invalid as a consistent fit. The corrected values are
+31.908 / 107.055 px. Those results reject only the tested shared-origin,
+fixed-vector model. They do not reject separate per-hand/per-body-frame sockets
+and per-selected-image grips. See the
+[job-sprite audit](dual-weapon-job-sprite-audit-20260905.md) for source hashes,
+the independent regression, native ACT anchor evidence, and remaining options.
+
+## Historical handoff records
+
+The sections below preserve earlier experiments, source hashes, deleted
+artifact paths and live reports. Their dates do not establish that their
+implementation is present in the current patch. In particular, 85B's registry
+overrun and DWC2 bugs, pair25 framefix binaries, and claims that expansion is
+only a data task do not describe the current core. Use the current audit's
+hashes and addresses when reproducing its findings.
 
 ## Current handoff - stable boundary and recovery plan - 2026-08-29
 
@@ -76,7 +132,8 @@ source SHA-256: DDE205D43165B3D23BA69DF8D98072D3A00BB2280A2680EFDF35EED7082B6226
 runtime: 65,548 bytes / 441 relocations / 0 mismatches against 85B and F8E7
 verifier: tmp/recovered_dual/audit_candidate_relocations.py
 ~~~
-These faults explain why pair 28 works while the others do not. Pair 28 uses
+These are faults reported for the historical 85B/F8E7 lineage; they do not
+establish the cause in another binary. Pair 28 in that lineage uses
 accepted DWR3 values and identity corrections for views 34/45, so it does not
 depend on skipped/missing generalized correction paths. Other pairs rely on
 generated poses and per-view corrections that are incomplete or not executed.
@@ -1580,10 +1637,9 @@ resolving the ACT-editor duplication question above.
    start this until attack phase is fully live-accepted across all 8
    directions.
 5. Pairs 26/27/29/30 (states 7/8/11/13) have zero authored data of any kind.
-   The rig/runtime/build pipeline documented above is pair-agnostic and
-   already proven correct for state 6; extending to another pair is a data
-   task (repeat the ACT-editor + extraction + patch cycle for that pair's
-   state), not a code task.
+   This historical framefix pipeline is not the currently pulled core.
+   The current core rejects every pair except 28 before family lookup;
+   expanding it requires code and data changes. See the current byte audit.
 
 ## Job-sprite compositor investigation and its conclusion - 2026-09-01
 
@@ -1591,13 +1647,18 @@ A separate line of work this same day investigated whether a fundamentally
 different architecture -- computing hand placement from the job/gender body
 sprite plus a per-weapon hilt/tip landmark, instead of authoring a full
 per-pair pose table -- could eliminate the per-pair authoring cost entirely.
-Three independent hypotheses were tested against the accepted pair-28 attack
-data (128 cells), each with independent adversarial re-verification from a
-separate from-scratch parse of the source files. All three are closed:
+Three hypotheses were tested against the accepted pair-28 attack data
+(128 cells). The following is a historical summary. **2026-09-05 erratum:**
+independent source parsing did not catch the fitting/validation sign mismatch,
+and these tests did not examine a body compositor with separate hand sockets.
+The corrected experiment and scope are documented in the
+[job-sprite audit](dual-weapon-job-sprite-audit-20260905.md).
 
 1. **Rigid rotation of one fixed hilt/tip landmark per weapon view, onto a
-   shared socket.** Falsified. Mean error 37.55px / max 106.2px across all
-   128 cells. Proof, sign/convention-independent: for a fixed hand+frame, the
+   shared socket.** The tested model still fails. The historical reported
+   mean 37.55px / max 106.2px used inconsistent calibration/validation signs and
+   is superseded by **mean 31.908px / max 107.055px** across the same 128 cells.
+   The narrower radius argument remains sign/convention-independent: for a fixed hand+frame, the
    accepted CSV's own hand-to-anchor distance varies ~6-30px across the 8
    directions, and a rigid rotation can never change a fixed vector's
    magnitude -- this alone rules out the model regardless of getting angle
@@ -1647,16 +1708,21 @@ weapon-layer position vs. `layer1 + CSV_delta` reconstruction is exact in
 `layer0` (`body_guide`) tracks the torso and has no reliable correlation with
 either weapon's position.
 
-**Settled conclusion:** the job-sprite compositor's central premise --
-translation computed for free from a shared job/gender socket, eliminating
-per-pair authoring -- does not hold, in any form tested across all three
-hypotheses. The keepable results are: rotation matches the item's own baked
-ACT rotation in 116/128 cells, and mirror matches directly in all 128 --
-both real, free simplifications applicable to any future pair. Translation
-remains a per-pair-per-cell authored/extracted quantity, same cost as pair
-28 has today; the 28-vector correction compression above may aid
-*reproducing* an already-authored pair's data more compactly but does not
-remove the authoring step for a new one.
+**Historical conclusion, corrected 2026-09-05:** these experiments did not find
+an automatic fixed-vector or shared-reach model that reproduces the pair28
+weapon-center data. Rotation matches the item's baked ACT rotation in 116/128
+cells, and mirror matches directly in all 128; these remain observations on
+this dataset, not verified rules for every future pair.
+
+The previous assertion that translation necessarily retains the full per-pair
+cost was not established. `dual_socket_extract.py` used a shared pair-guide
+bitmap origin, not independently measured left/right hand sockets, and the
+fixed-view model did not key grips by the actual selected SPR image. Separate
+per-hand/per-body-frame sockets plus image-specific hilt/blade landmarks remain
+an untested architecture. The 28-vector compression only reproduces already
+authored data; it does not itself predict a new pair. Existing native body ACT
+samples have one anchor per frame, not two hand sockets. See the linked audit
+before treating this investigation as a limitation of all job-body compositors.
 
 **Repository state from this investigation:** `tools/dual_weapon_formats/`
 (promoted ACT/SPR/GRF readers, `weapontable.lub` parser, DWR3/DWC2 struct
@@ -1668,7 +1734,8 @@ reports (`tools/_stage1_validation_report.json`,
 `tools/dual_socket_extract.py`, `tools/dual_hilt_fit_validate.py`,
 `tools/fit_pivot_offset.py`) are committed in the same range. Production
 `AllowDualCustomWeaponSprites.qjs` (pair 28) was not touched by any of this
-work. No new runtime port has been started; the next step, if pursued, is a
-`prepare_hand` v2 built on the settled per-pair-translation +
-free-rotation/mirror model, validated against pair 28's own golden data
-before any new pair is attempted.
+work. At that historical point no runtime port had started; a `prepare_hand`
+v2 based on per-pair translation and observed rotation/mirror was proposed.
+That proposal was not proof that other architectures are impossible. Later
+readable-compositor and pose-transfer candidates are covered by the current
+authority and live-rejection erratum at the top of this document.

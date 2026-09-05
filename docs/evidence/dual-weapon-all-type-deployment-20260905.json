@@ -1,0 +1,19 @@
+{
+  "schema": "dual_weapon_all_type_deployment/v1",
+  "installed_at_utc": "2026-09-05T07:51:24.3391514Z",
+  "executable": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "candidate": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\dual_weapon_all_types\\client-all-types-candidate.exe",
+  "backup": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched_before_all_types_0bb06dbc.exe",
+  "previous_sha256": "0bb06dbc84d9e0a5df4fb3002b8946388d00158576ef18be74b3fbff754d4509",
+  "installed_sha256": "91b1690045634a07dae3b09c52a5564b8ae7895b16e53b1bb9235b2ed6bedeb8",
+  "backup_sha256": "0bb06dbc84d9e0a5df4fb3002b8946388d00158576ef18be74b3fbff754d4509",
+  "atomic_replace": true,
+  "live_placement_accepted": false,
+  "process_was_closed": true,
+  "installed_hook_hex_verified": {
+    "0xd403a0": "e9 eb 76 14 01",
+    "0x605d41": "e8 5a 1d 88 01 89 45 94 90",
+    "0xc4a0d0": "e9 eb 68 24 01 90",
+    "0xc4a647": "e9 54 63 24 01"
+  }
+}

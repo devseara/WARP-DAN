@@ -4,7 +4,7 @@ dual_hilt_fit_validate.py
 Stage-1 validation of the "socket + fixed per-view hilt landmark" dual-wield
 composition model:
 
-    predicted_delta(direction, frame, hand) = ROT(mirror, rotation) @ H_view
+    predicted_delta(direction, frame, hand) = -ROT(mirror, rotation) @ H_view
 
 where H_view is ONE fixed local landmark vector per weapon view (view 45 =
 sword = physical_hand 0, view 34 = dagger = physical_hand 1), ROT is a
@@ -35,6 +35,7 @@ This script:
   5. Writes tools/_stage1_validation_report.json.
 """
 import csv
+import hashlib
 import itertools
 import json
 import math
@@ -198,7 +199,9 @@ def fit_hand(hand, act_cells, pose_rows):
             cell = act_cells[(d, fr, hand)]
             target = pose_rows[(d, fr, hand)]
             M = build_linear_rows(cell['mirror'], cell['rotation_raw'], conv)
-            rows.append((M, (target['x'], target['y'])))
+            # T = socket - M*H, so packet_delta = T-socket = -M*H.
+            # Fit M*H against NEGATIVE delta to match the validation formula.
+            rows.append((M, (-target['x'], -target['y'])))
         sol = least_squares_2x2(rows)
         if sol is None:
             continue
@@ -304,6 +307,12 @@ def main():
     mean_error = sum(errors) / len(errors)
 
     report = {
+        'revision': '2026-09-05-fit-sign-correction',
+        'model_formula': 'packet_delta = -ROT(mirror, rotation) @ H_view',
+        'source_sha256': {
+            os.path.relpath(path, REPO_ROOT).replace('\\', '/'): hashlib.sha256(open(path, 'rb').read()).hexdigest()
+            for path in (ACT_PATH, SOCKET_PATH, POSE_PATH, __file__)
+        },
         'methodology': (
             "Socket = accepted-act layer1 (pair_guide) x/y per (direction,frame), extracted by "
             "tools/dual_socket_extract.py (report 1 established this, not layer0/body_guide, is the "
@@ -311,7 +320,7 @@ def main():
             "(one fixed (hx,hy) for view45/sword/hand0 and one for view34/dagger/hand1) was fit by "
             "least squares on 3 calibration cells per hand with distinct mirror+rotation combinations "
             "(direction,frame) = (0,0),(2,1),(4,2), using the ACT layer's own raw baked rotation and "
-            "mirror flag. 8 mirror-axis/order/rotation-sign conventions were brute-forced per hand "
+            "mirror flag. The fit targets negative CSV delta, matching T-socket=-R*H during validation. 8 distinct mirror-axis/order/rotation-sign conventions (16 equivalent parameter combinations) were brute-forced per hand "
             "(rotation direction and mirror application order are not pinned down by either research "
             "report); the convention minimizing calibration residual was kept. Predicted position = "
             "solve translation T = socket - R(mirror,rotation)*H_view, then re-expressed as a "
@@ -334,16 +343,10 @@ def main():
                 'calibration_sse_px2': fits[1]['calib_sse'],
             },
             'tip_point': (
-                "Not solved -- not needed for this translation-only check. The model as specified "
-                "predicts x/y purely from ROTATE(mirror,rotation) applied to a single hilt point plus "
-                "a solved translation; a tip point never enters that equation. A tip landmark would "
-                "matter for a DIFFERENT thing this pass does not test: verifying blade LENGTH/reach "
-                "is preserved under rotation (i.e. that hilt->tip vector magnitude stays constant "
-                "across all cells for a view, which is exactly the invariant this validation's error "
-                "numbers below show is violated -- see honest_assessment), or for any future feature "
-                "that needs the weapon's far endpoint (e.g. clash/collision checks, or a second "
-                "landmark to disambiguate rotation direction/scale if a single point + fixed length "
-                "assumption is added later)."
+                "Not solved or tested. This check compares a weapon-origin delta against one "
+                "fixed local hilt vector relative to a shared pair-guide origin. It measures "
+                "neither a hilt-to-tip vector nor actual anatomical hand positions, and cannot "
+                "reject per-hand body sockets with per-selected-image hilt/tip landmarks."
             ),
         },
         'baseline_raw_act_delta_vs_csv_by_frame': baseline_by_frame,

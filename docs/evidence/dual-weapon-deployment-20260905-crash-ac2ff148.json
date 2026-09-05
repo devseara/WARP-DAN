@@ -1,0 +1,8 @@
+{
+  "deployed": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "sha256": "ac2ff148fbcf41ad55347dad8f0606404117d6ccc12481b5faf67e88a4593efe",
+  "backup": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched_before_dual_fix_b06a69f9.exe",
+  "backup_sha256": "b06a69f923ca2992da80ba7993eeb162bf09d2ef094d6d30a593b5f08aa9146c",
+  "verification": "post-copy SHA-256 equals fully verified candidate; backup equals rebuild baseline",
+  "live_game_acceptance": false
+}

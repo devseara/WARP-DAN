@@ -1,0 +1,27 @@
+{
+  "schema": "dual_weapon_edge_contact_execution/v1",
+  "payload_sha256": "175162d22f030a730dc69805c6d07894633ef3376d2406ffa184b07a3d7ab016",
+  "native_pe_sha256": "95674dbae0b470c7cef7eade9580dea06038f337228d5f10753f1d73ff5d4220",
+  "cases": 15232,
+  "attack_draws": 15232,
+  "held_draws": 13056,
+  "maximum_geometry_or_contact_error": 0.00017657595911981327,
+  "maximum_local_pixel_penetration": 0.0001609719675319532,
+  "worst_penetration": [
+    47,
+    4,
+    0,
+    0,
+    2.3423,
+    15,
+    0.0001609719675319532
+  ],
+  "live_acceptance": false,
+  "limits": [
+    "Fist masks are local opaque pixels within three texels of manually reviewed palm points.",
+    "Held contact constraints do not replace native GPU depth/occlusion.",
+    "Old reference role geometry is retained with anatomical slot ownership; class-based slot sorting is not restored."
+  ],
+  "candidate_exe_sha256": "4e23389333cd873e3f136b48a67aa20f95d648c8a254318b6630b4266858636c",
+  "binary_evidence": "docs/evidence/dual-weapon-edge-contacts-binary-20260905.json"
+}

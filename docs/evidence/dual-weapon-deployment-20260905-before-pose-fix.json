@@ -1,0 +1,16 @@
+{
+  "installed": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "installed_sha256": "e8ebfd167601a1d550a48e65e449869b0d55f2ff2c40a592d165d19f4f733709",
+  "candidate": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\dual_weapon_resource_build\\2025-07-16_dual_originals_fixed_existing.exe",
+  "crashing_backup": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched_crash_ac2ff148.exe",
+  "crashing_backup_sha256": "ac2ff148fbcf41ad55347dad8f0606404117d6ccc12481b5faf67e88a4593efe",
+  "pre_dual_backup": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched_before_dual_fix_b06a69f9.exe",
+  "pre_dual_backup_sha256": "b06a69f923ca2992da80ba7993eeb162bf09d2ef094d6d30a593b5f08aa9146c",
+  "verified_before_deployment": [
+    "exact archived NX crash reproduced",
+    "replacement PE protection regression passes",
+    "full emitted payload/relocation comparison",
+    "old mapped sections preserved outside four hooks"
+  ],
+  "live_game_acceptance": "pending"
+}
