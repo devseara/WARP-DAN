@@ -129,10 +129,10 @@ CustomSkills:
             desc : Enables custom mercenary skills beyond the official list by loading definitions from lua files. Required for servers that add new mercenary abilities. Experimental.
 
         - CustomExtName:
-            title : Enable Custom Name Packets (QJS-only)
+            title : Enable 128-byte Character Names (QJS-only)
             recommend : no
             author : Louis T Steinhil
-            desc : "Routes packet 0x0BB7 to the EXTN ring, then guarded static frame and GDI call-site caves perform bounded exact-text substitution. Mob information uses the client's supported Group Title/ID row while the stock mob name remains separate. No CNameInfo mutation, text DLL, recv hook, or runtime patching is used."
+            desc : "Extends the 2025-07-16 client ACK-name receive path and EXTN exact-text bridge to 128-byte names. The 657-byte 0x0BB7 packet carries one canonical name field and guarded static adapters preserve the native handler contracts. Mob information still uses the client's supported Group Title/ID row while the stock mob name remains separate. No CNameInfo mutation, text DLL, recv hook, or runtime patching is used."
 
         - CustomColoredEnchantGradeName:
             title : Color Enchant Grade Prefixes (QJS-only)

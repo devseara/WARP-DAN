@@ -1,0 +1,100 @@
+/**************************************************************************\
+* Full guild names for Main 2025-07-16.                                     *
+* Description: Preserve native std::string ownership while reading the     *
+* 326-byte guild packet, 162-byte roster entries and 132-byte positions.     *
+* Every native overwrite is guarded against the profiled original bytes.   *
+\**************************************************************************/
+
+GuildNamesStatic = {};
+GuildNamesStatic.leaf = function(bytes, target)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(...bytes);
+	a.jmp(target);
+	return a;
+};
+GuildNamesStatic.install = function(state)
+{
+	if (ExtNameTextStatic.ActiveBuildDate !== 20250716 || state.guildNames128)
+		return state;
+	const patches = [
+		// Bias the guild packet pointer by one name expansion (104 bytes).
+		[0x00CE1F6A, "8B 75 08 8B 0D 00 18 25 01", function() {
+			return GuildNamesStatic.leaf([0x8B,0x75,0x08,0x83,0xC6,0x68,0x8B,0x0D,0x00,0x18,0x25,0x01],0x00CE1F73);
+		}],
+		// End of the full master-name content (127 bytes, plus its wire NUL).
+		[0x00CE1F91, "8D 46 76 C7 45 B4 00 00 00 00", function() {
+			return GuildNamesStatic.leaf([0x8D,0x82,0x7F,0x00,0x00,0x00,0xC7,0x45,0xB4,0,0,0,0],0x00CE1F9B);
+		}],
+		// The roster name is its last field. Only division and stride change.
+		[0x00CE37FA, "6A 00 6A 3A 0F BF 46 02", function() {
+			return GuildNamesStatic.leaf([0x6A,0,0x68,0xA2,0,0,0,0x0F,0xBF,0x46,0x02],0x00CE3802);
+		}],
+		[0x00CE3D58, "83 C7 3A 40 C7 85 78 FF FF FF 00 00 00 00", function() {
+			return GuildNamesStatic.leaf([0x81,0xC7,0xA2,0,0,0,0x40,0xC7,0x85,0x78,0xFF,0xFF,0xFF,0,0,0,0],0x00CE3D66);
+		}],
+		// Validate complete 132-byte position records before native iteration.
+		[0x00CE5489, "0F BF 71 02 83 EE 04 F7 E6 2B F2 D1 EE 03 F2 C1 EE 04", function() {
+			const a = ExtNameStaticAsm.asm();
+			a.emit(0x0F,0xB7,0x41,0x02,0x83,0xF8,0x04); a.jcc(0x82,0x00CE5693);
+			a.emit(0x83,0xE8,0x04,0x33,0xD2,0xBE); a.dword(132);
+			a.emit(0xF7,0xF6,0x85,0xD2); a.jcc(0x85,0x00CE5693);
+			a.emit(0x8B,0xF0); a.jmp(0x00CE549B); return a;
+		}],
+		// Reuse the old local as a full pointer, never a truncated name.
+		[0x00CE54C6, "8D 45 D4 50 66 0F D6 45 E4", function() {
+			return GuildNamesStatic.leaf([0x83,0xC0,0x04,0x89,0x45,0xD4,0x50],0x00CE54CF);
+		}],
+		[0x00CE5681, "83 C0 1C 89 7D B4", function() {
+			return GuildNamesStatic.leaf([0x05,0x84,0,0,0,0x89,0x7D,0xB4],0x00CE5687);
+		}]
+	];
+	const edits = [
+		[0x00CE1FBB,"6A 18","6A 7F"],
+		[0x00CE2205,"8D 45 D4","8D 46 C6"],
+		[0x00CE2282,"8D 45 D4","8D 46 C6"],
+		[0x00CE22DF,"8D 4D D4","8D 4E C6"],
+		[0x00CE22EE,"8D 45 D4","8D 46 C6"],
+		[0x00CE2213,"0F 10 46 2E","0F 10 46 C6"],
+		[0x00CE221C,"F3 0F 7E 46 3E","F3 0F 7E 46 D6"],
+		[0x00CE3995,"8D 47 30","8D 42 7F"],
+		[0x00CE39BF,"6A 18","6A 7F"],
+		[0x00CE5519,"8D 45 D4","8B 45 D4"],
+		[0x00CE565E,"8D 4D D4","8B 4D D4"],
+		[0x00CE566D,"8D 45 D4","8B 45 D4"]
+	];
+	// Pre-name scalar accesses must compensate for the ESI packet bias.
+	const scalars = [
+		[0x00CE2328,0x02],[0x00CE2330,0x06],[0x00CE233E,0x0A],
+		[0x00CE2346,0x0E],[0x00CE234E,0x12],[0x00CE2356,0x16],
+		[0x00CE235E,0x1A],[0x00CE2366,0x1E],[0x00CE236E,0x22],
+		[0x00CE2376,0x26],[0x00CE237E,0x2A],[0x00CE2381,0x02]
+	];
+	for (const scalar of scalars)
+	{
+		const opcode = scalar[0] >= 0x00CE237E ? [0xFF,0x76] : [0x8B,0x46];
+		edits.push([scalar[0],ExtNameStaticAsm.bytesToHex([...opcode,scalar[1]]),
+			ExtNameStaticAsm.bytesToHex([...opcode,(scalar[1]-104)&0xFF])]);
+	}
+	// Master GID follows the expanded guild name in 0x02F7.
+	edits.push([0x00CA54DE,"C3 81 5E 01","2B 82 5E 01"]);
+	for (const edit of edits)
+		edit.push(ExtNameStaticAsm.assertCode("guild field",edit[0],edit[1]));
+	for (const patch of patches)
+	{
+		patch.push(ExtNameStaticAsm.assertCode("guild bridge",patch[0],patch[1]));
+		patch.push(ExtNameTextStatic.allocateCode(patch[2]()));
+	}
+	const owner=Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag("GuildNamesStatic.NamePackets128"),true);
+	try {
+		for(const edit of edits) Exe.SetHex(edit[3],edit[2]);
+		for(const patch of patches) {
+			Exe.SetJMP(patch[3],patch[4].virAddr,0);
+			Exe.SetNOPs(patch[3]+5,patch[1].split(" ").length-5);
+		}
+	} finally { Exe.EndTag(); Exe.ActivePatch=owner; }
+	state.guildNames128=true;
+	return state;
+};

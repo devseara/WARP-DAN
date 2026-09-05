@@ -1,0 +1,88 @@
+/**************************************************************************\
+* Description: Canonical 128-byte RoDEX names for Main 2025-07-16.           *
+* Native std::string owners remain unchanged; wire fields and stack-owned  *
+* outgoing headers are expanded. No receive detour or display-name alias.  *
+\**************************************************************************/
+MailNamesStatic={};
+MailNamesStatic.request=function(copyVir,check)
+{
+	const a=ExtNameStaticAsm.asm();
+	a.emit(0x56,0x57,0x81,0xEC);a.dword(132);a.emit(0x8B,0xFC);
+	// Zero the complete packet, preserving the supplied name pointer in EDX.
+	a.emit(0x51,0x57,0x33,0xC0,0xB9);a.dword(33);a.emit(0xF3,0xAB,0x5F,0x59);
+	a.emit(0x66,0xC7,7);a.emit(check?0x97:0x08,check?0x0B:0x0A);
+	if(check){a.emit(0x8B,0x85);a.dword(-0x190);a.emit(0x8B,0x88);a.dword(0xB4);a.call(0x008210A0);a.emit(0x8B,0xD0);}
+	a.emit(0x85,0xD2);a.jcc(0x84,"copied");
+	// Reject an oversized input instead of silently changing its identity.
+	a.emit(0x33,0xC9);a.label("length");a.emit(0x80,0x3C,0x0A,0);a.jcc(0x84,"copy");a.emit(0x41,0x81,0xF9);a.dword(128);a.jcc(0x82,"length");a.jmp("done");
+	a.label("copy");a.emit(0x68);a.dword(128);a.emit(0x52,0x8D,0x47,2,0x50);a.call(copyVir);
+	a.label("copied");
+	if(check){
+		for(const pass of [0,1]){
+			a.emit(0x83,0xEC,24,0x8B,0xCC,0x8D,0x47,2,0x50);a.call(0x004E5330);
+			a.emit(0xB9);a.dword(0x015FA3C0);a.call(pass?0x00D71D80:0x00D71CE0);
+			if(!pass){a.emit(0x84,0xC0);a.jcc(0x84,"other");a.emit(0xB0,1);a.jmp("flag");a.label("other");}
+		}
+		a.label("flag");a.emit(0x88,0x87);a.dword(130);
+	}
+	a.call(0x00C14D60);a.emit(0x8B,0xC8,0x57,0x68);a.dword(check?131:130);a.call(0x00C14920);
+	a.label("done");a.emit(0x81,0xC4);a.dword(132);a.emit(0x5F,0x5E,0x33,0xC0);a.jmp(check?0x007CA69B:0x00C930AD);
+	return a;
+};
+MailNamesStatic.sendHeader=function(copyVir)
+{
+	const a=ExtNameStaticAsm.asm();
+	// This branch owns a fresh 276-byte header until the native vector copies it.
+	a.emit(0x81,0xEC);a.dword(276);a.emit(0x8B,0xF4,0x89,0xB5);a.dword(-0x10370);
+	a.emit(0x57,0x8B,0xFE,0x33,0xC0,0xB9);a.dword(69);a.emit(0xF3,0xAB,0x5F);
+	a.emit(0x66,0xC7,6);a.emit(0x6E,0x0A);
+	a.emit(0x8B,0x8D);a.dword(-0x10374);a.emit(0x8B,1,0x89,0x86);a.dword(272);
+	a.emit(0x8B,0x41,0x4C,0x99,0x89,0x86);a.dword(260);a.emit(0x89,0x96);a.dword(264);
+	for(const pair of [[0x2C,268,-0x10334],[0x44,270,-0x10332]]){
+		a.emit(0x0F,0xB7,0x41,pair[0],0x66,0x40,0x66,0x89,0x86);a.dword(pair[1]);a.emit(0x66,0x89,0x85);a.dword(pair[2]);
+	}
+	a.emit(0x83,0xC1,4);a.call(0x005D4140);a.emit(0x68);a.dword(128);a.emit(0x50,0x8D,0x46,4,0x50);a.call(copyVir);
+	a.emit(0xB9);a.dword(0x015FA3C0);a.call(0x00D7FE40);a.emit(0x68);a.dword(128);a.emit(0x50,0x8D,0x86);a.dword(132);a.emit(0x50);a.call(copyVir);
+	a.emit(0xC7,0x85);a.dword(-0x10408);a.dword(0);a.jmp(0x00C90A2F);return a;
+};
+MailNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.mailNames128)return state;
+	const edits=[[0x00CFA999,"BF 18 00 00 00","BF 7F 00 00 00"],
+		[0x007CA283,"83 F8 18 0F 8D","83 F8 7F 0F 8F"],
+		[0x007CA414,"83 F8 18 7C","83 F8 7F 7E"],
+		[0x00C90A5D,"8D 85 90 FC FE FF","8B 85 90 FC FE FF"]];
+	const copy=ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
+	const patches=[
+		[0x00CFA86A,"0F BF 7C 37 27",GuildNamesStatic.leaf([0x0F,0xB7,0xBC,0x37,0x8F,0,0,0],0x00CFA86F)],
+		[0x00CFA87B,"83 C0 29 03 C6",GuildNamesStatic.leaf([0x05,0x91,0,0,0,0x03,0xC6],0x00CFA880)],
+		[0x00CFA941,"83 C1 29 89 B5 90 FE FF FF",GuildNamesStatic.leaf([0x81,0xC1,0x91,0,0,0,0x89,0xB5,0x90,0xFE,0xFF,0xFF],0x00CFA94A)],
+		[0x00CFAB3F,"8B 4C 0A 23 03 C8",GuildNamesStatic.leaf([0x8B,0x8C,0x0A,0x8B,0,0,0,0x03,0xC8],0x00CFAB45)],
+		[0x00CFB066,"0F BF 44 37 27 83 C0 29",GuildNamesStatic.leaf([0x0F,0xB7,0x84,0x37,0x8F,0,0,0,0x05,0x91,0,0,0],0x00CFB06E)],
+		[0x00CFCC87,"80 7E 1A 01 75 42",(function(){const a=ExtNameStaticAsm.asm();a.emit(0x80,0xBE);a.dword(130);a.emit(1);a.jcc(0x85,"fail");a.jmp(0x00CFCC8D);a.label("fail");a.jmp(0x00CFCCCF);return a;})()],
+		[0x007CA2F9,"B8 97 0B 00 00",MailNamesStatic.request(copy.virAddr,true)],
+		[0x00C92042,"0F 57 C0 B8 08 0A 00 00",MailNamesStatic.request(copy.virAddr,false)],
+		[0x00C909A5,"8B 8D 8C FC FE FF",MailNamesStatic.sendHeader(copy.virAddr)],
+		[0x00C90A4A,"8D 85 D4 FC FE FF",GuildNamesStatic.leaf([0x8B,0x85,0x90,0xFC,0xFE,0xFF,0x05,0x14,1,0,0],0x00C90A50)],
+		[0x00C90A6F,"8B CF E8 CA 36 94 FF",(function(){const a=ExtNameStaticAsm.asm();a.emit(0x81,0xC4);a.dword(276);a.emit(0x8B,0xCF);a.call(0x005D4140);a.jmp(0x00C90A76);return a;})()]
+	];
+	for(const p of patches){p.push(ExtNameStaticAsm.assertCode("RoDEX name bridge",p[0],p[1]));p.push(ExtNameTextStatic.allocateCode(p[2]));}
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("RoDEX identity width",e[0],e[1]));
+	const entry=Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir,0x0AC2),CODE);
+	if(entry<0||Exe.GetUint32(entry)!==0x00CA988F)throw Error("MailNamesStatic: list dispatch changed");
+	const a=ExtNameStaticAsm.asm();
+	a.emit(0x60,0xBE);a.dword(routes.packetBufferVir);a.emit(0x0F,0xB7,0x5E,2,0x83,0xFB,5);a.jcc(0x82,"bad");
+	a.emit(0x81,0xFB);a.dword(32767);a.jcc(0x87,"bad");a.emit(0x83,0xEB,5,0x83,0xC6,5);
+	a.label("record");a.emit(0x85,0xDB);a.jcc(0x84,"valid");a.emit(0x81,0xFB);a.dword(146);a.jcc(0x82,"bad");
+	a.emit(0x0F,0xB7,0x96);a.dword(143);a.emit(0x83,0xFA,1);a.jcc(0x82,"bad");a.emit(0x83,0xFA,40);a.jcc(0x87,"bad");
+	a.emit(0x8D,0x82);a.dword(145);a.emit(0x3B,0xC3);a.jcc(0x87,"bad");a.emit(0x80,0x7C,0x06,0xFF,0);a.jcc(0x85,"bad");
+	a.emit(0x50,0x8D,0x7E,11,0xB9);a.dword(128);a.emit(0x33,0xC0,0xF2,0xAE,0x58);a.jcc(0x85,"bad");
+	a.emit(0x2B,0xD8,0x03,0xF0);a.jmp("record");
+	a.label("valid");a.emit(0x61,0x68);a.dword(routes.packetBufferVir);a.emit(0x8B,0xCF);a.call(0x00CFA6E0);a.jmp(routes.mainLoopReturnVir);
+	a.label("bad");a.emit(0x61);a.jmp(routes.mainLoopReturnVir);
+	const dispatch=ExtNameTextStatic.allocateCode(a);
+	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("MailNamesStatic.NamePackets128"),true);
+	try{for(const p of patches){Exe.SetJMP(p[3],p[4].virAddr,0);Exe.SetNOPs(p[3]+5,p[1].split(" ").length-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);Exe.SetUint32(entry,dispatch.virAddr);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.mailNames128=true;return state;
+};

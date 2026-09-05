@@ -1,0 +1,31 @@
+/**************************************************************************\
+* Description:128-byte whisper allow/deny names and ignore-list names for  *
+* Main2025-07-16, using native block state and network send ownership.      *
+\**************************************************************************/
+WhisperBlockNamesStatic={};
+WhisperBlockNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.whisperBlockNames128)return state;
+	const copy=ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ()).virAddr,patches=[],edits=[];
+	for(const spec of [[0x00C7A561,0],[0x00C7A605,1]])
+	{
+		const a=ExtNameStaticAsm.asm();a.emit(0x60,0x81,0xEC);a.dword(144);a.emit(0x8B,0xFC,0x33,0xC0,0xB9);a.dword(36);a.emit(0xF3,0xAB,0x8B,0xF4,0x8B,0x9C,0x24);a.dword(144);
+		a.emit(0x83,0x7B,20,16);a.jcc(0x82,"inline");a.emit(0x8B,0x1B);a.label("inline");a.emit(0x66,0xC7,6,0xCF,0,0xC6,0x86);a.dword(130);a.emit(spec[1]);
+		a.emit(0x68);a.dword(128);a.emit(0x53,0x8D,0x46,2,0x50);a.call(copy);a.call(0x00C14D60);a.emit(0x8B,0xC8,0x56,0x68);a.dword(131);a.call(0x00C14920);
+		a.emit(0x81,0xC4);a.dword(144);a.emit(0x61);a.jmp(0x00C7A5BF);
+		patches.push([ExtNameStaticAsm.assertCode("whisper block writer",spec[0],"83 7F 14 10 B8 CF 00 00 00"),9,ExtNameTextStatic.allocateCode(a).virAddr]);
+	}
+	for(const va of [0x00C7A52E,0x00C7A5D2])edits.push([ExtNameStaticAsm.assertCode("whisper block name length",va,"83 BB 28 01 00 00 18"),"83 BB 28 01 00 00 7F"]);
+	const phy=Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir,0xD4),CODE);
+	if(phy<0||Exe.GetUint32(phy)!==0x00CA1623)throw Error("WhisperBlockNamesStatic: ignore-list route changed");
+	const a=ExtNameStaticAsm.asm();a.emit(0x60,0x0F,0xB7,0x05);a.dword(routes.packetBufferVir+2);a.emit(0x83,0xF8,4);a.jcc(0x82,"done");a.emit(0x83,0xE8,4,0xA9);a.dword(127);a.jcc(0x85,"done");a.emit(0x8B,0xF0,0xC1,0xEE,7);
+		// Keep native localized header and native chat output, names literal.
+	for(const b of [0,0,0,0,3])a.emit(0x6A,b);a.emit(0xB9);a.dword(0x0131F4E8);a.call(0x00A4AD20);
+	a.emit(0xB8);a.dword(0xD43);a.emit(0x85,0xF6);a.jcc(0x84,"header");a.emit(0x40);a.label("header");a.emit(0x50);a.call(0x00A9ED30);a.emit(0x83,0xC4,4,0x6A,0,0x6A,0,0x68);a.dword(0xFFFF00);a.emit(0x50,0x6A,1,0xB9);a.dword(0x0131F4E8);a.call(0x00A4AD20);
+	a.emit(0xBB);a.dword(routes.packetBufferVir+4);a.label("loop");a.emit(0x85,0xF6);a.jcc(0x84,"done");a.emit(0x6A,0,0x6A,0,0x68);a.dword(0xFFFF00);a.emit(0x53,0x6A,1,0xB9);a.dword(0x0131F4E8);a.call(0x00A4AD20);a.emit(0x81,0xC3);a.dword(128);a.emit(0x4E);a.jmp("loop");a.label("done");a.emit(0x61);a.jmp(routes.mainLoopReturnVir);
+	const dispatch=ExtNameTextStatic.allocateCode(a);
+	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("WhisperBlockNamesStatic.NamePackets128"),true);
+	try{for(const p of patches){Exe.SetJMP(p[0],p[2],0);Exe.SetNOPs(p[0]+5,p[1]-5);}for(const e of edits)Exe.SetHex(e[0],e[1]);Exe.SetUint32(phy,dispatch.virAddr);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.whisperBlockNames128=true;return state;
+};

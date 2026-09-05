@@ -1,0 +1,41 @@
+/**************************************************************************\
+* Description: Canonical 128-byte chat-room member names in Main           *
+* 2025-07-16. Preserve native dynamic lists and owner/leave semantics.       *
+\**************************************************************************/
+ChatRoomNamesStatic={};
+ChatRoomNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.chatRoomNames128)return state;
+	const patches=[],edits=[],leaf=(v,h,b,e)=>patches.push([v,h,()=>GuildNamesStatic.leaf(b,e)]);
+	const nop=(v,h)=>edits.push([v,h,h.split(" ").map(()=>"90").join(" ")]);
+	leaf(0x00CBBF44,"0F BF 77 02 83 EE 08 F7 E6 2B F2 D1 EE 03 F2 C1 EE 04",[0x0F,0xB7,0x77,2,0x83,0xEE,8,0x8B,0xC6,0x33,0xD2,0xB9,132,0,0,0,0xF7,0xF1,0x8B,0xF0],0x00CBBF56);
+	leaf(0x00CBC17E,"83 C6 1C C7 45 88 00 00 00 00",[0x81,0xC6,132,0,0,0,0xC7,0x45,0x88,0,0,0,0],0x00CBC188);
+	for(const v of [0x00CBBFC1,0x00CBBFF0])edits.push([v,"8D 45 D4","8D 46 04"]);
+	for(const e of [[0x00CBBFC4,"0F 10 46 04"],[0x00CBBFC8,"C6 45 EC 00"],[0x00CBBFCF,"0F 11 45 D4"],[0x00CBBFD3,"F3 0F 7E 46 14"],[0x00CBBFD8,"66 0F D6 45 E4"]])nop(...e);
+	// New entry: use the full wire name in the native member UI and notice.
+	for(const e of [[0x00CA18EE,"0F 10 05 9C 81 5E 01"],[0x00CA18FA,"C6 85 44 FF FF FF 00"],[0x00CA1901,"0F 11 85 2C FF FF FF"],[0x00CA1908,"F3 0F 7E 05 AC 81 5E 01"],[0x00CA1910,"66 0F D6 85 3C FF FF FF"]])nop(...e);
+	edits.push([0x00CA1970,"8D 8D 2C FF FF FF","B9 9C 81 5E 01 90"],[0x00CA198B,"8D 85 2C FF FF FF","B8 9C 81 5E 01 90"]);
+	// Exit: full identity comparison and the relocated kicked flag.
+	leaf(0x00CA19F4,"0F 10 05 9C 81 5E 01 B9 C0 A3 5F 01 C6 45 EC 00 8D 75 D4 0F 11 45 D4 F3 0F 7E 05 AC 81 5E 01 66 0F D6 45 E4",[0xB9,0xC0,0xA3,0x5F,1,0xBE,0x9C,0x81,0x5E,1],0x00CA1A18);
+	leaf(0x00CA1AA0,"8D 4D D4 6A 00",[0xB9,0x9C,0x81,0x5E,1,0x6A,0],0x00CA1AA5);
+	for(const v of [0x00CA1ACD,0x00CA1AD8])leaf(v,v===0x00CA1ACD?"8D 45 D4 50 68 B5 00 00 00":"8D 45 D4 50 68 B4 00 00 00",[0xB8,0x9C,0x81,0x5E,1,0x50,0x68,v===0x00CA1ACD?0xB5:0xB4,0,0,0],v+9);
+	edits.push([0x00CA1AB8,"0F B6 05 B4 81 5E 01","0F B6 05 1C 82 5E 01"]);
+	// Owner change is an ID-free full-name key into native room members.
+	for(const e of [[0x00CA1B4A,"0F 10 05 9E 81 5E 01"],[0x00CA1B5D,"C6 85 B8 FE FF FF 00"],[0x00CA1B64,"0F 11 85 A0 FE FF FF"],[0x00CA1B71,"F3 0F 7E 05 AE 81 5E 01"],[0x00CA1B79,"66 0F D6 85 B0 FE FF FF"]])nop(...e);
+	edits.push([0x00CA1B6B,"8D 95 A0 FE FF FF","BA 9E 81 5E 01 90"]);
+	// Modern trade request: name128 followed by requesterID and base level.
+	for(const e of [[0x00CA1C63,"0F 10 05 9A 81 5E 01"],[0x00CA1C71,"88 85 60 FF FF FF"],[0x00CA1C77,"0F 11 85 48 FF FF FF"],[0x00CA1C7E,"F3 0F 7E 05 AA 81 5E 01"],[0x00CA1C86,"66 0F D6 85 58 FF FF FF"]])nop(...e);
+	edits.push([0x00CA1C93,"0F BF 0D B6 81 5E 01","0F BF 0D 1E 82 5E 01"],[0x00CA1C9D,"FF 35 B2 81 5E 01","FF 35 1A 82 5E 01"]);
+	for(const v of [0x00CA1CA5,0x00CA1CBA])edits.push([v,"8D 8D 48 FF FF FF","B9 9A 81 5E 01 90"]);
+	edits.push([0x00CA1CCC,"8D 85 48 FF FF FF","B8 9A 81 5E 01 90"]);
+	for(const p of patches){p.push(ExtNameStaticAsm.assertCode("room name bridge",p[0],p[1]));p.push(ExtNameTextStatic.allocateCode(p[2]()));}
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("room canonical pointer",e[0],e[1]));
+	const phy=Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir,0xDB),CODE);
+	if(phy<0||Exe.GetUint32(phy)!==0x00CA18DD)throw Error("ChatRoomNamesStatic: room list route changed");
+	const a=ExtNameStaticAsm.asm();a.emit(0x0F,0xB7,0x05);a.dword(routes.packetBufferVir+2);a.emit(0x83,0xF8,8);a.jcc(0x82,"done");a.emit(0x83,0xE8,8,0x33,0xD2,0xB9);a.dword(132);a.emit(0xF7,0xF1,0x85,0xD2);a.jcc(0x85,"done");a.emit(0x68);a.dword(routes.packetBufferVir);a.emit(0x8B,0xCF);a.call(0x00CBBDE0);a.label("done");a.jmp(routes.mainLoopReturnVir);
+	const route=ExtNameTextStatic.allocateCode(a);
+	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("ChatRoomNamesStatic.NamePackets128"),true);
+	try{for(const p of patches){Exe.SetJMP(p[3],p[4].virAddr,0);Exe.SetNOPs(p[3]+5,p[1].split(" ").length-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);Exe.SetUint32(phy,route.virAddr);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.chatRoomNames128=true;return state;
+};

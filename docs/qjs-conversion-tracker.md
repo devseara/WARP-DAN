@@ -22,7 +22,7 @@ Status meanings:
 | RO Global Zero Inventory | Working | QJS-only window/tab/tooltip caves, anchored balloons, a reserved row matching ordinary/locked-Personal backgrounds, and a live comma-formatted Zeny/weight panel. Confirmed in game on the 2025-07-16 client. |
 | RO Global Zero Basic Information HUD | Implemented, live AP test required | QJS-only compact `UIBasicInfoWnd` branches render a 252x74 composite with the supplied unscaled 194x50 frame, 182px-clipped HP/SP/yellow-AP fills, and an outlined bold Base Level/name matching hovered world names. AP/MAXAP reuse the client stat map populated by `AllowAPBarforAllJobs`, with an authoritative 200 fallback only when MAXAP is absent. A cloned native `UIJobIconButton` child owns the screenshot-proportioned 66x66 `big2` Job icon, clipping, z-order, lifecycle, and Job/gauge hover routing. |
 | Always-show NPC names | Working | QJS-only bounded EXTN balloon renderer and static `/shownpcname`, with live-confirmed one-byte persistence in `savedata/shownpcname.dat`. |
-| Extended names | Working | QJS-only EXTN ring drain feeds a bounded exact-text map. Mob details use the official `0x0ADF` Group Title/ID row above the independently rendered stock mob name. |
+| Extended names | User reports working (2026-09-06) | See the single [canonical-name guide](../../BanquetOfHeroes/doc/extended-names.md). |
 | Player-name colors | Working | QJS-only EXTN exact-text entries apply RGB around matching non-shadow player-name draws and restore the original GDI color afterward. |
 | Item-name colors | Working for accepted 2025/2026 vectors | QJS-only `0x0BDD` ICOL/ICL2 drain, bounded ItemId/name/grade tables, anchored slotless/slotted Inventory grammar, conditional native post-grade endpoint gates, and a non-splitting static TextOutW bridge. The 2026 ItemId vector is live-confirmed across Inventory/Equipment, one-line and wrapped Alt+Q, Item Description, hover balloon, and ground-item title, including duplicate display names and the restored stock item-balloon outline. A matching grade color wins the complete decorated title, grade quantities are omitted, and window-title dark draws are suppressed. The full two-client grade/custom-label/order matrix remains a separate acceptance gate. See the normative renderer contract; do not use split spans or cross-call grade continuation. |
 | Fluent emoji | Working (NPC menus) | QJS-only manifest table and EXE-resident GDI+ draw/measure caves support `:shortcode:`, compact `@shortcode@`, and raw Unicode aliases. Compact menu icons, sizing, colors, and mixed text/icon rows are live-confirmed; no custom DLL or API detour is used. |
@@ -213,22 +213,9 @@ Current client/server wire contract (2026-08-12):
 - [x] Confirm `/font` disabled/enabled placement and all tested resolutions.
 - [x] Confirm Alt+Tab, client exit, and repeated enable/disable have no crashes.
 
-## Extended names and player-name colors checklist
+## Extended names and player-name colors
 
-- [x] Reuse the dispatcher-table `0x0BB7` EXTN ring without a recv/read-path hook.
-- [x] Chain the EXTN text-map frame with the original updater and NPC-name frame.
-- [x] Keep `CNameInfo` ownership untouched; the dual native ACK-name experiment was rejected after corrupting the client's name/UI object state.
-- [x] Support legacy `233/237` and V3 `773/777` EXTN packet layouts.
-- [x] Use a bounded exact-text map and guarded static GDI call-site bridges for names and player colors.
-- [x] Reject dual ACK-name packets, direct `CNameInfo` mutation and multiline name replacement after live tests exposed corruption, crashes and one-row clipping.
-- [x] Put the compact mob-info string in official `0x0ADF.title`, the element icon in `groupId`, and retain the stock mob name in `name`.
-- [x] Expand the official 24-byte title through EXTN's exact short-title to long-title mapping.
-- [x] Keep the original server-wide `show_mob_info` disabled; use the persisted per-character `@showmobinfo` bitmask.
-- [x] Remove `ExtNameVisualInit` and `PlayerNameColorVisualInit` imports.
-- [x] Disable EXTN/player-color workers and maps in the combined DLL build.
-- [x] Confirm long PC, mob, NPC, portal, party, guild, position and title text in game.
-- [x] Confirm player RGB colors, black shadow behavior and color reset in game.
-- [x] Confirm login bursts, map changes, warps, F12, Alt+Tab and clean exit.
+See the single [canonical-name guide](../../BanquetOfHeroes/doc/extended-names.md).
 
 ## Item-name colors checklist
 

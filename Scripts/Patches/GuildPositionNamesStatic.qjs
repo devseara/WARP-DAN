@@ -1,0 +1,41 @@
+/**************************************************************************\
+* Description: Canonical128-byte guild-position updates, native144-byte     *
+* wire records and a private4KB outgoing packet in Main2025-07-16.          *
+\**************************************************************************/
+GuildPositionNamesStatic={};
+GuildPositionNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.guildPositionNames128)return state;
+	const patches=[],edits=[],leaf=(v,h,b,e)=>patches.push([v,h,()=>GuildNamesStatic.leaf(b,e)]);
+	leaf(0x00CDD743,"F7 E1 8B C2 C1 E8 05",[0x8B,0xC1,0x33,0xD2,0xB9,144,0,0,0,0xF7,0xF1],0x00CDD74A);
+	leaf(0x00CDD77D,"8D 45 D4 50 0F 11 8D 74 FF FF FF",[0x83,0xC0,16,0x89,0x45,0xD4,0x50],0x00CDD788);
+	for(const v of [0x00CDD7E0,0x00CDD951])edits.push([v,"8D 45 D4","8B 45 D4"]);
+	edits.push([0x00CDD93F,"8D 55 D4","8B 55 D4"]);
+	for(const e of [[0x00CDD769,"C6 45 EC 00"],[0x00CDD76D,"0F 10 48 10"],[0x00CDD778,"F3 0F 7E 40 20"],[0x00CDD788,"66 0F D6 45 84"],[0x00CDD78D,"0F 11 4D D4"],[0x00CDD791,"66 0F D6 45 E4"]])edits.push([e[0],e[1],e[1].split(" ").map(()=>"90").join(" ")]);
+	leaf(0x00CDDB76,"83 C0 28 C7 45 A4 00 00 00 00",[0x05,144,0,0,0,0xC7,0x45,0xA4,0,0,0,0],0x00CDDB80);
+	// Complete outgoing packet:20 records require2884 bytes, not old2KB.
+	edits.push([0x00C8E930,"B9 00 08 00 00","B9 00 10 00 00"]);
+	leaf(0x00C8E941,"8D 04 80 8D 04 C5 04 00 00 00",[0x69,0xC0,144,0,0,0,0x83,0xC0,4],0x00C8E94B);
+	patches.push([0x00C8E961,"8B 85 7C FC FE FF 89 85 D0 5E FF FF",function(){
+		const a=ExtNameStaticAsm.asm();a.emit(0x81,0xEC);a.dword(4096);a.emit(0x8B,0xFC,0x33,0xC0,0xB9);a.dword(1024);a.emit(0xF3,0xAB,0x8B,0xC4,0x89,0x85);a.dword(0xFFFF5ED0);
+		a.emit(0x8B,0x8D);a.dword(0xFFFEFC7C);a.emit(0x89,8);a.jmp(0x00C8E96D);return a;
+	}]);
+	leaf(0x00C8E982,"8D BD D4 5E FF FF 0F 1F 84 00 00 00 00 00",[0x8B,0xBD,0xD0,0x5E,0xFF,0xFF,0x83,0xC7,4],0x00C8E990);
+	const copy=ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ()).virAddr;
+	patches.push([0x00C8E9DE,"6A 17 50 8D 85 FC 24 FF FF",function(){
+		const a=ExtNameStaticAsm.asm();a.emit(0x68);a.dword(128);a.emit(0x50,0x8D,0x47,16,0x50);a.call(copy);
+		a.emit(0x0F,0x10,0x85);a.dword(0xFFFF24EC);a.emit(0x0F,0x11,7,0x81,0xC7);a.dword(144);a.jmp(0x00C8EA1D);return a;
+	}]);
+	edits.push([0x00C8EA9E,"8D 8D D0 5E FF FF","8B 8D D0 5E FF FF"]);
+	leaf(0x00C8EAB6,"33 C0 E9 F0 45 00 00",[0x81,0xC4,0,16,0,0,0x33,0xC0],0x00C930AD);
+	for(const p of patches){p.push(ExtNameStaticAsm.assertCode("guild position names",p[0],p[1]));p.push(ExtNameTextStatic.allocateCode(p[2]()));}
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("guild position field",e[0],e[1]));
+	const phy=Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir,0x174),CODE);
+	if(phy<0||Exe.GetUint32(phy)!==0x00CA58FE)throw Error("GuildPositionNamesStatic: position ACK route changed");
+	const a=ExtNameStaticAsm.asm();a.emit(0x0F,0xB7,0x05);a.dword(routes.packetBufferVir+2);a.emit(0x83,0xF8,4);a.jcc(0x82,"done");a.emit(0x83,0xE8,4,0x33,0xD2,0xB9);a.dword(144);a.emit(0xF7,0xF1,0x85,0xD2);a.jcc(0x85,"done");a.emit(0x68);a.dword(routes.packetBufferVir);a.emit(0x8B,0xCF);a.call(0x00CDD6F0);a.label("done");a.jmp(routes.mainLoopReturnVir);
+	const route=ExtNameTextStatic.allocateCode(a);
+	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("GuildPositionNamesStatic.NamePackets128"),true);
+	try{for(const p of patches){Exe.SetJMP(p[3],p[4].virAddr,0);Exe.SetNOPs(p[3]+5,p[1].split(" ").length-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);Exe.SetUint32(phy,route.virAddr);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.guildPositionNames128=true;return state;
+};

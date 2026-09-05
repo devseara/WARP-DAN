@@ -1,0 +1,44 @@
+/**************************************************************************\
+* Description: Own full128-byte names in modern party-request queues for   *
+* Main2025-07-16. Native call records carry pointers; queued nodes own their *
+*128-byte string until the synchronous dialog has copied its text.         *
+\**************************************************************************/
+ModernPartyNamesStatic={};
+ModernPartyNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.modernPartyNames128)return state;
+	const patches=[],edits=[],leaf=(v,h,b,e)=>patches.push([v,h,()=>GuildNamesStatic.leaf(b,e)]);
+	// Packet name begins10; coordinates move from34/36 to138/140.
+	leaf(0x00CA2464,"6A 18 8D 85 E8 FD FF FF 68 A2 81 5E 01 50 FF 15 1C 1B FC 00",[0x83,0xEC,12],0x00CA2478);
+	edits.push([0x00CA2478,"0F B7 05 BC 81 5E 01","0F B7 05 24 82 5E 01"],[0x00CA2490,"0F B7 05 BA 81 5E 01","0F B7 05 22 82 5E 01"],[0x00CA2498,"8D 85 E8 FD FF FF","B8 A2 81 5E 01 90"],[0x00CA2488,"C6 85 00 FE FF FF 00","90 90 90 90 90 90 90"]);
+	// The native36-byte UI call record is now pointer/padding/IDs/coords.
+	// Its former24-byte inline-name storage never contains a truncated name.
+	leaf(0x00785EBF,"8B 45 0C 57 68 E8 35 FD 00 6A FF 89 45 E4 8D 45 CC 6A 18 50 89 4D E8 E8 15 6F E1 FF",
+		[0x8B,0x45,12,0x89,0x45,0xE4,0x89,0x4D,0xE8,0x0F,0x57,0xC0,0x0F,0x11,0x45,0xCC,0x66,0x0F,0xD6,0x45,0xDC,0x89,0x7D,0xCC,0x83,0xEC,20],0x00785EDB);
+	// Node44 retains its existing fields; its appended128-byte name is owned
+	// by the node. This avoids any packet-buffer lifetime dependency.
+	leaf(0x00785F4A,"6A 2C C7 45 C8 00 00 00 00",[0x68,172,0,0,0,0xC7,0x45,0xC8,0,0,0,0],0x00785F53);
+	const copy=ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ()).virAddr;
+	patches.push([0x00785F76,"C7 45 FC 01 00 00 00",function(){
+		const a=ExtNameStaticAsm.asm();a.emit(0x60,0x68);a.dword(128);a.emit(0xFF,0x72,8,0x8D,0x42,44,0x50);a.call(copy);
+		a.emit(0x61,0x8D,0x42,44,0x89,0x42,8,0xC7,0x45,0xFC,1,0,0,0);a.jmp(0x00785F7D);return a;
+	}]);
+	// Match sized-delete for owned queue nodes, not the original44-byte head.
+	patches.push([0x00781652,"6A 2C 50 E8 25 A6 63 00",function(){const a=ExtNameStaticAsm.asm();a.emit(0x68);a.dword(172);a.emit(0x50);a.call(0x00DBBC7F);a.jmp(0x0078165A);return a;}]);
+	leaf(0x00781ED4,"6A 2C 8B 30 56",[0x68,172,0,0,0,0x8B,0x30,0x56],0x00781ED9);
+	leaf(0x00781F24,"6A 2C 8B 10 52",[0x68,172,0,0,0,0x8B,0x10,0x52],0x00781F29);
+	// Native dialog copies the complete pointed-to name into its text owner.
+	leaf(0x00787702,"FF B5 D8 F9 FF FF 68 32 0D 00 00",[0x8B,0x85,0xD8,0xF9,0xFF,0xFF,0xFF,0x30,0x68,0x32,0x0D,0,0],0x0078770D);
+	// These three unwind funclets belong specifically to the grown queue
+	// node constructor; shared44-byte head/template cleanup stays unchanged.
+	const cleanup=ExtNameStaticAsm.asm();cleanup.emit(0x8B,0x45,0xC8,0x85,0xC0);cleanup.jcc(0x84,"done");cleanup.emit(0x68);cleanup.dword(172);cleanup.emit(0x50);cleanup.call(0x00DBBC7F);cleanup.emit(0x83,0xC4,8);cleanup.label("done");cleanup.emit(0xC3);
+	const cleanupCode=ExtNameTextStatic.allocateCode(cleanup);
+	for(const s of [[0x00E7EB60,"8D 4D C4 E9 68 22 90 FF"],[0x00E7EB68,"8D 4D C4 E9 B0 22 90 FF"],[0x00E7EB70,"8D 4D C4 E9 58 22 90 FF"]])
+		patches.push([s[0],s[1],()=>GuildNamesStatic.leaf([],cleanupCode.virAddr)]);
+	for(const p of patches){p.push(ExtNameStaticAsm.assertCode("modern party owned name",p[0],p[1]));p.push(ExtNameTextStatic.allocateCode(p[2]()));}
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("modern party field",e[0],e[1]));
+	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("ModernPartyNamesStatic.NamePackets128"),true);
+	try{for(const p of patches){Exe.SetJMP(p[3],p[4].virAddr,0);Exe.SetNOPs(p[3]+5,p[1].split(" ").length-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.modernPartyNames128=true;return state;
+};

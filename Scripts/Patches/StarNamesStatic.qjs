@@ -1,0 +1,34 @@
+/**************************************************************************\
+* Full 128-byte Star Gladiator/TaeKwon target names for Main 2025-07-16.     *
+* Description: Consume the complete 136-byte ZC_STARSKILL packet. Bias the  *
+* native packet cursor past the enlarged name, restore its original name   *
+* pointer at text consumers, and retain native dynamic-string ownership.   *
+\**************************************************************************/
+StarNamesStatic={};
+StarNamesStatic.install=function(state)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.starNames128)return state;
+	const begin=ExtNameStaticAsm.assertCode("Star packet cursor",0x00CD967E,"8B 5D 08 C7 85 B4 FD FF FF 00 00 00 00");
+	const a=ExtNameStaticAsm.asm();
+	a.emit(0x8B,0x5D,8,0x83,0xC3,104,0xC7,0x85,0xB4,0xFD,0xFF,0xFF,0,0,0,0);a.jmp(0x00CD968B);
+	const bridge=ExtNameTextStatic.allocateCode(a);
+	// Target-of-Sun/Moon/Stars must use the authoritative packet name, not
+	// the client's localized monster database lookup. Preserve its ret8 ABI.
+	const target=ExtNameStaticAsm.asm();target.emit(0x8D,0x40,0x9A,0xC2,8,0);
+	const targetName=ExtNameTextStatic.allocateCode(target);
+	const targetSites=[ExtNameStaticAsm.assertCode("Star target name",0x00CD9838,"E8 03 23 08 00"),ExtNameStaticAsm.assertCode("Star target name",0x00CD9892,"E8 A9 22 08 00")];
+	const edits=[
+		[0x00CD972A,"8D 4B 02","8D 4B 9A"],
+		[0x00CD9770,"8D 4B 02","8D 4B 9A"],
+		[0x00CD991A,"8D 4B 02","8D 4B 9A"],
+		[0x00CD9988,"8D 43 02","8D 43 9A"]
+	];
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("Star full-name pointer",e[0],e[1]));
+	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("StarNamesStatic.NamePackets128"),true);
+	try{
+		Exe.SetJMP(begin,bridge.virAddr,0);Exe.SetNOPs(begin+5,8);
+		for(const e of edits)Exe.SetHex(e[3],e[2]);
+		for(const site of targetSites)Exe.SetCALL(site,targetName.virAddr,0);
+	}finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.starNames128=true;return state;
+};

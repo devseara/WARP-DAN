@@ -70,29 +70,10 @@
 
 3. **Alternative for `0x00A27AA9`**: Hook the three CALL sites to `0x00A27A30` directly (`0x0082666A`, `0x009AA080`, `0x009AA178`) instead of hooking inside `0x00A27A30`. Each caller gets its own helper with a different color. This avoids conditional branching inside the helper.
 
-## Current Extended Name Setup (2026-06-01)
+## Extended names
 
-This is the single supported extended-name setup going forward. We are dropping the runtime `ws2_32.recv` path to keep the client closer to the Rune System model and safer for Gepard-style restrictions.
-
-- **Only WARP patch to select**: `CustomExtName`.
-- **What `CustomExtName` does**: installs the static `RecvStrip0BB6` EXE patch, then adds a user-named visual DLL through `CustomDLL.applySpec()`, mirroring `CustomRuneSystem`.
-- **No runtime recv or custom text DLL**: `CustomExtName` uses only the static EXTN dispatcher and EXE-resident text bridge.
-- **Visual DLL role**: `boh_extname_visual.dll` owns GDI text substitution and reads the WARP `EXTN` shared block. It should not install a runtime `ws2_32.recv` hook.
-- **Packet source config**: `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\ddraw_proxy.ini` uses:
-  ```ini
-  [CustomItemColors]
-  PacketSource=shared
-  DebugLog=0
-  ```
-- **Logging default**: DLL logging is intentionally quiet to prevent render-loop lag. Enable with `DebugLog=1` or `BOH_EXTNAME_VISUAL_LOG=1` only while debugging.
-- **Server packet**: `0x0BB7` is a separate side packet with `packetLength` and `magic = 0x4558544E` (`EXTN`). Current packed size is 233 bytes.
-- **Stock packet rule**: Official spawn/idle/walk packets must keep stock `NAME_LENGTH` 24-byte names. Do not expand those packets to `SPAWN_NAME_LENGTH` when custom extended names are enabled.
-- **Feature gates**: `feature.custom_extended_name_packet: on` and `feature.custom_item_color_packet: on` send both custom side packets (`0x0BB7` extname + `0x0BB6` item colors) through the same static/shared client path.
-- **Map-change result**: `@warp` / `@mapmove` works when custom packets are stripped before the stock parser sees them, `0x0BB7` has `packetLength + EXTN`, and official packets stay stock-sized.
-- **Gepard-safe direction**: This is the Gepard-oriented path. It is not injector-style DLL injection; the visual DLL is a normal startup import.
-- **Rune DLL safety note**: `CustomRuneSystem` uses a normal startup import with a user-selected DLL filename and local UI hooks. That is much closer to Gepard-safe than a runtime network hook. No WARP/DLL approach is guaranteed against Gepard integrity policy until tested, but the risky extname part was the runtime `ws2_32.recv` hook, not the CustomDLL import mechanism itself.
-- **Static stub status**: `WARP0716-main/Scripts/Patches/RecvStrip0BB6.qjs` is the required transport underneath `CustomExtName` and was updated for the current 233-byte `0x0BB7` length+`EXTN` packet.
-- **Log archive**: The noisy pre-quiet log is `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\boh_extname_visual.before-quiet-log.20260601-174445.log`.
+See [128-byte canonical names](../../BanquetOfHeroes/doc/extended-names.md), the single maintained guide.
+Older mixed-feature experiments below are historical, not the current name contract.
 
 ## Current Color Patch Setup
 
@@ -248,34 +229,6 @@ Implemented server-side control via custom packet `ZC_ITEM_COLOR_LIST` (0x0BB6).
 | Server packet structs | `BanquetOfHeroes/src/map/packets_struct.hpp` |
 | Server item send logic | `BanquetOfHeroes/src/map/clif.cpp` (clif_additem, clif_item_equip) |
 
-## Extended Name Packet (0x0BB7)
-
-Custom server-to-client side packet that sends extended display names, guild, party, and position info alongside the standard 24-byte name packets (0x0A30/0x0ADF/etc.). WARP `CustomExtName` strips/parses `0x0BB7` in the static EXE recv path and writes it to the shared `EXTN` block; `boh_extname_visual.dll` then substitutes names during GDI text rendering.
-
-### Packet Structure (`PACKET_ZC_EXT_NAME`)
-
-```cpp
-struct PACKET_ZC_EXT_NAME {
-    uint16 packetType;           // 0x0BB7
-    uint16 packetLength;         // sizeof(PACKET_ZC_EXT_NAME), currently 233
-    uint32 magic;                // 0x4558544E ('EXTN')
-    uint32 gid;
-    char shortName[NAME_LENGTH];     // 24 bytes — truncated name (as sent in 0x0a30)
-    char name[DISPLAY_NAME_LENGTH];  // 31 bytes — extended display name
-    char party_name[DISPLAY_NAME_LENGTH];      // extended party name
-    char guild_name[DISPLAY_NAME_LENGTH];      // extended guild name
-    char position_name[DISPLAY_NAME_LENGTH];   // extended guild position name
-    char party_name_short[NAME_LENGTH];
-    char guild_name_short[NAME_LENGTH];
-    char position_name_short[NAME_LENGTH];
-    uint8 type;                  // 0=PC, 1=MOB, 2=NPC
-} __attribute__((packed));       // Total: 233 bytes
-```
-
-`packetLength + EXTN` are required so the DLL can distinguish a real complete custom packet from partial TCP data during login/map changes. This is what fixed the old `@warp` / `@mapmove` stuck behavior together with keeping official packets stock-sized.
-
-### Entity Type Handling
-
 ## Rune System Integration Notes (2026-05-31)
 
 - Imported the base Rune System source into `BanquetOfHeroes` (DB YMLs, SQL upgrade, NPC script, map-server source hooks, packet structs/db registrations).
@@ -303,80 +256,6 @@ struct PACKET_ZC_EXT_NAME {
   - Target message: `MSI_RUNESYSTEM_EQUIP_PUTERR` (`0xFD4` on 2025-07-16 Ragexe).
   - Target branch: file offset `0x3E5CAC`, VA `0x007E68AC`; changes `JZ` (`0x74`) to `JMP` (`0xEB`) after `test eax,eax`, skipping the client-side "Please remove the equipped Rune Set." guard.
   - Verified with `win32/WARP_console.exe` temporary session; patched byte became `0xEB`.
-
-| Type | `name` field | `party_name` | `guild_name` | `position_name` |
-|------|-------------|--------------|--------------|-----------------|
-| **PC (0)** | `display_name` | Party name | Guild name | Guild position / Clan name |
-| **MOB (1)** | `display_name` | HP exact + % | Level + Race | Mob ID |
-| **NPC (2)** | `display_name` | — | — | — |
-
-### Mob Info (`showmobinfo` flags → packet fields)
-
-| Bit | Info | Packet Field | Format |
-|-----|------|-----------|--------|
-| 1 | HP exact | `party_name` | `HP:1109/1109` |
-| 2 | HP % | `party_name` | `100%` (appended to exact if both) |
-| 4 | Mob ID | `position_name` | `#1052` |
-| 8 | Level | `guild_name` | `Lv.24` |
-| 32 | Race | `guild_name` | `Insect` (appended with ` | ` if level also) |
-
-### Client-Side DLL Substitution
-
-`boh_extname_visual.dll` reads `0x0BB7` data from the shared `EXTN` block populated by WARP `CustomExtName`, validates `packetLength + EXTN`, parses it, and builds a composite extended name:
-
-- **Mobs**: `display_name + " | " + party_name + " | " + guild_name + " | " + position_name`
-- **PCs**: `shortName + " " + display_name + " [" + party + "] {" + guild + "} (" + position + ")"`
-
-Then it hooks `TextOutW`, `ExtTextOutW`, `DrawTextW`, `DrawTextExW` to substitute `shortName` with `composite` when rendering text.
-
-**Anti-clipping measures:**
-- `ExtTextOutW`: passes `NULL` for `pRect` when text is substituted
-- `DrawTextW`/`DrawTextExW`: expands `RECT.right` by text width difference, clears clip region, removes ellipsis flags
-
-### Server Functions
-
-| Function | File | Purpose |
-|----------|------|---------|
-| `clif_extended_name()` | `src/map/clif.cpp:10863` | Main dispatcher; accepts `src` for per-player mob info |
-| `clif_extended_name_pc()` | `src/map/clif.cpp:10906` | PC: display_name + party/guild/position |
-| `clif_extended_name_mob()` | `src/map/clif.cpp:10941` | MOB: display_name + showmobinfo via helper |
-| `clif_extended_name_mob_info()` | `src/map/clif.cpp:10863` | Builds HP/level/race/ID strings into packet |
-| `clif_extended_name_npc()` | `src/map/clif.cpp:10965` | NPC: display_name only |
-
-### Key Design Decisions
-
-1. **`clif_spawn` skips BL_MOB**: Mob stats are viewer-specific (per `showmobinfo` flags). Sending in `clif_spawn` with `src=nullptr` would overwrite the rich packet sent by `clif_name`.
-
-2. **Composite name in DLL, not server**: Server sends raw fields; DLL decides separator style (`" | "` for mobs, brackets for PCs). This keeps server protocol clean and allows client-side visual customization.
-
-3. **`DISPLAY_NAME_LENGTH` (31) per field**: Each individual field is capped at 30 chars + null. The composite string has no hard limit — `std::wstring` grows as needed.
-
-### Client-Side Implementations
-
-**Current architecture (named visual DLL):**
-
-| Approach | File | How |
-|----------|------|-----|
-| **CustomExtName + visual DLL** | `WARP0716-main/Scripts/Patches/CustomExtName.qjs` + `WARP0716-main/CustomItemColorsDLL/ddraw_proxy.cpp` | Single supported path. WARP installs static recv stripping and adds the renameable visual DLL as a startup import. The DLL polls shared `EXTN`; no runtime recv hook. |
-
-**Historical approaches (superseded for extended names):**
-- The old HTTP helper experiment failed because it did not safely own packet stripping and GDI substitution together. This does not mean named CustomDLL imports are bad; the live `boh_extname_visual.dll` path proves they are fine when there is one packet/GDI owner.
-- The old `ddraw.dll` proxy/runtime recv architecture worked earlier, but is no longer the supported Banquet extname path.
-- The historical extended-name visual-DLL companion has been removed; the supported implementation is QJS-only.
-
-### File Reference
-
-| File | Path |
-|------|------|
-| Server packet definition | `BanquetOfHeroes/src/map/packets.hpp` |
-| Server `clif_extended_name` | `BanquetOfHeroes/src/map/clif.cpp` |
-| Server `clif_extended_name` declaration | `BanquetOfHeroes/src/map/clif.hpp` |
-| DLL source | `WARP0716-main/CustomItemColorsDLL/ddraw_proxy.cpp` |
-| DLL build script | `WARP0716-main/CustomItemColorsDLL/build_extname_visual.bat` |
-| DLL config sample | `WARP0716-main/CustomItemColorsDLL/ddraw_proxy.ini.sample` |
-| WARP extname patch (only one to select) | `WARP0716-main/Scripts/Patches/CustomExtName.qjs` |
-| WARP static recv helper | `WARP0716-main/Scripts/Patches/RecvStrip0BB6.qjs` |
-| WARP live profile | `WARP0716-main/profiles/2025-07-16 PROFILE MAIN.yml` |
 
 ## Related Projects
 - **WARP0716-main**: `C:\Users\Administrator\Documents\GitHub\WARP0716-main`
@@ -680,24 +559,6 @@ The live no-Gepard client no longer uses the old `ddraw.dll` proxy or static rec
 - The old `Inputs/RuneVisualDLLSpec.yml` is no longer required because `CustomRuneSystem.qjs` prompts for the DLL filename directly.
 - Build scratch files (`RuneVisualDLL/build/`, `.obj`, checkpoints, `_rune_disasm/`) are not part of the final clean source.
 
-## Extended Name Final Working State (2026-06-01)
-
-- `@warp` / `@mapmove` is confirmed working with `feature.custom_extended_name_packet: on`.
-- Single supported client path is WARP `CustomExtName` -> static `RecvStrip0BB6` EXE patch + renameable visual DLL import.
-- The runtime-recv visual-DLL experiment has been removed from the patch set.
-- Use `PacketSource=shared`, never runtime `PacketSource=recv`, for Banquet extnames.
-- The same path handles both custom packets: `0x0BB6` item colors and `0x0BB7` extended names.
-- `boh_extname_visual.dll` owns GDI substitution and reads `0x0BB7` data from the WARP `EXTN` shared block. It should not install a runtime `recv` hook in the supported setup.
-- Official spawn/idle/walk packets stay stock 24-byte names. Never expand official packet name fields to extended sizes as a shortcut.
-- DLL logs are intentionally quiet by default (`DebugLog=0`) to avoid render-loop lag. Enable only for debugging.
-- Current copied artifacts:
-  - `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\Banquet of Heroes.exe`
-  - `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\boh_extname_visual.dll`
-  - `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\ddraw_proxy.ini`
-  - `C:\Users\Administrator\Documents\GitHub\BanquetOfHeroes\map-server.exe`
-
----
-
 ## Gepard Owner Guidance - Custom DLL / WARP Static Patch Audit (2026-06-03)
 
 ### Reason for this note
@@ -799,18 +660,6 @@ Because stock `0x0BB6` is fixed 18 bytes in the client metadata, dispatcher-leve
 - redesign item colors as one fixed 18-byte packet per item if `0x0BB6` must be kept.
 
 The cleaner route is `0x0BDD`.
-
-### Extended names
-Current server extended-name side packet is compatible with dispatcher-level handling:
-```text
-BanquetOfHeroes/src/map/packets.hpp
-DEFINE_PACKET_HEADER(ZC_EXT_NAME, 0x0bb7)
-```
-
-`0x0BB7` is variable-length in client metadata and currently default-unhandled in the dispatcher table. Candidate table patch:
-```text
-0x0BB7 table entry: 00CACFF0 -> custom EXTN shared-block handler
-```
 
 ### Item colors
 Current `boh.dll` GDI layer can already read the `ICOL` shared block. Transport should change from recv-strip to dispatcher-table copy.

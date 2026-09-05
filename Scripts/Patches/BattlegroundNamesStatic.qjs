@@ -1,0 +1,71 @@
+/**************************************************************************\
+* Canonical 128-byte battleground queue/lobby names, Main 2025-07-16.       *
+* Description: Relocate the manager's two name arrays into its enlarged    *
+* allocation, update every native name reader/writer, and serialize the    *
+* matching full-width requests. Existing manager state offsets stay fixed.*
+\**************************************************************************/
+BattlegroundNamesStatic={};
+BattlegroundNamesStatic.install=function(state)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.battlegroundNames128)return state;
+	const hooks=[],edits=[];
+	const copy=ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
+	const h=(va,old,a)=>hooks.push([ExtNameStaticAsm.assertCode("BG canonical name",va,old),old.split(" ").length,ExtNameTextStatic.allocateCode(a)]);
+	const e=(va,old,next)=>edits.push([ExtNameStaticAsm.assertCode("BG canonical field",va,old),next]);
+	// Preserve the native manager's +34/+38 state; the sole canonical arrays
+	// now occupy +3C..+BB and +BC..+13B. Old name slots are unused padding.
+	let a=ExtNameStaticAsm.asm();a.emit(0x68);a.dword(0x13C);a.call(0x00DBBEAE);a.jmp(0x00B3A0F0);
+	h(0x00B3A0E9,"6A 3C E8 BE 1D 28 00",a);
+	a=ExtNameStaticAsm.asm();a.emit(0x68);a.dword(0x13C);a.emit(0x57);a.call(0x00DBBC7F);a.jmp(0x00B3A09E);
+	h(0x00B3A096,"6A 3C 57 E8 E1 1B 28 00",a);
+	for(const va of [0x00B39D77,0x00B3A107]){
+		a=ExtNameStaticAsm.asm();a.emit(0x68);a.dword(256);a.emit(0x8D,0x47,0x3C);a.jmp(va+5);
+		h(va,"6A 30 8D 47 04",a);
+	}
+	for(const pair of [[0x00B3A510,0x3C],[0x00B3A530,0xBC]]){
+		a=ExtNameStaticAsm.asm();a.emit(0x55,0x8B,0xEC,0x68);a.dword(128);a.emit(0xFF,0x75,8,0x8D,0x81);a.dword(pair[1]);a.emit(0x50);a.call(copy.virAddr);a.emit(0x5D,0xC2,4,0);
+		h(pair[0],"55 8B EC 8B 45 08",a);
+	}
+	e(0x00B3A63A,"8D 47 04","8D 47 3C");
+	a=ExtNameStaticAsm.asm();a.emit(0x5A,0x68);a.dword(128);a.emit(0x52,0x50);a.call(copy.virAddr);a.jmp(0x00B3A649);
+	h(0x00B3A63D,"6A 18 50 FF 15 5C 1B FC 00 83 C4 0C",a);
+	a=ExtNameStaticAsm.asm();
+	for(const pair of [[2,0x3C],[130,0xBC]]){
+		a.emit(0x68);a.dword(128);a.emit(0x8D,0x87);a.dword(pair[0]);a.emit(0x50,0x8D,0x83);a.dword(pair[1]);a.emit(0x50);a.call(copy.virAddr);
+	}
+	a.jmp(0x00B3AF71);
+	h(0x00B3AF56,"8D 47 02 50 8D 43 04 6A 18 50 FF D6 8D 47 1A 50 8D 43 1C 6A 18 50 FF D6 83 C4 18",a);
+	a=ExtNameStaticAsm.asm();a.emit(0xFF,0xB6);a.dword(130);a.emit(0x8B,0x82);a.dword(0x210);a.jmp(0x00B3AE31);
+	h(0x00B3AE28,"FF 76 1A 8B 82 10 02 00 00",a);
+	// Variable-length client settings save/load uses the same canonical fields.
+	e(0x00D9DDF4,"83 C2 04","83 C2 3C");
+	a=ExtNameStaticAsm.asm();a.emit(0x81,0xC2);a.dword(0xBC);a.emit(0x8B,0xCA);a.jmp(0x00D9DE8F);
+	h(0x00D9DE8A,"83 C2 1C 8B CA",a);
+	for(const pair of [[0x00DA4F21,0x3C],[0x00DA4F5B,0xBC]]){
+		a=ExtNameStaticAsm.asm();a.emit(0x8B,0xB5,0x26,0xFF,0xFF,0xFF,0x8D,0x04,0x1F,0x03,0xDE,0x51,0x52,0x57,0x8B,0x3D);a.dword(0x015C43E4);
+		a.emit(0x81,0xC7);a.dword(pair[1]);a.emit(0x8B,0xCE,0x83,0xF9,127);a.jcc(0x86,"length");a.emit(0xB9);a.dword(127);a.label("length");
+		a.emit(0x85,0xC9);a.jcc(0x84,"end");a.label("loop");a.emit(0x8A,0x10,0x40,0x84,0xD2);a.jcc(0x84,"end");a.emit(0x88,0x17,0x47,0x49);a.jcc(0x85,"loop");a.label("end");a.emit(0xC6,7,0,0x5F,0x5A,0x59);a.jmp(0x00DA50BA);
+		h(pair[0],pair[0]===0x00DA4F21?"6A 30 8D 45 C0":"6A 30 8D 45 90",a);
+	}
+	// Name-bearing requests are rebuilt in per-call 272-byte stack storage.
+	for(const spec of [[0x00B3A2F0,0x08D7,132,8],[0x00B3A360,0x08DA,130,0],[0x00B3A3D0,0x090A,130,0],[0x00B3A1D0,0x08DD,131,8],[0x00B3A240,0x08E0,259,4]]){
+		a=ExtNameStaticAsm.asm();a.emit(0x55,0x8B,0xEC,0x53,0x56,0x57,0x81,0xEC);a.dword(272);a.emit(0x8B,0xF1,0x8B,0xFC,0x33,0xC0,0xB9);a.dword(68);a.emit(0xF3,0xAB,0x8B,0xFC,0x66,0xC7,7);a.emit(spec[1]&255,(spec[1]>>>8)&255);
+		if(spec[1]===0x08D7){a.emit(0x8B,0x45,8,0x66,0x89,0x47,2,0x8B,0x5D,12);}
+		else if(spec[1]===0x08DD){a.emit(0x8A,0x45,12,0x88,0x47,2,0x8B,0x5D,8);}
+		else{
+			a.emit(0x8B,0x5E,0x34,0x85,0xDB);a.jcc(0x85,"hasName");
+			if(spec[1]===0x08E0){a.emit(0x83,0x7D,8,2);a.jcc(0x85,"done");a.emit(0xC6,0x46,0x38,0);}
+			a.jmp("done");a.label("hasName");a.emit(0x83,0xC3,4);
+			if(spec[1]===0x08E0){a.emit(0x8A,0x45,8,0x88,0x47,2,0x3C,2);a.jcc(0x85,"copy");a.emit(0xC6,0x46,0x38,0);a.label("copy");}
+		}
+		a.emit(0x68);a.dword(128);a.emit(0x53,0x8D,0x47,spec[1]===0x08D7?4:(spec[1]===0x08DD||spec[1]===0x08E0?3:2),0x50);a.call(copy.virAddr);
+		if(spec[1]===0x08E0){a.emit(0x68);a.dword(128);a.emit(0x8D,0x86);a.dword(0xBC);a.emit(0x50,0x8D,0x87);a.dword(131);a.emit(0x50);a.call(copy.virAddr);}
+		a.call(0x00C14D60);a.emit(0x57,0x68);a.dword(spec[2]);a.emit(0x8B,0xC8);a.call(0x00C14920);
+		a.label("done");a.emit(0x81,0xC4);a.dword(272);a.emit(0x5F,0x5E,0x5B,0x5D);if(spec[3])a.emit(0xC2,spec[3],0);else a.emit(0xC3);
+		h(spec[0],spec[0]===0x00B3A240?"55 8B EC 83 EC 38":"55 8B EC 83 EC 20",a);
+	}
+	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("BattlegroundNamesStatic.NamePackets128"),true);
+	try{for(const p of hooks){Exe.SetJMP(p[0],p[2].virAddr,0);Exe.SetNOPs(p[0]+5,p[1]-5);}for(const p of edits)Exe.SetHex(p[0],p[1]);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.battlegroundNames128=true;return state;
+};

@@ -1,0 +1,42 @@
+/**************************************************************************\
+* Description: Full 128-byte whisper recipient/sender for Main 2025-07-16. *
+* Keep native message processing, allocation and send ownership intact.    *
+\**************************************************************************/
+WhisperNamesStatic={};
+WhisperNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716 || state.whisperNames128)return state;
+	const patches=[],edits=[];
+	const leaf=(v,h,b,e)=>patches.push([v,h,()=>GuildNamesStatic.leaf(b,e)]);
+	// Native sender/message objects are std::string. Eliminate short temporary.
+	leaf(0x00CAFB4C,"8D 46 08 50 68 E8 35 FD 00 6A FF 8D 45 D8 6A 18 50 E8 8E D2 8E FF",
+		[0x8D,0x46,8,0x89,0x45,0xD8,0x83,0xEC,20],0x00CAFB62);
+	leaf(0x00CAFB66,"8D 7E 21 33 D2",[0x8D,0xBE,137,0,0,0,0x33,0xD2],0x00CAFB6B);
+	leaf(0x00CAFBBC,"8A 46 20 8B 76 04",[0x8A,0x86,136,0,0,0,0x8B,0x76,4],0x00CAFBC2);
+	edits.push([0x00CAFC49,"8D 4D D8","8B 4D D8"],[0x00CAFC6C,"8D 45 D8","8B 45 D8"]);
+	// The entered recipient already has native std::string lifetime. Validate
+	// the complete value and pass its pointer instead of copying to24 bytes.
+	patches.push([0x00C8BC34,"8B 8D 8C FC FE FF 8D 55 C8",function(){
+		const a=ExtNameStaticAsm.asm();a.emit(0x8B,0x8D);a.dword(0xFFFEFC8C);a.emit(0x33,0xD2);
+		a.label("scan");a.emit(0x80,0x3C,0x11,0);a.jcc(0x84,"ok");a.emit(0x42,0x81,0xFA);a.dword(128);a.jcc(0x82,"scan");a.jmp(0x00C8BE32);
+		a.label("ok");a.jmp(0x00C8BC60);return a;
+	}]);
+	leaf(0x00C8BC6C,"8D 45 C8 51 50",[0x8B,0x85,0x8C,0xFC,0xFE,0xFF,0x51,0x50],0x00C8BC71);
+	patches.push([0x00C8BD9A,"8D 45 C8 50 E8 6D 29 FF FF",function(){const a=ExtNameStaticAsm.asm();a.emit(0x8B,0x85);a.dword(0xFFFEFC8C);a.emit(0x50);a.call(0x00C7E710);a.jmp(0x00C8BDA3);return a;}]);
+	leaf(0x00C8BDA3,"8D 46 1C 8D 48 08",[0x8D,0x86,132,0,0,0,0x8D,0x48,8],0x00C8BDA9);
+	const copy=ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ()).virAddr;
+	patches.push([0x00C8BDF8,"B8 96 00 00 00",function(){
+		const a=ExtNameStaticAsm.asm();a.emit(0x66,0xC7,7,0x96,0,0x8D,0x86,132,0,0,0,0x66,0x89,0x47,2);
+		// Zero the complete name field before its bounded literal copy.
+		a.emit(0x57,0x8D,0x7F,4,0x33,0xC0,0xB9);a.dword(32);a.emit(0xF3,0xAB,0x5F,0x68);a.dword(128);
+		a.emit(0xFF,0xB5);a.dword(0xFFFEFC8C);a.emit(0x8D,0x47,4,0x50);a.call(copy);
+		a.emit(0x56,0x8D,0x85);a.dword(0xFFFFF968);a.emit(0x50,0x8D,0x87,132,0,0,0,0x56,0x50);a.call(0x00C966F0);
+		a.emit(0x83,0xC4,16);a.jmp(0x00C8BE2D);return a;
+	}]);
+	for(const p of patches){p.push(ExtNameStaticAsm.assertCode("whisper bridge",p[0],p[1]));p.push(ExtNameTextStatic.allocateCode(p[2]()));}
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("whisper canonical pointer",e[0],e[1]));
+	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("WhisperNamesStatic.NamePackets128"),true);
+	try{for(const p of patches){Exe.SetJMP(p[3],p[4].virAddr,0);Exe.SetNOPs(p[3]+5,p[1].split(" ").length-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.whisperNames128=true;return state;
+};

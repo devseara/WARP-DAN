@@ -1,0 +1,62 @@
+/**************************************************************************\
+* Description: Main2025-07-16 canonical128-byte character rename.           *
+* Grow the embedded279-byte CHARACTER_INFO owner, preserve native name     *
+* validation and confirmation, and send a full134-byte0x08FC request.       *
+* The pending name cache remains the real rename transaction, not an alias.*
+\**************************************************************************/
+CharacterRenameNamesStatic={};
+CharacterRenameNamesStatic.install=function(state)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.characterRename128)return state;
+	if(!state.characterInfo128)throw Error("CharacterRenameNamesStatic: CHARACTER_INFO owner not migrated");
+	const [pendingPhy,pendingVir]=Exe.Allocate(128,0x10);ExtNameTextStatic.zeroBlock(pendingPhy,128);
+	const copy=ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
+	const patches=[];
+	const bridge=function(va,old,a){patches.push([ExtNameStaticAsm.assertCode("character rename bridge",va,old),old.split(" ").length,ExtNameTextStatic.allocateCode(a)]);};
+	const edits=[
+		[0x00EB921F,"8B 8A 6C FE FF FF","8B 8A 6C FA FF FF"],
+		[0x00A3ECBE,"68 74 01 00 00","68 DC 01 00 00"],
+		[0x008DB381,"68 74 01 00 00","68 DC 01 00 00"],
+		[0x008E53B4,"C7 80 88 00 00 00 18 00 00 00","C7 80 88 00 00 00 80 00 00 00"],
+		[0x008FA8E1,"81 EC 88 01 00 00","81 EC 88 05 00 00"],
+		[0x008FAB1F,"83 F8 18 7C","83 F8 7F 7E"],
+		[0x008FABB4,"B9 2B 00 00 00","B9 45 00 00 00"],
+		[0x008FABC8,"68 AF 00 00 00","68 17 01 00 00"],
+		[0x008FAC7E,"8D 85 AC FE FF FF","8D 85 00 FB FF FF"],
+		[0x008FAC8D,"8D 85 AC FE FF FF","8D 85 00 FB FF FF"]
+	];
+	bridge(0x008FAB4A,"6A 18 83 EC 18",GuildNamesStatic.leaf([0x68,0x80,0,0,0,0x83,0xEC,24],0x008FAB4F));
+	// Replace the former unbounded24-byte stack copy with a bounded128-byte local.
+	const input=ExtNameStaticAsm.asm();input.emit(0x8B,0xD0,0x33,0xC9);input.label("bytes");input.emit(0x80,0x3C,0x0A,0);input.jcc(0x84,"copy");input.emit(0x41,0x81,0xF9);input.dword(128);input.jcc(0x82,"bytes");input.jmp(0x008FAB24);input.label("copy");input.emit(0x68);input.dword(128);input.emit(0x50,0x8D,0x85);input.dword(-0x280);input.emit(0x50);input.call(copy.virAddr);input.jmp(0x008FABA0);
+	bridge(0x008FAB8E,"8D 55 D8 2B D0",input);
+	const canonical=ExtNameStaticAsm.asm();canonical.emit(0x8D,0xB7);canonical.dword(0x130);canonical.emit(0x68);canonical.dword(128);canonical.emit(0x8D,0x85);canonical.dword(-0x280);canonical.emit(0x50,0x56);canonical.call(copy.virAddr);
+	canonical.emit(0x68);canonical.dword(0x0101E498);canonical.emit(0x56);canonical.jmp(0x008FAC07);
+	bridge(0x008FABEA,"0F 10 45 D8 8D B7 30 01 00 00",canonical);
+	// Keep all stock reserved-name checks, operating on the same full local string.
+	const normalize=ExtNameStaticAsm.asm();normalize.emit(0x8D,0x85);normalize.dword(-0x280);normalize.emit(0x50,0xFF,0x15);normalize.dword(0x00FC1B3C);
+	normalize.emit(0x8D,0x85);normalize.dword(-0x280);normalize.emit(0x68);normalize.dword(0x0101E4A4);normalize.emit(0x50);normalize.call(0x00E07D81);normalize.emit(0x83,0xC4,12,0x85,0xC0);normalize.jcc(0x85,"rejected");
+	normalize.emit(0x80,0xBD);normalize.dword(-0x280);normalize.emit(0x5B,0x8A,0x85);normalize.dword(-0x27E);normalize.emit(0x8A,0x8D);normalize.dword(-0x27F);normalize.jcc(0x85,"second");
+	normalize.emit(0x80,0xF9,0x67);normalize.jcc(0x85,"second");normalize.emit(0x3C,0x6D);normalize.jcc(0x84,"clear");
+	normalize.label("third");normalize.emit(0x3C,0x5B);normalize.jcc(0x85,"confirm");normalize.emit(0x80,0xBD);normalize.dword(-0x27D);normalize.emit(0x67);normalize.jcc(0x85,"confirm");normalize.emit(0x80,0xBD);normalize.dword(-0x27C);normalize.emit(0x6D);normalize.jcc(0x84,"rejected");normalize.jmp("confirm");
+	normalize.label("second");normalize.emit(0x80,0xF9,0x5B);normalize.jcc(0x85,"third");normalize.emit(0x3C,0x67);normalize.jcc(0x85,"third");normalize.emit(0x80,0xBD);normalize.dword(-0x27D);normalize.emit(0x6D);normalize.jcc(0x85,"confirm");normalize.jmp(0x008FAD73);
+	normalize.label("confirm");normalize.jmp(0x008FAC6F);normalize.label("rejected");normalize.jmp(0x008FAE06);normalize.label("clear");normalize.jmp(0x008FAA61);
+	bridge(0x008FAC17,"8D 45 D8 50 FF 15 3C 1B FC 00",normalize);
+	const send=ExtNameStaticAsm.asm();send.emit(0x56,0x57,0x81,0xEC);send.dword(136);send.emit(0x8B,0xFC,0x57,0x51,0x33,0xC0,0xB9);send.dword(34);send.emit(0xF3,0xAB,0x59,0x5F,0x66,0xC7,7,0xFC,8);
+	send.emit(0x8B,0x85);send.dword(-0x190);send.emit(0x8B,0x80);send.dword(0xC0);send.emit(0x8B,0,0xA3);send.dword(0x015FFCB4);send.emit(0x89,0x47,2);
+	send.emit(0x68);send.dword(128);send.emit(0x56,0x8D,0x47,6,0x50);send.call(copy.virAddr);
+	send.emit(0x68);send.dword(128);send.emit(0x56,0x68);send.dword(pendingVir);send.call(copy.virAddr);
+	send.call(0x00C14D60);send.emit(0x8B,0xC8,0x57,0x68);send.dword(134);send.call(0x00C14920);send.emit(0x81,0xC4);send.dword(136);send.emit(0x5F,0x5E);send.jmp(0x008FAD36);
+	bridge(0x008FACBF,"B8 FC 08 00 00",send);
+	// The accepted ACK applies the full pending canonical name to the login record.
+	const apply=ExtNameStaticAsm.asm();apply.emit(0x8D,0x48,0x6C,0x51,0x68);apply.dword(128);apply.emit(0x68);apply.dword(pendingVir);apply.emit(0x51);apply.call(copy.virAddr);apply.jmp(0x0079DF6C);
+	bridge(0x0079DF51,"0F 10 05 B8 FC 5F 01",apply);
+	const format=function(cap){const a=ExtNameStaticAsm.asm();a.emit(0x55,0x8B,0xEC,0xFF,0x75,0x10,0xFF,0x75,0x0C,0x6A,0xFF,0x68);a.dword(cap);a.emit(0xFF,0x75,8);a.call(0x0059CDF0);a.emit(0x83,0xC4,20,0x5D,0xC3);return ExtNameTextStatic.allocateCode(a).virAddr;};
+	const format512=format(512),format300=format(300);
+	const calls=[[0x008FAC85,"E8 C6 EB C2 FF",format512],[0x00D2097B,"E8 D0 8E 80 FF",format300],[0x00D27F68,"E8 E3 18 80 FF",format300]].map(e=>[ExtNameStaticAsm.assertCode("rename bounded notification",e[0],e[1]),e[2]]);
+	const refs=[0x00D20962,0x00D27F4F].map(va=>{const p=Exe.Vir2Phy(va,CODE);if(p<0||Exe.GetUint32(p)!==0x015FFCB8)throw Error("CharacterRenameNamesStatic: pending name reference changed");return p;});
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("character rename width",e[0],e[1]));
+	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("CharacterRenameNamesStatic.Name128"),true);
+	try{for(const p of patches){Exe.SetJMP(p[0],p[2].virAddr,0);Exe.SetNOPs(p[0]+5,p[1]-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);for(const c of calls)Exe.SetCALL(c[0],c[1],0);for(const p of refs)Exe.SetUint32(p,pendingVir);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.characterRename128=true;return state;
+};

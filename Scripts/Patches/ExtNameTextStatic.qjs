@@ -21,6 +21,21 @@ ExtNameTextStatic = {
 			ExtentDirect: 0x0054758D,
 			TextOutThunk: 0x00DBA690,
 			ExtentThunk: 0x00DBA66C,
+			PacketLengthHook: 0x00C14866,
+			PacketLengthHookPrefix: "FF 75 08 0F B7 C6 8B CF 50 E8 FC 1C 00 00",
+			PacketLengthReturn: 0x00C14874,
+			PacketReadCopy: 0x00C16570,
+			AckNameLengthHook: 0x00C9EB37,
+			AckNameLengthPrefix: "6A 18 C7 85 E8 DF FF FF 00 00 00 00",
+			AckNameLengthReturn: 0x00C9EB43,
+			AckNameAllEntry: 0x00CA9028,
+			AckNameAllHandler: 0x00CF2A50,
+			AckNameNpcTitleHook: 0x00CB3ADD,
+			AckNameNpcTitlePrefix: "8D 7B 22 83 EC 18",
+			AckNameNpcTitleReturn: 0x00CB3AE3,
+			AckNameNpcLengthHook: 0x00CB3BD8,
+			AckNameNpcLengthPrefix: "6A 18 56 8D 4D D8",
+			AckNameNpcLengthReturn: 0x00CB3BDE,
 			StableIat: {
 				textOut: 0x00FC10DC,
 				extent: 0x00FC112C,
@@ -52,14 +67,14 @@ ExtNameTextStatic = {
 	FeatureEmoji: 4,
 	MapCapacity: 2048,
 	ProbeLimit: 32,
-	EntrySize: 0x328,
+	EntrySize: 0x390,
 	EntryHash: 0,
 	EntryKind: 4,
 	EntryEntityType: 8,
 	EntryColor: 12,
 	EntryKey: 16,
-	EntryValue: 40,
-	KeyCapacity: 24,
+	EntryValue: 144,
+	KeyCapacity: 128,
 	ValueCapacity: 768,
 	StateReadSequence: 0,
 	StateFeatures: 4,
@@ -302,7 +317,8 @@ ExtNameTextStatic.buildMapPut = function(tableVir, hashVir, equalVir, copyVir)
 	a.emit(0x56, 0x8D, 0x47, ExtNameTextStatic.EntryKey, 0x50);
 	a.call(copyVir);
 	a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
-	a.emit(0x53, 0x8D, 0x47, ExtNameTextStatic.EntryValue, 0x50);
+	// EntryValue exceeds signed disp8 after widening the key to 128 bytes.
+	a.emit(0x53, 0x8D, 0x87); a.dword(ExtNameTextStatic.EntryValue); a.emit(0x50);
 	a.call(copyVir);
 	a.emit(0x8B, 0x45, 0x10, 0x89, 0x47, ExtNameTextStatic.EntryKind);
 	a.emit(0x8B, 0x45, 0x14, 0x89, 0x47, ExtNameTextStatic.EntryEntityType);
@@ -427,17 +443,14 @@ ExtNameTextStatic.buildPacketStore = function(
 		a.emit(0x50);
 		a.call(putVir);
 	};
-	const putMainScratchKey = function(keyVir)
-	{
-		a.emit(0x57, 0x56, 0x6A, 0x00);
-		a.emit(0x68); a.dword(scratchVir);
-		a.emit(0x68); a.dword(keyVir);
-		a.call(putVir);
-	};
 
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
 	a.emit(0x8B, 0x5D, 0x08, 0x8B, 0x75, 0x0C, 0x8B, 0x7D, 0x10);
 	a.emit(0x0F, 0xB7, 0x43, 0x02);
+	a.emit(0x3D); a.dword(653);
+	a.jcc(0x84, "v4");
+	a.emit(0x3D); a.dword(657);
+	a.jcc(0x84, "v4");
 	a.emit(0x3D); a.dword(773);
 	a.jcc(0x84, "v3");
 	a.emit(0x3D); a.dword(777);
@@ -483,24 +496,20 @@ ExtNameTextStatic.buildPacketStore = function(
 	appendField(scratchVir, 420, literals.openParen, literals.closeParen);
 	a.label("v3_pc_title");
 	a.emit(0x80, 0xBB); a.dword(548); a.emit(0x00);
-	a.jcc(0x84, "v3_pc_aliases");
+	a.jcc(0x84, "v3_pc_name");
 	callCopy(scratch2Vir, [0x8D, 0x83, 0x24, 0x02, 0x00, 0x00, 0x50]);
 	appendLiteral(scratch2Vir, literals.space);
 	appendPtr(scratch2Vir, [0x68, scratchVir & 0xFF, (scratchVir >>> 8) & 0xFF,
 		(scratchVir >>> 16) & 0xFF, (scratchVir >>> 24) & 0xFF]);
 	callCopy(scratchVir, [0x68, scratch2Vir & 0xFF, (scratch2Vir >>> 8) & 0xFF,
 		(scratch2Vir >>> 16) & 0xFF, (scratch2Vir >>> 24) & 0xFF]);
-	a.label("v3_pc_aliases");
-	// The stock PC name packet renders "status.name display_name" while EXTN
-	// carries those fields separately. Index every visible source form so the
-	// same long-name substitution and RGB value apply to local and remote PCs.
+	a.label("v3_pc_name");
+	// PC packet.name is the canonical 128-byte character name; shortName is
+	// only the stock 24-byte wire key. putMain() below maps the wire key, and
+	// this alias covers client surfaces that already contain the full name.
 	a.emit(0x80, 0x7B, 0x24, 0x00);
 	a.jcc(0x84, "v3_main");
 	putMainPacketKey(36);
-	callCopy(scratch2Vir, [0x8D, 0x43, 0x0C, 0x50]);
-	appendLiteral(scratch2Vir, literals.space);
-	appendPtr(scratch2Vir, [0x8D, 0x43, 0x24, 0x50]);
-	putMainScratchKey(scratch2Vir);
 	a.jmp("v3_main");
 	a.label("v3_mob");
 	// The official 0x0ADF title field owns the Group Title/ID row. EXTN maps
@@ -512,6 +521,29 @@ ExtNameTextStatic.buildPacketStore = function(
 	put(700, 292, false, 2);
 	put(724, 420, false, 3);
 	put(748, 548, false, 4);
+	a.jmp("done");
+	// V4 single-name layout: every name and title field is 128 bytes.
+	a.label("v4");
+	callCopy(scratchVir, [0x8D, 0x43, 0x0C, 0x50]);
+	a.emit(0x83, 0xFE, 0x00);
+	a.jcc(0x85, "v4_main");
+	appendField(scratchVir, 140, literals.openSquare, literals.closeSquare);
+	appendField(scratchVir, 268, literals.openBrace, literals.closeBrace);
+	appendField(scratchVir, 396, literals.openParen, literals.closeParen);
+	a.emit(0x80, 0xBB); a.dword(524); a.emit(0x00);
+	a.jcc(0x84, "v4_main");
+	callCopy(scratch2Vir, [0x8D, 0x83, 0x0C, 0x02, 0x00, 0x00, 0x50]);
+	appendLiteral(scratch2Vir, literals.space);
+	appendPtr(scratch2Vir, [0x68, scratchVir & 0xFF, (scratchVir >>> 8) & 0xFF,
+		(scratchVir >>> 16) & 0xFF, (scratchVir >>> 24) & 0xFF]);
+	callCopy(scratchVir, [0x68, scratch2Vir & 0xFF, (scratch2Vir >>> 8) & 0xFF,
+		(scratch2Vir >>> 16) & 0xFF, (scratch2Vir >>> 24) & 0xFF]);
+	a.label("v4_main");
+	putMain();
+	put(140, 140, false, 1);
+	put(268, 268, false, 2);
+	put(396, 396, false, 3);
+	put(524, 524, false, 4);
 	a.label("done");
 	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x0C, 0x00);
 	return a;
@@ -544,6 +576,10 @@ ExtNameTextStatic.buildFrame = function(stateVir, extnVir, storeVir)
 	a.jcc(0x85, "next");
 	a.emit(0x81, 0x7B, 0x04); a.dword(ExtNameTextStatic.PacketMagic);
 	a.jcc(0x85, "next");
+	a.emit(0x3D); a.dword(653);
+	a.jcc(0x84, "v4_no_color");
+	a.emit(0x3D); a.dword(657);
+	a.jcc(0x84, "v4_color");
 	a.emit(0x3D); a.dword(773);
 	a.jcc(0x84, "v3_no_color");
 	a.emit(0x3D); a.dword(777);
@@ -553,6 +589,14 @@ ExtNameTextStatic.buildFrame = function(stateVir, extnVir, storeVir)
 	a.emit(0x3D); a.dword(237);
 	a.jcc(0x84, "legacy_color");
 	a.jmp("next");
+	a.label("v4_no_color");
+	a.emit(0x0F, 0xB6, 0xB3); a.dword(652);
+	a.emit(0x33, 0xFF);
+	a.jmp("store");
+	a.label("v4_color");
+	a.emit(0x0F, 0xB6, 0xB3); a.dword(652);
+	a.emit(0x8B, 0xBB); a.dword(653);
+	a.jmp("convert");
 	a.label("v3_no_color");
 	a.emit(0x0F, 0xB6, 0xB3); a.dword(772);
 	a.emit(0x33, 0xFF);
@@ -574,7 +618,7 @@ ExtNameTextStatic.buildFrame = function(stateVir, extnVir, storeVir)
 	a.jcc(0x84, "store");
 	a.emit(0x8B, 0xC7, 0x0F, 0xC8, 0xC1, 0xE8, 0x08, 0x8B, 0xF8);
 	a.label("store");
-	a.emit(0x83, 0xFE, 0x03);
+	a.emit(0x83, 0xFE, 0x07);
 	a.jcc(0x87, "next");
 	a.emit(0x57, 0x56, 0x53);
 	a.call(storeVir);
@@ -686,7 +730,7 @@ ExtNameTextStatic.buildTextOut = function(
 	a.jcc(0x84, "draw");
 	a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
 	a.emit(0x68); a.dword(wideScratchVir);
-	a.emit(0x6A, 0xFF, 0x8D, 0x46, ExtNameTextStatic.EntryValue, 0x50);
+	a.emit(0x6A, 0xFF, 0x8D, 0x86); a.dword(ExtNameTextStatic.EntryValue); a.emit(0x50);
 	a.emit(0x6A, 0x00, 0x68); a.dword(65001);
 	ExtNameTextStatic.callIat(a, apis.multiToWide);
 	a.emit(0x83, 0xF8, 0x01);
@@ -744,7 +788,7 @@ ExtNameTextStatic.buildExtent = function(
 	a.emit(0x8B, 0xF0);
 	a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
 	a.emit(0x68); a.dword(wideScratchVir);
-	a.emit(0x6A, 0xFF, 0x8D, 0x46, ExtNameTextStatic.EntryValue, 0x50);
+	a.emit(0x6A, 0xFF, 0x8D, 0x86); a.dword(ExtNameTextStatic.EntryValue); a.emit(0x50);
 	a.emit(0x6A, 0x00, 0x68); a.dword(65001);
 	ExtNameTextStatic.callIat(a, apis.multiToWide);
 	a.emit(0x83, 0xF8, 0x01);
@@ -870,6 +914,269 @@ ExtNameTextStatic.patchFrameCaller = function(callerPhy, bridgeVir)
 	}
 };
 
+ExtNameTextStatic.buildPacketLengthBridge = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x0F, 0xB7, 0x45, 0xFC);
+	a.emit(0x3D); a.dword(0x0095);
+	a.jcc(0x84, "name");
+	a.emit(0x3D); a.dword(0x02DF);
+	a.jcc(0x84, "bg_position");
+	a.emit(0x3D); a.dword(0x0A30);
+	a.jcc(0x84, "name_all");
+	a.emit(0x3D); a.dword(0x0ADF);
+	a.jcc(0x84, "name_npc");
+	a.emit(0x3D); a.dword(0x0AE4);
+	a.jcc(0x84, "party_member");
+	a.emit(0x3D); a.dword(0x01A2);
+	a.jcc(0x84, "pet_status");
+	a.emit(0x3D); a.dword(0x0BA4);
+	a.jcc(0x84, "hom_status");
+	a.emit(0x3D); a.dword(0x029B);
+	a.jcc(0x84, "mer_status");
+	a.emit(0x3D); a.dword(0x02F7);
+	a.jcc(0x84, "guild_affiliation");
+	a.emit(0x3D); a.dword(0x0B7B);
+	a.jcc(0x84, "guild_info");
+	a.emit(0x3D); a.dword(0x0206);
+	a.jcc(0x84, "friend_state");
+	a.emit(0x3D); a.dword(0x0209);
+	a.jcc(0x84, "friend_ack");
+	a.emit(0x3D); a.dword(0x0207);
+	a.jcc(0x84, "friend_request");
+	a.emit(0x3D); a.dword(0x0AF7);
+	a.jcc(0x84, "name_by_gid");
+	for(const id of [0x02C5,0x02C6,0x016A,0x0171]){
+		a.emit(0x3D); a.dword(id); a.jcc(0x84, "social_invite");
+	}
+	a.emit(0x3D); a.dword(0x0105); a.jcc(0x84, "party_withdraw");
+	a.emit(0x3D); a.dword(0x020E); a.jcc(0x84, "star_target");
+	a.emit(0x3D); a.dword(0x0A12); a.jcc(0x84, "mail_begin");
+	a.emit(0x3D); a.dword(0x0A51); a.jcc(0x84, "mail_checkname");
+	a.emit(0x3D); a.dword(0x0809); a.jcc(0x85,"not_booking");
+	a.emit(0xBE); a.dword(154); a.jmp("consume"); a.label("not_booking");
+	for(const [id,length] of [[0x0B6F,281],[0x006D,281],[0x00DC,132],[0x00DD,133],[0x00E1,134],[0x0AE7,142],[0x0AFA,266],[0x01F4,136],[0x09F9,455],[0x0293,147],[0x01F6,138],[0x02DD,136],[0x0979,154]]){
+		a.emit(0x3D); a.dword(id); a.jcc(0x85,"not_identity_"+id);
+		a.emit(0xBE); a.dword(length); a.jmp("consume"); a.label("not_identity_"+id);
+	}
+	for(const [id,length] of [[0x08D8,131],[0x08D9,134],[0x08DB,131],[0x08DC,130],[0x08DE,131],[0x08DF,258],[0x08E1,259]]){
+		a.emit(0x3D); a.dword(id); a.jcc(0x85,"not_bg_"+id);
+		a.emit(0xBE); a.dword(length); a.jmp("consume"); a.label("not_bg_"+id);
+	}
+	a.jmp("consume");
+	a.label("mail_begin");
+	a.emit(0xBE); a.dword(131); a.jmp("consume");
+	a.label("mail_checkname");
+	a.emit(0xBE); a.dword(138); a.jmp("consume");
+	a.label("star_target");
+	a.emit(0xBE); a.dword(136);
+	a.jmp("consume");
+	a.label("social_invite");
+	a.emit(0xBE); a.dword(134);
+	a.jmp("consume");
+	a.label("party_withdraw");
+	a.emit(0xBE); a.dword(135);
+	a.jmp("consume");
+	a.label("friend_request");
+	a.emit(0xBE); a.dword(138);
+	a.jmp("consume");
+	a.label("friend_ack");
+	a.emit(0xBE); a.dword(140);
+	a.jmp("consume");
+	a.label("name_by_gid");
+	a.emit(0xBE); a.dword(136);
+	a.jmp("consume");
+	a.label("friend_state");
+	a.emit(0xBE); a.dword(139);
+	a.jmp("consume");
+	a.label("guild_affiliation");
+	a.emit(0xBE); a.dword(151);
+	a.jmp("consume");
+	a.label("guild_info");
+	a.emit(0xBE); a.dword(326);
+	a.jmp("consume");
+	a.label("pet_status");
+	a.emit(0xBE); a.dword(141);
+	a.jmp("consume");
+	a.label("hom_status");
+	a.emit(0xBE); a.dword(189);
+	a.jmp("consume");
+	a.label("mer_status");
+	a.emit(0xBE); a.dword(184);
+	a.jmp("consume");
+	a.label("party_member");
+	a.emit(0xBE); a.dword(297);
+	a.jmp("consume");
+	a.label("bg_position");
+	a.emit(0xBE); a.dword(140);
+	a.jmp("consume");
+	a.label("name");
+	a.emit(0xBE); a.dword(134);
+	a.jmp("consume");
+	a.label("name_all");
+	a.emit(0xBE); a.dword(522);
+	a.jmp("consume");
+	a.label("name_npc");
+	a.emit(0xBE); a.dword(266);
+	a.label("consume");
+	a.emit(0xFF, 0x75, 0x08, 0x0F, 0xB7, 0xC6, 0x8B, 0xCF, 0x50);
+	a.call(ExtNameTextStatic.PacketReadCopy);
+	a.jmp(ExtNameTextStatic.PacketLengthReturn);
+	return a;
+};
+
+ExtNameTextStatic.buildAckNameAll128 = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0xFF, 0x35); a.dword(ExtNameTextStatic.PacketBufferVir + 518);
+	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 390);
+	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 262);
+	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 134);
+	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 6);
+	a.emit(0xFF, 0x35); a.dword(ExtNameTextStatic.PacketBufferVir + 2);
+	a.emit(0x8B, 0xCF);
+	a.call(ExtNameTextStatic.AckNameAllHandler);
+	a.jmp(ExtNameTextStatic.MainLoopReturnVir);
+	return a;
+};
+
+ExtNameTextStatic.buildAckName128LengthBridge = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x68); a.dword(128);
+	a.emit(0xC7, 0x85); a.dword(0xFFFFDFE8); a.dword(0);
+	a.jmp(ExtNameTextStatic.AckNameLengthReturn);
+	return a;
+};
+
+ExtNameTextStatic.buildAckNameNpcTitleBridge = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x8D, 0xBB); a.dword(138);
+	a.emit(0x83, 0xEC, 0x18);
+	a.jmp(ExtNameTextStatic.AckNameNpcTitleReturn);
+	return a;
+};
+
+ExtNameTextStatic.buildAckNameNpcLengthBridge = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x68); a.dword(128);
+	a.emit(0x56, 0x8D, 0x4D, 0xD8);
+	a.jmp(ExtNameTextStatic.AckNameNpcLengthReturn);
+	return a;
+};
+
+ExtNameTextStatic.patch128ByteNamePackets = function(state)
+{
+	if (ExtNameTextStatic.ActiveBuildDate !== 20250716 || state.namePackets128)
+		return state;
+	const routes = CACHE.get("CustomPacketDispatch.Routes");
+	if (!routes || !Number.isInteger(routes.switchTableVir) ||
+		!Number.isInteger(routes.packetBufferVir) ||
+		!Number.isInteger(routes.mainLoopReturnVir))
+		throw Error("ExtNameTextStatic: dispatcher state unavailable for 128-byte names");
+	ExtNameTextStatic.PacketBufferVir = routes.packetBufferVir;
+	ExtNameTextStatic.MainLoopReturnVir = routes.mainLoopReturnVir;
+	if (typeof ExtNamePartyStatic === "undefined" || typeof ExtNamePartyStatic.install !== "function")
+		throw Error("ExtNameTextStatic: party name adapter unavailable");
+	ExtNamePartyStatic.install(state, routes);
+	if (typeof CompanionNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: companion name adapter unavailable");
+	CompanionNamesStatic.install(state);
+	CompanionRenameNamesStatic.install(state);
+	if (typeof GuildNamesStatic === "undefined" || typeof ClanNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: guild/clan name adapters unavailable");
+	GuildNamesStatic.install(state);
+	ClanNamesStatic.install(state, routes);
+	if (typeof FriendNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: friend name adapter unavailable");
+	FriendNamesStatic.install(state, routes);
+	if(typeof CharacterNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: character name adapter unavailable");
+	CharacterNamesStatic.install(state);
+	CharacterCreateNamesStatic.install(state);
+	CharacterOldCreateNamesStatic.install(state);
+	CharacterRenameNamesStatic.install(state);
+	SocialNamesStatic.install(state, routes);
+	OutgoingSocialNamesStatic.install(state);
+	WhisperNamesStatic.install(state, routes);
+	BookingNamesStatic.install(state, routes);
+	ChatRoomNamesStatic.install(state, routes);
+	ModernPartyNamesStatic.install(state, routes);
+	GuildPositionNamesStatic.install(state, routes);
+	WhisperBlockNamesStatic.install(state, routes);
+	StarNamesStatic.install(state);
+	BattlegroundNamesStatic.install(state);
+	GuildStorageLogNamesStatic.install(state, routes);
+	QuestNamesStatic.install(state, routes);
+	BossTrackerNamesStatic.install(state);
+	AuxiliaryIdentityNamesStatic.install(state,routes);
+	if(typeof MailNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: mail name adapter unavailable");
+	MailNamesStatic.install(state, routes);
+	const lengthPhy = ExtNameStaticAsm.assertCode(
+		"packet length hook", ExtNameTextStatic.PacketLengthHook,
+		ExtNameTextStatic.PacketLengthHookPrefix);
+	const nameLengthPhy = ExtNameStaticAsm.assertCode(
+		"0x0095 name length", ExtNameTextStatic.AckNameLengthHook,
+		ExtNameTextStatic.AckNameLengthPrefix);
+	const npcTitlePhy = ExtNameStaticAsm.assertCode(
+		"0x0ADF title offset", ExtNameTextStatic.AckNameNpcTitleHook,
+		ExtNameTextStatic.AckNameNpcTitlePrefix);
+	const npcLengthPhy = ExtNameStaticAsm.assertCode(
+		"0x0ADF name length", ExtNameTextStatic.AckNameNpcLengthHook,
+		ExtNameTextStatic.AckNameNpcLengthPrefix);
+	const bgYPhy = ExtNameStaticAsm.assertCode(
+		"0x02DF Y field", 0x00CA2AEF, "0F BF 05 BA 81 5E 01") + 3;
+	const bgXPhy = ExtNameStaticAsm.assertCode(
+		"0x02DF X field", 0x00CA2AFB, "0F BF 05 B8 81 5E 01") + 3;
+	const nameAllEntryPhy = Exe.Vir2Phy(
+		CustomPacketDispatch.tableEntryVir(routes.switchTableVir, 0x0A30), CODE);
+	if (nameAllEntryPhy < 0 ||
+		Exe.GetUint32(nameAllEntryPhy) !== ExtNameTextStatic.AckNameAllEntry)
+		throw Error("ExtNameTextStatic: unexpected 0x0A30 stock handler");
+	const lengthBridge = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildPacketLengthBridge());
+	const nameLength = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildAckName128LengthBridge());
+	const nameAll = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildAckNameAll128());
+	const npcTitle = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildAckNameNpcTitleBridge());
+	const npcLength = ExtNameTextStatic.allocateCode(
+		ExtNameTextStatic.buildAckNameNpcLengthBridge());
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag("ExtNameTextStatic.NamePackets128"), true);
+	try
+	{
+		Exe.SetJMP(lengthPhy, lengthBridge.virAddr, 0);
+		Exe.SetNOPs(lengthPhy + 5, 9);
+		Exe.SetJMP(nameLengthPhy, nameLength.virAddr, 0);
+		Exe.SetNOPs(nameLengthPhy + 5, 7);
+		Exe.SetJMP(npcTitlePhy, npcTitle.virAddr, 0);
+		Exe.SetNOPs(npcTitlePhy + 5, 1);
+		Exe.SetJMP(npcLengthPhy, npcLength.virAddr, 0);
+		Exe.SetNOPs(npcLengthPhy + 5, 1);
+		Exe.SetUint32(bgYPhy, routes.packetBufferVir + 138);
+		Exe.SetUint32(bgXPhy, routes.packetBufferVir + 136);
+		Exe.SetUint32(nameAllEntryPhy, nameAll.virAddr);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+	state.namePackets128 = {
+		lengthPhy, lengthBridgeVir: lengthBridge.virAddr,
+		nameLengthPhy, nameLengthVir: nameLength.virAddr,
+		nameAllEntryPhy, nameAllVir: nameAll.virAddr,
+		npcTitlePhy, npcTitleVir: npcTitle.virAddr,
+		npcLengthPhy, npcLengthVir: npcLength.virAddr
+	};
+	return state;
+};
 ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 {
 	let state = CACHE.get("ExtNameTextStatic.State");
@@ -1074,6 +1381,8 @@ ExtNameTextStatic.enable = function(_, feature)
 		throw Error("ExtNameTextStatic: EXTN ring-v2 block unavailable");
 
 	const state = ExtNameTextStatic.ensureInstalled(_, extn.blockVir);
+	if ((feature & ExtNameTextStatic.FeatureNames) !== 0)
+		ExtNameTextStatic.patch128ByteNamePackets(state);
 	state.features |= feature;
 	ExtNameTextStatic.writeFeatures(state);
 	if ((feature & ExtNameTextStatic.FeatureColors) !== 0)

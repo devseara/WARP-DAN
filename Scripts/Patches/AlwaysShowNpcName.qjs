@@ -60,6 +60,7 @@ const NpcNameStatic = {
 	ExtnRingCapacity: 1024,
 	ExtnRingSlotShift: 10,
 	ExtnPacketId: 0x0BB7,
+	ExtnV4TypeOffset: 652,
 	ExtnWideTypeOffset: 772,
 	ExtnLegacyTypeOffset: 232,
 	NpcType: 2,
@@ -389,6 +390,14 @@ NpcNameStatic.buildFrame = function(
 	a.emit(0x8B, 0x08, 0x8D, 0x40, 0x04);    // ECX=len; EAX=packet
 	a.emit(0x66, 0x81, 0x38); a.emit(0xB7, 0x0B);
 	a.jcc(0x85, "next_packet");
+	a.emit(0x0F, 0xB7, 0x58, 0x02, 0x3B, 0xD9);
+	a.jcc(0x85, "next_packet");
+	a.emit(0x81, 0x78, 0x04); a.dword(0x4558544E);
+	a.jcc(0x85, "next_packet");
+	a.emit(0x81, 0xF9); a.dword(653);
+	a.jcc(0x84, "v4_packet");
+	a.emit(0x81, 0xF9); a.dword(657);
+	a.jcc(0x84, "v4_packet");
 	a.emit(0x81, 0xF9); a.dword(773);
 	a.jcc(0x84, "wide_packet");
 	a.emit(0x81, 0xF9); a.dword(777);
@@ -403,6 +412,10 @@ NpcNameStatic.buildFrame = function(
 	a.jmp("packet_gid");
 	a.label("wide_packet");
 	a.emit(0x80, 0xB8); a.dword(NpcNameStatic.ExtnWideTypeOffset); a.emit(NpcNameStatic.NpcType);
+	a.jcc(0x85, "next_packet");
+	a.jmp("packet_gid");
+	a.label("v4_packet");
+	a.emit(0x80, 0xB8); a.dword(NpcNameStatic.ExtnV4TypeOffset); a.emit(NpcNameStatic.NpcType);
 	a.jcc(0x85, "next_packet");
 	a.label("packet_gid");
 	a.emit(0x8B, 0x48, 0x08, 0x85, 0xC9);
