@@ -1,0 +1,239 @@
+{
+  "crashed": {
+    "path": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched_crash_ac2ff148.exe",
+    "sha256": "ac2ff148fbcf41ad55347dad8f0606404117d6ccc12481b5faf67e88a4593efe",
+    "equipment_owner": "0x1e66410",
+    "trampoline": "0x1e5f000",
+    "first_native_return": "0x1e664a1",
+    "state": "0x1e5f400",
+    "virtual_protect": [
+      {
+        "address": "0x1e5f400",
+        "length": "0x5000",
+        "mode": "0x4",
+        "rounded_begin": "0x1e5f000",
+        "rounded_end_exclusive": "0x1e65000"
+      }
+    ],
+    "completed_scenarios": [
+      {
+        "main": 0,
+        "off": 0,
+        "stock_calls": [
+          [
+            0,
+            0
+          ]
+        ],
+        "view_class_calls": [],
+        "item_suffix_calls": [],
+        "registry_owner": "0x0"
+      }
+    ],
+    "native_calls": 1,
+    "expected_crash": true,
+    "failure": {
+      "errno": 14,
+      "reason": "Fetch from non-executable memory (UC_ERR_FETCH_PROT)",
+      "eip": "0x1e5f000",
+      "return_address": "0x1e664a1",
+      "invocation": 2
+    },
+    "passed": true,
+    "scope": "Real PE hook/owner/trampoline and resource-name guard; Windows protection model; native equipment/view/class/suffix/resource ABI stubs; no live GPU acceptance"
+  },
+  "fixed": {
+    "path": "Outputs\\dual_weapon_all_types\\client-all-types-candidate.exe",
+    "sha256": "91b1690045634a07dae3b09c52a5564b8ae7895b16e53b1bb9235b2ed6bedeb8",
+    "equipment_owner": "0x1e66410",
+    "trampoline": "0x1e5f000",
+    "first_native_return": "0x1e664a1",
+    "state": "0x1e60000",
+    "virtual_protect": [
+      {
+        "address": "0x1e60000",
+        "length": "0x5000",
+        "mode": "0x4",
+        "rounded_begin": "0x1e60000",
+        "rounded_end_exclusive": "0x1e65000"
+      }
+    ],
+    "completed_scenarios": [
+      {
+        "main": 0,
+        "off": 0,
+        "stock_calls": [
+          [
+            0,
+            0
+          ]
+        ],
+        "view_class_calls": [],
+        "item_suffix_calls": [],
+        "registry_owner": "0x0"
+      },
+      {
+        "main": 0,
+        "off": 0,
+        "stock_calls": [
+          [
+            0,
+            0
+          ]
+        ],
+        "view_class_calls": [],
+        "item_suffix_calls": [],
+        "registry_owner": "0x0"
+      },
+      {
+        "main": 1238,
+        "off": 0,
+        "stock_calls": [
+          [
+            1238,
+            0
+          ]
+        ],
+        "view_class_calls": [],
+        "item_suffix_calls": [],
+        "registry_owner": "0x0"
+      },
+      {
+        "main": 0,
+        "off": 1238,
+        "stock_calls": [
+          [
+            0,
+            1238
+          ],
+          [
+            1238,
+            0
+          ],
+          [
+            0,
+            1238
+          ]
+        ],
+        "view_class_calls": [
+          34
+        ],
+        "item_suffix_calls": [
+          1238
+        ],
+        "registry_owner": "0x6bd279d0"
+      },
+      {
+        "main": 1238,
+        "off": 1238,
+        "stock_calls": [
+          [
+            1238,
+            1238
+          ],
+          [
+            1238,
+            0
+          ],
+          [
+            1238,
+            0
+          ],
+          [
+            1238,
+            1238
+          ]
+        ],
+        "view_class_calls": [
+          34,
+          34
+        ],
+        "item_suffix_calls": [
+          1238,
+          1238
+        ],
+        "registry_owner": "0x6bd279d0"
+      },
+      {
+        "main": 13412,
+        "off": 1238,
+        "stock_calls": [
+          [
+            13412,
+            1238
+          ],
+          [
+            1238,
+            0
+          ],
+          [
+            13412,
+            0
+          ],
+          [
+            13412,
+            1238
+          ]
+        ],
+        "view_class_calls": [
+          34,
+          45
+        ],
+        "item_suffix_calls": [
+          1238,
+          13412
+        ],
+        "registry_owner": "0x6bd279d0"
+      },
+      {
+        "main": 1238,
+        "off": 13412,
+        "stock_calls": [
+          [
+            1238,
+            13412
+          ],
+          [
+            13412,
+            0
+          ],
+          [
+            1238,
+            0
+          ],
+          [
+            1238,
+            13412
+          ]
+        ],
+        "view_class_calls": [
+          45,
+          34
+        ],
+        "item_suffix_calls": [
+          13412,
+          1238
+        ],
+        "registry_owner": "0x6bd279d0"
+      },
+      {
+        "main": 0,
+        "off": 0,
+        "stock_calls": [
+          [
+            0,
+            0
+          ]
+        ],
+        "view_class_calls": [],
+        "item_suffix_calls": [],
+        "registry_owner": "0x0"
+      }
+    ],
+    "native_calls": 19,
+    "expected_crash": false,
+    "failure": null,
+    "passed": true,
+    "scope": "Real PE hook/owner/trampoline and resource-name guard; Windows protection model; native equipment/view/class/suffix/resource ABI stubs; no live GPU acceptance"
+  }
+}

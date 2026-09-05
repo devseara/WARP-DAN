@@ -1,0 +1,121 @@
+{
+  "authorization": "User explicitly approved patch deployment and map-server restart, then requested continuation.",
+  "started_utc": "2026-09-05T07:19:05.716550+00:00",
+  "scope": "Admin group 99 equipment override; approved pc.cpp guards and map-server executable only",
+  "target": "D:\\Programs\\Games\\Ragnarok\\01_github\\BanquetOfHeroes\\map-server.exe",
+  "events": [
+    {
+      "stage": "preflight",
+      "utc": "2026-09-05T07:19:05.746062+00:00"
+    },
+    {
+      "stage": "isolated_console_verified",
+      "utc": "2026-09-05T07:19:05.774704+00:00"
+    },
+    {
+      "stage": "graceful_shutdown_requested",
+      "utc": "2026-09-05T07:19:05.775995+00:00"
+    },
+    {
+      "stage": "graceful_shutdown_finished",
+      "utc": "2026-09-05T07:19:05.967080+00:00"
+    },
+    {
+      "stage": "binary_installed",
+      "utc": "2026-09-05T07:19:06.014348+00:00"
+    },
+    {
+      "stage": "map_server_started",
+      "utc": "2026-09-05T07:19:06.044969+00:00"
+    },
+    {
+      "stage": "awaiting_readiness_verification",
+      "utc": "2026-09-05T07:19:08.057329+00:00"
+    },
+    {
+      "stage": "ready_verified",
+      "utc": "2026-09-05T07:21:44.113575+00:00"
+    }
+  ],
+  "completed": true,
+  "stage": "ready_verified",
+  "before_sha256": "2ca1a116b6f913fc67da1ed474ef4cdefdfc9d9c17497d285f600e67636cf622",
+  "candidate_sha256": "21d80fc5186130ec1b65efc8cc37e347c8eb8f8dbfb161e177994224c74d479e",
+  "source_sha256": "eb9fc3b8a0cc8bc3efbd3dc2290b713fcde4c18103f66465a0bc8b042b0d4852",
+  "old_process": {
+    "pid": 17304,
+    "parent_pid": 9228,
+    "name": "map-server.exe"
+  },
+  "peer_processes": [
+    {
+      "pid": 15648,
+      "parent_pid": 13820,
+      "name": "login-server.exe"
+    },
+    {
+      "pid": 2060,
+      "parent_pid": 4328,
+      "name": "char-server.exe"
+    }
+  ],
+  "console_members": [
+    {
+      "pid": 9228,
+      "parent_pid": 13692,
+      "name": "cmd.exe"
+    },
+    {
+      "pid": 17020,
+      "parent_pid": 8892,
+      "name": "python.exe"
+    },
+    {
+      "pid": 17304,
+      "parent_pid": 9228,
+      "name": "map-server.exe"
+    }
+  ],
+  "old_exit_code": 0,
+  "after_sha256": "21d80fc5186130ec1b65efc8cc37e347c8eb8f8dbfb161e177994224c74d479e",
+  "new_pid": 10068,
+  "startup_log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\gm_all_weapons_20260905\\deployed-map-startup.log",
+  "hidden_window": true,
+  "verified_utc": "2026-09-05T07:21:44.113575+00:00",
+  "readiness": {
+    "os_capture": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\gm_all_weapons_20260905\\readiness-os.json",
+    "map_port_5121_listening": true,
+    "char_server_6121_connected": true,
+    "login_and_char_pids_unchanged": true,
+    "startup_markers": [
+      "[Status]: Server is 'ready' and listening on port '5121'.",
+      "[Status]: Map-server connected to char-server 'Banquet of Heroes' (whispername: Server).",
+      "[Status]: Map Server is now online."
+    ],
+    "startup_error_count": 0,
+    "startup_warnings": [
+      "[Warning]: You are running rAthena with admin privileges, it is not necessary."
+    ],
+    "all_equipment_group": 99,
+    "all_permission_enabled_by_this_change": false,
+    "live_new_weapon_equip_acceptance": "pending user/client capture; process readiness is not equip or sprite proof"
+  },
+  "live_equip_verification": {
+    "actor": 1481185360,
+    "client_pid": 17148,
+    "first_items_main_off": [
+      1504,
+      1238
+    ],
+    "swapped_items_main_off": [
+      1238,
+      1504
+    ],
+    "reports": [
+      "dual-weapon-live-mace-after-server-20260905.json",
+      "dual-weapon-live-off-mace-after-server-20260905.json"
+    ],
+    "user_reported_swap_succeeded": true,
+    "all_types_visual_acceptance": false
+  }
+}

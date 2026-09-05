@@ -1,0 +1,13 @@
+{
+  "schema": "dual_weapon_edge_contacts_deployment/v1",
+  "deployed_at_utc": "2026-09-05T10:41:35.561562+00:00",
+  "target": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "sha256": "4e23389333cd873e3f136b48a67aa20f95d648c8a254318b6630b4266858636c",
+  "backup": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched_before_old_motion_edges_95674dba.exe",
+  "backup_sha256": "95674dbae0b470c7cef7eade9580dea06038f337228d5f10753f1d73ff5d4220",
+  "payload_sha256": "175162d22f030a730dc69805c6d07894633ef3376d2406ffa184b07a3d7ab016",
+  "status": "installed_client_was_closed",
+  "live_acceptance": false,
+  "server_rebuilt": false,
+  "grfs_modified": false
+}

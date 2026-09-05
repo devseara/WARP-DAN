@@ -1,0 +1,5619 @@
+{
+  "schema": "dual_weapon_grip_profile/v1",
+  "authored_sha256": "0af838f066a29eb45a713489d3da40be3ab97bbb2c69c4c739bdfba07214b637",
+  "header_sha256": "b9050113aa46a1871a16647cc0911acaa5989de15f68888b8edfe8de297e7588",
+  "sources": {
+    "data/sprite/인간족/어세신/어세신_여_단검.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 1860,
+      "sha256": "66bf56178ad285933c5d9be85b7c3ef8771c483f3a0abf8d6b0034bf22aab312"
+    },
+    "data/sprite/인간족/어세신/어세신_여_검.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2504,
+      "sha256": "6e7f890bca1c70f77db38c677719fb86c3b39cb99b97ba7662c56e61cf3c5e97"
+    },
+    "data/sprite/인간족/어세신/어세신_여_도끼.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2969,
+      "sha256": "80252283c68fd12280c80f683de33946c224a02f6f54cc20dd05dec484f00da8"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1238.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2171,
+      "sha256": "bd777779a3eeefbaf890bf4918ae21f4de61dd4a843f8c3aa9ef1aa0c9566333"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1239.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2400,
+      "sha256": "bce34b8ee081e381cb39e643f190aa63dec7cbe8854308d72d5c0be9db06fe65"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1240.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2134,
+      "sha256": "9e0e4c8c1b28f6f7e53dc370aac64ba8e010334b491aa5815b8adb6ff42a6e9e"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1144.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 1943,
+      "sha256": "9c5f1d0577af2e80e0c6366511d3bc31f8c1042cd25c357d45b280d8dd3704fb"
+    },
+    "data/sprite/인간족/어세신/어세신_여_13049.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 1897,
+      "sha256": "1a7ca818f5e0f186c5cda300dbb06e7c50032869b8dc8919cc8ca82846067e50"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1119.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2310,
+      "sha256": "53498eeb8a88da7756e08d822b78a471f04466ca362717c71e2e2e133db0116e"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1122.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2022,
+      "sha256": "cc93409e9179130e557124cf129800005ff43fea9084643a9ee23a421f477f3c"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1123.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 1935,
+      "sha256": "32fac90825b5c13858528709740f496de613bea8d2450e661c2a8e1322c42d77"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1126.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2192,
+      "sha256": "2ea657b212d33fa3f4e5db671a63f23e9ee929a1b3eb9a0ec2d5b840ccd3066f"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1142.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2424,
+      "sha256": "f7aea8866d018fae0f540228817f225bcf319b930ba1deeb05c135a19e258ef3"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1143.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2788,
+      "sha256": "737a3204a469b2bb942bcd032644ccfd0de09d7cbeedaf4da4c5f4d861a7e044"
+    },
+    "data/sprite/인간족/어세신/어세신_여_13412.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 3243,
+      "sha256": "ce61ad9a6c3492b22bd1ebd7e5699f17f07e63f774102a4a55513d147a207fa7"
+    },
+    "data/sprite/인간족/어세신/어세신_여_13413.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 3243,
+      "sha256": "4ef05169fa345ed1090d6c52cf07c4b2f3e15c4503f83955ef30f12e6790d495"
+    },
+    "data/sprite/인간족/어세신/어세신_여_프리스트의검.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2626,
+      "sha256": "c8e6a0c439f31e5583dcb65772659b06c70644b91b09a2dc27f7c8c62431069e"
+    },
+    "data/sprite/인간족/몸통/여/어쌔신크로스_여.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 47444,
+      "sha256": "78feed0bafe571dbb389fad5f8868f67313e411096ef56a190522744899b3781"
+    },
+    "data/sprite/인간족/몸통/여/어쌔신크로스_여.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 205110,
+      "sha256": "e2ce96dd826411a13d5d2636dbbea3abf473c93ab6672db943f3c48982981281"
+    },
+    "data/sprite/인간족/어세신/어세신_여_단검_검.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 37332,
+      "sha256": "9f3856f691c9fafe7a766c76e8114d06b4759d2f0deeb2f29a84d3ab2b55bd15"
+    },
+    "data/sprite/인간족/어세신/어세신_여_단검_검.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 12586,
+      "sha256": "3323f303e9ae6f89d9e48de040c0cb497b4274ec6ccf49c85a1ffea4c210469b"
+    }
+  },
+  "weapon_images": [
+    {
+      "view": 1,
+      "index": 0,
+      "width": 28,
+      "height": 20,
+      "rgba_sha256": "6c916928fc86f1e917904a2b7f03c295a9c04f6af4e473b52c1b5041c635fe21",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        13
+      ],
+      "tip": [
+        26,
+        1
+      ],
+      "axis_angle": -29.74488129694222
+    },
+    {
+      "view": 1,
+      "index": 1,
+      "width": 19,
+      "height": 22,
+      "rgba_sha256": "cbe3261e736de5d6be8a19836931b272c11de6134f468605a3692e1f975f9a4d",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        11,
+        17
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -122.0053832080835
+    },
+    {
+      "view": 1,
+      "index": 2,
+      "width": 26,
+      "height": 17,
+      "rgba_sha256": "3c9f8b7269927feca1e5715b7775406510ffe345d71175d302056062a04c2bcf",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        22,
+        4
+      ],
+      "tip": [
+        1,
+        15
+      ],
+      "axis_angle": 152.35402463626133
+    },
+    {
+      "view": 1,
+      "index": 3,
+      "width": 20,
+      "height": 28,
+      "rgba_sha256": "ccedb6aebc1876250a574a006eb4c20e6e091c0fd5fa87bf6cdb6929497353fb",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        8,
+        3
+      ],
+      "tip": [
+        18,
+        26
+      ],
+      "axis_angle": 66.5014343240479
+    },
+    {
+      "view": 2,
+      "index": 0,
+      "width": 33,
+      "height": 32,
+      "rgba_sha256": "1f305c88fc0215b291d05ac0e6320aa18f4430738db903b9fa89f729f9796556",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        8,
+        26
+      ],
+      "tip": [
+        31,
+        1
+      ],
+      "axis_angle": -47.38594403038881
+    },
+    {
+      "view": 2,
+      "index": 1,
+      "width": 24,
+      "height": 41,
+      "rgba_sha256": "cf841b4fa79cd980555567b9eec87cf8a57dccbae224f59361ff7b83a92d586b",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        15,
+        36
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -111.80140948635182
+    },
+    {
+      "view": 2,
+      "index": 2,
+      "width": 9,
+      "height": 8,
+      "rgba_sha256": "759ab1205cf98ef0b3733e1a199ffd3389703847c5f71b3203c4a73b67496776",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 2,
+      "index": 3,
+      "width": 33,
+      "height": 32,
+      "rgba_sha256": "9d080f18766ac458f8339d11ec314f6b90d7940d184b6f162875b6d78a274588",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        29,
+        7
+      ],
+      "tip": [
+        1,
+        30
+      ],
+      "axis_angle": 140.5993393365206
+    },
+    {
+      "view": 2,
+      "index": 4,
+      "width": 30,
+      "height": 30,
+      "rgba_sha256": "a8305bae8c2c50f9483c4f3aaac970ff0d57994a3eedd354858b1fa48db9964c",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 2,
+      "index": 5,
+      "width": 25,
+      "height": 52,
+      "rgba_sha256": "3ec8204e5cf24a41805e0032bb17046a9c97d8c999048126af893f4af1edebda",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        3,
+        3
+      ],
+      "tip": [
+        23,
+        50
+      ],
+      "axis_angle": 66.94869908352698
+    },
+    {
+      "view": 6,
+      "index": 0,
+      "width": 34,
+      "height": 24,
+      "rgba_sha256": "b43c089affe8f504d203b2a365f852a12d9bf0c5524e40c16bdb92f565a51a5c",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        4,
+        17
+      ],
+      "tip": [
+        17,
+        3
+      ],
+      "axis_angle": -47.12109639666146
+    },
+    {
+      "view": 6,
+      "index": 1,
+      "width": 28,
+      "height": 26,
+      "rgba_sha256": "8b05c19b0e358389fabcbd1cccccf51d4be2cde37bdb195edb83b97feb44b873",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        23,
+        20
+      ],
+      "tip": [
+        9,
+        2
+      ],
+      "axis_angle": -127.87498365109822
+    },
+    {
+      "view": 6,
+      "index": 2,
+      "width": 9,
+      "height": 8,
+      "rgba_sha256": "637be2f0f85ca90a62172a57fd8ff65deb54337e05487d48a9bac5027460ca2e",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 6,
+      "index": 3,
+      "width": 33,
+      "height": 36,
+      "rgba_sha256": "211a985e315bab51db8dc8ba324f31bf8694c0f8e702647d4ed1bb1737fe3f39",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        28,
+        3
+      ],
+      "tip": [
+        1,
+        34
+      ],
+      "axis_angle": 131.05481377096245
+    },
+    {
+      "view": 6,
+      "index": 4,
+      "width": 25,
+      "height": 27,
+      "rgba_sha256": "ff0465255f9ee33bbca1f3b4298b81d5fb12992f027ab57828511aa469928b3e",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 6,
+      "index": 5,
+      "width": 29,
+      "height": 33,
+      "rgba_sha256": "82b3f1e69bd6df91d47654477673e719f1d4bae87d0e44c452c5dc0dbfe25991",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        4,
+        4
+      ],
+      "tip": [
+        27,
+        31
+      ],
+      "axis_angle": 49.573921259900864
+    },
+    {
+      "view": 6,
+      "index": 6,
+      "width": 11,
+      "height": 13,
+      "rgba_sha256": "a88b30e4dc153b8e62dae2d20d7dd7bd59272bf560cf3455a6c56d29b6a93cfb",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 6,
+      "index": 7,
+      "width": 11,
+      "height": 13,
+      "rgba_sha256": "99d2435e111d774342293f396ac3a586961d3e7f27875332204178da2f547c8f",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 34,
+      "index": 0,
+      "width": 26,
+      "height": 26,
+      "rgba_sha256": "b75fd00363048ca30eeaff2e43a652385565b769e1c67d70143cc48f90773847",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        4,
+        21
+      ],
+      "tip": [
+        24,
+        1
+      ],
+      "axis_angle": -45.0
+    },
+    {
+      "view": 34,
+      "index": 1,
+      "width": 26,
+      "height": 26,
+      "rgba_sha256": "dd59614c787e252ba61075b88f73907eff5691e2a3df0c778183c7de179194ff",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        21,
+        21
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -135.0
+    },
+    {
+      "view": 34,
+      "index": 2,
+      "width": 27,
+      "height": 20,
+      "rgba_sha256": "c0cced89c948b1ed1aa69d834278f7be0d47b69bdb3c81df991772f16701fca1",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        22,
+        4
+      ],
+      "tip": [
+        2,
+        14
+      ],
+      "axis_angle": 153.434948822922
+    },
+    {
+      "view": 34,
+      "index": 3,
+      "width": 26,
+      "height": 26,
+      "rgba_sha256": "243fcd421ae7a84b84e8688a128cf432bfdfb04d5ee5347d1413d786260522a4",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        4,
+        4
+      ],
+      "tip": [
+        23,
+        23
+      ],
+      "axis_angle": 45.0
+    },
+    {
+      "view": 35,
+      "index": 0,
+      "width": 24,
+      "height": 27,
+      "rgba_sha256": "0eb468246d70b9d98fc6544bce86b84ac159c3a4a6b409efb52182c88d6047f3",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        7,
+        11
+      ],
+      "tip": [
+        14,
+        2
+      ],
+      "axis_angle": -52.1250163489018
+    },
+    {
+      "view": 35,
+      "index": 1,
+      "width": 24,
+      "height": 27,
+      "rgba_sha256": "3a4b476e66912c943670fe427c086c7c5b96b13308b2808387be1b5ef576199c",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        16,
+        11
+      ],
+      "tip": [
+        9,
+        2
+      ],
+      "axis_angle": -127.87498365109822
+    },
+    {
+      "view": 35,
+      "index": 2,
+      "width": 24,
+      "height": 21,
+      "rgba_sha256": "8c79b004cdec23b4438e2d8bd46b005ab222a4d8fccffe60c71e74e24065e6a4",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        16,
+        5
+      ],
+      "tip": [
+        2,
+        15
+      ],
+      "axis_angle": 144.46232220802563
+    },
+    {
+      "view": 35,
+      "index": 3,
+      "width": 27,
+      "height": 24,
+      "rgba_sha256": "47916c32a98ba36343e7d49721d48f5422693c869ef1a2e1ceca30d6dcc4f95a",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        9,
+        6
+      ],
+      "tip": [
+        22,
+        17
+      ],
+      "axis_angle": 40.23635830927382
+    },
+    {
+      "view": 36,
+      "index": 0,
+      "width": 26,
+      "height": 21,
+      "rgba_sha256": "2912a651e657479324afcb9ea478fd3e9c993aa177ebcf66ab7ac4811fbe23c7",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        6,
+        14
+      ],
+      "tip": [
+        24,
+        4
+      ],
+      "axis_angle": -29.054604099077146
+    },
+    {
+      "view": 36,
+      "index": 1,
+      "width": 24,
+      "height": 22,
+      "rgba_sha256": "48faa7bc5b27b9c8625ddad17157be1ffe8d31e7bb6ef9085fb4e7fec14e45d2",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        18,
+        14
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -142.59464336859145
+    },
+    {
+      "view": 36,
+      "index": 2,
+      "width": 26,
+      "height": 14,
+      "rgba_sha256": "3e212a8bdfb4b599e61ec9a7021d04a7d1766e31431910dcbb67982453900843",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        22,
+        5
+      ],
+      "tip": [
+        1,
+        12
+      ],
+      "axis_angle": 161.565051177078
+    },
+    {
+      "view": 36,
+      "index": 3,
+      "width": 21,
+      "height": 26,
+      "rgba_sha256": "c91dbb4f1abd98fdea4afd49ab0e57af76e0b4cae1047441e8e761ba907ad372",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        4,
+        4
+      ],
+      "tip": [
+        17,
+        22
+      ],
+      "axis_angle": 54.16234704572171
+    },
+    {
+      "view": 37,
+      "index": 0,
+      "width": 29,
+      "height": 31,
+      "rgba_sha256": "97a9935370169e31c2225a83673db3cfe02ef85fe7f15dd0b2802302cccb1f82",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        4,
+        26
+      ],
+      "tip": [
+        27,
+        1
+      ],
+      "axis_angle": -47.38594403038881
+    },
+    {
+      "view": 37,
+      "index": 1,
+      "width": 22,
+      "height": 35,
+      "rgba_sha256": "22de439bbc50e858928565a10dcdd5149cfa9dda24dc70a7c17be31333a50281",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        17,
+        31
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -118.07248693585296
+    },
+    {
+      "view": 37,
+      "index": 2,
+      "width": 9,
+      "height": 9,
+      "rgba_sha256": "435f8dbf13f27199b825c66f54ac9a0790b7449cdf2da7b50517510b5ba482bc",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 37,
+      "index": 3,
+      "width": 35,
+      "height": 22,
+      "rgba_sha256": "986f924276706b860b4fd626981152874c974195202e850fc2d1a5213810f43d",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        31,
+        3
+      ],
+      "tip": [
+        1,
+        20
+      ],
+      "axis_angle": 150.46121774044192
+    },
+    {
+      "view": 37,
+      "index": 4,
+      "width": 22,
+      "height": 35,
+      "rgba_sha256": "32161bf403def7f0afd7a02724b4d6f3048d8df88e6255b81253c021aefdce75",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        3,
+        3
+      ],
+      "tip": [
+        20,
+        33
+      ],
+      "axis_angle": 60.4612177404419
+    },
+    {
+      "view": 38,
+      "index": 0,
+      "width": 28,
+      "height": 20,
+      "rgba_sha256": "4134d41d181caa8456b6592ddbe02ee96754259d3fd5f535b1ebe196397d15e6",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        13
+      ],
+      "tip": [
+        26,
+        1
+      ],
+      "axis_angle": -29.74488129694222
+    },
+    {
+      "view": 38,
+      "index": 1,
+      "width": 19,
+      "height": 22,
+      "rgba_sha256": "246ed54c1f55131d056663d747d87ba4b31d4ee484a66a25312376a534705dc2",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        11,
+        17
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -122.0053832080835
+    },
+    {
+      "view": 38,
+      "index": 2,
+      "width": 26,
+      "height": 17,
+      "rgba_sha256": "0aaac1ebbe332267b2358e25e818a43c239596cbda3f8a913aa4adc84751afaf",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        22,
+        4
+      ],
+      "tip": [
+        1,
+        15
+      ],
+      "axis_angle": 152.35402463626133
+    },
+    {
+      "view": 38,
+      "index": 3,
+      "width": 20,
+      "height": 28,
+      "rgba_sha256": "5622862f56463e9cd063ea95f585a419a0a81bee6da6c0e756f7bb3dfa1c9b0f",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        8,
+        3
+      ],
+      "tip": [
+        18,
+        26
+      ],
+      "axis_angle": 66.5014343240479
+    },
+    {
+      "view": 39,
+      "index": 0,
+      "width": 43,
+      "height": 40,
+      "rgba_sha256": "c8cf6e28f662d88493111e9c8d9c3085642fc2caef9a4fb36408dad63c9407a0",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        4,
+        33
+      ],
+      "tip": [
+        40,
+        1
+      ],
+      "axis_angle": -41.6335393365702
+    },
+    {
+      "view": 39,
+      "index": 1,
+      "width": 30,
+      "height": 46,
+      "rgba_sha256": "02858a17d38c749765ddec2875cf7350a90337b6fac6277e1e4fc5e80c86944f",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        24,
+        42
+      ],
+      "tip": [
+        1,
+        2
+      ],
+      "axis_angle": -119.89890183861456
+    },
+    {
+      "view": 39,
+      "index": 2,
+      "width": 11,
+      "height": 10,
+      "rgba_sha256": "ff46c33d665fad1a77e65caba46bf5e4c93088f684966a6425ebd7291de5e181",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 39,
+      "index": 3,
+      "width": 46,
+      "height": 29,
+      "rgba_sha256": "d2ea26fc8cc3930fd4379a4d991de36acc540571b942b4e7d8a1c0e790131e2d",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        43,
+        4
+      ],
+      "tip": [
+        1,
+        27
+      ],
+      "axis_angle": 151.29404745659892
+    },
+    {
+      "view": 39,
+      "index": 4,
+      "width": 30,
+      "height": 46,
+      "rgba_sha256": "66865193f3a3ce710c00c4483a2f1bca7b1423c8b540e7f24718c841e54da82e",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        3
+      ],
+      "tip": [
+        28,
+        43
+      ],
+      "axis_angle": 60.10109816138544
+    },
+    {
+      "view": 39,
+      "index": 5,
+      "width": 11,
+      "height": 7,
+      "rgba_sha256": "7df1bcc9b47b014ff1e17f24af5a73823dbf9b8380aa67e957633e521907ea08",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 39,
+      "index": 6,
+      "width": 14,
+      "height": 7,
+      "rgba_sha256": "375c3b9d334997cd327663ae8db697d3ba7a9b0e89c3696f93588b0b03bd03cf",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 40,
+      "index": 0,
+      "width": 26,
+      "height": 32,
+      "rgba_sha256": "3eb3b8ecd3d0a1edfc17b5088228ad4a70c30b9385d7aa20806631c0e919a3c1",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        26
+      ],
+      "tip": [
+        22,
+        1
+      ],
+      "axis_angle": -55.7842978675626
+    },
+    {
+      "view": 40,
+      "index": 1,
+      "width": 24,
+      "height": 31,
+      "rgba_sha256": "67d33ac9d61dd518073c19d0dde7fd5c461654c46a9d2da88635b191e5376fb0",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        19,
+        25
+      ],
+      "tip": [
+        4,
+        1
+      ],
+      "axis_angle": -122.0053832080835
+    },
+    {
+      "view": 40,
+      "index": 2,
+      "width": 9,
+      "height": 8,
+      "rgba_sha256": "759ab1205cf98ef0b3733e1a199ffd3389703847c5f71b3203c4a73b67496776",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 40,
+      "index": 3,
+      "width": 28,
+      "height": 24,
+      "rgba_sha256": "703c4bd23854da2d589be8dcaac3ffb1f85289a8d2eb871f22a2cc3315cf4180",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        23,
+        5
+      ],
+      "tip": [
+        1,
+        22
+      ],
+      "axis_angle": 142.30575953331083
+    },
+    {
+      "view": 40,
+      "index": 4,
+      "width": 23,
+      "height": 26,
+      "rgba_sha256": "b88f835cf4f90231a8397e1ee38bb09e8edf1649526e06223bcd2b6aa8d20ade",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        3
+      ],
+      "tip": [
+        21,
+        24
+      ],
+      "axis_angle": 52.69605172201657
+    },
+    {
+      "view": 41,
+      "index": 0,
+      "width": 31,
+      "height": 30,
+      "rgba_sha256": "fbc5fb6e58ccaaab801ca565e449e12679bea016807327796f1174ab820a1e3e",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        25
+      ],
+      "tip": [
+        29,
+        1
+      ],
+      "axis_angle": -45.0
+    },
+    {
+      "view": 41,
+      "index": 1,
+      "width": 26,
+      "height": 26,
+      "rgba_sha256": "5080cab6b6746e005d722fc0c8b6d628fc77d53bc296060b31d9583abb506b43",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        21,
+        22
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -133.60281897270363
+    },
+    {
+      "view": 41,
+      "index": 2,
+      "width": 7,
+      "height": 8,
+      "rgba_sha256": "1ef21026d124280001557a9437393eae6de10f4ed4140664bc55e1f8cf6c8cba",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 41,
+      "index": 3,
+      "width": 36,
+      "height": 23,
+      "rgba_sha256": "617f0390ccc387f2e021da02e660e65abd282c074810ec58eb11ad41ab037f42",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        32,
+        4
+      ],
+      "tip": [
+        1,
+        21
+      ],
+      "axis_angle": 151.26020470831196
+    },
+    {
+      "view": 41,
+      "index": 4,
+      "width": 15,
+      "height": 44,
+      "rgba_sha256": "69a7c81ddd62ee74c842175a570e6ff8d3ae5829fdf0df49498f18e870a2a393",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        1,
+        3
+      ],
+      "tip": [
+        14,
+        41
+      ],
+      "axis_angle": 71.11391263029071
+    },
+    {
+      "view": 42,
+      "index": 0,
+      "width": 33,
+      "height": 38,
+      "rgba_sha256": "6b4429bfd93a40e3f1121dc10af8c2af6b6e3da563b18ac56603fb86c16a2913",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        6,
+        32
+      ],
+      "tip": [
+        30,
+        2
+      ],
+      "axis_angle": -51.34019174590991
+    },
+    {
+      "view": 42,
+      "index": 1,
+      "width": 17,
+      "height": 39,
+      "rgba_sha256": "f1e1c3342ca2aea5af3dbf8bc42517642bbbd6425fa791026260cae7b242d732",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        13,
+        35
+      ],
+      "tip": [
+        2,
+        1
+      ],
+      "axis_angle": -107.92791976200724
+    },
+    {
+      "view": 42,
+      "index": 2,
+      "width": 10,
+      "height": 7,
+      "rgba_sha256": "0f963a17ff963ce2149101b848c80319bd992b6195e11c378390094ed7d39d09",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 42,
+      "index": 3,
+      "width": 34,
+      "height": 25,
+      "rgba_sha256": "0852ae932755ca54db41371ef658da089345c81d4c94b502d3b4991743620513",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        30,
+        4
+      ],
+      "tip": [
+        2,
+        22
+      ],
+      "axis_angle": 147.2647737278924
+    },
+    {
+      "view": 42,
+      "index": 4,
+      "width": 18,
+      "height": 45,
+      "rgba_sha256": "1f343ae38aea9a7a67903602fcb1cf0f1b1d203396b8f8dcb6f3fb8988173173",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        2,
+        3
+      ],
+      "tip": [
+        15,
+        43
+      ],
+      "axis_angle": 71.99583839408662
+    },
+    {
+      "view": 43,
+      "index": 0,
+      "width": 37,
+      "height": 38,
+      "rgba_sha256": "4d61cae222b72daf20c47bdc0cf13bb7729692d2bee04a97dc16f11e39af755f",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        7,
+        32
+      ],
+      "tip": [
+        34,
+        2
+      ],
+      "axis_angle": -48.01278750418334
+    },
+    {
+      "view": 43,
+      "index": 1,
+      "width": 30,
+      "height": 35,
+      "rgba_sha256": "dd01f6f8608c5bb2de9b9c11c5edbb15c4c57f09bbd8877d00cc52891a71b791",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        23,
+        29
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -128.15722658736905
+    },
+    {
+      "view": 43,
+      "index": 2,
+      "width": 10,
+      "height": 9,
+      "rgba_sha256": "1d01a4321e2a5bd78e476f6fe0f58ef998de810548cfad803823d2f05df75dfa",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 43,
+      "index": 3,
+      "width": 35,
+      "height": 30,
+      "rgba_sha256": "3f3b2dc2166deec9f22f10cbc4a9885a748d108b791b57b906d6d29ca8b3e904",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        29,
+        5
+      ],
+      "tip": [
+        1,
+        28
+      ],
+      "axis_angle": 140.5993393365206
+    },
+    {
+      "view": 43,
+      "index": 4,
+      "width": 21,
+      "height": 43,
+      "rgba_sha256": "e4b7fd355aefba8ef8e14d778eb580ec0e7c66ba836fb9ee64d3463a063bdc70",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        4
+      ],
+      "tip": [
+        18,
+        40
+      ],
+      "axis_angle": 70.14478563067895
+    },
+    {
+      "view": 44,
+      "index": 0,
+      "width": 37,
+      "height": 44,
+      "rgba_sha256": "b2be2dafde402cc9103fa3b28b830ae727aff191ce347c82b2b53f9fba5699d1",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        7,
+        37
+      ],
+      "tip": [
+        34,
+        1
+      ],
+      "axis_angle": -53.13010235415598
+    },
+    {
+      "view": 44,
+      "index": 1,
+      "width": 33,
+      "height": 38,
+      "rgba_sha256": "1d677941b2ab849617d5491e6f60a099ab714664f4786d2a844086f96a7729ac",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        25,
+        33
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -126.86989764584402
+    },
+    {
+      "view": 44,
+      "index": 2,
+      "width": 9,
+      "height": 10,
+      "rgba_sha256": "979fea177e1b7a0fdde7b6a16d804b9fe6d628043ea159d0825bf6e71f969f79",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 44,
+      "index": 3,
+      "width": 47,
+      "height": 25,
+      "rgba_sha256": "78048d8ce0d587fb44880bcc65e6a0abae86a8602214cb98f4804563933324bd",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        42,
+        8
+      ],
+      "tip": [
+        2,
+        23
+      ],
+      "axis_angle": 159.44395478041653
+    },
+    {
+      "view": 44,
+      "index": 4,
+      "width": 26,
+      "height": 48,
+      "rgba_sha256": "3ce61c046199b2151da32a35b57b0660a4c09bd7ac3b0c1af6ed5f72aa24498f",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        6,
+        3
+      ],
+      "tip": [
+        24,
+        44
+      ],
+      "axis_angle": 66.29735404903377
+    },
+    {
+      "view": 45,
+      "index": 0,
+      "width": 53,
+      "height": 38,
+      "rgba_sha256": "1370dfffd11a7477d6bbe3dfb7e7d538fb13365b2a5a40672c6458b5e64d814d",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        32
+      ],
+      "tip": [
+        50,
+        1
+      ],
+      "axis_angle": -34.562524648881826
+    },
+    {
+      "view": 45,
+      "index": 1,
+      "width": 28,
+      "height": 56,
+      "rgba_sha256": "d1a2522726ca3b20c4b9f0c8584da331e32d9912bc425dd0ffa258df05e36b27",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        19,
+        51
+      ],
+      "tip": [
+        4,
+        2
+      ],
+      "axis_angle": -107.02052561151986
+    },
+    {
+      "view": 45,
+      "index": 2,
+      "width": 10,
+      "height": 10,
+      "rgba_sha256": "c55986a35010ee068c5b808419d7e787f0f06d6643eba203d532c92ec59641bb",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 45,
+      "index": 3,
+      "width": 56,
+      "height": 28,
+      "rgba_sha256": "04cb7ce967a8a4b411eb89291c8be134bcb21ee5915e602601c1c2be525d66ba",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        51,
+        4
+      ],
+      "tip": [
+        1,
+        23
+      ],
+      "axis_angle": 159.19320898728878
+    },
+    {
+      "view": 45,
+      "index": 4,
+      "width": 21,
+      "height": 60,
+      "rgba_sha256": "12c11f11db1394eeb1dd491f00bc17411bc3d23dfcf658a6ef8e2e6bcd4763e1",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        3
+      ],
+      "tip": [
+        17,
+        55
+      ],
+      "axis_angle": 77.0053832080835
+    },
+    {
+      "view": 45,
+      "index": 5,
+      "width": 15,
+      "height": 15,
+      "rgba_sha256": "692bb7d3500d6f76ed01d3de551d7e101a224cc23a24bb8788442443235bd41c",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 45,
+      "index": 6,
+      "width": 15,
+      "height": 15,
+      "rgba_sha256": "eaec264194affbfd0e06c888ee0992afb7cb8009c27237318f985e06965e4f6e",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 45,
+      "index": 7,
+      "width": 15,
+      "height": 15,
+      "rgba_sha256": "aa38e419a53f7432ff672c4cd5d83b298845f2f0e2fd4599bbcaedc81802d9f6",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 46,
+      "index": 0,
+      "width": 53,
+      "height": 38,
+      "rgba_sha256": "46b51f1f51ae412ffa197da695e2dcc82b9bf057c13f24f96f5b842f33918f9b",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        32
+      ],
+      "tip": [
+        50,
+        1
+      ],
+      "axis_angle": -34.562524648881826
+    },
+    {
+      "view": 46,
+      "index": 1,
+      "width": 28,
+      "height": 56,
+      "rgba_sha256": "19d96b31e8b1ce786352bf2a30ae49a66e759dd8434aeb8fbd9c37e1853c349f",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        19,
+        51
+      ],
+      "tip": [
+        4,
+        2
+      ],
+      "axis_angle": -107.02052561151986
+    },
+    {
+      "view": 46,
+      "index": 2,
+      "width": 10,
+      "height": 10,
+      "rgba_sha256": "e59ee2fef18c52277e7897bcf04322aa999ddc6748292351c396d9e1a5b2fe17",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 46,
+      "index": 3,
+      "width": 56,
+      "height": 28,
+      "rgba_sha256": "e6d62e96f4e7a8ef155e638b5f88aefe69a70473e8752be398abbb379ac10ecf",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        51,
+        4
+      ],
+      "tip": [
+        1,
+        23
+      ],
+      "axis_angle": 159.19320898728878
+    },
+    {
+      "view": 46,
+      "index": 4,
+      "width": 21,
+      "height": 60,
+      "rgba_sha256": "189a5035ec84519837867709ea6c254d2d0f563412b90cae2ce57eccac6d67d1",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        5,
+        3
+      ],
+      "tip": [
+        17,
+        55
+      ],
+      "axis_angle": 77.0053832080835
+    },
+    {
+      "view": 46,
+      "index": 5,
+      "width": 15,
+      "height": 15,
+      "rgba_sha256": "692bb7d3500d6f76ed01d3de551d7e101a224cc23a24bb8788442443235bd41c",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 46,
+      "index": 6,
+      "width": 15,
+      "height": 15,
+      "rgba_sha256": "eaec264194affbfd0e06c888ee0992afb7cb8009c27237318f985e06965e4f6e",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 46,
+      "index": 7,
+      "width": 15,
+      "height": 15,
+      "rgba_sha256": "aa38e419a53f7432ff672c4cd5d83b298845f2f0e2fd4599bbcaedc81802d9f6",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 47,
+      "index": 0,
+      "width": 41,
+      "height": 42,
+      "rgba_sha256": "725bdb5ce19dff80dc4842dd072249c94ebf3c49bc8c0abc90609088ecb73a17",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        9,
+        36
+      ],
+      "tip": [
+        39,
+        1
+      ],
+      "axis_angle": -49.398705354995535
+    },
+    {
+      "view": 47,
+      "index": 1,
+      "width": 41,
+      "height": 42,
+      "rgba_sha256": "c27e031a3ae3f6b53625a6ee0815c55e6949b42234198db981c79249b9c840dc",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        29,
+        36
+      ],
+      "tip": [
+        1,
+        1
+      ],
+      "axis_angle": -128.6598082540901
+    },
+    {
+      "view": 47,
+      "index": 2,
+      "width": 7,
+      "height": 8,
+      "rgba_sha256": "f53d5629bae0cba69153d6c4ddf5b1d01f2f4a34b5e9d11edf90ba935aae749b",
+      "status": "inspected_partial_art_not_selected_by_held_or_dual_attack_profile"
+    },
+    {
+      "view": 47,
+      "index": 3,
+      "width": 32,
+      "height": 29,
+      "rgba_sha256": "345e06c8f987fa757b750dc228ec6bdfe051abf6ee8a86e6ced04a4b7d219340",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        28,
+        3
+      ],
+      "tip": [
+        1,
+        27
+      ],
+      "axis_angle": 138.3664606634298
+    },
+    {
+      "view": 47,
+      "index": 4,
+      "width": 24,
+      "height": 52,
+      "rgba_sha256": "9b4321fea5441c8a2279275d7c070e3e48352f1344035c83d5cf3f8c7b687574",
+      "status": "manual_pixel_annotation",
+      "grip": [
+        3,
+        3
+      ],
+      "tip": [
+        22,
+        50
+      ],
+      "axis_angle": 67.98871680208065
+    }
+  ],
+  "body_cells": [
+    {
+      "phase": 0,
+      "direction": 0,
+      "frame": 0,
+      "index": 54,
+      "x": -24,
+      "y": -57,
+      "width": 49,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          6,
+          24
+        ],
+        [
+          40,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 0,
+      "generic_width": 62,
+      "generic_height": 44,
+      "generic_mirror": 0,
+      "rgba_sha256": "61d85367e020e88a09de0b2e256686524dc414d11d82ca358b73e308d8d31c09"
+    },
+    {
+      "phase": 0,
+      "direction": 0,
+      "frame": 1,
+      "index": 55,
+      "x": -24,
+      "y": -58,
+      "width": 49,
+      "height": 68,
+      "mirror": 0,
+      "sockets": [
+        [
+          6,
+          23
+        ],
+        [
+          40,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 1,
+      "generic_width": 62,
+      "generic_height": 42,
+      "generic_mirror": 0,
+      "rgba_sha256": "ca738e4940bbb4b15527c61d65ffccac410fc4e52398eed917b800cd550ddc9d"
+    },
+    {
+      "phase": 0,
+      "direction": 0,
+      "frame": 2,
+      "index": 56,
+      "x": -23,
+      "y": -59,
+      "width": 48,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          5,
+          22
+        ],
+        [
+          39,
+          25
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 2,
+      "generic_width": 61,
+      "generic_height": 40,
+      "generic_mirror": 0,
+      "rgba_sha256": "f504a18375e39652417bb74ee824ba2bf384de43582367d73c5389340aab2d6d"
+    },
+    {
+      "phase": 0,
+      "direction": 0,
+      "frame": 3,
+      "index": 57,
+      "x": -24,
+      "y": -59,
+      "width": 49,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          6,
+          19
+        ],
+        [
+          40,
+          26
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 3,
+      "generic_width": 62,
+      "generic_height": 38,
+      "generic_mirror": 0,
+      "rgba_sha256": "f44bfd1d802ddf88fe964c7ad171f61efeb9280a8e7e6d19e2a0b1240ddf682c"
+    },
+    {
+      "phase": 0,
+      "direction": 0,
+      "frame": 4,
+      "index": 58,
+      "x": -25,
+      "y": -58,
+      "width": 50,
+      "height": 68,
+      "mirror": 0,
+      "sockets": [
+        [
+          7,
+          24
+        ],
+        [
+          41,
+          25
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          21
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 4,
+      "generic_width": 63,
+      "generic_height": 39,
+      "generic_mirror": 0,
+      "rgba_sha256": "bd8c2c5b29267e1c9d04b4690df033bcf44cddd87a220aae04ed3a0ab8e2c290"
+    },
+    {
+      "phase": 0,
+      "direction": 0,
+      "frame": 5,
+      "index": 59,
+      "x": -24,
+      "y": -57,
+      "width": 49,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          6,
+          25
+        ],
+        [
+          40,
+          25
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 5,
+      "generic_width": 62,
+      "generic_height": 42,
+      "generic_mirror": 0,
+      "rgba_sha256": "652abcded1014b545171acb907722bb07482d43336794770c708d298ac149e29"
+    },
+    {
+      "phase": 0,
+      "direction": 1,
+      "frame": 0,
+      "index": 54,
+      "x": -24,
+      "y": -57,
+      "width": 49,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          6,
+          24
+        ],
+        [
+          40,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 0,
+      "generic_width": 62,
+      "generic_height": 44,
+      "generic_mirror": 0,
+      "rgba_sha256": "61d85367e020e88a09de0b2e256686524dc414d11d82ca358b73e308d8d31c09"
+    },
+    {
+      "phase": 0,
+      "direction": 1,
+      "frame": 1,
+      "index": 55,
+      "x": -24,
+      "y": -58,
+      "width": 49,
+      "height": 68,
+      "mirror": 0,
+      "sockets": [
+        [
+          6,
+          23
+        ],
+        [
+          40,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 1,
+      "generic_width": 62,
+      "generic_height": 42,
+      "generic_mirror": 0,
+      "rgba_sha256": "ca738e4940bbb4b15527c61d65ffccac410fc4e52398eed917b800cd550ddc9d"
+    },
+    {
+      "phase": 0,
+      "direction": 1,
+      "frame": 2,
+      "index": 56,
+      "x": -23,
+      "y": -59,
+      "width": 48,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          5,
+          22
+        ],
+        [
+          39,
+          25
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 2,
+      "generic_width": 61,
+      "generic_height": 40,
+      "generic_mirror": 0,
+      "rgba_sha256": "f504a18375e39652417bb74ee824ba2bf384de43582367d73c5389340aab2d6d"
+    },
+    {
+      "phase": 0,
+      "direction": 1,
+      "frame": 3,
+      "index": 57,
+      "x": -24,
+      "y": -59,
+      "width": 49,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          6,
+          19
+        ],
+        [
+          40,
+          26
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 3,
+      "generic_width": 62,
+      "generic_height": 38,
+      "generic_mirror": 0,
+      "rgba_sha256": "f44bfd1d802ddf88fe964c7ad171f61efeb9280a8e7e6d19e2a0b1240ddf682c"
+    },
+    {
+      "phase": 0,
+      "direction": 1,
+      "frame": 4,
+      "index": 58,
+      "x": -25,
+      "y": -58,
+      "width": 50,
+      "height": 68,
+      "mirror": 0,
+      "sockets": [
+        [
+          7,
+          24
+        ],
+        [
+          41,
+          25
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          21
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 4,
+      "generic_width": 63,
+      "generic_height": 39,
+      "generic_mirror": 0,
+      "rgba_sha256": "bd8c2c5b29267e1c9d04b4690df033bcf44cddd87a220aae04ed3a0ab8e2c290"
+    },
+    {
+      "phase": 0,
+      "direction": 1,
+      "frame": 5,
+      "index": 59,
+      "x": -24,
+      "y": -57,
+      "width": 49,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          6,
+          25
+        ],
+        [
+          40,
+          25
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 5,
+      "generic_width": 62,
+      "generic_height": 42,
+      "generic_mirror": 0,
+      "rgba_sha256": "652abcded1014b545171acb907722bb07482d43336794770c708d298ac149e29"
+    },
+    {
+      "phase": 0,
+      "direction": 2,
+      "frame": 0,
+      "index": 60,
+      "x": -23,
+      "y": -59,
+      "width": 43,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          30,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 6,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "a09ba84bc0dbd2d7e368ddabec3cd64122a7c461e32dbae9fde333fd19d4450b"
+    },
+    {
+      "phase": 0,
+      "direction": 2,
+      "frame": 1,
+      "index": 61,
+      "x": -23,
+      "y": -60,
+      "width": 43,
+      "height": 70,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          31,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 7,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "3b3d64414eaf4ff2ee914d3320dae1aaf7ee1fb36c3d0d8324b573bcdc518922"
+    },
+    {
+      "phase": 0,
+      "direction": 2,
+      "frame": 2,
+      "index": 62,
+      "x": -23,
+      "y": -61,
+      "width": 43,
+      "height": 71,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          31,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 8,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "9018ae5885f4380457d8a30f6e22bffa6f7e813a5a89618bd6a5dff439e1f43c"
+    },
+    {
+      "phase": 0,
+      "direction": 2,
+      "frame": 3,
+      "index": 63,
+      "x": -23,
+      "y": -61,
+      "width": 43,
+      "height": 71,
+      "mirror": 0,
+      "sockets": [
+        [
+          8,
+          17
+        ],
+        [
+          31,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          6
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 9,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "e6ce006d5317b7a5328e1914ca51bcaf1bd1e4be3d9cd1064b8e310e34f060c8"
+    },
+    {
+      "phase": 0,
+      "direction": 2,
+      "frame": 4,
+      "index": 64,
+      "x": -23,
+      "y": -60,
+      "width": 44,
+      "height": 70,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          30,
+          26
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          5
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 10,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "976b73c9b0f3f5c76955188d86b9de7b88dfa41c22b9e62a7198f10435547906"
+    },
+    {
+      "phase": 0,
+      "direction": 2,
+      "frame": 5,
+      "index": 65,
+      "x": -23,
+      "y": -59,
+      "width": 45,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          19
+        ],
+        [
+          31,
+          26
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          6
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 11,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "2101f5a5636aa997a2a821f72c4204eb7a8b9e754309d77f417f32ad725fa286"
+    },
+    {
+      "phase": 0,
+      "direction": 3,
+      "frame": 0,
+      "index": 60,
+      "x": -23,
+      "y": -59,
+      "width": 43,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          30,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 6,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "a09ba84bc0dbd2d7e368ddabec3cd64122a7c461e32dbae9fde333fd19d4450b"
+    },
+    {
+      "phase": 0,
+      "direction": 3,
+      "frame": 1,
+      "index": 61,
+      "x": -23,
+      "y": -60,
+      "width": 43,
+      "height": 70,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          31,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 7,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "3b3d64414eaf4ff2ee914d3320dae1aaf7ee1fb36c3d0d8324b573bcdc518922"
+    },
+    {
+      "phase": 0,
+      "direction": 3,
+      "frame": 2,
+      "index": 62,
+      "x": -23,
+      "y": -61,
+      "width": 43,
+      "height": 71,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          31,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 8,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "9018ae5885f4380457d8a30f6e22bffa6f7e813a5a89618bd6a5dff439e1f43c"
+    },
+    {
+      "phase": 0,
+      "direction": 3,
+      "frame": 3,
+      "index": 63,
+      "x": -23,
+      "y": -61,
+      "width": 43,
+      "height": 71,
+      "mirror": 0,
+      "sockets": [
+        [
+          8,
+          17
+        ],
+        [
+          31,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          6
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 9,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "e6ce006d5317b7a5328e1914ca51bcaf1bd1e4be3d9cd1064b8e310e34f060c8"
+    },
+    {
+      "phase": 0,
+      "direction": 3,
+      "frame": 4,
+      "index": 64,
+      "x": -23,
+      "y": -60,
+      "width": 44,
+      "height": 70,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          30,
+          26
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          5
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 10,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "976b73c9b0f3f5c76955188d86b9de7b88dfa41c22b9e62a7198f10435547906"
+    },
+    {
+      "phase": 0,
+      "direction": 3,
+      "frame": 5,
+      "index": 65,
+      "x": -23,
+      "y": -59,
+      "width": 45,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          19
+        ],
+        [
+          31,
+          26
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -29,
+          6
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 11,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "2101f5a5636aa997a2a821f72c4204eb7a8b9e754309d77f417f32ad725fa286"
+    },
+    {
+      "phase": 0,
+      "direction": 4,
+      "frame": 0,
+      "index": 60,
+      "x": -20,
+      "y": -59,
+      "width": 43,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          30,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 6,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "a09ba84bc0dbd2d7e368ddabec3cd64122a7c461e32dbae9fde333fd19d4450b"
+    },
+    {
+      "phase": 0,
+      "direction": 4,
+      "frame": 1,
+      "index": 61,
+      "x": -20,
+      "y": -60,
+      "width": 43,
+      "height": 70,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          31,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 7,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "3b3d64414eaf4ff2ee914d3320dae1aaf7ee1fb36c3d0d8324b573bcdc518922"
+    },
+    {
+      "phase": 0,
+      "direction": 4,
+      "frame": 2,
+      "index": 62,
+      "x": -20,
+      "y": -61,
+      "width": 43,
+      "height": 71,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          31,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 8,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "9018ae5885f4380457d8a30f6e22bffa6f7e813a5a89618bd6a5dff439e1f43c"
+    },
+    {
+      "phase": 0,
+      "direction": 4,
+      "frame": 3,
+      "index": 63,
+      "x": -20,
+      "y": -61,
+      "width": 43,
+      "height": 71,
+      "mirror": 1,
+      "sockets": [
+        [
+          8,
+          17
+        ],
+        [
+          31,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          6
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 9,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "e6ce006d5317b7a5328e1914ca51bcaf1bd1e4be3d9cd1064b8e310e34f060c8"
+    },
+    {
+      "phase": 0,
+      "direction": 4,
+      "frame": 4,
+      "index": 64,
+      "x": -21,
+      "y": -60,
+      "width": 44,
+      "height": 70,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          30,
+          26
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          5
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 10,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "976b73c9b0f3f5c76955188d86b9de7b88dfa41c22b9e62a7198f10435547906"
+    },
+    {
+      "phase": 0,
+      "direction": 4,
+      "frame": 5,
+      "index": 65,
+      "x": -22,
+      "y": -59,
+      "width": 45,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          19
+        ],
+        [
+          31,
+          26
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          6
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 11,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "2101f5a5636aa997a2a821f72c4204eb7a8b9e754309d77f417f32ad725fa286"
+    },
+    {
+      "phase": 0,
+      "direction": 5,
+      "frame": 0,
+      "index": 60,
+      "x": -20,
+      "y": -59,
+      "width": 43,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          30,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 6,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "a09ba84bc0dbd2d7e368ddabec3cd64122a7c461e32dbae9fde333fd19d4450b"
+    },
+    {
+      "phase": 0,
+      "direction": 5,
+      "frame": 1,
+      "index": 61,
+      "x": -20,
+      "y": -60,
+      "width": 43,
+      "height": 70,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          31,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 7,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "3b3d64414eaf4ff2ee914d3320dae1aaf7ee1fb36c3d0d8324b573bcdc518922"
+    },
+    {
+      "phase": 0,
+      "direction": 5,
+      "frame": 2,
+      "index": 62,
+      "x": -20,
+      "y": -61,
+      "width": 43,
+      "height": 71,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          31,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          7
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 8,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "9018ae5885f4380457d8a30f6e22bffa6f7e813a5a89618bd6a5dff439e1f43c"
+    },
+    {
+      "phase": 0,
+      "direction": 5,
+      "frame": 3,
+      "index": 63,
+      "x": -20,
+      "y": -61,
+      "width": 43,
+      "height": 71,
+      "mirror": 1,
+      "sockets": [
+        [
+          8,
+          17
+        ],
+        [
+          31,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          6
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 9,
+      "generic_width": 60,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "e6ce006d5317b7a5328e1914ca51bcaf1bd1e4be3d9cd1064b8e310e34f060c8"
+    },
+    {
+      "phase": 0,
+      "direction": 5,
+      "frame": 4,
+      "index": 64,
+      "x": -21,
+      "y": -60,
+      "width": 44,
+      "height": 70,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          18
+        ],
+        [
+          30,
+          26
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          5
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 10,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "976b73c9b0f3f5c76955188d86b9de7b88dfa41c22b9e62a7198f10435547906"
+    },
+    {
+      "phase": 0,
+      "direction": 5,
+      "frame": 5,
+      "index": 65,
+      "x": -22,
+      "y": -59,
+      "width": 45,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          19
+        ],
+        [
+          31,
+          26
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -29,
+          6
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 11,
+      "generic_width": 59,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "2101f5a5636aa997a2a821f72c4204eb7a8b9e754309d77f417f32ad725fa286"
+    },
+    {
+      "phase": 0,
+      "direction": 6,
+      "frame": 0,
+      "index": 54,
+      "x": -25,
+      "y": -57,
+      "width": 49,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          6,
+          24
+        ],
+        [
+          40,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 0,
+      "generic_width": 62,
+      "generic_height": 44,
+      "generic_mirror": 1,
+      "rgba_sha256": "61d85367e020e88a09de0b2e256686524dc414d11d82ca358b73e308d8d31c09"
+    },
+    {
+      "phase": 0,
+      "direction": 6,
+      "frame": 1,
+      "index": 55,
+      "x": -25,
+      "y": -58,
+      "width": 49,
+      "height": 68,
+      "mirror": 1,
+      "sockets": [
+        [
+          6,
+          23
+        ],
+        [
+          40,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 1,
+      "generic_width": 62,
+      "generic_height": 42,
+      "generic_mirror": 1,
+      "rgba_sha256": "ca738e4940bbb4b15527c61d65ffccac410fc4e52398eed917b800cd550ddc9d"
+    },
+    {
+      "phase": 0,
+      "direction": 6,
+      "frame": 2,
+      "index": 56,
+      "x": -25,
+      "y": -59,
+      "width": 48,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          5,
+          22
+        ],
+        [
+          39,
+          25
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 2,
+      "generic_width": 61,
+      "generic_height": 40,
+      "generic_mirror": 1,
+      "rgba_sha256": "f504a18375e39652417bb74ee824ba2bf384de43582367d73c5389340aab2d6d"
+    },
+    {
+      "phase": 0,
+      "direction": 6,
+      "frame": 3,
+      "index": 57,
+      "x": -25,
+      "y": -59,
+      "width": 49,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          6,
+          19
+        ],
+        [
+          40,
+          26
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 3,
+      "generic_width": 62,
+      "generic_height": 38,
+      "generic_mirror": 1,
+      "rgba_sha256": "f44bfd1d802ddf88fe964c7ad171f61efeb9280a8e7e6d19e2a0b1240ddf682c"
+    },
+    {
+      "phase": 0,
+      "direction": 6,
+      "frame": 4,
+      "index": 58,
+      "x": -25,
+      "y": -58,
+      "width": 50,
+      "height": 68,
+      "mirror": 1,
+      "sockets": [
+        [
+          7,
+          24
+        ],
+        [
+          41,
+          25
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          21
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 4,
+      "generic_width": 63,
+      "generic_height": 39,
+      "generic_mirror": 1,
+      "rgba_sha256": "bd8c2c5b29267e1c9d04b4690df033bcf44cddd87a220aae04ed3a0ab8e2c290"
+    },
+    {
+      "phase": 0,
+      "direction": 6,
+      "frame": 5,
+      "index": 59,
+      "x": -25,
+      "y": -57,
+      "width": 49,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          6,
+          25
+        ],
+        [
+          40,
+          25
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 5,
+      "generic_width": 62,
+      "generic_height": 42,
+      "generic_mirror": 1,
+      "rgba_sha256": "652abcded1014b545171acb907722bb07482d43336794770c708d298ac149e29"
+    },
+    {
+      "phase": 0,
+      "direction": 7,
+      "frame": 0,
+      "index": 54,
+      "x": -25,
+      "y": -57,
+      "width": 49,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          6,
+          24
+        ],
+        [
+          40,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 0,
+      "generic_width": 62,
+      "generic_height": 44,
+      "generic_mirror": 1,
+      "rgba_sha256": "61d85367e020e88a09de0b2e256686524dc414d11d82ca358b73e308d8d31c09"
+    },
+    {
+      "phase": 0,
+      "direction": 7,
+      "frame": 1,
+      "index": 55,
+      "x": -25,
+      "y": -58,
+      "width": 49,
+      "height": 68,
+      "mirror": 1,
+      "sockets": [
+        [
+          6,
+          23
+        ],
+        [
+          40,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 1,
+      "generic_width": 62,
+      "generic_height": 42,
+      "generic_mirror": 1,
+      "rgba_sha256": "ca738e4940bbb4b15527c61d65ffccac410fc4e52398eed917b800cd550ddc9d"
+    },
+    {
+      "phase": 0,
+      "direction": 7,
+      "frame": 2,
+      "index": 56,
+      "x": -25,
+      "y": -59,
+      "width": 48,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          5,
+          22
+        ],
+        [
+          39,
+          25
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 2,
+      "generic_width": 61,
+      "generic_height": 40,
+      "generic_mirror": 1,
+      "rgba_sha256": "f504a18375e39652417bb74ee824ba2bf384de43582367d73c5389340aab2d6d"
+    },
+    {
+      "phase": 0,
+      "direction": 7,
+      "frame": 3,
+      "index": 57,
+      "x": -25,
+      "y": -59,
+      "width": 49,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          6,
+          19
+        ],
+        [
+          40,
+          26
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 3,
+      "generic_width": 62,
+      "generic_height": 38,
+      "generic_mirror": 1,
+      "rgba_sha256": "f44bfd1d802ddf88fe964c7ad171f61efeb9280a8e7e6d19e2a0b1240ddf682c"
+    },
+    {
+      "phase": 0,
+      "direction": 7,
+      "frame": 4,
+      "index": 58,
+      "x": -25,
+      "y": -58,
+      "width": 50,
+      "height": 68,
+      "mirror": 1,
+      "sockets": [
+        [
+          7,
+          24
+        ],
+        [
+          41,
+          25
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          21
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 4,
+      "generic_width": 63,
+      "generic_height": 39,
+      "generic_mirror": 1,
+      "rgba_sha256": "bd8c2c5b29267e1c9d04b4690df033bcf44cddd87a220aae04ed3a0ab8e2c290"
+    },
+    {
+      "phase": 0,
+      "direction": 7,
+      "frame": 5,
+      "index": 59,
+      "x": -25,
+      "y": -57,
+      "width": 49,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          6,
+          25
+        ],
+        [
+          40,
+          25
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          23,
+          22
+        ],
+        [
+          19,
+          -12
+        ]
+      ],
+      "generic_index": 5,
+      "generic_width": 62,
+      "generic_height": 42,
+      "generic_mirror": 1,
+      "rgba_sha256": "652abcded1014b545171acb907722bb07482d43336794770c708d298ac149e29"
+    },
+    {
+      "phase": 1,
+      "direction": 0,
+      "frame": 0,
+      "index": 84,
+      "x": -24,
+      "y": -63,
+      "width": 47,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          7,
+          18
+        ],
+        [
+          40,
+          28
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          26,
+          0
+        ],
+        [
+          19,
+          -13
+        ]
+      ],
+      "generic_index": 12,
+      "generic_width": 50,
+      "generic_height": 19,
+      "generic_mirror": 0,
+      "rgba_sha256": "7a58848d6ac03153b5d8fe25eafe094d03cffb061ee17b675afa6bfd283a5bb6"
+    },
+    {
+      "phase": 1,
+      "direction": 0,
+      "frame": 1,
+      "index": 85,
+      "x": -23,
+      "y": -63,
+      "width": 50,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          10,
+          17
+        ],
+        [
+          41,
+          28
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          27,
+          0
+        ],
+        [
+          19,
+          -13
+        ]
+      ],
+      "generic_index": 13,
+      "generic_width": 51,
+      "generic_height": 21,
+      "generic_mirror": 0,
+      "rgba_sha256": "f9ded45aa140877cb2af2923c9f6cc6b340f7852ea3d907baeedb342425a9299"
+    },
+    {
+      "phase": 1,
+      "direction": 0,
+      "frame": 2,
+      "index": 86,
+      "x": -29,
+      "y": -57,
+      "width": 52,
+      "height": 63,
+      "mirror": 0,
+      "sockets": [
+        [
+          7,
+          13
+        ],
+        [
+          36,
+          27
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          35,
+          -1
+        ],
+        [
+          -21,
+          10
+        ]
+      ],
+      "generic_index": 14,
+      "generic_width": 38,
+      "generic_height": 35,
+      "generic_mirror": 0,
+      "rgba_sha256": "a61358d5c50f610fcab65094a83fec2d4795b7da3d32433d8a3dd970c26f0c14"
+    },
+    {
+      "phase": 1,
+      "direction": 0,
+      "frame": 3,
+      "index": 87,
+      "x": -34,
+      "y": -63,
+      "width": 53,
+      "height": 75,
+      "mirror": 0,
+      "sockets": [
+        [
+          20,
+          17
+        ],
+        [
+          34,
+          29
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -25,
+          -10
+        ],
+        [
+          -21,
+          11
+        ]
+      ],
+      "generic_index": 15,
+      "generic_width": 51,
+      "generic_height": 63,
+      "generic_mirror": 0,
+      "rgba_sha256": "d654e77ab3ebf7778e24e012d7af835d35166052cdf8b1bfea9030eb089451fd"
+    },
+    {
+      "phase": 1,
+      "direction": 0,
+      "frame": 4,
+      "index": 88,
+      "x": -34,
+      "y": -63,
+      "width": 53,
+      "height": 75,
+      "mirror": 0,
+      "sockets": [
+        [
+          18,
+          21
+        ],
+        [
+          26,
+          31
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -24,
+          -10
+        ],
+        [
+          -20,
+          12
+        ]
+      ],
+      "generic_index": 16,
+      "generic_width": 48,
+      "generic_height": 64,
+      "generic_mirror": 0,
+      "rgba_sha256": "f1bcc4df5614bd6f64ef760227fe4056cc28740da680cfbae71b9f65734b1375"
+    },
+    {
+      "phase": 1,
+      "direction": 0,
+      "frame": 5,
+      "index": 89,
+      "x": -34,
+      "y": -56,
+      "width": 52,
+      "height": 68,
+      "mirror": 0,
+      "sockets": [
+        [
+          17,
+          16
+        ],
+        [
+          25,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -21,
+          -9
+        ],
+        [
+          -20,
+          11
+        ]
+      ],
+      "generic_index": 17,
+      "generic_width": 42,
+      "generic_height": 62,
+      "generic_mirror": 0,
+      "rgba_sha256": "8ecc7c8d4c862701a31fb6a23aefbad92b8f70161c6d51a2417290b0898f9781"
+    },
+    {
+      "phase": 1,
+      "direction": 0,
+      "frame": 6,
+      "index": 90,
+      "x": -34,
+      "y": -55,
+      "width": 53,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          30,
+          20
+        ],
+        [
+          9,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -17,
+          8
+        ]
+      ],
+      "generic_index": 18,
+      "generic_width": 22,
+      "generic_height": 16,
+      "generic_mirror": 0,
+      "rgba_sha256": "99f4a769d8acb52574094c0d03cd7dc0dbb0c4135cd97264df7ec592c6c2049d"
+    },
+    {
+      "phase": 1,
+      "direction": 0,
+      "frame": 7,
+      "index": 91,
+      "x": -34,
+      "y": -55,
+      "width": 52,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          29,
+          20
+        ],
+        [
+          10,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -17,
+          8
+        ]
+      ],
+      "generic_index": 18,
+      "generic_width": 22,
+      "generic_height": 16,
+      "generic_mirror": 0,
+      "rgba_sha256": "d7cdb77caaedac90695c0f5672e19d0329e0d6b9bd8002134f073e6d6699b2ed"
+    },
+    {
+      "phase": 1,
+      "direction": 1,
+      "frame": 0,
+      "index": 84,
+      "x": -24,
+      "y": -63,
+      "width": 47,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          7,
+          18
+        ],
+        [
+          40,
+          28
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          26,
+          0
+        ],
+        [
+          19,
+          -13
+        ]
+      ],
+      "generic_index": 12,
+      "generic_width": 50,
+      "generic_height": 19,
+      "generic_mirror": 0,
+      "rgba_sha256": "7a58848d6ac03153b5d8fe25eafe094d03cffb061ee17b675afa6bfd283a5bb6"
+    },
+    {
+      "phase": 1,
+      "direction": 1,
+      "frame": 1,
+      "index": 85,
+      "x": -23,
+      "y": -63,
+      "width": 50,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          10,
+          17
+        ],
+        [
+          41,
+          28
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          27,
+          0
+        ],
+        [
+          19,
+          -13
+        ]
+      ],
+      "generic_index": 13,
+      "generic_width": 51,
+      "generic_height": 21,
+      "generic_mirror": 0,
+      "rgba_sha256": "f9ded45aa140877cb2af2923c9f6cc6b340f7852ea3d907baeedb342425a9299"
+    },
+    {
+      "phase": 1,
+      "direction": 1,
+      "frame": 2,
+      "index": 86,
+      "x": -29,
+      "y": -57,
+      "width": 52,
+      "height": 63,
+      "mirror": 0,
+      "sockets": [
+        [
+          7,
+          13
+        ],
+        [
+          36,
+          27
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          35,
+          -1
+        ],
+        [
+          -21,
+          10
+        ]
+      ],
+      "generic_index": 14,
+      "generic_width": 38,
+      "generic_height": 35,
+      "generic_mirror": 0,
+      "rgba_sha256": "a61358d5c50f610fcab65094a83fec2d4795b7da3d32433d8a3dd970c26f0c14"
+    },
+    {
+      "phase": 1,
+      "direction": 1,
+      "frame": 3,
+      "index": 87,
+      "x": -34,
+      "y": -63,
+      "width": 53,
+      "height": 75,
+      "mirror": 0,
+      "sockets": [
+        [
+          20,
+          17
+        ],
+        [
+          34,
+          29
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -25,
+          -10
+        ],
+        [
+          -21,
+          11
+        ]
+      ],
+      "generic_index": 15,
+      "generic_width": 51,
+      "generic_height": 63,
+      "generic_mirror": 0,
+      "rgba_sha256": "d654e77ab3ebf7778e24e012d7af835d35166052cdf8b1bfea9030eb089451fd"
+    },
+    {
+      "phase": 1,
+      "direction": 1,
+      "frame": 4,
+      "index": 88,
+      "x": -34,
+      "y": -63,
+      "width": 53,
+      "height": 75,
+      "mirror": 0,
+      "sockets": [
+        [
+          18,
+          21
+        ],
+        [
+          26,
+          31
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -24,
+          -10
+        ],
+        [
+          -20,
+          12
+        ]
+      ],
+      "generic_index": 16,
+      "generic_width": 48,
+      "generic_height": 64,
+      "generic_mirror": 0,
+      "rgba_sha256": "f1bcc4df5614bd6f64ef760227fe4056cc28740da680cfbae71b9f65734b1375"
+    },
+    {
+      "phase": 1,
+      "direction": 1,
+      "frame": 5,
+      "index": 89,
+      "x": -34,
+      "y": -56,
+      "width": 52,
+      "height": 68,
+      "mirror": 0,
+      "sockets": [
+        [
+          17,
+          16
+        ],
+        [
+          25,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -21,
+          -9
+        ],
+        [
+          -20,
+          11
+        ]
+      ],
+      "generic_index": 17,
+      "generic_width": 42,
+      "generic_height": 62,
+      "generic_mirror": 0,
+      "rgba_sha256": "8ecc7c8d4c862701a31fb6a23aefbad92b8f70161c6d51a2417290b0898f9781"
+    },
+    {
+      "phase": 1,
+      "direction": 1,
+      "frame": 6,
+      "index": 90,
+      "x": -34,
+      "y": -55,
+      "width": 53,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          30,
+          20
+        ],
+        [
+          9,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -17,
+          8
+        ]
+      ],
+      "generic_index": 18,
+      "generic_width": 22,
+      "generic_height": 16,
+      "generic_mirror": 0,
+      "rgba_sha256": "99f4a769d8acb52574094c0d03cd7dc0dbb0c4135cd97264df7ec592c6c2049d"
+    },
+    {
+      "phase": 1,
+      "direction": 1,
+      "frame": 7,
+      "index": 91,
+      "x": -34,
+      "y": -55,
+      "width": 52,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          29,
+          20
+        ],
+        [
+          10,
+          23
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -17,
+          8
+        ]
+      ],
+      "generic_index": 18,
+      "generic_width": 22,
+      "generic_height": 16,
+      "generic_mirror": 0,
+      "rgba_sha256": "d7cdb77caaedac90695c0f5672e19d0329e0d6b9bd8002134f073e6d6699b2ed"
+    },
+    {
+      "phase": 1,
+      "direction": 2,
+      "frame": 0,
+      "index": 92,
+      "x": -18,
+      "y": -62,
+      "width": 47,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          4,
+          21
+        ],
+        [
+          22,
+          27
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -26,
+          3
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 19,
+      "generic_width": 55,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "7e6f904e7aa3f24dd860c3e05fb02f4ae6607e2a7d7bc531c9350045c2a6be34"
+    },
+    {
+      "phase": 1,
+      "direction": 2,
+      "frame": 1,
+      "index": 93,
+      "x": -18,
+      "y": -60,
+      "width": 46,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          8,
+          19
+        ],
+        [
+          27,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -31,
+          4
+        ],
+        [
+          -13,
+          -15
+        ]
+      ],
+      "generic_index": 20,
+      "generic_width": 54,
+      "generic_height": 23,
+      "generic_mirror": 0,
+      "rgba_sha256": "e914800b03f37437773974f3c43cbe50fe0d1812e1ce1be6f6ff14ab2d7c58b2"
+    },
+    {
+      "phase": 1,
+      "direction": 2,
+      "frame": 2,
+      "index": 94,
+      "x": -23,
+      "y": -60,
+      "width": 49,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          8
+        ],
+        [
+          24,
+          25
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -30,
+          4
+        ],
+        [
+          -15,
+          -11
+        ]
+      ],
+      "generic_index": 21,
+      "generic_width": 44,
+      "generic_height": 30,
+      "generic_mirror": 0,
+      "rgba_sha256": "55a8d0f080ef8bea8926d6857baa7420217ab8ffecb1e068c1a71c712a7499ea"
+    },
+    {
+      "phase": 1,
+      "direction": 2,
+      "frame": 3,
+      "index": 95,
+      "x": -37,
+      "y": -59,
+      "width": 56,
+      "height": 66,
+      "mirror": 0,
+      "sockets": [
+        [
+          43,
+          7
+        ],
+        [
+          20,
+          26
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          29,
+          -16
+        ],
+        [
+          -17,
+          -6
+        ]
+      ],
+      "generic_index": 22,
+      "generic_width": 78,
+      "generic_height": 38,
+      "generic_mirror": 0,
+      "rgba_sha256": "87ce6e515bce7f654fc3b1db8b9acc3a6a7df14a6203f031b1001bf7d8d46812"
+    },
+    {
+      "phase": 1,
+      "direction": 2,
+      "frame": 4,
+      "index": 96,
+      "x": -37,
+      "y": -58,
+      "width": 56,
+      "height": 65,
+      "mirror": 0,
+      "sockets": [
+        [
+          41,
+          8
+        ],
+        [
+          19,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          29,
+          -16
+        ],
+        [
+          -17,
+          -6
+        ]
+      ],
+      "generic_index": 23,
+      "generic_width": 78,
+      "generic_height": 38,
+      "generic_mirror": 0,
+      "rgba_sha256": "95b79766e7e005ca22fc1eb8cf66c49631d214408a3d6d5cc126829da610f409"
+    },
+    {
+      "phase": 1,
+      "direction": 2,
+      "frame": 5,
+      "index": 97,
+      "x": -37,
+      "y": -58,
+      "width": 56,
+      "height": 65,
+      "mirror": 0,
+      "sockets": [
+        [
+          36,
+          9
+        ],
+        [
+          18,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          27,
+          -14
+        ],
+        [
+          -18,
+          -10
+        ]
+      ],
+      "generic_index": 24,
+      "generic_width": 81,
+      "generic_height": 33,
+      "generic_mirror": 0,
+      "rgba_sha256": "7f38d06df572f6f64621b5ea20a16d4525c07335b13a1fc98193030c74d83d07"
+    },
+    {
+      "phase": 1,
+      "direction": 2,
+      "frame": 6,
+      "index": 98,
+      "x": -40,
+      "y": -61,
+      "width": 58,
+      "height": 68,
+      "mirror": 0,
+      "sockets": [
+        [
+          39,
+          9
+        ],
+        [
+          5,
+          8
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -10,
+          -11
+        ]
+      ],
+      "generic_index": 25,
+      "generic_width": 19,
+      "generic_height": 17,
+      "generic_mirror": 0,
+      "rgba_sha256": "8f52d16641b482c3abf067fef3b6544086033dc0ea4c6bb0fc8e43a235508478"
+    },
+    {
+      "phase": 1,
+      "direction": 2,
+      "frame": 7,
+      "index": 99,
+      "x": -39,
+      "y": -59,
+      "width": 57,
+      "height": 66,
+      "mirror": 0,
+      "sockets": [
+        [
+          40,
+          6
+        ],
+        [
+          7,
+          8
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -10,
+          -11
+        ]
+      ],
+      "generic_index": 25,
+      "generic_width": 19,
+      "generic_height": 17,
+      "generic_mirror": 0,
+      "rgba_sha256": "13112c2804da6992d659b5b19718d90b207ff55bb55976d342e08be8df8c9e8f"
+    },
+    {
+      "phase": 1,
+      "direction": 3,
+      "frame": 0,
+      "index": 92,
+      "x": -18,
+      "y": -62,
+      "width": 47,
+      "height": 69,
+      "mirror": 0,
+      "sockets": [
+        [
+          4,
+          21
+        ],
+        [
+          22,
+          27
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -26,
+          3
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 19,
+      "generic_width": 55,
+      "generic_height": 20,
+      "generic_mirror": 0,
+      "rgba_sha256": "7e6f904e7aa3f24dd860c3e05fb02f4ae6607e2a7d7bc531c9350045c2a6be34"
+    },
+    {
+      "phase": 1,
+      "direction": 3,
+      "frame": 1,
+      "index": 93,
+      "x": -18,
+      "y": -60,
+      "width": 46,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          8,
+          19
+        ],
+        [
+          27,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -31,
+          4
+        ],
+        [
+          -13,
+          -15
+        ]
+      ],
+      "generic_index": 20,
+      "generic_width": 54,
+      "generic_height": 23,
+      "generic_mirror": 0,
+      "rgba_sha256": "e914800b03f37437773974f3c43cbe50fe0d1812e1ce1be6f6ff14ab2d7c58b2"
+    },
+    {
+      "phase": 1,
+      "direction": 3,
+      "frame": 2,
+      "index": 94,
+      "x": -23,
+      "y": -60,
+      "width": 49,
+      "height": 67,
+      "mirror": 0,
+      "sockets": [
+        [
+          9,
+          8
+        ],
+        [
+          24,
+          25
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -30,
+          4
+        ],
+        [
+          -15,
+          -11
+        ]
+      ],
+      "generic_index": 21,
+      "generic_width": 44,
+      "generic_height": 30,
+      "generic_mirror": 0,
+      "rgba_sha256": "55a8d0f080ef8bea8926d6857baa7420217ab8ffecb1e068c1a71c712a7499ea"
+    },
+    {
+      "phase": 1,
+      "direction": 3,
+      "frame": 3,
+      "index": 95,
+      "x": -37,
+      "y": -59,
+      "width": 56,
+      "height": 66,
+      "mirror": 0,
+      "sockets": [
+        [
+          43,
+          7
+        ],
+        [
+          20,
+          26
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          29,
+          -16
+        ],
+        [
+          -17,
+          -6
+        ]
+      ],
+      "generic_index": 22,
+      "generic_width": 78,
+      "generic_height": 38,
+      "generic_mirror": 0,
+      "rgba_sha256": "87ce6e515bce7f654fc3b1db8b9acc3a6a7df14a6203f031b1001bf7d8d46812"
+    },
+    {
+      "phase": 1,
+      "direction": 3,
+      "frame": 4,
+      "index": 96,
+      "x": -37,
+      "y": -58,
+      "width": 56,
+      "height": 65,
+      "mirror": 0,
+      "sockets": [
+        [
+          41,
+          8
+        ],
+        [
+          19,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          29,
+          -16
+        ],
+        [
+          -17,
+          -6
+        ]
+      ],
+      "generic_index": 23,
+      "generic_width": 78,
+      "generic_height": 38,
+      "generic_mirror": 0,
+      "rgba_sha256": "95b79766e7e005ca22fc1eb8cf66c49631d214408a3d6d5cc126829da610f409"
+    },
+    {
+      "phase": 1,
+      "direction": 3,
+      "frame": 5,
+      "index": 97,
+      "x": -37,
+      "y": -58,
+      "width": 56,
+      "height": 65,
+      "mirror": 0,
+      "sockets": [
+        [
+          36,
+          9
+        ],
+        [
+          18,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          27,
+          -14
+        ],
+        [
+          -18,
+          -10
+        ]
+      ],
+      "generic_index": 24,
+      "generic_width": 81,
+      "generic_height": 33,
+      "generic_mirror": 0,
+      "rgba_sha256": "7f38d06df572f6f64621b5ea20a16d4525c07335b13a1fc98193030c74d83d07"
+    },
+    {
+      "phase": 1,
+      "direction": 3,
+      "frame": 6,
+      "index": 98,
+      "x": -40,
+      "y": -61,
+      "width": 58,
+      "height": 68,
+      "mirror": 0,
+      "sockets": [
+        [
+          39,
+          9
+        ],
+        [
+          5,
+          8
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -10,
+          -11
+        ]
+      ],
+      "generic_index": 25,
+      "generic_width": 19,
+      "generic_height": 17,
+      "generic_mirror": 0,
+      "rgba_sha256": "8f52d16641b482c3abf067fef3b6544086033dc0ea4c6bb0fc8e43a235508478"
+    },
+    {
+      "phase": 1,
+      "direction": 3,
+      "frame": 7,
+      "index": 99,
+      "x": -39,
+      "y": -59,
+      "width": 57,
+      "height": 66,
+      "mirror": 0,
+      "sockets": [
+        [
+          40,
+          6
+        ],
+        [
+          7,
+          8
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -10,
+          -11
+        ]
+      ],
+      "generic_index": 25,
+      "generic_width": 19,
+      "generic_height": 17,
+      "generic_mirror": 0,
+      "rgba_sha256": "13112c2804da6992d659b5b19718d90b207ff55bb55976d342e08be8df8c9e8f"
+    },
+    {
+      "phase": 1,
+      "direction": 4,
+      "frame": 0,
+      "index": 92,
+      "x": -29,
+      "y": -62,
+      "width": 47,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          4,
+          21
+        ],
+        [
+          22,
+          27
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -26,
+          3
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 19,
+      "generic_width": 55,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "7e6f904e7aa3f24dd860c3e05fb02f4ae6607e2a7d7bc531c9350045c2a6be34"
+    },
+    {
+      "phase": 1,
+      "direction": 4,
+      "frame": 1,
+      "index": 93,
+      "x": -28,
+      "y": -60,
+      "width": 46,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          8,
+          19
+        ],
+        [
+          27,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -31,
+          4
+        ],
+        [
+          -13,
+          -15
+        ]
+      ],
+      "generic_index": 20,
+      "generic_width": 54,
+      "generic_height": 23,
+      "generic_mirror": 1,
+      "rgba_sha256": "e914800b03f37437773974f3c43cbe50fe0d1812e1ce1be6f6ff14ab2d7c58b2"
+    },
+    {
+      "phase": 1,
+      "direction": 4,
+      "frame": 2,
+      "index": 94,
+      "x": -26,
+      "y": -60,
+      "width": 49,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          8
+        ],
+        [
+          24,
+          25
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -30,
+          4
+        ],
+        [
+          -15,
+          -11
+        ]
+      ],
+      "generic_index": 21,
+      "generic_width": 44,
+      "generic_height": 30,
+      "generic_mirror": 1,
+      "rgba_sha256": "55a8d0f080ef8bea8926d6857baa7420217ab8ffecb1e068c1a71c712a7499ea"
+    },
+    {
+      "phase": 1,
+      "direction": 4,
+      "frame": 3,
+      "index": 95,
+      "x": -19,
+      "y": -59,
+      "width": 56,
+      "height": 66,
+      "mirror": 1,
+      "sockets": [
+        [
+          43,
+          7
+        ],
+        [
+          20,
+          26
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          29,
+          -16
+        ],
+        [
+          -17,
+          -6
+        ]
+      ],
+      "generic_index": 22,
+      "generic_width": 78,
+      "generic_height": 38,
+      "generic_mirror": 1,
+      "rgba_sha256": "87ce6e515bce7f654fc3b1db8b9acc3a6a7df14a6203f031b1001bf7d8d46812"
+    },
+    {
+      "phase": 1,
+      "direction": 4,
+      "frame": 4,
+      "index": 96,
+      "x": -19,
+      "y": -58,
+      "width": 56,
+      "height": 65,
+      "mirror": 1,
+      "sockets": [
+        [
+          41,
+          8
+        ],
+        [
+          19,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          29,
+          -16
+        ],
+        [
+          -17,
+          -6
+        ]
+      ],
+      "generic_index": 23,
+      "generic_width": 78,
+      "generic_height": 38,
+      "generic_mirror": 1,
+      "rgba_sha256": "95b79766e7e005ca22fc1eb8cf66c49631d214408a3d6d5cc126829da610f409"
+    },
+    {
+      "phase": 1,
+      "direction": 4,
+      "frame": 5,
+      "index": 97,
+      "x": -19,
+      "y": -58,
+      "width": 56,
+      "height": 65,
+      "mirror": 1,
+      "sockets": [
+        [
+          36,
+          9
+        ],
+        [
+          18,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          27,
+          -14
+        ],
+        [
+          -18,
+          -10
+        ]
+      ],
+      "generic_index": 24,
+      "generic_width": 81,
+      "generic_height": 33,
+      "generic_mirror": 1,
+      "rgba_sha256": "7f38d06df572f6f64621b5ea20a16d4525c07335b13a1fc98193030c74d83d07"
+    },
+    {
+      "phase": 1,
+      "direction": 4,
+      "frame": 6,
+      "index": 98,
+      "x": -18,
+      "y": -61,
+      "width": 58,
+      "height": 68,
+      "mirror": 1,
+      "sockets": [
+        [
+          39,
+          9
+        ],
+        [
+          5,
+          8
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -10,
+          -11
+        ]
+      ],
+      "generic_index": 25,
+      "generic_width": 19,
+      "generic_height": 17,
+      "generic_mirror": 1,
+      "rgba_sha256": "8f52d16641b482c3abf067fef3b6544086033dc0ea4c6bb0fc8e43a235508478"
+    },
+    {
+      "phase": 1,
+      "direction": 4,
+      "frame": 7,
+      "index": 99,
+      "x": -18,
+      "y": -59,
+      "width": 57,
+      "height": 66,
+      "mirror": 1,
+      "sockets": [
+        [
+          40,
+          6
+        ],
+        [
+          7,
+          8
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -10,
+          -11
+        ]
+      ],
+      "generic_index": 25,
+      "generic_width": 19,
+      "generic_height": 17,
+      "generic_mirror": 1,
+      "rgba_sha256": "13112c2804da6992d659b5b19718d90b207ff55bb55976d342e08be8df8c9e8f"
+    },
+    {
+      "phase": 1,
+      "direction": 5,
+      "frame": 0,
+      "index": 92,
+      "x": -29,
+      "y": -62,
+      "width": 47,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          4,
+          21
+        ],
+        [
+          22,
+          27
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -26,
+          3
+        ],
+        [
+          -10,
+          -14
+        ]
+      ],
+      "generic_index": 19,
+      "generic_width": 55,
+      "generic_height": 20,
+      "generic_mirror": 1,
+      "rgba_sha256": "7e6f904e7aa3f24dd860c3e05fb02f4ae6607e2a7d7bc531c9350045c2a6be34"
+    },
+    {
+      "phase": 1,
+      "direction": 5,
+      "frame": 1,
+      "index": 93,
+      "x": -28,
+      "y": -60,
+      "width": 46,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          8,
+          19
+        ],
+        [
+          27,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -31,
+          4
+        ],
+        [
+          -13,
+          -15
+        ]
+      ],
+      "generic_index": 20,
+      "generic_width": 54,
+      "generic_height": 23,
+      "generic_mirror": 1,
+      "rgba_sha256": "e914800b03f37437773974f3c43cbe50fe0d1812e1ce1be6f6ff14ab2d7c58b2"
+    },
+    {
+      "phase": 1,
+      "direction": 5,
+      "frame": 2,
+      "index": 94,
+      "x": -26,
+      "y": -60,
+      "width": 49,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          9,
+          8
+        ],
+        [
+          24,
+          25
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          -30,
+          4
+        ],
+        [
+          -15,
+          -11
+        ]
+      ],
+      "generic_index": 21,
+      "generic_width": 44,
+      "generic_height": 30,
+      "generic_mirror": 1,
+      "rgba_sha256": "55a8d0f080ef8bea8926d6857baa7420217ab8ffecb1e068c1a71c712a7499ea"
+    },
+    {
+      "phase": 1,
+      "direction": 5,
+      "frame": 3,
+      "index": 95,
+      "x": -19,
+      "y": -59,
+      "width": 56,
+      "height": 66,
+      "mirror": 1,
+      "sockets": [
+        [
+          43,
+          7
+        ],
+        [
+          20,
+          26
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          29,
+          -16
+        ],
+        [
+          -17,
+          -6
+        ]
+      ],
+      "generic_index": 22,
+      "generic_width": 78,
+      "generic_height": 38,
+      "generic_mirror": 1,
+      "rgba_sha256": "87ce6e515bce7f654fc3b1db8b9acc3a6a7df14a6203f031b1001bf7d8d46812"
+    },
+    {
+      "phase": 1,
+      "direction": 5,
+      "frame": 4,
+      "index": 96,
+      "x": -19,
+      "y": -58,
+      "width": 56,
+      "height": 65,
+      "mirror": 1,
+      "sockets": [
+        [
+          41,
+          8
+        ],
+        [
+          19,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          29,
+          -16
+        ],
+        [
+          -17,
+          -6
+        ]
+      ],
+      "generic_index": 23,
+      "generic_width": 78,
+      "generic_height": 38,
+      "generic_mirror": 1,
+      "rgba_sha256": "95b79766e7e005ca22fc1eb8cf66c49631d214408a3d6d5cc126829da610f409"
+    },
+    {
+      "phase": 1,
+      "direction": 5,
+      "frame": 5,
+      "index": 97,
+      "x": -19,
+      "y": -58,
+      "width": 56,
+      "height": 65,
+      "mirror": 1,
+      "sockets": [
+        [
+          36,
+          9
+        ],
+        [
+          18,
+          24
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          27,
+          -14
+        ],
+        [
+          -18,
+          -10
+        ]
+      ],
+      "generic_index": 24,
+      "generic_width": 81,
+      "generic_height": 33,
+      "generic_mirror": 1,
+      "rgba_sha256": "7f38d06df572f6f64621b5ea20a16d4525c07335b13a1fc98193030c74d83d07"
+    },
+    {
+      "phase": 1,
+      "direction": 5,
+      "frame": 6,
+      "index": 98,
+      "x": -18,
+      "y": -61,
+      "width": 58,
+      "height": 68,
+      "mirror": 1,
+      "sockets": [
+        [
+          39,
+          9
+        ],
+        [
+          5,
+          8
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -10,
+          -11
+        ]
+      ],
+      "generic_index": 25,
+      "generic_width": 19,
+      "generic_height": 17,
+      "generic_mirror": 1,
+      "rgba_sha256": "8f52d16641b482c3abf067fef3b6544086033dc0ea4c6bb0fc8e43a235508478"
+    },
+    {
+      "phase": 1,
+      "direction": 5,
+      "frame": 7,
+      "index": 99,
+      "x": -18,
+      "y": -59,
+      "width": 57,
+      "height": 66,
+      "mirror": 1,
+      "sockets": [
+        [
+          40,
+          6
+        ],
+        [
+          7,
+          8
+        ]
+      ],
+      "main_reference_hand": 0,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -10,
+          -11
+        ]
+      ],
+      "generic_index": 25,
+      "generic_width": 19,
+      "generic_height": 17,
+      "generic_mirror": 1,
+      "rgba_sha256": "13112c2804da6992d659b5b19718d90b207ff55bb55976d342e08be8df8c9e8f"
+    },
+    {
+      "phase": 1,
+      "direction": 6,
+      "frame": 0,
+      "index": 84,
+      "x": -23,
+      "y": -63,
+      "width": 47,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          7,
+          18
+        ],
+        [
+          40,
+          28
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          26,
+          0
+        ],
+        [
+          19,
+          -13
+        ]
+      ],
+      "generic_index": 12,
+      "generic_width": 50,
+      "generic_height": 19,
+      "generic_mirror": 1,
+      "rgba_sha256": "7a58848d6ac03153b5d8fe25eafe094d03cffb061ee17b675afa6bfd283a5bb6"
+    },
+    {
+      "phase": 1,
+      "direction": 6,
+      "frame": 1,
+      "index": 85,
+      "x": -27,
+      "y": -63,
+      "width": 50,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          10,
+          17
+        ],
+        [
+          41,
+          28
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          27,
+          0
+        ],
+        [
+          19,
+          -13
+        ]
+      ],
+      "generic_index": 13,
+      "generic_width": 51,
+      "generic_height": 21,
+      "generic_mirror": 1,
+      "rgba_sha256": "f9ded45aa140877cb2af2923c9f6cc6b340f7852ea3d907baeedb342425a9299"
+    },
+    {
+      "phase": 1,
+      "direction": 6,
+      "frame": 2,
+      "index": 86,
+      "x": -23,
+      "y": -57,
+      "width": 52,
+      "height": 63,
+      "mirror": 1,
+      "sockets": [
+        [
+          7,
+          13
+        ],
+        [
+          36,
+          27
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          35,
+          -1
+        ],
+        [
+          -21,
+          10
+        ]
+      ],
+      "generic_index": 14,
+      "generic_width": 38,
+      "generic_height": 35,
+      "generic_mirror": 1,
+      "rgba_sha256": "a61358d5c50f610fcab65094a83fec2d4795b7da3d32433d8a3dd970c26f0c14"
+    },
+    {
+      "phase": 1,
+      "direction": 6,
+      "frame": 3,
+      "index": 87,
+      "x": -19,
+      "y": -63,
+      "width": 53,
+      "height": 75,
+      "mirror": 1,
+      "sockets": [
+        [
+          20,
+          17
+        ],
+        [
+          34,
+          29
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -25,
+          -10
+        ],
+        [
+          -21,
+          11
+        ]
+      ],
+      "generic_index": 15,
+      "generic_width": 51,
+      "generic_height": 63,
+      "generic_mirror": 1,
+      "rgba_sha256": "d654e77ab3ebf7778e24e012d7af835d35166052cdf8b1bfea9030eb089451fd"
+    },
+    {
+      "phase": 1,
+      "direction": 6,
+      "frame": 4,
+      "index": 88,
+      "x": -19,
+      "y": -63,
+      "width": 53,
+      "height": 75,
+      "mirror": 1,
+      "sockets": [
+        [
+          18,
+          21
+        ],
+        [
+          26,
+          31
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -24,
+          -10
+        ],
+        [
+          -20,
+          12
+        ]
+      ],
+      "generic_index": 16,
+      "generic_width": 48,
+      "generic_height": 64,
+      "generic_mirror": 1,
+      "rgba_sha256": "f1bcc4df5614bd6f64ef760227fe4056cc28740da680cfbae71b9f65734b1375"
+    },
+    {
+      "phase": 1,
+      "direction": 6,
+      "frame": 5,
+      "index": 89,
+      "x": -18,
+      "y": -56,
+      "width": 52,
+      "height": 68,
+      "mirror": 1,
+      "sockets": [
+        [
+          17,
+          16
+        ],
+        [
+          25,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -21,
+          -9
+        ],
+        [
+          -20,
+          11
+        ]
+      ],
+      "generic_index": 17,
+      "generic_width": 42,
+      "generic_height": 62,
+      "generic_mirror": 1,
+      "rgba_sha256": "8ecc7c8d4c862701a31fb6a23aefbad92b8f70161c6d51a2417290b0898f9781"
+    },
+    {
+      "phase": 1,
+      "direction": 6,
+      "frame": 6,
+      "index": 90,
+      "x": -19,
+      "y": -55,
+      "width": 53,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          30,
+          20
+        ],
+        [
+          9,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -17,
+          8
+        ]
+      ],
+      "generic_index": 18,
+      "generic_width": 22,
+      "generic_height": 16,
+      "generic_mirror": 1,
+      "rgba_sha256": "99f4a769d8acb52574094c0d03cd7dc0dbb0c4135cd97264df7ec592c6c2049d"
+    },
+    {
+      "phase": 1,
+      "direction": 6,
+      "frame": 7,
+      "index": 91,
+      "x": -18,
+      "y": -55,
+      "width": 52,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          29,
+          20
+        ],
+        [
+          10,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -17,
+          8
+        ]
+      ],
+      "generic_index": 18,
+      "generic_width": 22,
+      "generic_height": 16,
+      "generic_mirror": 1,
+      "rgba_sha256": "d7cdb77caaedac90695c0f5672e19d0329e0d6b9bd8002134f073e6d6699b2ed"
+    },
+    {
+      "phase": 1,
+      "direction": 7,
+      "frame": 0,
+      "index": 84,
+      "x": -23,
+      "y": -63,
+      "width": 47,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          7,
+          18
+        ],
+        [
+          40,
+          28
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          26,
+          0
+        ],
+        [
+          19,
+          -13
+        ]
+      ],
+      "generic_index": 12,
+      "generic_width": 50,
+      "generic_height": 19,
+      "generic_mirror": 1,
+      "rgba_sha256": "7a58848d6ac03153b5d8fe25eafe094d03cffb061ee17b675afa6bfd283a5bb6"
+    },
+    {
+      "phase": 1,
+      "direction": 7,
+      "frame": 1,
+      "index": 85,
+      "x": -27,
+      "y": -63,
+      "width": 50,
+      "height": 69,
+      "mirror": 1,
+      "sockets": [
+        [
+          10,
+          17
+        ],
+        [
+          41,
+          28
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          27,
+          0
+        ],
+        [
+          19,
+          -13
+        ]
+      ],
+      "generic_index": 13,
+      "generic_width": 51,
+      "generic_height": 21,
+      "generic_mirror": 1,
+      "rgba_sha256": "f9ded45aa140877cb2af2923c9f6cc6b340f7852ea3d907baeedb342425a9299"
+    },
+    {
+      "phase": 1,
+      "direction": 7,
+      "frame": 2,
+      "index": 86,
+      "x": -23,
+      "y": -57,
+      "width": 52,
+      "height": 63,
+      "mirror": 1,
+      "sockets": [
+        [
+          7,
+          13
+        ],
+        [
+          36,
+          27
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          35,
+          -1
+        ],
+        [
+          -21,
+          10
+        ]
+      ],
+      "generic_index": 14,
+      "generic_width": 38,
+      "generic_height": 35,
+      "generic_mirror": 1,
+      "rgba_sha256": "a61358d5c50f610fcab65094a83fec2d4795b7da3d32433d8a3dd970c26f0c14"
+    },
+    {
+      "phase": 1,
+      "direction": 7,
+      "frame": 3,
+      "index": 87,
+      "x": -19,
+      "y": -63,
+      "width": 53,
+      "height": 75,
+      "mirror": 1,
+      "sockets": [
+        [
+          20,
+          17
+        ],
+        [
+          34,
+          29
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -25,
+          -10
+        ],
+        [
+          -21,
+          11
+        ]
+      ],
+      "generic_index": 15,
+      "generic_width": 51,
+      "generic_height": 63,
+      "generic_mirror": 1,
+      "rgba_sha256": "d654e77ab3ebf7778e24e012d7af835d35166052cdf8b1bfea9030eb089451fd"
+    },
+    {
+      "phase": 1,
+      "direction": 7,
+      "frame": 4,
+      "index": 88,
+      "x": -19,
+      "y": -63,
+      "width": 53,
+      "height": 75,
+      "mirror": 1,
+      "sockets": [
+        [
+          18,
+          21
+        ],
+        [
+          26,
+          31
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -24,
+          -10
+        ],
+        [
+          -20,
+          12
+        ]
+      ],
+      "generic_index": 16,
+      "generic_width": 48,
+      "generic_height": 64,
+      "generic_mirror": 1,
+      "rgba_sha256": "f1bcc4df5614bd6f64ef760227fe4056cc28740da680cfbae71b9f65734b1375"
+    },
+    {
+      "phase": 1,
+      "direction": 7,
+      "frame": 5,
+      "index": 89,
+      "x": -18,
+      "y": -56,
+      "width": 52,
+      "height": 68,
+      "mirror": 1,
+      "sockets": [
+        [
+          17,
+          16
+        ],
+        [
+          25,
+          24
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          -21,
+          -9
+        ],
+        [
+          -20,
+          11
+        ]
+      ],
+      "generic_index": 17,
+      "generic_width": 42,
+      "generic_height": 62,
+      "generic_mirror": 1,
+      "rgba_sha256": "8ecc7c8d4c862701a31fb6a23aefbad92b8f70161c6d51a2417290b0898f9781"
+    },
+    {
+      "phase": 1,
+      "direction": 7,
+      "frame": 6,
+      "index": 90,
+      "x": -19,
+      "y": -55,
+      "width": 53,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          30,
+          20
+        ],
+        [
+          9,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -17,
+          8
+        ]
+      ],
+      "generic_index": 18,
+      "generic_width": 22,
+      "generic_height": 16,
+      "generic_mirror": 1,
+      "rgba_sha256": "99f4a769d8acb52574094c0d03cd7dc0dbb0c4135cd97264df7ec592c6c2049d"
+    },
+    {
+      "phase": 1,
+      "direction": 7,
+      "frame": 7,
+      "index": 91,
+      "x": -18,
+      "y": -55,
+      "width": 52,
+      "height": 67,
+      "mirror": 1,
+      "sockets": [
+        [
+          29,
+          20
+        ],
+        [
+          10,
+          23
+        ]
+      ],
+      "main_reference_hand": 1,
+      "reference_axes": [
+        [
+          0,
+          0
+        ],
+        [
+          -17,
+          8
+        ]
+      ],
+      "generic_index": 18,
+      "generic_width": 22,
+      "generic_height": 16,
+      "generic_mirror": 1,
+      "rgba_sha256": "d7cdb77caaedac90695c0f5672e19d0329e0d6b9bd8002134f073e6d6699b2ed"
+    }
+  ],
+  "excluded_views": [
+    600,
+    601,
+    602,
+    603,
+    604,
+    605,
+    606
+  ],
+  "live_acceptance": false,
+  "annotation_method": "Manual hilt/handle-center and blade-tip inspection on exact exported SPR pixels. Body socket points select the fist/palm contact pixel in each unique unmirrored source image. Pixel selection is reviewable visual annotation, not an embedded ACT anchor or live acceptance. Fragment-only images outside the selected held/dual source cells have no invented hilt/tip."
+}

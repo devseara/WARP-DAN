@@ -1,0 +1,114 @@
+core+0x3FBD: 8b 84 24 a0 04 00 00         mov eax, dword ptr [esp + 0x4a0]
+core+0x3FC4: 83 78 04 05                  cmp dword ptr [eax + 4], 5
+core+0x3FC8: 8b 84 24 c0 04 00 00         mov eax, dword ptr [esp + 0x4c0]
+core+0x3FCF: 75 0e                        jne 0x3fdf
+core+0x3FD1: 8b 77 04                     mov esi, dword ptr [edi + 4]
+core+0x3FD4: 8b 7f 08                     mov edi, dword ptr [edi + 8]
+core+0x3FD7: 8b 50 14                     mov edx, dword ptr [eax + 0x14]
+core+0x3FDA: 8b 48 18                     mov ecx, dword ptr [eax + 0x18]
+core+0x3FDD: eb 0c                        jmp 0x3feb
+core+0x3FDF: 8b 77 0c                     mov esi, dword ptr [edi + 0xc]
+core+0x3FE2: 8b 7f 10                     mov edi, dword ptr [edi + 0x10]
+core+0x3FE5: 8b 50 1c                     mov edx, dword ptr [eax + 0x1c]
+core+0x3FE8: 8b 48 20                     mov ecx, dword ptr [eax + 0x20]
+core+0x3FEB: 83 78 30 01                  cmp dword ptr [eax + 0x30], 1
+core+0x3FEF: 89 8c 24 a4 04 00 00         mov dword ptr [esp + 0x4a4], ecx
+core+0x3FF6: 89 94 24 b4 04 00 00         mov dword ptr [esp + 0x4b4], edx
+core+0x3FFD: 89 bc 24 b8 04 00 00         mov dword ptr [esp + 0x4b8], edi
+core+0x4004: 89 b4 24 e8 04 00 00         mov dword ptr [esp + 0x4e8], esi
+core+0x400B: 75 4c                        jne 0x4059
+core+0x400D: 83 78 34 02                  cmp dword ptr [eax + 0x34], 2
+core+0x4011: 75 46                        jne 0x4059
+core+0x4013: 89 bc 24 a4 04 00 00         mov dword ptr [esp + 0x4a4], edi
+core+0x401A: 8b bc 24 28 05 00 00         mov edi, dword ptr [esp + 0x528]
+core+0x4021: 89 b4 24 b4 04 00 00         mov dword ptr [esp + 0x4b4], esi
+core+0x4028: 89 94 24 e8 04 00 00         mov dword ptr [esp + 0x4e8], edx
+core+0x402F: 89 8c 24 b8 04 00 00         mov dword ptr [esp + 0x4b8], ecx
+core+0x4060: 83 7f 08 00                  cmp dword ptr [edi + 8], 0
+core+0x4064: 8b 94 24 c0 04 00 00         mov edx, dword ptr [esp + 0x4c0]
+core+0x406B: 0f 84 a1 00 00 00            je 0x4112
+core+0x4071: 83 7a 38 00                  cmp dword ptr [edx + 0x38], 0
+core+0x4075: 0f 85 97 00 00 00            jne 0x4112
+core+0x407B: 83 7a 2c 1c                  cmp dword ptr [edx + 0x2c], 0x1c
+core+0x407F: 0f 85 8d 00 00 00            jne 0x4112
+core+0x4085: 8b 42 30                     mov eax, dword ptr [edx + 0x30]
+core+0x4088: 83 f8 02                     cmp eax, 2
+core+0x408B: 75 08                        jne 0x4095
+core+0x408D: 83 7a 34 01                  cmp dword ptr [edx + 0x34], 1
+core+0x4091: 74 0d                        je 0x40a0
+core+0x4093: eb 7d                        jmp 0x4112
+core+0x4095: 83 f8 01                     cmp eax, 1
+core+0x4098: 75 78                        jne 0x4112
+core+0x409A: 83 7a 34 02                  cmp dword ptr [edx + 0x34], 2
+core+0x409E: 75 72                        jne 0x4112
+core+0x40A0: 8b 52 24                     mov edx, dword ptr [edx + 0x24]
+core+0x40A3: 89 94 24 a8 04 00 00         mov dword ptr [esp + 0x4a8], edx
+core+0x40AA: 85 d2                        test edx, edx
+core+0x40AC: 74 5d                        je 0x410b
+core+0x40AE: 33 f6                        xor esi, esi
+core+0x40B0: 8b ce                        mov ecx, esi
+core+0x40B2: 8d 46 ff                     lea eax, [esi - 1]
+core+0x40B5: f7 d9                        neg ecx
+core+0x40B7: 1b c9                        sbb ecx, ecx
+core+0x40B9: 23 c8                        and ecx, eax
+core+0x40BB: 85 f6                        test esi, esi
+core+0x40BD: 74 04                        je 0x40c3
+core+0x40BF: 85 c9                        test ecx, ecx
+core+0x40C1: 74 42                        je 0x4105
+core+0x40C3: 8b 47 0c                     mov eax, dword ptr [edi + 0xc]
+core+0x40C6: 51                           push ecx
+core+0x40C7: 6a 20                        push 0x20
+core+0x40C9: 8b ca                        mov ecx, edx
+core+0x40CB: ff d0                        call eax
+core+0x40CD: 85 c0                        test eax, eax
+core+0x40CF: 74 2d                        je 0x40fe
+core+0x40D1: 8b 48 20                     mov ecx, dword ptr [eax + 0x20]
+core+0x40D4: 85 c9                        test ecx, ecx
+core+0x40D6: 74 26                        je 0x40fe
+core+0x40D8: 39 48 24                     cmp dword ptr [eax + 0x24], ecx
+core+0x40DB: 76 21                        jbe 0x40fe
+core+0x40DD: 8b c8                        mov ecx, eax
+core+0x40DF: 8b 47 10                     mov eax, dword ptr [edi + 0x10]
+core+0x40E2: 6a 00                        push 0
+core+0x40E4: ff d0                        call eax
+core+0x40E6: 8b d0                        mov edx, eax
+core+0x40E8: 85 d2                        test edx, edx
+core+0x40EA: 74 12                        je 0x40fe
+core+0x40EC: 8b 7a 08                     mov edi, dword ptr [edx + 8]
+core+0x40EF: 85 ff                        test edi, edi
+core+0x40F1: 0f 89 01 02 00 00            jns 0x42f8
+core+0x40F7: 8b bc 24 28 05 00 00         mov edi, dword ptr [esp + 0x528]
+core+0x40FE: 8b 94 24 a8 04 00 00         mov edx, dword ptr [esp + 0x4a8]
+core+0x4105: 46                           inc esi
+core+0x4106: 83 fe 01                     cmp esi, 1
+core+0x4109: 7c a5                        jl 0x40b0
+core+0x410B: 8b 94 24 c0 04 00 00         mov edx, dword ptr [esp + 0x4c0]
+core+0x4320: 80 79 fc 20                  cmp byte ptr [ecx - 4], 0x20
+core+0x4324: 75 2f                        jne 0x4355
+core+0x4326: 80 79 fd 00                  cmp byte ptr [ecx - 3], 0
+core+0x432A: 75 29                        jne 0x4355
+core+0x432C: 0f bf 01                     movsx eax, word ptr [ecx]
+core+0x432F: 3b 02                        cmp eax, dword ptr [edx]
+core+0x4331: 75 1b                        jne 0x434e
+core+0x4333: 0f bf 41 02                  movsx eax, word ptr [ecx + 2]
+core+0x4337: 3b 42 04                     cmp eax, dword ptr [edx + 4]
+core+0x433A: 75 12                        jne 0x434e
+core+0x433C: 0f b7 41 04                  movzx eax, word ptr [ecx + 4]
+core+0x4340: 3b c7                        cmp eax, edi
+core+0x4342: 75 0a                        jne 0x434e
+core+0x4344: 8a 42 0c                     mov al, byte ptr [edx + 0xc]
+core+0x4347: 24 01                        and al, 1
+core+0x4349: 38 41 fe                     cmp byte ptr [ecx - 2], al
+core+0x434C: 74 1b                        je 0x4369
+core+0x434E: 8b 84 24 a8 04 00 00         mov eax, dword ptr [esp + 0x4a8]
+core+0x4355: 40                           inc eax
+core+0x4356: 83 c1 10                     add ecx, 0x10
+core+0x4359: 89 84 24 a8 04 00 00         mov dword ptr [esp + 0x4a8], eax
+core+0x4360: 3b c6                        cmp eax, esi
+core+0x4362: 72 bc                        jb 0x4320
+core+0x4364: e9 a2 fd ff ff               jmp 0x410b
+core+0xF19C: 5f                           pop edi
+core+0xF19D: 33 c0                        xor eax, eax
+core+0xF19F: 5e                           pop esi
+core+0xF1A0: 81 c4 00 05 00 00            add esp, 0x500
+core+0xF1A6: c2 24 00                     ret 0x24

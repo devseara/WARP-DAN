@@ -1,0 +1,21 @@
+{
+  "schema": "dual_weapon_edge_guards/v1",
+  "payload_sha256": "175162d22f030a730dc69805c6d07894633ef3376d2406ffa184b07a3d7ab016",
+  "exe_sha256": "4e23389333cd873e3f136b48a67aa20f95d648c8a254318b6630b4266858636c",
+  "off_only_cases": 4896,
+  "same_image_dual_cases": 136,
+  "accepted_class_pairs": 9,
+  "rejected_class_pairs": 520,
+  "max_contact_error": 0.0001778281753266157,
+  "guards": [
+    "Drake excluded",
+    "Unknown view excluded",
+    "Male does not borrow female contacts",
+    "Body ACT mismatch",
+    "Body SPR mismatch",
+    "Stale body image",
+    "Stale selected original image",
+    "Nonidentity original angle"
+  ],
+  "passed": true
+}

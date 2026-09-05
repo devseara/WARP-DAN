@@ -1,0 +1,18 @@
+{
+  "installed": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "installed_sha256": "34c98e38905dc45ce568617b409b88b8cf551a1d6fecb4670258a183b1c36a21",
+  "candidate": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\dual_weapon_resource_build\\2025-07-16_dual_originals_fixed_existing.exe",
+  "previous_backup": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched_before_pose_fix_e8ebfd16.exe",
+  "previous_backup_sha256": "e8ebfd167601a1d550a48e65e449869b0d55f2ff2c40a592d165d19f4f733709",
+  "payload_sha256": "e1209fae0b9cd734ce00de6ab1e098ed949470e93e0cc9b0535824438cf5ca25",
+  "verified_before_deployment": [
+    "full binary relocation and mapped-section comparison",
+    "actual PE page-protection regression",
+    "208 pair28 draws unchanged",
+    "208 dagger/dagger geometry draws",
+    "96 exact off-only held hand subsets",
+    "1296 native resource packets and ABI checks"
+  ],
+  "live_game_acceptance": "pending",
+  "off_only_solo_attack": "unchanged native transfer"
+}

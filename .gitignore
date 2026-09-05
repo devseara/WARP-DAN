@@ -21,3 +21,6 @@ SkippedPatches.log
 # Ignore local client source/extract folders
 /2025-*_Ragexe_*_clientinfo/
 /2025-*_Ragexe_*_clientinfo.zip
+
+# Python analysis caches are not baseline source or evidence.
+__pycache__/

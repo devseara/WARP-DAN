@@ -51,10 +51,10 @@ CustomSpecials:
             desc : Enables custom shield sprites beyond the default set by loading shield definitions from lua files (similar to the Xray system). Required for servers with custom shield graphics.
 
         - AllowDualCustomWeaponSprites:
-            title : Dual-Wield Original Weapon Sprites [LIVE-ACCEPTED SCOPED]
+            title : Dual / Off-Hand Daggers, Swords and Axes [TESTING]
             recommend : no
             author : Louis T Steinhil
-            desc : "Shows both equipped items' original SPR/ACT resources while dual-wielding. The 2025 client implementation is live accepted for female Assassin pair 28 across held stance, attack, generic suppression, and character-envelope occlusion; unsupported family/gender/pair records fail closed to stock. The 2026 client currently performs no pose writes. See docs/dual-wield-original-weapon-sprites.md."
+            desc : "2025-07-16: original dual/off-hand sprites for 17 registered non-Drake dagger, one-handed sword and one-handed axe views (1, 2, 6 and 34-47), on the exact female Assassin Cross body. Restores the old reference dual-attack motion and uses measured hilt-to-hand pixel-edge contacts for held poses, with anatomical equipment-slot ownership. Other views, classes, body profiles and male characters keep stock rendering; 2026 is unsupported. Live acceptance of this edge-contact build is pending. Update Inputs/DualWeaponRuntime with the scripts. See docs/dual-weapon-edge-contacts-20260905.md."
 
         - AllHatEffectsWorldDepthOracle:
             title : All HatEffects Screen-Size World Depth [QJS]

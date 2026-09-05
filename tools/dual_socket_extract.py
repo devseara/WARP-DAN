@@ -1,6 +1,10 @@
 """
 dual_socket_extract.py
 
+HISTORICAL PAIR-GUIDE EXPORT: these are weapon-center guide origins, NOT
+anatomical hand sockets. This CSV is not used by the pixel-grip compositor.
+See docs/dual-weapon-grip-placement-20260905.md.
+
 Extracts a per-(family,gender,phase,direction,frame) "socket" position table
 from the accepted-act dual-wield guide file, for the new
 socket + fixed-per-view-hilt-landmark composition model.
@@ -10,8 +14,8 @@ Socket source layer
 The accepted-act file carries 4 layers per frame:
     layer 0 = body_guide   (torso/body anchor -- NOT used here)
     layer 1 = pair_guide   (the anchor the weapon layers are authored against)
-    layer 2 = off-hand weapon sprite  (physical_hand=1, reference_view=34)
-    layer 3 = main-hand weapon sprite (physical_hand=0, reference_view=45)
+    layer 2 = reference dagger sprite (reference_role=1, view=34; not invariant anatomy)
+    layer 3 = reference sword sprite  (reference_role=0, view=45; not invariant anatomy)
 
 Report 1 ("Dual-Wield Layer<->CSV Correspondence") established empirically
 (bit-exact at frame 0/2 in all 4 sampled directions) that the pose CSV's

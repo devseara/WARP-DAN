@@ -1,0 +1,74 @@
+{
+  "schema": "dual_weapon_mace_absence/v1",
+  "client": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes",
+  "data_ini_sha256": "ca646bcd4973832cc272100895787fb06e0eedc3801c6a1bace79ebdc97d374e",
+  "unreadable_archives": [],
+  "paths": [
+    {
+      "path": "data/sprite/인간족/어세신/어세신_여_클럽.act",
+      "loose_exists": false,
+      "archives": {
+        "update.grf": false,
+        "maindata.grf": false,
+        "spritedata.grf": false,
+        "data.grf": false
+      },
+      "resolved": false
+    },
+    {
+      "path": "data/sprite/인간족/어세신/어세신_여_클럽.spr",
+      "loose_exists": false,
+      "archives": {
+        "update.grf": false,
+        "maindata.grf": false,
+        "spritedata.grf": false,
+        "data.grf": false
+      },
+      "resolved": false
+    },
+    {
+      "path": "data/sprite/인간족/어세신/어세신_남_클럽.act",
+      "loose_exists": false,
+      "archives": {
+        "update.grf": false,
+        "maindata.grf": false,
+        "spritedata.grf": false,
+        "data.grf": false
+      },
+      "resolved": false
+    },
+    {
+      "path": "data/sprite/인간족/어세신/어세신_남_클럽.spr",
+      "loose_exists": false,
+      "archives": {
+        "update.grf": false,
+        "maindata.grf": false,
+        "spritedata.grf": false,
+        "data.grf": false
+      },
+      "resolved": false
+    }
+  ],
+  "generic_assassin_pairs": {
+    "WEAPONTYPE_SHORTSWORD": {
+      "view": 1,
+      "resource_stem": "data/sprite/인간족/어세신/어세신_여_단검",
+      "present": true
+    },
+    "WEAPONTYPE_SWORD": {
+      "view": 2,
+      "resource_stem": "data/sprite/인간족/어세신/어세신_여_검",
+      "present": true
+    },
+    "WEAPONTYPE_AXE": {
+      "view": 6,
+      "resource_stem": "data/sprite/인간족/어세신/어세신_여_도끼",
+      "present": true
+    },
+    "WEAPONTYPE_CATARRH": {
+      "view": 16,
+      "resource_stem": "data/sprite/인간족/어세신/어세신_여_카타르_카타르",
+      "present": true
+    }
+  }
+}

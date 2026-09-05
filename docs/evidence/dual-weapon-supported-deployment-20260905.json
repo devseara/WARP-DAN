@@ -1,0 +1,25 @@
+{
+  "schema": "dual_weapon_supported_deployment/v1",
+  "installed_at_utc": "2026-09-05T08:10:49.7700280Z",
+  "executable": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "candidate": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\dual_weapon_supported_types\\client-dagger-sword-axe.exe",
+  "backup": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched_before_dagger_sword_axe_91b16900.exe",
+  "previous_sha256": "91b1690045634a07dae3b09c52a5564b8ae7895b16e53b1bb9235b2ed6bedeb8",
+  "installed_sha256": "c2e857e3e9d63b510f8b7f31015f821f951aab5033aeb404806acb1751eeeb02",
+  "backup_sha256": "91b1690045634a07dae3b09c52a5564b8ae7895b16e53b1bb9235b2ed6bedeb8",
+  "atomic_replace": true,
+  "process_was_closed": true,
+  "allowed_classes": [
+    1,
+    2,
+    6
+  ],
+  "new_live_placement_acceptance": false,
+  "server_permissions_changed": false,
+  "installed_hook_hex_verified": {
+    "0xd403a0": "e9 fb 76 14 01",
+    "0x605d41": "e8 6a 1d 88 01 89 45 94 90",
+    "0xc4a0d0": "e9 fb 68 24 01 90",
+    "0xc4a647": "e9 64 63 24 01"
+  }
+}

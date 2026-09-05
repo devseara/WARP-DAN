@@ -1,0 +1,3275 @@
+{
+  "schema": "dual_weapon_all_type_compositor_execution/v2",
+  "allowed_classes": [
+    1,
+    2,
+    6
+  ],
+  "payload": "Outputs\\dual_weapon_supported_types\\compositor.dwcp",
+  "payload_sha256": "943f4ea74e680db40c10050e02a9d176ea58e6d5b9edef77a7a3f10d62b83ac5",
+  "source_sha256": "8f75e0589704e189acc143e95b42b48a5d7d5c7630ab971b591f6f8fc31f6818",
+  "coverage_sha256": "407d06c020abdc712a337673fa66a815232104f4e631d60f09dc09b95d9e6d7d",
+  "class_admission_reused_fixtures": {
+    "fixture_main": "13412",
+    "fixture_off": "1238",
+    "combinations": [
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        6
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        2,
+        6
+      ],
+      [
+        6,
+        1
+      ],
+      [
+        6,
+        2
+      ],
+      [
+        6,
+        6
+      ]
+    ],
+    "combination_count": 9,
+    "rejected_combinations": [
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        7
+      ],
+      [
+        1,
+        8
+      ],
+      [
+        1,
+        9
+      ],
+      [
+        1,
+        10
+      ],
+      [
+        1,
+        11
+      ],
+      [
+        1,
+        12
+      ],
+      [
+        1,
+        13
+      ],
+      [
+        1,
+        14
+      ],
+      [
+        1,
+        15
+      ],
+      [
+        1,
+        16
+      ],
+      [
+        1,
+        17
+      ],
+      [
+        1,
+        18
+      ],
+      [
+        1,
+        19
+      ],
+      [
+        1,
+        20
+      ],
+      [
+        1,
+        21
+      ],
+      [
+        1,
+        22
+      ],
+      [
+        1,
+        23
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        2,
+        5
+      ],
+      [
+        2,
+        7
+      ],
+      [
+        2,
+        8
+      ],
+      [
+        2,
+        9
+      ],
+      [
+        2,
+        10
+      ],
+      [
+        2,
+        11
+      ],
+      [
+        2,
+        12
+      ],
+      [
+        2,
+        13
+      ],
+      [
+        2,
+        14
+      ],
+      [
+        2,
+        15
+      ],
+      [
+        2,
+        16
+      ],
+      [
+        2,
+        17
+      ],
+      [
+        2,
+        18
+      ],
+      [
+        2,
+        19
+      ],
+      [
+        2,
+        20
+      ],
+      [
+        2,
+        21
+      ],
+      [
+        2,
+        22
+      ],
+      [
+        2,
+        23
+      ],
+      [
+        3,
+        1
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        3,
+        3
+      ],
+      [
+        3,
+        4
+      ],
+      [
+        3,
+        5
+      ],
+      [
+        3,
+        6
+      ],
+      [
+        3,
+        7
+      ],
+      [
+        3,
+        8
+      ],
+      [
+        3,
+        9
+      ],
+      [
+        3,
+        10
+      ],
+      [
+        3,
+        11
+      ],
+      [
+        3,
+        12
+      ],
+      [
+        3,
+        13
+      ],
+      [
+        3,
+        14
+      ],
+      [
+        3,
+        15
+      ],
+      [
+        3,
+        16
+      ],
+      [
+        3,
+        17
+      ],
+      [
+        3,
+        18
+      ],
+      [
+        3,
+        19
+      ],
+      [
+        3,
+        20
+      ],
+      [
+        3,
+        21
+      ],
+      [
+        3,
+        22
+      ],
+      [
+        3,
+        23
+      ],
+      [
+        4,
+        1
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        4,
+        3
+      ],
+      [
+        4,
+        4
+      ],
+      [
+        4,
+        5
+      ],
+      [
+        4,
+        6
+      ],
+      [
+        4,
+        7
+      ],
+      [
+        4,
+        8
+      ],
+      [
+        4,
+        9
+      ],
+      [
+        4,
+        10
+      ],
+      [
+        4,
+        11
+      ],
+      [
+        4,
+        12
+      ],
+      [
+        4,
+        13
+      ],
+      [
+        4,
+        14
+      ],
+      [
+        4,
+        15
+      ],
+      [
+        4,
+        16
+      ],
+      [
+        4,
+        17
+      ],
+      [
+        4,
+        18
+      ],
+      [
+        4,
+        19
+      ],
+      [
+        4,
+        20
+      ],
+      [
+        4,
+        21
+      ],
+      [
+        4,
+        22
+      ],
+      [
+        4,
+        23
+      ],
+      [
+        5,
+        1
+      ],
+      [
+        5,
+        2
+      ],
+      [
+        5,
+        3
+      ],
+      [
+        5,
+        4
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        5,
+        6
+      ],
+      [
+        5,
+        7
+      ],
+      [
+        5,
+        8
+      ],
+      [
+        5,
+        9
+      ],
+      [
+        5,
+        10
+      ],
+      [
+        5,
+        11
+      ],
+      [
+        5,
+        12
+      ],
+      [
+        5,
+        13
+      ],
+      [
+        5,
+        14
+      ],
+      [
+        5,
+        15
+      ],
+      [
+        5,
+        16
+      ],
+      [
+        5,
+        17
+      ],
+      [
+        5,
+        18
+      ],
+      [
+        5,
+        19
+      ],
+      [
+        5,
+        20
+      ],
+      [
+        5,
+        21
+      ],
+      [
+        5,
+        22
+      ],
+      [
+        5,
+        23
+      ],
+      [
+        6,
+        3
+      ],
+      [
+        6,
+        4
+      ],
+      [
+        6,
+        5
+      ],
+      [
+        6,
+        7
+      ],
+      [
+        6,
+        8
+      ],
+      [
+        6,
+        9
+      ],
+      [
+        6,
+        10
+      ],
+      [
+        6,
+        11
+      ],
+      [
+        6,
+        12
+      ],
+      [
+        6,
+        13
+      ],
+      [
+        6,
+        14
+      ],
+      [
+        6,
+        15
+      ],
+      [
+        6,
+        16
+      ],
+      [
+        6,
+        17
+      ],
+      [
+        6,
+        18
+      ],
+      [
+        6,
+        19
+      ],
+      [
+        6,
+        20
+      ],
+      [
+        6,
+        21
+      ],
+      [
+        6,
+        22
+      ],
+      [
+        6,
+        23
+      ],
+      [
+        7,
+        1
+      ],
+      [
+        7,
+        2
+      ],
+      [
+        7,
+        3
+      ],
+      [
+        7,
+        4
+      ],
+      [
+        7,
+        5
+      ],
+      [
+        7,
+        6
+      ],
+      [
+        7,
+        7
+      ],
+      [
+        7,
+        8
+      ],
+      [
+        7,
+        9
+      ],
+      [
+        7,
+        10
+      ],
+      [
+        7,
+        11
+      ],
+      [
+        7,
+        12
+      ],
+      [
+        7,
+        13
+      ],
+      [
+        7,
+        14
+      ],
+      [
+        7,
+        15
+      ],
+      [
+        7,
+        16
+      ],
+      [
+        7,
+        17
+      ],
+      [
+        7,
+        18
+      ],
+      [
+        7,
+        19
+      ],
+      [
+        7,
+        20
+      ],
+      [
+        7,
+        21
+      ],
+      [
+        7,
+        22
+      ],
+      [
+        7,
+        23
+      ],
+      [
+        8,
+        1
+      ],
+      [
+        8,
+        2
+      ],
+      [
+        8,
+        3
+      ],
+      [
+        8,
+        4
+      ],
+      [
+        8,
+        5
+      ],
+      [
+        8,
+        6
+      ],
+      [
+        8,
+        7
+      ],
+      [
+        8,
+        8
+      ],
+      [
+        8,
+        9
+      ],
+      [
+        8,
+        10
+      ],
+      [
+        8,
+        11
+      ],
+      [
+        8,
+        12
+      ],
+      [
+        8,
+        13
+      ],
+      [
+        8,
+        14
+      ],
+      [
+        8,
+        15
+      ],
+      [
+        8,
+        16
+      ],
+      [
+        8,
+        17
+      ],
+      [
+        8,
+        18
+      ],
+      [
+        8,
+        19
+      ],
+      [
+        8,
+        20
+      ],
+      [
+        8,
+        21
+      ],
+      [
+        8,
+        22
+      ],
+      [
+        8,
+        23
+      ],
+      [
+        9,
+        1
+      ],
+      [
+        9,
+        2
+      ],
+      [
+        9,
+        3
+      ],
+      [
+        9,
+        4
+      ],
+      [
+        9,
+        5
+      ],
+      [
+        9,
+        6
+      ],
+      [
+        9,
+        7
+      ],
+      [
+        9,
+        8
+      ],
+      [
+        9,
+        9
+      ],
+      [
+        9,
+        10
+      ],
+      [
+        9,
+        11
+      ],
+      [
+        9,
+        12
+      ],
+      [
+        9,
+        13
+      ],
+      [
+        9,
+        14
+      ],
+      [
+        9,
+        15
+      ],
+      [
+        9,
+        16
+      ],
+      [
+        9,
+        17
+      ],
+      [
+        9,
+        18
+      ],
+      [
+        9,
+        19
+      ],
+      [
+        9,
+        20
+      ],
+      [
+        9,
+        21
+      ],
+      [
+        9,
+        22
+      ],
+      [
+        9,
+        23
+      ],
+      [
+        10,
+        1
+      ],
+      [
+        10,
+        2
+      ],
+      [
+        10,
+        3
+      ],
+      [
+        10,
+        4
+      ],
+      [
+        10,
+        5
+      ],
+      [
+        10,
+        6
+      ],
+      [
+        10,
+        7
+      ],
+      [
+        10,
+        8
+      ],
+      [
+        10,
+        9
+      ],
+      [
+        10,
+        10
+      ],
+      [
+        10,
+        11
+      ],
+      [
+        10,
+        12
+      ],
+      [
+        10,
+        13
+      ],
+      [
+        10,
+        14
+      ],
+      [
+        10,
+        15
+      ],
+      [
+        10,
+        16
+      ],
+      [
+        10,
+        17
+      ],
+      [
+        10,
+        18
+      ],
+      [
+        10,
+        19
+      ],
+      [
+        10,
+        20
+      ],
+      [
+        10,
+        21
+      ],
+      [
+        10,
+        22
+      ],
+      [
+        10,
+        23
+      ],
+      [
+        11,
+        1
+      ],
+      [
+        11,
+        2
+      ],
+      [
+        11,
+        3
+      ],
+      [
+        11,
+        4
+      ],
+      [
+        11,
+        5
+      ],
+      [
+        11,
+        6
+      ],
+      [
+        11,
+        7
+      ],
+      [
+        11,
+        8
+      ],
+      [
+        11,
+        9
+      ],
+      [
+        11,
+        10
+      ],
+      [
+        11,
+        11
+      ],
+      [
+        11,
+        12
+      ],
+      [
+        11,
+        13
+      ],
+      [
+        11,
+        14
+      ],
+      [
+        11,
+        15
+      ],
+      [
+        11,
+        16
+      ],
+      [
+        11,
+        17
+      ],
+      [
+        11,
+        18
+      ],
+      [
+        11,
+        19
+      ],
+      [
+        11,
+        20
+      ],
+      [
+        11,
+        21
+      ],
+      [
+        11,
+        22
+      ],
+      [
+        11,
+        23
+      ],
+      [
+        12,
+        1
+      ],
+      [
+        12,
+        2
+      ],
+      [
+        12,
+        3
+      ],
+      [
+        12,
+        4
+      ],
+      [
+        12,
+        5
+      ],
+      [
+        12,
+        6
+      ],
+      [
+        12,
+        7
+      ],
+      [
+        12,
+        8
+      ],
+      [
+        12,
+        9
+      ],
+      [
+        12,
+        10
+      ],
+      [
+        12,
+        11
+      ],
+      [
+        12,
+        12
+      ],
+      [
+        12,
+        13
+      ],
+      [
+        12,
+        14
+      ],
+      [
+        12,
+        15
+      ],
+      [
+        12,
+        16
+      ],
+      [
+        12,
+        17
+      ],
+      [
+        12,
+        18
+      ],
+      [
+        12,
+        19
+      ],
+      [
+        12,
+        20
+      ],
+      [
+        12,
+        21
+      ],
+      [
+        12,
+        22
+      ],
+      [
+        12,
+        23
+      ],
+      [
+        13,
+        1
+      ],
+      [
+        13,
+        2
+      ],
+      [
+        13,
+        3
+      ],
+      [
+        13,
+        4
+      ],
+      [
+        13,
+        5
+      ],
+      [
+        13,
+        6
+      ],
+      [
+        13,
+        7
+      ],
+      [
+        13,
+        8
+      ],
+      [
+        13,
+        9
+      ],
+      [
+        13,
+        10
+      ],
+      [
+        13,
+        11
+      ],
+      [
+        13,
+        12
+      ],
+      [
+        13,
+        13
+      ],
+      [
+        13,
+        14
+      ],
+      [
+        13,
+        15
+      ],
+      [
+        13,
+        16
+      ],
+      [
+        13,
+        17
+      ],
+      [
+        13,
+        18
+      ],
+      [
+        13,
+        19
+      ],
+      [
+        13,
+        20
+      ],
+      [
+        13,
+        21
+      ],
+      [
+        13,
+        22
+      ],
+      [
+        13,
+        23
+      ],
+      [
+        14,
+        1
+      ],
+      [
+        14,
+        2
+      ],
+      [
+        14,
+        3
+      ],
+      [
+        14,
+        4
+      ],
+      [
+        14,
+        5
+      ],
+      [
+        14,
+        6
+      ],
+      [
+        14,
+        7
+      ],
+      [
+        14,
+        8
+      ],
+      [
+        14,
+        9
+      ],
+      [
+        14,
+        10
+      ],
+      [
+        14,
+        11
+      ],
+      [
+        14,
+        12
+      ],
+      [
+        14,
+        13
+      ],
+      [
+        14,
+        14
+      ],
+      [
+        14,
+        15
+      ],
+      [
+        14,
+        16
+      ],
+      [
+        14,
+        17
+      ],
+      [
+        14,
+        18
+      ],
+      [
+        14,
+        19
+      ],
+      [
+        14,
+        20
+      ],
+      [
+        14,
+        21
+      ],
+      [
+        14,
+        22
+      ],
+      [
+        14,
+        23
+      ],
+      [
+        15,
+        1
+      ],
+      [
+        15,
+        2
+      ],
+      [
+        15,
+        3
+      ],
+      [
+        15,
+        4
+      ],
+      [
+        15,
+        5
+      ],
+      [
+        15,
+        6
+      ],
+      [
+        15,
+        7
+      ],
+      [
+        15,
+        8
+      ],
+      [
+        15,
+        9
+      ],
+      [
+        15,
+        10
+      ],
+      [
+        15,
+        11
+      ],
+      [
+        15,
+        12
+      ],
+      [
+        15,
+        13
+      ],
+      [
+        15,
+        14
+      ],
+      [
+        15,
+        15
+      ],
+      [
+        15,
+        16
+      ],
+      [
+        15,
+        17
+      ],
+      [
+        15,
+        18
+      ],
+      [
+        15,
+        19
+      ],
+      [
+        15,
+        20
+      ],
+      [
+        15,
+        21
+      ],
+      [
+        15,
+        22
+      ],
+      [
+        15,
+        23
+      ],
+      [
+        16,
+        1
+      ],
+      [
+        16,
+        2
+      ],
+      [
+        16,
+        3
+      ],
+      [
+        16,
+        4
+      ],
+      [
+        16,
+        5
+      ],
+      [
+        16,
+        6
+      ],
+      [
+        16,
+        7
+      ],
+      [
+        16,
+        8
+      ],
+      [
+        16,
+        9
+      ],
+      [
+        16,
+        10
+      ],
+      [
+        16,
+        11
+      ],
+      [
+        16,
+        12
+      ],
+      [
+        16,
+        13
+      ],
+      [
+        16,
+        14
+      ],
+      [
+        16,
+        15
+      ],
+      [
+        16,
+        16
+      ],
+      [
+        16,
+        17
+      ],
+      [
+        16,
+        18
+      ],
+      [
+        16,
+        19
+      ],
+      [
+        16,
+        20
+      ],
+      [
+        16,
+        21
+      ],
+      [
+        16,
+        22
+      ],
+      [
+        16,
+        23
+      ],
+      [
+        17,
+        1
+      ],
+      [
+        17,
+        2
+      ],
+      [
+        17,
+        3
+      ],
+      [
+        17,
+        4
+      ],
+      [
+        17,
+        5
+      ],
+      [
+        17,
+        6
+      ],
+      [
+        17,
+        7
+      ],
+      [
+        17,
+        8
+      ],
+      [
+        17,
+        9
+      ],
+      [
+        17,
+        10
+      ],
+      [
+        17,
+        11
+      ],
+      [
+        17,
+        12
+      ],
+      [
+        17,
+        13
+      ],
+      [
+        17,
+        14
+      ],
+      [
+        17,
+        15
+      ],
+      [
+        17,
+        16
+      ],
+      [
+        17,
+        17
+      ],
+      [
+        17,
+        18
+      ],
+      [
+        17,
+        19
+      ],
+      [
+        17,
+        20
+      ],
+      [
+        17,
+        21
+      ],
+      [
+        17,
+        22
+      ],
+      [
+        17,
+        23
+      ],
+      [
+        18,
+        1
+      ],
+      [
+        18,
+        2
+      ],
+      [
+        18,
+        3
+      ],
+      [
+        18,
+        4
+      ],
+      [
+        18,
+        5
+      ],
+      [
+        18,
+        6
+      ],
+      [
+        18,
+        7
+      ],
+      [
+        18,
+        8
+      ],
+      [
+        18,
+        9
+      ],
+      [
+        18,
+        10
+      ],
+      [
+        18,
+        11
+      ],
+      [
+        18,
+        12
+      ],
+      [
+        18,
+        13
+      ],
+      [
+        18,
+        14
+      ],
+      [
+        18,
+        15
+      ],
+      [
+        18,
+        16
+      ],
+      [
+        18,
+        17
+      ],
+      [
+        18,
+        18
+      ],
+      [
+        18,
+        19
+      ],
+      [
+        18,
+        20
+      ],
+      [
+        18,
+        21
+      ],
+      [
+        18,
+        22
+      ],
+      [
+        18,
+        23
+      ],
+      [
+        19,
+        1
+      ],
+      [
+        19,
+        2
+      ],
+      [
+        19,
+        3
+      ],
+      [
+        19,
+        4
+      ],
+      [
+        19,
+        5
+      ],
+      [
+        19,
+        6
+      ],
+      [
+        19,
+        7
+      ],
+      [
+        19,
+        8
+      ],
+      [
+        19,
+        9
+      ],
+      [
+        19,
+        10
+      ],
+      [
+        19,
+        11
+      ],
+      [
+        19,
+        12
+      ],
+      [
+        19,
+        13
+      ],
+      [
+        19,
+        14
+      ],
+      [
+        19,
+        15
+      ],
+      [
+        19,
+        16
+      ],
+      [
+        19,
+        17
+      ],
+      [
+        19,
+        18
+      ],
+      [
+        19,
+        19
+      ],
+      [
+        19,
+        20
+      ],
+      [
+        19,
+        21
+      ],
+      [
+        19,
+        22
+      ],
+      [
+        19,
+        23
+      ],
+      [
+        20,
+        1
+      ],
+      [
+        20,
+        2
+      ],
+      [
+        20,
+        3
+      ],
+      [
+        20,
+        4
+      ],
+      [
+        20,
+        5
+      ],
+      [
+        20,
+        6
+      ],
+      [
+        20,
+        7
+      ],
+      [
+        20,
+        8
+      ],
+      [
+        20,
+        9
+      ],
+      [
+        20,
+        10
+      ],
+      [
+        20,
+        11
+      ],
+      [
+        20,
+        12
+      ],
+      [
+        20,
+        13
+      ],
+      [
+        20,
+        14
+      ],
+      [
+        20,
+        15
+      ],
+      [
+        20,
+        16
+      ],
+      [
+        20,
+        17
+      ],
+      [
+        20,
+        18
+      ],
+      [
+        20,
+        19
+      ],
+      [
+        20,
+        20
+      ],
+      [
+        20,
+        21
+      ],
+      [
+        20,
+        22
+      ],
+      [
+        20,
+        23
+      ],
+      [
+        21,
+        1
+      ],
+      [
+        21,
+        2
+      ],
+      [
+        21,
+        3
+      ],
+      [
+        21,
+        4
+      ],
+      [
+        21,
+        5
+      ],
+      [
+        21,
+        6
+      ],
+      [
+        21,
+        7
+      ],
+      [
+        21,
+        8
+      ],
+      [
+        21,
+        9
+      ],
+      [
+        21,
+        10
+      ],
+      [
+        21,
+        11
+      ],
+      [
+        21,
+        12
+      ],
+      [
+        21,
+        13
+      ],
+      [
+        21,
+        14
+      ],
+      [
+        21,
+        15
+      ],
+      [
+        21,
+        16
+      ],
+      [
+        21,
+        17
+      ],
+      [
+        21,
+        18
+      ],
+      [
+        21,
+        19
+      ],
+      [
+        21,
+        20
+      ],
+      [
+        21,
+        21
+      ],
+      [
+        21,
+        22
+      ],
+      [
+        21,
+        23
+      ],
+      [
+        22,
+        1
+      ],
+      [
+        22,
+        2
+      ],
+      [
+        22,
+        3
+      ],
+      [
+        22,
+        4
+      ],
+      [
+        22,
+        5
+      ],
+      [
+        22,
+        6
+      ],
+      [
+        22,
+        7
+      ],
+      [
+        22,
+        8
+      ],
+      [
+        22,
+        9
+      ],
+      [
+        22,
+        10
+      ],
+      [
+        22,
+        11
+      ],
+      [
+        22,
+        12
+      ],
+      [
+        22,
+        13
+      ],
+      [
+        22,
+        14
+      ],
+      [
+        22,
+        15
+      ],
+      [
+        22,
+        16
+      ],
+      [
+        22,
+        17
+      ],
+      [
+        22,
+        18
+      ],
+      [
+        22,
+        19
+      ],
+      [
+        22,
+        20
+      ],
+      [
+        22,
+        21
+      ],
+      [
+        22,
+        22
+      ],
+      [
+        22,
+        23
+      ],
+      [
+        23,
+        1
+      ],
+      [
+        23,
+        2
+      ],
+      [
+        23,
+        3
+      ],
+      [
+        23,
+        4
+      ],
+      [
+        23,
+        5
+      ],
+      [
+        23,
+        6
+      ],
+      [
+        23,
+        7
+      ],
+      [
+        23,
+        8
+      ],
+      [
+        23,
+        9
+      ],
+      [
+        23,
+        10
+      ],
+      [
+        23,
+        11
+      ],
+      [
+        23,
+        12
+      ],
+      [
+        23,
+        13
+      ],
+      [
+        23,
+        14
+      ],
+      [
+        23,
+        15
+      ],
+      [
+        23,
+        16
+      ],
+      [
+        23,
+        17
+      ],
+      [
+        23,
+        18
+      ],
+      [
+        23,
+        19
+      ],
+      [
+        23,
+        20
+      ],
+      [
+        23,
+        21
+      ],
+      [
+        23,
+        22
+      ],
+      [
+        23,
+        23
+      ]
+    ],
+    "rejected_combination_count": 520,
+    "checked_phases": [
+      "held32/frame0",
+      "dual_attack88/frame0"
+    ],
+    "off_only_classes": [
+      1,
+      2,
+      6
+    ],
+    "rejected_off_only_classes": [
+      3,
+      4,
+      5,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23
+    ],
+    "off_only_directions_per_class": 8,
+    "claim": "class admission and source ownership only; no mace/staff/gun art is represented by these fixtures"
+  },
+  "real_resource_rows": [
+    {
+      "view": 1,
+      "resource": "단검",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 1,
+      "resource": "단검",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 2,
+      "resource": "검",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 2,
+      "resource": "검",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 6,
+      "resource": "도끼",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 6,
+      "resource": "도끼",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 34,
+      "resource": "1238",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 34,
+      "resource": "1238",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 35,
+      "resource": "1239",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 35,
+      "resource": "1239",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 36,
+      "resource": "1240",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 36,
+      "resource": "1240",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 37,
+      "resource": "1144",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 37,
+      "resource": "1144",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 38,
+      "resource": "13049",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 38,
+      "resource": "13049",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 39,
+      "resource": "1119",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 39,
+      "resource": "1119",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 40,
+      "resource": "1122",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 40,
+      "resource": "1122",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 41,
+      "resource": "1123",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 41,
+      "resource": "1123",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 42,
+      "resource": "1126",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 42,
+      "resource": "1126",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 43,
+      "resource": "1142",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 43,
+      "resource": "1142",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 44,
+      "resource": "1143",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 44,
+      "resource": "1143",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 45,
+      "resource": "13412",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 45,
+      "resource": "13412",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 46,
+      "resource": "13413",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 46,
+      "resource": "13413",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    },
+    {
+      "view": 47,
+      "resource": "프리스트의검",
+      "physical_role": 0,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 144
+    },
+    {
+      "view": 47,
+      "resource": "프리스트의검",
+      "physical_role": 1,
+      "pair28_target_cells": 112,
+      "sword_carrier_held_cells": 48,
+      "selected_original_image_checks": 160
+    }
+  ],
+  "real_view_count": 17,
+  "carrier_inventory": {
+    "검": {
+      "held": [
+        {
+          "direction": 0,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 1,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 2,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 3,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 4,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 5,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 6,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 7,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        }
+      ],
+      "dual_attack": [
+        {
+          "direction": 0,
+          "body": [],
+          "trail": []
+        },
+        {
+          "direction": 1,
+          "body": [],
+          "trail": []
+        },
+        {
+          "direction": 2,
+          "body": [],
+          "trail": []
+        },
+        {
+          "direction": 3,
+          "body": [],
+          "trail": []
+        },
+        {
+          "direction": 4,
+          "body": [],
+          "trail": []
+        },
+        {
+          "direction": 5,
+          "body": [],
+          "trail": []
+        },
+        {
+          "direction": 6,
+          "body": [],
+          "trail": []
+        },
+        {
+          "direction": 7,
+          "body": [],
+          "trail": []
+        }
+      ]
+    },
+    "단검_검": {
+      "held": [
+        {
+          "direction": 0,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 1,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 2,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 3,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 4,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 5,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 6,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        },
+        {
+          "direction": 7,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "trail": []
+        }
+      ],
+      "dual_attack": [
+        {
+          "direction": 0,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "trail": [
+            3,
+            4,
+            6,
+            7
+          ]
+        },
+        {
+          "direction": 1,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "trail": [
+            3,
+            4,
+            6,
+            7
+          ]
+        },
+        {
+          "direction": 2,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "trail": [
+            3,
+            4,
+            6,
+            7
+          ]
+        },
+        {
+          "direction": 3,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "trail": [
+            3,
+            4,
+            6,
+            7
+          ]
+        },
+        {
+          "direction": 4,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "trail": [
+            3,
+            4,
+            6,
+            7
+          ]
+        },
+        {
+          "direction": 5,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "trail": [
+            3,
+            4,
+            6,
+            7
+          ]
+        },
+        {
+          "direction": 6,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "trail": [
+            3,
+            4,
+            6,
+            7
+          ]
+        },
+        {
+          "direction": 7,
+          "body": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "trail": [
+            3,
+            4,
+            6,
+            7
+          ]
+        }
+      ]
+    }
+  },
+  "rejection_checks": [
+    "main type 0 rejected",
+    "main type 24 rejected",
+    "main type 4294967295 rejected",
+    "off type 0 rejected",
+    "off type 24 rejected",
+    "off type 4294967295 rejected",
+    "male profile rejected",
+    "main foreign ACT family rejected",
+    "main filename at obsolete +0x10 rejected",
+    "off foreign ACT family rejected",
+    "off filename at obsolete +0x10 rejected",
+    "missing exact source action",
+    "missing exact source held frame",
+    "missing selected attack frame4 does not wrap to frame0",
+    "invalid selected image index",
+    "unprofiled source rotation",
+    "zero source scale",
+    "nonfinite source scale",
+    "held target frame6 cannot wrap",
+    "dual compositor rejects native solo attack80 carrier"
+  ],
+  "legacy_dispatch_sentinel_cases": [
+    {
+      "views": [
+        45,
+        34
+      ],
+      "legacy_called": true
+    },
+    {
+      "views": [
+        34,
+        45
+      ],
+      "legacy_called": true
+    },
+    {
+      "views": [
+        1,
+        34
+      ],
+      "legacy_called": false,
+      "handled": true
+    },
+    {
+      "views": [
+        2,
+        34
+      ],
+      "legacy_called": false,
+      "handled": true
+    },
+    {
+      "views": [
+        3,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        4,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        5,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        6,
+        34
+      ],
+      "legacy_called": false,
+      "handled": true
+    },
+    {
+      "views": [
+        7,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        8,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        9,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        10,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        11,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        12,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        13,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        14,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        15,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        16,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        17,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        18,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        19,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        20,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        21,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        22,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    },
+    {
+      "views": [
+        23,
+        34
+      ],
+      "legacy_called": false,
+      "handled": false
+    }
+  ],
+  "source_resources": {
+    "data/sprite/인간족/어세신/어세신_여_13412.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42900,
+      "sha256": "be0a6270f3871544697ced740d3799ed7e2dc08173c8b1090a21e9d29b2b4e6c"
+    },
+    "data/sprite/인간족/어세신/어세신_여_13412.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 3243,
+      "sha256": "ce61ad9a6c3492b22bd1ebd7e5699f17f07e63f774102a4a55513d147a207fa7"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1238.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42324,
+      "sha256": "24d3624800b3ea1005c28ae3797890584eb9e461571a5d0995a042fd94fa163d"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1238.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2171,
+      "sha256": "bd777779a3eeefbaf890bf4918ae21f4de61dd4a843f8c3aa9ef1aa0c9566333"
+    },
+    "data/sprite/인간족/어세신/어세신_여_도끼.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 37332,
+      "sha256": "62892234ec8729f1eaff69f1b067de7a684b35924f520fccc11ba5be84b6dfe7"
+    },
+    "data/sprite/인간족/어세신/어세신_여_도끼.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2969,
+      "sha256": "80252283c68fd12280c80f683de33946c224a02f6f54cc20dd05dec484f00da8"
+    },
+    "data/sprite/인간족/어세신/어세신_여_검.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 37332,
+      "sha256": "10e654a5e85d6c27e8c177003b148e7f6388e615d2fbde63cc73b9e1620879d1"
+    },
+    "data/sprite/인간족/어세신/어세신_여_검.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2504,
+      "sha256": "6e7f890bca1c70f77db38c677719fb86c3b39cb99b97ba7662c56e61cf3c5e97"
+    },
+    "data/sprite/인간족/어세신/어세신_여_검_검광.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 37844,
+      "sha256": "fafba970a794a70504e929cf8fbba84cd998ebd601498e3757c3ab25eb5d2da9"
+    },
+    "data/sprite/인간족/어세신/어세신_여_검_검광.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 12264,
+      "sha256": "e91c6f2216a0e71fa43b6ab68b43613c6a11ee56ea2b6241a3b66c8744076d7e"
+    },
+    "data/sprite/인간족/어세신/어세신_여_단검_검.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 37332,
+      "sha256": "9f3856f691c9fafe7a766c76e8114d06b4759d2f0deeb2f29a84d3ab2b55bd15"
+    },
+    "data/sprite/인간족/어세신/어세신_여_단검_검.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 12586,
+      "sha256": "3323f303e9ae6f89d9e48de040c0cb497b4274ec6ccf49c85a1ffea4c210469b"
+    },
+    "data/sprite/인간족/어세신/어세신_여_단검_검_검광.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 37332,
+      "sha256": "9cf10e17e639841585ce5b3093101438f1e7b69140b64fae45e3a5d24a1714bf"
+    },
+    "data/sprite/인간족/어세신/어세신_여_단검_검_검광.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 4067,
+      "sha256": "c0ef8fdfb80c2ec9d2c4d30f7cbcb387dcda7e7cdc92b40656a6cd566d1b8d3d"
+    },
+    "data/sprite/인간족/어세신/어세신_여_단검.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 37332,
+      "sha256": "1d4a2ae4e5a1083a5a0c43ec45347e38a6b00e8ad74d78236b5f5636c9f5d8b8"
+    },
+    "data/sprite/인간족/어세신/어세신_여_단검.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 1860,
+      "sha256": "66bf56178ad285933c5d9be85b7c3ef8771c483f3a0abf8d6b0034bf22aab312"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1239.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42324,
+      "sha256": "edacbfe84c663206cdf0d8a6d73c4f39ad07317cf9446f3047f3524cf3a7a472"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1239.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2400,
+      "sha256": "bce34b8ee081e381cb39e643f190aa63dec7cbe8854308d72d5c0be9db06fe65"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1240.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42324,
+      "sha256": "0af1b11a22cfa162af9e572bcf71855e81ae0c1f93d23cebd0ece7f26a648ba6"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1240.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2134,
+      "sha256": "9e0e4c8c1b28f6f7e53dc370aac64ba8e010334b491aa5815b8adb6ff42a6e9e"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1144.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42580,
+      "sha256": "d8bf47ac5bbd2b65b0c43ea7ed9a8da65eb917262b940e5f27c094b148c41799"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1144.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 1943,
+      "sha256": "9c5f1d0577af2e80e0c6366511d3bc31f8c1042cd25c357d45b280d8dd3704fb"
+    },
+    "data/sprite/인간족/어세신/어세신_여_13049.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42324,
+      "sha256": "9a24dbacdd0afefaaad6594929d2e5c86a7921babec4f3fbed8fba307baaa082"
+    },
+    "data/sprite/인간족/어세신/어세신_여_13049.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 1897,
+      "sha256": "1a7ca818f5e0f186c5cda300dbb06e7c50032869b8dc8919cc8ca82846067e50"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1119.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42900,
+      "sha256": "b53be8f75c6bd7096c1432e0cc0b4fa3087471504c2c3abd5035987c86a4a9dc"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1119.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2310,
+      "sha256": "53498eeb8a88da7756e08d822b78a471f04466ca362717c71e2e2e133db0116e"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1122.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42580,
+      "sha256": "5b901ad5e566cebb3faba235ad106560a5177d57319614036a25044a37f3ebb0"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1122.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2022,
+      "sha256": "cc93409e9179130e557124cf129800005ff43fea9084643a9ee23a421f477f3c"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1123.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42580,
+      "sha256": "381a78d7142015a2cb1685d6e585aa2e8c2f2df432f5224c41410c7c0d73af8f"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1123.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 1935,
+      "sha256": "32fac90825b5c13858528709740f496de613bea8d2450e661c2a8e1322c42d77"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1126.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42580,
+      "sha256": "72eeb158fd5ac87e0b16fbb7c1fab5cef9162f0b75e2add6ffce65d83d4f314b"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1126.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2192,
+      "sha256": "2ea657b212d33fa3f4e5db671a63f23e9ee929a1b3eb9a0ec2d5b840ccd3066f"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1142.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42580,
+      "sha256": "150e25174bccb220bade8a086c2641ee51a673bafed05172481636427120593a"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1142.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2424,
+      "sha256": "f7aea8866d018fae0f540228817f225bcf319b930ba1deeb05c135a19e258ef3"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1143.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42580,
+      "sha256": "fd23fb810d01e61a113f5f9f96c35b11dc25db8f5e5aac1fe59458050a163fa8"
+    },
+    "data/sprite/인간족/어세신/어세신_여_1143.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2788,
+      "sha256": "737a3204a469b2bb942bcd032644ccfd0de09d7cbeedaf4da4c5f4d861a7e044"
+    },
+    "data/sprite/인간족/어세신/어세신_여_13413.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42900,
+      "sha256": "38155910305258dab28920f6cffff5ef266acc67802c3aaba6cfddf497b80dfe"
+    },
+    "data/sprite/인간족/어세신/어세신_여_13413.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 3243,
+      "sha256": "4ef05169fa345ed1090d6c52cf07c4b2f3e15c4503f83955ef30f12e6790d495"
+    },
+    "data/sprite/인간족/어세신/어세신_여_프리스트의검.act": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 42580,
+      "sha256": "bc85c39e94898ac229e9c55918d9872ddf3d16e0bd18c80fbee8f0383c84c49a"
+    },
+    "data/sprite/인간족/어세신/어세신_여_프리스트의검.spr": {
+      "source": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\spritedata.grf",
+      "bytes": 2626,
+      "sha256": "c8e6a0c439f31e5583dcb65772659b06c70644b91b09a2dc27f7c8c62431069e"
+    }
+  },
+  "limits": [
+    "No game process, GPU draw or live visual acceptance is covered.",
+    "Missing Assassin assets are not generated or replaced by the reused class-admission fixtures.",
+    "Generic sword carrier has no visible body/trail layer in dual attack88..95; selector change alone cannot produce those packets.",
+    "Native projection and packet arithmetic retain their separately verified fixture contract and are not re-proved here.",
+    "Off-only non-held behavior retains its inherited native-resource/frame-zero fallback; these new strict source guards cover dual and held paths."
+  ]
+}
