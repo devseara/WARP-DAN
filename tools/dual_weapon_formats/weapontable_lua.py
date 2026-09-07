@@ -1,9 +1,6 @@
 """Parser for the client's weapontable.lub dual-capable weapon view tables.
 
-Promoted from tmp/recovered_dual/compile_weapon_coverage.py (weapontable.lub
-parsing only; that file's per-pair DWR3/DWC2 build pipeline is not carried
-forward -- see docs/dual-wield-original-weapon-sprites.md and the job-sprite
-compositor plan for why).
+See docs/dual-wield-original-weapon-sprites.md for the active Lua mapping contract.
 """
 
 from __future__ import annotations
@@ -70,7 +67,7 @@ def parse_weapon_tables(
 
 	standard_path/cls_path are the stock weapontable.lub and its (usually
 	empty) *_CLS override companion -- see
-	docs/dual-wield-original-weapon-sprites.md's "weapontable.lub contract"
+	docs/dual-wield-original-weapon-sprites.md's "Lua resource mapping"
 	section for the three-layer schema this reads (Weapon_IDs,
 	WeaponNameTable, Expansion_Weapon_IDs, plus their _CLS variants).
 	"""

@@ -1,7 +1,7 @@
 /*
  * Original-resource compositor, 2025-07-16 x86 Ragexe.
  * No renderer globals, resource mutation, CRT, texture fabrication or image cache.
- * ABI/layout proof: docs/dual-weapon-resource-fix-20260905.md.
+ * ABI/layout proof: docs/dual-wield-original-weapon-sprites.md.
  */
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -140,7 +140,7 @@ static const DWGripImage *grip_image(u32 view,Layer *layer,Image *image)
 }
 static int profiled_view(u32 view)
 {
-	return view==1 || view==2 || view==6 || (view>=34 && view<=47);
+	return view==1 || view==2 || view==6 || (view>=31 && view<=47) || (view>=58 && view<=61);
 }
 static int body_family(u32 act,int sprite)
 {
@@ -317,19 +317,25 @@ static int prepare_reference(Prepared *out,Packet *stock,Layer *base,
  * stores its native CP949 filename inline at +0x14. Gender alone admits other
  * jobs with unrelated hand positions; require both retained hand ACT families.
  * This is a family scope check, not proof that missing item art exists. */
+#include "male_compositor.h"
+#include "female_dagger_compositor.h"
+#include "female_family_compositor.h"
 static int supported_type(u32 type) { return type==1 || type==2 || type==6; }
 static int reference_family(u32 act)
 {
 	static const u8 prefix[]="\x73\x70\x72\x69\x74\x65\x5c\xc0\xce\xb0\xa3\xc1\xb7\x5c\xbe\xee\xbc\xbc\xbd\xc5\x5c\xbe\xee\xbc\xbc\xbd\xc5\x5f\xbf\xa9\x5f";
+	static const u8 shadow[]="sprite\\\xc0\xce\xb0\xa3\xc1\xb7\\shadow_cross\\shadow_cross_\xbf\xa9_";
 	const u8 *name=(const u8 *)(act+0x14);
 	u32 i;
 	if(!act) return 0;
-	for(i=0;i<sizeof(prefix)-1;i++) if(name[i]!=prefix[i]) return 0;
+	for(i=0;i<sizeof(prefix)-1;i++) if(name[i]!=prefix[i]) break;
+	if(i==sizeof(prefix)-1) return 1;
+	for(i=0;i<sizeof(shadow)-1;i++) if(name[i]!=shadow[i]) return 0;
 	return 1;
 }
 
-/* Context retains the legacy 17 DWORD prefix:
- * [17] canonical rig [18] view pairs [19] legacy core [20] DWC2 table.
+/* Context retains its 21-DWORD ABI; retired legacy slots are reserved zero.
+ * [18] is the actor view-pair registry. Placement tables are compiled below.
  * Resource identity is resolved from THIS actor's restored stock resources
  * and current ACT frame, never the global last-image/recent-capture ring. */
 extern "C" __declspec(dllexport) int __stdcall DualWeaponCompose(void *actor,Packet *packet,
@@ -339,7 +345,7 @@ extern "C" __declspec(dllexport) int __stdcall DualWeaponCompose(void *actor,Pac
 	Row *row;
 	Layer *base[2],*body;
 	Image *image[2],*bodyImage;
-	int action,frame,channel=-1,i,phase,dir,hand,offOnly,sourceFrame;
+	int action,frame,channel=-1,i,phase,dir,hand,offOnly,sourceFrame,bi;
 	u32 spr[2],act[2];
 	const DWNativeBasis *basis;
 	const DWBodyGrip *socket;
@@ -349,6 +355,7 @@ extern "C" __declspec(dllexport) int __stdcall DualWeaponCompose(void *actor,Pac
 	if(row->actor!=ap || !row->offSpr || !row->offAct) return 0;
 	offOnly=rd(ap,ctx[11])==0;
 	if(!rd(ap,ctx[12]) || (!offOnly && (!row->mainSpr || !row->mainAct))) return 0;
+	if(row->gender==1) return compose_male(actor,packet,palette,a3,a4,a5,a6,ctx,draw,row,offOnly);
 	if(row->gender!=0 || !supported_type(row->offType) ||
 		!reference_family(row->offAct) || (!offOnly &&
 		(!supported_type(row->mainType) || !reference_family(row->mainAct)))) return 0;
@@ -382,17 +389,24 @@ extern "C" __declspec(dllexport) int __stdcall DualWeaponCompose(void *actor,Pac
 	if(!views || !profiled_view(rd(views,4)) || (!offOnly && !profiled_view(rd(views,0)))) return 0;
 	av=rd(ap,0x4B8); ae=rd(ap,0x4BC);
 	if(!av || ae<av || ae-av<4 || ae-av>64) return 0;
-	bodyAct=rd(av,0); if(!body_family(bodyAct,0) || !body_family(rd(sv,0),1)) return 0;
+	bodyAct=rd(av,0); bi=female_body(bodyAct,rd(sv,0)); if(bi<0) return 0;
 	body=layer_at(bodyAct,action,frame); bodyImage=image_at(rd(sv,0),body);
 	socket=&DW_BODY_GRIPS[phase][dir][frame];
-	if(!body || !bodyImage || body->kind || body->index!=socket->index ||
+	if(!male_fingerprint(body,bodyImage,&DWFF_BODIES[bi][phase][dir][frame])) return 0;
+	if(bi==2 && (!body_family(bodyAct,0) || !body_family(rd(sv,0),1) || body->kind || body->index!=socket->index ||
 		body->x!=socket->x || body->y!=socket->y || body->mirror!=socket->mirror ||
 		body->sx!=1 || body->sy!=1 || body->angle ||
-		bodyImage->width!=socket->width || bodyImage->height!=socket->height) return 0;
+		bodyImage->width!=socket->width || bodyImage->height!=socket->height)) return 0;
 	basis=&DW_NATIVE_BASIS[phase][dir][frame];
 	if(offOnly) {
 		hand=1-socket->mainHand;
-		if(!prepare_gripped(&hands[0],packet,base[channel],row->offSpr,row->offAct,
+		if(bi!=2 || (rd(views,4)>=58 && rd(views,4)<=61)) {
+			if(!female_family_prepare(&hands[0],packet,base[channel],row->offSpr,row->offAct,
+				rd(views,4),bi,body,bodyImage,basis,phase,dir,frame,hand)) return 0;
+		} else if(rd(views,4)>=31 && rd(views,4)<=33) {
+			if(row->offType!=1 || !female_dagger_prepare(&hands[0],packet,base[channel],row->offSpr,row->offAct,
+				rd(views,4),body,bodyImage,basis,phase,dir,frame,hand)) return 0;
+		} else if(!prepare_gripped(&hands[0],packet,base[channel],row->offSpr,row->offAct,
 			rd(views,4),body,bodyImage,basis,hand,dir,frame)) return 0;
 		if(channel==1 && image[0]) return 1;
 		if(hands[0].visible) draw(actor,&hands[0].packet,hands[0].palette,a3,a4,a5,a6);
@@ -406,7 +420,13 @@ extern "C" __declspec(dllexport) int __stdcall DualWeaponCompose(void *actor,Pac
 	spr[1]=row->offSpr; act[1]=row->offAct;
 	for(i=0;i<2;i++) {
 		hand=i?1-socket->mainHand:socket->mainHand;
-		if(phase==1) {
+		if(bi!=2 || (rd(views,i*4)>=58 && rd(views,i*4)<=61)) {
+			if(!female_family_prepare(&hands[i],packet,base[channel],spr[i],act[i],
+				rd(views,i*4),bi,body,bodyImage,basis,phase,dir,frame,hand)) return 0;
+		} else if(rd(views,i*4)>=31 && rd(views,i*4)<=33) {
+			if((i?row->offType:row->mainType)!=1 || !female_dagger_prepare(&hands[i],packet,base[channel],spr[i],act[i],
+				rd(views,i*4),body,bodyImage,basis,phase,dir,frame,hand)) return 0;
+		} else if(phase==1) {
 			/* Attack guides include intentional detached slash art. Preserve the
 			 * documented packet positions, source frames and angles; no palm snap. */
 			if(!prepare_reference(&hands[i],packet,base[channel],spr[i],act[i],basis,hand,dir)) return 0;

@@ -1,4 +1,4 @@
-/* Generated from explicit sprite-pixel annotations; see docs/dual-weapon-grip-placement-20260905.md. */
+/* Generated from explicit sprite-pixel annotations; see docs/dual-wield-original-weapon-sprites.md. */
 #ifndef DW_GRIP_PROFILE_H
 #define DW_GRIP_PROFILE_H
 typedef struct { unsigned short view,index,width,height; short gx,gy,tx,ty; } DWGripImage;

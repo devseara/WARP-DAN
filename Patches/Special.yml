@@ -54,7 +54,7 @@ CustomSpecials:
             title : Dual / Off-Hand Daggers, Swords and Axes [TESTING]
             recommend : no
             author : Louis T Steinhil
-            desc : "2025-07-16: original dual/off-hand sprites for 17 registered non-Drake dagger, one-handed sword and one-handed axe views (1, 2, 6 and 34-47), on the exact female Assassin Cross body. Restores the old reference dual-attack motion and uses measured hilt-to-hand pixel-edge contacts for held poses, with anatomical equipment-slot ownership. Other views, classes, body profiles and male characters keep stock rendering; 2026 is unsupported. Live acceptance of this edge-contact build is pending. Update Inputs/DualWeaponRuntime with the scripts. See docs/dual-weapon-edge-contacts-20260905.md."
+            desc : "2025-07-16: original dual/off-hand daggers, one-handed swords and axes. Five male and five female Assassin-family body profiles cover all 24 mapped non-Drake views in the audited GRFs. Missing job resources require the 60-entry Inputs/DualWeaponRuntime/dual_weapon_male_assets.grf registered first in the actual embedded or INI loader. Existing accepted placements remain unchanged; added images use individual frame, axis and grip profiles. Other bodies/classes/views remain stock. Keep compositor.dwcp and legacy-support.dwls with their manifests. CPU execution/geometry verified; live acceptance tracked in docs/dual-wield-original-weapon-sprites.md."
 
         - AllHatEffectsWorldDepthOracle:
             title : All HatEffects Screen-Size World Depth [QJS]

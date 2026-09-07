@@ -9,7 +9,7 @@ import pefile
 from capstone import Cs,CS_ARCH_X86,CS_MODE_32
 from capstone.x86_const import X86_OP_IMM
 ROOT=Path(__file__).resolve().parents[1]
-HOOKS={0xd403a0:"55 8B EC 6A FF",0x605d41:"89 45 94 8B 45 0C 89 45 C8",
+HOOKS={0xd403a0:"55 8B EC 6A FF",
        0xc4a0d0:"55 8B EC 83 EC 50",0xc4a647:"A1 F8 15 25 01"}
 def sha(d):return hashlib.sha256(d).hexdigest()
 def build(source,output,evidence=None,payload_path=None):
@@ -64,7 +64,7 @@ def build(source,output,evidence=None,payload_path=None):
     repair.update(reported_header_size=new.OPTIONAL_HEADER.SizeOfHeaders,
                   actual_header_size=header_size,section_table_end=table_end)
     struct.pack_into("<I",data,new.OPTIONAL_HEADER.get_field_absolute_offset("SizeOfHeaders"),header_size)
-    # Preserve WARP's four new hooks, then restore every old mapped byte.
+    # Preserve WARP's three new hooks, then restore every old mapped byte.
     replacements={}
     for va,h in HOOKS.items():
         off=new.get_offset_from_rva(va-0x400000)
@@ -122,12 +122,12 @@ def build(source,output,evidence=None,payload_path=None):
     assert ctx[17]==base+codesize and ctx[20]==base+codesize+rigsize
     assert ctx[18]+256*8 <= ctx[0],"view rows overrun actor registry"
     qjs=(ROOT/"Scripts/Patches/AllowDualCustomWeaponSprites.qjs").read_text(encoding="utf-8")
-    def verify_legacy(name,va):
-        raw=bytearray.fromhex(re.search(r"const "+name+r'Hex = "([^"]+)"',qjs)[1])
-        relocs=json.loads(re.search(r"const "+name+r"Relocs = (\[.*\]);",qjs)[1])
-        for off,target in relocs:struct.pack_into("<I",raw,off,va+target)
-        assert read(va,len(raw))==raw,name+" changed"
-        return {"bytes":len(raw),"relocations":len(relocs)}
+    def verify_legacy(name,base):
+        from dual_weapon_legacy_assets import read as read_bundle
+        part=read_bundle()[name];raw=bytearray(part['data'])
+        for off,target in part['relocs']:struct.pack_into('<I',raw,off,base+target)
+        assert read(base,len(raw))==raw
+        return {'bytes':len(raw),'relocations':len(part['relocs'])}
     equip_vir=branch(branch(0xd403a0))
     new.parse_data_directories(directories=[pefile.DIRECTORY_ENTRY['IMAGE_DIRECTORY_ENTRY_IMPORT']])
     vp_imports=[imp.address for lib in new.DIRECTORY_ENTRY_IMPORT
@@ -142,7 +142,8 @@ def build(source,output,evidence=None,payload_path=None):
     emitted=bytes.fromhex(subprocess.check_output(["node",str(emitter),str(ROOT/"Scripts/Patches/AllowDualCustomWeaponSprites.qjs")],text=True))
     assert read(equip_vir,len(emitted))==emitted,"equipment owner differs from tested QJS emitter"
     assert emitted, 'empty equipment owner'
-    legacy=verify_legacy("DualWeaponAuthoredCore",ctx[19])
+    assert all(ctx[i]==0 for i in (1,2,3,4,8,9,10,13,14,15,16,19)), "retired legacy state is not zero"
+    assert read(0x605d41,9)==bytes.fromhex("89 45 94 8B 45 0C 89 45 C8")
     depthbridge=branch(0xc4a647)
     depthcall=next(i.operands[0].imm for i in cs.disasm(read(depthbridge,40),depthbridge) if i.mnemonic=="call")
     depth=verify_legacy("DualWeaponCharacterEnvelopeCore",depthcall)
@@ -151,7 +152,7 @@ def build(source,output,evidence=None,payload_path=None):
     state_end=state+0x5000
     assert read(state,0x5000)==b"\0"*0x5000,"state pages contain nonzero/code bytes"
     code_ranges=[(0x400000+sec.VirtualAddress,27), (equip_vir,len(emitted)),
-                 (ctx[19],legacy["bytes"]), (depthcall,depth["bytes"]),
+                 (depthcall,depth["bytes"]),
                  (base,codesize), (wrapper,120), (depthbridge,40)]
     code_ranges += [(branch(va),5) for va in HOOKS]
     for code_va,code_size in code_ranges:
@@ -161,24 +162,24 @@ def build(source,output,evidence=None,payload_path=None):
     assert all(b<=c for (a,b),(c,d) in zip(ranges,ranges[1:])),"raw section overlap"
     assert table_end<=new.OPTIONAL_HEADER.SizeOfHeaders<=ranges[0][0],"headers do not cover section table"
     assert max(e for _,e in ranges)<=len(data)
-    for va in [wrapper,base,context,ctx[19],depthcall,branch(branch(0xd403a0))]:
+    for va in [wrapper,base,context,depthcall,branch(branch(0xd403a0))]:
         assert new.get_section_by_rva(va-0x400000)==new.sections[-1]
     report={"source":str(source),"source_sha256":sha(original),"output":str(output),"output_sha256":sha(data),
             "payload_sha256":sha(payload),"hook_hex":{hex(va):read(va,len(bytes.fromhex(h))).hex(" ") for va,h in HOOKS.items()},
             "hook_targets":{hex(va):hex(branch(va)) for va in HOOKS},
             "context_va":hex(context),"compositor_va":hex(base),"compositor_entry_va":hex(calls[0]),
-            "legacy_core_va":hex(ctx[19]),"legacy_core":legacy,"depth_helper_va":hex(depthcall),"depth_helper":depth,
+            "legacy_core_injected":False,"depth_helper_va":hex(depthcall),"depth_helper":depth,
             "equipment_owner_va":hex(equip_vir),"equipment_owner_bytes":len(emitted),
             "equipment_owner_sha256":sha(emitted),"trampoline_va":hex(0x400000+sec.VirtualAddress),
             "state_va":hex(state),"state_end_exclusive":hex(state_end),
             "code_ranges_outside_state_pages":[[hex(a),hex(a+n)] for a,n in code_ranges],
             "existing_sections":checks,"warp_header_repair":repair,"overlay_preserved_bytes":len(overlay),
-            "verified":["only four mapped hook regions changed","all other mapped bytes unchanged",
-                        "full compositor and data relocation match","full equipment owner emission match","legacy core unchanged","depth core unchanged",
+            "verified":["only three mapped hook regions changed","all other mapped bytes unchanged",
+                        "full compositor and data relocation match","full equipment owner emission match","legacy capture/debug state removed","depth core unchanged",
                         "stock ACT frame call unchanged","raw section bounds and non-overlap","all hook targets mapped",
                         "SizeOfHeaders covers complete section table","state VA pages isolated from all emitted code"]}
     output.write_bytes(data)
-    evidence=evidence or ROOT/"docs/evidence/dual-weapon-binary-fix-20260905.json"
+    evidence=evidence or ROOT/"docs/evidence/dual-weapon-warp-build-20260907.json"
     evidence.parent.mkdir(parents=True,exist_ok=True)
     evidence.write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
     print(json.dumps({k:report[k] for k in ["output_sha256","compositor_entry_va","hook_targets","verified"]},indent=2))

@@ -12,6 +12,8 @@ def build(tool_dir: Path, output: Path, measure_contacts=False):
     basis = ROOT / "CustomDLL/DualWeapon/native_basis.h"
     pixel_profile = ROOT / "CustomDLL/DualWeapon/grip_profile.h"
     edge_profile = ROOT / "CustomDLL/DualWeapon/held_edge_contacts.h"
+    male_profile = ROOT / "CustomDLL/DualWeapon/male_profile.h"
+    male_source = ROOT / "CustomDLL/DualWeapon/male_compositor.h"
     work = ROOT / "Outputs/dual_weapon_resource_build"
     work.mkdir(parents=True, exist_ok=True)
     obj, dll = work/"compositor.obj", work/"compositor.dll"
@@ -58,12 +60,46 @@ def build(tool_dir: Path, output: Path, measure_contacts=False):
                 native_basis_builder_sha256=hashlib.sha256((ROOT/'tools/build_dual_weapon_native_basis.py').read_bytes()).hexdigest(),
                 pixel_profile_sha256=hashlib.sha256(pixel_profile.read_bytes()).hexdigest(),
                 edge_profile_sha256=hashlib.sha256(edge_profile.read_bytes()).hexdigest(),
+                male_profile_sha256=hashlib.sha256(male_profile.read_bytes()).hexdigest(),
+                male_source_sha256=hashlib.sha256(male_source.read_bytes()).hexdigest(),
+                male_builder_sha256=hashlib.sha256((ROOT/'tools/build_male_dual_weapon_profile.py').read_bytes()).hexdigest(),
+                male_annotations_sha256=hashlib.sha256((ROOT/'Inputs/DualWeaponAuthored/grips/male-assassin-landmarks.json').read_bytes()).hexdigest(),
+                male_seam_builder_sha256=hashlib.sha256((ROOT/'tools/male_weapon_seams.py').read_bytes()).hexdigest(),
+                male_asset_builder_sha256=hashlib.sha256((ROOT/'tools/male_weapon_assets.py').read_bytes()).hexdigest(),
+                male_asset_report_sha256=hashlib.sha256((ROOT/'docs/evidence/dual-weapon-male-missing-assets-20260907.json').read_bytes()).hexdigest(),
                 pixel_annotations_sha256=hashlib.sha256((ROOT/'Inputs/DualWeaponAuthored/grips/female-assassin-pixel-landmarks.json').read_bytes()).hexdigest(),
                 contact_measurement_only=measure_contacts,bytes=len(header+payload),sha256=hashlib.sha256(header+payload).hexdigest(),
                 code_bytes=len(code),entry=export.address-first,relocations=relocs,
                 rig_source=str(rig_path.relative_to(ROOT)),rig_sha256=hashlib.sha256(rig).hexdigest(),grip_sha256=hashlib.sha256(grip).hexdigest(),
-                placement_status="17 non-Drake dagger/sword/axe views. Female Assassin Cross held32 matches opaque weapon/fist boundary contacts, retaining accepted legacy rig angles. Dual88 restores the old reference trajectory, source frames, angle, mirror and slash visibility; it does not attach slash effects to palms. Anatomical equipment-slot ownership remains. Local fist masks and manual landmark scope require live acceptance. Other body profiles and unprofiled views remain stock; off-only other phases retain their inherited path.",
                 commands=[compile_args,link_args])
+    report["extended_source_hashes"] = {
+        name: hashlib.sha256((ROOT/name).read_bytes()).hexdigest()
+        for name in [
+            "CustomDLL/DualWeapon/female_dagger_compositor.h",
+            "CustomDLL/DualWeapon/female_dagger_profile.h",
+            "CustomDLL/DualWeapon/female_family_compositor.h",
+            "CustomDLL/DualWeapon/female_family_profile.h",
+            "CustomDLL/DualWeapon/male_axe_profile.h",
+            "tools/female_weapon_assets.py", "tools/assassin_axe_assets.py",
+            "tools/build_female_dagger_profile.py", "tools/build_female_family_profile.py",
+            "tools/build_male_axe_profile.py", "tools/dual_weapon_legacy_assets.py",
+            "Inputs/DualWeaponRuntime/legacy-support.dwls",
+            "Inputs/DualWeaponRuntime/legacy-support.json",
+            "Inputs/DualWeaponAuthored/reference/accepted-20260907.dwcp",
+            "tools/dual_weapon_paths.py",
+            "tools/dual_weapon_corpus.py",
+            "tools/dual_weapon_geometry.py",
+            "tools/dual_weapon_native.py",
+            "tools/dual_weapon_data.py",
+            "Inputs/DualWeaponAuthored/profiles/dual-weapon-male-hand-profile-20260907.json.gz",
+            "Inputs/DualWeaponAuthored/profiles/female-dagger-profile-20260907.json.gz",
+            "Inputs/DualWeaponAuthored/profiles/female-family-profile-20260907.json.gz",
+            "Inputs/DualWeaponAuthored/profiles/male-axe-profile-20260907.json.gz",
+            "docs/evidence/assassin-weapon-assets-20260907.json",
+        ]
+    }
+    report["compatibility_grf_sha256"] = json.loads((ROOT/"docs/evidence/assassin-weapon-assets-20260907.json").read_text(encoding="utf8"))["grf_sha256"]
+    report["placement_status"] = "2025-07-16 only; 24 mapped non-Drake views (1/2/6,31-47,58-61), five exact male and five exact female Assassin-family bodies. Missing native filenames require the 60-entry compatibility GRF, retained under the legacy dual_weapon_male_assets.grf name. Accepted Cross female17 and male20 poses are preserved. Added female bodies, dagger and axe images use explicit native frame, axis and local pixel-contact profiles; Shadow female generic sword is independent. Other off-only phases transfer native source frames. CPU execution and pixel geometry do not imply live GPU acceptance."
     output.with_suffix(".json").write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")
     print(json.dumps({k:report[k] for k in ["bytes","sha256","entry","code_bytes"]}))
 if __name__=="__main__":

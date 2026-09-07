@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const crypto = require('node:crypto');
 const sourcePath = path.resolve(__dirname, '../Scripts/Patches/AllowDualCustomWeaponSprites.qjs');
 let exeAccesses = 0;
 let prepared = true;
@@ -30,6 +31,33 @@ console.log('PASS: supported/unsupported profiles, allocation readiness, profile
 
 // External payload integrity is checked before allocation/hook writes.
 let payload = fs.readFileSync(path.resolve(__dirname, '../Inputs/DualWeaponRuntime/compositor.dwcp'));
+const manifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../Inputs/DualWeaponRuntime/compositor.json'), 'utf8'));
+const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+assert.equal(digest(payload), manifest.sha256, 'Runtime payload/manifest mismatch');
+assert.equal(manifest.contact_measurement_only, false, 'Offline measurement payload must never be installed');
+for (const [key, relative] of Object.entries({
+  source_sha256: 'CustomDLL/DualWeapon/compositor.c',
+  native_basis_sha256: 'CustomDLL/DualWeapon/native_basis.h',
+  native_basis_builder_sha256: 'tools/build_dual_weapon_native_basis.py',
+  pixel_profile_sha256: 'CustomDLL/DualWeapon/grip_profile.h',
+  edge_profile_sha256: 'CustomDLL/DualWeapon/held_edge_contacts.h',
+  pixel_annotations_sha256: 'Inputs/DualWeaponAuthored/grips/female-assassin-pixel-landmarks.json',
+  male_profile_sha256: 'CustomDLL/DualWeapon/male_profile.h',
+  male_source_sha256: 'CustomDLL/DualWeapon/male_compositor.h',
+  male_builder_sha256: 'tools/build_male_dual_weapon_profile.py',
+  male_seam_builder_sha256: 'tools/male_weapon_seams.py',
+  male_asset_builder_sha256: 'tools/male_weapon_assets.py',
+  male_asset_report_sha256: 'docs/evidence/dual-weapon-male-missing-assets-20260907.json',
+  male_annotations_sha256: 'Inputs/DualWeaponAuthored/grips/male-assassin-landmarks.json',
+})) {
+  assert.equal(digest(fs.readFileSync(path.resolve(__dirname, '..', relative))), manifest[key], relative + ' is stale relative to the payload');
+}
+for (const [relative, hash] of Object.entries(manifest.extended_source_hashes)) {
+  assert.equal(digest(fs.readFileSync(path.resolve(__dirname, '..', relative))), hash, relative + ' is stale');
+}
+const assetManifest = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../docs/evidence/assassin-weapon-assets-20260907.json'), 'utf8'));
+assert.equal(digest(fs.readFileSync(path.resolve(__dirname, '../Inputs/DualWeaponRuntime/dual_weapon_male_assets.grf'))), assetManifest.grf_sha256);
+console.log('PASS: payload, manifest, male/female sources, annotations and generated tables have matching hashes.');
 let validFile = true, closes = 0;
 context.Warp = { Path: path.resolve(__dirname, '..') };
 context.BinFile = class {
