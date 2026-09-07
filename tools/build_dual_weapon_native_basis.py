@@ -96,10 +96,8 @@ def build(client: Path):
         }
 
     source = POSE_SOURCE.read_text(encoding="utf-8")
-    matches = re.findall(r'const DualWeaponAuthoredRigHex = "([0-9A-Fa-f ]+)";', source)
-    if len(matches) != 1:
-        raise ValueError("expected one embedded accepted legacy rig")
-    rig_bytes = bytes.fromhex(matches[0])
+    from dual_weapon_legacy_assets import payload
+    rig_bytes = payload('DualWeaponAuthoredRig')
     rig = parse_rig_bytes(rig_bytes)
     poses = {(r["phase"], r["direction"], r["frame"], r["hand"]): r["transform"]
              for r in rig["records"] if r["family"] == r["gender"] == 0 and r["state"] == 9}

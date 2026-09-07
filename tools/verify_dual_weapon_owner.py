@@ -1,7 +1,7 @@
 """Execute the actual QJS-emitted x86 equipment owner with adversarial native ABI stubs."""
 from pathlib import Path
 from collections import Counter
-import hashlib,json,struct,subprocess,sys
+import argparse,hashlib,json,struct,subprocess,sys
 from unicorn import Uc, UC_ARCH_X86, UC_MODE_32, UC_HOOK_CODE
 from unicorn.x86_const import *
 ROOT=Path(__file__).resolve().parents[1]
@@ -52,6 +52,7 @@ def expected_suffix(item):
 
 def resource_name(item,extension):
     mode=scenario['names'];suffix=expected_suffix(item)
+    if mode=='gladius_fallback' and item==1219:suffix=b'_dagger'
     if mode=='mace_fallback' and item==1000008:suffix="_검".encode('cp949')
     if mode=='act_mismatch' and extension==b'.act':suffix=b'_wrong_act'
     if mode=='spr_mismatch' and extension==b'.spr':suffix=b'_wrong_spr'
@@ -105,7 +106,7 @@ def hook(uc,addr,size,_):
         native_result(28 if {a,b}=={1001,1002} else 0)
     elif addr==SUFFIX:
         item=r(esp+4);suffix_calls.append(item)
-        assert ecx==0x15fa3c0
+        # Incoming ECX is not an item-table receiver; the native suffix resolves globally.
         if scenario['names']=='null_suffix':native_result(0)
         else:
             suffix=expected_suffix(item)
@@ -140,6 +141,19 @@ def balanced():
             expected.update(r(row(actor)+i) for i in range(4,44,4) if r(row(actor)+i))
     assert {k:v for k,v in counts.items() if v}==dict(expected),"reference imbalance"
 a=0x400080
+# The observed male Gladius failure: Lua requests _1219 while native missing
+# Assassin artwork resolves a generic _dagger name. Exact names must still gate.
+item_views.update({1219:33,13412:45});view_classes[33]=1
+suffixes.update({1219:b'_1219',13412:b'_13412'})
+w(a+0x260,1)
+for mode in ['correct','gladius_fallback']:
+    scenario['names']=mode
+    for main,off in [(1219,13412),(13412,1219),(0,1219)]:
+        invoke(a,main,off)
+        assert (r(row(a))==a)==(mode=='correct')
+        if mode=='correct':assert r(row(a)+56)==1
+        balanced()
+scenario['names']='correct';w(a+0x260,0)
 invoke(a,1001,1002);assert events==[(1001,1002),(1002,0),(1001,0),(1001,1002)]
 assert r(row(a))==a and (r(views(a)),r(views(a)+4))==(45,34)
 assert (r(row(a)+44),r(row(a)+48),r(row(a)+52))==(28,2,1)
@@ -227,5 +241,7 @@ report={"initialization":"warm state; cold PE protection tested separately","cas
         "ASCII filename case folding","CP949 ASCII-valued trail bytes remain exact"]}
 report['source_sha256']=hashlib.sha256((ROOT/'Scripts/Patches/AllowDualCustomWeaponSprites.qjs').read_bytes()).hexdigest()
 report['owner_code_sha256']=hashlib.sha256(code).hexdigest()
-(ROOT/"docs/evidence/dual-weapon-supported-owner-20260905.json").write_text(json.dumps(report,indent=2)+"\n")
+report['checks'].append('male Gladius1219/view33 plus Naght13412/view45: exact _1219 accepts both orders/off-only; generic fallback rejects without leaking references')
+parser=argparse.ArgumentParser();parser.add_argument('--report',type=Path,default=ROOT/'docs/evidence/assassin-weapon-owner-20260907.json');args=parser.parse_args()
+args.report.write_text(json.dumps(report,indent=2)+'\n',encoding='utf8')
 print(json.dumps(report,indent=2))

@@ -1,13 +1,7 @@
-"""DWR3 (pose/transform rig) and DWC2 (per-view grip correction) binary
-table structs and readers.
+"""Read the frozen DWR3 transform rig used by the native-basis generator.
 
-Promoted from tmp/recovered_dual/compile_weapon_coverage.py (struct
-definitions and the DWR3 reader only -- that file's per-pair correction-table
-*build* pipeline is superseded by the job-sprite compositor's socket +
-hilt/tip landmark model and is not carried forward). See
-docs/dual-wield-original-weapon-sprites.md's "DWR3/TRANSFORM binary format
-quick-reference" section for the authoritative field-by-field description
-this mirrors.
+The binary layout is defined below; the active runtime contract is documented
+in docs/dual-wield-original-weapon-sprites.md.
 """
 
 from __future__ import annotations
@@ -16,22 +10,8 @@ import dataclasses
 import hashlib
 import struct
 
-GENDERS = {0: "여", 1: "남"}
-
-# DWR3 state -> (main_type, off_type). base types: 1=dagger, 2=sword, 6=axe.
-STATE_HAND_TYPES = {
-	6: (1, 1),
-	7: (2, 2),
-	8: (6, 6),
-	9: (2, 1),
-	11: (6, 1),
-	13: (6, 2),
-}
-
 DWR3_HEADER = struct.Struct("<4sHBBIII")
 DWR3_TRANSFORM = struct.Struct("<bbBBh")
-DWC2_HEADER = struct.Struct("<4sHHII")
-DWC2_CORRECTION = struct.Struct("<HBBBBBBhhBhB")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -95,28 +75,3 @@ def parse_rig_bytes(rig: bytes) -> dict:
 		"crc32": crc,
 		"records": records,
 	}
-
-
-def correction_key(row: dict) -> tuple:
-	return (
-		row["view"], row["family"], row["gender"], row["phase"],
-		row["direction"], row["source_key"], row["base_type"],
-	)
-
-
-def pack_dwc2(corrections: list[dict]) -> bytes:
-	"""corrections: dicts with the DWC2_CORRECTION fields, sorted by correction_key."""
-	import zlib
-
-	payload = bytearray()
-	for row in corrections:
-		payload.extend(DWC2_CORRECTION.pack(
-			row["view"], row["family"], row["gender"], row["phase"],
-			row["direction"], row["source_key"], row["base_type"],
-			row["dx"], row["dy"], row["mirror_xor"], row["rotation_delta"],
-			row["selected_frame"],
-		))
-	header = DWC2_HEADER.pack(
-		b"DWC2", 2, DWC2_CORRECTION.size, len(corrections), zlib.crc32(payload) & 0xFFFFFFFF,
-	)
-	return bytes(header) + bytes(payload)

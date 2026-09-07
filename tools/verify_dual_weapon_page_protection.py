@@ -167,7 +167,7 @@ def run(path: Path, expect_crash: bool) -> dict:
             class_calls.append(view)
             returned({34: 1, 45: 2}.get(view, view), 1)
         elif address == SUFFIX:
-            assert uc.reg_read(UC_X86_REG_ECX) == 0x15FA3C0
+            # Native D60DE0 ignores incoming ECX; its item ID is the stack argument.
             item = r(esp + 4)
             suffix_calls.append(item)
             returned(suffix_addresses.get(item, 0), 1)
@@ -234,7 +234,9 @@ def run(path: Path, expect_crash: bool) -> dict:
         assert state % 0x1000 == 0
         begin, end = state, state + 0x5000
         # Actual pages retain EXECUTE for both prologue trampolines and owners.
-        for va in [trampoline, trampoline + 16, owner, draw_wrapper, ctx[19]]:
+        compositor_entry = next(i.operands[0].imm for i in cs.disasm(read(draw_wrapper, 160), draw_wrapper)
+                                if i.mnemonic == 'call' and i.operands[0].type == X86_OP_IMM)
+        for va in [trampoline, trampoline + 16, owner, draw_wrapper, compositor_entry]:
             region = next((a, b, p) for a, b, p in uc.mem_regions() if a <= va <= b)
             assert region[2] & UC_PROT_EXEC and not begin <= va < end
         assert all(not p & UC_PROT_EXEC for a, b, p in uc.mem_regions()
@@ -250,11 +252,13 @@ def run(path: Path, expect_crash: bool) -> dict:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--crashed', type=Path, required=True)
+    parser.add_argument('--crashed', type=Path, help='Optional historical NX-crash fixture')
     parser.add_argument('--fixed', type=Path)
-    parser.add_argument('--report', type=Path, default=ROOT / 'docs/evidence/dual-weapon-page-protection-20260905.json')
+    parser.add_argument('--report', type=Path, default=ROOT / 'docs/evidence/dual-weapon-cleanup-protection-20260907.json')
     args = parser.parse_args()
-    report = {'crashed': run(args.crashed, True)}
+    if not args.crashed and not args.fixed:
+        parser.error('provide --fixed and/or --crashed')
+    report = {'crashed': run(args.crashed, True)} if args.crashed else {}
     if args.fixed:
         report['fixed'] = run(args.fixed, False)
     args.report.parent.mkdir(parents=True, exist_ok=True)
