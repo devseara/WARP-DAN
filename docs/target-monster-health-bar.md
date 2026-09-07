@@ -22,7 +22,7 @@ Mob Element: name Level: value ♦ original group icon
 Mob Race: name
 ```
 
-HP quantities use commas through billions, including `3,000,000,000/4,000,000,000 ♦ 75%`. **Mob IDs never use commas.** Missing Show Mob Info fields stay absent. A percent-only packet displays a percentage without inventing absolute HP.
+HP quantities use commas through billions, including `3,000,000,000/4,000,000,000 ♦ 75%`. **Mob IDs never use commas.** Show Mob Info controls all optional text: bit 1 enables current/max HP, bit 2 enables HP%, and the remaining bits select detail rows. With `@showmobinfo 0`, the tier, monster name and live bar remain, with no numeric HP, percentage or detail rows. HP comes from the native monster-HP channel regardless of these text preferences.
 
 Names use the native 14px font; other text uses the native 12px font. The accepted artwork stays at 50% source scale. The 768x232 transparent window is top-centered at Y=24; extra height provides 24px detail-row spacing beneath the MVP crest. The native group icon retains its own dimensions. Divider ends use true alpha fading.
 
@@ -92,7 +92,8 @@ The selectable QJS is self-contained at patch time. Python is needed only for ge
 | --- | --- |
 | `tools/build_target_monster_health_bar.py` | Static x86 hooks and generated QJS |
 | `tools/target_monster_hud_layout.py` | Shared fixed data layout |
-| `tools/target_monster_hud_showmobinfo.py` | Independent EXTN reader and HP parser |
+| `tools/target_monster_hud_showmobinfo.py` | Independent EXTN reader for optional names/details |
+| `tools/target_monster_hud_native_hp.py` | Native 0x0977 HP mirror and independent cache |
 | `tools/target_monster_hud_metadata.py` | Typed fields, names and row formatting |
 | `tools/target_monster_hud_presentation.py` | Commas, group icons and option refresh |
 | `tools/target_monster_hud_text.py` | Native font calls and bounded alpha repair |
@@ -100,9 +101,9 @@ The selectable QJS is self-contained at patch time. Python is needed only for ge
 | `tools/verify_target_monster_health_bar.py` | Emitted-code regression checks |
 | `tools/package_target_monster_hud.py` | Verified package and resource-key checks |
 
-The HUD independently drains the existing `0x0BB7` EXTN ring: 1024 slots of 1024 bytes, at most 64 packets per frame, bounded overrun recovery. It does not consume another reader's cursor. Current 653/657-byte packets and the existing bounded 773/777- and 233/237-byte layouts are supported. Only entity type 1 is considered. Native damage HP takes precedence over cached Show Mob Info HP.
+The HUD independently drains the existing `0x0BB7` EXTN ring for names and optional detail labels: 1024 slots of 1024 bytes, at most 64 packets per frame, bounded overrun recovery. It does not consume another reader's cursor. Current 653/657-byte packets and the existing bounded 773/777- and 233/237-byte layouts are supported. Only entity type 1 is considered. EXTN HP and percentage tokens select their respective text visibility flags only; their numeric values never populate or overwrite the HP cache.
 
-The parser recognizes complete `current/max`, `percent%`, `#ID`, `Lv.level`, element `Lv.1..4` and race tokens. It separates element Undead from race Undead. Overflow, invalid levels and partial numeric tokens are rejected. Both 512-entry caches reset with the world. Row formatting updates on target/packet revision changes. Native `-1` HP sentinels remain special; authoritative EXTN pairs may use the complete unsigned 32-bit range. Grouped numeric buffers are bounded, with a dedicated 64-byte HP label.
+The label parser recognizes `#ID`, `Lv.level`, element `Lv.1..4` and race tokens. It separates element Undead from race Undead. Overflow, invalid levels and partial numeric tokens are rejected. The native HP cache and label cache have independent 512-entry storage and reset with the world. Row formatting updates on target/packet revision changes. Native `-1` HP sentinels remain special; authoritative native HP packets may use the complete unsigned 32-bit range. Grouped numeric buffers are bounded, with a dedicated 64-byte HP label.
 
 | Address or field | Contract |
 | --- | --- |
@@ -118,7 +119,7 @@ The parser recognizes complete `current/max`, `percent%`, `#ID`, `Lv.level`, ele
 | `A21C90`, `A25A70` | Native text width/drawing, font selector 1 |
 | `1090EC8`, `A90350`, `A8E500`, `A9F030`, `A8D4A0`, `A1D260` | Original group bitmap format, lookup and drawing |
 
-Global name records and packets are never edited. Native string assignment operates only on the producer's private copies. Group bitmaps are manager-owned and reacquired for each redraw. Native vtable slots and RTTI are preserved except the custom HUD draw/destructor entries. No shared TextOut, item/grade renderer, recv hook, server patch or runtime executable modification is added.
+Global name records and packets are never edited. Native string assignment operates only on the producer's private copies. Group bitmaps are manager-owned and reacquired for each redraw. Native vtable slots and RTTI are preserved except the custom HUD draw/destructor entries. No shared TextOut, item/grade renderer, recv hook or runtime executable modification is added. The server integration below supplies independent native HP.
 
 ## Validation and release state
 
@@ -127,3 +128,36 @@ Regression checks execute emitted x86 with native-call fixtures, actual HUD BMPs
 The accepted interactive baseline is v12. Earlier live captures confirmed all tiers, original icons, changing HP, divider alpha and both presentation modes. The dead-player failure was isolated with a valid native monster hit while player state was 3, then corrected and covered by emitted-code tests. Cleanup removes the diagnostic preview, file logger and frame snapshots; the three rendered verification surfaces and all six BMPs match the accepted baseline exactly.
 
 This feature has no runtime trace file or diagnostic slash command. When changing rendering or native hooks later, repeat the emitted-code checks and live acceptance for Normal, Mini Boss and MVP, both toggle states, target switching, player death/revival, map change and clean exit.
+
+## Independent HP server integration
+
+The ordinary 0x0977 `ZC_HP_INFO` packet contains a 32-bit monster GID, current
+HP and max HP. The profiled call at CA8AA2 is mirrored after the native packet
+reader has consumed the full 14-byte packet. The original handler remains the
+continuation, except that a full-HP seed does not create a new world gauge for
+an otherwise untouched monster. Existing world gauges still receive stock
+healing/full-HP updates. The custom cache accepts the full unsigned range and
+survives the first frame after early visibility packets arrive.
+
+HP does not come from @showmobinfo. Its 0x0BB7 packets affect only names and the
+optional HP/HP% text and level/ID/element/race rows. Changing @showmobinfo between 0 and 63 cannot
+clear or replace native HP. /monsterhp remains the presentation toggle.
+
+The paired BanquetOfHeroes changes are in src/map/clif.cpp and src/map/mob.cpp:
+
+- Send native HP when a monster becomes visible/spawns and in validated hover
+  name replies, including full-health monsters.
+- Send damage/healing HP to nearby active viewers independently of the label
+  preference. Retain summon-specific updates and avoid duplicate attacker sends.
+- Keep monster_hp_bars_info and MF_HIDEMOBHPBAR restrictions, and reject inactive
+  sessions before writing the native packet.
+
+Rebuild/restart the map-server to activate these source changes. No new wire
+packet or client HP query is added. Without the server integration, native
+attack HP still works when supplied, but untouched HP may remain unknown.
+
+The package includes `server-native-hp.patch`. Apply it in the paired server
+checkout (`git apply --check` first), rebuild `src/map/map-server.vcxproj` in
+Release/x64 with the server root as SolutionDir, then restart the map-server.
+The live local server has already been rebuilt with this integration. Client
+builds made from the current QJS install the 0x0977 mirror automatically.

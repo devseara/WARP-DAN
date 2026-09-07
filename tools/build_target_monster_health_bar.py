@@ -17,7 +17,7 @@ OPTIONS=layout['options']; ICON_PATH=layout['icon_path']; ELEMENT_ROW=layout['el
 INFO_CONST=layout['constants']; TOTAL=layout['allocation_size']
 PATHS=BASE+0xe200; STATUS=BASE+0xf000; PERCENT=HP_TEXT
 HOVERSTATE=BASE+0xe0e0; TARGETSTATE=BASE+0xe0d0
-TIERLABELS=BASE+0xf280; RINGMETA=BASE+0xe0c0; HPCACHE=BASE+0xb000
+TIERLABELS=BASE+0xf280; RINGMETA=BASE+0xe0c0; HPCACHE=BASE+0xb000; HP_WORLD=BASE+0xe0cc
 FILENAMES=[t[k] for t in MANIFEST['tiers'] for k in ('empty','full')]
 ks=Ks(KS_ARCH_X86,KS_MODE_32); cs=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32);cs.detail=True
 chunks=[]; relocs=[]
@@ -55,7 +55,9 @@ from target_monster_hud_metadata import emit as emit_metadata
 from target_monster_hud_presentation import emit as emit_presentation
 PRESENT=emit_presentation(assemble,BASE,ICON_STATE,ICON_PATH,ELEMENT_ROW,OPTIONS,INFO_TEXT,STATE+12,RINGMETA+8,HOVERSTATE,W,H)
 METADATA=emit_metadata(assemble,BASE,INFO_DB,INFO_TEXT,INFO_CURRENT,INFO_CONST,STATE+12,RINGMETA+8,PRESENT['comma'],NUMBERS)
-DRAIN,PARSE,LOOKUP=emit_info(assemble,BASE,RINGMETA,HPCACHE,INFO_DB,METADATA['parse'])
+from target_monster_hud_native_hp import emit as emit_native_hp
+NATIVE_HP=emit_native_hp(assemble,BASE,HPCACHE,HP_WORLD)
+DRAIN=emit_info(assemble,BASE,RINGMETA,INFO_DB,METADATA['parse'])
 TEXT=emit_text(assemble,BASE,W,H,ICON_STATE+12)
 # Publish visibility only after target validation. A name refresh may reuse the
 # previous title only for the exact same world, actor instance, and GID.
@@ -70,7 +72,7 @@ mov dword ptr [ebp-20],0; mov dword ptr [ebp-24],0
 cmp dword ptr [esi],0x10904b8; jne done
 
 mov ecx,[esi+0xcc]; test ecx,ecx; jz done
-push ecx; call {DRAIN}; pop ecx
+push ecx; call {NATIVE_HP['ensure']}; call {DRAIN}; pop ecx
 
 mov edx,[ecx+0x2c]; test edx,edx; jz done
 mov [ebp-12],edx
@@ -105,23 +107,17 @@ mov [ebp-20],edi; mov eax,[edi+0x110]; mov [ebp-24],eax
 
 cmp dword ptr [edi+0x70],3; je done
 mov dword ptr [ebp-4],0; mov dword ptr [ebp-8],0
-mov dword ptr [{INFO_CURRENT+12}],0
-
-mov ebx,[edi+0x300]; test ebx,ebx; jz name_lookup
-
-cmp dword ptr [ebx],0x102be50; jne name_lookup
-
-cmp dword ptr [ebx+0xa4],0; je name_lookup
-cmp dword ptr [ebx+0xa4],-1; je name_lookup
+mov eax,[edi+0x110]; call {NATIVE_HP['lookup']}; test edx,edx; jz native_gauge
+mov [ebp-4],eax; mov [ebp-8],edx; test eax,eax; jz done; jmp info_ready
+native_gauge:
+mov ebx,[edi+0x300]; test ebx,ebx; jz info_ready
+cmp dword ptr [ebx],0x102be50; jne info_ready
+cmp dword ptr [ebx+0xa4],0; je info_ready
+cmp dword ptr [ebx+0xa4],-1; je info_ready
 cmp dword ptr [ebx+0xa0],0; je done
-cmp dword ptr [ebx+0xa0],-1; je name_lookup
+cmp dword ptr [ebx+0xa0],-1; je info_ready
 mov eax,[ebx+0xa0]; mov [ebp-4],eax
 mov eax,[ebx+0xa4]; mov [ebp-8],eax
-mov dword ptr [{INFO_CURRENT+12}],1
-name_lookup:
-cmp dword ptr [ebp-8],0; jne info_ready
-mov eax,[edi+0x110]; call {LOOKUP}; test edx,edx; jz info_ready
-mov [ebp-4],eax; mov [ebp-8],edx; mov dword ptr [{INFO_CURRENT+12}],ecx; test eax,eax; jz done
 info_ready:
 movzx eax,byte ptr [edi+0x304]; cmp eax,2; jbe tier_ok
 xor eax,eax
@@ -170,12 +166,10 @@ push 24; push eax; mov ecx,ebx; call 0xa23450
 mov eax,[ebp-4]; cmp [ebx+0xa0],eax; jne refresh
 mov eax,[ebp-8]; cmp [ebx+0xa4],eax; jne refresh
 cmp dword ptr [{STATE+12}],0; jne refresh
-mov eax,dword ptr [{INFO_CURRENT+12}]; cmp eax,dword ptr [{INFO_CURRENT+16}]; jne refresh
 mov eax,dword ptr [{STATE+4}]; cmp dword ptr [{STATE+24}],eax; je show_hud
 refresh:
 push dword ptr [ebp-8]; push dword ptr [ebp-4]; mov ecx,ebx; call 0x863f10
 mov eax,dword ptr [{STATE+4}]; mov dword ptr [{STATE+24}],eax
-mov eax,dword ptr [{INFO_CURRENT+12}]; mov dword ptr [{INFO_CURRENT+16}],eax
 mov dword ptr [ebx+0x58],1
 show_hud:
 mov eax,[esi+0xcc]; mov dword ptr [{TARGETSTATE}],eax
@@ -276,16 +270,20 @@ cmp dword ptr [{STATE+4}],1; je label_ready
 mov edx,{MANIFEST['tiers'][2]['label_top']}
 label_ready: push 2; push edx; push eax; push esi; call {TEXT}
 push 0; push {MANIFEST['name_top']}; push {NAME}; push esi; call {TEXT}
+mov byte ptr [{PERCENT}],0
+mov ebx,dword ptr [{INFO_CURRENT+12}]; and ebx,48; jz details
 cmp dword ptr [esi+0xa4],0; je pct_unknown
 mov eax,[esi+0xa0]; cmp eax,[esi+0xa4]; jbe pct_clamp; mov eax,[esi+0xa4]
 pct_clamp: mov ecx,100; mul ecx; div dword ptr [esi+0xa4]
-cmp dword ptr [{INFO_CURRENT+12}],2; je pct_only
+cmp ebx,32; je pct_only
 push eax
 mov eax,[esi+0xa0]; mov edx,{NUMBERS}; call {PRESENT['comma']}
 mov eax,[esi+0xa4]; mov edx,{NUMBERS+16}; call {PRESENT['comma']}
 pop eax
+cmp ebx,16; je hp_only
 push eax; push {NUMBERS+16}; push {NUMBERS}; push {METADATA['hp_format']}; push {PERCENT}; call 0x529850; add esp,20; jmp pct_draw
-pct_only: push eax; push {STATE+16}; push {PERCENT}; call 0x529850; add esp,12; jmp pct_draw
+hp_only: push {NUMBERS+16}; push {NUMBERS}; push {METADATA['hp_only_format']}; push {PERCENT}; call 0x529850; add esp,16; jmp pct_draw
+pct_only: push eax; push {METADATA['percent_only_format']}; push {PERCENT}; call 0x529850; add esp,12; jmp pct_draw
 pct_unknown:
 mov dword ptr [{PERCENT}],0x75205048
 mov dword ptr [{PERCENT+4}],0x6f6e6b6e
@@ -296,7 +294,7 @@ mov edx,{MANIFEST['tiers'][0]['percent_top']}; test eax,eax; jz pct_ready
 mov edx,{MANIFEST['tiers'][1]['percent_top']}; cmp eax,1; je pct_ready
 mov edx,{MANIFEST['tiers'][2]['percent_top']}
 pct_ready: push 1; push edx; push {PERCENT}; push esi; call {TEXT}
-mov eax,dword ptr [{STATE+4}]; mov ebx,108; test eax,eax; jz details_ready
+details: mov eax,dword ptr [{STATE+4}]; mov ebx,108; test eax,eax; jz details_ready
 mov ebx,124; cmp eax,1; je details_ready; mov ebx,153
 details_ready:
 cmp byte ptr [{INFO_TEXT}],0; je second_detail
@@ -339,7 +337,6 @@ assert max(off+len(b) for off,b in chunks)<0xe000
 chunks.extend(METADATA["chunks"])
 chunks.append((ELEMENT_ROW+128-BASE,"%s ♦ \0".encode("utf8")))
 for index,tier in enumerate(MANIFEST['tiers']):chunks.append((TIERLABELS-BASE+index*16,(tier['label']+'\0').encode('ascii')))
-chunks.append((STATE+16-BASE,b'%u%%\0'))
 for index,name in enumerate(FILENAMES):
  relative=MANIFEST['resource_root'].removeprefix('data/').replace('/',chr(92))+chr(92)+name
  encoded=(relative+'\0').encode('latin1');assert len(encoded)<256
@@ -375,6 +372,8 @@ TargetMonsterHealthBar = function(_) {
 \tcheck(0x573750, "55 8B EC 6A FF 68 45 AB E1 00");
 \tcheck(0x573980, "55 8B EC 51 56 8B F1");
 \tcheck(0xCF33F0, "55 8B EC 8B 89 CC 00 00 00");
+\tcheck(0xCA8AA2, "E8 49 A9 04 00");
+\tcheck(0xCAC6F0, "9B 8A CA 00");
 \tcheck(0x102BEA0, "80 48 85 00");
 \tcheck(0xD43414, "8B 97 00 05 00 00");
 \tcheck(0xCF3E4C, "88 87 04 03 00 00");
@@ -392,6 +391,7 @@ TargetMonsterHealthBar = function(_) {
 \tExe.SetHex(phy + 0xE100, Exe.GetHex(Exe.Vir2Phy(0x102BE50), 0xD4));
 \tExe.SetUint32(phy + 0xE100, vir + 0xD000);
 \tExe.SetUint32(phy + 0xE150, vir + 0x1000);
+\tAutoHook(Exe.Vir2Phy(0xCA8AA2), "E9" + Filler(1), {isCall: true, targets: {1: vir + 0x2900}});
 \tAutoHook(Exe.Vir2Phy(0xC76591), "E9" + Filler(1), {isCall: true, targets: {1: vir}});
 \tAutoHook(Exe.Vir2Phy(0xC6D308), "E9" + Filler(1), {isCall: true, targets: {1: vir + 0x5B00}});
 \tAutoHook(Exe.Vir2Phy(0xC6D355), "E9" + Filler(1), {isCall: true, targets: {1: vir + 0x9E00}});

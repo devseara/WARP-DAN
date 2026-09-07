@@ -9,11 +9,13 @@ def emit(assemble,base,db,texts,current,consts,dirty,world,comma,numbers):
     empty=literal('')
     formats={k:literal(v) for k,v in {
         'both':'Mob Level: %s ♦ Mob ID: %u','level':'Mob Level: %s','id':'Mob ID: %u',
-        'element':'Mob Element: %s Level: %s','race':'Mob Race: %s','hp':'%s/%s ♦ %u%%'
+        'element':'Mob Element: %s Level: %s','race':'Mob Race: %s','hp':'%s/%s ♦ %u%%',
+        'hp_only':'%s/%s','percent_only':'%u%%'
     }.items()}
     elements=[literal(s) for s in ('Neutral','Water','Earth','Fire','Wind','Poison','Holy','Dark','Ghost','Undead')]
     races=[literal(s) for s in ('Formless','Undead','Brute','Plant','Insect','Fish','Demon','Demi-Human','Angel','Dragon')]
-    # Token parser: validated fields only, and copied packet-owned name bytes.
+    # HP tokens set presentation flags only; their values never feed native HP.
+    # Internal field bits: ID=1, level=2, element=4, race=8, HP=16, HP%=32.
     src=f'''
     push ebp; mov ebp,esp; sub esp,16; push ebx; push esi; push edi
     mov ebx,[ebp+8]; lea edi,[ebx+4]; xor eax,eax; mov ecx,63; cld; rep stosd
@@ -29,9 +31,23 @@ def emit(assemble,base,db,texts,current,consts,dirty,world,comma,numbers):
     token_end: cmp esi,[ebp-4]; jae token_ready; cmp byte ptr [esi],0; je token_ready
     cmp byte ptr [esi],32; je token_ready; inc esi; jmp token_end
     token_ready: mov eax,esi; sub eax,edi; mov [ebp-8],eax; mov [ebp-12],esi
-    cmp byte ptr [edi],35; jne check_level
+    cmp byte ptr [edi],35; jne check_hp
     lea edx,[edi+1]; call number; test ecx,ecx; jz next_token
     test eax,eax; jz next_token; mov [ebx+8],eax; or dword ptr [ebx+4],1; jmp next_token
+    check_hp:
+    cmp byte ptr [edi],48; jb check_level; cmp byte ptr [edi],57; ja check_level
+    cmp dword ptr [ebp-8],2; jb next_token
+    lea esi,[esi-1]; cmp byte ptr [esi],37; jne hp_pair
+    mov edx,edi; call number; test ecx,ecx; jz next_token
+    cmp eax,100; ja next_token; or dword ptr [ebx+4],32; jmp next_token
+    hp_pair: mov esi,edi
+    hp_slash: cmp esi,[ebp-12]; jae next_token
+    cmp byte ptr [esi],47; je hp_current; inc esi; jmp hp_slash
+    hp_current: mov edx,edi; call number; test ecx,ecx; jz next_token; mov [ebp-16],eax
+    inc edx; cmp edx,[ebp-12]; jae next_token; mov esi,[ebp-12]
+    call number; test ecx,ecx; jz next_token; test eax,eax; jz next_token
+    cmp dword ptr [ebp-16],eax; ja next_token
+    or dword ptr [ebx+4],16; jmp next_token
     check_level:
     cmp dword ptr [ebp-8],3; jbe check_element
     cmp word ptr [edi],0x764c; jne check_element; cmp byte ptr [edi+2],46; jne check_element
@@ -109,7 +125,9 @@ def emit(assemble,base,db,texts,current,consts,dirty,world,comma,numbers):
     mov eax,dword ptr [{world}]; mov dword ptr [{current+8}],eax
     mov dword ptr [{dirty}],1
     mov byte ptr [{texts}],0; mov byte ptr [{texts+128}],0; mov byte ptr [{texts+256}],0
+    mov dword ptr [{current+12}],0
     test esi,esi; jz ready
+    mov eax,[esi+4]; mov dword ptr [{current+12}],eax
     mov eax,[esi+12]; mov edx,{numbers}; call {comma}
     mov eax,[esi+16]; mov edx,{numbers+32}; call {comma}
     mov eax,[esi+4]; and eax,3; cmp eax,3; jne single
@@ -125,4 +143,4 @@ def emit(assemble,base,db,texts,current,consts,dirty,world,comma,numbers):
     ready: xor edx,edx; test esi,esi; jz done; cmp byte ptr [esi+64],0; je done; lea edx,[esi+64]
     done: pop edi; pop esi; pop ebx; ret
     ''')
-    return {'parse':parse,'lookup':lookup,'prepare':prepare,'strip':strip,'chunks':chunks,'empty':empty,'hp_format':formats['hp']}
+    return {'parse':parse,'lookup':lookup,'prepare':prepare,'strip':strip,'chunks':chunks,'empty':empty,'hp_format':formats['hp'],'hp_only_format':formats['hp_only'],'percent_only_format':formats['percent_only']}

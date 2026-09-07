@@ -23,12 +23,12 @@ class Harness:
  def __init__(self):
   u=self.u=Uc(UC_ARCH_X86,UC_MODE_32);u.mem_map(ib,(p.OPTIONAL_HEADER.SizeOfImage+4095)&~4095);u.mem_write(ib,p.get_memory_mapped_image())
   for a,n in [(MODE,0x120000),(STACK,0x10000),(STOP,0x1000)]:u.mem_map(a,n)
-  self.native_refreshes=[];self.icon_draws=[];self.icon_exists=True;self.cursor=0;self.ui_block=0;self.modal=0;self.allocs=0;self.actor=True;self.original=0;self.opens=[];self.closes=[];self.missing=set();self.corrupt={};self.option=True;
+  self.text_draws=[];self.native_hp_calls=0;self.native_refreshes=[];self.icon_draws=[];self.icon_exists=True;self.cursor=0;self.ui_block=0;self.modal=0;self.allocs=0;self.actor=True;self.original=0;self.opens=[];self.closes=[];self.missing=set();self.corrupt={};self.option=True;
   for a,v in [(MODE,0x10904b8),(MODE+0xcc,WORLD),(WORLD+0x2c,PLAYER),(PLAYER+0x500,1),(PLAYER+0x514,101),(MOB+0x300,GAUGE),(MOB+0x314,5),(MOB+0x110,101),(GAUGE,0x102be50),(GAUGE+0xa0,680),(GAUGE+0xa4,1000),(0x12515f8,VIEW),(VIEW+0x28,1280),(INFO+0x18,15),(HUD+0x24,MODE+0x8000),(MODE+0x8018,MODE+0x10000),(MODE+0x8004,W)]:self.put(a,v)
   u.mem_write(INFO+0x98,b'\1');u.mem_write(INFO+4,b'Baphomet\0');self.files={f.name:f.read_bytes() for f in (Path(__file__).resolve().parents[1]/MANIFEST['resource_root']).glob('target_mob_*.bmp')}
   self.handles={}
   self.ring=self.get(base+0xe0c0)
-  for pc in [0xa90350,0xa8e500,0xa9f030,0xa8d4a0,0xa1d260,0xc6d1d0,0xc43230,0xd8e9d0,0x4f1940,0xa47b90,0xa69eb0,0x5a1460,0xdbbc4f,0x8361b0,0xa1cb70,0xa2d240,0xa23450,0x863f10,0xa1cb30,0xa21c90,0xa25a70,0x529850,0x83bd30,0x573750,0x573980,0x519200,0x68ea70,0xc14d60,0xc14920]:u.hook_add(UC_HOOK_CODE,self.hook,begin=pc,end=pc)
+  for pc in [0xcf33f0,0xa90350,0xa8e500,0xa9f030,0xa8d4a0,0xa1d260,0xc6d1d0,0xc43230,0xd8e9d0,0x4f1940,0xa47b90,0xa69eb0,0x5a1460,0xdbbc4f,0x8361b0,0xa1cb70,0xa2d240,0xa23450,0x863f10,0xa1cb30,0xa21c90,0xa25a70,0x529850,0x83bd30,0x573750,0x573980,0x519200,0x68ea70,0xc14d60,0xc14920]:u.hook_add(UC_HOOK_CODE,self.hook,begin=pc,end=pc)
  def put(self,a,v):self.u.mem_write(a,struct.pack('<I',v&0xffffffff))
  def get(self,a):return struct.unpack('<I',bytes(self.u.mem_read(a,4)))[0]
  def ret(self,n=0,val=0):
@@ -37,6 +37,12 @@ class Harness:
   sp=u.reg_read(UC_X86_REG_ESP);ecx=u.reg_read(UC_X86_REG_ECX)
   arg=lambda n:self.get(sp+n*4)
   if pc in (0xc14d60,0xc14920):raise AssertionError('HUD sent an unnecessary query')
+  elif pc==0xcf33f0:
+   assert ecx==MODE and arg(1)==MODE+0xe9000;self.native_hp_calls+=1
+   packet=arg(1)
+   if self.actor and self.get(packet+2)==101:
+    self.put(MOB+0x300,GAUGE);self.put(GAUGE+0xa0,self.get(packet+6));self.put(GAUGE+0xa4,self.get(packet+10))
+   self.ret(1)
   elif pc==0x68ea70:assert arg(1)==0xd5;self.ret(0,int(self.option))
   elif pc==0x573750:
    assert (arg(2),arg(3),arg(4))==(0,1,0) # Stock data-root + CFileMgr disk/GRF mode.
@@ -113,6 +119,7 @@ class Harness:
   elif pc==0xa25a70:
    assert ecx==HUD and arg(4)==0 and arg(5)==1 and arg(6) in (12,14) and arg(8)==arg(9)==0
    text=bytes(u.mem_read(arg(3),128)).split(b'\0')[0].decode('utf8');x=arg(1);x=x-0x100000000 if x&0x80000000 else x;y=arg(2)
+   self.text_draws.append(text)
    img=Image.frombytes('RGBA',(W,H),bytes(u.mem_read(MODE+0x10000,W*H*4)),'raw','BGRA');c=arg(7)
    ImageDraw.Draw(img).text((x,y),text,font=ImageFont.truetype('C:/Windows/Fonts/segoeui.ttf',arg(6)),fill=(c&255,(c>>8)&255,(c>>16)&255,255))
    u.mem_write(MODE+0x10000,img.tobytes('raw','BGRA'));self.ret(9,1)
@@ -127,6 +134,7 @@ class Harness:
   if addr in (base+0x5b00,base+0x9e00):
    expected.update({UC_X86_REG_EDI:MOB,UC_X86_REG_EBP:MODE+0xd0000})
    self.put(sp+4,MOB if addr==base+0x5b00 else 0xffffffff)
+  if addr==base+0x2900:self.put(sp+4,MODE+0xe9000)
   for reg,value in expected.items():self.u.reg_write(reg,value)
   self.u.emu_start(addr,STOP,count=5000000)
   assert self.u.reg_read(UC_X86_REG_EIP)==STOP
@@ -140,6 +148,8 @@ class Harness:
   nameoff=12 if length in (653,657) else 36;namecap=128 if length in (653,657,773,777) else 31
   data[nameoff:nameoff+min(len(name.encode()),namecap-1)]=name.encode()[:namecap-1]
   seq=self.get(self.ring+4);slot=self.ring+16+(seq&1023)*1024;self.put(slot,length);self.u.mem_write(slot+4,bytes(data));self.put(self.ring+4,seq+1)
+ def hp_packet(self,hp,maximum,gid=101,opcode=0x977):
+  self.u.mem_write(MODE+0xe9000,struct.pack('<HIII',opcode,gid,hp,maximum));self.run(base+0x2900,MODE,1)
  def update(self):self.run(base,0x131f4e8,1)
  def visible(self):return self.get(HUD+0x28)
 # Every inherited vtable slot and RTTI pointer survives cloning.
@@ -155,6 +165,10 @@ for token in ('/targethudtest','target_monster_hud_trace.log','HUD TEST - 68% pr
 assert r(base+0x8000,0x800)==bytes(0x800)
 assert r(base+0x9000,0x100)==bytes(0x100)
 
+assert struct.unpack('<I',r(0xcac6f0,4))[0]==0xca8a9b
+hp_entry=target(0xca8aa2)
+if r(hp_entry,1)==b'\xe9':hp_entry=target(hp_entry)
+assert hp_entry==base+0x2900
 h=Harness();h.update();assert h.visible()==1 and h.allocs==1 and h.original==1 and len(h.opens)==len(h.closes)==2
 for mode in (0,2,4,6):
  h.put(PLAYER+0x500,mode);h.update();assert h.visible()==0
@@ -176,30 +190,52 @@ h.u.mem_write(INFO+0x98,b'\1');h.update()
 h.put(INFO+0x18,200);h.put(INFO+4,INFO+0x200);h.u.mem_write(INFO+0x200,b'A'*200+b'\0')
 h.update();assert bytes(h.u.mem_read(state+64,128))==b'A'*127+b'\0'
 h.put(INFO+0x18,15);h.u.mem_write(INFO+4,b'Baphomet\0')
-# Existing Show Mob Info provides fresh full HP without queries or a stock gauge.
-old=h.get(MOB+0x300);h.put(MOB+0x300,0);h.packet('#1257 7600/7600 100% Lv.51 Dark Lv.1 Undead')
-h.update();assert (h.get(HUD+0xa0),h.get(HUD+0xa4))==(7600,7600)
-h.run(base+0x1000,HUD);assert bytes(h.u.mem_read(HP_TEXT,32)).split(b'\0')[0]=='7,600/7,600 ♦ 100%'.encode()
-h.packet('40% Lv.10');h.update();assert (h.get(HUD+0xa0),h.get(HUD+0xa4))==(40,100)
-h.packet('Lv.10 Undead');h.update();assert h.get(HUD+0xa4)==0
-h.run(base+0x1000,HUD);assert bytes(h.u.mem_read(HP_TEXT,11))==b'HP unknown\0'
-h.packet('1000/1000');h.update();h.put(MOB+0x300,old);h.put(GAUGE+0xa0,400);h.put(GAUGE+0xa4,1000);h.update()
-assert h.get(HUD+0xa0)==400 # Fresh native damage overrides older name metadata.
-# No redraw work when text, HP and tier are unchanged.
-h.put(HUD+0x58,0);h.update();assert h.get(HUD+0x58)==0
-# Exercise exact supported layouts and reject malformed numeric metadata.
-h.put(MOB+0x300,0)
+# Native HP arrives before first frame, independently of Show Mob Info.
+independent=Harness();independent.put(MOB+0x300,0);independent.hp_packet(7600,7600)
+assert independent.native_hp_calls==0 and independent.get(MOB+0x300)==0
+independent.update();independent.run(base+0x1000,HUD)
+assert bytes(independent.u.mem_read(HP_TEXT,1))==b'\0'
+assert independent.visible()==1 and independent.text_draws==['NORMAL','BAPHOMET']
+assert (independent.get(HUD+0xa0),independent.get(HUD+0xa4))==(7600,7600)
+assert all(bytes(independent.u.mem_read(INFO_TEXT+128*i,1))==b'\0' for i in range(3))
+# Label toggles and even contradictory label HP cannot alter native HP.
+independent.packet('#1257 1/100 1% Lv.51 Dark Lv.2 Undead');independent.update()
+assert (independent.get(HUD+0xa0),independent.get(HUD+0xa4))==(7600,7600)
+# Each text bit is independent; displayed values always come from native HP.
+for title,expected in [('1/100','7,600/7,600'),('1%','100%'),('1/100 1%','7,600/7,600 ♦ 100%'),('Lv.51',''),('','')]:
+ independent.packet(title);independent.update();independent.text_draws.clear();independent.run(base+0x1000,HUD)
+ assert bytes(independent.u.mem_read(HP_TEXT,64)).split(b'\0')[0].decode()==expected
+ assert independent.visible()==1 and independent.get(HUD+0xa0)==7600
+ assert independent.text_draws[:2]==['NORMAL','BAPHOMET']
+ if expected:assert expected in independent.text_draws
+ else:assert all('%' not in label and '/' not in label and 'HP unknown'!=label for label in independent.text_draws)
+# With text disabled, damage must still change the actual fill pixels.
+full_surface=bytes(independent.u.mem_read(MODE+0x10000,W*H*4))
+# Damage/healing continue through stock; full-health seeds avoid a new world bar.
+independent.hp_packet(3000,7600);assert independent.native_hp_calls==1
+independent.update();assert independent.get(HUD+0xa0)==3000
+independent.text_draws.clear();independent.run(base+0x1000,HUD)
+assert independent.text_draws==['NORMAL','BAPHOMET']
+assert bytes(independent.u.mem_read(MODE+0x10000,W*H*4))!=full_surface
+independent.hp_packet(7600,7600);assert independent.native_hp_calls==2
+independent.put(GAUGE+0xa0,123);independent.update();assert independent.get(HUD+0xa0)==7600
+# Bad pairs do not replace the last authoritative cache value.
+for hp,mx in ((1,0),(101,100)):
+ independent.hp_packet(hp,mx);independent.update();assert independent.get(HUD+0xa0)==7600
+independent.hp_packet(0,7600);independent.update();assert independent.visible()==0
+# Both cache generations are independent; new world clears native HP.
+independent.run(base+0x2800,WORLD+4)
+independent.u.reg_write(UC_X86_REG_EAX,101);independent.run(base+0xa800)
+assert independent.u.reg_read(UC_X86_REG_EDX)==0
+# No redraw work when name, HP, metadata and tier are unchanged.
+h.update();h.put(HUD+0x58,0);h.update();assert h.get(HUD+0x58)==0
+# Optional label packet layouts still work without feeding the HP source.
 for layout in (653,657,773,777,233,237):
- h.packet('777/999 77%',length=layout);h.update();assert (h.get(HUD+0xa0),h.get(HUD+0xa4))==(777,999)
-for invalid in ('4294967296/99999999','1/0','101/100','101%','Lv.10 x7600/7600','7600/7600suffix'):
- h.packet(invalid);h.update();assert h.get(HUD+0xa4)==0,invalid
-h.packet('10/100');h.update()
-h.packet('100/100',entity=2);h.update();assert h.get(HUD+0xa0)==10
-h.packet('99/100',magic=0);h.update();assert h.get(HUD+0xa0)==10
-# More than one frame of name traffic drains without touching other readers.
-for i in range(70):h.packet('50/100',gid=10000+i)
-h.packet('81/100');h.update();h.update();assert h.get(HUD+0xa0)==81
-h.put(MOB+0x300,GAUGE)
+ h.packet('#77 Lv.9 Fire Lv.2 Demon',length=layout);h.update()
+ assert bytes(h.u.mem_read(INFO_TEXT,128)).split(b'\0')[0]=='Mob Level: 9 ♦ Mob ID: 77'.encode()
+for i in range(70):h.packet('Lv.1',gid=10000+i)
+h.packet('#81 Lv.7');h.update();h.update()
+assert bytes(h.u.mem_read(INFO_TEXT,128)).split(b'\0')[0]=='Mob Level: 7 ♦ Mob ID: 81'.encode()
 # Hover uses the current hit-test result, independent of balloon recreation.
 h.cursor=101;h.put(PLAYER+0x500,0);h.put(MODE+0x2ac,MODE+0x9000);h.put(MODE+0x2d8,101);h.update();assert h.visible()==1
 h.option=False;h.update();assert h.visible()==0 and h.native_refreshes[-1] is False;h.option=True;h.update();assert h.visible()==1 and h.native_refreshes[-1] is True
@@ -239,8 +275,14 @@ for title in ('#4294967296 Lv.4294967296 Fire Lv.9','HP unavailable','Dark Lv.x'
  h.packet(title);h.update();assert [line(h,i) for i in range(3)]==['','',''],title
 h.packet('#1257 Lv.51 Dark Lv.2 Undead',name='Custom Injustice');h.update();assert bytes(h.u.mem_read(state+64,128)).split(b'\0')[0]==b'CUSTOM INJUSTICE'
 h.packet('');h.update();assert [line(h,i) for i in range(3)]==['','','']
+# Invalid numeric labels must not enable HP text or reuse another target's flags.
+for title in ('1/', '/100', '1/0', '101/100', '1/2/3', '4294967296/4294967296', '101%', '1x%', '%'):
+ invalid_label=Harness();invalid_label.packet(title);invalid_label.update();invalid_label.run(base+0x1000,HUD)
+ assert invalid_label.text_draws==['NORMAL','BAPHOMET'],title
+no_metadata=Harness();no_metadata.packet('1/100 1%',gid=102);no_metadata.update();no_metadata.run(base+0x1000,HUD)
+assert no_metadata.text_draws==['NORMAL','BAPHOMET']
 # A high-rate percent-only packet must not invent an absolute HP pair.
-h.put(MOB+0x300,0);h.packet('40%');h.update();h.run(base+0x1000,HUD);assert bytes(h.u.mem_read(HP_TEXT,4))==b'40%\0';h.put(MOB+0x300,GAUGE)
+percent_labels=Harness();percent_labels.put(MOB+0x300,0);percent_labels.packet('40%');percent_labels.update();percent_labels.run(base+0x1000,HUD);assert bytes(percent_labels.u.mem_read(HP_TEXT,11))==b'HP unknown\0'
 rendered_surfaces=[]
 for tier in range(3):
  h.put(INFO+0x94,[1102,1137,1128][tier])
@@ -296,10 +338,10 @@ for value,expected in [(0,'0'),(999,'999'),(1000,'1,000'),(999999,'999,999'),(10
  assert bytes(h.u.mem_read(dst,16)).split(b'\0')[0].decode()==expected
  assert bytes(h.u.mem_read(dst-4,4))==b'HEAD' and bytes(h.u.mem_read(dst+16,4))==b'TAIL'
 # Large absolute HP fits the expanded label, including totals above INT_MAX.
-large=Harness();large.put(GAUGE+0xa0,3_000_000_000);large.put(GAUGE+0xa4,4_000_000_000);large.update();large.run(base+0x1000,HUD)
+large=Harness();large.packet('1/100 1%');large.put(GAUGE+0xa0,3_000_000_000);large.put(GAUGE+0xa4,4_000_000_000);large.update();large.run(base+0x1000,HUD)
 assert bytes(large.u.mem_read(HP_TEXT,64)).split(b'\0')[0]=='3,000,000,000/4,000,000,000 ♦ 75%'.encode()
 assert bytes(large.u.mem_read(state+64,128)).split(b'\0')[0]==b'BAPHOMET'
-large.put(MOB+0x300,0);large.packet('4294967295/4294967295');large.update();large.run(base+0x1000,HUD)
+large.put(MOB+0x300,0);large.hp_packet(4294967295,4294967295);large.update();large.run(base+0x1000,HUD)
 assert bytes(large.u.mem_read(HP_TEXT,64)).split(b'\0')[0]=='4,294,967,295/4,294,967,295 ♦ 100%'.encode()
 # A missing icon leaves the ordinary element text and never hides the HUD.
 missing_icon=Harness();missing_icon.icon_exists=False;missing_icon.put(INFO+0x94,1138);missing_icon.packet('Dark Lv.4 Demon');missing_icon.update();missing_icon.run(base+0x1000,HUD)
@@ -319,7 +361,7 @@ assert bytes(h.u.mem_read(MODE+0x8028,1))==b'\1'
 report={
  'exe_sha256':hashlib.sha256(PE.read_bytes()).hexdigest(),
  'rendered_surface_sha256':[hashlib.sha256(data).hexdigest() for data in rendered_surfaces],
- 'checks':'native behavior, resources, alpha, formatting, metadata, icons, option restoration and dead-player hover',
+ 'checks':'independent native HP, per-field HP text visibility, label-only metadata, resource/alpha/formatting, icons, option restoration and dead-player hover',
 }
 if args.report:
  args.report.parent.mkdir(parents=True,exist_ok=True)

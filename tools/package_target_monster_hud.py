@@ -21,6 +21,7 @@ def main():
     parser.add_argument('exe', type=Path)
     parser.add_argument('--verification', type=Path, required=True)
     parser.add_argument('--source', type=Path, default=SOURCE)
+    parser.add_argument('--profile', default='profiles/2025-07-16 PROFILE MAIN.yml', help='Build profile or supplied-client provenance')
     parser.add_argument('--output', type=Path, default=ROOT / 'Outputs/TargetMonsterHUD.zip')
     args = parser.parse_args()
     asset_manifest = json.loads((ROOT / 'Assets/TargetMonsterHUD/assets.json').read_text(encoding='utf8'))
@@ -51,7 +52,7 @@ def main():
         if path.read_bytes() != deployed.read_bytes():
             raise ValueError(f'Asset copy beside the executable is stale: {path.name}')
     report = {'patch': 'TargetMonsterHealthBar', 'client_build': 20250716,
-              'profile': 'profiles/2025-07-16 PROFILE MAIN.yml', 'exe': args.exe.name,
+              'profile': args.profile, 'exe': args.exe.name,
               'sha256': digest, 'canvas': asset_manifest['canvas'],
               'resource_root': asset_manifest['resource_root'],
               'native_resource_functions_unchanged': list(anchors),
@@ -63,6 +64,9 @@ def main():
         for path in files:
             archive.write(path, path.relative_to(ROOT).as_posix())
         archive.write(ROOT / 'docs/target-monster-health-bar.md', 'target-monster-health-bar.md')
+        server_patch = ROOT / 'Assets/TargetMonsterHUD/server-native-hp.patch'
+        if server_patch.exists():
+            archive.write(server_patch, 'server-native-hp.patch')
         archive.writestr('manifest.json', json.dumps(report, ensure_ascii=False, indent=2).encode('utf8'))
     args.output.with_suffix('.manifest.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf8')
     print(f'Packaged {args.output.name}: executable, six BMPs, guide and manifest')

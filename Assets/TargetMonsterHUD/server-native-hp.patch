@@ -1,0 +1,126 @@
+diff --git a/src/map/clif.cpp b/src/map/clif.cpp
+index 66d0e1e..011a80f 100644
+--- a/src/map/clif.cpp
++++ b/src/map/clif.cpp
+@@ -2160,10 +2160,11 @@ static const char* mob_race_name( e_race race ){
+ 	}
+ }
+ 
+-/// Per-player callback for clif_spawn: sends the mob name with per-character HP/level info.
++/// Seed native HP for every visible viewer; optional name details remain per-character.
+ static int32 clif_spawn_mob_name_per_player( block_list* bl, va_list ap ){
+ 	mob_data* md = va_arg( ap, mob_data* );
+ 	map_session_data* sd = reinterpret_cast<map_session_data*>( bl );
++	clif_monster_hp_bar( md, sd->fd );
+ 	if( sd->show_mob_info != 0 )
+ 		clif_name( sd, md, SELF );
+ 	return 0;
+@@ -5653,16 +5654,8 @@ void clif_getareachar_unit( map_session_data* sd,block_list *bl ){
+ 				clif_specialeffect_single(bl,EF_GIANTBODY2,sd->fd);
+ 			else if(md->special_state.size==SZ_MEDIUM)
+ 				clif_specialeffect_single(bl,EF_BABYBODY2,sd->fd);
+-#if PACKETVER >= 20120404
+-			if (battle_config.monster_hp_bars_info && !map_getmapflag(bl->m, MF_HIDEMOBHPBAR)) {
+-				// Must show hp bar to all char who already hit the mob.
+-				for( const auto& entry : md->dmglog ){
+-					if( entry.id == sd->status.char_id ){
+-						clif_monster_hp_bar(md, sd->fd);
+-					}
+-				}
+-			}
+-#endif
++			// Native HP is independent of @showmobinfo and includes full-health mobs.
++			clif_monster_hp_bar( md, sd->fd );
+ 		// Use per-player preference; clif_getareachar_unit is already called per-player (sd is the specific viewer)
+ 		clif_name(sd, bl, SELF);
+ 		}
+@@ -12576,6 +12569,8 @@ void clif_parse_GetCharNameRequest(int32 fd, map_session_data *sd)
+ 	*/
+ 
+ 	clif_name(sd, bl, SELF);
++	if( bl->type == BL_MOB )
++		clif_monster_hp_bar( static_cast<const mob_data*>(bl), fd );
+ }
+ 
+ 
+@@ -21514,6 +21509,10 @@ void clif_snap( const block_list* bl, int16 x, int16 y ) {
+ /// 0977 <id>.L <HP>.L <maxHP>.L (ZC_HP_INFO).
+ void clif_monster_hp_bar( const mob_data* md, int32 fd ) {
+ #if PACKETVER >= 20120404
++	// Shared policy for visibility, hover, damage and healing updates.
++	// Nearby autotrade/offline characters may have no active socket.
++	if( !session_isActive(fd) || !battle_config.monster_hp_bars_info || map_getmapflag(md->m, MF_HIDEMOBHPBAR) )
++		return;
+ 	WFIFOHEAD(fd,packet_len(0x977));
+ 
+ 	WFIFOW(fd,0)  = 0x977;
+diff --git a/src/map/mob.cpp b/src/map/mob.cpp
+index 9a5db46..aa919ff 100644
+--- a/src/map/mob.cpp
++++ b/src/map/mob.cpp
+@@ -3269,10 +3269,11 @@ void mob_log_damage(mob_data* md, block_list* src, int64 damage, int64 damage_ta
+ 	md->dmglog.push_back( dmg );
+ }
+ 
+-/// Per-player callback: sends updated mob name (with per-character HP/level info) to each nearby player.
++/// Update native HP for each nearby viewer, independently of optional name details.
+ static int mob_name_display_update( block_list *bl, va_list ap ){
+ 	mob_data *md = va_arg( ap, mob_data* );
+ 	map_session_data *sd = reinterpret_cast<map_session_data*>( bl );
++	clif_monster_hp_bar( md, sd->fd );
+ 	if( sd->show_mob_info != 0 )
+ 		clif_name( sd, md, SELF );
+ 	return 0;
+@@ -3295,25 +3296,9 @@ void mob_damage(mob_data *md, block_list *src, int32 damage)
+ 	map_foreachinallrange( mob_name_display_update, md, AREA_SIZE, BL_PC, md );
+ 
+ #if PACKETVER >= 20120404
+-	if (battle_config.monster_hp_bars_info && !map_getmapflag(md->m, MF_HIDEMOBHPBAR)) {
+-		if (md->special_state.ai == AI_ABR || md->special_state.ai == AI_BIONIC) {
+-			clif_summon_hp_bar(*md);
+-		}
+-
+-		// Must show hp bar to all char who already hit the mob.
+-		for( const auto& entry : md->dmglog ){
+-			map_session_data* sd = map_charid2sd( entry.id );
+-
+-			if( sd == nullptr ){
+-				continue;
+-			}
+-
+-			if( !check_distance_bl( md, sd, AREA_SIZE ) ){
+-				continue;
+-			}
+-
+-			clif_monster_hp_bar( md, sd->fd );
+-		}
++	if( battle_config.monster_hp_bars_info && !map_getmapflag(md->m, MF_HIDEMOBHPBAR) &&
++		(md->special_state.ai == AI_ABR || md->special_state.ai == AI_BIONIC) ){
++		clif_summon_hp_bar(*md);
+ 	}
+ #endif
+ }
+@@ -4438,20 +4423,9 @@ void mob_heal(mob_data *md,uint32 heal)
+ {
+ 	map_foreachinallrange( mob_name_display_update, md, AREA_SIZE, BL_PC, md );
+ #if PACKETVER >= 20120404
+-	if (battle_config.monster_hp_bars_info && !map_getmapflag(md->m, MF_HIDEMOBHPBAR)) {
+-		if (md->special_state.ai == AI_ABR || md->special_state.ai == AI_BIONIC) {
+-			clif_summon_hp_bar(*md);
+-		}
+-
+-		// Must show hp bar to all char who already hit the mob.
+-		for( const auto& entry : md->dmglog ){
+-			map_session_data* sd = map_charid2sd( entry.id );
+-
+-			// Check if in range
+-			if( sd != nullptr && check_distance_bl( md, sd, AREA_SIZE ) ){
+-				clif_monster_hp_bar(md, sd->fd);
+-			}
+-		}
++	if( battle_config.monster_hp_bars_info && !map_getmapflag(md->m, MF_HIDEMOBHPBAR) &&
++		(md->special_state.ai == AI_ABR || md->special_state.ai == AI_BIONIC) ){
++		clif_summon_hp_bar(*md);
+ 	}
+ #endif
+ }
