@@ -1,0 +1,94 @@
+{
+  "canvas": [
+    768,
+    232
+  ],
+  "scale": 0.5,
+  "name_top": 28,
+  "source_sha256": "ad057bd216a2a4768683e80c74a1c41ef8ad3898d915a032a0f417a9dcbcfb2f",
+  "pixel_format": "BGRA32",
+  "bmp_header": "BITMAPV4HEADER",
+  "alpha": "straight",
+  "pixel_offset": 122,
+  "resource_root": "data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/uirenewal/mobhpbar",
+  "tiers": [
+    {
+      "name": "normal",
+      "label": "NORMAL",
+      "empty": "target_mob_normal_empty.bmp",
+      "full": "target_mob_normal_full.bmp",
+      "fill": [
+        237,
+        69,
+        531,
+        93
+      ],
+      "percent_top": 75,
+      "label_top": 2,
+      "divider_source_crop": [
+        606,
+        98,
+        924,
+        112
+      ],
+      "divider_bounds": [
+        303,
+        16,
+        462,
+        23
+      ]
+    },
+    {
+      "name": "mini",
+      "label": "MINI BOSS",
+      "empty": "target_mob_mini_empty.bmp",
+      "full": "target_mob_mini_full.bmp",
+      "fill": [
+        168,
+        76,
+        601,
+        105
+      ],
+      "percent_top": 83,
+      "label_top": 3,
+      "divider_source_crop": [
+        594,
+        382,
+        936,
+        396
+      ],
+      "divider_bounds": [
+        297,
+        17,
+        468,
+        24
+      ]
+    },
+    {
+      "name": "mvp",
+      "label": "MVP",
+      "empty": "target_mob_mvp_empty.bmp",
+      "full": "target_mob_mvp_full.bmp",
+      "fill": [
+        121,
+        75,
+        648,
+        111
+      ],
+      "percent_top": 85,
+      "label_top": 5,
+      "divider_source_crop": [
+        670,
+        688,
+        866,
+        700
+      ],
+      "divider_bounds": [
+        335,
+        19,
+        433,
+        25
+      ]
+    }
+  ]
+}

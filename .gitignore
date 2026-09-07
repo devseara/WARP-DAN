@@ -24,3 +24,6 @@ SkippedPatches.log
 
 # Python analysis caches are not baseline source or evidence.
 __pycache__/
+
+# Isolated HUD build/verification environment.
+/.venv-target-hud/

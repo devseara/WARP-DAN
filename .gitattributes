@@ -13,3 +13,4 @@ Inputs/DualWeaponRuntime/README.md text eol=lf
 Inputs/DualWeaponAuthored/grips/female-assassin-pixel-landmarks.json text eol=crlf
 tools/build_dual_weapon_native_basis.py text eol=lf
 tools/audit_male_assassin_dual_weapon.py text eol=lf
+Scripts/Patches/TargetMonsterHealthBar.qjs text eol=crlf
