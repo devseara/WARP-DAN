@@ -1,0 +1,8 @@
+{
+  "schema": "character_select_footer_deployment/v1",
+  "target": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "before_sha256": "93b65d24eeeaf54b0a77002b30c6b375253e942507685aba6d567f365a495bc0",
+  "after_sha256": "c87d98b5b132186ce2cb4378b7ac308064282ba9f2006fae3f2a29521ed83f82",
+  "backup": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched_before_char_footer_93b65d24.exe",
+  "atomic_replace": true
+}

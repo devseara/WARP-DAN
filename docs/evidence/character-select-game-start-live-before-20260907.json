@@ -1,0 +1,46 @@
+{
+  "schema": "character_select_read_only/v1",
+  "pid": 19688,
+  "exe": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "sha256": "c87d98b5b132186ce2cb4378b7ac308064282ba9f2006fae3f2a29521ed83f82",
+  "selected_record": {
+    "address": 27177200,
+    "gid": 0,
+    "name": "",
+    "slot": 0,
+    "gender": 0
+  },
+  "session": {
+    "character_id": 5,
+    "slot": 0,
+    "account_gender": 1,
+    "character_gender": 0,
+    "character_gender_copy": 0
+  },
+  "mode": {
+    "address": 1280050240,
+    "vtable": 17368248
+  },
+  "player_fields_in_mode": [],
+  "actors": [
+    {
+      "address": 1286390808,
+      "gender": 0,
+      "small_id_fields": {
+        "0x110": 2000000,
+        "0x24c": 2000000
+      },
+      "louis_name_offset": -1,
+      "items": [
+        1238,
+        1219
+      ]
+    }
+  ],
+  "consumer_bytes": {
+    "0x79c646": "8a 87 16 01 00 00",
+    "0x79c761": "0f b6 8f f2 00 00 00",
+    "0x79c88e": "0f b6 87 16 01 00 00",
+    "0x79f1c9": "0f b6 8b 16 01 00 00"
+  }
+}
