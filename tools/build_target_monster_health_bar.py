@@ -348,15 +348,58 @@ for prior,nxt in zip(ordered,ordered[1:]):
 blob=bytearray(TOTAL)
 for off,b in chunks:blob[off:off+len(b)]=b
 # copy native vtable at patch time, then substitute only draw/destructor.
-chunks_json=json.dumps([[o,b.hex(' ').upper()] for o,b in chunks])
-qjs='''/*
- * TargetMonsterHealthBar: top-center native HP HUD for 2025-07-16 Ragexe.
- * Description: Replace monster nameplates with a native target HUD while
- * hovering or attacking. /monsterhp restores the stock presentation when off.
- * Target: 2025-07-16 Ragexe; guarded static hooks, no runtime code patching.
- * Generated from tools/build_target_monster_health_bar.py. See the contract
- * in docs/target-monster-health-bar.md for ABI evidence and live acceptance.
- */
+# Stable, bounded lines keep generated diffs local; the emitted bytes stay exact.
+def format_chunks(entries):
+ lines=['[']
+ for offset,data in entries:
+  lines.append(f'\t\t[0x{offset:06X},')
+  parts=[data[start:start+32].hex(' ').upper() for start in range(0,len(data),32)]
+  for index,part in enumerate(parts):
+   continuation=index+1<len(parts)
+   lines.append('\t\t\t'+json.dumps(part+(' ' if continuation else ''))+(' +' if continuation else ''))
+  lines.append('\t\t],')
+ return '\n'.join(lines+['\t]'])
+
+def format_relocations(entries):
+ lines=['[']
+ for offset,sign in entries:
+  original=struct.unpack_from('<I',blob,offset)[0]
+  lines.append(f'\t\t[0x{offset:06X}, {sign:2d}, 0x{original:08X}],')
+ return '\n'.join(lines+['\t]'])
+
+chunks_source=format_chunks(chunks)
+relocations_source=format_relocations(relocs)
+qjs=r'''/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-09-05                                             *
+*   Last Modified : 2026-09-07                                             *
+*                                                                          *
+*   Description   : Replace monster nameplates with a native target HUD    *
+*					while hovering or attacking. /monsterhp restores the   *
+*					stock presentation when off.                           *
+*   Target        : 2025-07-16 Ragexe; guarded static hooks, no runtime    *
+*                   code patching.                                         *
+*                   Generated from tools/build_target_monster_health_bar.py*
+*                   See the contract in docs/target-monster-health-bar.md  *
+*					for ABI evidence and live acceptance.                  *
+\**************************************************************************/''' + '''
 TargetMonsterHealthBar = function(_) {
 \tif (Exe.BuildDate !== 20250716) throw Error("TargetMonsterHealthBar: requires 2025-07-16");
 \tconst check = (va, hex) => {
@@ -398,7 +441,7 @@ TargetMonsterHealthBar = function(_) {
 \treturn true;
 };
 TargetMonsterHealthBar.validate = () => Exe.BuildDate === 20250716;
-'''.replace('ALLOCSIZE',str(TOTAL)).replace('CHUNKS',chunks_json).replace('RELOCS',json.dumps([[off, sign, struct.unpack_from('<I', blob, off)[0]] for off, sign in relocs]))
+'''.replace('ALLOCSIZE',str(TOTAL)).replace('CHUNKS',chunks_source).replace('RELOCS',relocations_source)
 asset_dir=MANIFEST['resource_root']
 qjs += "\nTargetMonsterHealthBar.onApplied = function() {\n\tif (Warp.TestMode) return;\n"
 qjs += "\tconst relative = " + json.dumps(asset_dir) + ";\n"
@@ -407,5 +450,16 @@ qjs += "\tif (source.toLowerCase() === target.toLowerCase()) return;\n"
 qjs += "\tif (!System.MkDir(target)) throw Error('TargetMonsterHealthBar: cannot create ' + target);\n"
 qjs += "\tfor (const file of " + json.dumps(FILENAMES) + ") {\n"
 qjs += "\t\tif (!System.Copy(source + '/' + file, target + '/' + file, true))\n\t\t\tthrow Error('TargetMonsterHealthBar: cannot copy ' + file);\n\t}\n};\n"
-(ROOT/'Scripts/Patches/TargetMonsterHealthBar.qjs').write_bytes(qjs.replace('\n','\r\n').encode())
-print('Generated',sum(len(b) for _,b in chunks),'code bytes;',len(relocs),'relocations')
+import argparse
+parser=argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--check',action='store_true',help='Fail if the checked-in QJS differs from its generated source; do not write files')
+args=parser.parse_args()
+output=ROOT/'Scripts/Patches/TargetMonsterHealthBar.qjs'
+generated=qjs.replace('\n','\r\n').encode('utf8')
+if args.check:
+ if not output.exists() or output.read_bytes()!=generated:
+  raise SystemExit('TargetMonsterHealthBar.qjs is stale; run tools/build_target_monster_health_bar.py')
+ print('PASS: checked-in QJS matches the generator')
+else:
+ output.write_bytes(generated)
+ print('Generated',sum(len(b) for _,b in chunks),'code/data bytes;',len(relocs),'relocations')

@@ -11,7 +11,7 @@ Inputs/DualWeaponRuntime/*.json text eol=crlf
 Inputs/DualWeaponAuthored/grips/female-assassin-pixel-landmarks.json text eol=crlf
 tools/build_dual_weapon_native_basis.py text eol=lf
 tools/audit_male_assassin_dual_weapon.py text eol=lf
-Scripts/Patches/TargetMonsterHealthBar.qjs text eol=crlf
+Scripts/Patches/TargetMonsterHealthBar.qjs text eol=crlf linguist-generated=true
 CustomDLL/DualWeapon/male_compositor.h text eol=lf
 CustomDLL/DualWeapon/male_profile.h text eol=lf
 Inputs/DualWeaponAuthored/grips/male-assassin-landmarks.json text eol=crlf

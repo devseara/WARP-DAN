@@ -84,6 +84,16 @@ For a faster isolated check, build `profiles/target_monster_health_bar_test.yml`
 .\.venv-target-hud\Scripts\python.exe tools/build_target_monster_hud_assets.py
 ```
 
+Maintain the readable Python/x86 modules listed below, then regenerate the QJS. Its byte chunks and relocation operands are build output, formatted in bounded lines for review; do not hand-edit those tables. The generator also owns the patch header so regeneration preserves attribution. GitHub marks this QJS as generated through `.gitattributes`; review behavior changes in the generator/helper modules and expand the generated diff when needed.
+
+Before committing, check that the checked-in QJS is reproducible without rewriting it:
+
+```powershell
+.\.venv-target-hud\Scripts\python.exe tools/build_target_monster_health_bar.py --check
+```
+
+For a generator-formatting change, require the rebuilt client to remain byte-for-byte identical to its verified baseline. Changes to x86 behavior still require the regression and live acceptance checks below. The profiled native addresses remain specific to this client build; supporting another executable requires new signatures and ABI verification.
+
 The selectable QJS is self-contained at patch time. Python is needed only for generation, verification and packaging. QJS remains UTF-8 without BOM, CRLF and tab-indented. Generated machine-code chunks must not overlap; relocation operands are calculated from the emitted bytes rather than staged WARP reads.
 
 ## Source and native contracts
