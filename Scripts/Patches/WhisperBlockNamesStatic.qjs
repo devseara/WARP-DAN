@@ -1,7 +1,33 @@
 /**************************************************************************\
-* Description:128-byte whisper allow/deny names and ignore-list names for  *
-* Main2025-07-16, using native block state and network send ownership.      *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. 128-byte whisper       *
+*                   allow/deny names and ignore-list names for             *
+*                   Main2025-07-16, using native block state and network   *
+*                   send ownership. Native hooks, data and code revert     *
+*                   together with the selecting patch.                     *
+*                                                                          *
 \**************************************************************************/
+
 WhisperBlockNamesStatic={};
 WhisperBlockNamesStatic.install=function(state,routes)
 {
@@ -24,7 +50,7 @@ WhisperBlockNamesStatic.install=function(state,routes)
 	a.emit(0xB8);a.dword(0xD43);a.emit(0x85,0xF6);a.jcc(0x84,"header");a.emit(0x40);a.label("header");a.emit(0x50);a.call(0x00A9ED30);a.emit(0x83,0xC4,4,0x6A,0,0x6A,0,0x68);a.dword(0xFFFF00);a.emit(0x50,0x6A,1,0xB9);a.dword(0x0131F4E8);a.call(0x00A4AD20);
 	a.emit(0xBB);a.dword(routes.packetBufferVir+4);a.label("loop");a.emit(0x85,0xF6);a.jcc(0x84,"done");a.emit(0x6A,0,0x6A,0,0x68);a.dword(0xFFFF00);a.emit(0x53,0x6A,1,0xB9);a.dword(0x0131F4E8);a.call(0x00A4AD20);a.emit(0x81,0xC3);a.dword(128);a.emit(0x4E);a.jmp("loop");a.label("done");a.emit(0x61);a.jmp(routes.mainLoopReturnVir);
 	const dispatch=ExtNameTextStatic.allocateCode(a);
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("WhisperBlockNamesStatic.NamePackets128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("WhisperBlockNamesStatic.NamePackets128",true);
 	try{for(const p of patches){Exe.SetJMP(p[0],p[2],0);Exe.SetNOPs(p[0]+5,p[1]-5);}for(const e of edits)Exe.SetHex(e[0],e[1]);Exe.SetUint32(phy,dispatch.virAddr);}
 	finally{Exe.EndTag();Exe.ActivePatch=owner;}
 	state.whisperBlockNames128=true;return state;

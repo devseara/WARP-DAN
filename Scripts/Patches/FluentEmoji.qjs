@@ -13,7 +13,7 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-15                                             *
-*   Last Modified : 2026-07-16                                             *
+*   Last Modified : 2026-09-08                                             *
 *                                                                          *
 *   Description   : Replaces literal emoji-token text in the 2025-07-16   *
 *                   client with manifest-driven Fluent PNGs. EXE-resident *
@@ -1140,4 +1140,10 @@ FluentEmoji.validate = function()
 	return Exe.BuildDate === FluentEmojiStatic.BuildDate &&
 		typeof ExtNameStaticAsm !== "undefined" &&
 		typeof ExtNameTextStatic !== "undefined";
+};
+
+/// Release this feature from the shared text bridge before WARP clears it.
+FluentEmoji.cleanup = function(_)
+{
+	ExtNameTextStatic.release(_);
 };

@@ -1,8 +1,33 @@
 /**************************************************************************\
-* Canonical 128-byte clan names for Main 2025-07-16.                         *
-* Description: Validate the 282-byte header and 128-byte alliance strings;  *
-* feed full pointers into the existing native strings and linked list.      *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Validate the 282-byte  *
+*                   header and 128-byte alliance strings; feed full        *
+*                   pointers into the existing native strings and linked   *
+*                   list. Native hooks, data and code revert together      *
+*                   with the selecting patch.                              *
+*                                                                          *
 \**************************************************************************/
+
 ClanNamesStatic = {};
 ClanNamesStatic.buildDispatch = function(buffer,returnVir)
 {
@@ -59,7 +84,7 @@ ClanNamesStatic.install=function(state,routes)
 	if(entry<0||Exe.GetUint32(entry)!==0x00CA8B12)throw Error("ClanNamesStatic: clan dispatch changed");
 	const assign=ExtNameTextStatic.allocateCode(ClanNamesStatic.buildAssign());
 	const dispatch=ExtNameTextStatic.allocateCode(ClanNamesStatic.buildDispatch(routes.packetBufferVir,routes.mainLoopReturnVir));
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("ClanNamesStatic.NamePackets128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("ClanNamesStatic.NamePackets128",true);
 	try {
 		for(const edit of edits)Exe.SetHex(edit[3],edit[2]);
 		for(const leaf of leaves){Exe.SetJMP(leaf[4],leaf[5].virAddr,0);Exe.SetNOPs(leaf[4]+5,leaf[1].split(" ").length-5);}

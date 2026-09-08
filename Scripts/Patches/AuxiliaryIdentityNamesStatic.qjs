@@ -1,8 +1,33 @@
 /**************************************************************************\
-* Remaining canonical identity packets for Main20250716.                  *
-* Description: Full adoption names, corrected BG camp footer, and bounded  *
-* consumption of the legacy world-info acknowledgment (no native UI).     *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Full adoption names,   *
+*                   corrected BG camp footer, and bounded consumption of   *
+*                   the legacy world-info acknowledgment (no native UI).   *
+*                   Native hooks, data and code revert together with the   *
+*                   selecting patch.                                       *
+*                                                                          *
 \**************************************************************************/
+
 AuxiliaryIdentityNamesStatic={};
 AuxiliaryIdentityNamesStatic.install=function(state,routes)
 {
@@ -25,7 +50,7 @@ AuxiliaryIdentityNamesStatic.install=function(state,routes)
 	a.emit(0x40,0x49);a.jcc(0x85,"name_bytes");a.jmp(routes.mainLoopReturnVir);
 	a.label("valid");a.jmp(0x00CA26A1);
 	const adopt=ExtNameTextStatic.allocateCode(a);
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("AuxiliaryIdentityNamesStatic.Name128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("AuxiliaryIdentityNamesStatic.Name128",true);
 	try{
 		for(const e of edits)Exe.SetHex(e[3],e[2]);
 		Exe.SetJMP(adoptPhy,adopt.virAddr,0);Exe.SetNOPs(adoptPhy+5,15);

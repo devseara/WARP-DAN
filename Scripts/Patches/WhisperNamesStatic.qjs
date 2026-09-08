@@ -1,7 +1,33 @@
 /**************************************************************************\
-* Description: Full 128-byte whisper recipient/sender for Main 2025-07-16. *
-* Keep native message processing, allocation and send ownership intact.    *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Full 128-byte whisper  *
+*                   recipient/sender for Main 2025-07-16. Keep native      *
+*                   message processing, allocation and send ownership      *
+*                   intact. Native hooks, data and code revert together    *
+*                   with the selecting patch.                              *
+*                                                                          *
 \**************************************************************************/
+
 WhisperNamesStatic={};
 WhisperNamesStatic.install=function(state,routes)
 {
@@ -35,7 +61,7 @@ WhisperNamesStatic.install=function(state,routes)
 	}]);
 	for(const p of patches){p.push(ExtNameStaticAsm.assertCode("whisper bridge",p[0],p[1]));p.push(ExtNameTextStatic.allocateCode(p[2]()));}
 	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("whisper canonical pointer",e[0],e[1]));
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("WhisperNamesStatic.NamePackets128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("WhisperNamesStatic.NamePackets128",true);
 	try{for(const p of patches){Exe.SetJMP(p[3],p[4].virAddr,0);Exe.SetNOPs(p[3]+5,p[1].split(" ").length-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);}
 	finally{Exe.EndTag();Exe.ActivePatch=owner;}
 	state.whisperNames128=true;return state;

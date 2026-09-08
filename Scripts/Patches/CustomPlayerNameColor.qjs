@@ -22,7 +22,7 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2025-07-16                                             *
-*   Last Modified : 2026-07-12                                             *
+*   Last Modified : 2026-09-08                                             *
 *                                                                          *
 *   Description   : QJS-only player-name color patch for the 2025-07-16    *
 *                   client. Uses the shared EXTN exact-text map and applies *
@@ -46,4 +46,10 @@ CustomPlayerNameColor.validate = function()
 {
 	return Exe.BuildDate === 20250716 &&
 		typeof ExtNameTextStatic !== "undefined";
+};
+
+/// Release this feature from the shared text bridge before WARP clears it.
+CustomPlayerNameColor.cleanup = function(_)
+{
+	ExtNameTextStatic.release(_);
 };

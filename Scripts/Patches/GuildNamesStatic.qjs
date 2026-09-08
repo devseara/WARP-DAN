@@ -1,8 +1,32 @@
 /**************************************************************************\
-* Full guild names for Main 2025-07-16.                                     *
-* Description: Preserve native std::string ownership while reading the     *
-* 326-byte guild packet, 162-byte roster entries and 132-byte positions.     *
-* Every native overwrite is guarded against the profiled original bytes.   *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Preserve native        *
+*                   std::string ownership while reading the 326-byte       *
+*                   guild packet, 162-byte roster entries and 132-byte     *
+*                   positions. Every native overwrite is guarded against   *
+*                   the profiled original bytes. Native hooks, data and    *
+*                   code revert together with the selecting patch.         *
+*                                                                          *
 \**************************************************************************/
 
 GuildNamesStatic = {};
@@ -86,8 +110,8 @@ GuildNamesStatic.install = function(state)
 		patch.push(ExtNameTextStatic.allocateCode(patch[2]()));
 	}
 	const owner=Exe.ActivePatch;
-	Exe.ActivateGlobal();
-	Exe.BeginTag(CACHE.getTag("GuildNamesStatic.NamePackets128"),true);
+
+	Exe.BeginTag("GuildNamesStatic.NamePackets128",true);
 	try {
 		for(const edit of edits) Exe.SetHex(edit[3],edit[2]);
 		for(const patch of patches) {

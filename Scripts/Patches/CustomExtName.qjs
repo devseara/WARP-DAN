@@ -13,7 +13,7 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2025-07-16                                             *
-*   Last Modified : 2026-09-05                                             *
+*   Last Modified : 2026-09-08                                             *
 *                                                                          *
 *   Description   : Routes 0x0BB7 through the dispatcher-table EXTN ring   *
 *                   and drains it into a bounded exact-text map. Static    *
@@ -122,7 +122,17 @@ CustomExtName = function(_)
 		typeof ExtNameTextStatic.enable !== "function")
 		throw Error("CustomExtName: ExtNameTextStatic helper unavailable");
 	$$(_, 1, "Install QJS-only EXTN exact-text map and GDI bridge");
-	ExtNameTextStatic.enable(_, ExtNameTextStatic.FeatureNames);
+	try
+	{
+		ExtNameTextStatic.enable(_, ExtNameTextStatic.FeatureNames);
+	}
+	catch (error)
+	{
+		// One adapter failure must not leave earlier native edits installed.
+		Exe.ClearPatch();
+		ExtNameTextStatic.release(_);
+		throw error;
+	}
 	$$(_, 2, "Extended names use static text caves");
 	return true;
 };
@@ -131,4 +141,10 @@ CustomExtName.validate = function()
 {
 	return Exe.BuildDate === 20250716 &&
 		typeof ExtNameTextStatic !== "undefined";
+};
+
+/// Release this feature from the shared text bridge before WARP clears it.
+CustomExtName.cleanup = function(_)
+{
+	ExtNameTextStatic.release(_);
 };

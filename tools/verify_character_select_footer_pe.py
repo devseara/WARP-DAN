@@ -13,6 +13,13 @@ import struct
 import sys
 from pathlib import Path
 
+# Load optional isolated dependencies before importing the emulator.
+bootstrap = argparse.ArgumentParser(add_help=False)
+bootstrap.add_argument('--deps', type=Path)
+dependency_args, _ = bootstrap.parse_known_args()
+if dependency_args.deps:
+    sys.path.insert(0, str(dependency_args.deps.resolve()))
+
 import pefile
 from unicorn import Uc, UC_ARCH_X86, UC_MODE_32, UC_HOOK_CODE
 from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX, UC_X86_REG_EDX, UC_X86_REG_EDI, UC_X86_REG_ESI, UC_X86_REG_ESP, UC_X86_REG_EIP, UC_X86_REG_EFLAGS
@@ -69,12 +76,13 @@ def game_start(u, raw, account_sex):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--deps', type=Path)
     ap.add_argument('--before', type=Path, required=True)
     ap.add_argument('--pe', type=Path, required=True)
     ap.add_argument('--report', type=Path, required=True)
     args = ap.parse_args()
     saved = sys.argv
-    sys.argv = ['verify_character_info_pe.py', '--pe', str(args.pe), '--deps', str(ROOT / '.venv/Lib/site-packages')]
+    sys.argv = ['verify_character_info_pe.py', '--pe', str(args.pe), '--deps', str(args.deps.resolve()) if args.deps else '']
     native = runpy.run_path(str(ROOT / 'tools/verify_character_info_pe.py'))
     sys.argv = saved
     old, fixed = emulator(args.before), emulator(args.pe)

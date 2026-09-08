@@ -1,9 +1,35 @@
 /**************************************************************************\
-* Canonical 128-byte battleground queue/lobby names, Main 2025-07-16.       *
-* Description: Relocate the manager's two name arrays into its enlarged    *
-* allocation, update every native name reader/writer, and serialize the    *
-* matching full-width requests. Existing manager state offsets stay fixed.*
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Relocate the           *
+*                   manager's two name arrays into its enlarged            *
+*                   allocation, update every native name reader/writer,    *
+*                   and serialize the matching full-width requests.        *
+*                   Existing manager state offsets stay fixed. Native      *
+*                   hooks, data and code revert together with the          *
+*                   selecting patch.                                       *
+*                                                                          *
 \**************************************************************************/
+
 BattlegroundNamesStatic={};
 BattlegroundNamesStatic.install=function(state)
 {
@@ -64,7 +90,7 @@ BattlegroundNamesStatic.install=function(state)
 		a.label("done");a.emit(0x81,0xC4);a.dword(272);a.emit(0x5F,0x5E,0x5B,0x5D);if(spec[3])a.emit(0xC2,spec[3],0);else a.emit(0xC3);
 		h(spec[0],spec[0]===0x00B3A240?"55 8B EC 83 EC 38":"55 8B EC 83 EC 20",a);
 	}
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("BattlegroundNamesStatic.NamePackets128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("BattlegroundNamesStatic.NamePackets128",true);
 	try{for(const p of hooks){Exe.SetJMP(p[0],p[2].virAddr,0);Exe.SetNOPs(p[0]+5,p[1]-5);}for(const p of edits)Exe.SetHex(p[0],p[1]);}
 	finally{Exe.EndTag();Exe.ActivePatch=owner;}
 	state.battlegroundNames128=true;return state;

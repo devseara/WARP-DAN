@@ -1,9 +1,36 @@
 /**************************************************************************\
-* Description: Main2025-07-16 canonical quest objective names,128 bytes.    *
-* Replace the old three51-byte inline fields with one record-owned3x128    *
-* allocation. The intrusive list tracks ownership only; it is not a name   *
-* alias/cache. Copy/move/base destruction preserve native record lifetime. *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Main2025-07-16         *
+*                   canonical quest objective names,128 bytes. Replace     *
+*                   the old three51-byte inline fields with one            *
+*                   record-owned3x128 allocation. The intrusive list       *
+*                   tracks ownership only; it is not a name alias/cache.   *
+*                   Copy/move/base destruction preserve native record      *
+*                   lifetime. Native hooks, data and code revert together  *
+*                   with the selecting patch.                              *
+*                                                                          *
 \**************************************************************************/
+
 QuestNamesStatic={};
 QuestNamesStatic.owners=function(head)
 {
@@ -54,7 +81,7 @@ QuestNamesStatic.install=function(state,routes)
 		a.label("next");a.emit(0x4A);a.jmp("quest");a.label("end");if(list){a.emit(0x85,0xDB);a.jcc(0x85,"bad");}
 		a.emit(0x61);a.jmp(expected);a.label("bad");a.emit(0x61);a.jmp(routes.mainLoopReturnVir);dispatches.push([entry,ExtNameTextStatic.allocateCode(a).virAddr]);
 	}
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("QuestNamesStatic.Name128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("QuestNamesStatic.Name128",true);
 	try{for(const p of patches){Exe.SetJMP(p[0],p[2],0);Exe.SetNOPs(p[0]+5,p[1]-5);}for(const d of dispatches)Exe.SetUint32(d[0],d[1]);}
 	finally{Exe.EndTag();Exe.ActivePatch=owner;}
 	state.questNames128=true;return state;

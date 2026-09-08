@@ -1,9 +1,36 @@
 /**************************************************************************\
-* Description: Main2025-07-16 canonical128-byte character rename.           *
-* Grow the embedded279-byte CHARACTER_INFO owner, preserve native name     *
-* validation and confirmation, and send a full134-byte0x08FC request.       *
-* The pending name cache remains the real rename transaction, not an alias.*
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Main2025-07-16         *
+*                   canonical128-byte character rename. Grow the           *
+*                   embedded279-byte CHARACTER_INFO owner, preserve        *
+*                   native name validation and confirmation, and send a    *
+*                   full134-byte0x08FC request. The pending name cache     *
+*                   remains the real rename transaction, not an alias.     *
+*                   Native hooks, data and code revert together with the   *
+*                   selecting patch.                                       *
+*                                                                          *
 \**************************************************************************/
+
 CharacterRenameNamesStatic={};
 CharacterRenameNamesStatic.install=function(state)
 {
@@ -55,7 +82,7 @@ CharacterRenameNamesStatic.install=function(state)
 	const calls=[[0x008FAC85,"E8 C6 EB C2 FF",format512],[0x00D2097B,"E8 D0 8E 80 FF",format300],[0x00D27F68,"E8 E3 18 80 FF",format300]].map(e=>[ExtNameStaticAsm.assertCode("rename bounded notification",e[0],e[1]),e[2]]);
 	const refs=[0x00D20962,0x00D27F4F].map(va=>{const p=Exe.Vir2Phy(va,CODE);if(p<0||Exe.GetUint32(p)!==0x015FFCB8)throw Error("CharacterRenameNamesStatic: pending name reference changed");return p;});
 	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("character rename width",e[0],e[1]));
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("CharacterRenameNamesStatic.Name128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("CharacterRenameNamesStatic.Name128",true);
 	try{for(const p of patches){Exe.SetJMP(p[0],p[2].virAddr,0);Exe.SetNOPs(p[0]+5,p[1]-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);for(const c of calls)Exe.SetCALL(c[0],c[1],0);for(const p of refs)Exe.SetUint32(p,pendingVir);}
 	finally{Exe.EndTag();Exe.ActivePatch=owner;}
 	state.characterRename128=true;return state;

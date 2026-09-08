@@ -1,8 +1,33 @@
 /**************************************************************************\
-* Canonical128-byte boss-tracker names for Main20250716.                    *
-* Description: Borrow the full packet name, retain native coordinate/time  *
-* handling, and format notifications into bounded512-byte stack storage.   *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Borrow the full        *
+*                   packet name, retain native coordinate/time handling,   *
+*                   and format notifications into bounded512-byte stack    *
+*                   storage. Native hooks, data and code revert together   *
+*                   with the selecting patch.                              *
+*                                                                          *
 \**************************************************************************/
+
 BossTrackerNamesStatic={};
 BossTrackerNamesStatic.install=function(state)
 {
@@ -34,7 +59,7 @@ BossTrackerNamesStatic.install=function(state)
 		f.call(0x0059CDF0);f.emit(0x83,0xC4,(argc+4)*4,0x5D,0xC3);
 		formats.push([phy,ExtNameTextStatic.allocateCode(f).virAddr]);
 	}
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("BossTrackerNamesStatic.Name128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("BossTrackerNamesStatic.Name128",true);
 	try{
 		for(const e of edits)Exe.SetHex(e[3],e[2]);
 		Exe.SetJMP(namePhy,name.virAddr,0);Exe.SetNOPs(namePhy+5,0x22-5);

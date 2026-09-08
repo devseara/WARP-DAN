@@ -22,7 +22,7 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2025-07-16                                             *
-*   Last Modified : 2026-07-24                                             *
+*   Last Modified : 2026-09-08                                             *
 *                                                                          *
 *   Description   : Shared helper that copies selected custom packets from *
 *                   the stock packet buffer into WARP shared blocks after  *
@@ -74,6 +74,16 @@ CustomPacketDispatch.selectProfile = function()
 };
 
 CustomPacketDispatch.install = function(_, routeNames)
+{
+	// All consumers cache these addresses. Keep the sink and its table entry
+	// together in the global layer for the lifetime of this loaded EXE.
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	try { return CustomPacketDispatch.installShared(_, routeNames); }
+	finally { Exe.ActivePatch = owner; }
+};
+
+CustomPacketDispatch.installShared = function(_, routeNames)
 {
 	const profile = CustomPacketDispatch.selectProfile();
 	if (typeof RagexeAllocationStatic !== "undefined")

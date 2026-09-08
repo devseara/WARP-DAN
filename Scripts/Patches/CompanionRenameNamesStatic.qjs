@@ -1,9 +1,35 @@
 /**************************************************************************\
-* Canonical companion rename input for Main 2025-07-16.                    *
-* Description: Pet and homunculus text controls accept127 bytes and send   *
-* complete130-byte requests with a128-byte name field. Percent characters  *
-* remain literal; confirmation text is bounded to its native512-byte area. *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Pet and homunculus     *
+*                   text controls accept127 bytes and send                 *
+*                   complete130-byte requests with a128-byte name field.   *
+*                   Percent characters remain literal; confirmation text   *
+*                   is bounded to its native512-byte area. Native hooks,   *
+*                   data and code revert together with the selecting       *
+*                   patch.                                                 *
+*                                                                          *
 \**************************************************************************/
+
 CompanionRenameNamesStatic={};
 CompanionRenameNamesStatic.install=function(state)
 {
@@ -30,7 +56,7 @@ CompanionRenameNamesStatic.install=function(state)
 	const a=ExtNameStaticAsm.asm();a.emit(0x55,0x8B,0xEC,0xFF,0x75,16,0xFF,0x75,12,0x6A,0xFF,0x68);a.dword(512);a.emit(0xFF,0x75,8);a.call(0x0059CDF0);a.emit(0x83,0xC4,20,0x5D,0xC3);
 	const format=ExtNameTextStatic.allocateCode(a);
 	const formatSites=[[0x00886313,"E8 38 35 CA FF"],[0x00884441,"E8 0A 54 CA FF"]].map(p=>ExtNameStaticAsm.assertCode("companion bounded confirmation",p[0],p[1]));
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("CompanionRenameNamesStatic.NamePackets128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("CompanionRenameNamesStatic.NamePackets128",true);
 	try{
 		for(const p of hooks){Exe.SetJMP(p[0],p[2].virAddr,0);Exe.SetNOPs(p[0]+5,p[1]-5);}
 		for(const e of edits)Exe.SetHex(e[0],e[1]);for(const site of copySites)Exe.SetCALL(site,literal.virAddr,0);for(const site of formatSites)Exe.SetCALL(site,format.virAddr,0);

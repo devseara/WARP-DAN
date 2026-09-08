@@ -1,9 +1,35 @@
 /**************************************************************************\
-* Description: Consume full 152-byte booking wire records in Main          *
-* 2025-07-16. The native formatter ABI carries a borrowed full-name pointer *
-* plus unchanged scalar fields, then creates owning native std::strings.   *
-* No shortened name or alternate identity is constructed.                 *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Consume full 152-byte  *
+*                   booking wire records in Main 2025-07-16. The native    *
+*                   formatter ABI carries a borrowed full-name pointer     *
+*                   plus unchanged scalar fields, then creates owning      *
+*                   native std::strings. No shortened name or alternate    *
+*                   identity is constructed. Native hooks, data and code   *
+*                   revert together with the selecting patch.              *
+*                                                                          *
 \**************************************************************************/
+
 BookingNamesStatic={};
 BookingNamesStatic.convert=function()
 {
@@ -44,7 +70,7 @@ BookingNamesStatic.install=function(state,routes)
 	if(phy<0||Exe.GetUint32(phy)!==0x00CA8346)throw Error("BookingNamesStatic: unexpected search route");
 	const a=ExtNameStaticAsm.asm();a.emit(0x0F,0xB7,0x05);a.dword(routes.packetBufferVir+2);a.emit(0x83,0xF8,5);a.jcc(0x82,"done");a.emit(0x83,0xE8,5,0x33,0xD2,0xB9);a.dword(152);a.emit(0xF7,0xF1,0x85,0xD2);a.jcc(0x85,"done");a.emit(0x68);a.dword(routes.packetBufferVir);a.emit(0x8B,0xCF);a.call(0x00CD0020);a.label("done");a.jmp(routes.mainLoopReturnVir);
 	const route=ExtNameTextStatic.allocateCode(a);
-	const owner=Exe.ActivePatch;Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("BookingNamesStatic.NamePackets128"),true);
+	const owner=Exe.ActivePatch;Exe.BeginTag("BookingNamesStatic.NamePackets128",true);
 	try{for(const p of patches){Exe.SetJMP(p[3],p[4].virAddr,0);Exe.SetNOPs(p[3]+5,p[1].split(" ").length-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);Exe.SetUint32(phy,route.virAddr);}
 	finally{Exe.EndTag();Exe.ActivePatch=owner;}
 	state.bookingNames128=true;return state;

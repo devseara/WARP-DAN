@@ -1,13 +1,33 @@
 /**************************************************************************\
 *                                                                          *
-*   QJS-only extended-name text bridge for profiled Ragexe clients.        *
+*   Copyright (C) 2026 Ylen X Walker                                       *
 *                                                                          *
-*   Description   : Drains the dispatcher-table EXTN ring into a bounded  *
-*                   exact-text map and redirects the four known Ragexe    *
-*                   TextOutW/GetTextExtentPoint32W call surfaces to EXE   *
-*                   caves. This reproduces the former DLL's name-field    *
-*                   substitution and player-name color behavior without  *
-*                   a custom DLL, recv hook, or runtime code patching.     *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-07-13                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Drains the dispatcher-table EXTN ring into a bounded   *
+*                   exact-text map and redirects the four known Ragexe     *
+*                   TextOutW/GetTextExtentPoint32W call surfaces to EXE    *
+*                   caves. This reproduces the former DLL's name-field     *
+*                   substitution and player-name color behavior without a  *
+*                   custom DLL, recv hook, or runtime code patching.       *
+*                   Shared code outlives individual users; removable name  *
+*                   adapters retain their own patch ownership.             *
 *                                                                          *
 \**************************************************************************/
 
@@ -85,6 +105,59 @@ ExtNameTextStatic = {
 	PacketMagic: 0x4558544E
 };
 
+/// Shared infrastructure is cached for this loaded EXE, independent of the
+/// first selecting feature. Inactive features remove their hooks; cached code
+/// remains address-stable for other users and later re-selection.
+ExtNameTextStatic.withSharedOwner = function(callback)
+{
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	try { return callback(); }
+	finally { Exe.ActivePatch = owner; }
+};
+
+ExtNameTextStatic.registerUser = function(owner, feature)
+{
+	const users = CACHE.get("ExtNameTextStatic.Users") ?? {};
+	users[owner] = (users[owner] ?? 0) | feature;
+	CACHE.put("ExtNameTextStatic.Users", users);
+};
+
+ExtNameTextStatic.release = function(owner)
+{
+	const users = CACHE.get("ExtNameTextStatic.Users") ?? {};
+	delete users[owner];
+	CACHE.put("ExtNameTextStatic.Users", users);
+	const state = CACHE.get("ExtNameTextStatic.State");
+	if (!state || !state.shared)
+		return;
+	state.features = Object.values(users).reduce((mask, feature) => mask | feature, 0);
+	ExtNameTextStatic.writeFeatures(state);
+	if (Object.keys(users).length === 0)
+	{
+		ExtNameTextStatic.withSharedOwner(function()
+		{
+			Exe.DelTag("ExtNameTextStatic.TextBridge");
+			Exe.DelTag("NativeName.FrameCaller");
+			const npc = CACHE.get("AlwaysShowNpcName.QjsState");
+			if (npc && Warp.GetPatchState("AlwaysShowNpcName"))
+				NpcNameStatic.patchFrameCaller(
+					Exe.Vir2Phy(ExtNameTextStatic.FrameCaller, CODE), npc.bridgeVir);
+		});
+	}
+	else
+	{
+		ExtNameTextStatic.patchTextSurfaces(state,
+			(state.features & ExtNameTextStatic.FeatureColors) !== 0);
+		// Restore the outer item renderer after refreshing its shared base.
+		const item = CACHE.get("ItemColorStatic.State");
+		if (item && item.ownerPatch !== owner &&
+			ExtNameTextStatic.isPatchSelected(item.ownerPatch))
+			ItemColorStatic.patchTextSurfaces(item);
+	}
+	CACHE.put("ExtNameTextStatic.State", state);
+};
+
 ExtNameTextStatic.writeFeatures = function(state)
 {
 	if (!state || !Number.isInteger(state.statePhy) ||
@@ -93,7 +166,9 @@ ExtNameTextStatic.writeFeatures = function(state)
 		throw Error("ExtNameTextStatic: invalid shared feature state");
 
 	const owner = Exe.ActivePatch;
-	if (owner !== state.ownerPatch)
+	if (state.shared)
+		Exe.ActivateGlobal();
+	else if (owner !== state.ownerPatch)
 		Exe.SetActivePatch(state.ownerPatch);
 	try
 	{
@@ -172,7 +247,7 @@ ExtNameTextStatic.isStateLive = function(state)
 {
 	if (!state || !Number.isInteger(state.stateVir) ||
 		!Number.isInteger(state.lookupVir) ||
-		!ExtNameTextStatic.isPatchSelected(state.ownerPatch))
+		(!state.shared && !ExtNameTextStatic.isPatchSelected(state.ownerPatch)))
 		return false;
 	return !!state.minimal || Number.isInteger(state.bridgeVir);
 };
@@ -831,78 +906,81 @@ ExtNameTextStatic.findApis = function(requireColor)
 
 ExtNameTextStatic.patchTextSurfaces = function(state, requireColor)
 {
-	if (!ExtNameTextStatic.isStateLive(state))
-		throw Error("ExtNameTextStatic: refusing stale text-bridge state");
-	const apis = ExtNameTextStatic.findApis(requireColor);
-	const emoji = CACHE.get("FluentEmojiStatic.State");
-	if ((state.features & ExtNameTextStatic.FeatureEmoji) !== 0 && emoji &&
-		ExtNameTextStatic.isPatchSelected(emoji.ownerPatch))
+	return ExtNameTextStatic.withSharedOwner(function()
 	{
-		apis.emojiDraw = emoji.drawVir;
-		apis.emojiMeasure = emoji.measureVir;
-	}
-	const findWide = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildFindWide(
-			state.lookupVir,
-			state.ansiScratchVir,
-			apis.wideToMulti
-		)
-	);
-	const textOut = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildTextOut(
-			state.stateVir,
-			findWide.virAddr,
-			state.wideScratchVir,
-			apis
-		)
-	);
-	const extent = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildExtent(
-			state.stateVir,
-			findWide.virAddr,
-			state.wideScratchVir,
-			apis
-		)
-	);
+		if (!ExtNameTextStatic.isStateLive(state))
+			throw Error("ExtNameTextStatic: refusing stale text-bridge state");
+		const apis = ExtNameTextStatic.findApis(requireColor);
+		const emoji = CACHE.get("FluentEmojiStatic.State");
+		if ((state.features & ExtNameTextStatic.FeatureEmoji) !== 0 && emoji &&
+			ExtNameTextStatic.isPatchSelected(emoji.ownerPatch))
+		{
+			apis.emojiDraw = emoji.drawVir;
+			apis.emojiMeasure = emoji.measureVir;
+		}
+		const findWide = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildFindWide(
+				state.lookupVir,
+				state.ansiScratchVir,
+				apis.wideToMulti
+			)
+		);
+		const textOut = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildTextOut(
+				state.stateVir,
+				findWide.virAddr,
+				state.wideScratchVir,
+				apis
+			)
+		);
+		const extent = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildExtent(
+				state.stateVir,
+				findWide.virAddr,
+				state.wideScratchVir,
+				apis
+			)
+		);
 
-	const owner = Exe.ActivePatch;
-	Exe.ActivateGlobal();
-	Exe.BeginTag(CACHE.getTag("ExtNameTextStatic.TextBridge"), true);
-	try
-	{
-		const textDirectPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutDirect, CODE);
-		const extentDirectPhy = Exe.Vir2Phy(ExtNameTextStatic.ExtentDirect, CODE);
-		const textThunkPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutThunk, CODE);
-		const extentThunkPhy = Exe.Vir2Phy(ExtNameTextStatic.ExtentThunk, CODE);
-		if (textDirectPhy < 0 || extentDirectPhy < 0 ||
-			textThunkPhy < 0 || extentThunkPhy < 0)
-			throw Error("ExtNameTextStatic: a text call surface is not mapped");
-		Exe.SetCALL(textDirectPhy, textOut.virAddr, 0);
-		Exe.SetNOPs(textDirectPhy + 5, 1);
-		Exe.SetCALL(extentDirectPhy, extent.virAddr, 0);
-		Exe.SetNOPs(extentDirectPhy + 5, 1);
-		Exe.SetJMP(textThunkPhy, textOut.virAddr, 0);
-		Exe.SetNOPs(textThunkPhy + 5, 1);
-		Exe.SetJMP(extentThunkPhy, extent.virAddr, 0);
-		Exe.SetNOPs(extentThunkPhy + 5, 1);
-	}
-	finally
-	{
-		Exe.EndTag();
-		Exe.ActivePatch = owner;
-	}
-	state.findWideVir = findWide.virAddr;
-	state.textOutVir = textOut.virAddr;
-	state.extentVir = extent.virAddr;
-	state.apis = apis;
-	return state;
+		const owner = Exe.ActivePatch;
+		Exe.ActivateGlobal();
+		Exe.BeginTag("ExtNameTextStatic.TextBridge", true);
+		try
+		{
+			const textDirectPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutDirect, CODE);
+			const extentDirectPhy = Exe.Vir2Phy(ExtNameTextStatic.ExtentDirect, CODE);
+			const textThunkPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutThunk, CODE);
+			const extentThunkPhy = Exe.Vir2Phy(ExtNameTextStatic.ExtentThunk, CODE);
+			if (textDirectPhy < 0 || extentDirectPhy < 0 ||
+				textThunkPhy < 0 || extentThunkPhy < 0)
+				throw Error("ExtNameTextStatic: a text call surface is not mapped");
+			Exe.SetCALL(textDirectPhy, textOut.virAddr, 0);
+			Exe.SetNOPs(textDirectPhy + 5, 1);
+			Exe.SetCALL(extentDirectPhy, extent.virAddr, 0);
+			Exe.SetNOPs(extentDirectPhy + 5, 1);
+			Exe.SetJMP(textThunkPhy, textOut.virAddr, 0);
+			Exe.SetNOPs(textThunkPhy + 5, 1);
+			Exe.SetJMP(extentThunkPhy, extent.virAddr, 0);
+			Exe.SetNOPs(extentThunkPhy + 5, 1);
+		}
+		finally
+		{
+			Exe.EndTag();
+			Exe.ActivePatch = owner;
+		}
+		state.findWideVir = findWide.virAddr;
+		state.textOutVir = textOut.virAddr;
+		state.extentVir = extent.virAddr;
+		state.apis = apis;
+		return state;
+	});
 };
 
 ExtNameTextStatic.patchFrameCaller = function(callerPhy, bridgeVir)
 {
 	const owner = Exe.ActivePatch;
 	Exe.ActivateGlobal();
-	Exe.BeginTag(CACHE.getTag("NativeName.FrameCaller"), true);
+	Exe.BeginTag("NativeName.FrameCaller", true);
 	try
 	{
 		Exe.SetCALL(callerPhy, bridgeVir, 0);
@@ -1147,8 +1225,7 @@ ExtNameTextStatic.patch128ByteNamePackets = function(state)
 	const npcLength = ExtNameTextStatic.allocateCode(
 		ExtNameTextStatic.buildAckNameNpcLengthBridge());
 	const owner = Exe.ActivePatch;
-	Exe.ActivateGlobal();
-	Exe.BeginTag(CACHE.getTag("ExtNameTextStatic.NamePackets128"), true);
+	Exe.BeginTag("ExtNameTextStatic.NamePackets128", true);
 	try
 	{
 		Exe.SetJMP(lengthPhy, lengthBridge.virAddr, 0);
@@ -1179,122 +1256,131 @@ ExtNameTextStatic.patch128ByteNamePackets = function(state)
 };
 ExtNameTextStatic.ensureInstalled = function(_, extnVir)
 {
-	let state = CACHE.get("ExtNameTextStatic.State");
-	const stateLive = ExtNameTextStatic.isStateLive(state);
-	if (stateLive && !state.minimal)
-		return state;
-	const previousFeatures = stateLive && Number.isInteger(state.features)
-		? state.features
-		: 0;
-	const previousOwner = _;
-
-	const callerPhy = ExtNameStaticAsm.assertCode(
-		"frame caller prefix",
-		ExtNameTextStatic.FrameCaller - 2,
-		ExtNameTextStatic.FrameCallerPrefix
-	) + 2;
-	const npcState = CACHE.get("AlwaysShowNpcName.QjsState");
-	const previousTarget = npcState && Number.isInteger(npcState.bridgeVir)
-		? npcState.bridgeVir
-		: Exe.GetTgtAddr(callerPhy + 1);
-
-	const [statePhy, stateVir] = Exe.Allocate(ExtNameTextStatic.StateSize, 4);
-	ExtNameTextStatic.zeroBlock(statePhy, ExtNameTextStatic.StateSize);
-	const tableSize = ExtNameTextStatic.MapCapacity * ExtNameTextStatic.EntrySize;
-	const [tablePhy, tableVir] = Exe.Allocate(tableSize, 0x10);
-	ExtNameTextStatic.zeroBlock(tablePhy, tableSize);
-	const [ansiScratchPhy, ansiScratchVir] = Exe.Allocate(256, 0x10);
-	ExtNameTextStatic.zeroBlock(ansiScratchPhy, 256);
-	const [wideScratchPhy, wideScratchVir] = Exe.Allocate(
-		ExtNameTextStatic.ValueCapacity * 2,
-		0x10
-	);
-	ExtNameTextStatic.zeroBlock(wideScratchPhy, ExtNameTextStatic.ValueCapacity * 2);
-	const [packetScratchPhy, packetScratchVir] = Exe.Allocate(
-		ExtNameTextStatic.ValueCapacity * 2,
-		0x10
-	);
-	ExtNameTextStatic.zeroBlock(packetScratchPhy, ExtNameTextStatic.ValueCapacity * 2);
-	const literals = {
-		space: ExtNameTextStatic.allocateText(" "),
-		pipe: ExtNameTextStatic.allocateText(" | "),
-		openSquare: ExtNameTextStatic.allocateText(" ["),
-		closeSquare: ExtNameTextStatic.allocateText("]"),
-		openBrace: ExtNameTextStatic.allocateText(" {"),
-		closeBrace: ExtNameTextStatic.allocateText("}"),
-		openParen: ExtNameTextStatic.allocateText(" ("),
-		closeParen: ExtNameTextStatic.allocateText(")")
-	};
-	const hash = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildHashAnsi());
-	const equal = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildStrEqual());
-	const copy = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
-	const append = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildAppendZ());
-	const put = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildMapPut(tableVir, hash.virAddr, equal.virAddr, copy.virAddr)
-	);
-	const lookup = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildMapLookup(tableVir, hash.virAddr, equal.virAddr)
-	);
-	const store = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildPacketStore(
-			put.virAddr,
-			copy.virAddr,
-			append.virAddr,
-			packetScratchVir,
-			packetScratchVir + ExtNameTextStatic.ValueCapacity,
-			literals
-		)
-	);
-	const frame = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildFrame(
-			stateVir,
-			extnVir,
-			store.virAddr
-		)
-	);
-	const bridge = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildFrameBridge(frame.virAddr, previousTarget)
-	);
-	ExtNameTextStatic.patchFrameCaller(callerPhy, bridge.virAddr);
-
-	state = {
-		statePhy,
-		stateVir,
-		tablePhy,
-		tableVir,
-		ansiScratchVir,
-		wideScratchVir,
-		lookupVir: lookup.virAddr,
-		putVir: put.virAddr,
-		storeVir: store.virAddr,
-		frameVir: frame.virAddr,
-		bridgeVir: bridge.virAddr,
-		previousTarget,
-		callerPhy,
-		extnVir,
-		ownerPatch: previousOwner,
-		features: previousFeatures
-	};
-	ExtNameTextStatic.writeFeatures(state);
-	CACHE.put("ExtNameTextStatic.State", state);
-	ExtNameTextStatic.patchTextSurfaces(state, false);
-	CACHE.put("ExtNameTextStatic.State", state);
-
-	StaticPatchRefresh.add("CustomExtName.StaticTextBridge", function()
+	return ExtNameTextStatic.withSharedOwner(function()
 	{
-		const current = CACHE.get("ExtNameTextStatic.State");
-		if (!ExtNameTextStatic.isStateLive(current))
-			return false;
-		ExtNameTextStatic.writeFeatures(current);
-		ExtNameTextStatic.patchFrameCaller(current.callerPhy, current.bridgeVir);
-		ExtNameTextStatic.patchTextSurfaces(
-			current,
-			(current.features & ExtNameTextStatic.FeatureColors) !== 0
+		let state = CACHE.get("ExtNameTextStatic.State");
+		const stateLive = ExtNameTextStatic.isStateLive(state);
+		if (stateLive && !state.minimal)
+		{
+			ExtNameTextStatic.patchFrameCaller(state.callerPhy, state.bridgeVir);
+			ExtNameTextStatic.patchTextSurfaces(state, (state.features & ExtNameTextStatic.FeatureColors) !== 0);
+			return state;
+		}
+		const previousFeatures = stateLive && Number.isInteger(state.features)
+			? state.features
+			: 0;
+		const previousOwner = _;
+
+		const callerPhy = ExtNameStaticAsm.assertCode(
+			"frame caller prefix",
+			ExtNameTextStatic.FrameCaller - 2,
+			ExtNameTextStatic.FrameCallerPrefix
+		) + 2;
+		const npcState = CACHE.get("AlwaysShowNpcName.QjsState");
+		const previousTarget = npcState && Number.isInteger(npcState.bridgeVir)
+			? npcState.bridgeVir
+			: Exe.GetTgtAddr(callerPhy + 1);
+
+		const [statePhy, stateVir] = Exe.Allocate(ExtNameTextStatic.StateSize, 4);
+		ExtNameTextStatic.zeroBlock(statePhy, ExtNameTextStatic.StateSize);
+		const tableSize = ExtNameTextStatic.MapCapacity * ExtNameTextStatic.EntrySize;
+		const [tablePhy, tableVir] = Exe.Allocate(tableSize, 0x10);
+		ExtNameTextStatic.zeroBlock(tablePhy, tableSize);
+		const [ansiScratchPhy, ansiScratchVir] = Exe.Allocate(256, 0x10);
+		ExtNameTextStatic.zeroBlock(ansiScratchPhy, 256);
+		const [wideScratchPhy, wideScratchVir] = Exe.Allocate(
+			ExtNameTextStatic.ValueCapacity * 2,
+			0x10
 		);
-		CACHE.put("ExtNameTextStatic.State", current);
-		return true;
+		ExtNameTextStatic.zeroBlock(wideScratchPhy, ExtNameTextStatic.ValueCapacity * 2);
+		const [packetScratchPhy, packetScratchVir] = Exe.Allocate(
+			ExtNameTextStatic.ValueCapacity * 2,
+			0x10
+		);
+		ExtNameTextStatic.zeroBlock(packetScratchPhy, ExtNameTextStatic.ValueCapacity * 2);
+		const literals = {
+			space: ExtNameTextStatic.allocateText(" "),
+			pipe: ExtNameTextStatic.allocateText(" | "),
+			openSquare: ExtNameTextStatic.allocateText(" ["),
+			closeSquare: ExtNameTextStatic.allocateText("]"),
+			openBrace: ExtNameTextStatic.allocateText(" {"),
+			closeBrace: ExtNameTextStatic.allocateText("}"),
+			openParen: ExtNameTextStatic.allocateText(" ("),
+			closeParen: ExtNameTextStatic.allocateText(")")
+		};
+		const hash = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildHashAnsi());
+		const equal = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildStrEqual());
+		const copy = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
+		const append = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildAppendZ());
+		const put = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildMapPut(tableVir, hash.virAddr, equal.virAddr, copy.virAddr)
+		);
+		const lookup = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildMapLookup(tableVir, hash.virAddr, equal.virAddr)
+		);
+		const store = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildPacketStore(
+				put.virAddr,
+				copy.virAddr,
+				append.virAddr,
+				packetScratchVir,
+				packetScratchVir + ExtNameTextStatic.ValueCapacity,
+				literals
+			)
+		);
+		const frame = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildFrame(
+				stateVir,
+				extnVir,
+				store.virAddr
+			)
+		);
+		const bridge = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildFrameBridge(frame.virAddr, previousTarget)
+		);
+		ExtNameTextStatic.patchFrameCaller(callerPhy, bridge.virAddr);
+
+		state = {
+			statePhy,
+			stateVir,
+			tablePhy,
+			tableVir,
+			ansiScratchVir,
+			wideScratchVir,
+			lookupVir: lookup.virAddr,
+			putVir: put.virAddr,
+			storeVir: store.virAddr,
+			frameVir: frame.virAddr,
+			bridgeVir: bridge.virAddr,
+			previousTarget,
+			callerPhy,
+			extnVir,
+			ownerPatch: previousOwner,
+			shared: true,
+			features: previousFeatures
+		};
+		ExtNameTextStatic.writeFeatures(state);
+		CACHE.put("ExtNameTextStatic.State", state);
+		ExtNameTextStatic.patchTextSurfaces(state, false);
+		CACHE.put("ExtNameTextStatic.State", state);
+
+		StaticPatchRefresh.add("CustomExtName.StaticTextBridge", function()
+		{
+			const current = CACHE.get("ExtNameTextStatic.State");
+			if (!ExtNameTextStatic.isStateLive(current) ||
+				Object.keys(CACHE.get("ExtNameTextStatic.Users") ?? {}).length === 0)
+				return false;
+			ExtNameTextStatic.writeFeatures(current);
+			ExtNameTextStatic.patchFrameCaller(current.callerPhy, current.bridgeVir);
+			ExtNameTextStatic.patchTextSurfaces(
+				current,
+				(current.features & ExtNameTextStatic.FeatureColors) !== 0
+			);
+			CACHE.put("ExtNameTextStatic.State", current);
+			return true;
+		});
+		return state;
 	});
-	return state;
 };
 
 ExtNameTextStatic.buildMissingFindWide = function()
@@ -1306,62 +1392,69 @@ ExtNameTextStatic.buildMissingFindWide = function()
 
 ExtNameTextStatic.enableEmoji = function(_, renderer)
 {
-	ExtNameTextStatic.selectProfile();
-	if (!renderer || !Number.isInteger(renderer.drawVir) ||
-		!Number.isInteger(renderer.measureVir))
-		throw Error("ExtNameTextStatic: emoji renderer state unavailable");
-
-	let state = CACHE.get("ExtNameTextStatic.State");
-	if (!ExtNameTextStatic.isStateLive(state))
+	const featureOwner = Exe.ActivePatch;
+	return ExtNameTextStatic.withSharedOwner(function()
 	{
-		const [statePhy, stateVir] = Exe.Allocate(ExtNameTextStatic.StateSize, 4);
-		ExtNameTextStatic.zeroBlock(statePhy, ExtNameTextStatic.StateSize);
-		const [wideScratchPhy, wideScratchVir] = Exe.Allocate(
-			ExtNameTextStatic.ValueCapacity * 2,
-			0x10
-		);
-		ExtNameTextStatic.zeroBlock(
-			wideScratchPhy,
-			ExtNameTextStatic.ValueCapacity * 2
-		);
-		const missing = ExtNameTextStatic.allocateCode(
-			ExtNameTextStatic.buildMissingFindWide()
-		);
-		state = {
-			statePhy,
-			stateVir,
-			wideScratchVir,
-			lookupVir: missing.virAddr,
-			features: 0,
-			ownerPatch: _,
-			minimal: true
-		};
-	}
-	state.features |= ExtNameTextStatic.FeatureEmoji;
-	ExtNameTextStatic.writeFeatures(state);
-	CACHE.put("ExtNameTextStatic.State", state);
-	ExtNameTextStatic.patchTextSurfaces(
-		state,
-		(state.features & ExtNameTextStatic.FeatureColors) !== 0
-	);
-	CACHE.put("ExtNameTextStatic.State", state);
+		ExtNameTextStatic.selectProfile();
+		if (!renderer || !Number.isInteger(renderer.drawVir) ||
+			!Number.isInteger(renderer.measureVir))
+			throw Error("ExtNameTextStatic: emoji renderer state unavailable");
 
-	if (typeof ItemColorStatic !== "undefined" &&
-		typeof ItemColorStatic.patchTextSurfaces === "function")
-	{
-		const itemState = CACHE.get("ItemColorStatic.State");
-		if (itemState && Number.isInteger(itemState.stateVir) &&
-			ExtNameTextStatic.isPatchSelected(itemState.ownerPatch))
+		let state = CACHE.get("ExtNameTextStatic.State");
+		if (!ExtNameTextStatic.isStateLive(state))
 		{
-			ItemColorStatic.patchTextSurfaces(itemState);
-			CACHE.put("ItemColorStatic.State", itemState);
+			const [statePhy, stateVir] = Exe.Allocate(ExtNameTextStatic.StateSize, 4);
+			ExtNameTextStatic.zeroBlock(statePhy, ExtNameTextStatic.StateSize);
+			const [wideScratchPhy, wideScratchVir] = Exe.Allocate(
+				ExtNameTextStatic.ValueCapacity * 2,
+				0x10
+			);
+			ExtNameTextStatic.zeroBlock(
+				wideScratchPhy,
+				ExtNameTextStatic.ValueCapacity * 2
+			);
+			const missing = ExtNameTextStatic.allocateCode(
+				ExtNameTextStatic.buildMissingFindWide()
+			);
+			state = {
+				statePhy,
+				stateVir,
+				wideScratchVir,
+				lookupVir: missing.virAddr,
+				features: 0,
+				ownerPatch: _,
+				shared: true,
+				minimal: true
+			};
 		}
-	}
-	return true;
+		ExtNameTextStatic.registerUser(featureOwner, ExtNameTextStatic.FeatureEmoji);
+		state.features |= ExtNameTextStatic.FeatureEmoji;
+		ExtNameTextStatic.writeFeatures(state);
+		CACHE.put("ExtNameTextStatic.State", state);
+		ExtNameTextStatic.patchTextSurfaces(
+			state,
+			(state.features & ExtNameTextStatic.FeatureColors) !== 0
+		);
+		CACHE.put("ExtNameTextStatic.State", state);
+
+		if (typeof ItemColorStatic !== "undefined" &&
+			typeof ItemColorStatic.patchTextSurfaces === "function")
+		{
+			const itemState = CACHE.get("ItemColorStatic.State");
+			if (itemState && Number.isInteger(itemState.stateVir) &&
+				ExtNameTextStatic.isPatchSelected(itemState.ownerPatch))
+			{
+				ItemColorStatic.patchTextSurfaces(itemState);
+				CACHE.put("ItemColorStatic.State", itemState);
+			}
+		}
+		return true;
+	});
 };
 
 ExtNameTextStatic.enable = function(_, feature)
 {
+	const featureOwner = Exe.ActivePatch;
 	ExtNameTextStatic.selectProfile();
 	if (typeof ExtNameStaticAsm === "undefined" || typeof ExtNameStaticAsm.asm !== "function")
 		throw Error("ExtNameTextStatic: assembly helper unavailable");
@@ -1382,7 +1475,8 @@ ExtNameTextStatic.enable = function(_, feature)
 
 	const state = ExtNameTextStatic.ensureInstalled(_, extn.blockVir);
 	if ((feature & ExtNameTextStatic.FeatureNames) !== 0)
-		ExtNameTextStatic.patch128ByteNamePackets(state);
+		ExtNameTextStatic.patch128ByteNamePackets({});
+	ExtNameTextStatic.registerUser(featureOwner, feature);
 	state.features |= feature;
 	ExtNameTextStatic.writeFeatures(state);
 	if ((feature & ExtNameTextStatic.FeatureColors) !== 0)

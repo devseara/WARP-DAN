@@ -1,8 +1,32 @@
 /**************************************************************************\
-* Canonical companion names for 2025-07-16 Ragexe.                           *
-* Description: Relocate the native pet/homunculus/mercenary name arrays      *
-* to 128 bytes, redirect all profiled executable references, and consume    *
-* widened status packet fields. No display-name alias or truncated key.     *
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Relocate the native    *
+*                   pet/homunculus/mercenary name arrays to 128 bytes,     *
+*                   redirect all profiled executable references, and       *
+*                   consume widened status packet fields. No display-name  *
+*                   alias or truncated key. Native hooks, data and code    *
+*                   revert together with the selecting patch.              *
+*                                                                          *
 \**************************************************************************/
 
 CompanionNamesStatic = {
@@ -110,8 +134,8 @@ CompanionNamesStatic.install = function(state)
 	const homName = ExtNameTextStatic.allocateCode(CompanionNamesStatic.buildHomName(names.hom));
 	const homFields = ExtNameTextStatic.allocateCode(CompanionNamesStatic.buildHomFields());
 	const owner = Exe.ActivePatch;
-	Exe.ActivateGlobal();
-	Exe.BeginTag(CACHE.getTag("CompanionNamesStatic.NamePackets128"), true);
+
+	Exe.BeginTag("CompanionNamesStatic.NamePackets128", true);
 	try
 	{
 		for (const site of sites) Exe.SetUint32(site.phy, names[site.group] + site.offset);
