@@ -7148,7 +7148,14 @@ AutoSupportUI = function(_)
 		)
 	);
 	Exe.SetCALL(verified.controllerBootstrapPhy, controllerBootstrap.vir, 0);
-	const menuButtonVisible = AutoSupportUIStatic.allocateBytes([1, 0, 0, 0], 4);
+	const menuButtonVisibleValue =
+		typeof NewButtonVis !== "undefined" &&
+		typeof NewButtonVis.getCustomVisibility === "function"
+			? NewButtonVis.getCustomVisibility("AutoSupport", 1)
+			: 1;
+	const menuButtonVisible = AutoSupportUIStatic.allocateBytes(
+		[menuButtonVisibleValue, 0, 0, 0], 4
+	);
 	const menuBridge = {
 		toggleVir: toggle.vir,
 		requestVir: menuToggleRequest.vir,
@@ -7163,7 +7170,7 @@ AutoSupportUI = function(_)
 		Number.isInteger(menuRoute.visibleVir))
 	{
 		Exe.SetUint32(menuRoute.requestCellPhy, menuToggleRequest.vir);
-		Exe.SetUint32(menuRoute.visiblePhy, 1);
+		Exe.SetUint32(menuRoute.visiblePhy, menuButtonVisibleValue);
 		menuBridge.visiblePhy = menuRoute.visiblePhy;
 		menuBridge.visibleVir = menuRoute.visibleVir;
 	}

@@ -3369,14 +3369,21 @@ ItemCollectionUI = function(_)
 		mouseWheel.vir, destructor.vir
 	);
 	const toggle = c.allocateCode(c.buildToggle(state.vir, vtable.vir, sender.vir));
-	let menuButtonVisible = c.allocateBytes([1, 0, 0, 0], 4);
+	const menuButtonVisibleValue =
+		typeof NewButtonVis !== "undefined" &&
+		typeof NewButtonVis.getCustomVisibility === "function"
+			? NewButtonVis.getCustomVisibility("Item Collection", 1)
+			: 1;
+	let menuButtonVisible = c.allocateBytes(
+		[menuButtonVisibleValue, 0, 0, 0], 4
+	);
 	const menuRoute = CACHE.get("ROGlobalZeroMenu.ItemCollectionRoute.v1");
 	if (menuRoute && Number.isInteger(menuRoute.requestCellPhy) &&
 		Number.isInteger(menuRoute.visiblePhy) &&
 		Number.isInteger(menuRoute.visibleVir))
 	{
 		Exe.SetUint32(menuRoute.requestCellPhy, toggle.vir);
-		Exe.SetUint32(menuRoute.visiblePhy, 1);
+		Exe.SetUint32(menuRoute.visiblePhy, menuButtonVisibleValue);
 		menuButtonVisible = {
 			phy: menuRoute.visiblePhy,
 			vir: menuRoute.visibleVir
@@ -3410,7 +3417,9 @@ ItemCollectionUI = function(_)
 		{
 			const recovered = routeCells[0];
 			Exe.SetUint32(recovered.requestCellPhy, toggle.vir);
-			Exe.SetUint32(recovered.requestCellPhy + 4, 1);
+			Exe.SetUint32(
+				recovered.requestCellPhy + 4, menuButtonVisibleValue
+			);
 			menuButtonVisible = {
 				phy: recovered.requestCellPhy + 4,
 				vir: recovered.requestCellVir + 4

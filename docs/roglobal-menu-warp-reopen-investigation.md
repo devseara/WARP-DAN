@@ -1,6 +1,6 @@
 # RO Global UI warp/reopen resolution
 
-Last updated: 2026-08-12
+Last updated: 2026-09-08
 
 Status: accepted in live New UI and Classic UI testing.
 
@@ -37,17 +37,23 @@ texture load, or theme-specific coordinate.
 
 ## Accepted design
 
-The row invariant is:
+The row invariant is now:
 
-    rows = ceil(visible native commands / 5) + 1 permanent control row
+    rows = ceil((visible native commands + visible custom buttons + MENU) / 5)
 
-With 25 native commands, the maximum and accepted live layout is six rows.
-Collapse changes control visibility but never parent or surface height.
+The custom Auto Hunt, Item Collection, and AutoSupport children append after
+the compact native-command count, so they fill unused columns in the last
+native row before overflowing to another row. MENU remains a counted,
+bottom-right reserved occupant. With 25 native commands and three custom
+buttons, the maximum layout remains six rows. Collapse changes control
+visibility but never drops the required MENU occupancy.
 
 Auto Hunt is a real native UIButton child owned by UIMenuIconWnd. It uses the
 stock UIButton draw entry, native normal/hover/pressed image assignment, native
-child-tree composition, and the first slot of the permanent control row. The
-native MENU control keeps its final slot. New UI retains a native-compositor
+child-tree composition, and the first available slot after visible native
+commands. Item Collection and AutoSupport follow it without gaps when earlier
+custom buttons are hidden. The native MENU control keeps its final slot. New UI
+retains a native-compositor
 fallback for the MENU normal image; Classic uses the native toggle and no
 custom full-panel background.
 

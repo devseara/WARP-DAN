@@ -18,11 +18,11 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-19                                             *
-*   Last Modified : 2026-08-12                                             *
+*   Last Modified : 2026-09-08                                             *
 *                                                                          *
 *   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
-*                   Ragexe, adds Auto Hunt and Item Collection as native  *
-*                   children in a permanent control row, and keeps menu   *
+*                   Ragexe, appends Auto Hunt, Item Collection, and       *
+*                   AutoSupport into the first available grid slots, and  *
 *                   geometry stable across close/reopen and map changes.  *
 *                   New UI uses complete row                              *
 *                   backgrounds; Classic keeps only the height required   *
@@ -720,7 +720,7 @@ MenuZeroStatic.buildEnsureMenuButton = function(
 
 MenuZeroStatic.buildSyncMenuButton = function(
 	buttonStateVir, visibleMaskVir, visibleVir, gridStrideYVir,
-	themeStateVir, loadThemeVir, column
+	themeStateVir, loadThemeVir, priorVisibleVirs
 )
 {
 	const s = MenuZeroStatic;
@@ -749,12 +749,18 @@ MenuZeroStatic.buildSyncMenuButton = function(
 	a.emit(0x8D, 0x48, 0xFF, 0x23, 0xC1, 0x42);
 	a.jmp("count");
 	a.label("count_done");
+	for (let i = 0; i < priorVisibleVirs.length; i++)
+	{
+		const hidden = "prior_" + i + "_hidden";
+		a.emit(0x83, 0x3D); a.dword(priorVisibleVirs[i]); a.emit(0x00);
+		a.jcc(0x84, hidden);
+		a.emit(0x42);                                      // prior custom occupies a slot
+		a.label(hidden);
+	}
 	a.emit(0x8B, 0xC2);
-	a.emit(0x83, 0xC0, s.GridColumns - 1);
 	a.emit(0x33, 0xD2);
 	a.emit(0xB9); a.dword(s.GridColumns);
-	a.emit(0xF7, 0xF1);                                // EAX=control row
-	a.emit(0xBA); a.dword(column);                      // control-row column
+	a.emit(0xF7, 0xF1);                                // EAX=row, EDX=column
 	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
 	a.jcc(0x84, "classic_position");
 	a.emit(0x6B, 0xD2, s.GridStrideX);
@@ -1318,7 +1324,7 @@ MenuZeroStatic.emitRepositionTree = function(
 
 MenuZeroStatic.buildMeasureRows = function(
 	maskVir, panelHeightVir, rowCountVir, oldPanelHeightVir, gridStrideYVir,
-	autoVisibleVir, themeStateVir
+	customVisibleVirs, themeStateVir
 )
 {
 	const a = MenuZeroStatic.asm();
@@ -1337,17 +1343,23 @@ MenuZeroStatic.buildMeasureRows = function(
 	a.emit(0x42);                                      // INC EDX
 	a.jmp("measure_count");
 	a.label("measure_count_done");
-	// Native MENU owns a permanent control row below the command grid. Auto
-	// Hunt shares its first slot and the native expand/collapse control owns
-	// its last slot. Never remove this row while collapsed: a hidden warp
-	// reconstructs UIMenuIconWnd with the current expanded flag, and resizing
-	// that collapsed surface on reopen loses both controls during composition.
-	a.emit(0x8B, 0xC2);                                // MOV EAX,native count
+	// Append visible custom children after the compact native commands. Count
+	// MENU as one additional occupant so the final row always retains its
+	// bottom-right control and close/warp/reopen never rebuilds a short surface.
+	for (let i = 0; i < customVisibleVirs.length; i++)
+	{
+		const hidden = "measure_custom_" + i + "_hidden";
+		a.emit(0x83, 0x3D); a.dword(customVisibleVirs[i]); a.emit(0x00);
+		a.jcc(0x84, hidden);
+		a.emit(0x42);                                      // visible custom button
+		a.label(hidden);
+	}
+	a.emit(0x42);                                      // native MENU control
+	a.emit(0x8B, 0xC2);                                // MOV EAX,occupied slots
 	a.emit(0x83, 0xC0, MenuZeroStatic.GridColumns - 1);
 	a.emit(0x33, 0xD2);                                // XOR EDX,EDX
 	a.emit(0xB9); a.dword(MenuZeroStatic.GridColumns);
-	a.emit(0xF7, 0xF1);                                // ceil(native / columns)
-	a.emit(0x40);                                      // permanent control row
+	a.emit(0xF7, 0xF1);                                // ceil(occupied / columns)
 	a.emit(0x83, 0xF8, MenuZeroStatic.MaxRows);
 	a.jcc(0x86, "measure_rows_ready");                 // JBE
 	a.emit(0xB8); a.dword(MenuZeroStatic.MaxRows);
@@ -2301,7 +2313,7 @@ ROGlobalZeroMenu = function(_)
 			visibleMaskVir,
 			autoHuntBridge.visibleVir,
 			gridStrideYVir,
-			theme.stateVir, loadTheme.vir, 0
+			theme.stateVir, loadTheme.vir, []
 		)
 	);
 	const itemButtonDestructor = MenuZeroStatic.allocateCode(
@@ -2333,7 +2345,8 @@ ROGlobalZeroMenu = function(_)
 			visibleMaskVir,
 			itemCollectionRoute.vir + 4,
 			gridStrideYVir,
-			theme.stateVir, loadTheme.vir, 1
+			theme.stateVir, loadTheme.vir,
+			[autoHuntBridge.visibleVir]
 		)
 	);
 	const autoSupportButtonDestructor = MenuZeroStatic.allocateCode(
@@ -2362,7 +2375,8 @@ ROGlobalZeroMenu = function(_)
 		MenuZeroStatic.buildSyncMenuButton(
 			autoSupportButtonState.vir, visibleMaskVir,
 			autoSupportVisibleVir, gridStrideYVir,
-			theme.stateVir, loadTheme.vir, 2
+			theme.stateVir, loadTheme.vir,
+			[autoHuntBridge.visibleVir, itemCollectionRoute.vir + 4]
 		)
 	);
 	const syncLaunchers = MenuZeroStatic.allocateCode(
@@ -2416,7 +2430,11 @@ ROGlobalZeroMenu = function(_)
 		rowCountVir,
 		oldPanelHeightVir,
 		gridStrideYVir,
-		autoHuntBridge.visibleVir,
+		[
+			autoHuntBridge.visibleVir,
+			itemCollectionRoute.vir + 4,
+			autoSupportVisibleVir
+		],
 		theme.stateVir
 	);
 	const [measureRowsPhy, measureRowsVir] = Exe.Allocate(
@@ -2710,9 +2728,9 @@ ROGlobalZeroMenu = function(_)
 				ensureVir: ensureAutoHunt.vir,
 				syncVir: syncAutoHunt.vir,
 				ownershipPolicy:
-					"native UIButton child in permanent control row",
+					"native UIButton child appended to compact command grid",
 				positionPolicy:
-					"native child first column of permanent control row",
+					"first available slot after visible native commands",
 				newUiSurfacePolicy:
 					"45x41 New icon rendered by stock UIButton draw"
 			},
@@ -2732,7 +2750,7 @@ ROGlobalZeroMenu = function(_)
 				ensureVir: ensureItemCollection.vir,
 				syncVir: syncItemCollection.vir,
 				positionPolicy:
-					"native child second column of permanent control row",
+					"next available slot after Auto Hunt when visible",
 				registrationPolicy:
 					"runtime route cell supports either patch selection order"
 			},
@@ -2780,9 +2798,10 @@ ROGlobalZeroMenu = function(_)
 			toggleX: MenuZeroStatic.ToggleX,
 			toggleY: "panelHeight - 51",
 			dynamicRows: true,
-			reservedControlRow: true,
+			reservedControlRow: false,
+			reservedMenuSlot: true,
 			controlRowPolicy:
-				"ceil(native commands / 5) plus one permanent row; Auto Hunt first, MENU last",
+				"custom buttons fill native-grid gaps; rows cover native + visible custom + MENU",
 			visibilityPatches: ["HideNewButtons", "ShowNewButtons"],
 			commandCount: MenuZeroStatic.CommandGrid.length,
 			resourcePaths: pathPointers,

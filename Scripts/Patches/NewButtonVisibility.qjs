@@ -358,12 +358,11 @@ NewButtonVis = function(_)
 		btnChoices = Refs.Hidden.slice();
 	}
 
-	const autoHuntBridge = CACHE.get('AutoCombatUI.MenuButton.v1');
-	if (autoHuntBridge && Number.isInteger(autoHuntBridge.visiblePhy))
-		btnChoices.push(autoHuntBridge.label || 'Auto Hunt');
-	const itemCollectionBridge = CACHE.get('ItemCollectionUI.MenuButton.v1');
-	if (itemCollectionBridge && Number.isInteger(itemCollectionBridge.visiblePhy))
-		btnChoices.push(itemCollectionBridge.label || 'Item Collection');
+	for (const customButton of this.CustomButtons)
+	{
+		if (!btnChoices.includes(customButton.label))
+			btnChoices.push(customButton.label);
+	}
 	$$(_, 4.2, `Retrieve the user's selection`)
 	const selection = Exe.GetUserInput(varName, D_MultiChoice, title, "Choose the buttons to be " + suffix, [], {choices: btnChoices});
 	if (selection === false || selection.isEmpty())
@@ -397,14 +396,7 @@ NewButtonVis.stage = function(patchName)
 	const Refs = CACHE.get('NBV_Refs');
 
 	const {Type, IDMap, IDReg, TblAddrs} = Refs;
-	const autoHuntBridge = CACHE.get('AutoCombatUI.MenuButton.v1');
-	const autoHuntLabel = autoHuntBridge && autoHuntBridge.label
-		? autoHuntBridge.label
-		: 'Auto Hunt';
-	const itemCollectionBridge = CACHE.get('ItemCollectionUI.MenuButton.v1');
-	const itemCollectionLabel = itemCollectionBridge && itemCollectionBridge.label
-		? itemCollectionBridge.label
-		: 'Item Collection';
+	CACHE.del(this.CustomVisibilityKey);
 
 	$$(_, 2.2, `Iterate through the current selection and change the value in table or add corresponding JE to code`)
 	const index = this.Members.indexOf(patchName);
@@ -413,18 +405,8 @@ NewButtonVis.stage = function(patchName)
 	let prefix = '';
 	for (const key of selection)
 	{
-		if (key === autoHuntLabel && autoHuntBridge &&
-			Number.isInteger(autoHuntBridge.visiblePhy))
-		{
-			Exe.SetUint32(autoHuntBridge.visiblePhy, index);
+		if (this.applyCustomVisibility(key, index))
 			continue;
-		}
-		if (key === itemCollectionLabel && itemCollectionBridge &&
-			Number.isInteger(itemCollectionBridge.visiblePhy))
-		{
-			Exe.SetUint32(itemCollectionBridge.visiblePhy, index);
-			continue;
-		}
 		if (TblAddrs && TblAddrs.has(key))
 		{
 			Exe.SetInt8(TblAddrs.get(key), index);
@@ -452,18 +434,8 @@ NewButtonVis.stage = function(patchName)
 	{
 		for (const key of selection)
 		{
-			if (key === autoHuntLabel && autoHuntBridge &&
-				Number.isInteger(autoHuntBridge.visiblePhy))
-			{
-				Exe.SetUint32(autoHuntBridge.visiblePhy, otherIndex);
+			if (this.applyCustomVisibility(key, otherIndex))
 				continue;
-			}
-			if (key === itemCollectionLabel && itemCollectionBridge &&
-				Number.isInteger(itemCollectionBridge.visiblePhy))
-			{
-				Exe.SetUint32(itemCollectionBridge.visiblePhy, otherIndex);
-				continue;
-			}
 			if (TblAddrs && TblAddrs.has(key))
 			{
 				Exe.SetInt8(TblAddrs.get(key), otherIndex);
@@ -554,6 +526,7 @@ NewButtonVis.cleanup = function(patchName)
 	/// 1 - Delete from UserRegistry & clear the selection
 	CACHE.delUser('NBV', patchName);
 	CACHE.del('Selection:' + patchName);
+	CACHE.del(this.CustomVisibilityKey);
 
 	/// 2 - Restage the changes without the selections in the other patch if it is present.
 	if (CACHE.hasUsers('NBV'))
@@ -603,3 +576,49 @@ NewButtonVis.Data = MakeMap(
 );
 
 NewButtonVis.Members = ["HideNewButtons", "ShowNewButtons"];
+NewButtonVis.CustomVisibilityKey = "NewButtonVisibility.CustomVisibility.v1";
+NewButtonVis.CustomButtons = [
+	{label: "Auto Hunt", bridgeKey: "AutoCombatUI.MenuButton.v1"},
+	{label: "AutoSupport", bridgeKey: "AutoSupportUI.MenuButton.v1"},
+	{label: "Item Collection", bridgeKey: "ItemCollectionUI.MenuButton.v1"}
+];
+
+NewButtonVis.customButton = function(label)
+{
+	for (const customButton of this.CustomButtons)
+	{
+		if (customButton.label === label)
+			return customButton;
+	}
+	return null;
+};
+
+NewButtonVis.setCustomVisibility = function(label, visible)
+{
+	let state = CACHE.get(this.CustomVisibilityKey);
+	if (!state || typeof state !== "object")
+		state = {};
+	state[label] = visible === 0 ? 0 : 1;
+	CACHE.put(this.CustomVisibilityKey, state);
+};
+
+NewButtonVis.getCustomVisibility = function(label, fallback = 1)
+{
+	const state = CACHE.get(this.CustomVisibilityKey);
+	if (state && Number.isInteger(state[label]))
+		return state[label] === 0 ? 0 : 1;
+	return fallback === 0 ? 0 : 1;
+};
+
+NewButtonVis.applyCustomVisibility = function(label, visible)
+{
+	const customButton = this.customButton(label);
+	if (!customButton)
+		return false;
+
+	this.setCustomVisibility(customButton.label, visible);
+	const bridge = CACHE.get(customButton.bridgeKey);
+	if (bridge && Number.isInteger(bridge.visiblePhy))
+		Exe.SetUint32(bridge.visiblePhy, visible);
+	return true;
+};

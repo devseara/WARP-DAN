@@ -6840,7 +6840,14 @@ AutoCombatUI = function(_)
 		scalarSenderVir: scalarSender.vir,
 		suppressControllerVir: controllerSuppressed.vir
 	});
-	const menuButtonVisible = AutoCombatUIStatic.allocateBytes([1, 0, 0, 0], 4);
+	const menuButtonVisibleValue =
+		typeof NewButtonVis !== "undefined" &&
+		typeof NewButtonVis.getCustomVisibility === "function"
+			? NewButtonVis.getCustomVisibility("Auto Hunt", 1)
+			: 1;
+	const menuButtonVisible = AutoCombatUIStatic.allocateBytes(
+		[menuButtonVisibleValue, 0, 0, 0], 4
+	);
 	CACHE.put("AutoCombatUI.MenuButton.v1", {
 		toggleVir: toggle.vir,
 		requestVir: menuToggleRequest.vir,

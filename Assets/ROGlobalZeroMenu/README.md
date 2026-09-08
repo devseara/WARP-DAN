@@ -27,15 +27,17 @@ center band.
 
 ## Runtime contract
 
-The menu has 25 native command entries in five columns. Its height is always:
+The menu has 25 native command entries in five columns. Its height is:
 
-    ceil(visible native commands / 5) + 1 permanent control row
+    ceil((visible native commands + visible custom buttons + MENU) / 5)
 
-The permanent row prevents close, hidden warp/teleport, and reopen from
-constructing a shorter surface. Auto Hunt and Item Collection are real native
-UIButton children in the first and second control-row columns. The native MENU
-toggle retains the last slot. Both custom buttons use stock UIButton drawing,
-hit testing, hover, pressed states, and child-tree ownership.
+Auto Hunt, Item Collection, and AutoSupport are real native UIButton children
+appended after the compact native-command count. They fill unused columns in
+the last native row before another row is allocated and compact again when an
+earlier custom button is hidden. MENU remains a counted bottom-right occupant,
+which preserves the close, hidden warp/teleport, and reopen surface invariant.
+All custom buttons use stock UIButton drawing, hit testing, hover, pressed
+states, and child-tree ownership.
 
 On create, reopen, and post-MakeWindow paths, ROGlobalZeroMenu reapplies layout
 and refreshes the WindowManager rectangle without replaying native OnCreate.

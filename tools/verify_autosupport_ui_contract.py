@@ -59,7 +59,9 @@ def main() -> int:
 
     autocombat = read_qjs("Scripts/Patches/AutoCombatUI.qjs")
     support = read_qjs("Scripts/Patches/AutoSupportUI.qjs")
+    item_collection = read_qjs("Scripts/Patches/ItemCollectionUI.qjs")
     menu = read_qjs("Scripts/Patches/ROGlobalZeroMenu.qjs")
+    button_visibility = read_qjs("Scripts/Patches/NewButtonVisibility.qjs")
     for relative in ROUTER_FILES:
         text = read_qjs(relative)
         require("SharedPacket0BEF.Router.v4" in text, f"{relative} is not on router v4")
@@ -132,12 +134,36 @@ def main() -> int:
             "menu AutoSupport child ID is missing")
     require("ROGlobalZeroMenu.AutoSupportRoute.v1" in menu,
             "menu AutoSupport optional route is missing")
-    require("theme.stateVir, loadTheme.vir, 2" in menu,
-            "AutoSupport is not in the third in-box control-row slot")
+    require(
+        "priorVisibleVirs" in menu and
+        "customVisibleVirs" in menu and
+        "[autoHuntBridge.visibleVir, itemCollectionRoute.vir + 4]" in menu and
+        "reservedControlRow: false" in menu and
+        "reservedMenuSlot: true" in menu,
+        "custom menu buttons do not fill available native-grid slots",
+    )
     require("buildButtonHover(autoSupportHover.vir, 0, -20)" in menu,
             "AutoSupport tooltip is not anchored immediately above its native button")
     require("buildButtonHover = function(textVir, localX = null, localY = null)" in menu,
             "menu hover bridge does not support an explicit native local anchor")
+    require(
+        'NewButtonVis.CustomVisibilityKey = "NewButtonVisibility.CustomVisibility.v1"' in
+        button_visibility and
+        '{label: "Auto Hunt", bridgeKey: "AutoCombatUI.MenuButton.v1"}' in
+        button_visibility and
+        '{label: "AutoSupport", bridgeKey: "AutoSupportUI.MenuButton.v1"}' in
+        button_visibility and
+        '{label: "Item Collection", bridgeKey: "ItemCollectionUI.MenuButton.v1"}' in
+        button_visibility and
+        "this.applyCustomVisibility(key, index)" in button_visibility,
+        "Show/Hide Buttons does not expose all custom menu choices order-independently",
+    )
+    require(
+        'NewButtonVis.getCustomVisibility("Auto Hunt", 1)' in autocombat and
+        'NewButtonVis.getCustomVisibility("AutoSupport", 1)' in support and
+        'NewButtonVis.getCustomVisibility("Item Collection", 1)' in item_collection,
+        "custom menu bridges do not consume pending Show/Hide visibility",
+    )
     require(
         'a.label("hover_status_item")' in support and
         "FeatureStatusItemRow" in support and
