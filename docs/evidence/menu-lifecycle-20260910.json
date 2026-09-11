@@ -1,0 +1,285 @@
+{
+  "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+  "cases": [
+    {
+      "case": "baseline",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9ab40",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b690",
+          "emitted_target": "0x1a83e90",
+          "published_target": "0x1a83e90",
+          "target_bytes": "ff15b017fc0083c04ba37c3ea801c705783ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9b0e0",
+          "emitted_target": "0x1a99b10",
+          "published_target": "0x1a99b10",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc7059858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "1fda5ed21958d87eece024afbfb2ca5592abb503567c4250bcc08ec86df54dcc"
+    },
+    {
+      "case": "hide-show",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9ab40",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b690",
+          "emitted_target": "0x1a83e90",
+          "published_target": "0x1a83e90",
+          "target_bytes": "ff15b017fc0083c04ba37c3ea801c705783ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9b0e0",
+          "emitted_target": "0x1a99b10",
+          "published_target": "0x1a99b10",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc7059858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "1fda5ed21958d87eece024afbfb2ca5592abb503567c4250bcc08ec86df54dcc"
+    },
+    {
+      "case": "hide-before-menu",
+      "returncode": 0,
+      "passed": false,
+      "construction_error": null,
+      "sha256": "87712e6994064d582111c4326364b705e48adad4ee00352e2d1305e39405de8d",
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9fd10",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1aa0860",
+          "emitted_target": "0x1a83e90",
+          "published_target": "0x1a83e90",
+          "target_bytes": "ff15b017fc0083c04ba37c3ea801c705783ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 0
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1aa02b0",
+          "emitted_target": "0x1a99b10",
+          "published_target": "0x1a99b10",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc7059858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 0
+        }
+      ]
+    },
+    {
+      "case": "reapply-autohunt",
+      "returncode": 0,
+      "passed": false,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9ab40",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1d6dfc0",
+          "target_bytes": "00000000000000000000000000000000000000000000000000",
+          "entry_valid": false,
+          "target_matches_current": false,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b690",
+          "emitted_target": "0x1a83e90",
+          "published_target": "0x1a83e90",
+          "target_bytes": "ff15b017fc0083c04ba37c3ea801c705783ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9b0e0",
+          "emitted_target": "0x1a99b10",
+          "published_target": "0x1a99b10",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc7059858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "412fefaf4ce69260d2d9e65ac09eccf2074726b014374120ae681fb12c25da89"
+    },
+    {
+      "case": "reapply-autosupport",
+      "returncode": 0,
+      "passed": false,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9ab40",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b690",
+          "emitted_target": "0x1a83e90",
+          "published_target": "0x1e9d560",
+          "target_bytes": "00000000000000000000000000000000000000000000000000",
+          "entry_valid": false,
+          "target_matches_current": false,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9b0e0",
+          "emitted_target": "0x1a99b10",
+          "published_target": "0x1a99b10",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc7059858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "5dbdbed21728d26cdd9cfeb606497e5a46315afb344b8e3fceec4ce3171c2e08"
+    },
+    {
+      "case": "reapply-both",
+      "returncode": 0,
+      "passed": false,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9ab40",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1d6ded0",
+          "target_bytes": "00000000000000000000000000000000000000000000000000",
+          "entry_valid": false,
+          "target_matches_current": false,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b690",
+          "emitted_target": "0x1a83e90",
+          "published_target": "0x216c600",
+          "target_bytes": "00000000000000000000000000000000000000000000000000",
+          "entry_valid": false,
+          "target_matches_current": false,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9b0e0",
+          "emitted_target": "0x1a99b10",
+          "published_target": "0x1a99b10",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc7059858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "ec6f61beae9dc93f8afdb2f8baa006dd9b01b2e44dd71f4a792fd4cc60538f1e"
+    }
+  ],
+  "passed": false,
+  "git_head": "77c1dde1dce5c6d4bca8f9cc6a89dab908324cd0",
+  "source_sha256": {
+    "Scripts/Patches/ROGlobalZeroMenu.qjs": "8527128c069d106f3dc67aa71aaf3e9d491689af03429ac524b228e2d70443aa",
+    "Scripts/Patches/AutoCombatUI.qjs": "d9fb58c22376eca6a478bc528a56c15d83da1503d5a7aaf7336052c0c687c706",
+    "Scripts/Patches/AutoSupportUI.qjs": "6ac218179059572a4d99a776aa6f404fc4a8cf3d6b871eca229b4cd4b0362e9b",
+    "Scripts/Patches/NewButtonVisibility.qjs": "f697333d168cda03d2e11a3f7e3bc4d3e0bf8906dc2a8f043c711e4fd2d93381",
+    "Scripts/Patches/ItemCollectionUI.qjs": "6971b2cfc66f1be3bd8e8c2193e8031d37ff727e228aa94ed7dec213a98365ae"
+  },
+  "scope": "Real WARP_console profile builds plus native ClearPatch/reapply actions; exported callback and visibility cells checked, no live game UI acceptance."
+}

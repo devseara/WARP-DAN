@@ -18,6 +18,6 @@ def reuse():
   ptr=n.alloc(len(value)+1);u.mem_write(ptr,value+b'\0');u.mem_write(frame-0x10374,struct.pack('<I',ptr));u.reg_write(UC_X86_REG_EBP,frame);u.reg_write(UC_X86_REG_ESP,sp);u.reg_write(UC_X86_REG_ESI,7);u.reg_write(UC_X86_REG_EDI,dst);u.emu_start(0xc8bdf8,0,count=100000);assert bytes(u.mem_read(dst+4,128))==value+bytes(128-len(value))
  n=Position();u=n.u;head=HEAP+0x38000;node=n.alloc(80);frame=STACK+0x18000;sp=STACK+0x10000
  for value in (b'L'*127,b'Short'):
-  u.mem_write(0x159c294,struct.pack('<II',head,1));u.mem_write(head,struct.pack('<III',node,node,node));u.mem_write(head+13,b'\x01');u.mem_write(node,struct.pack('<III',head,head,head));u.mem_write(node+20,struct.pack('<II',10,1));n.setstr(node+28,value);u.reg_write(UC_X86_REG_EBP,frame);u.reg_write(UC_X86_REG_ESP,sp);u.emu_start(0xc8e92b,0,count=100000);assert n.sent[-1][20:148]==value+bytes(128-len(value))
+  u.mem_write(0x159c294,struct.pack('<II',head,1));u.mem_write(head,struct.pack('<III',node,node,node));u.mem_write(head+13,b'\x01');u.mem_write(node,struct.pack('<III',head,head,head));u.mem_write(node+20,struct.pack('<II',10,1));n.setstr(node+28,value);u.reg_write(UC_X86_REG_EBP,frame);u.reg_write(UC_X86_REG_ESP,sp);u.emu_start(0xc8e92b,0,count=100000);assert n.sent[-1][20:44]==value[:23].ljust(24,b'\0')
  print('PASS repeated social sends:11 writers reuse identical stack/packet storage, short-after-long padding remains zero')
 reuse()

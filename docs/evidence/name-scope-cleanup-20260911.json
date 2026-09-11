@@ -1,0 +1,170 @@
+{
+  "scope": "Selected entity identities and NPC overhead group titles; independent stock limits for other labels/tokens.",
+  "built_from_profile": "build-client.yml",
+  "profile_sha256": "7183f5763964a7fbb59e5e0c072bf25f1f8f5f8d00457b28fe2f5817012a6cd5",
+  "artifacts": [
+    {
+      "path": "2025-07-16_Ragexe_name_scope_clean.exe",
+      "bytes": 28397727,
+      "sha256": "f5f0baf59dcc03b03bf667ec7ef0ebbbcb8b3c179c3cc37a3aa4e1342a7535c3"
+    },
+    {
+      "path": "server-build/char-server.exe",
+      "bytes": 1003520,
+      "sha256": "d56e38f20c8a567b4de2b31729c16649a04b90747d231cb464b57a6b5b33a578"
+    },
+    {
+      "path": "server-build/login-server.exe",
+      "bytes": 414720,
+      "sha256": "2ca0c6f38c561d83f8519d092eeef179def6f854444fb392b08b3cac6c8f96ea"
+    },
+    {
+      "path": "server-build/map-server.exe",
+      "bytes": 7691776,
+      "sha256": "a5d1004d820d0cc72c036270a2389546aeb0f8dbdccf6a95e9c3c48e81af868b"
+    },
+    {
+      "path": "server-build/web-server.exe",
+      "bytes": 769536,
+      "sha256": "75fa428beeac30ddcb6df89f3095dd8ae2c5d45ccf73e001050a45d4fdbd3bd3"
+    }
+  ],
+  "verification": {
+    "client_names": {
+      "passed": true,
+      "evidence": "accepted-name-validation.json",
+      "sha256": "44d6505ae292ea028e29dc57825921ebfb4d5751638f82386802d520a43867e5"
+    },
+    "name_lifecycle": {
+      "passed": true,
+      "evidence": "name-lifecycle/summary.json",
+      "sha256": "854b526898a212324c97519408f973ae74c9a478c3bdc98f9a084d6ad61b7dc2"
+    },
+    "menu_lifecycle": {
+      "passed": true,
+      "evidence": "menu-lifecycle/summary.json",
+      "sha256": "de66fa4fbd749b068abfbff8968381f3202899a08cde332f179d65ceee3eb898"
+    },
+    "server_protocols": {
+      "passed": true,
+      "evidence": "server-protocol-tests/result.json",
+      "sha256": "b51c3d91f8fe4e680ed54b28db1b694b0fd67220a635817c6fba5314cefbcfbd"
+    },
+    "name_buffers": {
+      "passed": true,
+      "evidence": "name-buffers/result.json",
+      "sha256": "e0bf98c363e294de6a2b889a2aa2c1b2c650ca966fb91092043bc69b8da183ca"
+    },
+    "item_grade_matrix": {
+      "passed": true,
+      "evidence": "item-grade-matrix/matrix-validation.log",
+      "sha256": "81cd9e2ef8a409bae5b32f3e65795e3d04aa8a32e417289589640dd193c722bf"
+    },
+    "item_grade_full": {
+      "passed": true,
+      "evidence": "item-grade-full-profile.log",
+      "sha256": "ed11fdc24a6b981a9ca00241dc4f77e96a966bcc62e3521fc031085d3fd9af58"
+    },
+    "packet_contract": {
+      "passed": true,
+      "evidence": "packet-contract.log",
+      "sha256": "0d7131aa60b329dd38d868fc7b113720346e3fe3206880e914963b17c5f80120"
+    },
+    "server_name_suites": {
+      "passed": true,
+      "evidence": "server-name-suites.log",
+      "sha256": "ecb7d1388edc1a9c15ec549d579cdc29f713506d7ef454a88be103b2ae75de92"
+    },
+    "sql_migration": {
+      "passed": true,
+      "cases": 41,
+      "evidence": "migration-scope.log",
+      "application_database_changed": false
+    },
+    "npc_receiver": {
+      "passed": true,
+      "cases": 32,
+      "evidence": "npc-receiver.log",
+      "live_pixels": false
+    }
+  },
+  "changed_sources_sha256": {
+    "server": {
+      "sql-files/main.sql": "7ed31e41bbbd95e959f012482130193be96c5ef6e5cd3f64b3e1a610afaa32d4",
+      "sql-files/upgrades/upgrade_20260904.sql": "ca0fb74087fca4a9b7884945ab565eddd897d90ac45252b4d56a5441fe872017",
+      "sql-files/upgrades/upgrade_20260905.sql": "ba74c9b3b810f290ba28ecc26cea591a410db87c99dcfe23809318717f3eadcc",
+      "sql-files/upgrades/upgrade_20260911.sql": "79ad597a2292b276d4aed7a369120cf7e64d302583f96c304303cff23ecedb4d",
+      "src/char/char.cpp": "72c126fb7cf81c8d0ccb21910e1161c4720aabaabbf01163fbb6d9b3f2471bb4",
+      "src/char/char.hpp": "a57f0bf332d70be568058868e7a00421a0601b2dd8cdfc5a17f92ddbeb381887",
+      "src/char/char_mapif.cpp": "d813ecb97293cb40ac0de10c020a0fca7e058ddf450ab223eb60c037331cfa9a",
+      "src/char/int_auction.cpp": "ff80614e0373ac76d9ff9f05c3114b246e6da825d0a67e74fcf1de07ae9139ed",
+      "src/char/int_clan.cpp": "fe3f4a15c1490c7d65c2ca3755ad4f3b922219bd139ac737f3410df68fcd5273",
+      "src/char/int_guild.cpp": "af0155ad5d41d3c478f4ff1e4fc3f1dea31a26bcc49ff0546fc73b074ba71d5c",
+      "src/char/inter.cpp": "55556979a964ec6e1bf5275246fceffe7eb6b15820c22ed1d51e00c2dfed2774",
+      "src/common/inter_name_packets.hpp": "68b04b54871b903f3c44e1f36570997dddc980a86974a0fe323cf20b32665f6a",
+      "src/common/mmo.hpp": "c7dc3b6d22846f5390992da5b83a5c7690989f175fdf7f39e11ed30260b33041",
+      "src/login/login.cpp": "85dbafc4cc09ed958ba88489decc8ac4d5544244f91f36605141c730135383f8",
+      "src/map/atcommand.cpp": "ec6ef72a6755a7c4eca344e963e1f3d4fd67b33c22f213a58b49317c0f8cd80c",
+      "src/map/battleground.cpp": "386a2b81db4b625fdfcf3ee3a64096f8c8e2e1de0a40c2ed6e6c9e0ebd536f53",
+      "src/map/chrif.cpp": "36a42542fa7b3e40b8afd057d01d02c9ad8a19e4ddfb0a5f4e78a52a5052102a",
+      "src/map/chrif.hpp": "77a3be6f20739156c13d618ecdcedf6ff209ccc19fc6cc55857534d0087d5efc",
+      "src/map/clan.cpp": "81124721aaa0965cda8b7c5fcf99676d23d8d0bd7bc551249bc085a1c82db828",
+      "src/map/clif.cpp": "aa97d3b060d2408ea74447d54d06f9a1969cc966b48fc45ace9e2030b25271bc",
+      "src/map/clif_packetdb.hpp": "0f7fc3a5389a923fdc4d2182666e3bd1ccfa26b8b752418676f95b8554ccb53f",
+      "src/map/guild.cpp": "cbf278fbe166ee56725d8bc81570f5330875005ea90af9ea951c77b25338bd3e",
+      "src/map/intif.cpp": "e74795f208d52ece570de4913cb7b5b23824f983481231d9c6c79ebdd37e8d04",
+      "src/map/map.cpp": "15a6de588fed15ba160e3161c470bab00d396c9561ff14f1bc1a435b47ec1901",
+      "src/map/mob.cpp": "90dcc7c3ca2b54f50cd82d0fc2de4667529df6b2dd0ab6c55d29294cbedb8c4b",
+      "src/map/mob.hpp": "da20ad5fdc863879b4e9fbc63f802ec00d10c504cea2c03e2cd491348cfafca1",
+      "src/map/npc.cpp": "aede5634a15ba77df2cfa3e4fd0fcf0b0703641b6335cb905a10e3db6cf4fe1a",
+      "src/map/npc.hpp": "d29caa3a9d986fd28118fada958daa9590cf6755f81eaab766c22834d32bc90d",
+      "src/map/packets.hpp": "be22bbb9b14dfb276d737d3704dd25fde72dcd39b789766b0f2af99723205e68",
+      "src/map/packets_struct.hpp": "8505b3077f301c219cf8dc0bd7476c2ab5368b97c8e385e35ec693124f975adc",
+      "src/map/party.cpp": "166af4e44de7884abb49d879252b9cfe7121cee33c01afaf7e37cb46dc71a228",
+      "src/map/pc.hpp": "2d81d4b569088328e5f27612571d65265bdbf4bf34d5c924a4e82792e08f4bfd",
+      "src/map/script.cpp": "3cd1f293094efced49f11d3a73286d458087cc85c1c3547d6590aabf42fe6693",
+      "src/map/status.cpp": "9d0588f413527f7a1889eee4c2cc524161cd70fe2534114797d509091b23cd68",
+      "src/map/storage.hpp": "37af9e055229edd9c22e36c9d55ed7310220718ad3ca27852365c25b0e5c4a38",
+      "src/map/unit.hpp": "d1865193a0d9890edd28d5f57c8441861f6b3e300388a6e44b0212943c0a23fa",
+      "tools/integration/extname_inter_packet_test.cpp": "30a444467b270483914d786ad193b31b56fdeaa0d27f132295fb3a9c3666a075",
+      "tools/integration/extname_secondary_packet_test.cpp": "809238611ef4283f3d6990d31ecd4dd0072f88e6eac72d65c1db390d536f5390",
+      "tools/integration/name_scope_cleanup_test.cpp": "e10a305aa0c697e40471987c717a389a84b4326a6a7434fd81f164816120b608",
+      "tools/integration/test-name-migration.php": "f59340011462929c5f371bee775f9c5fe7fc60386c6fe463bc2bcef1db75f84b",
+      "tools/integration/test-name-scope-migration.php": "5a619d7e13c810e44aba6b9b7721f254c8052bba6529e3ab7d69ba3cf0b9b826",
+      "tools/integration/verify_name_packets.py": "756c1fb6ae4e5644309a6726e4dc2de71b766444e8b5018d604b569f73464fa6",
+      "tools/integration/verify_name_scope_cleanup.py": "eff172705df999a13d349fbefea89e8c2d82eadbaa7b67e3f5b0ec05bb74ce31",
+      "tools/integration/verify_secondary_name_packets.py": "56afb21e3a52ee8df3d44e5976827c8ecb2c25cd459bc1996634725523a3d036"
+    },
+    "warp": {
+      "Patches/Special.yml": "521030a7f125bc451dc538eb80372961565ea4b6529394b0e5ef0cbf81c6f4e2",
+      "Scripts/Patches/AutoCombatUI.qjs": "54740768859e68f6fdb00acc559b28fbc25c25cd848bcfec95be1c28a34507b5",
+      "Scripts/Patches/AutoSupportUI.qjs": "08c4eed15408600a9f5822f0ad804629daef904da8e056249d2352d3cc358acd",
+      "Scripts/Patches/BattlegroundNamesStatic.qjs": null,
+      "Scripts/Patches/ClanNamesStatic.qjs": null,
+      "Scripts/Patches/ExtNameTextStatic.qjs": "3f98530a56763743f5a232160e4500058601f58d84832cd71e778b242a933a13",
+      "Scripts/Patches/GuildNamesStatic.qjs": "3186b122966e17d475bcf878f1b72de7b1618476791d70f34903eef9be8d7ad5",
+      "Scripts/Patches/GuildPositionNamesStatic.qjs": null,
+      "Scripts/Patches/ItemCollectionUI.qjs": "ec7ce5e26ad9726c1bc51c4b6957f5e72ae08358ff33fb30517fa44971c6e1a9",
+      "Scripts/Patches/NameRequestGapsStatic.qjs": "64e0fe8885616da0b9a47e9a2392137a0782681b9d724b2f97c1eb3ebe5ccdd3",
+      "Scripts/Patches/NewButtonVisibility.qjs": "a5b60e1aa971ade7119b24cacf114f48869614183847b1db5425145eefc1d70e",
+      "Scripts/Patches/ROGlobalZeroMenu.qjs": "aef5a12014e0a59556c48545c9c357261c6f8b65923f6c2b5f88aeb4634ae10c",
+      "tools/verify_all_name_packets.py": "006b6573cb1f5a5b098b657a972e6000b3be5a553f3407e5b71933f4c1f31b05",
+      "tools/verify_extname_battleground_pe.py": "527c5190672c596b2ac064e9120377639dabe58d1e993a5d9e179ae4e3a9b5ca",
+      "tools/verify_extname_guild_clan_pe.py": "b4582e623608999fa2acbcb24e06239c2c561dc21cbc38011f375a6b413c64ef",
+      "tools/verify_extname_guild_position_pe.py": "c90d4d7c986e78e6328d053b8ee65ad28214a94a80a8e6b4c1a2a18270a01e55",
+      "tools/verify_extname_party_pe.py": "559cfac274cf41aef4d99172b1aa38ffb9f23e362881e29fc898a21671a3b6ee",
+      "tools/verify_extname_social_reuse_pe.py": "8bd88e0202b2030e7fa62c84eb08bfadd7d51a4a9665af9c385110f51cca8195",
+      "tools/verify_item_grade_matrix_warp.py": "3561375cd699eec0e91bc202f7c9de8c25f2dbb8b91c827f9aa811140f370e45",
+      "tools/verify_menu_patch_lifecycle.py": "af94b1588c4a1b740d946a6ab8ae6569e9495ff08893a3e334c31595ddad1b46",
+      "tools/verify_name_patch_lifecycle.py": "324819c24fb091940ad8cbc89be477364194324d384f629ec98bb9b08cb697d0",
+      "tools/verify_name_request_gaps_pe.py": "55de704acbe38712c7c0e2e15bd143d464c00c09de5819a81e782d83f33aafd6",
+      "tools/verify_name_scope.cpp": "a861b86c75f4403111e9f66a52b2c13e728ae80b7f4e08ce981b790ffae6ff97",
+      "tools/verify_npc_name_receiver_pe.py": "85d15d339f1a696e02ad0a389594ee8496409e9d9311676a27fa12934342c4dc",
+      "tools/verify_server_name_buffers.py": "caa874a40c946c0e5c5d1f37248ac2c8fb14a62a0276042f43f1abe649c9b547"
+    }
+  },
+  "live_deployed": false,
+  "live_database_migrated": false,
+  "live_visual_matrix": "Earlier user acceptance retained; no new live two-client screenshot matrix claimed.",
+  "paired_server_commit": "f8f933dff3c3bf77ebd64215fde05a729f57523c"
+}

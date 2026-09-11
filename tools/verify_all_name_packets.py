@@ -34,8 +34,10 @@ def main():
         'verify_extname_social_reuse_pe.py', 'verify_extname_mail_pe.py',
         'verify_extname_quest_pe.py', 'verify_extname_star_pe.py',
         'verify_extname_battleground_pe.py', 'verify_extname_guild_log_pe.py',
+        'verify_extname_guild_clan_pe.py', 'verify_extname_guild_position_pe.py',
         'verify_extname_boss_tracker_pe.py', 'verify_auxiliary_identity_pe.py',
         'verify_name_eh_frames_pe.py', 'verify_legacy_creation_enter_pe.py',
+        'verify_name_request_gaps_pe.py',
     ]
     if args.npc_overlay:
         suites.append('verify_extname_npc_pe.py')

@@ -48,7 +48,7 @@ class Native:
    p=self.alloc(len(self.message_format)+1);u.mem_write(p,self.message_format+b"\0");self.ret(0,p);return
   if pc==0x59cdf0:
    dst,cap,count,fmt,value=dw(u,sp+4,5)
-   assert cap==512 and count==0xffffffff
+   assert cap in (24,512) and count==0xffffffff
    output=self.z(fmt).replace(b"%s",self.z(value))[:cap-1];u.mem_write(dst,output+b"\0");self.ret(0,len(output));return
   if pc==0xa4ad20:
    kind,ptr=dw(u,sp+4,2)
@@ -59,6 +59,7 @@ class Native:
   if pc==0x7007e0:self.ret();return
   if pc==0x4f1940:
    ptr,n=dw(u,sp+4,2);v=bytes(u.mem_read(ptr,n));self.assigned.append((ecx,v));self.setstr(ecx,v);self.ret(2,ecx);return
+  if pc==0x4e5330:self.setstr(ecx,self.z(dw(u,sp+4)[0]));self.ret(1,ecx);return
   if pc==0x4e52a0:self.setstr(ecx,self.getstr(dw(u,sp+4)[0]));self.ret(1,ecx);return
   if pc==0x5e7260:self.ret(1,0);return
   if pc==0xc9c280:
@@ -112,27 +113,27 @@ def roster():
  n.run(0xce37c0,p);assert n.members==wanted,n.members
  print("PASS guild roster: two full-name records, matching IDs and stride")
 def positions():
- n=Native();p=bytearray(4+2*132);struct.pack_into("<HH",p,0,0x166,len(p))
+ n=Native();p=bytearray(4+2*28);struct.pack_into("<HH",p,0,0x166,len(p))
  for i in range(2):
-  at=4+i*132;struct.pack_into("<I",p,at,i);p[at+4:at+132]=bytes([65+i])*127+b"\0"
+  at=4+i*28;struct.pack_into("<I",p,at,i);p[at+4:at+28]=bytes([65+i])*23+b"\0"
  n.run(0xce5450,p)
  assert dw(n.u,0x159c288)[0]==2
- values=[v for obj,v in n.assigned if len(v)==127]
- assert values==[b"A"*127,b"B"*127],values
- print("PASS guild positions: full names and native map entries")
+ values=[v for obj,v in n.assigned if len(v)==23]
+ assert values==[b"A"*23,b"B"*23],values
+ print("PASS guild positions: stock labels and native map entries")
 def clan():
- n=Native();p=bytearray(282+2*128);struct.pack_into("<HHI",p,0,0x98a,len(p),123)
- p[8:136]=b"C"*127+b"\0";p[136:264]=b"M"*127+b"\0";p[264:277]=b"prontera.gat\0\0";p[280:282]=bytes([1,1])
- p[282:410]=b"A"*127+b"\0";p[410:538]=b"O"*127+b"\0"
+ n=Native();p=bytearray(74+2*24);struct.pack_into("<HHI",p,0,0x98a,len(p),123)
+ p[8:32]=b"C"*23+b"\0";p[32:56]=b"M"*23+b"\0";p[56:69]=b"prontera.gat\0\0";p[72:74]=bytes([1,1])
+ p[74:98]=b"A"*23+b"\0";p[98:122]=b"O"*23+b"\0"
  entry=struct.unpack("<I",pe.get_data(0xcaa2e0+(0x98a-0x73)*4-base,4))[0];n.run(entry,p,True)
- assert n.getstr(n.clan+4)==b"C"*127 and n.getstr(n.clan+28)==b"M"*127
+ assert n.getstr(n.clan+4)==b"C"*23 and n.getstr(n.clan+28)==b"M"*23
  assert n.getstr(n.clan+64)==b"prontera.gat"
  assert dw(n.u,n.clan+100)[0]==2
  node=dw(n.u,n.sentinel)[0];found=[]
  while node!=n.sentinel:
   assert len(found)<3;found.append((dw(n.u,node+8)[0],n.getstr(node+12)));node=dw(n.u,node)[0]
- assert sorted(found)==[(0,b"A"*127),(1,b"O"*127)],found
- print("PASS clan: full names, map, alliance/opposition strings and native list ownership")
+ assert sorted(found)==[(0,b"A"*23),(1,b"O"*23)],found
+ print("PASS stock clan: 24-byte labels, map, alliance/opposition strings and native list ownership")
 def friends():
  n=Native();p=bytearray(4+2*136);struct.pack_into("<HH",p,0,0x201,len(p));wanted=[]
  for i in range(2):

@@ -7148,33 +7148,16 @@ AutoSupportUI = function(_)
 		)
 	);
 	Exe.SetCALL(verified.controllerBootstrapPhy, controllerBootstrap.vir, 0);
-	const menuButtonVisibleValue =
-		typeof NewButtonVis !== "undefined" &&
-		typeof NewButtonVis.getCustomVisibility === "function"
-			? NewButtonVis.getCustomVisibility("AutoSupport", 1)
-			: 1;
-	const menuButtonVisible = AutoSupportUIStatic.allocateBytes(
-		[menuButtonVisibleValue, 0, 0, 0], 4
-	);
-	const menuBridge = {
+	const menuRoute = NewButtonVis.customRoute("AutoSupport");
+	const menuButtonVisible = {phy: menuRoute.visiblePhy, vir: menuRoute.visibleVir};
+	NewButtonVis.publishCustomButton("AutoSupport", {
 		toggleVir: toggle.vir,
 		requestVir: menuToggleRequest.vir,
 		pendingVir: menuTogglePending.vir,
 		visibleVir: menuButtonVisible.vir,
 		visiblePhy: menuButtonVisible.phy,
 		label: "AutoSupport"
-	};
-	const menuRoute = CACHE.get("ROGlobalZeroMenu.AutoSupportRoute.v1");
-	if (menuRoute && Number.isInteger(menuRoute.requestCellPhy) &&
-		Number.isInteger(menuRoute.visiblePhy) &&
-		Number.isInteger(menuRoute.visibleVir))
-	{
-		Exe.SetUint32(menuRoute.requestCellPhy, menuToggleRequest.vir);
-		Exe.SetUint32(menuRoute.visiblePhy, menuButtonVisibleValue);
-		menuBridge.visiblePhy = menuRoute.visiblePhy;
-		menuBridge.visibleVir = menuRoute.visibleVir;
-	}
-	CACHE.put("AutoSupportUI.MenuButton.v1", menuBridge);
+	});
 
 	// Keep one test-cycle fallback. Remove after the native menu click is
 	// accepted in-game so a bad client ABI cannot strand the settings UI.

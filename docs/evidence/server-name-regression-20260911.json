@@ -1,0 +1,44 @@
+{
+  "server_build": "Release x64",
+  "runtime_deployed": false,
+  "client_changed_this_fix": false,
+  "tests": {
+    "buffers": "Outputs\\server_name_regression_20260911\\buffers\\result.json",
+    "npc_receiver": "Outputs\\server_name_regression_20260911\\npc-receiver.log"
+  },
+  "server_artifacts": [
+    {
+      "file": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\server_name_regression_20260911\\server-build\\login-server.exe",
+      "size": 414720,
+      "sha256": "4dcc9d9a6b94806ba9fee0301c955c89ffb1bd7b25bdee337c0b858c601d15bf"
+    },
+    {
+      "file": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\server_name_regression_20260911\\server-build\\char-server.exe",
+      "size": 1003008,
+      "sha256": "d243503ddee9c3842ef84b4a0947ab9fc059dce07e8dc452ed3205bdf25be155"
+    },
+    {
+      "file": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\server_name_regression_20260911\\server-build\\map-server.exe",
+      "size": 7693312,
+      "sha256": "4e35e4ade48e3e66448fa4312e755b74b3ff69287a21b2252bedcfbd336d46dd"
+    },
+    {
+      "file": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\server_name_regression_20260911\\server-build\\web-server.exe",
+      "size": 769536,
+      "sha256": "fc5872c3cdda15163e2c3c151d1914c5c25432c4a0f136b3ee0c80cb4e1dfa26"
+    },
+    {
+      "file": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\server_name_regression_20260911\\server-build\\map-server.pdb",
+      "size": 70791168,
+      "sha256": "24b87d456a8eb94dfd987771a2185c518315dcc3a8ccfb9c33e2943b770b51b7"
+    }
+  ],
+  "correct_client": {
+    "file": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_name_menu_fixed.exe",
+    "sha256": "2b111715ae643bee75963b2a4b0d152dda8a4d27b8ded4e49f3fc52570f473d5"
+  },
+  "observed_old_client": {
+    "file": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+    "sha256": "e09489696b05ab9497f727443885243582e0645bc5ddca753f6a6ddd303ea2b9"
+  }
+}

@@ -1,0 +1,205 @@
+{
+  "probe_ran": true,
+  "ready_to_commit": false,
+  "limits": "Extracted serializer statements with an oversized canary FIFO. This proves writes outside the record, not a live heap corruption or a specific crash cause.",
+  "serializers": [
+    {
+      "phase": "control24",
+      "route": "2b0e",
+      "input_bytes": "0",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "control24",
+      "route": "2b0f",
+      "input_bytes": "0",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0e",
+      "input_bytes": "0",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "90"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0f",
+      "input_bytes": "0",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "100"
+    },
+    {
+      "phase": "control24",
+      "route": "2b0e",
+      "input_bytes": "1",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "control24",
+      "route": "2b0f",
+      "input_bytes": "1",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0e",
+      "input_bytes": "1",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "90"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0f",
+      "input_bytes": "1",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "100"
+    },
+    {
+      "phase": "control24",
+      "route": "2b0e",
+      "input_bytes": "23",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "control24",
+      "route": "2b0f",
+      "input_bytes": "23",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0e",
+      "input_bytes": "23",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "90"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0f",
+      "input_bytes": "23",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "100"
+    },
+    {
+      "phase": "control24",
+      "route": "2b0e",
+      "input_bytes": "24",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "control24",
+      "route": "2b0f",
+      "input_bytes": "24",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0e",
+      "input_bytes": "24",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "90"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0f",
+      "input_bytes": "24",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "100"
+    },
+    {
+      "phase": "control24",
+      "route": "2b0e",
+      "input_bytes": "127",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "control24",
+      "route": "2b0f",
+      "input_bytes": "127",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "0"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0e",
+      "input_bytes": "127",
+      "reserved_bytes": "44",
+      "sent_bytes": "44",
+      "changed_bytes_after_record": "90"
+    },
+    {
+      "phase": "current128",
+      "route": "2b0f",
+      "input_bytes": "127",
+      "reserved_bytes": "34",
+      "sent_bytes": "34",
+      "changed_bytes_after_record": "100"
+    }
+  ],
+  "npc_events": [
+    {
+      "route": "npc_event",
+      "input_bytes": "23",
+      "capacity": "77",
+      "scanned_fields": "7",
+      "next_field_first_byte": "165"
+    },
+    {
+      "route": "npc_event",
+      "input_bytes": "76",
+      "capacity": "77",
+      "scanned_fields": "7",
+      "next_field_first_byte": "165"
+    },
+    {
+      "route": "npc_event",
+      "input_bytes": "77",
+      "capacity": "77",
+      "scanned_fields": "7",
+      "next_field_first_byte": "0"
+    },
+    {
+      "route": "npc_event",
+      "input_bytes": "78",
+      "capacity": "77",
+      "scanned_fields": "5",
+      "next_field_first_byte": "0"
+    }
+  ],
+  "source_sha256": {
+    "src/common/mmo.hpp": "a6cc848b4cb1f9e03d0ef537f9e9c9dc83a39c3348bf3a70a557904c5a48a8eb",
+    "src/common/strlib.cpp": "2ad66199c089e831261aa922e8ddc7e9919a3542118294096de33ed2b4149578",
+    "src/map/chrif.cpp": "2248c275f969d65ca71c608d2b0d56b31b8e6e8c188211a4618dba0a162b73b8",
+    "src/char/char_mapif.cpp": "e65a8ed237868e7c25023372234ecfa90dad96e095d8efe73446b619aa44faad",
+    "src/map/npc.cpp": "56224a1401b7197cdd30885e15ff863857d33a2bf333184bacb8b865914592af",
+    "src/map/map.hpp": "9f28eb77fa481581717307f130d5d9f926743ad69d8ba6e8696a7d670b772130"
+  }
+}

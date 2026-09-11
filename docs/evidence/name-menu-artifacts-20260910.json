@@ -1,0 +1,42 @@
+{
+  "client_profile": "profiles/2025-07-16 PROFILE MAIN.yml",
+  "patch_count": 126,
+  "deployed": false,
+  "artifacts": [
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\2025-07-16_Ragexe_name_menu_fixed.exe",
+      "bytes": 28398239,
+      "sha256": "2b111715ae643bee75963b2a4b0d152dda8a4d27b8ded4e49f3fc52570f473d5"
+    },
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\name_scope_fix_20260910\\server-build\\login-server.exe",
+      "bytes": 414720,
+      "sha256": "57a3ba6ae5303cbf7167e9787f5e462d6adcf7f5ab5cf69c83c609a2176a423e"
+    },
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\name_scope_fix_20260910\\server-build\\char-server.exe",
+      "bytes": 1003008,
+      "sha256": "18991c872281b6d5c2b669a63729ac94466f535bd7bdbcbfd6011ed3c1e4730d"
+    },
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\name_scope_fix_20260910\\server-build\\map-server.exe",
+      "bytes": 7692800,
+      "sha256": "f7272db3e059c7094cccece68438c28b884fa0a570200625d8b04dd9ccf5636e"
+    },
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\name_scope_fix_20260910\\server-build\\web-server.exe",
+      "bytes": 769536,
+      "sha256": "5387291d4e466d22b111177695b2773e8799b29c4c5726e4474e41b80196c5d8"
+    }
+  ],
+  "validation": {
+    "name_suites": 21,
+    "menu_lifecycle_cases": 13,
+    "name_lifecycle_cases": 8,
+    "item_grade_matrix_cases": 22,
+    "source_contract_checks": 96,
+    "server_packet_contracts": 15,
+    "server_build": "Release x64 passed",
+    "live_acceptance": "pending"
+  }
+}

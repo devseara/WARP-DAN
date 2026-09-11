@@ -1,0 +1,591 @@
+{
+  "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+  "cases": [
+    {
+      "case": "baseline",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x1a83eb0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "ff15b017fc0083c04ba39c3ea801c705983ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x1a99b30",
+          "published_target": "0x1a99b30",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc705b858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "36fbb013c4e8d4164b94840ff3c49ed28e89a3df06e56aadc18c68903999c242"
+    },
+    {
+      "case": "hide-show",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x1a83eb0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "ff15b017fc0083c04ba39c3ea801c705983ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x1a99b30",
+          "published_target": "0x1a99b30",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc705b858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "36fbb013c4e8d4164b94840ff3c49ed28e89a3df06e56aadc18c68903999c242"
+    },
+    {
+      "case": "hide-before-menu",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9fa60",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1aa05f0",
+          "emitted_target": "0x1a83eb0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "ff15b017fc0083c04ba39c3ea801c705983ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1aa0020",
+          "emitted_target": "0x1a99b30",
+          "published_target": "0x1a99b30",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc705b858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        }
+      ],
+      "sha256": "3f8fd82203d0f2a8ec64cde67d213adba1783593f74ddc26583d0e4af19008d8"
+    },
+    {
+      "case": "reapply-autohunt",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x1d6daa0",
+          "published_target": "0x1d6daa0",
+          "target_bytes": "ff15b017fc0083c04ba398dad601c70594dad60101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x1a83eb0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "ff15b017fc0083c04ba39c3ea801c705983ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x1a99b30",
+          "published_target": "0x1a99b30",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc705b858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "c1c34abf4d5714877b611dc6d01394c8a444adb9c662010671d937e555d3b4f4"
+    },
+    {
+      "case": "reapply-autosupport",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x1e9d1b0",
+          "published_target": "0x1e9d1b0",
+          "target_bytes": "ff15b017fc0083c04ba39cd1e901c70598d1e90101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x1a99b30",
+          "published_target": "0x1a99b30",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc705b858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "14e5658988f7205ff9f4bdb55867b559cdc6524f0a90f0cbe8fe1d83e9c11fe8"
+    },
+    {
+      "case": "disable-autohunt",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x0",
+          "published_target": "0x1884c80",
+          "target_bytes": "",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x1a83eb0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "ff15b017fc0083c04ba39c3ea801c705983ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x1a99b30",
+          "published_target": "0x1a99b30",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc705b858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "b4ba17dfde41f04e3383abc730cc3d1efcc40bbcb02479c570c02398728debfc"
+    },
+    {
+      "case": "disable-autosupport",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x1a99b30",
+          "published_target": "0x1a99b30",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc705b858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "5100dff4358ba5d671e7ef80f481ac8893b5386db48c98862199df616653c1cd"
+    },
+    {
+      "case": "disable-item",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x1a83eb0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "ff15b017fc0083c04ba39c3ea801c705983ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x0",
+          "published_target": "0x1a99b30",
+          "target_bytes": "",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        }
+      ],
+      "sha256": "c66975990381fa0ac7fb6f52fb7b774d401ce08075580c3116487deb07979209"
+    },
+    {
+      "case": "disable-all",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x0",
+          "published_target": "0x1884c80",
+          "target_bytes": "",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x0",
+          "published_target": "0x1a99b30",
+          "target_bytes": "",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 0,
+          "expected_visible": 0
+        }
+      ],
+      "sha256": "e1f8d7894d6212d4d02617dcd2fe62840783c26d57907a5bde9559482e877e6a"
+    },
+    {
+      "case": "show-disabled",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x0",
+          "published_target": "0x1884c80",
+          "target_bytes": "",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x0",
+          "published_target": "0x1a99b30",
+          "target_bytes": "",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "aee044545a0d927e6b0f256c975d22c2648e28a91b27f9ece96c9dec4b728292"
+    },
+    {
+      "case": "reapply-item",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x1884c80",
+          "published_target": "0x1884c80",
+          "target_bytes": "ff15b017fc0083c04ba3784c8801c705744c880101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x1a83eb0",
+          "published_target": "0x1a83eb0",
+          "target_bytes": "ff15b017fc0083c04ba39c3ea801c705983ea80101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x1ac94c0",
+          "published_target": "0x1ac94c0",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc7054452ab0100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "0aa2ed857b00d364796747483c8a79a15ab61258eb1a40c8e7728d7d0a00667f"
+    },
+    {
+      "case": "reapply-all",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x1d980d0",
+          "published_target": "0x1d980d0",
+          "target_bytes": "ff15b017fc0083c04ba3c880d901c705c480d90101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x21965d0",
+          "published_target": "0x21965d0",
+          "target_bytes": "ff15b017fc0083c04ba3bc651902c705b865190201000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x1ac94c0",
+          "published_target": "0x1ac94c0",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc7054452ab0100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "4d8450572b287c09599a0589a4bf6af9fb8bd97d42a007676659cfba2326bfdb"
+    },
+    {
+      "case": "reapply-both",
+      "returncode": 0,
+      "passed": true,
+      "construction_error": null,
+      "buttons": [
+        {
+          "button": "Auto Hunt",
+          "child": "0x3f2",
+          "mouse_up": "0x1a9a800",
+          "emitted_target": "0x1d6d9b0",
+          "published_target": "0x1d6d9b0",
+          "target_bytes": "ff15b017fc0083c04ba3a8d9d601c705a4d9d60101000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "AutoSupport",
+          "child": "0x3f5",
+          "mouse_up": "0x1a9b390",
+          "emitted_target": "0x216beb0",
+          "published_target": "0x216beb0",
+          "target_bytes": "ff15b017fc0083c04ba39cbe1602c70598be160201000000c3",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        },
+        {
+          "button": "Item Collection",
+          "child": "0x3f4",
+          "mouse_up": "0x1a9adc0",
+          "emitted_target": "0x1a99b30",
+          "published_target": "0x1a99b30",
+          "target_bytes": "9c606a006a006a006a01e891c5feffc705b858a80100000000",
+          "entry_valid": true,
+          "target_matches_current": true,
+          "visible": 1,
+          "expected_visible": 1
+        }
+      ],
+      "sha256": "6419b68f1f2450827908d270f7de82067a4ed828f0ba83682c6f4100c651b5ed"
+    }
+  ],
+  "passed": true
+}

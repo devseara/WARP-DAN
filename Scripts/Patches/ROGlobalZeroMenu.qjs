@@ -529,16 +529,6 @@ MenuZeroStatic.buildButtonHover = function(textVir, localX = null, localY = null
 	a.emit(0x5E, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
 	return a;
 };
-MenuZeroStatic.buildButtonMouseUp = function(requestVir)
-{
-	const a = MenuZeroStatic.asm();
-	a.emit(0x55, 0x8B, 0xEC);
-	a.call(requestVir);                                // defer open/close to next UI tick
-	a.emit(0x33, 0xC0, 0x8B, 0xE5, 0x5D);
-	a.emit(0xC2, 0x08, 0x00);                          // RET 8
-	return a;
-};
-
 MenuZeroStatic.buildOptionalButtonMouseUp = function(requestCellVir)
 {
 	const a = MenuZeroStatic.asm();
@@ -734,6 +724,9 @@ MenuZeroStatic.buildSyncMenuButton = function(
 	a.emit(0x6A, 0x00);
 	a.emit(0x8B, 0x17, 0x8B, 0xCF);
 	a.emit(0xFF, 0x92); a.dword(0xD4);                 // SetVisible(false)
+	// customRoute stores the producer callback immediately before visibility.
+	a.emit(0x83, 0x3D); a.dword(visibleVir - 4); a.emit(0x00);
+	a.jcc(0x84, "done");
 	a.emit(0x83, 0x3D); a.dword(visibleVir); a.emit(0x00);
 	a.jcc(0x84, "done");
 	a.emit(0x83, 0x7E, 0x28, 0x00);                    // parent menu visible?
@@ -752,6 +745,8 @@ MenuZeroStatic.buildSyncMenuButton = function(
 	for (let i = 0; i < priorVisibleVirs.length; i++)
 	{
 		const hidden = "prior_" + i + "_hidden";
+		a.emit(0x83, 0x3D); a.dword(priorVisibleVirs[i] - 4); a.emit(0x00);
+		a.jcc(0x84, hidden);
 		a.emit(0x83, 0x3D); a.dword(priorVisibleVirs[i]); a.emit(0x00);
 		a.jcc(0x84, hidden);
 		a.emit(0x42);                                      // prior custom occupies a slot
@@ -1349,6 +1344,8 @@ MenuZeroStatic.buildMeasureRows = function(
 	for (let i = 0; i < customVisibleVirs.length; i++)
 	{
 		const hidden = "measure_custom_" + i + "_hidden";
+		a.emit(0x83, 0x3D); a.dword(customVisibleVirs[i] - 4); a.emit(0x00);
+		a.jcc(0x84, hidden);
 		a.emit(0x83, 0x3D); a.dword(customVisibleVirs[i]); a.emit(0x00);
 		a.jcc(0x84, hidden);
 		a.emit(0x42);                                      // visible custom button
@@ -2070,25 +2067,8 @@ ROGlobalZeroMenu = function(_)
 	const itemCollectionHover = MenuZeroStatic.allocateBytes(
 		MenuZeroStatic.asciiBytes(itemCollectionHoverText)
 	);
-	const itemCollectionBridge = CACHE.get("ItemCollectionUI.MenuButton.v1");
-	const itemCollectionRoute = MenuZeroStatic.allocateBytes(
-		new Array(8).fill(0), 4
-	);
-	if (itemCollectionBridge &&
-		Number.isInteger(itemCollectionBridge.requestVir))
-	{
-		Exe.SetUint32(itemCollectionRoute.phy, itemCollectionBridge.requestVir);
-		Exe.SetUint32(itemCollectionRoute.phy + 4, 1);
-		itemCollectionBridge.visiblePhy = itemCollectionRoute.phy + 4;
-		itemCollectionBridge.visibleVir = itemCollectionRoute.vir + 4;
-		CACHE.put("ItemCollectionUI.MenuButton.v1", itemCollectionBridge);
-	}
-	CACHE.put("ROGlobalZeroMenu.ItemCollectionRoute.v1", {
-		requestCellPhy: itemCollectionRoute.phy,
-		requestCellVir: itemCollectionRoute.vir,
-		visiblePhy: itemCollectionRoute.phy + 4,
-		visibleVir: itemCollectionRoute.vir + 4
-	});
+	const itemCollectionRoute = NewButtonVis.customRoute("Item Collection");
+	CACHE.put("ROGlobalZeroMenu.ItemCollectionRoute.v1", itemCollectionRoute);
 
 	const autoSupportHoverText = "AutoSupport";
 	const autoSupportHover = MenuZeroStatic.allocateBytes(
@@ -2101,25 +2081,10 @@ ROGlobalZeroMenu = function(_)
 	{
 		throw Error("ROGlobalZeroMenu: AutoSupportUI must run first");
 	}
-	const autoSupportRequestVir = autoSupportBridge.requestVir;
-	const autoSupportVisibleVir = autoSupportBridge.visibleVir;
-	const autoSupportRoute = MenuZeroStatic.allocateBytes(
-		new Array(8).fill(0), 4
-	);
-	if (autoSupportBridge && Number.isInteger(autoSupportBridge.requestVir))
-	{
-		Exe.SetUint32(autoSupportRoute.phy, autoSupportBridge.requestVir);
-		Exe.SetUint32(autoSupportRoute.phy + 4, 1);
-		autoSupportBridge.visiblePhy = autoSupportRoute.phy + 4;
-		autoSupportBridge.visibleVir = autoSupportRoute.vir + 4;
-		CACHE.put("AutoSupportUI.MenuButton.v1", autoSupportBridge);
-	}
-	CACHE.put("ROGlobalZeroMenu.AutoSupportRoute.v1", {
-		requestCellPhy: autoSupportRoute.phy,
-		requestCellVir: autoSupportRoute.vir,
-		visiblePhy: autoSupportRoute.phy + 4,
-		visibleVir: autoSupportRoute.vir + 4
-	});
+	const autoHuntRoute = NewButtonVis.customRoute("Auto Hunt");
+	const autoSupportRoute = NewButtonVis.customRoute("AutoSupport");
+	const autoSupportVisibleVir = autoSupportRoute.visibleVir;
+	CACHE.put("ROGlobalZeroMenu.AutoSupportRoute.v1", autoSupportRoute);
 
 	$$(_, 1, "Verify menu, launcher, visibility, and layout seams");
 	const verified = MenuZeroStatic.verifyNativeLayout();
@@ -2287,7 +2252,7 @@ ROGlobalZeroMenu = function(_)
 		MenuZeroStatic.buildButtonDestructor(buttonState.vir)
 	);
 	const buttonMouseUp = MenuZeroStatic.allocateCode(
-		MenuZeroStatic.buildButtonMouseUp(autoHuntBridge.requestVir)
+		MenuZeroStatic.buildOptionalButtonMouseUp(autoHuntRoute.requestCellVir)
 	);
 	const buttonMouseDown = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildButtonMouseDown()
@@ -2304,14 +2269,14 @@ ROGlobalZeroMenu = function(_)
 		MenuZeroStatic.buildEnsureMenuButton(
 			buttonState.vir, buttonVtable.vir, buttonImagePaths,
 			MenuZeroStatic.AutoHuntButtonWindowId,
-			theme.stateVir, loadTheme.vir
+			theme.stateVir, loadTheme.vir, autoHuntRoute.requestCellVir
 		)
 	);
 	const syncAutoHunt = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildSyncMenuButton(
 			buttonState.vir,
 			visibleMaskVir,
-			autoHuntBridge.visibleVir,
+			autoHuntRoute.visibleVir,
 			gridStrideYVir,
 			theme.stateVir, loadTheme.vir, []
 		)
@@ -2346,14 +2311,14 @@ ROGlobalZeroMenu = function(_)
 			itemCollectionRoute.vir + 4,
 			gridStrideYVir,
 			theme.stateVir, loadTheme.vir,
-			[autoHuntBridge.visibleVir]
+			[autoHuntRoute.visibleVir]
 		)
 	);
 	const autoSupportButtonDestructor = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildButtonDestructor(autoSupportButtonState.vir)
 	);
 	const autoSupportButtonMouseUp = MenuZeroStatic.allocateCode(
-		MenuZeroStatic.buildButtonMouseUp(autoSupportRequestVir)
+		MenuZeroStatic.buildOptionalButtonMouseUp(autoSupportRoute.requestCellVir)
 	);
 	const autoSupportButtonHover = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildButtonHover(autoSupportHover.vir, 0, -20)
@@ -2368,7 +2333,7 @@ ROGlobalZeroMenu = function(_)
 			autoSupportButtonState.vir, autoSupportButtonVtable.vir,
 			autoSupportButtonImagePaths,
 			MenuZeroStatic.AutoSupportButtonWindowId,
-			theme.stateVir, loadTheme.vir
+			theme.stateVir, loadTheme.vir, autoSupportRoute.requestCellVir
 		)
 	);
 	const syncAutoSupport = MenuZeroStatic.allocateCode(
@@ -2376,7 +2341,7 @@ ROGlobalZeroMenu = function(_)
 			autoSupportButtonState.vir, visibleMaskVir,
 			autoSupportVisibleVir, gridStrideYVir,
 			theme.stateVir, loadTheme.vir,
-			[autoHuntBridge.visibleVir, itemCollectionRoute.vir + 4]
+			[autoHuntRoute.visibleVir, itemCollectionRoute.vir + 4]
 		)
 	);
 	const syncLaunchers = MenuZeroStatic.allocateCode(
@@ -2431,7 +2396,7 @@ ROGlobalZeroMenu = function(_)
 		oldPanelHeightVir,
 		gridStrideYVir,
 		[
-			autoHuntBridge.visibleVir,
+			autoHuntRoute.visibleVir,
 			itemCollectionRoute.vir + 4,
 			autoSupportVisibleVir
 		],
@@ -2716,7 +2681,7 @@ ROGlobalZeroMenu = function(_)
 				hoverText: autoHuntHoverText,
 				hoverTextVir: autoHuntHover.vir,
 				requestVir: autoHuntBridge.requestVir,
-				visibleVir: autoHuntBridge.visibleVir,
+				visibleVir: autoHuntRoute.visibleVir,
 				toggleVir: autoHuntBridge.toggleVir,
 				buttonStateVir: buttonState.vir,
 				buttonVtableVir: buttonVtable.vir,

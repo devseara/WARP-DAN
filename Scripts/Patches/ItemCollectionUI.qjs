@@ -3369,69 +3369,9 @@ ItemCollectionUI = function(_)
 		mouseWheel.vir, destructor.vir
 	);
 	const toggle = c.allocateCode(c.buildToggle(state.vir, vtable.vir, sender.vir));
-	const menuButtonVisibleValue =
-		typeof NewButtonVis !== "undefined" &&
-		typeof NewButtonVis.getCustomVisibility === "function"
-			? NewButtonVis.getCustomVisibility("Item Collection", 1)
-			: 1;
-	let menuButtonVisible = c.allocateBytes(
-		[menuButtonVisibleValue, 0, 0, 0], 4
-	);
-	const menuRoute = CACHE.get("ROGlobalZeroMenu.ItemCollectionRoute.v1");
-	if (menuRoute && Number.isInteger(menuRoute.requestCellPhy) &&
-		Number.isInteger(menuRoute.visiblePhy) &&
-		Number.isInteger(menuRoute.visibleVir))
-	{
-		Exe.SetUint32(menuRoute.requestCellPhy, toggle.vir);
-		Exe.SetUint32(menuRoute.visiblePhy, menuButtonVisibleValue);
-		menuButtonVisible = {
-			phy: menuRoute.visiblePhy,
-			vir: menuRoute.visibleVir
-		};
-	}
-	else
-	{
-		// A previously patched RO Global menu can outlive WARP's build-time
-		// CACHE state. Recover its unique optional Item Collection mouse-up
-		// route so reapplying this patch cannot silently hide the launcher.
-		const optionalMouseUps = Exe.FindHexN(
-			"A1 ?? ?? ?? ?? 85 C0 0F 84 ?? ?? ?? ?? FF D0 " +
-			"33 C0 8B E5 5D C2 08 00",
-			0, Exe.FileSize
-		);
-		const routeCells = [];
-		for (const mouseUpPhy of optionalMouseUps)
-		{
-			const requestCellVir = Exe.GetUint32(mouseUpPhy + 1);
-			const requestCellPhy = Exe.Vir2Phy(requestCellVir);
-			if (requestCellPhy < 0)
-				continue;
-			const visible = Exe.GetUint32(requestCellPhy + 4);
-			if (visible > 1)
-				continue;
-			routeCells.push({requestCellPhy, requestCellVir});
-		}
-		if (routeCells.length > 1)
-			throw Error("ItemCollectionUI: ambiguous RO Global menu route");
-		if (routeCells.length === 1)
-		{
-			const recovered = routeCells[0];
-			Exe.SetUint32(recovered.requestCellPhy, toggle.vir);
-			Exe.SetUint32(
-				recovered.requestCellPhy + 4, menuButtonVisibleValue
-			);
-			menuButtonVisible = {
-				phy: recovered.requestCellPhy + 4,
-				vir: recovered.requestCellVir + 4
-			};
-		}
-	}
-
-	CustomSlashCommand.register(_ + ".SlashCommand", {
-		command: "/itemcollection",
-		targetVir: toggle.vir
-	});
-	CACHE.put("ItemCollectionUI.MenuButton.v1", {
+	const menuRoute = NewButtonVis.customRoute("Item Collection");
+	const menuButtonVisible = {phy: menuRoute.visiblePhy, vir: menuRoute.visibleVir};
+	NewButtonVis.publishCustomButton("Item Collection", {
 		toggleVir: toggle.vir,
 		requestVir: toggle.vir,
 		visibleVir: menuButtonVisible.vir,

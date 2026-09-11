@@ -1,0 +1,643 @@
+{
+  "date": "2026-09-10",
+  "warp_commit": "77c1dde1dce5c6d4bca8f9cc6a89dab908324cd0",
+  "server_commit": "86c37ec3b80e29db813070c4c287675fd0d7fec9",
+  "effective_packetver": 20250716,
+  "method": "Compiled actual map/packets.hpp, clif_packetdb.hpp and clif_shuffle.hpp using MSVC C++17, before migration b8ef7e5^ and current checkout. Native table extracted from 1553 verified four-push/mov ecx,esi/call A9FF30 sequences. This inventories references and effective registrations; it is not complete runtime acceptance.",
+  "reference_count": 1005,
+  "reference_lines": 949,
+  "reference_files": 70,
+  "reference_file_counts": {
+    "src/char/char.cpp": 24,
+    "src/char/char.hpp": 3,
+    "src/char/char_clif.cpp": 16,
+    "src/char/char_mapif.cpp": 34,
+    "src/char/int_achievement.cpp": 5,
+    "src/char/int_auction.cpp": 9,
+    "src/char/int_clan.cpp": 3,
+    "src/char/int_elemental.cpp": 1,
+    "src/char/int_guild.cpp": 39,
+    "src/char/int_homun.cpp": 7,
+    "src/char/int_mail.cpp": 23,
+    "src/char/int_mercenary.cpp": 1,
+    "src/char/int_party.cpp": 22,
+    "src/char/int_pet.cpp": 4,
+    "src/char/inter.cpp": 43,
+    "src/common/mmo.hpp": 30,
+    "src/common/packets.hpp": 6,
+    "src/custom/atcommand.inc": 6,
+    "src/custom/script.inc": 1,
+    "src/login/login.cpp": 1,
+    "src/login/login.hpp": 1,
+    "src/login/logincnslif.cpp": 1,
+    "src/map/atcommand.cpp": 23,
+    "src/map/autocombat_core.cpp": 1,
+    "src/map/autosupport_core.cpp": 3,
+    "src/map/autosupport_core.hpp": 1,
+    "src/map/battle.cpp": 1,
+    "src/map/battleground.cpp": 21,
+    "src/map/channel.hpp": 1,
+    "src/map/chat.cpp": 3,
+    "src/map/chrif.cpp": 29,
+    "src/map/chrif.hpp": 2,
+    "src/map/clan.cpp": 1,
+    "src/map/clif.cpp": 244,
+    "src/map/clif_packetdb.hpp": 44,
+    "src/map/clif_shuffle.hpp": 2,
+    "src/map/elemental.cpp": 8,
+    "src/map/guild.cpp": 5,
+    "src/map/guild.hpp": 2,
+    "src/map/homunculus.cpp": 4,
+    "src/map/homunculus.hpp": 1,
+    "src/map/instance_scaling.cpp": 2,
+    "src/map/intif.cpp": 83,
+    "src/map/log.cpp": 2,
+    "src/map/mail.cpp": 2,
+    "src/map/map.cpp": 3,
+    "src/map/map.hpp": 1,
+    "src/map/mercenary.cpp": 8,
+    "src/map/mob.cpp": 27,
+    "src/map/mob.hpp": 1,
+    "src/map/mvp_ranking.cpp": 1,
+    "src/map/mvp_tomb.cpp": 1,
+    "src/map/npc.cpp": 15,
+    "src/map/npc.hpp": 4,
+    "src/map/packets.hpp": 34,
+    "src/map/packets_struct.hpp": 102,
+    "src/map/party.cpp": 7,
+    "src/map/party.hpp": 1,
+    "src/map/pc.cpp": 3,
+    "src/map/pc.hpp": 4,
+    "src/map/pet.cpp": 5,
+    "src/map/population_engine.cpp": 6,
+    "src/map/script.cpp": 8,
+    "src/map/script_constants.hpp": 1,
+    "src/map/skills/archer/dazzler.cpp": 1,
+    "src/map/status.cpp": 1,
+    "src/map/storage.hpp": 1,
+    "src/map/unit.hpp": 1,
+    "src/web/partybooking_controller.cpp": 3,
+    "src/web/web.hpp": 1
+  },
+  "server_source_sha256": {
+    "src/common/mmo.hpp": "23c2409417849f904b0041e66facfbad7b10ee4db58a2d7e1b75a10ae58e94a0",
+    "src/map/packets.hpp": "5bd8bfe56153314fc36712220a709a566f98cc3d8b68d09e4ccf24e86c22385d",
+    "src/map/packets_struct.hpp": "03a1f74554c00cfd5833f079b8aa4cf840994548ce33cb27983cce65259e8ba8",
+    "src/map/clif_packetdb.hpp": "8ddfcad5c4bf9c3f3c6675abaf765ec5965e7f31e58c754d0188a36ce9d0c64e",
+    "src/map/clif_shuffle.hpp": "655496b6e5f12e0b2be9b72cadc593a87968910a114a3627e500bde43dcb6d2c",
+    "src/custom/defines_pre.hpp": "b8b5cc25a5ab4d8ac98a5c1904f7db27cea8ffb790b97d9efa21576423938c9c"
+  },
+  "client_files": {
+    "original": {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+      "sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+    },
+    "supplied": {
+      "path": "C:\\Users\\chris\\Downloads\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+      "sha256": "f4e3b07b0b8a8d971c68e6fd2831633eec1488921a83037b9d425dd94a3cb2aa"
+    },
+    "fresh_names_only": {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\namelength_audit_20260910\\names-only.exe",
+      "sha256": "8190bc65f221ceae466e31b710cc7804fb5c94eb1247413b62be47a9c4ec200c"
+    }
+  },
+  "changed_registrations": [
+    {
+      "id": "00cf",
+      "old": [
+        27,
+        "clif_parse_PMIgnore"
+      ],
+      "new": [
+        131,
+        "clif_parse_PMIgnore"
+      ]
+    },
+    {
+      "id": "00e0",
+      "old": [
+        30,
+        "clif_parse_ChangeChatOwner"
+      ],
+      "new": [
+        134,
+        "clif_parse_ChangeChatOwner"
+      ]
+    },
+    {
+      "id": "00e2",
+      "old": [
+        26,
+        "clif_parse_KickFromChat"
+      ],
+      "new": [
+        130,
+        "clif_parse_KickFromChat"
+      ]
+    },
+    {
+      "id": "00f9",
+      "old": [
+        26,
+        "clif_parse_CreateParty"
+      ],
+      "new": [
+        130,
+        "clif_parse_CreateParty"
+      ]
+    },
+    {
+      "id": "0103",
+      "old": [
+        30,
+        "clif_parse_RemovePartyMember"
+      ],
+      "new": [
+        134,
+        "clif_parse_RemovePartyMember"
+      ]
+    },
+    {
+      "id": "0165",
+      "old": [
+        30,
+        "clif_parse_CreateGuild"
+      ],
+      "new": [
+        134,
+        "clif_parse_CreateGuild"
+      ]
+    },
+    {
+      "id": "01a5",
+      "old": [
+        26,
+        "clif_parse_ChangePetName"
+      ],
+      "new": [
+        130,
+        "clif_parse_ChangePetName"
+      ]
+    },
+    {
+      "id": "01e8",
+      "old": [
+        28,
+        "clif_parse_CreateParty2"
+      ],
+      "new": [
+        132,
+        "clif_parse_CreateParty2"
+      ]
+    },
+    {
+      "id": "01f6",
+      "old": [
+        34,
+        "nullptr"
+      ],
+      "new": [
+        138,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "0202",
+      "old": [
+        26,
+        "clif_parse_FriendsListAdd"
+      ],
+      "new": [
+        130,
+        "clif_parse_FriendsListAdd"
+      ]
+    },
+    {
+      "id": "0207",
+      "old": [
+        34,
+        "nullptr"
+      ],
+      "new": [
+        138,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "0209",
+      "old": [
+        36,
+        "nullptr"
+      ],
+      "new": [
+        140,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "020e",
+      "old": [
+        32,
+        "nullptr"
+      ],
+      "new": [
+        136,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "0231",
+      "old": [
+        26,
+        "clif_parse_ChangeHomunculusName"
+      ],
+      "new": [
+        130,
+        "clif_parse_ChangeHomunculusName"
+      ]
+    },
+    {
+      "id": "024a",
+      "old": [
+        70,
+        "nullptr"
+      ],
+      "new": [
+        174,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "0293",
+      "old": [
+        70,
+        "nullptr"
+      ],
+      "new": [
+        147,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "029b",
+      "old": [
+        80,
+        "nullptr"
+      ],
+      "new": [
+        184,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "02c4",
+      "old": [
+        26,
+        "clif_parse_PartyInvite2"
+      ],
+      "new": [
+        130,
+        "clif_parse_PartyInvite2"
+      ]
+    },
+    {
+      "id": "02dd",
+      "old": [
+        32,
+        "nullptr"
+      ],
+      "new": [
+        136,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "02df",
+      "old": [
+        36,
+        "nullptr"
+      ],
+      "new": [
+        140,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "0809",
+      "old": [
+        50,
+        "nullptr"
+      ],
+      "new": [
+        154,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "08d7",
+      "old": [
+        28,
+        "clif_parse_bg_queue_apply_request"
+      ],
+      "new": [
+        132,
+        "clif_parse_bg_queue_apply_request"
+      ]
+    },
+    {
+      "id": "08d8",
+      "old": [
+        27,
+        "nullptr"
+      ],
+      "new": [
+        131,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "08d9",
+      "old": [
+        30,
+        "nullptr"
+      ],
+      "new": [
+        134,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "08da",
+      "old": [
+        26,
+        "clif_parse_bg_queue_cancel_request"
+      ],
+      "new": [
+        130,
+        "clif_parse_bg_queue_cancel_request"
+      ]
+    },
+    {
+      "id": "08db",
+      "old": [
+        27,
+        "nullptr"
+      ],
+      "new": [
+        131,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "08dc",
+      "old": [
+        26,
+        "nullptr"
+      ],
+      "new": [
+        130,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "08dd",
+      "old": [
+        27,
+        "clif_parse_dull"
+      ],
+      "new": [
+        131,
+        "clif_parse_dull"
+      ]
+    },
+    {
+      "id": "08de",
+      "old": [
+        27,
+        "nullptr"
+      ],
+      "new": [
+        131,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "08df",
+      "old": [
+        50,
+        "nullptr"
+      ],
+      "new": [
+        258,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "08e0",
+      "old": [
+        51,
+        "clif_parse_bg_queue_lobby_reply"
+      ],
+      "new": [
+        259,
+        "clif_parse_bg_queue_lobby_reply"
+      ]
+    },
+    {
+      "id": "08e1",
+      "old": [
+        51,
+        "nullptr"
+      ],
+      "new": [
+        259,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "090a",
+      "old": [
+        26,
+        "clif_parse_bg_queue_request_queue_number"
+      ],
+      "new": [
+        130,
+        "clif_parse_bg_queue_request_queue_number"
+      ]
+    },
+    {
+      "id": "0916",
+      "old": [
+        26,
+        "clif_parse_GuildInvite2"
+      ],
+      "new": [
+        130,
+        "clif_parse_GuildInvite2"
+      ]
+    },
+    {
+      "id": "0979",
+      "old": [
+        50,
+        "nullptr"
+      ],
+      "new": [
+        154,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "09f9",
+      "old": [
+        143,
+        "nullptr"
+      ],
+      "new": [
+        455,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "0a08",
+      "old": [
+        26,
+        "clif_parse_Mail_beginwrite"
+      ],
+      "new": [
+        130,
+        "clif_parse_Mail_beginwrite"
+      ]
+    },
+    {
+      "id": "0a12",
+      "old": [
+        27,
+        "nullptr"
+      ],
+      "new": [
+        131,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "0a13",
+      "old": [
+        26,
+        "clif_parse_Mail_Receiver_Check"
+      ],
+      "new": [
+        130,
+        "clif_parse_Mail_Receiver_Check"
+      ]
+    },
+    {
+      "id": "0a16",
+      "old": [
+        26,
+        "clif_parse_dynamic_npc"
+      ],
+      "new": [
+        130,
+        "clif_parse_dynamic_npc"
+      ]
+    },
+    {
+      "id": "0a51",
+      "old": [
+        34,
+        "nullptr"
+      ],
+      "new": [
+        138,
+        "nullptr"
+      ]
+    },
+    {
+      "id": "0b97",
+      "old": [
+        27,
+        "clif_parse_Mail_Receiver_Check"
+      ],
+      "new": [
+        131,
+        "clif_parse_Mail_Receiver_Check"
+      ]
+    },
+    {
+      "id": "0be2",
+      "old": [
+        137,
+        "clif_parse_macro_user_report"
+      ],
+      "new": [
+        241,
+        "clif_parse_macro_user_report"
+      ]
+    },
+    {
+      "id": "0be3",
+      "old": [
+        34,
+        "nullptr"
+      ],
+      "new": [
+        138,
+        "nullptr"
+      ]
+    }
+  ],
+  "native_receive_probe": {
+    "exe_sha256": "8190bc65f221ceae466e31b710cc7804fb5c94eb1247413b62be47a9c4ec200c",
+    "results": [
+      {
+        "reader": "0xc16570",
+        "requested": 34,
+        "id": "0be3",
+        "stock_length": 34
+      },
+      {
+        "reader": "0xc16570",
+        "requested": 26,
+        "id": "0a16",
+        "stock_length": 26
+      },
+      {
+        "reader": "0xc16570",
+        "requested": 138,
+        "id": "0207",
+        "stock_length": 34
+      }
+    ]
+  },
+  "confirmed_gaps": [
+    {
+      "id": "0a16",
+      "meaning": "Gold PC dynamic NPC service token",
+      "client": 26,
+      "server": 130,
+      "scope": "restore independent 24-byte token; not a character identity"
+    },
+    {
+      "id": "0103",
+      "meaning": "party member removal by AID and player name",
+      "client": 30,
+      "server": 134,
+      "scope": "retain extended player name; missing sender adapter"
+    },
+    {
+      "id": "0be2",
+      "meaning": "macro user report request",
+      "client": 137,
+      "server": 241,
+      "scope": "retain extended player name; missing sender adapter"
+    },
+    {
+      "id": "0be3",
+      "meaning": "macro user report acknowledgment",
+      "client": 34,
+      "server": 138,
+      "scope": "retain extended player name; missing receive length and shifted-field adapters"
+    }
+  ]
+}

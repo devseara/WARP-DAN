@@ -1,0 +1,113 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-10                                             *
+*   Last Modified : 2026-09-10                                             *
+*                                                                          *
+*   Description   : Main 2025-07-16: serialize 128-byte player names in    *
+*                   party removal and macro reports. Native packets used  *
+*                   24 bytes; the canonical server requires 134/241/138.  *
+*                   Private stack packets preserve native C++ ownership, *
+*                   message limits, AIDs, report type and ACK status.      *
+*                                                                          *
+\**************************************************************************/
+
+
+NameRequestGapsStatic = {};
+
+NameRequestGapsStatic.install = function(state, routes)
+{
+	if (ExtNameTextStatic.ActiveBuildDate !== 20250716 || state.nameRequestGaps128) return state;
+	const copy = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ()).virAddr;
+	const patches = [];
+	const hook = (va, old, a) => patches.push({
+		phy: ExtNameStaticAsm.assertCode("canonical player request", va, old),
+		length: old.split(" ").length, code: ExtNameTextStatic.allocateCode(a)
+	});
+
+	// Party removal: reserve one private packet across the existing native
+	// member lookup. Its C++ object construction/destruction and EH states
+	// execute unchanged. EDX is the original full-name pointer.
+	let a = ExtNameStaticAsm.asm();
+	a.emit(0x60,0x33,0xC9);
+	a.label("scan"); a.emit(0x80,0x3C,0x0A,0); a.jcc(0x84,"valid");
+	a.emit(0x41,0x81,0xF9); a.dword(128); a.jcc(0x82,"scan");
+	a.emit(0x61,0x33,0xC0); a.jmp(0x00C930AD);
+	a.label("valid"); a.emit(0x61,0x81,0xEC); a.dword(144);
+	a.emit(0x60,0x8D,0x7C,0x24,32,0x33,0xC0,0xB9); a.dword(36);
+	a.emit(0xF3,0xAB,0x8D,0x74,0x24,32,0x66,0xC7,0x06,0x03,0x01);
+	a.emit(0x68); a.dword(128); a.emit(0x52,0x8D,0x46,6,0x50); a.call(copy);
+	a.emit(0x61); a.jmp(0x00C8D653);
+	hook(0x00C8D634,"B8 03 01 00 00",a);
+	a = ExtNameStaticAsm.asm();
+	a.emit(0x60,0x8D,0x74,0x24,32,0x8B,0x85); a.dword(-0xDDAE);
+	a.emit(0x89,0x46,2); a.call(0x00C14D60);
+	a.emit(0x8B,0xC8,0x56,0x68); a.dword(134); a.call(0x00C14920);
+	a.emit(0x61,0x81,0xC4); a.dword(144); a.jmp(0x00C8D6A4);
+	hook(0x00C8D67D,"E8 DE 76 F8 FF",a);
+
+	// Macro report: EAX is the native std::string's resolved name pointer.
+	// Keep the full name in this invocation's stack packet. The native code
+	// still constructs and destroys the message string, capped at 100 bytes.
+	a = ExtNameStaticAsm.asm();
+	a.emit(0x81,0xEC); a.dword(256); a.emit(0x60,0x8B,0xD0);
+	a.emit(0x8D,0x7C,0x24,32,0x33,0xC0,0xB9); a.dword(64);
+	a.emit(0xF3,0xAB,0x8D,0x74,0x24,32,0x33,0xC9);
+	a.label("report_scan"); a.emit(0x80,0x3C,0x0A,0); a.jcc(0x84,"report_copy");
+	a.emit(0x41,0x81,0xF9); a.dword(128); a.jcc(0x82,"report_scan");
+	a.emit(0xC6,0x86); a.dword(252); a.emit(1); a.jmp("report_ready");
+	a.label("report_copy");
+	a.emit(0x68); a.dword(128); a.emit(0x52,0x8D,0x46,10,0x50); a.call(copy);
+	a.label("report_ready"); a.emit(0x61); a.jmp(0x009F36FC);
+	hook(0x009F36EA,"6A FF 50 8D 85 56 FF FF FF",a);
+	const copyCleanup = ExtNameStaticAsm.assertCode("macro report old copy arguments",0x009F3702,"83 C4 10");
+	a = ExtNameStaticAsm.asm();
+	a.emit(0x60,0x8D,0x74,0x24,32,0x80,0xBE); a.dword(252); a.emit(0); a.jcc(0x85,"report_done");
+	a.emit(0x8B,0x85); a.dword(-0xB4);
+	a.emit(0x89,0x06,0x8B,0x85); a.dword(-0xB0); a.emit(0x89,0x46,4);
+	a.emit(0x66,0x8B,0x85); a.dword(-0xAC); a.emit(0x66,0x89,0x46,8);
+	a.emit(0x66,0x8B,0x85); a.dword(-0x92); a.emit(0x66,0x89,0x86); a.dword(138);
+	a.emit(0x68); a.dword(101); a.emit(0x8D,0x85); a.dword(-0x90);
+	a.emit(0x50,0x8D,0x86); a.dword(140); a.emit(0x50); a.call(copy);
+	a.call(0x00C14D60); a.emit(0x8B,0xC8,0x56,0x68); a.dword(241); a.call(0x00C14920);
+	a.label("report_done"); a.emit(0x61,0x81,0xC4); a.dword(256); a.jmp(0x009F380F);
+	hook(0x009F37E5,"E8 76 15 22 00",a);
+
+	// ACK owns a native std::string constructed from the packet name. Only
+	// the status field moved. Reject unterminated names before that constructor.
+	a = ExtNameStaticAsm.asm();
+	a.emit(0x60,0xB8); a.dword(routes.packetBufferVir + 6); a.emit(0xB9); a.dword(128);
+	a.label("ack_scan"); a.emit(0x80,0x38,0); a.jcc(0x84,"ack_valid");
+	a.emit(0x40,0x49); a.jcc(0x85,"ack_scan"); a.emit(0x61); a.jmp(routes.mainLoopReturnVir);
+	a.label("ack_valid"); a.emit(0x61,0xFF,0x35); a.dword(routes.packetBufferVir + 134);
+	a.jmp(0x00CAA1F1);
+	hook(0x00CAA1EB,"FF 35 B6 81 5E 01",a);
+
+	const owner = Exe.ActivePatch;
+	Exe.BeginTag("NameRequestGapsStatic.NamePackets128",true);
+	try {
+		for (const p of patches) {
+			Exe.SetJMP(p.phy,p.code.virAddr,0);
+			if (p.length > 5) Exe.SetNOPs(p.phy+5,p.length-5);
+		}
+		Exe.SetNOPs(copyCleanup,3);
+	} finally { Exe.EndTag(); Exe.ActivePatch = owner; }
+	state.nameRequestGaps128 = true;
+	return state;
+};

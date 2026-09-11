@@ -53,7 +53,7 @@ NameLifecycleProbe:
     # Explicit guarded native overwrite spans, including generated numeric tables.
     sites = {}
     modules = list((ROOT / 'Scripts/Patches').glob('*NamesStatic.qjs'))
-    modules.append(ROOT / 'Scripts/Patches/ExtNamePartyStatic.qjs')
+    modules.extend(ROOT / 'Scripts/Patches' / name for name in ('ExtNamePartyStatic.qjs', 'NameRequestGapsStatic.qjs'))
     pattern = r'[\[(]\s*(0x[\da-fA-F]{6,8}|\d{7,8})\s*,\s*"([\da-fA-F]{2}(?: [\da-fA-F]{2})+)"'
     for module in modules:
         for address, expected in re.findall(pattern, module.read_text(encoding='utf-8')):
@@ -160,6 +160,13 @@ NameLifecycleProbe = TestNameLifecycle;
             except pefile.PEFormatError:
                 body = b''
             valid = bg[0] == 0xe9 and body == bytes.fromhex('68 3c 01 00 00') and mask == 1 and not frame_stock
+            if not args.reference_ref:
+                party = pe.get_data(0xc8d634 - 0x400000, 5)
+                dest = 0xc8d639 + int.from_bytes(party[1:], 'little', signed=True)
+                body = pe.get_data(dest - 0x400000, 3)
+                valid = (bg == original.get_data(0xb3a0e9 - 0x400000, 5) and
+                         party[0] == 0xe9 and body == bytes.fromhex('60 33 c9') and
+                         mask == 1 and not frame_stock)
         else:
             valid = not mismatch and mask == (2 if colors else 0) and frame_stock != colors
         row = {'case': mode, 'passed': valid, 'checked_native_sites': len(sites),

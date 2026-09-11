@@ -622,3 +622,64 @@ NewButtonVis.applyCustomVisibility = function(label, visible)
 		Exe.SetUint32(bridge.visiblePhy, visible);
 	return true;
 };
+
+// Address-stable cells are global to the loaded EXE. Only the selected producer
+// owns the nonzero callback value: ClearPatch restores the inert global zero.
+// Consumers never own/copy a producer address or replace its visibility cell.
+NewButtonVis.sharedStorage = function(key, size)
+{
+	const cacheKey = "NewButtonVisibility.Storage.v1." + key;
+	const cached = CACHE.get(cacheKey);
+	if (cached) {
+		if (cached.size !== size) throw Error("Custom UI shared storage size changed: " + key);
+		return cached;
+	}
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	try {
+		const [phy, vir] = Exe.Allocate(size, 4);
+		// Allocation supplies zero-filled storage. Do not add a global zero
+		// write: WARP exports that layer after feature writes and would mask them.
+		const storage = {phy, vir, size};
+		CACHE.put(cacheKey, storage);
+		return storage;
+	} finally { Exe.ActivePatch = owner; }
+};
+
+NewButtonVis.customRoute = function(label)
+{
+	if (!this.customButton(label)) throw Error("Unknown custom menu button: " + label);
+	const cell = this.sharedStorage("Menu." + label, 8);
+	return {phy: cell.phy, vir: cell.vir, requestCellPhy: cell.phy,
+		requestCellVir: cell.vir, visiblePhy: cell.phy + 4, visibleVir: cell.vir + 4};
+};
+
+NewButtonVis.publishCustomButton = function(label, bridge)
+{
+	const route = this.customRoute(label);
+	Exe.SetUint32(route.requestCellPhy, bridge.requestVir);
+	Exe.SetUint32(route.visiblePhy, this.getCustomVisibility(label, 1));
+	bridge.requestCellPhy = route.requestCellPhy;
+	bridge.requestCellVir = route.requestCellVir;
+	bridge.visiblePhy = route.visiblePhy;
+	bridge.visibleVir = route.visibleVir;
+	CACHE.put(this.customButton(label).bridgeKey, bridge);
+	return bridge;
+};
+
+// A stdcall peer route preserves the original arguments through a tail jump;
+// when its producer is absent it consumes those arguments and returns zero.
+NewButtonVis.publishPeerCallback = function(key, targetVir, popBytes)
+{
+	const cell = this.sharedStorage("Peer." + key, 20);
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	try {
+		const address = [0,8,16,24].map(shift => (cell.vir >>> shift) & 255);
+		const bytes = [0xA1, ...address, 0x85,0xC0,0x74,0x02,0xFF,0xE0,
+			0x33,0xC0,0xC2,popBytes & 255,(popBytes >>> 8) & 255];
+		Exe.SetHex(cell.phy + 4, bytes.map(b => b.toString(16).padStart(2,"0")).join(" "));
+	} finally { Exe.ActivePatch = owner; }
+	Exe.SetUint32(cell.phy, targetVir);
+	return cell.vir + 4;
+};

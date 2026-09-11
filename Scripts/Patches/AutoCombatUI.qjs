@@ -6595,9 +6595,7 @@ AutoCombatUI = function(_)
 		x: AutoCombatUIStatic.allocateString("ControllerX"),
 		y: AutoCombatUIStatic.allocateString("ControllerY")
 	};
-	const state = AutoCombatUIStatic.allocateBytes(
-		new Array(AutoCombatUIStatic.StateSize).fill(0), 4
-	);
+	const state = NewButtonVis.sharedStorage("AutoCombatUI.State.v1", AutoCombatUIStatic.StateSize);
 	const monsterRows = AutoCombatUIStatic.allocateBytes(
 		new Array(AutoCombatUIStatic.MonsterRowsSize).fill(0), 4
 	);
@@ -6811,9 +6809,7 @@ AutoCombatUI = function(_)
 	if (controllerDirtyPhy < 0)
 		throw Error("AutoCombatUI: UI dirty-clear instruction is not mapped");
 	Exe.SetJMP(controllerDirtyPhy, controllerRedraw.vir, 2);
-	const controllerSuppressed = AutoCombatUIStatic.allocateBytes(
-		[0, 0, 0, 0], 4
-	);
+	const controllerSuppressed = NewButtonVis.sharedStorage("AutoCombatUI.ControllerSuppressed.v1", 4);
 	const toggle = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildToggle(
 			state.vir, vtable.vir, openSender.vir, [ensureController.vir],
@@ -6837,18 +6833,12 @@ AutoCombatUI = function(_)
 	Exe.SetCALL(verified.controllerBootstrapPhy, controllerBootstrap.vir, 0);
 	CACHE.put("AutoCombatUI.LifecycleHooks.v1", {
 		stateVir: state.vir,
-		scalarSenderVir: scalarSender.vir,
+		scalarSenderVir: NewButtonVis.publishPeerCallback("AutoCombatUI.ScalarSender.v1", scalarSender.vir, 12),
 		suppressControllerVir: controllerSuppressed.vir
 	});
-	const menuButtonVisibleValue =
-		typeof NewButtonVis !== "undefined" &&
-		typeof NewButtonVis.getCustomVisibility === "function"
-			? NewButtonVis.getCustomVisibility("Auto Hunt", 1)
-			: 1;
-	const menuButtonVisible = AutoCombatUIStatic.allocateBytes(
-		[menuButtonVisibleValue, 0, 0, 0], 4
-	);
-	CACHE.put("AutoCombatUI.MenuButton.v1", {
+	const menuRoute = NewButtonVis.customRoute("Auto Hunt");
+	const menuButtonVisible = {phy: menuRoute.visiblePhy, vir: menuRoute.visibleVir};
+	NewButtonVis.publishCustomButton("Auto Hunt", {
 		toggleVir: toggle.vir,
 		requestVir: menuToggleRequest.vir,
 		pendingVir: menuTogglePending.vir,

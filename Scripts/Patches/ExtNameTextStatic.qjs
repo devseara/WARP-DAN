@@ -1033,14 +1033,11 @@ ExtNameTextStatic.buildPacketLengthBridge = function()
 	a.emit(0x3D); a.dword(0x0A51); a.jcc(0x84, "mail_checkname");
 	a.emit(0x3D); a.dword(0x0809); a.jcc(0x85,"not_booking");
 	a.emit(0xBE); a.dword(154); a.jmp("consume"); a.label("not_booking");
-	for(const [id,length] of [[0x0B6F,281],[0x006D,281],[0x00DC,132],[0x00DD,133],[0x00E1,134],[0x0AE7,142],[0x0AFA,266],[0x01F4,136],[0x09F9,455],[0x0293,147],[0x01F6,138],[0x02DD,136],[0x0979,154]]){
+	for(const [id,length] of [[0x0B6F,281],[0x006D,281],[0x00DC,132],[0x00DD,133],[0x00E1,134],[0x0AE7,142],[0x0AFA,266],[0x01F4,136],[0x09F9,455],[0x0293,147],[0x01F6,138],[0x02DD,136],[0x0979,154],[0x0BE3,138]]){
 		a.emit(0x3D); a.dword(id); a.jcc(0x85,"not_identity_"+id);
 		a.emit(0xBE); a.dword(length); a.jmp("consume"); a.label("not_identity_"+id);
 	}
-	for(const [id,length] of [[0x08D8,131],[0x08D9,134],[0x08DB,131],[0x08DC,130],[0x08DE,131],[0x08DF,258],[0x08E1,259]]){
-		a.emit(0x3D); a.dword(id); a.jcc(0x85,"not_bg_"+id);
-		a.emit(0xBE); a.dword(length); a.jmp("consume"); a.label("not_bg_"+id);
-	}
+
 	a.jmp("consume");
 	a.label("mail_begin");
 	a.emit(0xBE); a.dword(131); a.jmp("consume");
@@ -1163,10 +1160,10 @@ ExtNameTextStatic.patch128ByteNamePackets = function(state)
 		throw Error("ExtNameTextStatic: companion name adapter unavailable");
 	CompanionNamesStatic.install(state);
 	CompanionRenameNamesStatic.install(state);
-	if (typeof GuildNamesStatic === "undefined" || typeof ClanNamesStatic === "undefined")
-		throw Error("ExtNameTextStatic: guild/clan name adapters unavailable");
+	if (typeof GuildNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: guild name adapter unavailable");
 	GuildNamesStatic.install(state);
-	ClanNamesStatic.install(state, routes);
+	// Clan labels retain stock wire layout; clan chat still carries player names.
 	if (typeof FriendNamesStatic === "undefined")
 		throw Error("ExtNameTextStatic: friend name adapter unavailable");
 	FriendNamesStatic.install(state, routes);
@@ -1182,14 +1179,14 @@ ExtNameTextStatic.patch128ByteNamePackets = function(state)
 	BookingNamesStatic.install(state, routes);
 	ChatRoomNamesStatic.install(state, routes);
 	ModernPartyNamesStatic.install(state, routes);
-	GuildPositionNamesStatic.install(state, routes);
 	WhisperBlockNamesStatic.install(state, routes);
 	StarNamesStatic.install(state);
-	BattlegroundNamesStatic.install(state);
+	// BG queue/lobby identifiers retain their stock wire layout.
 	GuildStorageLogNamesStatic.install(state, routes);
 	QuestNamesStatic.install(state, routes);
 	BossTrackerNamesStatic.install(state);
 	AuxiliaryIdentityNamesStatic.install(state,routes);
+	NameRequestGapsStatic.install(state,routes);
 	if(typeof MailNamesStatic === "undefined")
 		throw Error("ExtNameTextStatic: mail name adapter unavailable");
 	MailNamesStatic.install(state, routes);

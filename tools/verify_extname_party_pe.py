@@ -24,8 +24,8 @@ imagebase = pe.OPTIONAL_HEADER.ImageBase
 assert imagebase == 0x400000, 'Expected profiled 2025-07-16 image base'
 BUFFER = 0x15E8198
 RETURN = 0xC9E1DD
-STUB = 0x210F000
-STOP = 0x210E000
+STUB = 0x2100F000
+STOP = 0x2100E000
 
 
 def dwords(u, addr, count):
@@ -36,10 +36,10 @@ def make():
     u = Uc(UC_ARCH_X86, UC_MODE_32)
     u.mem_map(0, 0x1000)
     image_size = (pe.OPTIONAL_HEADER.SizeOfImage + 0xfff) & ~0xfff
-    assert imagebase + image_size <= 0x2100000, 'Test scratch overlaps PE'
+    assert imagebase + image_size <= 0x21000000, 'Test scratch overlaps PE'
     u.mem_map(imagebase, image_size)
     u.mem_write(imagebase, pe.get_memory_mapped_image())
-    u.mem_map(0x2100000, 0x10000)
+    u.mem_map(0x21000000, 0x10000)
     u.mem_map(0x3000000, 0x20000)
     u.mem_map(0x4000000, 0x10000)
     u.reg_write(UC_X86_REG_ESP, 0x301F000)
@@ -204,8 +204,8 @@ for packet_id,original,expected in ((0x95,30,134),(0x2DF,36,140),(0xA30,106,522)
         (0x105,31,135),(0x20E,32,136),(0xA12,27,131),(0xA51,34,138),(0x809,50,154),
         (0xB6F,177,281),(0x6D,177,281),(0xDC,28,132),(0xDD,29,133),(0xE1,30,134),
         (0xAE7,38,142),(0xAFA,58,266),(0x1F4,32,136),(0x9F9,143,455),(0x293,70,147),
-        (0x1F6,34,138),(0x2DD,32,136),(0x979,50,154),(0x8D8,27,131),(0x8D9,30,134),
-        (0x8DB,27,131),(0x8DC,26,130),(0x8DE,27,131),(0x8DF,50,258),(0x8E1,51,259)):
+        (0x1F6,34,138),(0x2DD,32,136),(0x979,50,154),(0x8D8,27,27),(0x8D9,30,30),
+        (0x8DB,27,27),(0x8DC,26,26),(0x8DE,27,27),(0x8DF,50,50),(0x8E1,51,51),(0xBE3,34,138)):
     for available in (0,1,2,4,original,expected-1,expected,expected*2):
         test_receive(available,packet_id,expected,original)
 print('PASS final PE 128-byte party contract')
