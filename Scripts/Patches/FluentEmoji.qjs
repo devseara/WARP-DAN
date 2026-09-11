@@ -1097,22 +1097,12 @@ FluentEmoji = function(_)
 	const renderer = FluentEmojiStatic.ensureInstalled(_);
 	$$(_, 2, "Attach emoji rendering to the shared QJS text bridge");
 	ExtNameTextStatic.enableEmoji(_, renderer);
-	if (!Warp.TestMode)
-	{
-		Exe.GetUserInput(
-			'$copyFluentEmojiAssets',
-			D_Bool,
-			"Copy Fluent Emoji Assets",
-			"Copy BohEmoji/fluent beside the patched client executable?",
-			true
-		);
-	}
 	return true;
 };
 
 FluentEmoji.onApplied = function()
 {
-	if (Warp.TestMode || !Exe.GetSavedInput('$copyFluentEmojiAssets'))
+	if (Warp.TestMode)
 		return;
 	const manifest = FluentEmojiStatic.loadManifest();
 	const source = Warp.Path + FluentEmojiStatic.AssetPath;

@@ -108,15 +108,13 @@ def verify_source() -> None:
 		"a.emit(0xC6, 0x86, 0xFC, 0x00, 0x00, 0x00, 0x00);" in control_builder,
 		"Alt+A OnCreate no longer resets UIStatusWnd+0xFC to Status",
 	)
-	asset_input = section(
-		source,
-		"Exe.GetUserInput(",
-		"$$(_, 6, 'Stage base stats",
-	)
 	require(
-		"{saveDefault: true}" in asset_input,
-		"Status asset-copy default is not persisted to exported profiles",
+		"$copyRedesignedStatusAssets" not in source,
+		"Status assets must deploy automatically without a saved copy preference",
 	)
+	asset_copy = source[source.index("RedesignedStatusWindow.onApplied = function()") :]
+	require("if (Warp.TestMode)" in asset_copy and "System.Copy(" in asset_copy,
+	        "Status assets must copy on export and skip test mode")
 
 	geometry = section(
 		source,

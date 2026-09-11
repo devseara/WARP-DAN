@@ -234,16 +234,6 @@ RedesignedStatusWindow = function(_)
 		)
 	);
 
-	if (!Warp.TestMode)
-		Exe.GetUserInput(
-			'$copyRedesignedStatusAssets',
-			D_Bool,
-			'Copy Status UI Assets',
-			'Copy the redesigned Status UI assets into the target client data folder?',
-			true,
-			{saveDefault: true}
-		);
-
 	$$(_, 6, 'Stage base stats and commit through native server requests');
 	return true;
 };
@@ -2376,7 +2366,7 @@ RedesignedStatusWindow.patchTabHoverLabels = function(
 
 RedesignedStatusWindow.onApplied = function()
 {
-	if (Warp.TestMode || !Exe.GetSavedInput('$copyRedesignedStatusAssets'))
+	if (Warp.TestMode)
 		return;
 
 	const source = Warp.Path + RedesignedStatusWindow.AssetPath;

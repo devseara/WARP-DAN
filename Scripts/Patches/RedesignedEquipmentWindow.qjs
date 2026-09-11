@@ -141,15 +141,6 @@ RedesignedEquipmentWindow = function(_)
 	RedesignedEquipmentWindow.patchLeftRailSelectors(_);
 	RedesignedEquipmentWindow.patchSwapPane(_, swapVir);
 
-	if (!Warp.TestMode)
-		Exe.GetUserInput(
-			'$copyRedesignedEquipmentAssets',
-			D_Bool,
-			'Copy Equipment UI Assets',
-			'Copy the redesigned Equipment UI assets into the target client data folder?',
-			true
-		);
-
 	$$(_, 5, 'Keep stock Title, Damage, Costume, Swap, item, tooltip, and packet ownership');
 	return true;
 };
@@ -1974,7 +1965,7 @@ RedesignedEquipmentWindow.redirect = function(_, spec)
 
 RedesignedEquipmentWindow.onApplied = function()
 {
-	if (Warp.TestMode || !Exe.GetSavedInput('$copyRedesignedEquipmentAssets'))
+	if (Warp.TestMode)
 		return;
 
 	const source = Warp.Path + RedesignedEquipmentWindow.AssetPath;

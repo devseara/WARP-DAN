@@ -17,7 +17,7 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-08-21                                             *
+*   Last Modified : 2026-09-11                                             *
 *                                                                          *
 *   Description   : Adds a QJS-only, client-native Auto Combat settings    *
 *                   preview to the 2025-07-16 Ragexe. Persistent controls  *
@@ -38,6 +38,118 @@
 *                   without a DLL or client-side combat logic.             *
 *                                                                          *
 \**************************************************************************/
+
+/*
+ * Fixed Auto UI strings use the selected client encoding, never Windows ACP.
+ * The Chinese native font selector is 4 (CHINESEBIG5_CHARSET / MingLiU).
+ * CustomCodePage may override its charset-to-codepage mapper with UTF-8.
+ * Keep this helper global: AutoSupport requires AutoCombat and WARP isolates
+ * each script's lexical constants. No shared renderer or OS setting is changed.
+ */
+AutoUILanguage = {
+	English: "English",
+	Chinese: "Chinese Traditional"
+};
+
+AutoUILanguage.select = function(input, title)
+{
+	if (Warp.TestMode)
+		return this.English;
+	let language = Exe.GetUserInput(
+		input, D_Choice, title + " Language",
+		"Choose the UI language. Chinese follows the client's UTF-8 or Big5 encoding; Windows language is unchanged.",
+		this.English,
+		{choices: [this.English, this.Chinese], saveDefault: true}
+	);
+	if (language === false)
+		Cancel(title + " language selection cancelled");
+	if (language === "Chinese Traditional (Big5 / CP950)")
+		language = this.Chinese;
+	if (language !== this.English && language !== this.Chinese)
+		throw Error(title + ": unsupported UI language " + language);
+	return language;
+};
+
+AutoUILanguage.bytes = function(text, encoding)
+{
+	if (!this.Catalog)
+	{
+		const path = Warp.Path + "Inputs/AutoUI/zh-TW.bytes.json";
+		const file = new TextFile(path, ASCII, "r");
+		if (!file.Valid)
+			throw Error("AutoUI: missing translations: " + path);
+		try { this.Catalog = JSON.parse(file.Read(file.Size)); }
+		finally { file.Close(); }
+	}
+	const entry = this.Catalog[text];
+	const bytes = entry && entry[encoding];
+	if (!Array.isArray(bytes) || bytes.some(value =>
+		!Number.isInteger(value) || value < 1 || value > 255))
+		throw Error("AutoUI: missing or invalid translation: " + text);
+	return bytes.concat(0);
+};
+
+AutoUILanguage.allocate = function(c, text)
+{
+	if (c.Language === this.English)
+		return c.allocateString(text);
+	if (c.Language !== this.Chinese)
+		throw Error("AutoUI: language has not been selected");
+	const english = c.asciiBytes(text);
+	const big5 = this.bytes(text, "cp950");
+	const utf8 = this.bytes(text, "utf8");
+	const capacity = Math.max(english.length, big5.length, utf8.length);
+	const output = c.allocateBytes(english.concat(new Array(capacity - english.length).fill(0)));
+	c.LocalizedStrings.push([
+		output.vir, c.allocateBytes(big5).vir, big5.length,
+		c.allocateBytes(utf8).vir, utf8.length,
+		c.allocateBytes(english).vir, english.length
+	]);
+	return output;
+};
+
+AutoUILanguage.buildInitializer = function(c)
+{
+	if (c.Language === this.English)
+		return null;
+	const mapper = Exe.Vir2Phy(0x00A6F060);
+	const charset = Exe.Vir2Phy(0x011DCF40);
+	if (mapper < 0 || charset < 0 || Exe.GetUint32(charset) !== 136)
+		throw Error("AutoUI: native Chinese font/codepage contract changed");
+	const header = Exe.GetHex(mapper, 12).trim().toUpperCase();
+	if (header !== "55 8B EC 8B 45 08 83 C0 80 83 F8 6E" &&
+		!(Exe.GetUint8(mapper) === 0xB8 && Exe.GetUint8(mapper + 5) === 0xC3))
+		throw Error("AutoUI: unrecognized native codepage mapper");
+	const rows = [];
+	for (const entry of c.LocalizedStrings)
+		for (const value of entry)
+			rows.push(value & 255, (value >>> 8) & 255, (value >>> 16) & 255, value >>> 24);
+	const table = c.allocateBytes(rows, 4);
+	const cached = c.allocateBytes([255, 255, 255, 255], 4);
+	const a = c.asm();
+	// Resolve after all patches have run. This also handles changing/reapplying
+	// CustomCodePage without relying on saved inputs or patch-selection order.
+	// Only these UI-owned writable buffers are touched; preserve ECX, DF and
+	// every caller register across bootstrap, draw and tooltip entry points.
+	a.emit(0x9C, 0x60);
+	c.pushImm(a, 136); a.call(0x00A6F060); a.emit(0x83, 0xC4, 0x04);
+	a.emit(0x33, 0xD2, 0x3D); a.dword(950); a.jcc(0x84, "encoding_ready");
+	a.emit(0xBA); a.dword(8);
+	a.emit(0x3D); a.dword(65001); a.jcc(0x84, "encoding_ready");
+	a.emit(0xBA); a.dword(16); // Unsupported overrides show readable English.
+	a.label("encoding_ready");
+	a.emit(0x3B, 0x05); a.dword(cached.vir); a.jcc(0x84, "done");
+	a.emit(0xA3); a.dword(cached.vir);
+	a.emit(0xBB); a.dword(table.vir);
+	a.emit(0xBD); a.dword(c.LocalizedStrings.length);
+	a.emit(0xFC); // rep movsb always runs forwards, even if caller DF was set.
+	a.label("copy");
+	a.emit(0x8B, 0x3B, 0x8B, 0x74, 0x13, 0x04, 0x8B, 0x4C, 0x13, 0x08);
+	a.emit(0xF3, 0xA4, 0x83, 0xC3, 0x1C, 0x4D); a.jcc(0x85, "copy");
+	a.label("done"); a.emit(0x61, 0x9D, 0xC3);
+	return Object.assign(c.allocateCode(a), {tableVir: table.vir, cacheVir: cached.vir,
+		count: c.LocalizedStrings.length});
+};
 
 const AutoCombatUIStatic = {
 	BuildDate: 20250716,
@@ -572,6 +684,11 @@ AutoCombatUIStatic.allocateString = function(text)
 	return AutoCombatUIStatic.allocateBytes(
 		AutoCombatUIStatic.asciiBytes(text)
 	);
+};
+
+AutoCombatUIStatic.allocateUiString = function(text)
+{
+	return AutoUILanguage.allocate(AutoCombatUIStatic, text);
 };
 
 AutoCombatUIStatic.pushImm = function(a, value)
@@ -1710,13 +1827,13 @@ AutoCombatUIStatic.emitText = function(a, textVir, x, y, height, color, bold = 0
 	if (!Number.isInteger(textVir) || textVir <= 0)
 		throw Error("AutoCombatUI: invalid native text pointer");
 	// Native order is TextDraw(x, y, text, count, fontSelector, height,
-	// color, bold, italic). Keep selector 1 for the stock UI font and pass
-	// emphasis through the actual LOGFONT weight flag.
+	// color, bold, italic). Chinese uses native selector 4; both drawing
+	// and measurement must use the same font and LOGFONT weight flag.
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, bold);
 	AutoCombatUIStatic.pushImm(a, color);
 	AutoCombatUIStatic.pushImm(a, height);
-	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FontSelector);
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, textVir);
 	AutoCombatUIStatic.pushImm(a, y);
@@ -1736,7 +1853,7 @@ AutoCombatUIStatic.emitCenteredText = function(
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, bold);
 	AutoCombatUIStatic.pushImm(a, height);
-	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FontSelector);
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, textVir);
 	a.emit(0x8B, 0xCE);
@@ -1748,7 +1865,7 @@ AutoCombatUIStatic.emitCenteredText = function(
 	AutoCombatUIStatic.pushImm(a, bold);
 	AutoCombatUIStatic.pushImm(a, color);
 	AutoCombatUIStatic.pushImm(a, height);
-	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FontSelector);
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, textVir);
 	AutoCombatUIStatic.pushImm(a, y);
@@ -1766,7 +1883,7 @@ AutoCombatUIStatic.emitRightAlignedText = function(
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, bold);
 	AutoCombatUIStatic.pushImm(a, height);
-	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FontSelector);
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, textVir);
 	a.emit(0x8B, 0xCE);
@@ -1777,7 +1894,7 @@ AutoCombatUIStatic.emitRightAlignedText = function(
 	AutoCombatUIStatic.pushImm(a, bold);
 	AutoCombatUIStatic.pushImm(a, color);
 	AutoCombatUIStatic.pushImm(a, height);
-	AutoCombatUIStatic.pushImm(a, 1);
+	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FontSelector);
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, textVir);
 	AutoCombatUIStatic.pushImm(a, y);
@@ -2389,7 +2506,7 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, height);
-		AutoCombatUIStatic.pushImm(a, 1);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FontSelector);
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, full.vir);
 		a.emit(0x8B, 0xCE);
@@ -2401,7 +2518,7 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, height);
-		AutoCombatUIStatic.pushImm(a, 1);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FontSelector);
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, prefix.vir);
 		a.emit(0x8B, 0xCE);
@@ -2412,7 +2529,7 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, baseColor);
 		AutoCombatUIStatic.pushImm(a, height);
-		AutoCombatUIStatic.pushImm(a, 1);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FontSelector);
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, full.vir);
 		AutoCombatUIStatic.pushImm(a, y);
@@ -2423,7 +2540,7 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, highlightColor);
 		AutoCombatUIStatic.pushImm(a, height);
-		AutoCombatUIStatic.pushImm(a, 1);
+		AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.FontSelector);
 		AutoCombatUIStatic.pushImm(a, 0);
 		AutoCombatUIStatic.pushImm(a, highlight.vir);
 		AutoCombatUIStatic.pushImm(a, y);
@@ -3218,6 +3335,8 @@ AutoCombatUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, strings
 AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir)
 {
 	const a = AutoCombatUIStatic.asm();
+	if (AutoCombatUIStatic.TextInitializer)
+		a.call(AutoCombatUIStatic.TextInitializer.vir);
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
 	AutoCombatUIStatic.pushImm(a, 0x00FFFFFF);
 	a.emit(0x8B, 0xCE);
@@ -3368,6 +3487,8 @@ AutoCombatUIStatic.buildNativeSliderMouseMove = function(
 )
 {
 	const a = AutoCombatUIStatic.asm();
+	if (AutoCombatUIStatic.TextInitializer)
+		a.call(AutoCombatUIStatic.TextInitializer.vir);
 	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57, 0x8B, 0xF1);
 	// Preserve the native frame drag/capture path while the title is moving.
 	a.emit(0x80, 0x7E, AutoCombatUIStatic.WindowDragStateOffset);
@@ -5356,6 +5477,8 @@ AutoCombatUIStatic.buildControllerMouseMove = function(
 )
 {
 	const a = AutoCombatUIStatic.asm();
+	if (AutoCombatUIStatic.TextInitializer)
+		a.call(AutoCombatUIStatic.TextInitializer.vir);
 	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57, 0x8B, 0xF1);
 	// Native title dragging owns mouse movement while capture is active. Only
 	// publish controller hover text while the grouped frame is stationary.
@@ -5833,6 +5956,8 @@ AutoCombatUIStatic.buildControllerBootstrap = function(
 )
 {
 	const a = AutoCombatUIStatic.asm();
+	if (AutoCombatUIStatic.TextInitializer)
+		a.call(AutoCombatUIStatic.TextInitializer.vir);
 	// Preserve the original in-game render-pass call before QJS-owned work.
 	a.call(AutoCombatUIStatic.ControllerBootstrapOriginal);
 	a.emit(0x9C, 0x60);
@@ -6194,6 +6319,14 @@ AutoCombatUI = function(_)
 		typeof CustomSlashCommand.register !== "function")
 		throw Error("AutoCombatUI: CustomSlashCommand helper unavailable");
 
+	AutoCombatUIStatic.Language = AutoUILanguage.select(
+		"$autoCombatUILanguage", "AutoCombat UI"
+	);
+
+	AutoCombatUIStatic.LocalizedStrings = [];
+	AutoCombatUIStatic.TextInitializer = null;
+	AutoCombatUIStatic.FontSelector = AutoCombatUIStatic.Language === AutoUILanguage.Chinese ? 4 : 1;
+
 	$$(_, 1, "Verify the native UIFrameWnd ABI and input handlers");
 	const verified = AutoCombatUIStatic.verifyNativeContracts();
 	const getAsyncKeyStateIat = Exe.FindFunc("GetAsyncKeyState", "USER32.dll");
@@ -6420,89 +6553,89 @@ AutoCombatUI = function(_)
 		"Uses buff items registered in slots at each configured [Delay Time]."
 	];
 	const strings = {
-		windowTitle: AutoCombatUIStatic.allocateString("AUTO HUNT SETTINGS"),
-		controllerStartAutoHunt: AutoCombatUIStatic.allocateString("Start Auto-Hunt"),
-		controllerStartAutoPotion: AutoCombatUIStatic.allocateString("Start Auto-Potion"),
-		skillReject: AutoCombatUIStatic.allocateString(
+		windowTitle: AutoCombatUIStatic.allocateUiString("AUTO HUNT SETTINGS"),
+		controllerStartAutoHunt: AutoCombatUIStatic.allocateUiString("Start Auto-Hunt"),
+		controllerStartAutoPotion: AutoCombatUIStatic.allocateUiString("Start Auto-Potion"),
+		skillReject: AutoCombatUIStatic.allocateUiString(
 			"This skill cannot be registered on this page."
 		),
-		itemReject: AutoCombatUIStatic.allocateString(
+		itemReject: AutoCombatUIStatic.allocateUiString(
 			"This item cannot be registered on this page."
 		),
-		potionReject: AutoCombatUIStatic.allocateString(
+		potionReject: AutoCombatUIStatic.allocateUiString(
 			"Only HP or SP recovery items can be registered here."
 		),
-		moveItemReject: AutoCombatUIStatic.allocateString(
+		moveItemReject: AutoCombatUIStatic.allocateUiString(
 			"Only Fly Wings or Butterfly Wings can be registered here."
 		),
-		moveSkillReject: AutoCombatUIStatic.allocateString(
+		moveSkillReject: AutoCombatUIStatic.allocateUiString(
 			"Only Teleport can be registered here; Return requires level 2."
 		),
-		leftGlyph: AutoCombatUIStatic.allocateString("o"),
-		minimize: AutoCombatUIStatic.allocateString("-"),
-		closeGlyph: AutoCombatUIStatic.allocateString("x"),
-		tabs: tabLabels.map(text => AutoCombatUIStatic.allocateString(text)),
-		headings: headings.map(text => AutoCombatUIStatic.allocateString(text)),
-		subtitles: subtitles.map(text => AutoCombatUIStatic.allocateString(text)),
+		leftGlyph: AutoCombatUIStatic.allocateUiString("o"),
+		minimize: AutoCombatUIStatic.allocateUiString("-"),
+		closeGlyph: AutoCombatUIStatic.allocateUiString("x"),
+		tabs: tabLabels.map(text => AutoCombatUIStatic.allocateUiString(text)),
+		headings: headings.map(text => AutoCombatUIStatic.allocateUiString(text)),
+		subtitles: subtitles.map(text => AutoCombatUIStatic.allocateUiString(text)),
 		headingX: [112, 131, 178, 139, 159, 160, 169],
 		subtitleX: [53, 126, 139, 78, 112, 128, 79],
-		attackSettings: AutoCombatUIStatic.allocateString("Attack Skill Settings"),
-		supportSettings: AutoCombatUIStatic.allocateString("Support Skill Settings"),
-		healSettings: AutoCombatUIStatic.allocateString("HP Recovery"),
-		statusSettings: AutoCombatUIStatic.allocateString("Status Recovery"),
-		normalAttack: AutoCombatUIStatic.allocateString("Use Normal Attack"),
-		normalAttackHint: AutoCombatUIStatic.allocateString(
+		attackSettings: AutoCombatUIStatic.allocateUiString("Attack Skill Settings"),
+		supportSettings: AutoCombatUIStatic.allocateUiString("Support Skill Settings"),
+		healSettings: AutoCombatUIStatic.allocateUiString("HP Recovery"),
+		statusSettings: AutoCombatUIStatic.allocateUiString("Status Recovery"),
+		normalAttack: AutoCombatUIStatic.allocateUiString("Use Normal Attack"),
+		normalAttackHint: AutoCombatUIStatic.allocateUiString(
 			"When checked, normal attacks are used if skills cannot be used."
 		),
 		skillHeadings: [
 			"Set the attack skill.",
 			"Configure support skills.",
 			"Configure recovery skills."
-		].map(text => AutoCombatUIStatic.allocateString(text)),
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		skillSubtitles: [
 			"Skills are used at each configured [Delay Time].",
 			"Support skills are used at each configured [Delay Time].",
 			"Set healing thresholds and status recovery skills."
-		].map(text => AutoCombatUIStatic.allocateString(text)),
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		potionHeadings: [
 			"Configure recovery items to use.",
 			"Configure status recovery items."
-		].map(text => AutoCombatUIStatic.allocateString(text)),
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		potionSubtitles: [
 			"If recovery ratios are the same, items are used from left to right.",
 			"Register items used to remove harmful status effects."
-		].map(text => AutoCombatUIStatic.allocateString(text)),
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		lootingHeadings: [
 			"Configure looting behavior.",
 			"Configure looting behavior."
-		].map(text => AutoCombatUIStatic.allocateString(text)),
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		lootingSubtitles: [
 			"Automatically loot items of the checked types.",
 			"Automatically loot items of the checked types."
-		].map(text => AutoCombatUIStatic.allocateString(text)),
-		statusPotion: AutoCombatUIStatic.allocateString("Status Recovery Item"),
-		weight: AutoCombatUIStatic.allocateString("Weight Settings"),
-		teleport: AutoCombatUIStatic.allocateString("Enable Teleport"),
-		returning: AutoCombatUIStatic.allocateString("Enable Return"),
-		buffItems: AutoCombatUIStatic.allocateString("Buff Item Settings"),
-		basicIntroFull: AutoCombatUIStatic.allocateString(
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
+		statusPotion: AutoCombatUIStatic.allocateUiString("Status Recovery Item"),
+		weight: AutoCombatUIStatic.allocateUiString("Weight Settings"),
+		teleport: AutoCombatUIStatic.allocateUiString("Enable Teleport"),
+		returning: AutoCombatUIStatic.allocateUiString("Enable Return"),
+		buffItems: AutoCombatUIStatic.allocateUiString("Buff Item Settings"),
+		basicIntroFull: AutoCombatUIStatic.allocateUiString(
 			"Teleport settings are configured in the Movement Settings tab."
 		),
-		basicIntroPrefix: AutoCombatUIStatic.allocateString(
+		basicIntroPrefix: AutoCombatUIStatic.allocateUiString(
 			"Teleport settings are configured in the "
 		),
-		basicIntroLink: AutoCombatUIStatic.allocateString("Movement Settings"),
-		basicIntroSaved: AutoCombatUIStatic.allocateString(
+		basicIntroLink: AutoCombatUIStatic.allocateUiString("Movement Settings"),
+		basicIntroSaved: AutoCombatUIStatic.allocateUiString(
 			"Automatic hunting settings are saved separately for each character."
 		),
-		useLabel: AutoCombatUIStatic.allocateString("Use"),
-		moveReturnHintLine1: AutoCombatUIStatic.allocateString(
+		useLabel: AutoCombatUIStatic.allocateUiString("Use"),
+		moveReturnHintLine1: AutoCombatUIStatic.allocateUiString(
 			"If job consumables are insufficient to perform attacks"
 		),
-		moveReturnHintLine2: AutoCombatUIStatic.allocateString(
+		moveReturnHintLine2: AutoCombatUIStatic.allocateUiString(
 			"or weight exceeds in loot settings, return settings are used."
 		),
-		itemReturnHint: AutoCombatUIStatic.allocateString(
+		itemReturnHint: AutoCombatUIStatic.allocateUiString(
 			"Automatically return to town when all equipped buff items are used."
 		),
 		basicOptions: [
@@ -6516,78 +6649,80 @@ AutoCombatUI = function(_)
 			"Aggressively target nearby hostile monsters.",
 			"Accept party invitations automatically.",
 			"Use a Token of Siegfried when defeated."
-		].map(text => AutoCombatUIStatic.allocateString(text)),
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		basicPrefixes: [
 			"Allow normal attacks when SP is below",
 			"",
 			"Use teleport if combat does not occur for",
 			"Use Teleport if there are more than"
-		].map(text => AutoCombatUIStatic.allocateString(text)),
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		basicSuffixes: [
 			" %.",
 			"",
 			"seconds.",
 			" monsters on the screen."
-		].map(text => AutoCombatUIStatic.allocateString(text)),
-		basicNormal: AutoCombatUIStatic.allocateString(
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
+		basicNormal: AutoCombatUIStatic.allocateUiString(
 			"[Use Normal Attack] in [Skill Settings] must be checked."
 		),
 		monsters: ["All Monsters", "Poring", "Drops", "Poporing", "Lunatic", "Fabre"]
-			.map(text => AutoCombatUIStatic.allocateString(text)),
+			.map(text => AutoCombatUIStatic.allocateUiString(text)),
 
-		skillEmpty: AutoCombatUIStatic.allocateString("+"),
-		skillLevelFormat: AutoCombatUIStatic.allocateString("%u"),
-		skillTooltipFormat: AutoCombatUIStatic.allocateString("%.23s Use Lv %u (Every %s s)"),
-		moveSkillTooltipFormat: AutoCombatUIStatic.allocateString("%.23s Use Lv %u"),
-		itemTooltipFormat: AutoCombatUIStatic.allocateString("%.23s x%u"),
-		sliderPercentFormat: AutoCombatUIStatic.allocateString("%u%%"),
-		secondsSuffix: AutoCombatUIStatic.allocateString("s"),
-		skillDelayHint: AutoCombatUIStatic.allocateString(
+		skillEmpty: AutoCombatUIStatic.allocateUiString("+"),
+		skillLevelFormat: AutoCombatUIStatic.allocateUiString("%u"),
+		skillTooltipFormat: AutoCombatUIStatic.allocateUiString("%.23s Use Lv %u (Every %s s)"),
+		moveSkillTooltipFormat: AutoCombatUIStatic.allocateUiString("%.23s Use Lv %u"),
+		itemTooltipFormat: AutoCombatUIStatic.allocateUiString("%.23s x%u"),
+		sliderPercentFormat: AutoCombatUIStatic.allocateUiString("%u%%"),
+		secondsSuffix: AutoCombatUIStatic.allocateUiString("s"),
+		skillDelayHint: AutoCombatUIStatic.allocateUiString(
 			"Click a delay box and enter the interval in seconds."
 		),
 		potionPanels: ["HP Recovery", "HP Recovery", "SP Recovery", "SP Recovery"]
-			.map(text => AutoCombatUIStatic.allocateString(text)),
-		useBelow: AutoCombatUIStatic.allocateString("Auto recover when below"),
+			.map(text => AutoCombatUIStatic.allocateUiString(text)),
+		useBelow: AutoCombatUIStatic.allocateUiString("Auto recover when below"),
 		lootOptions: ["Consumable", "Cards", "Miscellaneous", "Costume"]
-			.map(text => AutoCombatUIStatic.allocateString(text)),
-		weightNote: AutoCombatUIStatic.allocateString(
+			.map(text => AutoCombatUIStatic.allocateUiString(text)),
+		weightNote: AutoCombatUIStatic.allocateUiString(
 			"Automatic looting is not attempted when character weight reaches 90%."
 		),
-		lootWeaponPrefix: AutoCombatUIStatic.allocateString("Loot only weapon of"),
-		lootArmorPrefix: AutoCombatUIStatic.allocateString("Loot only armor of"),
-		lootOptionSuffix: AutoCombatUIStatic.allocateString("grade or higher."),
-		lootRuleHint: AutoCombatUIStatic.allocateString(
+		lootWeaponPrefix: AutoCombatUIStatic.allocateUiString("Loot only weapon of"),
+		lootArmorPrefix: AutoCombatUIStatic.allocateUiString("Loot only armor of"),
+		lootOptionSuffix: AutoCombatUIStatic.allocateUiString("grade or higher."),
+		lootRuleHint: AutoCombatUIStatic.allocateUiString(
 			"Loot equipment with at least the selected random options."
 		),
 		lootOptionChoices: ["0 Random Option", "1 Random Option", "2 Random Options",
 			"3 Random Options", "4 Random Options", "5 Random Options"
-		].map(text => AutoCombatUIStatic.allocateString(text)),
-		lootDropdownArrow: AutoCombatUIStatic.allocateString("v"),
-		lootPriorityHeading: AutoCombatUIStatic.allocateString("Choose action priority."),
-		lootFightFirst: AutoCombatUIStatic.allocateString(
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
+		lootDropdownArrow: AutoCombatUIStatic.allocateUiString("v"),
+		lootPriorityHeading: AutoCombatUIStatic.allocateUiString("Choose action priority."),
+		lootFightFirst: AutoCombatUIStatic.allocateUiString(
 			"Fight First - defeat targets before picking up items."
 		),
-		lootLootFirst: AutoCombatUIStatic.allocateString(
+		lootLootFirst: AutoCombatUIStatic.allocateUiString(
 			"Loot First - pick up eligible items before fighting."
 		),
-		lootReturn: AutoCombatUIStatic.allocateString("Return to Town Settings"),
-		lootReturnHint: AutoCombatUIStatic.allocateString(
+		lootReturn: AutoCombatUIStatic.allocateUiString("Return to Town Settings"),
+		lootReturnHint: AutoCombatUIStatic.allocateUiString(
 			"Automatically return to town when the configured weight is exceeded."
 		),
-		lootContinue: AutoCombatUIStatic.allocateString("Continue hunting without looting when the weight exceeds the limit."),
-		lootContinueHint: AutoCombatUIStatic.allocateString(
+		lootContinue: AutoCombatUIStatic.allocateUiString("Continue hunting without looting when the weight exceeds the limit."),
+		lootContinueHint: AutoCombatUIStatic.allocateUiString(
 			"When weight reaches 90%, Stop Hunting and return to town"
 		),
-		registerItem: AutoCombatUIStatic.allocateString("Register Item"),
-		registerSkill: AutoCombatUIStatic.allocateString("Register Skill"),
+		registerItem: AutoCombatUIStatic.allocateUiString("Register Item"),
+		registerSkill: AutoCombatUIStatic.allocateUiString("Register Skill"),
 		moveDescriptions: [
 			"Register Item", "Register Skill", "Register Item", "Register Skill"
-		].map(text => AutoCombatUIStatic.allocateString(text)),
+		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 
-		returnTown: AutoCombatUIStatic.allocateString("Return to Town Settings"),
-		reset: AutoCombatUIStatic.allocateString("Reset"),
-		close: AutoCombatUIStatic.allocateString("Close")
+		returnTown: AutoCombatUIStatic.allocateUiString("Return to Town Settings"),
+		reset: AutoCombatUIStatic.allocateUiString("Reset"),
+		close: AutoCombatUIStatic.allocateUiString("Close")
 	};
+	AutoCombatUIStatic.TextInitializer = AutoUILanguage.buildInitializer(AutoCombatUIStatic);
+
 	const controllerPositionRegistry = {
 		key: AutoCombatUIStatic.allocateString(
 			"Software\\BanquetOfHeroes\\AutoHuntUI"
@@ -6858,6 +6993,10 @@ AutoCombatUI = function(_)
 		typeof PatchDiagnostics.add === "function")
 	{
 		PatchDiagnostics.add("AutoCombatUI.QjsOnly", {
+			language: AutoCombatUIStatic.Language,
+			textCodePage: AutoCombatUIStatic.Language === AutoUILanguage.Chinese ? "native mapper (950/65001)" : "ASCII",
+			textInitializer: AutoCombatUIStatic.TextInitializer,
+			fontSelector: AutoCombatUIStatic.FontSelector,
 			buildDate: Exe.BuildDate,
 			opener: "ROGlobalZeroMenu.AutoHuntButton",
 			fallbackCommand: "/autohunt",

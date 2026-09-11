@@ -17,7 +17,7 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-09-02                                             *
+*   Last Modified : 2026-09-11                                             *
 *                                                                          *
 *   Description   : Adds a QJS-only, client-native Auto Support settings    *
 *                   preview to the 2025-07-16 Ragexe. Persistent controls  *
@@ -556,6 +556,11 @@ AutoSupportUIStatic.allocateString = function(text)
 	return AutoSupportUIStatic.allocateBytes(
 		AutoSupportUIStatic.asciiBytes(text)
 	);
+};
+
+AutoSupportUIStatic.allocateUiString = function(text)
+{
+	return AutoUILanguage.allocate(AutoSupportUIStatic, text);
 };
 
 AutoSupportUIStatic.pushImm = function(a, value)
@@ -1737,13 +1742,13 @@ AutoSupportUIStatic.emitText = function(a, textVir, x, y, height, color, bold = 
 	if (!Number.isInteger(textVir) || textVir <= 0)
 		throw Error("AutoSupportUI: invalid native text pointer");
 	// Native order is TextDraw(x, y, text, count, fontSelector, height,
-	// color, bold, italic). Keep selector 1 for the stock UI font and pass
-	// emphasis through the actual LOGFONT weight flag.
+	// color, bold, italic). Chinese uses native selector 4; both drawing
+	// and measurement must use the same font and LOGFONT weight flag.
 	AutoSupportUIStatic.pushImm(a, 0);
 	AutoSupportUIStatic.pushImm(a, bold);
 	AutoSupportUIStatic.pushImm(a, color);
 	AutoSupportUIStatic.pushImm(a, height);
-	AutoSupportUIStatic.pushImm(a, 1);
+	AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.FontSelector);
 	AutoSupportUIStatic.pushImm(a, 0);
 	AutoSupportUIStatic.pushImm(a, textVir);
 	AutoSupportUIStatic.pushImm(a, y);
@@ -1763,7 +1768,7 @@ AutoSupportUIStatic.emitCenteredText = function(
 	AutoSupportUIStatic.pushImm(a, 0);
 	AutoSupportUIStatic.pushImm(a, bold);
 	AutoSupportUIStatic.pushImm(a, height);
-	AutoSupportUIStatic.pushImm(a, 1);
+	AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.FontSelector);
 	AutoSupportUIStatic.pushImm(a, 0);
 	AutoSupportUIStatic.pushImm(a, textVir);
 	a.emit(0x8B, 0xCE);
@@ -1775,7 +1780,7 @@ AutoSupportUIStatic.emitCenteredText = function(
 	AutoSupportUIStatic.pushImm(a, bold);
 	AutoSupportUIStatic.pushImm(a, color);
 	AutoSupportUIStatic.pushImm(a, height);
-	AutoSupportUIStatic.pushImm(a, 1);
+	AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.FontSelector);
 	AutoSupportUIStatic.pushImm(a, 0);
 	AutoSupportUIStatic.pushImm(a, textVir);
 	AutoSupportUIStatic.pushImm(a, y);
@@ -1793,7 +1798,7 @@ AutoSupportUIStatic.emitRightAlignedText = function(
 	AutoSupportUIStatic.pushImm(a, 0);
 	AutoSupportUIStatic.pushImm(a, bold);
 	AutoSupportUIStatic.pushImm(a, height);
-	AutoSupportUIStatic.pushImm(a, 1);
+	AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.FontSelector);
 	AutoSupportUIStatic.pushImm(a, 0);
 	AutoSupportUIStatic.pushImm(a, textVir);
 	a.emit(0x8B, 0xCE);
@@ -1804,7 +1809,7 @@ AutoSupportUIStatic.emitRightAlignedText = function(
 	AutoSupportUIStatic.pushImm(a, bold);
 	AutoSupportUIStatic.pushImm(a, color);
 	AutoSupportUIStatic.pushImm(a, height);
-	AutoSupportUIStatic.pushImm(a, 1);
+	AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.FontSelector);
 	AutoSupportUIStatic.pushImm(a, 0);
 	AutoSupportUIStatic.pushImm(a, textVir);
 	AutoSupportUIStatic.pushImm(a, y);
@@ -2416,7 +2421,7 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, height);
-		AutoSupportUIStatic.pushImm(a, 1);
+		AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.FontSelector);
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, full.vir);
 		a.emit(0x8B, 0xCE);
@@ -2428,7 +2433,7 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, height);
-		AutoSupportUIStatic.pushImm(a, 1);
+		AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.FontSelector);
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, prefix.vir);
 		a.emit(0x8B, 0xCE);
@@ -2439,7 +2444,7 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, baseColor);
 		AutoSupportUIStatic.pushImm(a, height);
-		AutoSupportUIStatic.pushImm(a, 1);
+		AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.FontSelector);
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, full.vir);
 		AutoSupportUIStatic.pushImm(a, y);
@@ -2450,7 +2455,7 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, highlightColor);
 		AutoSupportUIStatic.pushImm(a, height);
-		AutoSupportUIStatic.pushImm(a, 1);
+		AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.FontSelector);
 		AutoSupportUIStatic.pushImm(a, 0);
 		AutoSupportUIStatic.pushImm(a, highlight.vir);
 		AutoSupportUIStatic.pushImm(a, y);
@@ -3301,6 +3306,8 @@ AutoSupportUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, string
 AutoSupportUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, statusItemRowVir, moveRowsVir, moveIconKeysVir, itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir)
 {
 	const a = AutoSupportUIStatic.asm();
+	if (AutoSupportUIStatic.TextInitializer)
+		a.call(AutoSupportUIStatic.TextInitializer.vir);
 	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
 	AutoSupportUIStatic.pushImm(a, 0x00FFFFFF);
 	a.emit(0x8B, 0xCE);
@@ -3451,6 +3458,8 @@ AutoSupportUIStatic.buildNativeSliderMouseMove = function(
 )
 {
 	const a = AutoSupportUIStatic.asm();
+	if (AutoSupportUIStatic.TextInitializer)
+		a.call(AutoSupportUIStatic.TextInitializer.vir);
 	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57, 0x8B, 0xF1);
 	// Preserve the native frame drag/capture path while the title is moving.
 	a.emit(0x80, 0x7E, AutoSupportUIStatic.WindowDragStateOffset);
@@ -5443,6 +5452,8 @@ AutoSupportUIStatic.buildControllerMouseMove = function(
 )
 {
 	const a = AutoSupportUIStatic.asm();
+	if (AutoSupportUIStatic.TextInitializer)
+		a.call(AutoSupportUIStatic.TextInitializer.vir);
 	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57, 0x8B, 0xF1);
 	// Native title dragging owns mouse movement while capture is active. Only
 	// publish controller hover text while the grouped frame is stationary.
@@ -5914,6 +5925,8 @@ AutoSupportUIStatic.buildControllerBootstrap = function(
 )
 {
 	const a = AutoSupportUIStatic.asm();
+	if (AutoSupportUIStatic.TextInitializer)
+		a.call(AutoSupportUIStatic.TextInitializer.vir);
 	// Preserve the original in-game render-pass call before QJS-owned work.
 	a.call(AutoSupportUIStatic.ControllerBootstrapOriginal);
 	a.emit(0x9C, 0x60);
@@ -6434,7 +6447,7 @@ AutoSupportUIStatic.EffectAssets = [
 
 AutoSupportUIStatic.onApplied = function()
 {
-	if (Warp.TestMode || !Exe.GetSavedInput("$copyAutoSupportAssets"))
+	if (Warp.TestMode)
 		return;
 	const c = AutoSupportUIStatic;
 	const source = Warp.Path + c.AssetPath;
@@ -6476,6 +6489,14 @@ AutoSupportUI = function(_)
 	if (typeof CustomSlashCommand === "undefined" ||
 		typeof CustomSlashCommand.register !== "function")
 		throw Error("AutoSupportUI: CustomSlashCommand helper unavailable");
+
+	AutoSupportUIStatic.Language = AutoUILanguage.select(
+		"$autoSupportUILanguage", "AutoSupport UI"
+	);
+
+	AutoSupportUIStatic.LocalizedStrings = [];
+	AutoSupportUIStatic.TextInitializer = null;
+	AutoSupportUIStatic.FontSelector = AutoSupportUIStatic.Language === AutoUILanguage.Chinese ? 4 : 1;
 
 	$$(_, 1, "Verify the native UIFrameWnd ABI and input handlers");
 	const verified = AutoSupportUIStatic.verifyNativeContracts();
@@ -6728,99 +6749,99 @@ AutoSupportUI = function(_)
 		"Uses buff items registered in slots at each configured [Delay Time]."
 	];
 	const strings = {
-		windowTitle: AutoSupportUIStatic.allocateString("AUTO SUPPORT SETTINGS"),
-		controllerStartAutoHunt: AutoSupportUIStatic.allocateString("Start Auto-Hunt"),
-		controllerStartAutoSupport: AutoSupportUIStatic.allocateString("Start AutoSupport"),
-		controllerStartAutoPotion: AutoSupportUIStatic.allocateString("Start Auto-Potion"),
-		skillReject: AutoSupportUIStatic.allocateString(
+		windowTitle: AutoSupportUIStatic.allocateUiString("AUTO SUPPORT SETTINGS"),
+		controllerStartAutoHunt: AutoSupportUIStatic.allocateUiString("Start Auto-Hunt"),
+		controllerStartAutoSupport: AutoSupportUIStatic.allocateUiString("Start AutoSupport"),
+		controllerStartAutoPotion: AutoSupportUIStatic.allocateUiString("Start Auto-Potion"),
+		skillReject: AutoSupportUIStatic.allocateUiString(
 			"This skill cannot be registered on this page."
 		),
-		itemReject: AutoSupportUIStatic.allocateString(
+		itemReject: AutoSupportUIStatic.allocateUiString(
 			"This item cannot be registered on this page."
 		),
-		potionReject: AutoSupportUIStatic.allocateString(
+		potionReject: AutoSupportUIStatic.allocateUiString(
 			"Only HP or SP recovery items can be registered here."
 		),
-		statusItemReject: AutoSupportUIStatic.allocateString(
+		statusItemReject: AutoSupportUIStatic.allocateUiString(
 			"Only supported status recovery items can be registered here."
 		),
-		moveItemReject: AutoSupportUIStatic.allocateString(
+		moveItemReject: AutoSupportUIStatic.allocateUiString(
 			"Only Fly Wings or Butterfly Wings can be registered here."
 		),
-		moveSkillReject: AutoSupportUIStatic.allocateString(
+		moveSkillReject: AutoSupportUIStatic.allocateUiString(
 			"Use Teleport for movement; Return accepts Teleport Lv 2."
 		),
-		noMasterReject: AutoSupportUIStatic.allocateString(
+		noMasterReject: AutoSupportUIStatic.allocateUiString(
 			"Select a Player-tab master before starting AutoSupport."
 		),
-		masterOfflineReject: AutoSupportUIStatic.allocateString(
+		masterOfflineReject: AutoSupportUIStatic.allocateUiString(
 			"The selected AutoSupport master is offline."
 		),
-		startPolicyReject: AutoSupportUIStatic.allocateString(
+		startPolicyReject: AutoSupportUIStatic.allocateUiString(
 			"AutoSupport cannot start here; check map and session requirements."
 		),
-		leftGlyph: AutoSupportUIStatic.allocateString("o"),
-		minimize: AutoSupportUIStatic.allocateString("-"),
-		closeGlyph: AutoSupportUIStatic.allocateString("x"),
-		tabs: tabLabels.map(text => AutoSupportUIStatic.allocateString(text)),
-		headings: headings.map(text => AutoSupportUIStatic.allocateString(text)),
-		subtitles: subtitles.map(text => AutoSupportUIStatic.allocateString(text)),
+		leftGlyph: AutoSupportUIStatic.allocateUiString("o"),
+		minimize: AutoSupportUIStatic.allocateUiString("-"),
+		closeGlyph: AutoSupportUIStatic.allocateUiString("x"),
+		tabs: tabLabels.map(text => AutoSupportUIStatic.allocateUiString(text)),
+		headings: headings.map(text => AutoSupportUIStatic.allocateUiString(text)),
+		subtitles: subtitles.map(text => AutoSupportUIStatic.allocateUiString(text)),
 		headingX: [112, 131, 178, 139, 159, 160, 169],
 		subtitleX: [53, 126, 139, 78, 112, 128, 79],
-		attackSettings: AutoSupportUIStatic.allocateString("Attack Skill Settings"),
-		supportSettings: AutoSupportUIStatic.allocateString("Support Skill Settings"),
-		healSettings: AutoSupportUIStatic.allocateString("HP Recovery"),
-		statusSettings: AutoSupportUIStatic.allocateString("Status Recovery"),
-		normalAttack: AutoSupportUIStatic.allocateString("Use Normal Attack"),
-		normalAttackHint: AutoSupportUIStatic.allocateString(
+		attackSettings: AutoSupportUIStatic.allocateUiString("Attack Skill Settings"),
+		supportSettings: AutoSupportUIStatic.allocateUiString("Support Skill Settings"),
+		healSettings: AutoSupportUIStatic.allocateUiString("HP Recovery"),
+		statusSettings: AutoSupportUIStatic.allocateUiString("Status Recovery"),
+		normalAttack: AutoSupportUIStatic.allocateUiString("Use Normal Attack"),
+		normalAttackHint: AutoSupportUIStatic.allocateUiString(
 			"When checked, normal attacks are used if skills cannot be used."
 		),
 		skillHeadings: [
 			"Assist the selected player's current monster target.",
 			"Configure support skills.",
 			"Configure recovery skills."
-		].map(text => AutoSupportUIStatic.allocateString(text)),
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 		skillSubtitles: [
 			"Only the selected player's current monster target is attacked.",
 			"Buffs support the party; Lex uses only the master's current target.",
 			"Set healing thresholds and status recovery skills."
-		].map(text => AutoSupportUIStatic.allocateString(text)),
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 		potionHeadings: [
 			"Configure recovery items to use.",
 			"Configure status recovery items."
-		].map(text => AutoSupportUIStatic.allocateString(text)),
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 		potionSubtitles: [
 			"If recovery ratios are the same, items are used from left to right.",
 			"Register items used to remove harmful status effects."
-		].map(text => AutoSupportUIStatic.allocateString(text)),
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 		lootingHeadings: [
 			"Configure looting behavior.",
 			"Configure looting behavior."
-		].map(text => AutoSupportUIStatic.allocateString(text)),
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 		lootingSubtitles: [
 			"Automatically loot items of the checked types.",
 			"Automatically loot items of the checked types."
-		].map(text => AutoSupportUIStatic.allocateString(text)),
-		statusPotion: AutoSupportUIStatic.allocateString("Status Recovery Item"),
-		weight: AutoSupportUIStatic.allocateString("Weight Settings"),
-		teleport: AutoSupportUIStatic.allocateString("Enable Teleport"),
-		returning: AutoSupportUIStatic.allocateString("Enable Return"),
-		buffItems: AutoSupportUIStatic.allocateString("Buff Item Settings"),
-		basicIntroFull: AutoSupportUIStatic.allocateString(
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
+		statusPotion: AutoSupportUIStatic.allocateUiString("Status Recovery Item"),
+		weight: AutoSupportUIStatic.allocateUiString("Weight Settings"),
+		teleport: AutoSupportUIStatic.allocateUiString("Enable Teleport"),
+		returning: AutoSupportUIStatic.allocateUiString("Enable Return"),
+		buffItems: AutoSupportUIStatic.allocateUiString("Buff Item Settings"),
+		basicIntroFull: AutoSupportUIStatic.allocateUiString(
 			"Teleport settings are configured in the Movement Settings tab."
 		),
-		basicIntroPrefix: AutoSupportUIStatic.allocateString(
+		basicIntroPrefix: AutoSupportUIStatic.allocateUiString(
 			"Teleport settings are configured in the "
 		),
-		basicIntroLink: AutoSupportUIStatic.allocateString("Movement Settings"),
-		basicIntroSaved: AutoSupportUIStatic.allocateString(
+		basicIntroLink: AutoSupportUIStatic.allocateUiString("Movement Settings"),
+		basicIntroSaved: AutoSupportUIStatic.allocateUiString(
 			"AutoSupport settings are saved separately for each character."
 		),
-		useLabel: AutoSupportUIStatic.allocateString("Use"),
-		moveReturnHintLine1: AutoSupportUIStatic.allocateString(
+		useLabel: AutoSupportUIStatic.allocateUiString("Use"),
+		moveReturnHintLine1: AutoSupportUIStatic.allocateUiString(
 			"If the configured return method is unavailable,"
 		),
-		moveReturnHintLine2: AutoSupportUIStatic.allocateString(
+		moveReturnHintLine2: AutoSupportUIStatic.allocateUiString(
 			"AutoSupport stops safely instead of using an unregistered resource."
 		),
 		basicOptions: [
@@ -6833,74 +6854,76 @@ AutoSupportUI = function(_)
 			"Use teleport when a champion monster appears.",
 			"Accept party invitations automatically.",
 			"Use a Token of Siegfried when defeated."
-		].map(text => AutoSupportUIStatic.allocateString(text)),
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 		basicPrefixes: [
 			"Allow normal attacks when SP is below",
 			"",
 			"Use teleport if combat does not occur for",
 			"Use Teleport if there are at least"
-		].map(text => AutoSupportUIStatic.allocateString(text)),
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 		basicSuffixes: [
 			" %.",
 			"",
 			"seconds.",
 			" nearby monsters."
-		].map(text => AutoSupportUIStatic.allocateString(text)),
-		basicNormal: AutoSupportUIStatic.allocateString(
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
+		basicNormal: AutoSupportUIStatic.allocateUiString(
 			"[Use Normal Attack] in [Skill Settings] must be checked."
 		),
-		skillEmpty: AutoSupportUIStatic.allocateString("+"),
-		skillLevelFormat: AutoSupportUIStatic.allocateString("%u"),
-		skillTooltipFormat: AutoSupportUIStatic.allocateString("%.23s Use Lv %u (Every %s s)"),
-		moveSkillTooltipFormat: AutoSupportUIStatic.allocateString("%.23s Use Lv %u"),
-		itemTooltipFormat: AutoSupportUIStatic.allocateString("%.23s x%u"),
-		sliderPercentFormat: AutoSupportUIStatic.allocateString("%u%%"),
-		secondsSuffix: AutoSupportUIStatic.allocateString("s"),
-		skillDelayHint: AutoSupportUIStatic.allocateString(
+		skillEmpty: AutoSupportUIStatic.allocateUiString("+"),
+		skillLevelFormat: AutoSupportUIStatic.allocateUiString("%u"),
+		skillTooltipFormat: AutoSupportUIStatic.allocateUiString("%.23s Use Lv %u (Every %s s)"),
+		moveSkillTooltipFormat: AutoSupportUIStatic.allocateUiString("%.23s Use Lv %u"),
+		itemTooltipFormat: AutoSupportUIStatic.allocateUiString("%.23s x%u"),
+		sliderPercentFormat: AutoSupportUIStatic.allocateUiString("%u%%"),
+		secondsSuffix: AutoSupportUIStatic.allocateUiString("s"),
+		skillDelayHint: AutoSupportUIStatic.allocateUiString(
 			"Click a delay box and enter the interval in seconds."
 		),
 		potionPanels: ["HP Recovery", "HP Recovery", "SP Recovery", "SP Recovery"]
-			.map(text => AutoSupportUIStatic.allocateString(text)),
-		useBelow: AutoSupportUIStatic.allocateString("Auto recover when below"),
+			.map(text => AutoSupportUIStatic.allocateUiString(text)),
+		useBelow: AutoSupportUIStatic.allocateUiString("Auto recover when below"),
 		lootOptions: ["Consumable", "Cards", "Miscellaneous", "Costume"]
-			.map(text => AutoSupportUIStatic.allocateString(text)),
-		weightNote: AutoSupportUIStatic.allocateString(
+			.map(text => AutoSupportUIStatic.allocateUiString(text)),
+		weightNote: AutoSupportUIStatic.allocateUiString(
 			"Automatic looting stops at the configured weight limit."
 		),
-		lootWeaponPrefix: AutoSupportUIStatic.allocateString("Loot only weapon of"),
-		lootArmorPrefix: AutoSupportUIStatic.allocateString("Loot only armor of"),
-		lootOptionSuffix: AutoSupportUIStatic.allocateString("grade or higher."),
-		lootRuleHint: AutoSupportUIStatic.allocateString(
+		lootWeaponPrefix: AutoSupportUIStatic.allocateUiString("Loot only weapon of"),
+		lootArmorPrefix: AutoSupportUIStatic.allocateUiString("Loot only armor of"),
+		lootOptionSuffix: AutoSupportUIStatic.allocateUiString("grade or higher."),
+		lootRuleHint: AutoSupportUIStatic.allocateUiString(
 			"Loot equipment with at least the selected random options."
 		),
 		lootOptionChoices: ["0 options", "1 option", "2 options",
 			"3 options", "4 options", "5 options"
-		].map(text => AutoSupportUIStatic.allocateString(text)),
-		lootDropdownArrow: AutoSupportUIStatic.allocateString("v"),
-		lootPriorityHeading: AutoSupportUIStatic.allocateString("Choose action priority."),
-		lootSupportFirst: AutoSupportUIStatic.allocateString(
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
+		lootDropdownArrow: AutoSupportUIStatic.allocateUiString("v"),
+		lootPriorityHeading: AutoSupportUIStatic.allocateUiString("Choose action priority."),
+		lootSupportFirst: AutoSupportUIStatic.allocateUiString(
 			"Support First - support the selected player before picking up items."
 		),
-		lootLootFirst: AutoSupportUIStatic.allocateString(
+		lootLootFirst: AutoSupportUIStatic.allocateUiString(
 			"Loot First - pick up eligible items before optional attacks."
 		),
-		lootReturn: AutoSupportUIStatic.allocateString("Return to Town Settings"),
-		lootReturnHint: AutoSupportUIStatic.allocateString(
+		lootReturn: AutoSupportUIStatic.allocateUiString("Return to Town Settings"),
+		lootReturnHint: AutoSupportUIStatic.allocateUiString(
 			"Automatically return to town when the configured weight is exceeded."
 		),
-		lootContinue: AutoSupportUIStatic.allocateString("Continue supporting without looting when the weight exceeds the limit."),
-		lootContinueHint: AutoSupportUIStatic.allocateString(
+		lootContinue: AutoSupportUIStatic.allocateUiString("Continue supporting without looting when the weight exceeds the limit."),
+		lootContinueHint: AutoSupportUIStatic.allocateUiString(
 			"At the configured limit, looting stops while AutoSupport continues."
 		),
-		registerItem: AutoSupportUIStatic.allocateString("Register Item"),
-		registerSkill: AutoSupportUIStatic.allocateString("Register Skill"),
+		registerItem: AutoSupportUIStatic.allocateUiString("Register Item"),
+		registerSkill: AutoSupportUIStatic.allocateUiString("Register Skill"),
 		moveDescriptions: [
 			"Register Item", "Register Skill", "Register Item", "Register Skill"
-		].map(text => AutoSupportUIStatic.allocateString(text)),
+		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 
-		reset: AutoSupportUIStatic.allocateString("Reset"),
-		close: AutoSupportUIStatic.allocateString("Close")
+		reset: AutoSupportUIStatic.allocateUiString("Reset"),
+		close: AutoSupportUIStatic.allocateUiString("Close")
 	};
+	AutoSupportUIStatic.TextInitializer = AutoUILanguage.buildInitializer(AutoSupportUIStatic);
+
 	const controllerPositionRegistry = {
 		key: AutoSupportUIStatic.allocateString(
 			"Software\\BanquetOfHeroes\\AutoSupportUI"
@@ -7166,18 +7189,14 @@ AutoSupportUI = function(_)
 		targetVir: toggle.vir
 	});
 
-	if (!Warp.TestMode)
-		Exe.GetUserInput(
-			"$copyAutoSupportAssets", D_Bool,
-			"Copy AutoSupport UI Assets",
-			"Copy the dedicated AutoSupport assets into the target client data folder?",
-			true, {saveDefault: true}
-		);
-
 	if (typeof PatchDiagnostics !== "undefined" &&
 		typeof PatchDiagnostics.add === "function")
 	{
 		PatchDiagnostics.add("AutoSupportUI.QjsOnly", {
+			language: AutoSupportUIStatic.Language,
+			textCodePage: AutoSupportUIStatic.Language === AutoUILanguage.Chinese ? "native mapper (950/65001)" : "ASCII",
+			textInitializer: AutoSupportUIStatic.TextInitializer,
+			fontSelector: AutoSupportUIStatic.FontSelector,
 			buildDate: Exe.BuildDate,
 			opener: "ROGlobalZeroMenu.AutoSupportButton",
 			fallbackCommand: "/autosupport",

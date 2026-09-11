@@ -3162,7 +3162,7 @@ ItemCollectionUIStatic.MenuAssets = [
 
 ItemCollectionUIStatic.onApplied = function()
 {
-	if (Warp.TestMode || !Exe.GetSavedInput("$copyItemCollectionAssets"))
+	if (Warp.TestMode)
 		return;
 	const c = ItemCollectionUIStatic;
 	const source = Warp.Path + c.AssetPath;
@@ -3378,16 +3378,6 @@ ItemCollectionUI = function(_)
 		visiblePhy: menuButtonVisible.phy,
 		label: "Item Collection"
 	});
-
-	if (!Warp.TestMode)
-		Exe.GetUserInput(
-			"$copyItemCollectionAssets",
-			D_Bool,
-			"Copy Item Collection UI Assets",
-			"Copy the approved Item Collection BMP assets into the target client data folder?",
-			true,
-			{saveDefault: true}
-		);
 
 	if (typeof PatchDiagnostics !== "undefined" &&
 		typeof PatchDiagnostics.add === "function")
