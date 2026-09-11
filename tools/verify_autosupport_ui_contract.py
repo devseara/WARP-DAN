@@ -125,7 +125,7 @@ def main() -> int:
     require("StateRejectResult" in support and "MutationResultStartRejected: 4" in support,
             "AutoSupport start failures do not have dedicated client feedback")
     require("AutoSupportUI must run first" in menu and
-            "buildButtonMouseUp(autoSupportRequestVir)" in menu,
+            "buildOptionalButtonMouseUp(autoSupportRoute.requestCellVir)" in menu,
             "AutoSupport menu button is not a required menu child")
     require("0x3F6" in support and "0x3F7" in support,
             "AutoSupport window/controller IDs are not isolated")
@@ -137,13 +137,14 @@ def main() -> int:
     require(
         "priorVisibleVirs" in menu and
         "customVisibleVirs" in menu and
-        "[autoHuntBridge.visibleVir, itemCollectionRoute.vir + 4]" in menu and
+        "[autoHuntRoute.visibleVir, itemCollectionRoute.vir + 4]" in menu and
         "reservedControlRow: false" in menu and
         "reservedMenuSlot: true" in menu,
         "custom menu buttons do not fill available native-grid slots",
     )
-    require("buildButtonHover(autoSupportHover.vir, 0, -20)" in menu,
-            "AutoSupport tooltip is not anchored immediately above its native button")
+    require("buildButtonHover(autoSupportHover.vir, 0, -20)" in menu and
+            "buildButtonHover(autoHuntHover.vir, 0, -20)" in menu,
+            "Auto UI tooltips are not anchored immediately above their native buttons")
     require("buildButtonHover = function(textVir, localX = null, localY = null)" in menu,
             "menu hover bridge does not support an explicit native local anchor")
     require(
@@ -159,9 +160,10 @@ def main() -> int:
         "Show/Hide Buttons does not expose all custom menu choices order-independently",
     )
     require(
-        'NewButtonVis.getCustomVisibility("Auto Hunt", 1)' in autocombat and
-        'NewButtonVis.getCustomVisibility("AutoSupport", 1)' in support and
-        'NewButtonVis.getCustomVisibility("Item Collection", 1)' in item_collection,
+        'NewButtonVis.publishCustomButton("Auto Hunt", {' in autocombat and
+        'NewButtonVis.publishCustomButton("AutoSupport", {' in support and
+        'NewButtonVis.publishCustomButton("Item Collection", {' in item_collection and
+        "Exe.SetUint32(route.visiblePhy, this.getCustomVisibility(label, 1))" in button_visibility,
         "custom menu bridges do not consume pending Show/Hide visibility",
     )
     require(

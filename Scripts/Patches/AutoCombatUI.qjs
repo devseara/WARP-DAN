@@ -40,15 +40,32 @@
 \**************************************************************************/
 
 /*
- * Fixed Auto UI strings use the selected client encoding, never Windows ACP.
- * The Chinese native font selector is 4 (CHINESEBIG5_CHARSET / MingLiU).
- * CustomCodePage may override its charset-to-codepage mapper with UTF-8.
- * Keep this helper global: AutoSupport requires AutoCombat and WARP isolates
- * each script's lexical constants. No shared renderer or OS setting is changed.
+ * Fixed Auto UI strings follow the selected native font's code-page mapper.
+ * The global helper is shared with AutoSupport; WARP isolates script constants.
+ * Language metadata and byte catalogs never depend on Windows ACP or locale.
  */
-AutoUILanguage = {
-	English: "English",
-	Chinese: "Chinese Traditional"
+AutoUILanguage = {English: "English", Files: {}};
+
+AutoUILanguage.load = function(name)
+{
+	if (!this.Files[name])
+	{
+		const path = Warp.Path + "Inputs/AutoUI/" + name + ".json";
+		const file = new TextFile(path, ASCII, "r");
+		if (!file.Valid)
+			throw Error("AutoUI: missing language file: " + path);
+		try { this.Files[name] = JSON.parse(file.Read(file.Size)); }
+		finally { file.Close(); }
+	}
+	return this.Files[name];
+};
+
+AutoUILanguage.spec = function(language)
+{
+	const languages = this.load("languages");
+	if (!Object.prototype.hasOwnProperty.call(languages, language))
+		throw Error("AutoUI: unsupported UI language " + language);
+	return languages[language];
 };
 
 AutoUILanguage.select = function(input, title)
@@ -57,35 +74,25 @@ AutoUILanguage.select = function(input, title)
 		return this.English;
 	let language = Exe.GetUserInput(
 		input, D_Choice, title + " Language",
-		"Choose the UI language. Chinese follows the client's UTF-8 or Big5 encoding; Windows language is unchanged.",
+		"Choose the UI language. UTF-8 supports every choice; legacy clients use the matching code page. Windows language is unchanged.",
 		this.English,
-		{choices: [this.English, this.Chinese], saveDefault: true}
+		{choices: Object.keys(this.load("languages")), saveDefault: true}
 	);
 	if (language === false)
 		Cancel(title + " language selection cancelled");
-	if (language === "Chinese Traditional (Big5 / CP950)")
-		language = this.Chinese;
-	if (language !== this.English && language !== this.Chinese)
-		throw Error(title + ": unsupported UI language " + language);
+	if (language === "Chinese Traditional" || language === "Chinese Traditional (Big5 / CP950)")
+		language = "Traditional Chinese";
+	this.spec(language);
 	return language;
 };
 
-AutoUILanguage.bytes = function(text, encoding)
+AutoUILanguage.bytes = function(spec, text, encoding)
 {
-	if (!this.Catalog)
-	{
-		const path = Warp.Path + "Inputs/AutoUI/zh-TW.bytes.json";
-		const file = new TextFile(path, ASCII, "r");
-		if (!file.Valid)
-			throw Error("AutoUI: missing translations: " + path);
-		try { this.Catalog = JSON.parse(file.Read(file.Size)); }
-		finally { file.Close(); }
-	}
-	const entry = this.Catalog[text];
+	const entry = this.load(spec.locale + ".bytes")[text];
 	const bytes = entry && entry[encoding];
 	if (!Array.isArray(bytes) || bytes.some(value =>
 		!Number.isInteger(value) || value < 1 || value > 255))
-		throw Error("AutoUI: missing or invalid translation: " + text);
+		throw Error("AutoUI: missing or invalid " + spec.locale + " translation: " + text);
 	return bytes.concat(0);
 };
 
@@ -93,15 +100,14 @@ AutoUILanguage.allocate = function(c, text)
 {
 	if (c.Language === this.English)
 		return c.allocateString(text);
-	if (c.Language !== this.Chinese)
-		throw Error("AutoUI: language has not been selected");
+	const spec = this.spec(c.Language);
 	const english = c.asciiBytes(text);
-	const big5 = this.bytes(text, "cp950");
-	const utf8 = this.bytes(text, "utf8");
-	const capacity = Math.max(english.length, big5.length, utf8.length);
+	const legacy = this.bytes(spec, text, spec.codec);
+	const utf8 = this.bytes(spec, text, "utf8");
+	const capacity = Math.max(english.length, legacy.length, utf8.length);
 	const output = c.allocateBytes(english.concat(new Array(capacity - english.length).fill(0)));
 	c.LocalizedStrings.push([
-		output.vir, c.allocateBytes(big5).vir, big5.length,
+		output.vir, c.allocateBytes(legacy).vir, legacy.length,
 		c.allocateBytes(utf8).vir, utf8.length,
 		c.allocateBytes(english).vir, english.length
 	]);
@@ -112,10 +118,11 @@ AutoUILanguage.buildInitializer = function(c)
 {
 	if (c.Language === this.English)
 		return null;
+	const spec = this.spec(c.Language);
 	const mapper = Exe.Vir2Phy(0x00A6F060);
-	const charset = Exe.Vir2Phy(0x011DCF40);
-	if (mapper < 0 || charset < 0 || Exe.GetUint32(charset) !== 136)
-		throw Error("AutoUI: native Chinese font/codepage contract changed");
+	const charset = Exe.Vir2Phy(0x011DCF30 + spec.fontSelector * 4);
+	if (mapper < 0 || charset < 0 || Exe.GetUint32(charset) !== spec.charset)
+		throw Error("AutoUI: native " + c.Language + " font/codepage contract changed");
 	const header = Exe.GetHex(mapper, 12).trim().toUpperCase();
 	if (header !== "55 8B EC 8B 45 08 83 C0 80 83 F8 6E" &&
 		!(Exe.GetUint8(mapper) === 0xB8 && Exe.GetUint8(mapper + 5) === 0xC3))
@@ -132,8 +139,8 @@ AutoUILanguage.buildInitializer = function(c)
 	// Only these UI-owned writable buffers are touched; preserve ECX, DF and
 	// every caller register across bootstrap, draw and tooltip entry points.
 	a.emit(0x9C, 0x60);
-	c.pushImm(a, 136); a.call(0x00A6F060); a.emit(0x83, 0xC4, 0x04);
-	a.emit(0x33, 0xD2, 0x3D); a.dword(950); a.jcc(0x84, "encoding_ready");
+	c.pushImm(a, spec.charset); a.call(0x00A6F060); a.emit(0x83, 0xC4, 0x04);
+	a.emit(0x33, 0xD2, 0x3D); a.dword(spec.codePage); a.jcc(0x84, "encoding_ready");
 	a.emit(0xBA); a.dword(8);
 	a.emit(0x3D); a.dword(65001); a.jcc(0x84, "encoding_ready");
 	a.emit(0xBA); a.dword(16); // Unsupported overrides show readable English.
@@ -936,7 +943,7 @@ AutoCombatUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 	return route;
 };
 
-AutoCombatUIStatic.resolvePacketRefs = function(_)
+AutoCombatUIStatic.resolvePacketRefs = function()
 {
 	const cacheKey = "AutoCombatUI.PacketRefs";
 	if (CACHE.has(cacheKey))
@@ -1734,7 +1741,7 @@ AutoCombatUIStatic.emitDrawItemIcon = function(
 	a.label(done);
 };
 AutoCombatUIStatic.emitDrawSkillLevel = function(
-	a, fillRectVir, skillLevelVir, levelFormatVir, levelTextVir, x, y
+	a, skillLevelVir, levelFormatVir, levelTextVir, x, y
 )
 {
 	a.emit(0x0F, 0xB7, 0x05); a.dword(skillLevelVir);
@@ -1762,73 +1769,13 @@ AutoCombatUIStatic.emitFillRect = function(a, fillRectVir, x, y, width, height, 
 	a.call(fillRectVir);
 };
 
-AutoCombatUIStatic.emitHorizontalSlider = function(
-	a, fillRectVir, valueVir, x, y, width, label
-)
-{
-	// Draw a dark outer rail, a white inset, and a pale empty track. The
-	// supplied BSON already contains the rounded field; these inset layers
-	// increase contrast without spilling beyond that native outline.
-	AutoCombatUIStatic.emitFillRect(
-		a, fillRectVir, x - 1, y - 2, width + 2, 7, 0xFF6A82A4
-	);
-	AutoCombatUIStatic.emitFillRect(
-		a, fillRectVir, x, y - 1, width, 5, 0xFFFFFFFF
-	);
-	AutoCombatUIStatic.emitFillRect(
-		a, fillRectVir, x + 1, y, width - 2, 3, 0xFFDCE8F6
-	);
-
-	a.emit(0x53);
-	a.emit(0xA1); a.dword(valueVir);
-	a.emit(0x83, 0xF8, 0x64);
-	a.jcc(0x86, `${label}_clamped`);
-	a.emit(0xB8); a.dword(100);
-	a.label(`${label}_clamped`);
-	a.emit(0x69, 0xC0); a.dword(width - 2);
-	a.emit(0x33, 0xD2, 0xB9); a.dword(100);
-	a.emit(0xF7, 0xF1);
-	a.emit(0x8B, 0xD8);
-	a.emit(0x85, 0xDB);
-	a.jcc(0x84, `${label}_fill_done`);
-	AutoCombatUIStatic.pushImm(a, 0xFF4F91D7);
-	AutoCombatUIStatic.pushImm(a, 3);
-	a.emit(0x53);
-	AutoCombatUIStatic.pushImm(a, y);
-	AutoCombatUIStatic.pushImm(a, x + 1);
-	a.emit(0x56);
-	a.call(fillRectVir);
-	a.label(`${label}_fill_done`);
-
-	// Keep the thumb entirely inside the rail at both 0% and 100%.
-	a.emit(0x81, 0xFB); a.dword(width - 3);
-	a.jcc(0x86, `${label}_thumb_clamped`);
-	a.emit(0xBB); a.dword(width - 3);
-	a.label(`${label}_thumb_clamped`);
-	a.emit(0x8D, 0x83); a.dword(x - 1);
-	AutoCombatUIStatic.pushImm(a, 0xFF4C6384);
-	AutoCombatUIStatic.pushImm(a, 7);
-	AutoCombatUIStatic.pushImm(a, 5);
-	AutoCombatUIStatic.pushImm(a, y - 2);
-	a.emit(0x50, 0x56);
-	a.call(fillRectVir);
-	a.emit(0x8D, 0x83); a.dword(x);
-	AutoCombatUIStatic.pushImm(a, 0xFFFFFFFF);
-	AutoCombatUIStatic.pushImm(a, 5);
-	AutoCombatUIStatic.pushImm(a, 3);
-	AutoCombatUIStatic.pushImm(a, y - 1);
-	a.emit(0x50, 0x56);
-	a.call(fillRectVir);
-	a.emit(0x5B);
-};
-
 AutoCombatUIStatic.emitText = function(a, textVir, x, y, height, color, bold = 0)
 {
 	if (!Number.isInteger(textVir) || textVir <= 0)
 		throw Error("AutoCombatUI: invalid native text pointer");
 	// Native order is TextDraw(x, y, text, count, fontSelector, height,
-	// color, bold, italic). Chinese uses native selector 4; both drawing
-	// and measurement must use the same font and LOGFONT weight flag.
+	// color, bold, italic). Drawing and measurement use the selected
+	// language font with the same LOGFONT weight flag.
 	AutoCombatUIStatic.pushImm(a, 0);
 	AutoCombatUIStatic.pushImm(a, bold);
 	AutoCombatUIStatic.pushImm(a, color);
@@ -1842,7 +1789,7 @@ AutoCombatUIStatic.emitText = function(a, textVir, x, y, height, color, bold = 0
 	a.call(AutoCombatUIStatic.TextDraw);
 };
 AutoCombatUIStatic.emitCenteredText = function(
-	a, textVir, left, y, width, height, color, maxChars, label, bold = 0
+	a, textVir, left, y, width, height, color, bold = 0
 )
 {
 	if (!Number.isInteger(textVir) || textVir <= 0)
@@ -1903,7 +1850,7 @@ AutoCombatUIStatic.emitRightAlignedText = function(
 	a.emit(0x5B);
 };
 AutoCombatUIStatic.emitDrawNativeHealingSlider = function(
-	a, stateVir, paths, fillRectVir, valueVir, label
+	a, stateVir, paths, valueVir, label
 )
 {
 	const drawArrow = function(controlId, normal, over, pressed, x, suffix)
@@ -1996,7 +1943,7 @@ AutoCombatUIStatic.emitDrawNativeHealingSlider = function(
 };
 
 AutoCombatUIStatic.emitDrawNativePotionSlider = function(
-	a, stateVir, paths, fillRectVir, valueVir, isSp, groupX, groupY,
+	a, stateVir, paths, valueVir, isSp, groupX, groupY,
 	controlBase, label
 )
 {
@@ -2080,7 +2027,7 @@ AutoCombatUIStatic.emitDrawNativePotionSlider = function(
 		paths.sliderRightPressed, rightX, "right");
 };
 AutoCombatUIStatic.emitDrawNativeLootSlider = function(
-	a, stateVir, paths, fillRectVir, valueVir, label
+	a, stateVir, paths, valueVir, label
 )
 {
 	const drawArrow = function(controlId, normal, over, pressed, x, suffix)
@@ -2477,9 +2424,7 @@ AutoCombatUIStatic.emitChrome = function(a, stateVir, paths, fillRectVir, string
 			a, fillRectVir, left, 37, widths[index], 1, 0xFF97ADCF
 		);
 		AutoCombatUIStatic.emitCenteredText(
-			a, strings.tabs[index].vir, left, 20, widths[index], 14, 0x00844E30,
-			12, `tab_label_${index}`
-		);
+			a, strings.tabs[index].vir, left, 20, widths[index], 14, 0x00844E30);
 		left += widths[index];
 	}
 	AutoCombatUIStatic.emitFillRect(a, fillRectVir, 469, 17, 1, 21, 0xFF97ADCF);
@@ -2491,12 +2436,11 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 	{
 		AutoCombatUIStatic.emitCenteredText(
 			a, heading.vir, 0, 42, AutoCombatUIStatic.WindowWidth, 15,
-			0x0078432C, 72, `page_heading_${heading.vir}`, 1
+			0x0078432C, 1
 		);
 		AutoCombatUIStatic.emitCenteredText(
 			a, subtitle.vir, 0, 60, AutoCombatUIStatic.WindowWidth, 14,
-			0x00B27E41, 80, `page_subtitle_${subtitle.vir}`
-		);
+			0x00B27E41);
 	};
 	const emitCenteredHighlightedText = function(
 		full, prefix, highlight, left, y, width, height, baseColor, highlightColor
@@ -2552,7 +2496,7 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 	a.emit(0x83, 0xF8, 0x00); a.jcc(0x85, "text_monster");
 	AutoCombatUIStatic.emitCenteredText(
 		a, strings.headings[0].vir, 0, 41, AutoCombatUIStatic.WindowWidth, 17,
-		0x0078432C, 72, "page_heading_basic", 1
+		0x0078432C, 1
 	);
 	emitCenteredHighlightedText(
 		strings.basicIntroFull, strings.basicIntroPrefix, strings.basicIntroLink,
@@ -2560,8 +2504,7 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 	);
 	AutoCombatUIStatic.emitCenteredText(
 		a, strings.basicIntroSaved.vir, 0, 100, AutoCombatUIStatic.WindowWidth, 13,
-		0x00554B46, 80, "page_basic_saved"
-	);
+		0x00554B46);
 	a.jmp("page_text_done");
 	a.label("text_monster");
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "text_skill");
@@ -2572,19 +2515,19 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage);
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "text_skill_2");
 	emitPair(strings.skillHeadings[0], strings.skillSubtitles[0], 158, 83);
-	AutoCombatUIStatic.emitCenteredText(a, strings.attackSettings.vir, 25, 87, 420, 14, 0x0078432C, 40, "attack_settings", 1);
+	AutoCombatUIStatic.emitCenteredText(a, strings.attackSettings.vir, 25, 87, 420, 14, 0x0078432C, 1);
 	AutoCombatUIStatic.emitText(a, strings.normalAttack.vir, 48, 276, 14, 0x0078432C);
 	AutoCombatUIStatic.emitText(a, strings.normalAttackHint.vir, 48, 294, 12, 0x00B27E41);
 	a.jmp("page_text_done");
 	a.label("text_skill_2");
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "text_skill_3");
 	emitPair(strings.skillHeadings[1], strings.skillSubtitles[1], 154, 79);
-	AutoCombatUIStatic.emitCenteredText(a, strings.supportSettings.vir, 25, 87, 420, 14, 0x0078432C, 40, "support_settings", 1);
+	AutoCombatUIStatic.emitCenteredText(a, strings.supportSettings.vir, 25, 87, 420, 14, 0x0078432C, 1);
 	a.jmp("page_text_done");
 	a.label("text_skill_3");
 	emitPair(strings.skillHeadings[2], strings.skillSubtitles[2], 158, 126);
-	AutoCombatUIStatic.emitCenteredText(a, strings.healSettings.vir, 25, 87, 261, 14, 0x0078432C, 30, "heal_settings", 1);
-	AutoCombatUIStatic.emitCenteredText(a, strings.statusSettings.vir, 291, 87, 168, 14, 0x0078432C, 30, "status_settings", 1);
+	AutoCombatUIStatic.emitCenteredText(a, strings.healSettings.vir, 25, 87, 261, 14, 0x0078432C, 1);
+	AutoCombatUIStatic.emitCenteredText(a, strings.statusSettings.vir, 291, 87, 168, 14, 0x0078432C, 1);
 	a.jmp("page_text_done");
 	a.label("text_potion");
 	a.emit(0x83, 0xF8, 0x03); a.jcc(0x85, "text_looting");
@@ -2595,8 +2538,7 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 	a.label("text_potion_2");
 	emitPair(strings.potionHeadings[1], strings.potionSubtitles[1], 130, 112);
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.statusPotion.vir, 25, 87, 420, 14, 0x0078432C, 40,
-		"status_potion_heading", 1
+		a, strings.statusPotion.vir, 25, 87, 420, 14, 0x0078432C, 1
 	);
 	a.jmp("page_text_done");
 	a.label("text_looting");
@@ -2605,8 +2547,7 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "text_looting_2");
 	emitPair(strings.lootingHeadings[0], strings.lootingSubtitles[0], 159, 112);
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.weight.vir, 75, 104, 319, 12, 0x0078432C, 30,
-		"looting_weight_heading", 1
+		a, strings.weight.vir, 75, 104, 319, 12, 0x0078432C, 1
 	);
 	a.jmp("page_text_done");
 	a.label("text_looting_2");
@@ -2615,12 +2556,12 @@ AutoCombatUIStatic.emitPageText = function(a, stateVir, strings)
 	a.label("text_move");
 	a.emit(0x83, 0xF8, 0x05); a.jcc(0x85, "text_item");
 	emitPair(strings.headings[5], strings.subtitles[5], 160, 128);
-	AutoCombatUIStatic.emitCenteredText(a, strings.teleport.vir, 25, 88, 420, 14, 0x0078432C, 30, "move_teleport_heading", 1);
-	AutoCombatUIStatic.emitCenteredText(a, strings.returning.vir, 25, 183, 420, 14, 0x0078432C, 30, "move_return_heading", 1);
+	AutoCombatUIStatic.emitCenteredText(a, strings.teleport.vir, 25, 88, 420, 14, 0x0078432C, 1);
+	AutoCombatUIStatic.emitCenteredText(a, strings.returning.vir, 25, 183, 420, 14, 0x0078432C, 1);
 	a.jmp("page_text_done");
 	a.label("text_item");
 	emitPair(strings.headings[6], strings.subtitles[6], 169, 79);
-	AutoCombatUIStatic.emitCenteredText(a, strings.buffItems.vir, 25, 87, 420, 14, 0x0078432C, 30, "buff_item_heading", 1);
+	AutoCombatUIStatic.emitCenteredText(a, strings.buffItems.vir, 25, 87, 420, 14, 0x0078432C, 1);
 	a.label("page_text_done");
 };
 
@@ -2636,39 +2577,29 @@ AutoCombatUIStatic.emitSkillRejectDialog = function(a, stateVir, fillRectVir, st
 	a.emit(0x83, 0xF8, AutoCombatUIStatic.SettingPotionRegister);
 	a.jcc(0x85, "registration_reject_item_test");
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.potionReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_potion"
-	);
+		a, strings.potionReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_item_test");
 	a.emit(0x83, 0xF8, AutoCombatUIStatic.SettingBuffItemRegister);
 	a.jcc(0x85, "registration_reject_move_item_test");
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.itemReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_item"
-	);
+		a, strings.itemReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_move_item_test");
 	a.emit(0x83, 0xF8, AutoCombatUIStatic.SettingMoveItemRegister);
 	a.jcc(0x85, "registration_reject_move_skill_test");
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.moveItemReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_move_item"
-	);
+		a, strings.moveItemReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_move_skill_test");
 	a.emit(0x83, 0xF8, AutoCombatUIStatic.SettingMoveSkillRegister);
 	a.jcc(0x85, "registration_reject_skill");
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.moveSkillReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_move_skill"
-	);
+		a, strings.moveSkillReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_skill");
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.skillReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_skill"
-	);
+		a, strings.skillReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.label("registration_reject_text_done");
 	a.label("skill_reject_dialog_done");
 };
@@ -2707,23 +2638,12 @@ AutoCombatUIStatic.emitFooterButtons = function(a, stateVir, paths)
 AutoCombatUIStatic.emitPageControls = function(
 	a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
 	attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
-	healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir,
-	itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir,
-	itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir
-)
+	healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, potionRowsVir, moveRowsVir, moveIconKeysVir,
+	itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir)
 {
 	const dark = 0x00554B46;
 	const blue = 0x0078432C;
 	const link = 0x00B27E41;
-	const drawCheck = function(on, x, y, label, id)
-	{
-		AutoCombatUIStatic.emitDrawFull(
-			a, (on ? paths.checkboxOn : paths.checkboxOff).vir, x, y,
-			`control_check_${id}`
-		);
-		if (label)
-			AutoCombatUIStatic.emitText(a, label.vir, x + 20, y - 2, 14, dark);
-	};
 	const drawStateCheck = function(test, x, y, label, id, fontSize = 14)
 	{
 		const offLabel = `control_check_${id}_off`;
@@ -2831,9 +2751,7 @@ AutoCombatUIStatic.emitPageControls = function(
 			lootWeaponTextVir
 		);
 		AutoCombatUIStatic.emitCenteredText(
-			a, lootWeaponTextVir, boxX, y - 1, boxWidth, 13, dark, 5,
-			`${id}_value`
-		);
+			a, lootWeaponTextVir, boxX, y - 1, boxWidth, 13, dark);
 		AutoCombatUIStatic.emitText(
 			a, strings.basicSuffixes[option].vir, boxX + boxWidth + 5, y - 1, 13, dark
 		);
@@ -2936,7 +2854,7 @@ AutoCombatUIStatic.emitPageControls = function(
 				x - 2, y - 2, skillColors[index % skillColors.length], `${prefix}_${index}_icon`
 			);
 			AutoCombatUIStatic.emitDrawSkillLevel(
-				a, fillRectVir,
+				a,
 				rowVir + AutoCombatUIStatic.AttackSkillRowLevelOffset,
 				strings.skillLevelFormat.vir, skillLevelTextVir, x - 2, y - 2
 			);
@@ -2949,9 +2867,7 @@ AutoCombatUIStatic.emitPageControls = function(
 			// The BSON owns the interval field artwork; draw only its live value.
 			AutoCombatUIStatic.emitCenteredText(
 				a, rowVir + AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
-				x - 6, y + 32, 34, 14, dark, 8,
-				`${prefix}_${index}_delay_text`
-			);
+				x - 6, y + 32, 34, 14, dark);
 			AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
 		}
 		a.jmp(`${prefix}_done`);
@@ -2968,7 +2884,7 @@ AutoCombatUIStatic.emitPageControls = function(
 			x - 2, y - 2, color, `${prefix}_icon`
 		);
 		AutoCombatUIStatic.emitDrawSkillLevel(
-			a, fillRectVir,
+			a,
 			rowVir + AutoCombatUIStatic.AttackSkillRowLevelOffset,
 			strings.skillLevelFormat.vir, skillLevelTextVir, x - 2, y - 2
 		);
@@ -2976,9 +2892,7 @@ AutoCombatUIStatic.emitPageControls = function(
 		// The BSON owns the interval field artwork; draw only its live value.
 		AutoCombatUIStatic.emitCenteredText(
 			a, rowVir + AutoCombatUIStatic.AttackSkillRowDelayTextOffset,
-			x - 6, y + 32, 34, 14, dark, 8,
-			`${prefix}_delay_text`
-		);
+			x - 6, y + 32, 34, 14, dark);
 		AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
 	};
 	a.emit(0xA1); a.dword(stateVir + AutoCombatUIStatic.StateSkillPage);
@@ -3022,7 +2936,7 @@ AutoCombatUIStatic.emitPageControls = function(
 		);
 	}
 	AutoCombatUIStatic.emitDrawNativeHealingSlider(
-		a, stateVir, paths, fillRectVir,
+		a, stateVir, paths,
 		stateVir + AutoCombatUIStatic.StateHealHpThreshold,
 		"heal_hp_slider"
 	);
@@ -3057,10 +2971,10 @@ AutoCombatUIStatic.emitPageControls = function(
 		AutoCombatUIStatic.emitDrawFull(a, paths.toggleOff.vir, x + 182, y,
 			`potion_toggle_${index}_off_draw`);
 		a.label(toggleDone);
-		AutoCombatUIStatic.emitCenteredText(a, strings.potionPanels[index].vir, x, y, 221, 14, blue, 30, `potion_panel_${index}`, 1);
+		AutoCombatUIStatic.emitCenteredText(a, strings.potionPanels[index].vir, x, y, 221, 14, blue, 1);
 		AutoCombatUIStatic.emitText(a, strings.useBelow.vir, x + 16, y + 39, 13, dark);
 		AutoCombatUIStatic.emitDrawNativePotionSlider(
-			a, stateVir, paths, fillRectVir,
+			a, stateVir, paths,
 			rowVir + (index < 2 ? AutoCombatUIStatic.PotionRowMinHpOffset :
 				AutoCombatUIStatic.PotionRowMinSpOffset),
 			index >= 2, groupX, groupY, 20 + index * 2,
@@ -3075,7 +2989,7 @@ AutoCombatUIStatic.emitPageControls = function(
 			x + 174, y + 65, 0xFF648FDB, `potion_${index}_icon`
 		);
 		AutoCombatUIStatic.emitDrawSkillLevel(
-			a, fillRectVir, rowVir + AutoCombatUIStatic.PotionRowQuantityOffset,
+			a, rowVir + AutoCombatUIStatic.PotionRowQuantityOffset,
 			strings.skillLevelFormat.vir, skillLevelTextVir, x + 174, y + 65
 		);
 		a.label(iconDone);
@@ -3087,10 +3001,9 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_looting_details");
 	AutoCombatUIStatic.emitCenteredText(
 		a, strings.weightNote.vir, 0, 78, AutoCombatUIStatic.WindowWidth, 13,
-		dark, 80, "loot_weight_note"
-	);
+		dark);
 	AutoCombatUIStatic.emitDrawNativeLootSlider(
-		a, stateVir, paths, fillRectVir,
+		a, stateVir, paths,
 		stateVir + AutoCombatUIStatic.StateLootWeightLimit, "loot_weight_slider"
 	);
 	drawStateCheck(
@@ -3103,25 +3016,21 @@ AutoCombatUIStatic.emitPageControls = function(
 	);
 	const drawLootChoice = function(valueVir, y, prefix)
 	{
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 19, 0xFFFFFFFF);
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 1, 0xFF9AAAC0);
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, y + 18, 186, 1, 0xFF9AAAC0);
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, y, 1, 19, 0xFF9AAAC0);
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 386, y, 1, 19, 0xFF9AAAC0);
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 371, y + 1, 15, 17, 0xFFEAF2FC);
-		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 370, y + 1, 1, 17, 0xFF9AAAC0);
+		AutoCombatUIStatic.emitDrawFull(
+			a, paths.lootDropdown.vir, 201, y, `${prefix}_frame`
+		);
 		for (let option = 0; option <= 5; option++)
 		{
 			const next = `${prefix}_${option}_next`;
 			a.emit(0x83, 0x3D); a.dword(valueVir); a.emit(option);
 			a.jcc(0x85, next);
 			AutoCombatUIStatic.emitText(
-				a, strings.lootOptionChoices[option].vir, 206, y + 2, 12, dark
+				a, strings.lootOptionChoices[option].vir, 205, y + 1, 12, dark
 			);
 			a.label(next);
 		}
 		AutoCombatUIStatic.emitDrawColorKeyFull(
-			a, paths.scrollDown.vir, 373, y + 4, `${prefix}_arrow`
+			a, paths.lootDropdownArrow.vir, 274, y + 2, `${prefix}_arrow`
 		);
 	};
 	drawLootChoice(
@@ -3130,9 +3039,9 @@ AutoCombatUIStatic.emitPageControls = function(
 	drawLootChoice(
 		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin, 224, "loot_armor_choice"
 	);
-	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 391, 204, 12, dark);
-	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 391, 226, 12, dark);
-	AutoCombatUIStatic.emitCenteredText(a, strings.lootRuleHint.vir, 20, 256, 430, 12, dark, 75, "loot_rule_hint", 1);
+	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 294, 204, 12, dark);
+	AutoCombatUIStatic.emitText(a, strings.lootOptionSuffix.vir, 294, 226, 12, dark);
+	AutoCombatUIStatic.emitCenteredText(a, strings.lootRuleHint.vir, 20, 256, 430, 12, dark, 1);
 	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 0}, 38, 289, strings.lootOptions[0], "loot_0");
 	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 1}, 147, 289, strings.lootOptions[1], "loot_1");
 	drawStateCheck({kind: "bit", offset: AutoCombatUIStatic.StateLootCategoryBits, mask: 1 << 2}, 244, 289, strings.lootOptions[2], "loot_2");
@@ -3140,8 +3049,7 @@ AutoCombatUIStatic.emitPageControls = function(
 	a.jmp("controls_done");
 	a.label("controls_looting_details");
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.lootPriorityHeading.vir, 25, 103, 420, 14, blue, 40,
-		"loot_priority_heading", 1
+		a, strings.lootPriorityHeading.vir, 25, 103, 420, 14, blue, 1
 	);
 	drawStateCheck(
 		{kind: "eq", offset: AutoCombatUIStatic.StatePrioMode, value: 0},
@@ -3184,12 +3092,10 @@ AutoCombatUIStatic.emitPageControls = function(
 		const iconDone = `move_${index}_icon_done`;
 		AutoCombatUIStatic.emitCenteredText(
 			a, strings.moveDescriptions[index].vir, slot.x - 26,
-			slot.labelY, 76, 12, dark, 20, `move_${index}_description`
-		);
+			slot.labelY, 76, 12, dark);
 		AutoCombatUIStatic.emitCenteredText(
 			a, strings.useLabel.vir, slot.checkX - 10, slot.y - 19,
-			42, 12, link, 10, `move_${index}_use`
-		);
+			42, 12, link);
 		a.emit(0x83, 0x3D); a.dword(rowVir + AutoCombatUIStatic.MoveRowIdOffset); a.emit(0);
 		a.jcc(0x84, empty);
 		a.emit(0x66, 0x83, 0x3D);
@@ -3215,7 +3121,7 @@ AutoCombatUIStatic.emitPageControls = function(
 		);
 		a.label(iconDone);
 		AutoCombatUIStatic.emitDrawSkillLevel(
-			a, fillRectVir, rowVir + AutoCombatUIStatic.MoveRowLevelOffset,
+			a, rowVir + AutoCombatUIStatic.MoveRowLevelOffset,
 			strings.skillLevelFormat.vir, skillLevelTextVir, slot.x, slot.y
 		);
 		drawStateCheck(
@@ -3226,13 +3132,9 @@ AutoCombatUIStatic.emitPageControls = function(
 	}
 	a.label("controls_move_done");
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.moveReturnHintLine1.vir, 25, 270, 420, 12, link, 75,
-		"move_return_hint_1"
-	);
+		a, strings.moveReturnHintLine1.vir, 25, 270, 420, 12, link);
 	AutoCombatUIStatic.emitCenteredText(
-		a, strings.moveReturnHintLine2.vir, 25, 286, 420, 12, link, 75,
-		"move_return_hint_2"
-	);
+		a, strings.moveReturnHintLine2.vir, 25, 286, 420, 12, link);
 	a.jmp("controls_done");
 	a.label("controls_item");
 	const itemXs = [108, 185, 262, 339];
@@ -3255,7 +3157,7 @@ AutoCombatUIStatic.emitPageControls = function(
 			x, y, skillColors[index % skillColors.length], `buff_item_${index}_icon`
 		);
 		AutoCombatUIStatic.emitDrawSkillLevel(
-			a, fillRectVir, rowVir + AutoCombatUIStatic.ItemRowFlagsOffset + 2,
+			a, rowVir + AutoCombatUIStatic.ItemRowFlagsOffset + 2,
 			strings.skillLevelFormat.vir, skillLevelTextVir, x, y
 		);
 		a.jmp(done);
@@ -3264,8 +3166,7 @@ AutoCombatUIStatic.emitPageControls = function(
 		a.label(done);
 		AutoCombatUIStatic.emitCenteredText(
 			a, rowVir + AutoCombatUIStatic.ItemRowDelayTextOffset,
-			x - 6, y + 32, 34, 14, dark, 8, `buff_item_${index}_delay`
-		);
+			x - 6, y + 32, 34, 14, dark);
 		AutoCombatUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
 	}
 	a.label("controls_item_return");
@@ -3295,32 +3196,36 @@ AutoCombatUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, strings
 
 	const emitPopup = function(currentVir, top, prefix)
 	{
+		const popupHeight = 6 * 17;
+		AutoCombatUIStatic.emitFillRect(
+			a, fillRectVir, 201, top, 88, popupHeight, 0xFFFFFFFF
+		);
 		for (let option = 0; option <= 5; option++)
 		{
 			const y = top + option * 17;
 			const normal = `${prefix}_${option}_normal`;
-			const backgroundDone = `${prefix}_${option}_background_done`;
 			a.emit(0x83, 0x3D); a.dword(currentVir); a.emit(option);
 			a.jcc(0x85, normal);
-			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 17, 0xFFD8E7FA);
-			a.jmp(backgroundDone);
+			AutoCombatUIStatic.emitFillRect(
+				a, fillRectVir, 202, y, 86, 17, 0xFFD8E7FA
+			);
 			a.label(normal);
-			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 17, 0xFFFFFFFF);
-			a.label(backgroundDone);
-			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, y, 186, 1, 0xFF9AAAC0);
-			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, y, 1, 17, 0xFF9AAAC0);
-			AutoCombatUIStatic.emitFillRect(a, fillRectVir, 386, y, 1, 17, 0xFF9AAAC0);
-			if (option === 5)
-				AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, y + 16, 186, 1, 0xFF9AAAC0);
 			AutoCombatUIStatic.emitText(
-				a, strings.lootOptionChoices[option].vir, 206, y + 1, 12, 0x0078432C
+				a, strings.lootOptionChoices[option].vir, 205, y + 1, 12, 0x0078432C
 			);
 		}
+		// Reputation/Game Settings-style list: one outer border and no row grid.
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, top, 88, 1, 0xFFC0C0C0);
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 201, top, 1, popupHeight, 0xFFC0C0C0);
+		AutoCombatUIStatic.emitFillRect(a, fillRectVir, 288, top, 1, popupHeight, 0xFFC0C0C0);
+		AutoCombatUIStatic.emitFillRect(
+			a, fillRectVir, 201, top + popupHeight - 1, 88, 1, 0xFFC0C0C0
+		);
 	};
 
 	emitPopup(
 		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin,
-		221, "loot_dropdown_weapon"
+		218, "loot_dropdown_weapon"
 	);
 	a.jmp("loot_dropdown_done");
 	a.label("loot_dropdown_armor_test");
@@ -3328,11 +3233,11 @@ AutoCombatUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, strings
 	a.jcc(0x85, "loot_dropdown_done");
 	emitPopup(
 		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin,
-		122, "loot_dropdown_armor"
+		120, "loot_dropdown_armor"
 	);
 	a.label("loot_dropdown_done");
 };
-AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir)
+AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, potionRowsVir, moveRowsVir, moveIconKeysVir, itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir)
 {
 	const a = AutoCombatUIStatic.asm();
 	if (AutoCombatUIStatic.TextInitializer)
@@ -3347,10 +3252,8 @@ AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, m
 	AutoCombatUIStatic.emitPageControls(
 		a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
 		attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
-		healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir,
-		itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir,
-		itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir
-	);
+		healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, potionRowsVir, moveRowsVir, moveIconKeysVir,
+		itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir);
 	AutoCombatUIStatic.emitLootDropdown(a, stateVir, fillRectVir, strings);
 	AutoCombatUIStatic.emitSkillRejectDialog(a, stateVir, fillRectVir, strings);
 	AutoCombatUIStatic.emitFooterButtons(a, stateVir, paths);
@@ -4006,8 +3909,7 @@ AutoCombatUIStatic.buildNativeSliderMouseMove = function(
 AutoCombatUIStatic.buildMouseDown = function(
 	stateVir, mutationSenderVir, monsterRowsVir, attackSkillRowsVir,
 	supportSkillRowsVir, healingSkillRowVir, recoverySkillRowsVir, itemRowsVir,
-	potionRowsVir, moveRowsVir
-)
+	potionRowsVir)
 {
 	const a = AutoCombatUIStatic.asm();
 
@@ -4036,7 +3938,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 		{
 			const next = `${prefix}_${option}_next`;
 			AutoCombatUIStatic.emitRectGate(
-				a, 201, top + option * 17, 387, top + (option + 1) * 17, next
+				a, 201, top + option * 17, 289, top + (option + 1) * 17, next
 			);
 			a.emit(0xC7, 0x05); a.dword(minimumVir); a.dword(option);
 			a.emit(0x33, 0xC9);
@@ -4060,7 +3962,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	emitLootDropdownSelection(
 		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin,
 		AutoCombatUIStatic.SettingLootWeaponFilter, 1 << 0,
-		221, "loot_dropdown_weapon_click"
+		218, "loot_dropdown_weapon_click"
 	);
 	a.jmp("loot_dropdown_close");
 	a.label("loot_dropdown_armor_click");
@@ -4069,7 +3971,7 @@ AutoCombatUIStatic.buildMouseDown = function(
 	emitLootDropdownSelection(
 		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin,
 		AutoCombatUIStatic.SettingLootArmorFilter, 1 << 1,
-		122, "loot_dropdown_armor_click_row"
+		120, "loot_dropdown_armor_click_row"
 	);
 	a.label("loot_dropdown_close");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown); a.dword(0);
@@ -4793,26 +4695,26 @@ AutoCombatUIStatic.buildMouseDown = function(
 		a.call(mutationSenderVir);
 	};
 	a.label("loot_filter_weapon");
-	AutoCombatUIStatic.emitRectGate(a, 46, 200, 210, 227, "loot_filter_armor");
+	AutoCombatUIStatic.emitRectGate(a, 46, 200, 201, 227, "loot_filter_armor");
 	emitLootFilterToggle(1 << 0, AutoCombatUIStatic.SettingLootWeaponFilter,
 		stateVir + AutoCombatUIStatic.StateLootWeaponOptionMin, "loot_weapon_filter");
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("loot_filter_armor");
-	AutoCombatUIStatic.emitRectGate(a, 46, 222, 210, 249, "loot_weapon_minimum");
+	AutoCombatUIStatic.emitRectGate(a, 46, 222, 201, 249, "loot_weapon_minimum");
 	emitLootFilterToggle(1 << 1, AutoCombatUIStatic.SettingLootArmorFilter,
 		stateVir + AutoCombatUIStatic.StateLootArmorOptionMin, "loot_armor_filter");
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 
 	a.label("loot_weapon_minimum");
-	AutoCombatUIStatic.emitRectGate(a, 201, 202, 387, 221, "loot_armor_minimum");
+	AutoCombatUIStatic.emitRectGate(a, 201, 202, 289, 218, "loot_armor_minimum");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown);
 	a.dword(1);
 	AutoCombatUIStatic.emitMarkDirty(a);
 	a.jmp("consume");
 	a.label("loot_armor_minimum");
-	AutoCombatUIStatic.emitRectGate(a, 201, 224, 387, 243, "loot_categories");
+	AutoCombatUIStatic.emitRectGate(a, 201, 224, 289, 240, "loot_categories");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateLootDropdown);
 	a.dword(2);
 	AutoCombatUIStatic.emitMarkDirty(a);
@@ -6020,14 +5922,6 @@ AutoCombatUIStatic.buildControllerBootstrap = function(
 	return a;
 };
 
-AutoCombatUIStatic.buildWindowProcTrampoline = function()
-{
-	const a = AutoCombatUIStatic.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x6A, 0xFF);
-	a.jmp(AutoCombatUIStatic.WindowMainProcResume);
-	return a;
-};
-
 AutoCombatUIStatic.buildMouseWheel = function(stateVir)
 {
 	const a = AutoCombatUIStatic.asm();
@@ -6325,7 +6219,7 @@ AutoCombatUI = function(_)
 
 	AutoCombatUIStatic.LocalizedStrings = [];
 	AutoCombatUIStatic.TextInitializer = null;
-	AutoCombatUIStatic.FontSelector = AutoCombatUIStatic.Language === AutoUILanguage.Chinese ? 4 : 1;
+	AutoCombatUIStatic.FontSelector = AutoUILanguage.spec(AutoCombatUIStatic.Language).fontSelector;
 
 	$$(_, 1, "Verify the native UIFrameWnd ABI and input handlers");
 	const verified = AutoCombatUIStatic.verifyNativeContracts();
@@ -6409,6 +6303,12 @@ AutoCombatUI = function(_)
 		),
 		sliderGaugeLoot: AutoCombatUIStatic.buildResourcePath(
 			"autohunt\\setting_looting\\slider_gage_looting.bmp"
+		),
+		lootDropdown: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_looting\\bg_dropdown.bmp"
+		),
+		lootDropdownArrow: AutoCombatUIStatic.buildResourcePath(
+			"autohunt\\setting_looting\\btn_down_out.bmp"
 		),
 		itemSlot: AutoCombatUIStatic.buildResourcePath(
 			"autohunt\\itemslot_autohunt.bmp"
@@ -6651,10 +6551,10 @@ AutoCombatUI = function(_)
 			"Use a Token of Siegfried when defeated."
 		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		basicPrefixes: [
-			"Allow normal attacks when SP is below",
+			"Normal: SP <",
 			"",
-			"Use teleport if combat does not occur for",
-			"Use Teleport if there are more than"
+			"Teleport if no combat for",
+			"Teleport if more than"
 		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		basicSuffixes: [
 			" %.",
@@ -6688,12 +6588,12 @@ AutoCombatUI = function(_)
 		),
 		lootWeaponPrefix: AutoCombatUIStatic.allocateUiString("Loot only weapon of"),
 		lootArmorPrefix: AutoCombatUIStatic.allocateUiString("Loot only armor of"),
-		lootOptionSuffix: AutoCombatUIStatic.allocateUiString("grade or higher."),
+		lootOptionSuffix: AutoCombatUIStatic.allocateUiString("or higher."),
 		lootRuleHint: AutoCombatUIStatic.allocateUiString(
 			"Loot equipment with at least the selected random options."
 		),
-		lootOptionChoices: ["0 Random Option", "1 Random Option", "2 Random Options",
-			"3 Random Options", "4 Random Options", "5 Random Options"
+		lootOptionChoices: ["0 options", "1 option", "2 options",
+			"3 options", "4 options", "5 options"
 		].map(text => AutoCombatUIStatic.allocateUiString(text)),
 		lootDropdownArrow: AutoCombatUIStatic.allocateUiString("v"),
 		lootPriorityHeading: AutoCombatUIStatic.allocateUiString("Choose action priority."),
@@ -6794,7 +6694,7 @@ AutoCombatUI = function(_)
 	Exe.SetUint32(state.phy + AutoCombatUIStatic.StateStopAttackSpThreshold, 5);
 
 	$$(_, 3, "Create the AutoHunt UI AHUI packet sender and snapshot receiver");
-	const packetRefs = AutoCombatUIStatic.resolvePacketRefs(_);
+	const packetRefs = AutoCombatUIStatic.resolvePacketRefs();
 	const openSender = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildSnapshotRequestSender(
 			state.vir, packetRefs, AutoCombatUIStatic.MessageOpen
@@ -6832,18 +6732,15 @@ AutoCombatUI = function(_)
 			state.vir, paths, fillRect.vir, strings, monsterRows.vir, attackSkillRows.vir,
 			attackSkillIconKeys.vir, supportSkillRows.vir, supportSkillIconKeys.vir,
 			healingSkillRow.vir, healingSkillIconKey.vir, recoverySkillRows.vir,
-			recoverySkillIconKeys.vir, itemRows.vir, itemIconKeys.vir, potionRows.vir,
-			potionIconKeys.vir, moveRows.vir, moveIconKeys.vir, itemResolver.vir,
-			skillIconPath.vir, skillLevelText.vir, lootWeaponText.vir, lootArmorText.vir
-		)
+			recoverySkillIconKeys.vir, itemRows.vir, potionRows.vir, moveRows.vir, moveIconKeys.vir, itemResolver.vir,
+			skillIconPath.vir, skillLevelText.vir, lootWeaponText.vir)
 	);
 	const mouseDown = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildMouseDown(
 			state.vir, scalarSender.vir, monsterRows.vir,
 			attackSkillRows.vir, supportSkillRows.vir,
 			healingSkillRow.vir, recoverySkillRows.vir, itemRows.vir,
-			potionRows.vir, moveRows.vir
-		)
+			potionRows.vir)
 	);
 	const sliderHover = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildNativeSliderMouseMove(
@@ -6982,8 +6879,7 @@ AutoCombatUI = function(_)
 		label: "Auto Hunt"
 	});
 
-	// Keep one test-cycle fallback. Remove after the native menu click is
-	// accepted in-game so a bad client ABI cannot strand the settings UI.
+	// Retain the slash command as an alternate way to open the settings.
 	CustomSlashCommand.register(_ + ".SlashCommand", {
 		command: "/autohunt",
 		targetVir: toggle.vir
@@ -6994,7 +6890,7 @@ AutoCombatUI = function(_)
 	{
 		PatchDiagnostics.add("AutoCombatUI.QjsOnly", {
 			language: AutoCombatUIStatic.Language,
-			textCodePage: AutoCombatUIStatic.Language === AutoUILanguage.Chinese ? "native mapper (950/65001)" : "ASCII",
+			textCodePage: AutoCombatUIStatic.Language === AutoUILanguage.English ? "ASCII" : "native mapper (" + AutoUILanguage.spec(AutoCombatUIStatic.Language).codePage + "/65001)",
 			textInitializer: AutoCombatUIStatic.TextInitializer,
 			fontSelector: AutoCombatUIStatic.FontSelector,
 			buildDate: Exe.BuildDate,
@@ -7037,6 +6933,25 @@ AutoCombatUI = function(_)
 		});
 	}
 	return true;
+};
+
+// Reuse the AutoSupport dropdown artwork; export it even when only AutoCombat
+// is selected. Runtime resources remain under the AutoCombat autohunt folder.
+AutoCombatUI.onApplied = function()
+{
+	if (Warp.TestMode)
+		return;
+	const source = Warp.Path + "/Assets/AutoSupportUI/autosupport/setting_looting";
+	const target = System.DirPath(Warp.TgtExe) + "/data/texture/" +
+		String.fromCharCode(0xC0, 0xAF, 0xC0, 0xFA, 0xC0, 0xCE, 0xC5,
+			0xCD, 0xC6, 0xE4, 0xC0, 0xCC, 0xBD, 0xBA) + "/autohunt/setting_looting";
+	if (!System.MkDir(target))
+		throw Error(`AutoCombatUI: unable to create ${target}`);
+	for (const file of ["bg_dropdown.bmp", "btn_down_out.bmp"])
+	{
+		if (!System.Copy(source + "/" + file, target + "/" + file, true))
+			throw Error(`AutoCombatUI: unable to copy ${file}`);
+	}
 };
 
 AutoCombatUI.validate = function()

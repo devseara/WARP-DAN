@@ -1,94 +1,138 @@
-# Auto UIs and automatic asset export
+# Auto UIs: languages, assets and accepted build
 
-Target: 2025-07-16 Ragexe. AutoSupport depends on AutoCombat and the Banquet
-map server. This is the consolidated Auto UI implementation/acceptance note.
+Target: 2025-07-16 Ragexe. AutoSupport requires AutoCombat and the Banquet map
+server. This is the single implementation, asset and acceptance guide for this work.
 
-## Language and rendering
+## Accepted build
 
-`$autoCombatUILanguage` and `$autoSupportUILanguage` independently select
-**English** (default) or **Chinese Traditional**. Existing profiles containing
-`Chinese Traditional (Big5 / CP950)` remain compatible. The 146 translations cover
-266 fixed-string allocations; server names, resource paths and protocol keys
-retain their existing encoding contracts. Native Reset/Close labels remain English.
+Accepted by the user on 2026-09-11. Saved in
+`Outputs/accepted-auto-ui-2026-09-11/`, with `client.exe`, `client-and-assets.zip`,
+`profile.yml` and `verification.json`. The profile preserves Japanese AutoCombat,
+Filipino AutoSupport and the existing UTF-8 code page (65001).
 
-Chinese uses font selector 4 (CHINESEBIG5_CHARSET/MingLiU) for drawing and width
-measurement; English uses selector 1. Each UI initializer reads the final native
-mapper at `0x00A6F060`: 950 selects Big5, 65001 selects UTF-8, and other overrides
-use English. It updates only UI-owned writable buffers when the result changes,
-preserving registers, flags, stack and receiver. Bootstrap, draw and tooltip entry
-points initialize the text. This supports CustomCodePage applied after the UIs
-without changing Windows locale, the client's code-page setting or shared renderers.
-Native tooltips retain their existing font selection.
+EXE SHA-256:
+`2e62da2ff147e9711bb168cfd5f24c40d42b3b6c7a1c26961c15cf082b18281e`.
 
-Edit `Inputs/AutoUI/zh-TW.json`; `tools/build_auto_ui_language.py` generates the
-single ASCII `zh-TW.bytes.json` runtime catalog with both encodings. Keep both
-files: one is editable translation source, the other supplies exact legacy bytes.
+The cleanup rebuild is byte-identical to this EXE and all 3,412 exported asset
+files. Six unused generators and 28 unused parameters were removed without
+changing emitted code or allocation layout. Runtime packages stay outside Git.
+Use the package with an existing game installation; choose other languages when
+applying the patches in WARP.
 
-## Automatic assets
+## Language and presentation
 
-Selected patches copy assets beside `Warp.TgtExe` during `onApplied`, with no
-confirmation or saved copy flag. Test mode skips copying; failures remain errors.
+`$autoCombatUILanguage` and `$autoSupportUILanguage` independently offer eight
+choices, with English as default. Saved `Chinese Traditional` and
+`Chinese Traditional (Big5 / CP950)` values resolve to Traditional Chinese.
 
-| Patch | Exported files | Destination |
+| Language | Native font | Legacy code page |
+| --- | --- | ---: |
+| English | Arial | ASCII |
+| Traditional Chinese | MingLiU | 950 |
+| Thai | Tahoma | 874 |
+| Brazilian Portuguese | Arial | 1252 |
+| Indonesian | Arial | 1252 |
+| Filipino | Arial | 1252 |
+| Korean | Gulim | 949 |
+| Japanese | MS Gothic | 932 |
+
+`Inputs/AutoUI/languages.json` defines the menu, font selector/charset and encoding.
+Each translated locale has 140 human-readable labels and a generated ASCII byte
+catalog with UTF-8 and legacy encodings. The native mapper at `0x00A6F060` selects
+the appropriate bytes after all patches run; incompatible overrides fall back to
+English. Initializers preserve registers, flags, stack and receiver while updating
+only the 266 UI-owned text buffers. Windows locale, the client's global code page,
+shared renderers and native tooltip font selection are unchanged. Fonts must cover
+the chosen script; Windows font linking can supply missing glyphs. Server names,
+protocol/resource keys and native Reset/Close bitmap labels retain their contracts.
+
+Both UIs use the same 88x16 dropdown field, bitmap arrow, compact option labels
+and 88-pixel popup with one outer border. AutoCombat hitboxes match the drawn list;
+outside clicks dismiss it without reaching controls beneath it. Both menu tooltips
+use the child-local `(0, -20)` anchor above the icon in Classic and New layouts.
+
+The supplied `msg_autoattack.csv` contains 119 Base64 key/value rows with valid
+UTF-8 Traditional Chinese, all representable in CP950. Its SHA-256 is
+`9409fa2265d973746f6d7aa7f7dbc0b2bc946f2c6b075c64eff2254d6dcd33ff`.
+Matching messages and terminology informed the Chinese wording. CSV `{}`/`<EDIT>`/
+font tags and literal newline escapes are adapted to the native printf/plain-text
+renderer. The original is unchanged; `Outputs/msg_autoattack.decoded.csv` is readable.
+
+## Assets
+
+Selected patches copy required assets beside `Warp.TgtExe` during `onApplied`,
+without confirmation or saved copy flags. Test mode skips copying; failures remain
+errors. AutoCombat reuses the AutoSupport dropdown source BMPs and exports them
+even when AutoSupport is not selected.
+
+| Patch | Files | Destination |
 | --- | ---: | --- |
-| AutoSupport UI | 134 | `data/texture/<native UI prefix>/autosupport`, `data/texture/effect/roz_autosupport` |
-| Item Collection UI | 77 | Native `item_collection` and `uirenewal/menuicon` folders |
-| Redesigned Equipment Window | 21 | Native `uirenewal/equipmentui` folder |
-| Redesigned Status Window | 18 | Native `uirenewal/statusui` folder |
+| AutoCombat UI | 2 | Native `autohunt/setting_looting` field and arrow |
+| AutoSupport UI | 134 | Native `autosupport` (107), `effect/roz_autosupport` (27) |
+| Item Collection UI | 77 | Native `item_collection` and `uirenewal/menuicon` |
+| Redesigned Equipment Window | 21 | Native `uirenewal/equipmentui` |
+| Redesigned Status Window | 18 | Native `uirenewal/statusui` |
 | Fluent Emoji | 3,148 | `BohEmoji/fluent`, including manifest and licenses |
 
-Target Monster Health Bar already exports its six BMPs. AutoCombat embeds its
-controller frames. Other Louis T Steinhil BMP references have no copy prompt;
-stock/GRF requirements and the separate Game Settings Lua prompt are unchanged.
+Native UI folders are below `data/texture/<native UI prefix>`. Target Monster
+Health Bar already exports its six BMPs. Controller frames remain embedded.
+Stock/GRF requirements and the separate Game Settings Lua prompt are unchanged.
 
-## AutoSupport contract
+`Assets/AutoSupportUI/autosupport` mirrors the dedicated runtime namespace;
+`setting_player/bg_player_autosupport.bmp` supplies the Player page. Menu icons
+have six states: New 45x41 and Classic 32x34, each normal/hover/pressed. Classic
+preserves the stock frame, state chrome and magenta key. Rebuild it with
+`tools/build_autosupport_classic_menu_icons.py --native-menu-root <extracted-menu-folder>`.
+`tools/build_autosupport_icon_assets.py` and `tools/render_autohunt_controller_frames.py`
+retain reproducible icon/controller sources; active loops contain 30 frames plus
+one inactive frame.
 
-The QJS patch owns native rendering/input, drag payload forwarding, lifecycle and
-snapshot decoding. Banquet owns party/master validation, persistence, execution
-and snapshots. Selection sends a character ID; the server returns the canonical
-party name and never silently substitutes another master.
+## Runtime contract
 
+QJS owns native rendering/input, drag/drop, lifecycle and snapshot decoding.
+Banquet owns validation, persistence, execution and snapshots. AHUI uses the
+3,792-byte profile layout; ASUI reuses it with party character IDs and single-master
+selection in monster rows. Banquet returns the canonical selected party name.
 ASUI uses request `0x0BF8`, snapshot `0x0BEF`, magic `0x49555341`, and messages
-Open 1 / Snapshot 2 / SetScalar 3 / Resync 6. The 3,792-byte AHUI layout is reused:
-monster rows carry party character IDs/names and single-master selection. Router
-version 4 has independent AHUI/ASUI/PINC/COUI handler cells.
+Open 1 / Snapshot 2 / SetScalar 3 / Resync 6. Router v4 keeps AHUI/ASUI/PINC/COUI
+handler cells independent.
 
-Tabs are Basic, Player (up to eleven peers), Skill, Potion, Looting, Move and Item.
-AutoSupport has an independent window ID and chains AutoCombat lifecycle hooks.
-Its 216x72 AutoHunt/AutoSupport/AutoPotion controller replaces the two-tile group;
-peer tiles use AutoCombat state/senders. Native menu routing and dedicated red/blue
-controller frames plus `roz_autosupport` STR/texture assets remain unchanged.
+AutoCombat has seven tabs, scrollable Basic/Monster views, three Skill pages,
+two Potion/Looting pages and Item intervals. Auto-Hunt evaluates potions;
+Auto-Potion is a mutually exclusive potion-only mode on setting 46. Controller
+coordinates persist under HKCU. AutoSupport replaces the Monster tab with Player
+(up to eleven peers) and owns an independent window. Its 216x72 merged controller
+orders AutoHunt/AutoSupport/AutoPotion and uses peer callbacks for the outer tiles.
+Menu callbacks remain safe across patch removal/reapplication. `/autohunt` and
+`/autosupport` remain alternate settings openers.
 
-Drag/drop resolves inventory indices before registering skills, potions, items
-and movement resources. Server-owned delay dialogs map shared slot numbers to
-attack/support/healing/recovery/item records. Looting has lowest support priority.
-`support_assistant_profiles` stores master name and character ID; ability/item
-tables retain category, slot, delay, state, recovery/movement and loot policy.
-Existing servers require `sql-files/autosupport/support_assistant.sql`.
+Drag/drop resolves inventory indices before registration. Server-owned delay
+dialogs use shared attack/support/healing/recovery/item slots. AutoSupport loot
+policy respects support priority; party/master validation and execution remain
+server-owned. Existing servers require `sql-files/autosupport/support_assistant.sql`;
+`support_assistant_profiles` persists the master name/ID and related ability/item
+records preserve category, slot, delay, state, recovery/movement and loot policy.
 
-## Accepted build and checks
+## Verification
 
-Accepted on 2026-09-11: the user's in-game screenshot shows readable Traditional
-Chinese in both visible AutoCombat/AutoSupport pages. Other pages/tooltips and
-server interaction cases are outside that screenshot's acceptance.
-
-Full-profile EXE SHA-256:
-`dab96a398b3ab1a60d9264af20cdbb2cd0dfe3ab61bb4d16eea2e9004edf5e29`.
-The cleanup rebuild matches this hash byte-for-byte.
-The local package is `Outputs/auto-ui-utf8-client-cey5abyk/client-and-assets.zip`;
-use it with an existing game installation. Build outputs stay outside Git.
+The language matrix passed 21 WARP builds with stock/UTF-8 mappings, saved Chinese
+aliases and mixed windows. Unicorn checks generated text, encoding switches, cached
+calls, register/flag/stack preservation and writable buffer bounds. The final saved
+profile also passed those runtime checks. Dropdown/hover validation covered 100
+mouse-handler cases, 12 tooltip cases and baseline/reapply-AutoCombat menu builds.
+Windows GDI checked 72 fixed captions and 48 dropdown labels across all languages.
+The AutoSupport asset/router/server contract, Status UI and item/grade source gates
+pass. The cleanup's byte-identical rebuild preserves this accepted behavior.
 
 ```powershell
 .\.venv\Scripts\python.exe tools\build_auto_ui_language.py --check
 node tools\verify_auto_ui_options.cjs
+.\.venv\Scripts\python.exe tools\verify_auto_ui_fonts.py
 .\.venv\Scripts\python.exe tools\verify_auto_ui_warp.py --source <pristine-2025-07-16-client.exe>
+python tools\verify_autosupport_ui_contract.py
 .\.venv\Scripts\python.exe tools\verify_status_ui_contract.py
 .\.venv\Scripts\python.exe tools\verify_item_grade_color_contract.py --source-only
 ```
 
-The seven-case WARP matrix covers English, stock/950/65001 Chinese, mixed choices
-and saved legacy choices. Unicorn checks actual generated code, exact strings,
-encoding changes, register/flag/stack preservation, cached calls and writable
-buffer bounds. Asset hashes and shared renderer bytes are checked. The older
-`verify_autosupport_ui_contract.py` has an unrelated stale menu assertion for
-`buildButtonMouseUp(autoSupportRequestVir)` that already fails at HEAD.
+The AutoSupport contract verifier additionally needs Pillow and the adjacent Banquet
+source tree. The language/runtime tools use the repository's Python environment.

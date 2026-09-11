@@ -17,8 +17,20 @@ import unicorn as uc
 from unicorn import x86_const as x86
 
 ROOT = Path(__file__).resolve().parents[1]
-CHINESE = "Chinese Traditional"
+LANGUAGES = json.loads((ROOT / "Inputs/AutoUI/languages.json").read_text(encoding="ascii"))
+CHINESE = "Traditional Chinese"
 LEGACY_CHINESE = "Chinese Traditional (Big5 / CP950)"
+CASES = {"default": ("English", "English", None),
+         "chinese-legacy": (LEGACY_CHINESE, LEGACY_CHINESE, 950),
+         "chinese-alias": ("Chinese Traditional", "Chinese Traditional", 65001),
+         "mixed-asian": ("Thai", "Korean", 65001),
+         "mixed-latin": ("Brazilian Portuguese", "Japanese", 65001),
+         "mixed-english": ("English", "Filipino", 65001),
+         "mixed-reverse": ("Indonesian", "English", 65001)}
+for language, spec in LANGUAGES.items():
+    if language != "English":
+        CASES[spec["locale"] + "-stock"] = (language, language, None)
+        CASES[spec["locale"] + "-utf8"] = (language, language, 65001)
 PROBE = '''/* Isolated Auto UI language/export regression. */
 TestAutoUIEnd = function(_) {
 	const file = new TextFile(MARKER, "w");
@@ -35,7 +47,7 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def verify_runtime(pe, probe, catalog, configured):
+def verify_runtime(pe, probe, catalogs, configured):
     machine = uc.Uc(uc.UC_ARCH_X86, uc.UC_MODE_32)
     base = pe.OPTIONAL_HEADER.ImageBase
     machine.mem_map(base, (pe.OPTIONAL_HEADER.SizeOfImage + 0xFFF) & ~0xFFF)
@@ -50,6 +62,9 @@ def verify_runtime(pe, probe, catalog, configured):
         if initializer is None:
             continue
         rows = [r for r in probe["strings"] if r["name"] == name]
+        language = rows[0]["language"]
+        spec = LANGUAGES[language]
+        catalog = catalogs[language]
         assert initializer["count"] == len(rows)
         spans = [(row["vir"], row["vir"] + row["size"]) for row in rows]
         spans.append((initializer["cacheVir"], initializer["cacheVir"] + 4))
@@ -58,11 +73,11 @@ def verify_runtime(pe, probe, catalog, configured):
             assert section and section.Characteristics & 0x80000000, "text buffers must be writable"
             assert end - base <= section.VirtualAddress + section.Misc_VirtualSize
         mapper = bytes(machine.mem_read(0xA6F060, 12))
-        for cp in (None, 950, 65001, 1252, 65001):
+        for cp in (None, spec["codePage"], 65001, 1251, 65001):
             # Execute the actual generated x86 routine, varying the runtime
             # mapper to cover late selection/reapplication and safe fallback.
             machine.mem_write(0xA6F060, mapper if cp is None else b"\xb8" + struct.pack("<I", cp) + b"\xc3")
-            resolved_cp = (configured or 950) if cp is None else cp
+            resolved_cp = (configured or spec["codePage"]) if cp is None else cp
             machine.ctl_remove_cache(0xA6F060, 0xA6F066)
             for repeat in range(2):
                 sp = stack + 0x8000
@@ -81,8 +96,8 @@ def verify_runtime(pe, probe, catalog, configured):
                 assert machine.reg_read(x86.UC_X86_REG_ESP) == sp + 4
                 assert machine.reg_read(x86.UC_X86_REG_EFLAGS) == 0x602
                 for row in rows:
-                    expected = (catalog[row["text"]].encode("utf-8" if resolved_cp == 65001 else "cp950")
-                                if resolved_cp in (950, 65001) else row["text"].encode("ascii"))
+                    expected = (catalog[row["text"]].encode("utf-8" if resolved_cp == 65001 else spec["codec"])
+                                if resolved_cp in (spec["codePage"], 65001) else row["text"].encode("ascii"))
                     data = bytes(machine.mem_read(row["vir"], row["size"]))
                     assert data.split(b"\0", 1)[0] == expected, (cp, row)
                 for address, size in writes:
@@ -97,7 +112,7 @@ def verify_runtime(pe, probe, catalog, configured):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
-    parser.add_argument("--case", action="append", choices=["default", "chinese-stock", "chinese", "utf8", "utf8-legacy", "mixed", "mixed-reverse"])
+    parser.add_argument("--case", action="append", choices=CASES)
     args = parser.parse_args()
     source = args.source.resolve()
     output = Path(tempfile.mkdtemp(prefix="auto-ui-warp-", dir=ROOT / "Outputs"))
@@ -136,14 +151,9 @@ def main():
 	AutoUIProbeInitializers["{name}"] = {c}.TextInitializer;
 """)
         script.write_bytes(text.replace("\n", "\r\n").encode("utf-8"))
-    catalog = json.loads((ROOT / "Inputs/AutoUI/zh-TW.json").read_text(encoding="utf-8"))
-    cases = {"default": ("English", "English", None),
-             "chinese-stock": (CHINESE, CHINESE, None),
-             "chinese": (CHINESE, CHINESE, 950),
-             "utf8": (CHINESE, CHINESE, 65001),
-             "utf8-legacy": (LEGACY_CHINESE, LEGACY_CHINESE, 65001),
-             "mixed": ("English", CHINESE, 65001),
-             "mixed-reverse": (CHINESE, "English", 65001)}
+    catalogs = {name: json.loads((ROOT / f"Inputs/AutoUI/{spec['locale']}.json").read_text(encoding="utf-8"))
+                for name, spec in LANGUAGES.items() if name != "English"}
+    cases = CASES
     results = []
     for case in args.case or cases:
         folder = output / case
@@ -176,15 +186,15 @@ def main():
         pe = pefile.PE(str(target))
         for record in records:
             expected_language = cases[case][0 if record["name"] == "AutoCombatUI" else 1]
-            if expected_language == LEGACY_CHINESE:
+            if expected_language in (LEGACY_CHINESE, "Chinese Traditional"):
                 expected_language = CHINESE
             assert record["language"] == expected_language, record
-            assert record["fontSelector"] == (4 if expected_language == CHINESE else 1), record
+            assert record["fontSelector"] == LANGUAGES[expected_language]["fontSelector"], record
             # Exported buffers start with readable English. Native UI entry
             # points select an encoding after all binary patches are applied.
             actual = pe.get_data(record["vir"] - pe.OPTIONAL_HEADER.ImageBase, record["size"])
             assert actual.split(b"\0", 1)[0] == record["text"].encode("ascii"), record
-        verify_runtime(pe, probe, catalog, code_page)
+        verify_runtime(pe, probe, catalogs, code_page)
         assert len(records) > 200, "Probe did not capture both UIs"
         # Every AutoSupport BMP plus its native STR/TGA effect pack must deploy,
         # even though this profile retained the obsolete false copy preference.

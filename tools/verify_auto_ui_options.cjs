@@ -7,6 +7,7 @@ const root = path.resolve(__dirname, '..');
 const output = fs.mkdtempSync(path.join(root, 'Outputs', 'auto-ui-options-'));
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 const copies = [];
+const languages = JSON.parse(read('Inputs/AutoUI/languages.json'));
 let choice, prompts = 0, savedReads = 0, failCopy = false, failMkdir = false;
 const context = vm.createContext({
 	D_Choice: 1, ASCII: 0,
@@ -15,7 +16,7 @@ const context = vm.createContext({
 		GetUserInput(key, type, title, message, defaultValue, options) {
 			prompts++;
 			assert.equal(defaultValue, 'English');
-			assert.deepEqual(Array.from(options.choices), ['English', 'Chinese Traditional']);
+			assert.deepEqual(Array.from(options.choices), Object.keys(languages));
 			return choice === undefined ? defaultValue : choice;
 		},
 		GetSavedInput() { savedReads++; return false; }
@@ -49,10 +50,10 @@ function load(relative) {
 function run(code) { return vm.runInContext(code, context); }
 load('Scripts/Patches/AutoCombatUI.qjs');
 assert.equal(run('AutoUILanguage.select("$test", "Test")'), 'English');
-choice = 'Chinese Traditional';
-assert.equal(run('AutoUILanguage.select("$test", "Test")'), choice);
-choice = 'Chinese Traditional (Big5 / CP950)';
-assert.equal(run('AutoUILanguage.select("$test", "Test")'), 'Chinese Traditional');
+for (choice of Object.keys(languages))
+	assert.equal(run('AutoUILanguage.select("$test", "Test")'), choice);
+for (choice of ['Chinese Traditional', 'Chinese Traditional (Big5 / CP950)'])
+	assert.equal(run('AutoUILanguage.select("$test", "Test")'), 'Traditional Chinese');
 choice = false;
 assert.throws(() => run('AutoUILanguage.select("$test", "Test")'), /CANCEL/);
 choice = 'unsupported';
@@ -62,15 +63,21 @@ const promptCount = prompts;
 assert.equal(run('AutoUILanguage.select("$test", "Test")'), 'English');
 assert.equal(prompts, promptCount);
 context.Warp.TestMode = false;
-const catalog = JSON.parse(read('Inputs/AutoUI/zh-TW.json'));
-const bytes = JSON.parse(read('Inputs/AutoUI/zh-TW.bytes.json'));
-for (const english of Object.keys(catalog)) {
-	context.label = english;
-	assert.deepEqual(Array.from(run('AutoUILanguage.bytes(label, "cp950")')), bytes[english].cp950.concat(0));
-	assert.deepEqual(Array.from(run('AutoUILanguage.bytes(label, "utf8")')),
-		[...Buffer.from(catalog[english], 'utf8'), 0]);
+let translatedCount = 0;
+for (const [name, spec] of Object.entries(languages)) {
+	if (name === 'English') continue;
+	context.spec = spec;
+	const catalog = JSON.parse(read(`Inputs/AutoUI/${spec.locale}.json`));
+	const bytes = JSON.parse(read(`Inputs/AutoUI/${spec.locale}.bytes.json`));
+	for (const english of Object.keys(catalog)) {
+		context.label = english;
+		assert.deepEqual(Array.from(run('AutoUILanguage.bytes(spec, label, spec.codec)')), bytes[english][spec.codec].concat(0));
+		assert.deepEqual(Array.from(run('AutoUILanguage.bytes(spec, label, "utf8")')),
+			[...Buffer.from(catalog[english], 'utf8'), 0]);
+		translatedCount++;
+	}
 }
-assert.throws(() => run('AutoUILanguage.bytes("missing label", "cp950")'), /missing/);
+assert.throws(() => run('AutoUILanguage.bytes(spec, "missing label", "utf8")'), /missing/);
 for (const name of ['AutoSupportUI', 'ItemCollectionUI',
 	'RedesignedEquipmentWindow', 'RedesignedStatusWindow', 'FluentEmoji']) {
 	load(`Scripts/Patches/${name}.qjs`);
@@ -80,7 +87,7 @@ for (const name of ['AutoSupportUI', 'ItemCollectionUI',
 for (const name of ['AutoCombatUI', 'AutoSupportUI']) {
 	run(`${name}Static.allocateBytes = bytes => ({vir: 123, size: bytes.length, bytes: Array.from(bytes)});
 		${name}Static.LocalizedStrings = [];
-		${name}Static.Language = AutoUILanguage.Chinese;`);
+		${name}Static.Language = "Traditional Chinese";`);
 	assert.deepEqual(Array.from(run(`${name}Static.allocateUiString("Basic").bytes`)).slice(0, 6), [...Buffer.from('Basic'), 0]);
 	assert.equal(run(`${name}Static.LocalizedStrings.length`), 1);
 	assert.deepEqual(Array.from(run(`${name}Static.allocateString("Basic").bytes`)), [...Buffer.from('Basic'), 0]);
@@ -91,7 +98,7 @@ for (const name of ['AutoCombatUI', 'AutoSupportUI']) {
 context.readManifest = name => fs.readFileSync(name, 'utf8');
 run('FluentEmojiStatic.readUtf8 = readManifest');
 const counts = {};
-for (const name of ['AutoSupportUI', 'ItemCollectionUI', 'RedesignedEquipmentWindow', 'RedesignedStatusWindow', 'FluentEmoji']) {
+for (const name of ['AutoCombatUI', 'AutoSupportUI', 'ItemCollectionUI', 'RedesignedEquipmentWindow', 'RedesignedStatusWindow', 'FluentEmoji']) {
 	const start = copies.length;
 	context.Warp.TestMode = true;
 	run(`${name}.onApplied()`);
@@ -109,4 +116,4 @@ for (const name of ['AutoSupportUI', 'ItemCollectionUI', 'RedesignedEquipmentWin
 	assert.throws(() => run(`${name}.onApplied()`), /create/);
 	failMkdir = false;
 }
-console.log(JSON.stringify({passed: true, strings: Object.keys(catalog).length, copies: counts, output}));
+console.log(JSON.stringify({passed: true, strings: translatedCount, languages: Object.keys(languages).length, copies: counts, output}));

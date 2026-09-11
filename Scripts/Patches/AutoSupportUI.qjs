@@ -808,7 +808,7 @@ AutoSupportUIStatic.ensureSharedPacketRoute = function(entryVir, entryPhy)
 	return route;
 };
 
-AutoSupportUIStatic.resolvePacketRefs = function(_)
+AutoSupportUIStatic.resolvePacketRefs = function()
 {
 	const cacheKey = "AutoSupportUI.PacketRefs";
 	if (CACHE.has(cacheKey))
@@ -1649,7 +1649,7 @@ AutoSupportUIStatic.emitDrawItemIcon = function(
 	a.label(done);
 };
 AutoSupportUIStatic.emitDrawSkillLevel = function(
-	a, fillRectVir, skillLevelVir, levelFormatVir, levelTextVir, x, y
+	a, skillLevelVir, levelFormatVir, levelTextVir, x, y
 )
 {
 	a.emit(0x0F, 0xB7, 0x05); a.dword(skillLevelVir);
@@ -1677,73 +1677,13 @@ AutoSupportUIStatic.emitFillRect = function(a, fillRectVir, x, y, width, height,
 	a.call(fillRectVir);
 };
 
-AutoSupportUIStatic.emitHorizontalSlider = function(
-	a, fillRectVir, valueVir, x, y, width, label
-)
-{
-	// Draw a dark outer rail, a white inset, and a pale empty track. The
-	// supplied BSON already contains the rounded field; these inset layers
-	// increase contrast without spilling beyond that native outline.
-	AutoSupportUIStatic.emitFillRect(
-		a, fillRectVir, x - 1, y - 2, width + 2, 7, 0xFF6A82A4
-	);
-	AutoSupportUIStatic.emitFillRect(
-		a, fillRectVir, x, y - 1, width, 5, 0xFFFFFFFF
-	);
-	AutoSupportUIStatic.emitFillRect(
-		a, fillRectVir, x + 1, y, width - 2, 3, 0xFFDCE8F6
-	);
-
-	a.emit(0x53);
-	a.emit(0xA1); a.dword(valueVir);
-	a.emit(0x83, 0xF8, 0x64);
-	a.jcc(0x86, `${label}_clamped`);
-	a.emit(0xB8); a.dword(100);
-	a.label(`${label}_clamped`);
-	a.emit(0x69, 0xC0); a.dword(width - 2);
-	a.emit(0x33, 0xD2, 0xB9); a.dword(100);
-	a.emit(0xF7, 0xF1);
-	a.emit(0x8B, 0xD8);
-	a.emit(0x85, 0xDB);
-	a.jcc(0x84, `${label}_fill_done`);
-	AutoSupportUIStatic.pushImm(a, 0xFF4F91D7);
-	AutoSupportUIStatic.pushImm(a, 3);
-	a.emit(0x53);
-	AutoSupportUIStatic.pushImm(a, y);
-	AutoSupportUIStatic.pushImm(a, x + 1);
-	a.emit(0x56);
-	a.call(fillRectVir);
-	a.label(`${label}_fill_done`);
-
-	// Keep the thumb entirely inside the rail at both 0% and 100%.
-	a.emit(0x81, 0xFB); a.dword(width - 3);
-	a.jcc(0x86, `${label}_thumb_clamped`);
-	a.emit(0xBB); a.dword(width - 3);
-	a.label(`${label}_thumb_clamped`);
-	a.emit(0x8D, 0x83); a.dword(x - 1);
-	AutoSupportUIStatic.pushImm(a, 0xFF4C6384);
-	AutoSupportUIStatic.pushImm(a, 7);
-	AutoSupportUIStatic.pushImm(a, 5);
-	AutoSupportUIStatic.pushImm(a, y - 2);
-	a.emit(0x50, 0x56);
-	a.call(fillRectVir);
-	a.emit(0x8D, 0x83); a.dword(x);
-	AutoSupportUIStatic.pushImm(a, 0xFFFFFFFF);
-	AutoSupportUIStatic.pushImm(a, 5);
-	AutoSupportUIStatic.pushImm(a, 3);
-	AutoSupportUIStatic.pushImm(a, y - 1);
-	a.emit(0x50, 0x56);
-	a.call(fillRectVir);
-	a.emit(0x5B);
-};
-
 AutoSupportUIStatic.emitText = function(a, textVir, x, y, height, color, bold = 0)
 {
 	if (!Number.isInteger(textVir) || textVir <= 0)
 		throw Error("AutoSupportUI: invalid native text pointer");
 	// Native order is TextDraw(x, y, text, count, fontSelector, height,
-	// color, bold, italic). Chinese uses native selector 4; both drawing
-	// and measurement must use the same font and LOGFONT weight flag.
+	// color, bold, italic). Drawing and measurement use the selected
+	// language font with the same LOGFONT weight flag.
 	AutoSupportUIStatic.pushImm(a, 0);
 	AutoSupportUIStatic.pushImm(a, bold);
 	AutoSupportUIStatic.pushImm(a, color);
@@ -1757,7 +1697,7 @@ AutoSupportUIStatic.emitText = function(a, textVir, x, y, height, color, bold = 
 	a.call(AutoSupportUIStatic.TextDraw);
 };
 AutoSupportUIStatic.emitCenteredText = function(
-	a, textVir, left, y, width, height, color, maxChars, label, bold = 0
+	a, textVir, left, y, width, height, color, bold = 0
 )
 {
 	if (!Number.isInteger(textVir) || textVir <= 0)
@@ -1818,7 +1758,7 @@ AutoSupportUIStatic.emitRightAlignedText = function(
 	a.emit(0x5B);
 };
 AutoSupportUIStatic.emitDrawNativeHealingSlider = function(
-	a, stateVir, paths, fillRectVir, valueVir, label
+	a, stateVir, paths, valueVir, label
 )
 {
 	const drawArrow = function(controlId, normal, over, pressed, x, suffix)
@@ -1911,7 +1851,7 @@ AutoSupportUIStatic.emitDrawNativeHealingSlider = function(
 };
 
 AutoSupportUIStatic.emitDrawNativePotionSlider = function(
-	a, stateVir, paths, fillRectVir, valueVir, isSp, groupX, groupY,
+	a, stateVir, paths, valueVir, isSp, groupX, groupY,
 	controlBase, label
 )
 {
@@ -1995,7 +1935,7 @@ AutoSupportUIStatic.emitDrawNativePotionSlider = function(
 		paths.sliderRightPressed, rightX, "right");
 };
 AutoSupportUIStatic.emitDrawNativeLootSlider = function(
-	a, stateVir, paths, fillRectVir, valueVir, label
+	a, stateVir, paths, valueVir, label
 )
 {
 	const drawArrow = function(controlId, normal, over, pressed, x, suffix)
@@ -2392,9 +2332,7 @@ AutoSupportUIStatic.emitChrome = function(a, stateVir, paths, fillRectVir, strin
 			a, fillRectVir, left, 37, widths[index], 1, 0xFF97ADCF
 		);
 		AutoSupportUIStatic.emitCenteredText(
-			a, strings.tabs[index].vir, left, 20, widths[index], 14, 0x00844E30,
-			12, `tab_label_${index}`
-		);
+			a, strings.tabs[index].vir, left, 20, widths[index], 14, 0x00844E30);
 		left += widths[index];
 	}
 	AutoSupportUIStatic.emitFillRect(a, fillRectVir, 469, 17, 1, 21, 0xFF97ADCF);
@@ -2406,12 +2344,11 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 	{
 		AutoSupportUIStatic.emitCenteredText(
 			a, heading.vir, 0, 42, AutoSupportUIStatic.WindowWidth, 15,
-			0x0078432C, 72, `page_heading_${heading.vir}`, 1
+			0x0078432C, 1
 		);
 		AutoSupportUIStatic.emitCenteredText(
 			a, subtitle.vir, 0, 60, AutoSupportUIStatic.WindowWidth, 14,
-			0x00B27E41, 80, `page_subtitle_${subtitle.vir}`
-		);
+			0x00B27E41);
 	};
 	const emitCenteredHighlightedText = function(
 		full, prefix, highlight, left, y, width, height, baseColor, highlightColor
@@ -2467,7 +2404,7 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 	a.emit(0x83, 0xF8, 0x00); a.jcc(0x85, "text_monster");
 	AutoSupportUIStatic.emitCenteredText(
 		a, strings.headings[0].vir, 0, 41, AutoSupportUIStatic.WindowWidth, 17,
-		0x0078432C, 72, "page_heading_basic", 1
+		0x0078432C, 1
 	);
 	emitCenteredHighlightedText(
 		strings.basicIntroFull, strings.basicIntroPrefix, strings.basicIntroLink,
@@ -2475,8 +2412,7 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 	);
 	AutoSupportUIStatic.emitCenteredText(
 		a, strings.basicIntroSaved.vir, 0, 100, AutoSupportUIStatic.WindowWidth, 13,
-		0x00554B46, 80, "page_basic_saved"
-	);
+		0x00554B46);
 	a.jmp("page_text_done");
 	a.label("text_monster");
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "text_skill");
@@ -2487,19 +2423,19 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateSkillPage);
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "text_skill_2");
 	emitPair(strings.skillHeadings[0], strings.skillSubtitles[0], 158, 83);
-	AutoSupportUIStatic.emitCenteredText(a, strings.attackSettings.vir, 25, 87, 420, 14, 0x0078432C, 40, "attack_settings", 1);
+	AutoSupportUIStatic.emitCenteredText(a, strings.attackSettings.vir, 25, 87, 420, 14, 0x0078432C, 1);
 	AutoSupportUIStatic.emitText(a, strings.normalAttack.vir, 48, 276, 14, 0x0078432C);
 	AutoSupportUIStatic.emitText(a, strings.normalAttackHint.vir, 48, 294, 12, 0x00B27E41);
 	a.jmp("page_text_done");
 	a.label("text_skill_2");
 	a.emit(0x83, 0xF8, 0x02); a.jcc(0x85, "text_skill_3");
 	emitPair(strings.skillHeadings[1], strings.skillSubtitles[1], 154, 79);
-	AutoSupportUIStatic.emitCenteredText(a, strings.supportSettings.vir, 25, 87, 420, 14, 0x0078432C, 40, "support_settings", 1);
+	AutoSupportUIStatic.emitCenteredText(a, strings.supportSettings.vir, 25, 87, 420, 14, 0x0078432C, 1);
 	a.jmp("page_text_done");
 	a.label("text_skill_3");
 	emitPair(strings.skillHeadings[2], strings.skillSubtitles[2], 158, 126);
-	AutoSupportUIStatic.emitCenteredText(a, strings.healSettings.vir, 25, 87, 261, 14, 0x0078432C, 30, "heal_settings", 1);
-	AutoSupportUIStatic.emitCenteredText(a, strings.statusSettings.vir, 291, 87, 168, 14, 0x0078432C, 30, "status_settings", 1);
+	AutoSupportUIStatic.emitCenteredText(a, strings.healSettings.vir, 25, 87, 261, 14, 0x0078432C, 1);
+	AutoSupportUIStatic.emitCenteredText(a, strings.statusSettings.vir, 291, 87, 168, 14, 0x0078432C, 1);
 	a.jmp("page_text_done");
 	a.label("text_potion");
 	a.emit(0x83, 0xF8, 0x03); a.jcc(0x85, "text_looting");
@@ -2510,8 +2446,7 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 	a.label("text_potion_2");
 	emitPair(strings.potionHeadings[1], strings.potionSubtitles[1], 130, 112);
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.statusPotion.vir, 25, 87, 420, 14, 0x0078432C, 40,
-		"status_potion_heading", 1
+		a, strings.statusPotion.vir, 25, 87, 420, 14, 0x0078432C, 1
 	);
 	a.jmp("page_text_done");
 	a.label("text_looting");
@@ -2520,8 +2455,7 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "text_looting_2");
 	emitPair(strings.lootingHeadings[0], strings.lootingSubtitles[0], 159, 112);
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.weight.vir, 75, 104, 319, 12, 0x0078432C, 30,
-		"looting_weight_heading", 1
+		a, strings.weight.vir, 75, 104, 319, 12, 0x0078432C, 1
 	);
 	a.jmp("page_text_done");
 	a.label("text_looting_2");
@@ -2530,12 +2464,12 @@ AutoSupportUIStatic.emitPageText = function(a, stateVir, strings)
 	a.label("text_move");
 	a.emit(0x83, 0xF8, 0x05); a.jcc(0x85, "text_item");
 	emitPair(strings.headings[5], strings.subtitles[5], 160, 128);
-	AutoSupportUIStatic.emitCenteredText(a, strings.teleport.vir, 25, 88, 420, 14, 0x0078432C, 30, "move_teleport_heading", 1);
-	AutoSupportUIStatic.emitCenteredText(a, strings.returning.vir, 25, 183, 420, 14, 0x0078432C, 30, "move_return_heading", 1);
+	AutoSupportUIStatic.emitCenteredText(a, strings.teleport.vir, 25, 88, 420, 14, 0x0078432C, 1);
+	AutoSupportUIStatic.emitCenteredText(a, strings.returning.vir, 25, 183, 420, 14, 0x0078432C, 1);
 	a.jmp("page_text_done");
 	a.label("text_item");
 	emitPair(strings.headings[6], strings.subtitles[6], 169, 79);
-	AutoSupportUIStatic.emitCenteredText(a, strings.buffItems.vir, 25, 87, 420, 14, 0x0078432C, 30, "buff_item_heading", 1);
+	AutoSupportUIStatic.emitCenteredText(a, strings.buffItems.vir, 25, 87, 420, 14, 0x0078432C, 1);
 	a.label("page_text_done");
 };
 
@@ -2551,72 +2485,54 @@ AutoSupportUIStatic.emitSkillRejectDialog = function(a, stateVir, fillRectVir, s
 	a.emit(0x83, 0xF8, AutoSupportUIStatic.MutationResultNoMaster);
 	a.jcc(0x85, "start_reject_offline_test");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.noMasterReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"start_reject_no_master"
-	);
+		a, strings.noMasterReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("start_reject_offline_test");
 	a.emit(0x83, 0xF8, AutoSupportUIStatic.MutationResultMasterOffline);
 	a.jcc(0x85, "start_reject_policy_test");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.masterOfflineReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"start_reject_master_offline"
-	);
+		a, strings.masterOfflineReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("start_reject_policy_test");
 	a.emit(0x83, 0xF8, AutoSupportUIStatic.MutationResultStartRejected);
 	a.jcc(0x85, "registration_reject_type_test");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.startPolicyReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"start_reject_policy"
-	);
+		a, strings.startPolicyReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_type_test");
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateRejectSetting);
 	a.emit(0x83, 0xF8, AutoSupportUIStatic.SettingPotionRegister);
 	a.jcc(0x85, "registration_reject_status_item_test");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.potionReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_potion"
-	);
+		a, strings.potionReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_status_item_test");
 	a.emit(0x83, 0xF8, AutoSupportUIStatic.SettingStatusRecoveryItemRegister);
 	a.jcc(0x85, "registration_reject_item_test");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.statusItemReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_status_item"
-	);
+		a, strings.statusItemReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_item_test");
 	a.emit(0x83, 0xF8, AutoSupportUIStatic.SettingBuffItemRegister);
 	a.jcc(0x85, "registration_reject_move_item_test");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.itemReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_item"
-	);
+		a, strings.itemReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_move_item_test");
 	a.emit(0x83, 0xF8, AutoSupportUIStatic.SettingMoveItemRegister);
 	a.jcc(0x85, "registration_reject_move_skill_test");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.moveItemReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_move_item"
-	);
+		a, strings.moveItemReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_move_skill_test");
 	a.emit(0x83, 0xF8, AutoSupportUIStatic.SettingMoveSkillRegister);
 	a.jcc(0x85, "registration_reject_skill");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.moveSkillReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_move_skill"
-	);
+		a, strings.moveSkillReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.jmp("registration_reject_text_done");
 	a.label("registration_reject_skill");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.skillReject.vir, 39, 165, 392, 15, 0x00554B46, 2,
-		"registration_reject_skill"
-	);
+		a, strings.skillReject.vir, 39, 165, 392, 15, 0x00554B46);
 	a.label("registration_reject_text_done");
 	a.label("skill_reject_dialog_done");
 };
@@ -2655,23 +2571,12 @@ AutoSupportUIStatic.emitFooterButtons = function(a, stateVir, paths)
 AutoSupportUIStatic.emitPageControls = function(
 	a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
 	attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
-	healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir,
-	itemIconKeysVir, potionRowsVir, potionIconKeysVir, statusItemRowVir, moveRowsVir, moveIconKeysVir,
-	itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir
-)
+	healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, potionRowsVir, statusItemRowVir, moveRowsVir, moveIconKeysVir,
+	itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir)
 {
 	const dark = 0x00554B46;
 	const blue = 0x0078432C;
 	const link = 0x00B27E41;
-	const drawCheck = function(on, x, y, label, id)
-	{
-		AutoSupportUIStatic.emitDrawFull(
-			a, (on ? paths.checkboxOn : paths.checkboxOff).vir, x, y,
-			`control_check_${id}`
-		);
-		if (label)
-			AutoSupportUIStatic.emitText(a, label.vir, x + 20, y - 2, 14, dark);
-	};
 	const drawStateCheck = function(test, x, y, label, id, fontSize = 14)
 	{
 		const offLabel = `control_check_${id}_off`;
@@ -2780,9 +2685,7 @@ AutoSupportUIStatic.emitPageControls = function(
 			lootWeaponTextVir
 		);
 		AutoSupportUIStatic.emitCenteredText(
-			a, lootWeaponTextVir, boxX, y - 1, boxWidth, 13, dark, 5,
-			`${id}_value`
-		);
+			a, lootWeaponTextVir, boxX, y - 1, boxWidth, 13, dark);
 		AutoSupportUIStatic.emitText(
 			a, strings.basicSuffixes[option].vir, boxX + boxWidth + 5, y - 1, 13, dark
 		);
@@ -2876,7 +2779,7 @@ AutoSupportUIStatic.emitPageControls = function(
 				x - 2, y - 2, skillColors[index % skillColors.length], `${prefix}_${index}_icon`
 			);
 			AutoSupportUIStatic.emitDrawSkillLevel(
-				a, fillRectVir,
+				a,
 				rowVir + AutoSupportUIStatic.AttackSkillRowLevelOffset,
 				strings.skillLevelFormat.vir, skillLevelTextVir, x - 2, y - 2
 			);
@@ -2889,9 +2792,7 @@ AutoSupportUIStatic.emitPageControls = function(
 			// The BSON owns the interval field artwork; draw only its live value.
 			AutoSupportUIStatic.emitCenteredText(
 				a, rowVir + AutoSupportUIStatic.AttackSkillRowDelayTextOffset,
-				x - 6, y + 32, 34, 14, dark, 8,
-				`${prefix}_${index}_delay_text`
-			);
+				x - 6, y + 32, 34, 14, dark);
 			AutoSupportUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
 		}
 		a.jmp(`${prefix}_done`);
@@ -2908,7 +2809,7 @@ AutoSupportUIStatic.emitPageControls = function(
 			x - 2, y - 2, color, `${prefix}_icon`
 		);
 		AutoSupportUIStatic.emitDrawSkillLevel(
-			a, fillRectVir,
+			a,
 			rowVir + AutoSupportUIStatic.AttackSkillRowLevelOffset,
 			strings.skillLevelFormat.vir, skillLevelTextVir, x - 2, y - 2
 		);
@@ -2916,9 +2817,7 @@ AutoSupportUIStatic.emitPageControls = function(
 		// The BSON owns the interval field artwork; draw only its live value.
 		AutoSupportUIStatic.emitCenteredText(
 			a, rowVir + AutoSupportUIStatic.AttackSkillRowDelayTextOffset,
-			x - 6, y + 32, 34, 14, dark, 8,
-			`${prefix}_delay_text`
-		);
+			x - 6, y + 32, 34, 14, dark);
 		AutoSupportUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
 	};
 	a.emit(0xA1); a.dword(stateVir + AutoSupportUIStatic.StateSkillPage);
@@ -2962,7 +2861,7 @@ AutoSupportUIStatic.emitPageControls = function(
 		);
 	}
 	AutoSupportUIStatic.emitDrawNativeHealingSlider(
-		a, stateVir, paths, fillRectVir,
+		a, stateVir, paths,
 		stateVir + AutoSupportUIStatic.StateHealHpThreshold,
 		"heal_hp_slider"
 	);
@@ -2997,10 +2896,10 @@ AutoSupportUIStatic.emitPageControls = function(
 		AutoSupportUIStatic.emitDrawFull(a, paths.toggleOff.vir, x + 182, y,
 			`potion_toggle_${index}_off_draw`);
 		a.label(toggleDone);
-		AutoSupportUIStatic.emitCenteredText(a, strings.potionPanels[index].vir, x, y, 221, 14, blue, 30, `potion_panel_${index}`, 1);
+		AutoSupportUIStatic.emitCenteredText(a, strings.potionPanels[index].vir, x, y, 221, 14, blue, 1);
 		AutoSupportUIStatic.emitText(a, strings.useBelow.vir, x + 16, y + 39, 13, dark);
 		AutoSupportUIStatic.emitDrawNativePotionSlider(
-			a, stateVir, paths, fillRectVir,
+			a, stateVir, paths,
 			rowVir + (index < 2 ? AutoSupportUIStatic.PotionRowMinHpOffset :
 				AutoSupportUIStatic.PotionRowMinSpOffset),
 			index >= 2, groupX, groupY, 20 + index * 2,
@@ -3015,7 +2914,7 @@ AutoSupportUIStatic.emitPageControls = function(
 			x + 174, y + 65, 0xFF648FDB, `potion_${index}_icon`
 		);
 		AutoSupportUIStatic.emitDrawSkillLevel(
-			a, fillRectVir, rowVir + AutoSupportUIStatic.PotionRowQuantityOffset,
+			a, rowVir + AutoSupportUIStatic.PotionRowQuantityOffset,
 			strings.skillLevelFormat.vir, skillLevelTextVir, x + 174, y + 65
 		);
 		a.label(iconDone);
@@ -3036,7 +2935,7 @@ AutoSupportUIStatic.emitPageControls = function(
 	a.jcc(0x84, statusItemEmpty);
 	AutoSupportUIStatic.emitCenteredText(
 		a, statusItemRowVir + AutoSupportUIStatic.ItemRowNameOffset,
-		25, 118, 215, 14, dark, 24, "status_item_name", 1
+		25, 118, 215, 14, dark, 1
 	);
 	AutoSupportUIStatic.emitDrawItemIcon(
 		a, fillRectVir, statusItemRowVir + AutoSupportUIStatic.ItemRowIdOffset,
@@ -3044,7 +2943,7 @@ AutoSupportUIStatic.emitPageControls = function(
 		statusItemX, statusItemY, 0xFF648FDB, "status_item_icon"
 	);
 	AutoSupportUIStatic.emitDrawSkillLevel(
-		a, fillRectVir, statusItemRowVir + AutoSupportUIStatic.ItemRowFlagsOffset + 2,
+		a, statusItemRowVir + AutoSupportUIStatic.ItemRowFlagsOffset + 2,
 		strings.skillLevelFormat.vir, skillLevelTextVir, statusItemX, statusItemY
 	);
 	a.jmp(statusItemDone);
@@ -3061,10 +2960,9 @@ AutoSupportUIStatic.emitPageControls = function(
 	a.emit(0x83, 0xF8, 0x01); a.jcc(0x85, "controls_looting_details");
 	AutoSupportUIStatic.emitCenteredText(
 		a, strings.weightNote.vir, 0, 78, AutoSupportUIStatic.WindowWidth, 13,
-		dark, 80, "loot_weight_note"
-	);
+		dark);
 	AutoSupportUIStatic.emitDrawNativeLootSlider(
-		a, stateVir, paths, fillRectVir,
+		a, stateVir, paths,
 		stateVir + AutoSupportUIStatic.StateLootWeightLimit, "loot_weight_slider"
 	);
 	drawStateCheck(
@@ -3102,7 +3000,7 @@ AutoSupportUIStatic.emitPageControls = function(
 	);
 	AutoSupportUIStatic.emitText(a, strings.lootOptionSuffix.vir, 294, 204, 12, dark);
 	AutoSupportUIStatic.emitText(a, strings.lootOptionSuffix.vir, 294, 226, 12, dark);
-	AutoSupportUIStatic.emitCenteredText(a, strings.lootRuleHint.vir, 20, 256, 430, 12, dark, 75, "loot_rule_hint", 1);
+	AutoSupportUIStatic.emitCenteredText(a, strings.lootRuleHint.vir, 20, 256, 430, 12, dark, 1);
 	drawStateCheck({kind: "bit", offset: AutoSupportUIStatic.StateLootCategoryBits, mask: 1 << 0}, 38, 289, strings.lootOptions[0], "loot_0");
 	drawStateCheck({kind: "bit", offset: AutoSupportUIStatic.StateLootCategoryBits, mask: 1 << 1}, 147, 289, strings.lootOptions[1], "loot_1");
 	drawStateCheck({kind: "bit", offset: AutoSupportUIStatic.StateLootCategoryBits, mask: 1 << 2}, 244, 289, strings.lootOptions[2], "loot_2");
@@ -3110,8 +3008,7 @@ AutoSupportUIStatic.emitPageControls = function(
 	a.jmp("controls_done");
 	a.label("controls_looting_details");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.lootPriorityHeading.vir, 25, 103, 420, 14, blue, 40,
-		"loot_priority_heading", 1
+		a, strings.lootPriorityHeading.vir, 25, 103, 420, 14, blue, 1
 	);
 	drawStateCheck(
 		{kind: "eq", offset: AutoSupportUIStatic.StatePrioMode, value: 0},
@@ -3154,12 +3051,10 @@ AutoSupportUIStatic.emitPageControls = function(
 		const iconDone = `move_${index}_icon_done`;
 		AutoSupportUIStatic.emitCenteredText(
 			a, strings.moveDescriptions[index].vir, slot.x - 26,
-			slot.labelY, 76, 12, dark, 20, `move_${index}_description`
-		);
+			slot.labelY, 76, 12, dark);
 		AutoSupportUIStatic.emitCenteredText(
 			a, strings.useLabel.vir, slot.checkX - 10, slot.y - 19,
-			42, 12, link, 10, `move_${index}_use`
-		);
+			42, 12, link);
 		a.emit(0x83, 0x3D); a.dword(rowVir + AutoSupportUIStatic.MoveRowIdOffset); a.emit(0);
 		a.jcc(0x84, empty);
 		a.emit(0x66, 0x83, 0x3D);
@@ -3185,7 +3080,7 @@ AutoSupportUIStatic.emitPageControls = function(
 		);
 		a.label(iconDone);
 		AutoSupportUIStatic.emitDrawSkillLevel(
-			a, fillRectVir, rowVir + AutoSupportUIStatic.MoveRowLevelOffset,
+			a, rowVir + AutoSupportUIStatic.MoveRowLevelOffset,
 			strings.skillLevelFormat.vir, skillLevelTextVir, slot.x, slot.y
 		);
 		drawStateCheck(
@@ -3196,13 +3091,9 @@ AutoSupportUIStatic.emitPageControls = function(
 	}
 	a.label("controls_move_done");
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.moveReturnHintLine1.vir, 25, 270, 420, 12, link, 75,
-		"move_return_hint_1"
-	);
+		a, strings.moveReturnHintLine1.vir, 25, 270, 420, 12, link);
 	AutoSupportUIStatic.emitCenteredText(
-		a, strings.moveReturnHintLine2.vir, 25, 286, 420, 12, link, 75,
-		"move_return_hint_2"
-	);
+		a, strings.moveReturnHintLine2.vir, 25, 286, 420, 12, link);
 	a.jmp("controls_done");
 	a.label("controls_item");
 	const itemXs = [108, 185, 262, 339];
@@ -3225,7 +3116,7 @@ AutoSupportUIStatic.emitPageControls = function(
 			x, y, skillColors[index % skillColors.length], `buff_item_${index}_icon`
 		);
 		AutoSupportUIStatic.emitDrawSkillLevel(
-			a, fillRectVir, rowVir + AutoSupportUIStatic.ItemRowFlagsOffset + 2,
+			a, rowVir + AutoSupportUIStatic.ItemRowFlagsOffset + 2,
 			strings.skillLevelFormat.vir, skillLevelTextVir, x, y
 		);
 		a.jmp(done);
@@ -3234,8 +3125,7 @@ AutoSupportUIStatic.emitPageControls = function(
 		a.label(done);
 		AutoSupportUIStatic.emitCenteredText(
 			a, rowVir + AutoSupportUIStatic.ItemRowDelayTextOffset,
-			x - 6, y + 32, 34, 14, dark, 8, `buff_item_${index}_delay`
-		);
+			x - 6, y + 32, 34, 14, dark);
 		AutoSupportUIStatic.emitText(a, strings.secondsSuffix.vir, x + 31, y + 32, 13, dark);
 	}
 	a.label("controls_done");
@@ -3303,7 +3193,7 @@ AutoSupportUIStatic.emitLootDropdown = function(a, stateVir, fillRectVir, string
 	);
 	a.label("loot_dropdown_done");
 };
-AutoSupportUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, statusItemRowVir, moveRowsVir, moveIconKeysVir, itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir)
+AutoSupportUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, potionRowsVir, statusItemRowVir, moveRowsVir, moveIconKeysVir, itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir)
 {
 	const a = AutoSupportUIStatic.asm();
 	if (AutoSupportUIStatic.TextInitializer)
@@ -3318,10 +3208,8 @@ AutoSupportUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, 
 	AutoSupportUIStatic.emitPageControls(
 		a, stateVir, paths, fillRectVir, strings, monsterRowsVir, attackSkillRowsVir,
 		attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
-		healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir,
-		itemIconKeysVir, potionRowsVir, potionIconKeysVir, statusItemRowVir, moveRowsVir, moveIconKeysVir,
-		itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir, lootArmorTextVir
-	);
+		healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, potionRowsVir, statusItemRowVir, moveRowsVir, moveIconKeysVir,
+		itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir);
 	AutoSupportUIStatic.emitLootDropdown(a, stateVir, fillRectVir, strings);
 	AutoSupportUIStatic.emitSkillRejectDialog(a, stateVir, fillRectVir, strings);
 	AutoSupportUIStatic.emitFooterButtons(a, stateVir, paths);
@@ -3993,8 +3881,7 @@ AutoSupportUIStatic.buildNativeSliderMouseMove = function(
 AutoSupportUIStatic.buildMouseDown = function(
 	stateVir, mutationSenderVir, monsterRowsVir, attackSkillRowsVir,
 	supportSkillRowsVir, healingSkillRowVir, recoverySkillRowsVir, itemRowsVir,
-	potionRowsVir, statusItemRowVir, moveRowsVir
-)
+	potionRowsVir, statusItemRowVir)
 {
 	const a = AutoSupportUIStatic.asm();
 
@@ -5985,14 +5872,6 @@ AutoSupportUIStatic.buildControllerBootstrap = function(
 	return a;
 };
 
-AutoSupportUIStatic.buildWindowProcTrampoline = function()
-{
-	const a = AutoSupportUIStatic.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x6A, 0xFF);
-	a.jmp(AutoSupportUIStatic.WindowMainProcResume);
-	return a;
-};
-
 AutoSupportUIStatic.buildMouseWheel = function(stateVir)
 {
 	const a = AutoSupportUIStatic.asm();
@@ -6496,7 +6375,7 @@ AutoSupportUI = function(_)
 
 	AutoSupportUIStatic.LocalizedStrings = [];
 	AutoSupportUIStatic.TextInitializer = null;
-	AutoSupportUIStatic.FontSelector = AutoSupportUIStatic.Language === AutoUILanguage.Chinese ? 4 : 1;
+	AutoSupportUIStatic.FontSelector = AutoUILanguage.spec(AutoSupportUIStatic.Language).fontSelector;
 
 	$$(_, 1, "Verify the native UIFrameWnd ABI and input handlers");
 	const verified = AutoSupportUIStatic.verifyNativeContracts();
@@ -6856,10 +6735,10 @@ AutoSupportUI = function(_)
 			"Use a Token of Siegfried when defeated."
 		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 		basicPrefixes: [
-			"Allow normal attacks when SP is below",
+			"Normal: SP <",
 			"",
-			"Use teleport if combat does not occur for",
-			"Use Teleport if there are at least"
+			"Teleport if no combat for",
+			"Teleport if at least"
 		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 		basicSuffixes: [
 			" %.",
@@ -6890,7 +6769,7 @@ AutoSupportUI = function(_)
 		),
 		lootWeaponPrefix: AutoSupportUIStatic.allocateUiString("Loot only weapon of"),
 		lootArmorPrefix: AutoSupportUIStatic.allocateUiString("Loot only armor of"),
-		lootOptionSuffix: AutoSupportUIStatic.allocateUiString("grade or higher."),
+		lootOptionSuffix: AutoSupportUIStatic.allocateUiString("or higher."),
 		lootRuleHint: AutoSupportUIStatic.allocateUiString(
 			"Loot equipment with at least the selected random options."
 		),
@@ -6999,7 +6878,7 @@ AutoSupportUI = function(_)
 	Exe.SetUint32(state.phy + AutoSupportUIStatic.StateNormalAttackSpThreshold, 10);
 
 	$$(_, 3, "Create the AutoSupport UI ASUI packet sender and snapshot receiver");
-	const packetRefs = AutoSupportUIStatic.resolvePacketRefs(_);
+	const packetRefs = AutoSupportUIStatic.resolvePacketRefs();
 	const openSender = AutoSupportUIStatic.allocateCode(
 		AutoSupportUIStatic.buildSnapshotRequestSender(
 			state.vir, packetRefs, AutoSupportUIStatic.MessageOpen
@@ -7038,18 +6917,15 @@ AutoSupportUI = function(_)
 			state.vir, paths, fillRect.vir, strings, monsterRows.vir, attackSkillRows.vir,
 			attackSkillIconKeys.vir, supportSkillRows.vir, supportSkillIconKeys.vir,
 			healingSkillRow.vir, healingSkillIconKey.vir, recoverySkillRows.vir,
-			recoverySkillIconKeys.vir, itemRows.vir, itemIconKeys.vir, potionRows.vir,
-			potionIconKeys.vir, statusItemRow.vir, moveRows.vir, moveIconKeys.vir, itemResolver.vir,
-			skillIconPath.vir, skillLevelText.vir, lootWeaponText.vir, lootArmorText.vir
-		)
+			recoverySkillIconKeys.vir, itemRows.vir, potionRows.vir, statusItemRow.vir, moveRows.vir, moveIconKeys.vir, itemResolver.vir,
+			skillIconPath.vir, skillLevelText.vir, lootWeaponText.vir)
 	);
 	const mouseDown = AutoSupportUIStatic.allocateCode(
 		AutoSupportUIStatic.buildMouseDown(
 			state.vir, scalarSender.vir, monsterRows.vir,
 			attackSkillRows.vir, supportSkillRows.vir,
 			healingSkillRow.vir, recoverySkillRows.vir, itemRows.vir,
-			potionRows.vir, statusItemRow.vir, moveRows.vir
-		)
+			potionRows.vir, statusItemRow.vir)
 	);
 	const sliderHover = AutoSupportUIStatic.allocateCode(
 		AutoSupportUIStatic.buildNativeSliderMouseMove(
@@ -7182,8 +7058,7 @@ AutoSupportUI = function(_)
 		label: "AutoSupport"
 	});
 
-	// Keep one test-cycle fallback. Remove after the native menu click is
-	// accepted in-game so a bad client ABI cannot strand the settings UI.
+	// Retain the slash command as an alternate way to open the settings.
 	CustomSlashCommand.register(_ + ".SlashCommand", {
 		command: "/autosupport",
 		targetVir: toggle.vir
@@ -7194,7 +7069,7 @@ AutoSupportUI = function(_)
 	{
 		PatchDiagnostics.add("AutoSupportUI.QjsOnly", {
 			language: AutoSupportUIStatic.Language,
-			textCodePage: AutoSupportUIStatic.Language === AutoUILanguage.Chinese ? "native mapper (950/65001)" : "ASCII",
+			textCodePage: AutoSupportUIStatic.Language === AutoUILanguage.English ? "ASCII" : "native mapper (" + AutoUILanguage.spec(AutoSupportUIStatic.Language).codePage + "/65001)",
 			textInitializer: AutoSupportUIStatic.TextInitializer,
 			fontSelector: AutoSupportUIStatic.FontSelector,
 			buildDate: Exe.BuildDate,

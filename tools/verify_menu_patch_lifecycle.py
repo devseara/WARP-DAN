@@ -196,8 +196,7 @@ def main():
     for name in ("win32", "Scripts", "Tables", "Patches", "Inputs", "Languages", "Styles"):
         shutil.copytree(ROOT / name, fixture / name, ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copy2(ROOT / "Patches.yml", fixture / "Patches.yml")
-    for name in ("AutoCombatUI", "AutoSupportUI"):
-        shutil.copytree(ROOT / "Assets" / name, fixture / "Assets" / name)
+    shutil.copytree(ROOT / "Assets", fixture / "Assets")
     with (fixture / "Tables/Patch.yml").open("a", encoding="utf-8") as stream:
         stream.write("\n65001 : TestMenuLifecycle\n")
     with (fixture / "Patches/Premium.yml").open("a", encoding="utf-8") as stream:

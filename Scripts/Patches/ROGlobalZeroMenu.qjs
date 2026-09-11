@@ -2258,7 +2258,7 @@ ROGlobalZeroMenu = function(_)
 		MenuZeroStatic.buildButtonMouseDown()
 	);
 	const buttonHover = MenuZeroStatic.allocateCode(
-		MenuZeroStatic.buildButtonHover(autoHuntHover.vir)
+		MenuZeroStatic.buildButtonHover(autoHuntHover.vir, 0, -20)
 	);
 	const buttonVtable = MenuZeroStatic.cloneButtonVtable(
 		buttonMouseUp.vir, buttonHover.vir, buttonDestructor.vir,
