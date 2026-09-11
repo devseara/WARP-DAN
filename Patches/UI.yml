@@ -75,7 +75,7 @@ CustomUI:
             desc : Adds the native-looking Classic UI / New UI switch to the Game Settings Basic tab using uirenewal/basicinfo/btn_tema_0.bmp and btn_tema_1.bmp. Its persisted state is shared by the RO Global Zero Basic Information, Experience Bar, Inventory, Status Icons V2, and Menu patches; switching themes refreshes open dependent windows immediately. QJS-only.
 
         - ItemCollectionUI:
-            title : Enable Item Collection UI (QJS-only)
+            title : Enable Item Collection UI 
             recommend : no
             author : Louis T Steinhil
             desc : "Creates the approved 760x540 white Ragnarok-style Item Collection as a native UIFrameWnd with a 15-family category dropdown, pointer-draggable scrollbar, flicker-free same-page selection, and a two-theme native RO Global/Classic menu button. Item art resolves dynamically from ItemId through the client identified-resource stem, collection\\<stem>.bmp, and stock item icons. Server-authoritative 0x0BF8/COUI requests and shared 0x0BEF snapshots provide Items, Combo Collections, Total Bonuses, deposits, withdrawals, and activation. Fixed BMP assets copy automatically beside the output EXE under item_collection and uirenewal/menuicon. No DLL, recv hook, API detour, or client-side collection authority is used. Target: 2025-07-16."

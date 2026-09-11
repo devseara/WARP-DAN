@@ -102,7 +102,7 @@ EnableSlashCmd:
             desc : Enables the <b>/showname</b> command on all langtypes, allowing players to toggle the display of character names, party names, and guild names above sprites.
 
         - AlwaysShowNpcName:
-            title : Always show NPC names (QJS-only)
+            title : Always show NPC names 
             recommend : no
             author : Louis T Steinhil
             desc : Always renders native NPC name balloons without mouse hover. A guarded QJS-only frame cave drains the 0x0BB7 EXTN ring into a bounded table, resolves actors, and reuses the client's balloon factory/setup/projection pipeline. Adds the /shownpcname client-side toggle and persists option 10001 in savedata/shownpcname.dat, with no NPC-name DLL import or runtime hook.

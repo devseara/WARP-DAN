@@ -1676,14 +1676,14 @@ translations:
     - find : "Removes the cap on displayed damage, healing, and other floating numbers. Without this, very large numbers get clamped to a maximum display value. Required for high-rate servers with large damage output."
       replace : "取消显示伤害、治疗和其他浮动数字的上限。如果没有这个，非常大的数字会被限制在最大显示值。对于具有大伤害输出的高倍率服务器来说是必需的。"
 
-    - find : "All HatEffects Screen-Size World Depth [QJS]"
-      replace : "所有 HatEffect 的屏幕尺寸世界深度 [QJS]"
+    - find : "All HatEffects Screen-Size World Depth "
+      replace : "所有 HatEffect 的屏幕尺寸世界深度 "
 
     - find : "2025-07-16 build-specific global HatEffect depth patch, live validated on 2026-07-14. It preserves every original HatEffect STR resource, animation, actor attachment, metadata, teardown, screen-space position, apparent scale, and RHW. During only the two generic HatEffect render methods, vertices at/below actor-anchor Y retain a floor-safe four-quantum contact-biased depth; upper vertices reconstruct Y-up reciprocal depth using projection-matrix +0x10/+0x14 and convert it through 0x00554040. Native world STR NPCs remain unchanged."
       replace : "针对 2025-07-16 版本的全局 HatEffect 深度补丁，已于 2026-07-14 实机验证。它会保留所有原始 HatEffect STR 资源、动画、角色挂接、元数据、清理流程、屏幕空间位置、视觉缩放比例与 RHW。仅在两个通用 HatEffect 绘制方法中，位于角色锚点 Y 坐标以下（含）的顶点会保留贴近地面的四量化单位接触偏移深度；上方顶点则使用投影矩阵 +0x10/+0x14 重建向上 Y 轴的倒数深度，再通过 0x00554040 转换。原生世界 STR NPC 不受影响。"
 
-    - find : "Dual-Wield Original Weapon Sprites [QJS]"
-      replace : "双持武器原始图像资源 [QJS]"
+    - find : "Dual-Wield Original Weapon Sprites "
+      replace : "双持武器原始图像资源 "
 
     - find : "Self-contained QJS/EXE patch; no weapon DLL is required. The D403A0 equipment hook drives the stock single-item loader for each equipped item and installs the original parallel SPR/ACT resources in native weapon slots 5 and 6 instead of generic combined types 25..30. A live-slot renderer bridge direction-preservingly maps blank item ACT actions 88..95 to populated actions 80..87. Off-hand-only equipment also receives its real item pair in slot 6. Applies to every valid item resource without an item-ID allowlist."
       replace : "独立运行的 QJS/EXE 补丁，不需要武器 DLL。D403A0 装备挂钩会为每件已装备物品调用原生单件加载器，并将原始成对的 SPR/ACT 资源安装到原生武器槽 5 与 6，而不是通用的合并类型 25..30。即时槽位绘制桥接会保留方向，将空白的物品 ACT 动作 88..95 对应到有内容的动作 80..87。只装备副手时，也会把真正的物品资源配对放入槽位 6。适用于所有有效的物品资源，不需要物品 ID 白名单。"

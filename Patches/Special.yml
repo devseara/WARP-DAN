@@ -51,13 +51,13 @@ CustomSpecials:
             desc : Enables custom shield sprites beyond the default set by loading shield definitions from lua files (similar to the Xray system). Required for servers with custom shield graphics.
 
         - AllowDualCustomWeaponSprites:
-            title : Dual / Off-Hand Daggers, Swords and Axes [TESTING]
+            title : Dual / Off-Hand Daggers, Swords and Axes
             recommend : no
             author : Louis T Steinhil
             desc : "2025-07-16: original dual/off-hand daggers, one-handed swords and axes. Five male and five female Assassin-family body profiles cover all 24 mapped non-Drake views in the audited GRFs. Missing job resources require the 60-entry Inputs/DualWeaponRuntime/dual_weapon_male_assets.grf registered first in the actual embedded or INI loader. Existing accepted placements remain unchanged; added images use individual frame, axis and grip profiles. Other bodies/classes/views remain stock. Keep compositor.dwcp and legacy-support.dwls with their manifests. CPU execution/geometry verified; live acceptance tracked in docs/dual-wield-original-weapon-sprites.md."
 
         - AllHatEffectsWorldDepthOracle:
-            title : All HatEffects Screen-Size World Depth [QJS]
+            title : All HatEffects Screen-Size World Depth 
             recommend : no
             author : Louis T Steinhil
             desc : "2025-07-16 build-specific global HatEffect depth patch, live validated on 2026-07-14. It preserves every original HatEffect STR resource, animation, actor attachment, metadata, teardown, screen-space position, apparent scale, and RHW. During only the two generic HatEffect render methods, vertices at/below actor-anchor Y retain a floor-safe four-quantum contact-biased depth; upper vertices reconstruct Y-up reciprocal depth using projection-matrix +0x10/+0x14 and convert it through 0x00554040. Native world STR NPCs remain unchanged."
@@ -129,37 +129,37 @@ CustomSkills:
             desc : Enables custom mercenary skills beyond the official list by loading definitions from lua files. Required for servers that add new mercenary abilities. Experimental.
 
         - CustomExtName:
-            title : Enable 128-byte Entity Names (QJS-only)
+            title : Enable 128-byte Entity Names 
             recommend : no
             author : Louis T Steinhil
             desc : "Supports 128-byte player, guild, party, mob, companion and NPC display names on 2025-07-16 with the paired server protocol. BG queue identifiers, clan labels and Gold PC service tokens use stock limits; player references remain extended in every adapted system. The 657-byte 0x0BB7 packet carries one canonical name field and guarded static adapters preserve the native handler contracts. Mob information still uses the client's supported Group Title/ID row while the stock mob name remains separate. No CNameInfo mutation, text DLL, recv hook, or runtime patching is used."
 
         - CustomColoredEnchantGradeName:
-            title : Color Enchant Grade Prefixes (QJS-only)
+            title : Color Enchant Grade Prefixes 
             recommend : no
             author : Louis T Steinhil
             desc : "Order-independent companion for Custom Item Name Colors. A matching numeric grade entry from packet 0x0BDD conditionally coalesces the client's native post-grade title endpoint, then overrides the item-color database for the complete [Grade] name and slot suffix. Grade-matched Inventory quantity tails are omitted and matched dark shadow draws are suppressed. Uses [D]/[C]/[B]/[A] unless Custom Enchant Grade Labels is selected."
 
         - CustomColoredItemName:
-            title : Enable Custom Item Name Colors (QJS-only)
+            title : Enable Custom Item Name Colors 
             recommend : no
             author : Louis T Steinhil
             desc : "For the profiled 2025-07-16 and 2026-02-19 Ragexe clients, routes packet 0x0BDD to bounded ICOL tables. Producer hooks prefer the optional ICL2 ItemId trailer where CItem is available, then fall back to exact legacy ItemName records for old servers and text-only surfaces. Inventory matching accepts stock slotless and slotted quantity forms. Color Enchant Grade Prefixes conditionally coalesces the native post-grade endpoint so grade color owns the complete decorated title. Matched dark shadows are suppressed and grade quantity tails are omitted. No text DLL, recv hook, API detour, or cross-call continuation is used."
 
         - CustomPlayerNameColor:
-            title : Enable Custom Player Name Colors (QJS-only)
+            title : Enable Custom Player Name Colors 
             recommend : no
             author : Louis T Steinhil
             desc : "Stores PC RGB values with the bounded EXTN exact-text entries and applies them only around matching non-shadow TextOutW player-name draws. No text DLL, recv hook, or runtime patching is used."
 
         - FluentEmoji:
-            title : Render Fluent Emoji (QJS-only)
+            title : Render Fluent Emoji 
             recommend : no
             author : Louis T Steinhil
             desc : "Builds the Fluent manifest into an EXE-resident token table and renders :shortcode:, compact @shortcode@ and raw Unicode aliases through the client's existing GDI+ dependency. Assets are copied beside the patched client. No custom DLL, API detour, recv hook, or runtime code patching is used. Target: 2025-07-16."
 
         - InGamePincodeUI:
-            title : Open Stock PIN Pad In-Game (QJS-only)
+            title : Open Stock PIN Pad In-Game 
             recommend : no
             author : Louis T Steinhil
             desc : "Handles BOH map packet 0x0BEF/PINC on the normal client update thread, loads the original character-select PIN resources, and creates the stock C7/C8 PIN window over the active in-game scene. The stock UI submits 0x08B8/0x08BA/0x08BE through the current map connection. No custom DLL, replacement keypad, API detour, or foreign UI thread is used. Target: 2025-07-16."

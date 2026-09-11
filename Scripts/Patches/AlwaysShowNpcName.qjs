@@ -692,7 +692,7 @@ AlwaysShowNpcName = function(_)
 		const fp = new TextFile(OUTDIR + "AlwaysShowNpcName_result.txt", "w");
 		if (fp.Valid)
 		{
-			fp.WriteLine("AlwaysShowNpcName patch result (QJS-only):");
+			fp.WriteLine("AlwaysShowNpcName patch result :");
 			fp.WriteLine("  Build date: " + Exe.BuildDate);
 			fp.WriteLine("  Frame caller: 0x00C7642D -> guarded static bridge");
 			fp.WriteLine("  Original updater: 0x00C77820, called first");
