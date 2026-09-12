@@ -1,296 +1,181 @@
-# HD Job Sprite Previews — implementation and local reference
+# HD Job Sprite Previews — native ACT rendering
 
 Updated: 2026-09-12. Target: **2025-07-16 Ragexe, 32-bit x86**.
 
-This is the consolidated session reference for the diagnosis, generated assets,
-local implementations, deployment, verification and renderer alternative.
-**PR preparation is stopped at the user's request.** No PR was opened and the
-prepared branch was not pushed. The local checkout and recovered assets remain
-available for use; they have not been merged into the main checkout.
+Select **Fix HD Job Sprite Previews (Alt+Q / Alt+S)**, implemented by
+`Scripts/Patches/NativeActJobPreviews.qjs` (local patch ID 385).
+The native Equipment and Skill Tree blits ignore ACT layer scaling. This patch
+applies existing scale, mirror, rotation and layer tint while drawing into the
+windows' persistent native surfaces. A 2x SPR with ACT scale 0.5 therefore
+retains its intended size in these previews as well as the world.
 
-## Diagnosis and current approach
+The patch uses existing SPR/ACT paths, palette resolution, head offsets and
+frame selection. Applying the self-contained QJS needs no Python, compiler,
+generated preview pack or runtime DLL. Supply matching world SPR/ACT resources
+through the client's existing archive chain. Camera zoom is not a UI transform;
+incorrect source ACT scales remain incorrect.
 
-World rendering honors ACT layer scaling, while the native Equipment (Alt+Q)
-and Skill Tree (Alt+S) blits ignore it. A SPR with four times the pixel dimensions
-and ACT scale 0.25 therefore looks correctly sized in the world but four times
-too large in these previews. The supplied male/female clan Swordman pairs use
-4x pixels and ACT scale 0.25. The supplied male Monk high pair uses 2x pixels and
-ACT scale 0.5.
+## Replacement and PR #70
 
-The implemented solution preserves the HD world SPR/ACT pair and generates
-separate native-size preview and stock-fallback pairs. Only the nine profiled
-UI resource-load calls are redirected. There is no runtime sprite resizer.
+[PR #70](https://github.com/CrazyBebop/WARP0716/pull/70), head
+`d2dce84e7a04ada47f865d788769fdb78ea165c8`, contains the cleaned upstream
+version. Its embedded machine-code payload, relocation list and used bridge
+offsets match this checkout exactly. Local source formatting and test-export
+metadata differ. The local QJS also retains the verified ClanBodySkins v11
+resource-wrapper bypass and optional patch-order coordination; upstream accepts
+only the stock loader layout.
 
-The conversion is generalized by **actual ACT layer scale**, not by a fixed
-job-ID table or an assumed 4x resolution. It supports nonuniform axes,
-noninteger factors and per-frame scale changes. It cannot infer an intended
-world size if the source ACT's own scale is incorrect. Camera zoom and other
-runtime world transformations are not reproduced in UI windows.
+`HDJobSpritePreviews` (old local ID 384) has been retired together with its
+registration, generated-pack runtime, builder and dedicated runtime/WARP tests.
+Replace that name with `NativeActJobPreviews` in saved external profiles and
+reapply from the original client. ID 384 remains unused. Checked-in profiles
+do not select the retired patch.
 
-## Why Assets/HDJobUI is required
+The native patch does not require `Assets/HDJobUI` or `data/sprite/hd_job_ui`.
+Existing generated assets and historical fixture outputs are retained locally.
+`tools/hd_job_ui_assets.py`, `tools/package_hd_job_ui_grf.py`, and their asset
+tests remain because the native live-fixture builder reuses their SPR/ACT
+parsers and GRF writer. They do not install the retired preview patch.
+Earlier generated-pack records remain in Git history and
+`docs/evidence/hd-job-ui/`. That stopped PR effort was separate from the
+now-open native renderer PR #70.
 
-Removing generated assets from Git did not remove the patch's dependency on
-those assets. The pack contains `manifest.json` plus native-size preview and
-fallback SPR/ACT files. The missing-pack error is an active precondition, not
-a stale diagnostic. Removing that check would leave the patch without its
-resource map and required files.
+## Maintained source and verification
 
-Each affected job/sex resource pair discovered in the supplied source chain
-gets a manifest entry. Already-native pairs do not require a route. Identical
-preview/fallback sets can be shared by several resource paths. This does not
-automatically cover future HD additions:
+The runtime source is `tools/native/native_act_job_ui.cpp`; its WARP template
+is `tools/native/native_act_job_ui.qjs.in`. The generated QJS embeds static
+x86 code, not sprite pixels. QJS and hashed runtime source have explicit CRLF
+checkout rules. Intermediate native EXEs remain in `Outputs`.
 
-- New resource paths require regenerating the pack and reapplying the patch.
-- Artwork or ACT changes at existing paths require regenerating and deploying
-  the corresponding pack files, then restarting the client. The cleaned
-  implementation needs no QJS rebuild when only the pack changes.
-- Generate all intended resources together; generation replaces the manifest.
-  Packaging and routing use its referenced files.
-
-The existing local audit resolved **2,206 complete body pairs**: 61 with
-non-unit ACT scales and 2,145 with native scales. The generated pack has
-**61 resource mappings, 18 unique preview/fallback sets and 72 SPR/ACT files**.
-These are resource counts, not 61 distinct HD jobs. Some non-unit scales belong
-to stock animations. Ten ACT-only paths lacked a matching SPR in the supplied
-chain and were reported as unpaired rather than assigned substitute artwork.
-
-The pack was retained in the main checkout and Downloads WARP installation,
-and has now been restored into the cleaned local checkout. All 72 restored
-file hashes, visible ACT scales of 1.0 and image references were checked.
-`Assets/HDJobUI/` remains Git-ignored.
-
-## Local copies and implementation differences
-
-| Copy | Resource mapping | Supported starting layout |
-| --- | --- | --- |
-| Main checkout: `Scripts/Patches/HDJobSpritePreviews.qjs` | Earlier generated QJS embeds the pack's mapping/file lists; rebuild QJS after changing that map | Stock or the specifically verified ClanBodySkins v11 bridges |
-| Cleaned local checkout: `Outputs/hd-job-ui-pr/` | Reads `Assets/HDJobUI/manifest.json` at WARP apply time; no deployment-specific map is built into QJS | Verified stock UI CALLs only; changed calls or native prologues are rejected |
-
-The cleaned copy is retained on local branch
-`codex/hd-job-sprite-previews-upstream`, commit `c2856b8`, based on upstream
-commit `48dde10`. Its folder name reflects the earlier preparation; no PR is
-being pursued. It still contains the patch, converter, native source and
-verification tools. The existing main-checkout implementation was not replaced.
-
-The sections below describe the cleaned copy unless explicitly marked as
-legacy. Run its commands from `Outputs/hd-job-ui-pr/`. Its generated pack is
-at `Outputs/hd-job-ui-pr/Assets/HDJobUI/` relative to the main checkout.
-
-## Generate and deploy a pack
-
-Use Python 3.10+. Install `tools/requirements-hd-job-ui.txt` for the full build
-and verification workflow; asset conversion itself requires Pillow.
+Use Python 3.10+ and `tools/requirements-native-act-job-ui.txt`. The local
+builder defaults to MSVC 14.51.36231's x86 compiler; pass `--compiler` for
+another x86 `cl.exe` with `link.exe` alongside it. Other compiler versions
+require regeneration and verification. The local reference client is
+`2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe`,
+SHA-256 `ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff`.
+The builder requires that exact input before recording native byte checks.
 
 ```powershell
-python tools/hd_job_ui_assets.py --source-grf HD.grf --source-grf data.grf --stock-grf stock.grf --output Assets/HDJobUI --write-config Outputs/hd-job-ui/resolved.json
+python tools/build_native_act_job_ui.py
+python tools/build_native_act_job_ui.py --check
+python tools/verify_native_act_job_ui.py
+python tools/verify_native_act_job_ui_warp.py
 ```
 
-Repeat `--source-grf` and `--stock-grf` in their respective highest-first
-priority orders. Supply the archives that the client actually loads. SPR and
-ACT resolve independently, so an ACT override can pair with a SPR from a
-lower-priority archive. Native overrides shadow lower-priority scaled assets.
-Archive tables remain open during generation and close afterward.
-
-Optional `--sprite-root data/sprite` roots take precedence over source GRFs;
-omit them for archive-first clients. Discovery recognizes species/body
-`*/몸통/` paths, including human, Doram and prefixed body resources, and excludes
-the generated preview namespace. It requires a complete stock fallback for
-every selected body. Loose filenames may use decoded Korean or supported
-legacy Latin-1 mojibake names. Unpaired ACT paths appear in the saved config.
-
-For aliases, custom layouts or explicit artwork assignments, use an explicit
-map based on `Inputs/HDJobSpritePreviews.example.json`:
+The native test runs seven x86 cases: original-blitter pixel comparison,
+scaling/mirror/rotation/clipping, atlas/invalid inputs, persistent surfaces,
+both bridge ABIs and native delegation. The WARP test runs standalone, both
+orders with `ReduceExpensiveUIRender`, changed-renderer/resource-loader
+rejection, invalid-relocation rejection and safe reapplication. Optional local
+integration checks add the v11 fixture and both ClanBodySkins patch orders:
 
 ```powershell
-python tools/hd_job_ui_assets.py --config my-job-sprites.json --output Assets/HDJobUI
+python tools/verify_native_act_job_ui_warp.py --clan-client path/to/clan-skins-v11-check.exe --clan-patch
 ```
 
-Source/fallback specifications support a local `path` stem, a `grf` plus `stem`,
-or separate `spr` and `act` specifications when files come from different
-sources. Stems omit extensions. The earlier normal-Monk test used an explicit
-artwork alias because the client requested `몽크_남` while the supplied HD file
-was named `몽크_h_남`; this was a resource-map decision, not special scaling code.
+`--clan-patch` requires the separately maintained local ClanBodySkins patch;
+standalone verification does not. `tools/build_native_act_job_ui_test.py` and
+`tools/native_act_test_archives.py` retain the local live-fixture packaging
+workflow described below.
 
-Select **Native-size HD Job Previews (Alt+Q / Alt+S)** in WARP. The cleaned
-patch reads the manifest, validates version, bounds, unique routes and complete
-file lists, and checks file presence before changing the EXE. It copies the
-referenced files beside the output EXE under `data/sprite/hd_job_ui/`.
-Reapply from a compatible original input when changing the resource map.
+The [original native evidence](evidence/native-act-job-ui.json) records the
+pre-retirement run, including now-retired mutual-exclusion cases. It remains
+historical evidence. The male Monk live screenshot confirms HD world, standing
+Equipment and seated Skill Tree rendering. Wider job/sex/direction/animation
+and original-layout live coverage remains pending.
 
-The converter validates fallback scales and image references. WARP validates
-manifest structure and file presence; it does not recompute file hashes.
-Deploy the converter's preview and stock files together. Keep the namespace
-unique so a stale copy in a higher-priority GRF cannot take precedence.
+## v1 live failures and v2 correction
 
-For archive deployment, package the same generated UI files:
+The user reported missing HD artwork on Monk, disappearance of the Alt+Q
+avatar while dragging, and a missing Alt+S avatar. See the
+[user screenshot](evidence/native-act-ui-v1-failures.png). V1's embedded archive list
+was correct, but its eight-entry GRF only mapped Swordman. There were no Monk
+entries. The confirmed game-folder Monk body ACTs have scale 1.0; the user
+authorized mapping the existing HD clan artwork onto Monk for this test.
 
-```powershell
-python tools/package_hd_job_ui_grf.py --assets Assets/HDJobUI --output Outputs/hd-job-ui/hd_job_ui.grf
-```
+The v1 rendering path was wrong for these windows: native `0x00A1B7C0` queued
+GPU geometry on `UIWindow+0x5C`, while the normal UI blit writes the persistent
+CPU `CSurface` at `UIWindow+0x24`. Geometry-only tests did not cover that
+compositing/lifetime contract. V1 is not an accepted working renderer.
 
-Register this archive through the client's active GRF loading mechanism.
-The cleaned UI patch and packager do not edit DATA.INI or an embedded archive
-list, and the UI pack contains no world artwork. Install the original HD world
-resources separately. An external DATA.INI change alone is ineffective if the
-client uses an embedded archive list.
+V2 rasterizes the current native texture into that same CSurface. It sets the
+native dirty byte and leaves window composition, movement, caching, fade and
+reopening to the client. No screen-space geometry or resource pointers persist
+in the bridge. Native palette resolution and texture lock/unlock ownership are
+preserved; loaded ACT/SPR objects are read-only.
 
-## Conversion and alignment contract
+The rasterizer uses the profiled A1R5G5B5 and A4R4G4B4 texture formats, native
+component expansion and DIB storage conventions, premultiplied bilinear
+sampling, separate ACT X/Y scales, mirror, rotation and RGBA layer tint.
+Sampling is clamped within the current image's atlas rectangle. Destination
+writes are clipped to the actual surface bounds. No preview assets or resized
+sprite resources are generated at runtime.
 
-For every visible ACT layer, generate:
+## Hook and resource boundaries
 
-```text
-UI width  = max(1, floor(source width  * scaleX + 0.5))
-UI height = max(1, floor(source height * scaleY + 0.5))
-UI scaleX = UI scaleY = 1.0
-```
+- Alt+Q's mode argument at `0x008B3557` selects the native scaled anchor path.
+  The call at `0x007ACEF9` is routed to a surface wrapper only for Equipment
+  vtable `0x0103223C`; other callers delegate to the native implementation.
+  Existing job-specific scale behavior remains in force.
+- The Skill Tree bridge at `0x00974E9E` uses the original frame's layer, image,
+  resolved texture, atlas rectangle and head offsets. It preserves GPRs,
+  flags, the caller stack, seated action/frame selection and component order.
+- `CSurface` is the profiled 44-byte object with vtable `0x00FD5CE4`, width /
+  height at `+4/+8`, CPU pixels at `+0x18` and dirty byte at `+0x1C`.
+- Current ClanBodySkins application orders use CACHE and ReloadPatch to remove
+  recorded preview routing. Exact v11 inputs restore only the nine profiled UI
+  loader calls; clan world selection and complete-pair fallback remain.
+- WARP GetHex sees original bytes rather than another patch's pending writes.
+  The payload is relocated in memory and written once, which also avoids the
+  overlapping-write failure observed when reapplying WARP's own output.
 
-Reused images with different logical dimensions receive additional variants;
-only the referring image indices change. Integer raster rounding can differ
-by half a pixel per axis. Action/frame ordering, frame headers, timing, sounds,
-head anchors, mirror, rotation and color are preserved. ACT 2.5 dimension
-fields are updated to match the generated images.
+Maintained source is `tools/native/native_act_job_ui.cpp`; installation uses
+`tools/native/native_act_job_ui.qjs.in` and generated
+`Scripts/Patches/NativeActJobPreviews.qjs`. Build/check with
+`tools/build_native_act_job_ui.py [--check]`. The reference original SHA-256 is
+`ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff`.
+No runtime DLL, CRT import, recv hook or world-renderer patch is installed.
 
-The profiled loader computes:
+## Verification and test release
 
-```text
-loaded_offset = trunc(file_offset / layer_scale)
-                - floor(source_image_dimension / 2)
-```
+`tools/verify_native_act_job_ui.py` now checks surface pixels and lifecycle,
+not only queued geometry: unit-scale output against the real native blitter
+for both formats, arbitrary scaling/mirror/rotation/clipping, pixel persistence
+when moving without repainting, atlas cropping, invalid inputs, Equipment
+thiscall/palette resolution, and the actual mid-function Skill Tree bridge.
+The original run passed seven x86 tests and eight WARP cases, including
+mutual-exclusion tests for the since-retired generated-pack implementation.
+See the [historical verification evidence](evidence/native-act-job-ui.json).
+The maintained WARP cases are listed above. These tests do not establish
+additional live visual acceptance.
 
-World geometry subsequently applies the layer scale. Exported UI ACT X/Y
-coordinates therefore remain the original logical offsets. **Do not multiply
-them by the HD multiplier again**; doing so double-applies the conversion and
-breaks head/body alignment.
+The current v3 fixture is built/deployed by `tools/build_native_act_job_ui_test.py`
+into `C:/Users/Administrator/Documents/Ragnarok/Banquet of Heroes`:
 
-Resampling uses premultiplied-alpha Lanczos. Truecolor SPR pixels are bottom-up
-ABGR. Indexed sprites retain the original palette and reserved transparent
-index zero; resampling is quantized back to that palette with binary alpha.
-Stock fallback ACT scaling, if present, is baked into its separate native-size
-copy using the same rules. Original world files remain unchanged.
+- `native-act-hd-v3.exe`
+- `native_act_hd_v3.grf`
+- `native-act-hd-v3-release.json` and `native-act-hd-v3-README.txt`
 
-Supported formats are SPR 2.0/2.1/2.2 and ACT 2.4/2.5. Invalid indices,
-unsupported formats, nonpositive/nonfinite scales and excessive dimensions
-fail generation. Limits are 2,048 resource routes, 65,535 variants per image
-type, 4,096 pixels per output axis and 64 million output pixels per pair.
-The generated manifest records mappings, scales and source/output hashes.
+V3 retains the v2 renderer fix and removes the temporary Monk-to-Swordman
+artwork substitution after the user reported the wrong job appearance.
+The pack has eight SPR/ACT entries restricted to clan/ordinary Swordman.
+At initial v3 packaging, Monk and Monk-high resolved their original resources
+from the existing archive chain. The user then added a real 2x male Monk-high
+pair to this GRF: `몽크_h_남.spr/.act`, ACT scale 0.5. Normal Monk requests
+`몽크_남`, so matching normal-name aliases were added for both files. All ten
+existing entries and every compressed sprite payload were preserved; the GRF
+now has twelve entries. Male Monk uses the supplied HD Monk artwork. Female
+Monk remains on its original assets. See the [alias receipt](evidence/native-act-hd-monk-alias.json).
 
-## Native resource routing and ABI
+The earlier v2 fixture had sixteen entries with explicitly requested test
+aliases from clan Swordman artwork onto Monk. Reproducing that diagnostic now
+requires `--monk-clan-test-alias`; the default preserves Monk appearance.
 
-Only the four Equipment and five Skill Tree CALL sites below are redirected.
-The cleaned patch checks their original bytes and six native function
-prologues before allocation or mutation. Other client builds need independent
-function identification, ABI profiling and byte verification.
+The v3 EXE embeds its own GRF first, followed by the original eight archives,
+without either earlier test GRF. DATA.INI is unchanged. The AddPak sequence
+and final EXE writes are verified by the packaging workflow. The later male
+Monk aliases require a client restart but no EXE rebuild or DATA.INI change. Earlier releases remain separately named.
 
-| UI | CALL addresses | Native loader and ABI |
-| --- | --- | --- |
-| Equipment | `0x7ACD71`, `0x7ACDB1`, `0x7AEC6B`, `0x7AED3F` | `0xA8D9F0`; thiscall, owned 24-byte MSVC string by value, callee pops 24 |
-| Skill Tree | `0x974B20`, `0x974B56`, `0x974B76`, `0x974D35`, `0x974E04` | `0xA8D4A0`; thiscall, const char pointer, callee pops 4 |
-
-Bridges preserve ECX and callee-saved registers. Equipment reassigns its owned
-string and transfers it exactly once to the native loader for destruction.
-Unlisted paths delegate unchanged. CP949 lead/trail bytes survive ASCII case
-and slash normalization. The hook has no fixed job-ID or resolution table.
-
-Both members of a listed preview pair must exist through the native VFS before
-either is selected. Otherwise both SPR and ACT loads use the packaged,
-verified native-size stock pair. Both namespaces are distinct from world paths:
-`hd_job_ui/preview/` and `hd_job_ui/stock/`. The choice is cached per route for
-the process lifetime; restart after changing resource availability. Resource
-object pointers are not cached. Complete stock fallback files are mandatory.
-
-The profiled CFile object is 44 bytes: vtable `0xFD3074`, initial handle -1,
-embedded 24-byte string at offset 20. Open is `0x573750` with `(path, 0, 1, 0)`;
-Close is `0x573060`; string destruction is `0x4F08F0`; assignment is `0x4F1940`.
-Native path buffers are bounded to 384 bytes.
-
-Reference EXE SHA-256:
-`73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f`.
-The cleaned profile's original bytes are in
-`tools/native/hd_job_ui_20250716.json`.
-
-## Maintained source and generated payload
-
-`tools/native/hd_job_ui.cpp` is the maintained runtime source and
-`tools/native/hd_job_ui.qjs.in` is the WARP template.
-`Scripts/Patches/HDJobSpritePreviews.qjs` is generated and ready to load in WARP.
-Its `blob` contains x86 machine code and static data, not sprite pixels.
-The cleaned payload contains no server-specific resource map. Its validation,
-CALL-site metadata and payload relocation data are required implementation
-parts, not leftover debug variables.
-
-The cleaned builder strips linker export/debug metadata and records a source
-hash. MSVC 14.51.36231 produced the checked-in payload. Rebuild from an x86
-MSVC developer prompt or pass `--compiler` pointing to x86 `cl.exe` with
-`link.exe` alongside it. A different compiler version may produce different
-machine code and needs verification. Applying the generated QJS does not
-require a native compiler or deployed DLL.
-
-```powershell
-python tools/build_hd_job_ui.py
-python tools/build_hd_job_ui.py --check
-python tools/verify_hd_job_ui_assets.py
-python tools/verify_hd_job_ui_native.py
-python tools/verify_hd_job_ui_warp.py --profile-client path/to/original-2025-07-16.exe
-```
-
-The builder also accepts `--profile-client` to check the original EXE against
-the recorded profile. Cleaned tests use synthetic images/maps rather than
-requiring the local game assets. QJS uses CRLF and UTF-8 without BOM.
-
-## Legacy client and retained evidence
-
-The main-checkout implementation also accepts the specifically verified v11
-bridges `0x01967BF0` / `0x01967C30`. Its reference SHA-256 is
-`f0d962c64c0449eaec24010c75a331ee087a4807fb8bdd42e3d097680e99709c`.
-That compatibility is absent from the cleaned copy; do not apply its stock-only
-profile to the prepatched v11 client.
-
-The legacy `tools/rebuild_hd_job_ui_test.py` in the main checkout repaired the
-v11 embedded archive list after verifying its exact hash and loader structure.
-The profiled startup call is `0x00DB98B6`, old stub `0x0181F2F0`, AddPak
-`0x00A88890`, and manager `0x0159D410`. Original archive order was preserved.
-This fixture-specific repair is separate from the UI preview fix and was not
-carried into the cleaned copy. The main-checkout packager's `--world-config`
-option likewise belongs to the earlier world-fixture workflow.
-
-The retained v4 client and `hd_job_ui_v4_world.grf` form the visually accepted
-male-Monk fixture. V5 expanded coverage to the 61 mapped paths. The main client
-EXE was not replaced during that work. The [coverage inventory](evidence/hd-job-ui/coverage.json)
-and [verification record](evidence/hd-job-ui/verification.json) remain supporting
-evidence rather than separate usage documentation.
-
-## Verification and live acceptance
-
-The cleaned copy passed seven asset tests, four x86 ABI/routing tests, eight
-real upstream-WARP export/rejection cases, deterministic payload regeneration,
-and standalone GRF packaging. Coverage includes arbitrary scales, alpha and
-palette handling, metadata preservation, archive priority, split SPR/ACT
-sources, fallback baking, both native ABIs, string ownership, CP949 boundaries,
-missing pair members, cached choices, replacement manifests, restricted
-existing-code writes, and invalid/missing input rejection.
-
-The user supplied [this live screenshot](evidence/hd-job-ui/v4-monk-equipment-skill.png)
-and reported success for the earlier male Monk: HD world body, native-size
-standing Equipment and seated Skill Tree previews, with aligned heads in the
-shown poses. Preview-versus-fallback selection was not independently captured
-afterward. This evidence does not establish the full matrix or validate the
-cleaned build visually.
-
-Outstanding live checks are the cleaned build, other jobs, both sexes, all
-relevant directions and animations, head/body alignment, missing-SPR and
-missing-ACT fallback after restart, and repeated window reopening. Automated
-checks do not replace those visual results.
-
-## Alternative: apply ACT scaling in the native UI renderers
-
-The alternative is to modify the Equipment/Skill Tree renderers to honor ACT scaling directly, eliminating generated previews. That requires additional reverse engineering and live validation.
-
-This alternative is not implemented. It would draw from the existing HD
-resources using their ACT transforms instead of generating a separate preview
-pack. The work would need to identify the actual draw paths for both windows,
-preserve offsets and head anchors, handle their native image/palette behavior,
-and verify the same direction, animation, alignment and reopening cases.
-
-The current implementation continues to use generated native-size pairs and
-requires `Assets/HDJobUI`. Documenting the renderer alternative does not remove
-that dependency or change the client implementation.
+**Male Monk live case confirmed.** The user supplied a [working screenshot](evidence/native-act-ui-male-monk-confirmed.png) showing HD world rendering, standing Alt+Q and seated Alt+S. Wider live acceptance remains pending; drag Alt+Q, move both windows, verify Alt+S standing /
+seated registration and head alignment, then test closing/reopening, relevant
+directions/frames, both sexes, palettes, special job scales and relog.

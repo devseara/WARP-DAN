@@ -311,8 +311,8 @@ HDJobPreviews:
     title : HD JOB SPRITE PREVIEWS
     mutex : false
     patches:
-        - HDJobSpritePreviews:
-            title : Native-size HD Job Previews (Alt+Q / Alt+S)
+        - NativeActJobPreviews:
+            title : Fix HD Job Sprite Previews (Alt+Q / Alt+S)
             recommend : no
             author : Louis T Steinhil
-            desc : Uses generated native-size SPR/ACT pairs for Equipment and Skill Tree bodies, with complete-pair stock fallback. Preserves HD world resources. Requires a separately generated Assets/HDJobUI pack; sprite assets are not bundled. Profiled for 2025-07-16 and verified ClanBodySkins v11 only.
+            desc : Applies native ACT scale, mirror, rotation and layer tint to Equipment and Skill Tree sprites on the profiled 2025-07-16 client. Draws existing palette-resolved textures into persistent native surfaces, preserving head offsets, frames and window composition. Uses existing SPR/ACT resources without a generated preview pack or runtime DLL. Also accepts the verified ClanBodySkins v11 layout.

@@ -1,0 +1,114 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-09-12                                             *
+*                                                                          *
+*   Description   : Fixes HD job sprite previews in Equipment (Alt+Q) and  *
+*                   Skill Tree (Alt+S) on 2025-07-16 Ragexe. Applies ACT   *
+*                   scale, mirror, rotation, and layer tint while drawing  *
+*                   existing textures into native UI surfaces. Preserves   *
+*                   palettes, head offsets, frame selection, dragging, and *
+*                   repaint ownership. Uses existing SPR/ACT paths without *
+*                   generated preview packs, runtime DLLs, or world        *
+*                   renderer hooks.                                        *
+                                                                           *
+*   Source        : tools/native/native_act_job_ui.cpp                     *
+*   Generator     : tools/build_native_act_job_ui.py                       *
+                                                                           *
+\**************************************************************************/
+
+NativeActJobPreviews = function(_)
+{
+	const self = NativeActJobPreviews;
+	if (Exe.BuildDate !== 20250716)
+		throw Error('NativeActJobPreviews: only profiled for 2025-07-16');
+	const read = (va, count) =>
+	{
+		const phy = Exe.Vir2Phy(va);
+		if (phy < 0) throw Error('NativeActJobPreviews: unmapped native address ' + va.toString(16));
+		return Exe.GetHex(phy, count).replace(/\s+/g, '').toLowerCase();
+	};
+	const check = (va, hex) =>
+	{
+		if (read(va, hex.length / 2) !== hex)
+			throw Error('NativeActJobPreviews: native bytes differ at ' + va.toString(16));
+	};
+	// Validate every native dependency and original write before allocation.
+	for (const row of self.checks) check(row.va, row.hex);
+	const stock = self.calls.every(row => read(row.va, 5) === row.stock);
+	const legacy = self.calls.every(row => read(row.va, 5) === row.clan);
+	const installed = CACHE.get('ClanBodySkins.PreviewCalls.v1');
+	if (!stock && !legacy)
+		throw Error('NativeActJobPreviews: UI resource calls are neither stock nor the verified ClanBodySkins v11 profile');
+	if (legacy)
+		for (const row of self.legacyChecks) check(row.va, row.hex);
+	const blob = self.blob;
+	for (const off of blob.relocations)
+		if (!Number.isInteger(off) || off < 0 || off + 4 > blob.hex.length / 2)
+			throw Error('NativeActJobPreviews: invalid payload relocation');
+	const [phy, vir] = Exe.Allocate(blob.hex.length / 2, 0x10);
+	const payload = blob.hex.match(/../g).map(value => parseInt(value, 16));
+	for (const off of blob.relocations)
+	{
+		const bytes = blob.hex.substr(off * 2, 8).match(/../g);
+		const old = parseInt(bytes.reverse().join(''), 16);
+		const value = (old + vir - blob.imageBase) >>> 0;
+		for (let i = 0; i < 4; ++i) payload[off + i] = (value >>> (i * 8)) & 255;
+	}
+	// Relocate in memory and write once: overlapping SetHex/SetUint32 writes
+	// can lose operands when WARP reconstructs one of its own prior outputs.
+	Exe.SetHex(phy, payload.map(value => value.toString(16).padStart(2, '0')).join(' '));
+	// The checkout has no Class_Safety/SetHexSafe. Every existing-code write
+	// is checked immediately before mutation using the established Exe APIs.
+	const write = (va, expected, replacement) =>
+	{
+		check(va, expected);
+		Exe.SetHex(Exe.Vir2Phy(va), replacement.match(/../g).join(' '));
+	};
+	write(0x008B3557, '6a00e8c292efff', '6a01e8c292efff');
+	const site = 0x00974E9E;
+	const delta = (vir + blob.exports.NativeActSkillBridge - site - 5) >>> 0;
+	const operand = [0, 8, 16, 24].map(n => ((delta >>> n) & 255).toString(16).padStart(2, '0')).join('');
+	write(site, '8b8524ffffff', 'e9' + operand + '90');
+	const eqSite = 0x007ACEF9;
+	const eqDelta = (vir + blob.exports['@NativeActEquipmentDraw@52'] - eqSite - 5) >>> 0;
+	const eqOperand = [0, 8, 16, 24].map(n => ((eqDelta >>> n) & 255).toString(16).padStart(2, '0')).join('');
+	write(eqSite, 'e8c2e82600', 'e8' + eqOperand);
+	// v11 already formats the selected clan world path. Bypass only its UI
+	// preview wrappers; body selection, complete-pair fallback and world code stay native.
+	if (legacy)
+		for (const row of self.calls) write(row.va, row.clan, row.stock);
+	CACHE.put('NativeActJobPreviews.Installed', true);
+	// GetHex reads the original image, not another patch's pending writes.
+	// Rebuild the recorded Clan patch with preview routing disabled.
+	if (Array.isArray(installed) && installed.length)
+	{
+		ReloadPatch('ClanBodySkins');
+		Exe.SetActivePatch('NativeActJobPreviews');
+	}
+	return true;
+};
+NativeActJobPreviews.validate = () => Exe.BuildDate === 20250716;
+
+NativeActJobPreviews.cleanup = function()
+{
+	CACHE.del('NativeActJobPreviews.Installed');
+	ReloadPatch('ClanBodySkins');
+	Exe.SetActivePatch('NativeActJobPreviews');
+};
