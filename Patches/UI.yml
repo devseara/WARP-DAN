@@ -593,3 +593,12 @@ TargetMonsterHUD:
             recommend : no
             author : Codex
             desc : Shows the selected monster HP at the top center while hovering or attacking, with Normal, Mini Boss and MVP artwork. Respects /monsterhp; enable Show Mob Info HP or percentage for untouched monsters. 2025-07-16 only.
+
+Bestiary:
+    title : BESTIARY
+    patches:
+        - BestiaryUI:
+            title : Bestiary (native journal)
+            recommend : no
+            author : Codex
+            desc : Native 760x500 Bestiary for 2025-07-16. BSUI v3 supplies resolved stats, server rates, native sprites, minimaps and Navigation. Includes account-wide research, groups, tracking, cabinet, Claim All and cosmetic/utility rewards. Requires matching map/char backends and SQL migration. Open with /bestiary.

@@ -119,8 +119,9 @@ CustomSlashCommand.refresh = function(_)
 
 	try
 	{
-		if (registry.isEmpty())
-			return true;
+		// An empty registry still needs a stock-unknown fallback dispatcher.
+		// BeginTag alone does not erase the previously emitted global hook;
+		// returning here would leave it calling a removed feature's cave.
 
 		const cmn = (ROC.HasFP ? FP_STOP : '') + RETN(4);
 		let prefix, suffix, movPos, extraPops, tgtReg;

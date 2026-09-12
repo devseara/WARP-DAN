@@ -3425,3 +3425,28 @@ ItemCollectionUI.validate = function()
 		return false;
 	}
 };
+
+// Stateless native-window primitives for independent 2025 UI surfaces.
+// Exporting these closures does not activate Collection or expose its live
+// allocations, transport, assets or mutable ColorKeyBlitVir draw context.
+ItemCollectionUI.nativeFrameV1 = {};
+for (const key of [
+	"resolvePacketRefs", "sharedPacketRouteCellValue", "ensureSharedPacketRoute", "beginSharedPacketRoute", "endSharedPacketRoute", "PacketBuffer", "PacketMainLoopReturn", "buildItemResourceResolver", "ConvPath", "buildColorKeyBlit",
+	"asm", "bytesToHex", "asciiBytes", "pushImm", "emitText", "emitFillRect",
+	"emitPanel", "emitDrawFull", "emitMarkDirty", "emitRectGate",
+	"buildFillRect", "buildSearchNativeInput", "buildDestructor",
+	"buildResourcePath", "uiPrefix", "assertCode", "verifyNativeContracts",
+	"WindowManager", "Renderer", "OperatorNew", "FrameConstructor",
+	"FrameMouseDown", "FrameMouseUp", "WindowSetSize", "WindowChildSetSize",
+	"WindowAddChild", "WindowAddTopLevelFront", "UIEditCtrlObjectSize",
+	"UIEditCtrlConstructor", "UIEditCtrlMaximumOffset", "UIEditCtrlStyleOffset",
+	"WindowManagerGetFocusEdit", "WindowManagerSetFocusEdit", "WindowCaptureGet", "WindowCaptureRelease",
+	"WindowClearSurface", "FrameVtable", "FrameVtableEntries", "FrameObjectSize",
+	"WindowIdOffset", "WindowXOffset", "WindowYOffset", "WindowVisibleOffset",
+	"WindowDragStateOffset", "WindowDragIdle", "RendererWidthOffset", "RendererHeightOffset",
+	"GetTexMgr", "LoadSurface", "StateWindow", "StateTab", "StateSearchEdit", "StateSearchFocused",
+	"StateSearchSubmitPending", "StateSearchLength", "StateCategory", "StateCategoryDropdown",
+	"StateSelectedIndex", "StateRowCount", "StatePressedControl", "StateHoverControl",
+	"SearchTextSize", "SearchMaximumChars"
+])
+	ItemCollectionUI.nativeFrameV1[key] = ItemCollectionUIStatic[key];
