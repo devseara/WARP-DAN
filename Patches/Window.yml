@@ -306,3 +306,13 @@ TraitStatusButton:
             recommend : no
             author : Secret,Skylove
             desc : Completely hides the Trait Status expansion button from the Status Window. Use on pre-4th job servers to remove the button entirely rather than just disabling it.
+
+HDJobPreviews:
+    title : HD JOB SPRITE PREVIEWS
+    mutex : false
+    patches:
+        - HDJobSpritePreviews:
+            title : Native-size HD Job Previews (Alt+Q / Alt+S)
+            recommend : no
+            author : Codex
+            desc : Uses generated native-size SPR/ACT pairs for Equipment and Skill Tree bodies, with complete-pair stock fallback. Preserves HD world resources. Regenerate Assets/HDJobUI when job assets change. Profiled for 2025-07-16 and verified ClanBodySkins v11 only.

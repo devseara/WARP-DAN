@@ -1,0 +1,20 @@
+{
+  "date": "2026-09-12",
+  "source": "User-provided in-client screenshot after v4 retest; user reported: i think it worked",
+  "image": "v4-monk-equipment-skill.png",
+  "image_sha256": "189e3b184582d45ff8cd7b4e08d7b082435dc44e1400fa585ac4001902fb62ce",
+  "observed": [
+    "HD Monk body visible in world",
+    "Equipment preview fits at native size",
+    "Skill Tree preview fits at native size",
+    "Head/body alignment appears correct in the shown standing and seated poses",
+    "Both UI windows shown open together"
+  ],
+  "not_verified": [
+    "V4 live route decision versus stock fallback (no named test process found during follow-up)",
+    "Other sexes and jobs",
+    "All directions and animations",
+    "Reopening windows",
+    "Missing-SPR and missing-ACT fallback in a live client"
+  ]
+}
