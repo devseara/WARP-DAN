@@ -67,5 +67,20 @@ def main():
   assert source.read_bytes()==original
   result=dict(case=label,target=str(target),sha256=hashlib.sha256(target.read_bytes()).hexdigest(),ui_calls=9,payload=hex(payload),deployed_pairs=count,changed_original_call_bytes=sum(va in {site+j for site in sites for j in range(5)} for va in changed))
   rows.append(result);print(json.dumps(result),flush=True)
+ # A source-only checkout must fail clearly before any UI call is changed.
+ missing_name=next(iter(manifest['pairs'][0]['files']))
+ missing=fixture/'Assets/HDJobUI'/missing_name;held=missing.with_name(missing.name+'.held')
+ assert not held.exists();missing.rename(held)
+ try:
+  folder=out/'missing-assets';folder.mkdir();target=folder/'client.exe';profile=folder/'profile.yml'
+  profile.write_text('from: '+json.dumps(str(clean))+'\nto: '+json.dumps(str(target))+'\ninputs: {}\npatches:\n    - HDJobSpritePreviews\n')
+  process=subprocess.run([str(fixture/'win32/WARP_console.exe'),'-using',str(profile)],cwd=fixture,capture_output=True,timeout=120,creationflags=subprocess.CREATE_NO_WINDOW)
+  log=process.stdout+process.stderr;(folder/'warp.log').write_bytes(log)
+  assert b'-E-' in log and b'HDJobSpritePreviews: missing generated asset' in log,'Expected actionable missing-pack rejection'
+  if target.exists():
+   before=pefile.PE(str(clean),fast_load=True);after=pefile.PE(str(target),fast_load=True)
+   for va in sites:assert before.get_data(va-0x400000,5)==after.get_data(va-0x400000,5),'Missing assets changed a UI call'
+  print('PASS missing asset pack rejected before UI mutation',flush=True)
+ finally:held.rename(missing)
  (out/'results.json').write_text(json.dumps(rows,indent=2));print('PASS '+str(out),flush=True)
 if __name__=='__main__':main()

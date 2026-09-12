@@ -314,5 +314,5 @@ HDJobPreviews:
         - HDJobSpritePreviews:
             title : Native-size HD Job Previews (Alt+Q / Alt+S)
             recommend : no
-            author : Codex
-            desc : Uses generated native-size SPR/ACT pairs for Equipment and Skill Tree bodies, with complete-pair stock fallback. Preserves HD world resources. Regenerate Assets/HDJobUI when job assets change. Profiled for 2025-07-16 and verified ClanBodySkins v11 only.
+            author : Louis T Steinhil
+            desc : Uses generated native-size SPR/ACT pairs for Equipment and Skill Tree bodies, with complete-pair stock fallback. Preserves HD world resources. Requires a separately generated Assets/HDJobUI pack; sprite assets are not bundled. Profiled for 2025-07-16 and verified ClanBodySkins v11 only.

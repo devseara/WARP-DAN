@@ -1,71 +1,148 @@
 /**************************************************************************\
-*   Description   : Use native-size HD job SPR/ACT pairs in Equipment and   *
-*                   Skill Tree previews on 2025-07-16 Ragexe. Preserve HD   *
-*                   world paths, ACT offsets, palettes and native ABI.     *
-*   Source        : tools/native/hd_job_ui.cpp; tools/build_hd_job_ui.py     *
-*   Contract      : docs/hd-job-sprite-previews.md                           *
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-09-12                                             *
+*                                                                          *
+*   Description   : Fixes enlarged HD job sprite previews in Equipment     *
+*                   (Alt+Q) and Skill Tree (Alt+S) on 2025-07-16 Ragexe.   *
+*                   Native UI blits ignore ACT scaling. Redirects only     *
+*                   the nine profiled UI resource calls to separately      *
+*                   generated native-size SPR/ACT pairs, with complete     *
+*                   stock fallback pairs. Preserves HD world resources,    *
+*                   logical offsets, head anchors and the native ABI.      *
+*                   Requires a generated Assets/HDJobUI pack, supplied     *
+*                   separately from the patch source. Supports stock       *
+*                   and verified ClanBodySkins v11 call layouts.           *
+*                                                                          *
+*   Source        : tools/native/hd_job_ui.cpp; tools/build_hd_job_ui.py   *
+*   Contract      : docs/hd-job-sprite-previews.md                         *
+*                                                                          *
 \**************************************************************************/
-HDJobSpritePreviews = function(_) {
+
+HDJobSpritePreviews = function(_)
+{
 	if (Exe.BuildDate !== 20250716)
-		throw Error('HDJobSpritePreviews: only profiled for 2025-07-16');
-	const read = (va, count) => {
+		throw Error("HDJobSpritePreviews: only profiled for 2025-07-16");
+	if (!Warp.TestMode)
+		HDJobSpritePreviews.checkAssets();
+
+	const read = (va, count) =>
+	{
 		const phy = Exe.Vir2Phy(va);
-		if (phy < 0) throw Error('HDJobSpritePreviews: invalid address ' + va.toString(16));
-		return Exe.GetHex(phy, count).replace(/ /g, '').toLowerCase();
+		if (phy < 0)
+			throw Error("HDJobSpritePreviews: invalid address " + va.toString(16));
+		return Exe.GetHex(phy, count).replace(/ /g, "").toLowerCase();
 	};
-	const check = (va, hex) => {
+	const check = (va, hex) =>
+	{
 		if (read(va, hex.length / 2) !== hex)
-			throw Error('HDJobSpritePreviews: original bytes differ at ' + va.toString(16));
+			throw Error("HDJobSpritePreviews: original bytes differ at " + va.toString(16));
 	};
-	for (const [va,hex] of HDJobSpritePreviews.nativeChecks) check(va,hex);
+	for (const [va, hex] of HDJobSpritePreviews.nativeChecks)
+		check(va, hex);
+
 	const sites = HDJobSpritePreviews.sites;
-	const clean = sites.every(site => read(site.va,5) === site.stock);
-	const clan = sites.every(site => read(site.va,5) === site.clan);
+	const clean = sites.every(site => read(site.va, 5) === site.stock);
+	const clan = sites.every(site => read(site.va, 5) === site.clan);
 	if (!clean && !clan)
-		throw Error('HDJobSpritePreviews: UI calls are neither stock nor the verified ClanBodySkins v11 profile');
-	if (clan) {
-		check(0x01967BF0,'81ec800100008d04245750ffb4248c0100008bf9');
-		check(0x01967C30,'81ec800100008d84248401000083bc249801000010');
+		throw Error("HDJobSpritePreviews: UI calls are neither stock nor the verified ClanBodySkins v11 profile");
+	if (clan)
+	{
+		check(0x01967BF0, "81ec800100008d04245750ffb4248c0100008bf9");
+		check(0x01967C30, "81ec800100008d84248401000083bc249801000010");
 	}
+
 	const blob = HDJobSpritePreviews.blob;
-	const [phy,vir] = Exe.Allocate(blob.hex.length/2,0x10);
-	Exe.SetHex(phy,blob.hex.match(/../g).join(' '));
-	for (const off of blob.relocations) {
-		const old = parseInt(blob.hex.substr((off+3)*2,2)+blob.hex.substr((off+2)*2,2)+blob.hex.substr((off+1)*2,2)+blob.hex.substr(off*2,2),16);
-		Exe.SetUint32(phy+off,(old+vir-blob.imageBase)>>>0);
+	const [phy, vir] = Exe.Allocate(blob.hex.length / 2, 0x10);
+	Exe.SetHex(phy, blob.hex.match(/../g).join(" "));
+	for (const off of blob.relocations)
+	{
+		const old = parseInt(blob.hex.substr((off + 3) * 2, 2) + blob.hex.substr((off + 2) * 2, 2) +
+			blob.hex.substr((off + 1) * 2, 2) + blob.hex.substr(off * 2, 2), 16);
+		Exe.SetUint32(phy + off, (old + vir - blob.imageBase) >>> 0);
 	}
-	const rows=HDJobSpritePreviews.pairs;
-	const [tablePhy,tableVir]=Exe.Allocate(rows.length*12,0x10);
-	const string = hex => {
-		const [p,v]=Exe.Allocate(hex.length/2+1,0x10);
-		Exe.SetHex(p,(hex+'00').match(/../g).join(' '));return v;
+
+	const rows = HDJobSpritePreviews.pairs;
+	const [tablePhy, tableVir] = Exe.Allocate(rows.length * 12, 0x10);
+	const string = hex =>
+	{
+		const [p, v] = Exe.Allocate(hex.length / 2 + 1, 0x10);
+		Exe.SetHex(p, (hex + "00").match(/../g).join(" "));
+		return v;
 	};
-	const ascii = value => Array.from(value,c=>c.charCodeAt(0).toString(16).padStart(2,'0')).join('');
-	for(let i=0;i<rows.length;++i) {
-		Exe.SetUint32(tablePhy+i*12,string(rows[i].resource_hex));
-		Exe.SetUint32(tablePhy+i*12+4,string(ascii(rows[i].preview)));
-		Exe.SetUint32(tablePhy+i*12+8,string(ascii(rows[i].fallback)));
+	const ascii = value => Array.from(value, c => c.charCodeAt(0).toString(16).padStart(2, "0")).join("");
+	for (let i = 0; i < rows.length; ++i)
+	{
+		Exe.SetUint32(tablePhy + i * 12, string(rows[i].resource_hex));
+		Exe.SetUint32(tablePhy + i * 12 + 4, string(ascii(rows[i].preview)));
+		Exe.SetUint32(tablePhy + i * 12 + 8, string(ascii(rows[i].fallback)));
 	}
-	const config=phy+blob.exports.HDJobConfig;
-	Exe.SetUint32(config+4,rows.length);
-	Exe.SetUint32(config+8,tableVir);
-	Exe.SetUint32(config+12,clan?0x01967BF0:0x00A8D4A0);
-	Exe.SetUint32(config+16,clan?0x01967C30:0x00A8D9F0);
-	for(const site of sites) {
-		const target=vir+blob.exports[site.string?'@HDJobStringHook@32':'@HDJobResourceHook@12'];
-		const offset=(target-site.va-5)>>>0;
-		const hex='E8 '+[0,8,16,24].map(bits=>((offset>>>bits)&255).toString(16).padStart(2,'0')).join(' ');
-		Exe.SetHex(Exe.Vir2Phy(site.va),hex);
+	const config = phy + blob.exports.HDJobConfig;
+	Exe.SetUint32(config + 4, rows.length);
+	Exe.SetUint32(config + 8, tableVir);
+	Exe.SetUint32(config + 12, clan ? 0x01967BF0 : 0x00A8D4A0);
+	Exe.SetUint32(config + 16, clan ? 0x01967C30 : 0x00A8D9F0);
+	for (const site of sites)
+	{
+		const target = vir + blob.exports[site.string ? "@HDJobStringHook@32" : "@HDJobResourceHook@12"];
+		const offset = (target - site.va - 5) >>> 0;
+		const hex = "E8 " + [0, 8, 16, 24].map(bits => ((offset >>> bits) & 255).toString(16).padStart(2, "0")).join(" ");
+		Exe.SetHex(Exe.Vir2Phy(site.va), hex);
 	}
 	return true;
 };
-HDJobSpritePreviews.validate = function() { return Exe.BuildDate === 20250716; };
-HDJobSpritePreviews.onApplied = function() {
-	if(Warp.TestMode)return;
-	const source=Warp.Path+'Assets/HDJobUI/';
-	const target=System.DirPath(Warp.TgtExe)+'/data/sprite/hd_job_ui/';
-	for(const folder of ['preview','stock'])
-		if(!System.MkDir(target+folder))throw Error('HDJobSpritePreviews: cannot create '+target+folder);
-	for(const file of HDJobSpritePreviews.files)
-		if(!System.Copy(source+file,target+file,true))throw Error('HDJobSpritePreviews: cannot deploy '+file);
+
+HDJobSpritePreviews.validate = function()
+{
+	return Exe.BuildDate === 20250716;
+};
+
+// Asset packs are generated locally and are not part of the source repository.
+// Check deployment inputs before allocating or changing the client executable.
+HDJobSpritePreviews.checkAssets = function()
+{
+	const source = Warp.Path + "/Assets/HDJobUI/";
+	for (const file of HDJobSpritePreviews.files)
+	{
+		const path = source + file;
+		const handle = new BinFile(path, "r");
+		if (!handle.Valid)
+			throw Error("HDJobSpritePreviews: missing generated asset " + path +
+				". Generate the Assets/HDJobUI pack with tools/hd_job_ui_assets.py before patching.");
+		handle.Close();
+	}
+};
+
+HDJobSpritePreviews.onApplied = function()
+{
+	if (Warp.TestMode)
+		return;
+	const source = Warp.Path + "/Assets/HDJobUI/";
+	const target = System.DirPath(Warp.TgtExe) + "/data/sprite/hd_job_ui/";
+	for (const folder of ["preview", "stock"])
+	{
+		if (!System.MkDir(target + folder))
+			throw Error("HDJobSpritePreviews: cannot create " + target + folder);
+	}
+	for (const file of HDJobSpritePreviews.files)
+	{
+		if (!System.Copy(source + file, target + file, true))
+			throw Error("HDJobSpritePreviews: cannot deploy " + file);
+	}
 };

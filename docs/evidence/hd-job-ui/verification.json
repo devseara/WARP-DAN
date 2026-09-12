@@ -52,5 +52,37 @@
       "ui_hook_enabled": true
     }
   ],
-  "visual_acceptance": "v4 male Monk only; expanded coverage and complete live matrix pending"
+  "visual_acceptance": "v4 male Monk only; expanded coverage and complete live matrix pending",
+  "source_only_packaging": {
+    "date": "2026-09-12",
+    "generated_assets_tracked": false,
+    "header": "WARP GPL / Louis T Steinhil / Last Modified / Description",
+    "missing_asset_rejected_before_ui_mutation": true,
+    "warp_profiles": [
+      {
+        "case": "clean",
+        "sha256": "3a9b2fb5f1a91c830b6dd278c1f68ca409483c05ae622249a5049f42e9668b15",
+        "ui_calls": 9,
+        "payload": "0x171d6a0",
+        "deployed_pairs": 61,
+        "changed_original_call_bytes": 27
+      },
+      {
+        "case": "clan-v11",
+        "sha256": "c821bb77d9780d66e7c71182721e2578d840d885683b64200a7d87f5aed60b94",
+        "ui_calls": 9,
+        "payload": "0x2433360",
+        "deployed_pairs": 61,
+        "changed_original_call_bytes": 32
+      },
+      {
+        "case": "altqa",
+        "sha256": "fb02633169edf7f47b4549930e3334f6acf15254c29b4683e156362f2be2ec16",
+        "ui_calls": 9,
+        "payload": "0x17242c0",
+        "deployed_pairs": 61,
+        "changed_original_call_bytes": 0
+      }
+    ]
+  }
 }

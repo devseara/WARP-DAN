@@ -7,6 +7,10 @@ parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--compiler',type=Path,help='MSVC Hostx64/x86/cl.exe (link.exe in the same directory)')
 parser.add_argument('--profile-client',type=Path,default=ROOT/'2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe',help='Verified baseline Ragexe used for original-byte checks')
 args=parser.parse_args()
+manifest_path=ROOT/"Assets/HDJobUI/manifest.json"
+if not manifest_path.is_file():
+ parser.error("Generate Assets/HDJobUI with tools/hd_job_ui_assets.py first; asset packs are not tracked")
+manifest=json.loads(manifest_path.read_text())
 OUT=ROOT/'Outputs/hd-job-ui/native';OUT.mkdir(parents=True,exist_ok=True)
 SOURCE=ROOT/'tools/native/hd_job_ui.cpp'
 COMPILER=args.compiler or Path('C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x86/cl.exe')
@@ -27,7 +31,6 @@ exports={s.name.decode():s.address-start for s in pe.DIRECTORY_ENTRY_EXPORT.symb
 info={'imageBase':pe.OPTIONAL_HEADER.ImageBase+start,'hex':blob.hex(),'relocations':relocs,'exports':exports,'source_sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest()}
 (OUT/'blob.json').write_text(json.dumps(info,indent=2))
 print(json.dumps({'bytes':len(blob),'exports':exports,'relocations':len(relocs)}))
-manifest=json.loads((ROOT/'Assets/HDJobUI/manifest.json').read_text())
 pairs=[{key:row[key] for key in ('resource_hex','preview','fallback')} for row in manifest['pairs']]
 pristine=args.profile_client
 raw=pristine.read_bytes()

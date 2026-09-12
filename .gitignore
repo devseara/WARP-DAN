@@ -27,3 +27,6 @@ __pycache__/
 
 # Isolated HUD build/verification environment.
 /.venv-target-hud/
+
+# Generated job preview SPR/ACT packs are supplied separately.
+/Assets/HDJobUI/
