@@ -108,7 +108,7 @@ CustomUI:
             title : RO Global Zero Renewal Menu
             recommend : no
             author : Louis T Steinhil
-            desc : Uses the shared RO Global Zero theme state to select stock UIMenuIconWnd behavior for Classic UI or the uirenewal/menuicon panel for New UI. Twenty-five native commands compact into five columns; Auto Hunt, Item Collection, and AutoSupport then fill the remaining native-grid slots automatically before creating another row. These real native UIButton children use 45x41 New or 32x34 Classic normal, hover, and pressed images, while the native MENU toggle retains the final reserved slot. Row sizing counts native commands, visible custom buttons, and MENU so close, hidden warp/teleport, and reopen retain stable geometry. Complete 1-6-row New backgrounds are selected from the live count. Classic draws no custom full-panel background. Available Cash Shop, Gold PC Cafe, Roulette, and RO DEX notification launchers stack below the minimap without being force-created. QJS-only.
+            desc : Uses the shared RO Global Zero theme state to select stock UIMenuIconWnd behavior for Classic UI or the uirenewal/menuicon panel for New UI. Twenty-five native commands compact into five columns; Auto Hunt, Item Collection, AutoSupport, and optional Bestiary then fill the remaining native-grid slots automatically before creating another row. These real native UIButton children use 45x41 New or 32x34 Classic normal, hover, and pressed images, while the native MENU toggle retains the final reserved slot. Row sizing counts native commands, visible custom buttons, and MENU so close, hidden warp/teleport, and reopen retain stable geometry. Complete 1-6-row New backgrounds are selected from the live count. Classic draws no custom full-panel background. Available Cash Shop, Gold PC Cafe, Roulette, and RO DEX notification launchers stack below the minimap without being force-created. QJS-only.
 
         - AllowShortcutsInWine:
             title : Allow shortcuts in WINE [Experimental]
@@ -601,4 +601,4 @@ Bestiary:
             title : Bestiary (native journal)
             recommend : no
             author : Codex
-            desc : Native 760x500 Bestiary for 2025-07-16. BSUI v3 supplies resolved stats, server rates, native sprites, minimaps and Navigation. Includes account-wide research, groups, tracking, cabinet, Claim All and cosmetic/utility rewards. Requires matching map/char backends and SQL migration. Open with /bestiary.
+            desc : Native 760x500 Bestiary for 2025-07-16. BSUI v3 supplies resolved stats, server rates, native sprites, minimaps and Navigation. Includes account-wide research, groups, tracking, cabinet, Claim All and cosmetic/utility rewards. Requires matching map/char backends and SQL migration. Open with /bestiary or the dedicated New/Classic RO Global menu button. Hide/Show New Buttons includes Bestiary.

@@ -22,7 +22,7 @@
 *                                                                          *
 *   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
 *                   Ragexe, appends Auto Hunt, Item Collection, and       *
-*                   AutoSupport into the first available grid slots, and  *
+*                   AutoSupport and Bestiary into available grid slots.  *
 *                   geometry stable across close/reopen and map changes.  *
 *                   New UI uses complete row                              *
 *                   backgrounds; Classic keeps only the height required   *
@@ -136,6 +136,7 @@ const MenuZeroStatic = {
 	AutoHuntButtonWindowId: 0x3F2,
 	ItemCollectionButtonWindowId: 0x3F4,
 	AutoSupportButtonWindowId: 0x3F5,
+	BestiaryButtonWindowId: 0x3FB,
 	NewButtonWidth: 45,
 	NewButtonHeight: 41,
 	OldButtonWidth: 32,
@@ -2070,6 +2071,9 @@ ROGlobalZeroMenu = function(_)
 	const itemCollectionRoute = NewButtonVis.customRoute("Item Collection");
 	CACHE.put("ROGlobalZeroMenu.ItemCollectionRoute.v1", itemCollectionRoute);
 
+	const bestiaryHover = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("Bestiary"));
+	const bestiaryRoute = NewButtonVis.customRoute("Bestiary");
+
 	const autoSupportHoverText = "AutoSupport";
 	const autoSupportHover = MenuZeroStatic.allocateBytes(
 		MenuZeroStatic.asciiBytes(autoSupportHoverText)
@@ -2203,6 +2207,20 @@ ROGlobalZeroMenu = function(_)
 			);
 		}
 	}
+	const bestiaryButtonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const state of ["normal", "mouseon", "pressed"])
+		{
+			const relative = "bestiary\\menuicon\\bt_bestiary_" +
+				(key === "classic" ? "old_" : "") + state + ".bmp";
+			bestiaryButtonImagePaths[key].push(MenuZeroStatic.allocateBytes(
+				MenuZeroStatic.buildResourceBytes(prefix, relative)).vir);
+		}
+	}
+	const bestiaryButtonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF], 4
+	);
 	const autoSupportButtonState = MenuZeroStatic.allocateBytes(
 		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF],
 		4
@@ -2344,6 +2362,33 @@ ROGlobalZeroMenu = function(_)
 			[autoHuntRoute.visibleVir, itemCollectionRoute.vir + 4]
 		)
 	);
+	const bestiaryButtonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(bestiaryButtonState.vir)
+	);
+	const bestiaryButtonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildOptionalButtonMouseUp(bestiaryRoute.requestCellVir)
+	);
+	const bestiaryButtonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(bestiaryHover.vir, 0, -20)
+	);
+	const bestiaryButtonVtable = MenuZeroStatic.cloneButtonVtable(
+		bestiaryButtonMouseUp.vir, bestiaryButtonHover.vir,
+		bestiaryButtonDestructor.vir, MenuZeroStatic.ButtonDraw, buttonMouseDown.vir
+	);
+	const ensureBestiary = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			bestiaryButtonState.vir, bestiaryButtonVtable.vir, bestiaryButtonImagePaths,
+			MenuZeroStatic.BestiaryButtonWindowId,
+			theme.stateVir, loadTheme.vir, bestiaryRoute.requestCellVir
+		)
+	);
+	const syncBestiary = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			bestiaryButtonState.vir, visibleMaskVir, bestiaryRoute.visibleVir,
+			gridStrideYVir, theme.stateVir, loadTheme.vir,
+			[autoHuntRoute.visibleVir, itemCollectionRoute.visibleVir, autoSupportVisibleVir]
+		)
+	);
 	const syncLaunchers = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildSyncLaunchers(
 			launcherState.vir,
@@ -2398,7 +2443,8 @@ ROGlobalZeroMenu = function(_)
 		[
 			autoHuntRoute.visibleVir,
 			itemCollectionRoute.vir + 4,
-			autoSupportVisibleVir
+			autoSupportVisibleVir,
+			bestiaryRoute.visibleVir
 		],
 		theme.stateVir
 	);
@@ -2468,7 +2514,7 @@ ROGlobalZeroMenu = function(_)
 	);
 	Exe.SetHex(positionWrapperPhy, positionWrapper.finish(positionWrapperVir));
 	const hitTestWrapper = MenuZeroStatic.buildHitTestWrapper(
-		theme.stateVir, [buttonState.vir, itemButtonState.vir, autoSupportButtonState.vir]
+		theme.stateVir, [buttonState.vir, itemButtonState.vir, autoSupportButtonState.vir, bestiaryButtonState.vir]
 	);
 	const [hitTestWrapperPhy, hitTestWrapperVir] = Exe.Allocate(
 		hitTestWrapper.bytes.length, 0x10
@@ -2482,8 +2528,8 @@ ROGlobalZeroMenu = function(_)
 		oldPanelHeightVir,
 		gridStrideYVir,
 		theme.stateVir,
-		[ensureAutoHunt.vir, ensureItemCollection.vir, ensureAutoSupport.vir],
-		[syncAutoHunt.vir, syncItemCollection.vir, syncAutoSupport.vir],
+		[ensureAutoHunt.vir, ensureItemCollection.vir, ensureAutoSupport.vir, ensureBestiary.vir],
+		[syncAutoHunt.vir, syncItemCollection.vir, syncAutoSupport.vir, syncBestiary.vir],
 		syncLaunchers.vir
 	);
 	const [applyLayoutPhy, applyLayoutVir] = Exe.Allocate(
@@ -2718,6 +2764,24 @@ ROGlobalZeroMenu = function(_)
 					"next available slot after Auto Hunt when visible",
 				registrationPolicy:
 					"runtime route cell supports either patch selection order"
+			},
+			bestiary: {
+				windowId: MenuZeroStatic.BestiaryButtonWindowId,
+				nativeChild: true,
+				hoverText: "Bestiary",
+				hoverTextVir: bestiaryHover.vir,
+				requestCellVir: bestiaryRoute.requestCellVir,
+				visibleVir: bestiaryRoute.visibleVir,
+				buttonStateVir: bestiaryButtonState.vir,
+				buttonVtableVir: bestiaryButtonVtable.vir,
+				buttonDestructorVir: bestiaryButtonDestructor.vir,
+				buttonMouseUpVir: bestiaryButtonMouseUp.vir,
+				buttonHoverVir: bestiaryButtonHover.vir,
+				imagePaths: bestiaryButtonImagePaths,
+				ensureVir: ensureBestiary.vir,
+				syncVir: syncBestiary.vir,
+				positionPolicy: "next available slot after visible custom buttons",
+				registrationPolicy: "optional producer in either patch selection order"
 			},
 			menuToggleImagePolicy:
 				"native control plus parent-canvas New MENU fallback",

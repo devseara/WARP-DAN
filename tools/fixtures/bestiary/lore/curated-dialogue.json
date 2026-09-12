@@ -1,0 +1,286 @@
+[
+  {
+    "id": 1108,
+    "name": "Deviace",
+    "summary": "A round deep-sea creature with a suction structure on its back. The museum describes a mellow animal whose anger brings powerful magic.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 65
+  },
+  {
+    "id": 1317,
+    "name": "Seal",
+    "summary": "The museum identifies an unknown creature hidden in seal-like clothing, supposedly protecting delicate skin from harsh weather.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 91
+  },
+  {
+    "id": 1281,
+    "name": "Sage Worm",
+    "summary": "A scholar's head and a worm's tail make an unlikely scholar. Museum accounts place this clever magical supporter near bookshelves.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 117
+  },
+  {
+    "id": 1216,
+    "name": "Penomena",
+    "summary": "Deep, damp caves keep this creature from drying out. Small appendages let it move, while thin tentacles deliver its poison.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 139
+  },
+  {
+    "id": 1391,
+    "name": "Galapago",
+    "summary": "Too heavy to fly and sensitive to sunlight, this bird carries water and wears sunglasses. Its laid-back manner conceals cooperation against threats.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 165
+  },
+  {
+    "id": 1163,
+    "name": "Raydric",
+    "summary": "A castle guard's spirit, bound by a powerful curse, continues to animate its old suit of armor.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 186
+  },
+  {
+    "id": 1250,
+    "name": "Chepet",
+    "summary": "The museum describes an evil presence hidden within a pretty doll, striking at travelers with burning matches.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 207
+  },
+  {
+    "id": 1390,
+    "name": "Violy",
+    "summary": "Golden hair and peaceful violin-playing disguise a dangerous creature. The museum warns that its enchanting music can seize a listener's soul.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 226
+  },
+  {
+    "id": 1275,
+    "name": "Alice",
+    "summary": "This mechanical housemaid continues cleaning long after its castle was abandoned. The museum admits that its enduring power source remains unexplained.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 243
+  },
+  {
+    "id": 1315,
+    "name": "Assulter",
+    "summary": "An upright Turtle Island warrior carries a huge shuriken on its back. Museum accounts describe clones appearing when dangerous enemies approach.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 265
+  },
+  {
+    "id": 1208,
+    "name": "Wanderer",
+    "summary": "A curse restored this warrior to an undead existence. Its refined swordsmanship suggests an accomplished fighter before death.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 300
+  },
+  {
+    "id": 1300,
+    "name": "Caterpillar",
+    "summary": "Life underground has diminished this creature's sight, leaving feelers to navigate darkness. Its proposed connection to Creamy Fear remains a museum rumor.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 322
+  },
+  {
+    "id": 1054,
+    "name": "Male Thiefbug",
+    "summary": "The blue-bodied male protects female and young Thief Bugs, combining a voracious appetite with unexpected speed.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 344
+  },
+  {
+    "id": 1279,
+    "name": "Tri Joint",
+    "summary": "Feelers guide this armored prehistoric creature through dark caves. Rediscoveries have given Juno's sages valuable subjects for studying monster evolution.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 362
+  },
+  {
+    "id": 1194,
+    "name": "Arclouz",
+    "summary": "A hard-shelled creature coils to attack and gathers in groups. Museum observers remark on speed that belies its cumbersome appearance.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 382
+  },
+  {
+    "id": 1321,
+    "name": "Dragon Tail",
+    "summary": "The museum classifies this creature among dragonflies, describing a powerful tail that draws blood and delivers sleep-inducing poison.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 405
+  },
+  {
+    "id": 1142,
+    "name": "Marine Sphere",
+    "summary": "Called the Sea Bomb by museum researchers, this drifting creature can trigger nearby Marine Spheres in a dangerous explosive chain.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 449
+  },
+  {
+    "id": 1020,
+    "name": "Mandragora",
+    "summary": "Long tentacles subdue prey before a foul-smelling digestive tube consumes it. The museum notes that the skull-marked tube is not itself poisonous.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 473
+  },
+  {
+    "id": 1368,
+    "name": "Geographer",
+    "summary": "A sunflower-like predator traps prey with petal-shaped tentacles. The museum remembers an unfortunate geographer in the story behind its name.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 504
+  },
+  {
+    "id": 1162,
+    "name": "Rafflesia",
+    "summary": "Juno's museum describes Rafflesia as a rare, protected plant creature, with sages seeking ways to cultivate and preserve it.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 538
+  },
+  {
+    "id": 1215,
+    "name": "Stem Worm",
+    "summary": "A scaled, brownish relative of Worm Tail, distinguished by the long stem-like tail it uses as a whip.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 563
+  },
+  {
+    "id": 1367,
+    "name": "Blazzer",
+    "summary": "This volcanic fireball releases noxious gas. Juno's sages debate whether that behavior is aggression or a strange attempt at communication.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 582
+  },
+  {
+    "id": 1195,
+    "name": "Ride Word",
+    "summary": "The museum identifies a cursed spellbook whose sharp teeth turn a scholarly object into a threat to nearby life.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 607
+  },
+  {
+    "id": 1064,
+    "name": "Megalodon",
+    "summary": "A curse returned these fish bones to movement. The museum describes a comparatively benign creature despite its alarming skeletal appearance.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 622
+  },
+  {
+    "id": 1386,
+    "name": "Sleeper",
+    "summary": "A small sand creature waits underground before emerging beneath travelers. Museum accounts connect it with sudden sandstorms.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 640
+  },
+  {
+    "id": 1297,
+    "name": "Ancient Mummy",
+    "summary": "A serpent-adorned headdress suggests high rank in life. Long centuries under a curse have left this ancient mummy without conscious purpose.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 661
+  },
+  {
+    "id": 1374,
+    "name": "Incubus",
+    "summary": "The museum describes a demon assuming an alluring male appearance to exploit vulnerable people and draw them toward the underworld.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 690
+  },
+  {
+    "id": 1370,
+    "name": "Succubus",
+    "summary": "The museum describes a demon assuming an alluring female appearance to exploit vulnerable people and draw them toward the underworld.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno Monster Museum (paraphrased)",
+    "path": "npc/other/monster_museum.txt",
+    "line": 712
+  },
+  {
+    "name": "Apocalypse",
+    "summary": "Juno remembers this ancient android as a former guardian. Its deteriorated intelligence can no longer distinguish allies from enemies.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno local dialogue (paraphrased)",
+    "path": "npc/cities/yuno.txt",
+    "line": 192
+  },
+  {
+    "name": "Lava Golem",
+    "summary": "A Juno soldier tells of a stone heart swept into molten rock and amplified by magic, creating a golem that drips searing lava.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno local dialogue (paraphrased)",
+    "path": "npc/cities/yuno.txt",
+    "line": 240
+  },
+  {
+    "name": "False Angel",
+    "summary": "Juno guards warn of a fallen angel that pretends to bless travelers before betraying their trust.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno local dialogue (paraphrased)",
+    "path": "npc/cities/yuno.txt",
+    "line": 278
+  },
+  {
+    "name": "Goat",
+    "summary": "Juno guards describe a mountain antelope transformed into a monster, with powerful legs strengthened by continual cliff climbing.",
+    "source_kind": "in_game_dialogue",
+    "attribution": "Juno local dialogue (paraphrased)",
+    "path": "npc/cities/yuno.txt",
+    "line": 291
+  }
+]

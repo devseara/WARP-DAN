@@ -1,0 +1,907 @@
+{
+  "acceptance": {
+    "confirmed": true,
+    "date": "2026-09-13",
+    "statement": "all good",
+    "scope": "User accepted the Fixed V12 game build after mouse-regression repair; automated fixtures remain identified as mocked."
+  },
+  "client": {
+    "filename": "Banquet_Bestiary_Interactive_Rewards_20260913_Fixed.exe",
+    "sha256": "14708cd6a9a3d3d526ea673d81f7def93878b68eeb284a2ee4103a9aed1c839f",
+    "bytes": 30159693,
+    "layout_version": 12,
+    "protocol_version": 3,
+    "installed_path": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\Banquet_Bestiary_Interactive_Rewards_20260913_Fixed.exe",
+    "recipe": "profiles/bestiary-accepted-20260913.yml"
+  },
+  "cleanup": {
+    "unused_imports_removed": [
+      "tools\\bestiary_release_support.py: unused Path",
+      "tools\\build_bestiary_lore.py: unused textwrap",
+      "tools\\build_bestiary_native_preview.py: unused struct",
+      "tools\\install_bestiary_expansion.py: unused ctypes",
+      "tools\\package_bestiary_menu_buttons.py: unused bestiary_texture_root",
+      "tools\\render_bestiary_journal.py: unused packet",
+      "tools\\verify_bestiary_encyclopedia.py: unused packet",
+      "tools\\verify_bestiary_journal.py: unused BESTIARY_TEXTURE_ROOT",
+      "tools\\verify_bestiary_journal.py: unused UC_X86_REG_EAX",
+      "tools\\verify_bestiary_live_fixes.py: unused BESTIARY_TEXTURE_ROOT",
+      "tools\\verify_bestiary_lore.py: unused Counter",
+      "tools\\verify_bestiary_lore.py: unused hashlib"
+    ],
+    "runtime_qjs_changed": false,
+    "runtime_debug_prints_found": false,
+    "retained_diagnostics": [
+      "SQL error details only when a query fails",
+      "Startup fingerprint readiness and operational failure warnings"
+    ],
+    "retired_tools": [
+      "package_bestiary_journal.py",
+      "package_bestiary_expansion.py",
+      "verify_bestiary_release.py"
+    ],
+    "obsolete_helpers_removed": [
+      "bestiary_release_support.require_stopped",
+      "bestiary_release_support.migrate"
+    ],
+    "runtime_server_changed_by_cleanup": false,
+    "byte_identical_rebuild": true,
+    "rebuild_directory": "Outputs\\Bestiary\\session-acceptance\\rebuild",
+    "single_guide": "docs/bestiary.md",
+    "profile_whitespace_normalized_without_value_changes": true,
+    "final_recipe_rebuild_directory": "Outputs/Bestiary/session-acceptance/rebuild-final",
+    "final_recipe_rebuild_sha256": "14708cd6a9a3d3d526ea673d81f7def93878b68eeb284a2ee4103a9aed1c839f"
+  },
+  "source_sha256": {
+    "Scripts/Patches/BestiaryUI.qjs": "953c1f4b38c50c45f84a1bf25a713a7565fbec5e2a20a16b17654f30f5e15898",
+    "Scripts/Patches/ItemCollectionUI.qjs": "3f56dda029bc5f135bdf6d1590f697920b40ab887b8fc5ed36dc8a919d7685f3",
+    "Scripts/Patches/NewButtonVisibility.qjs": "b93f0c79775d9770f0e2a479d00d86f84ce2de9874c8faea2aefae1977d7d652",
+    "Scripts/Patches/ROGlobalZeroMenu.qjs": "0fdf49e7c6444823b15fe925da9a1fa67fa1c48c0490bf8c520e2d24b14bc6a0",
+    "Patches/UI.yml": "f29e1ebda19dd7328818e0105b890477a81849ea62346f95ab8e5864a171c5bc",
+    "Patches/Window.yml": "49915dcbaf13f035c066d33974482bb4abe9c032d5c61e44c45a9b793250c286",
+    "profiles/bestiary-accepted-20260913.yml": "0e07e88338c70466dc9e4f2fcad01b7855a1ffa2460dc2774ed214e44e528485"
+  },
+  "server_commit": "b2c09735b4e791c9a90fec96d1ab306ce35547fc",
+  "server": {
+    "passed": true,
+    "deployed": false,
+    "server": "C:\\Users\\Administrator\\Documents\\GitHub\\BanquetOfHeroes",
+    "targets": [
+      {
+        "project": "src/char/char-server.vcxproj",
+        "binary": "C:\\Users\\Administrator\\Documents\\GitHub\\BanquetOfHeroes\\build\\bestiary-lore-rewards-20260913\\bin\\char-server.exe",
+        "sha256": "3f892ae962bf643ddaf60cf1c2760d934b9387d0ff74eca0f75949e7d135ccfb",
+        "log": "C:\\Users\\Administrator\\Documents\\GitHub\\BanquetOfHeroes\\build\\bestiary-lore-rewards-20260913\\char-server.log",
+        "passed": true
+      },
+      {
+        "project": "src/map/map-server.vcxproj",
+        "binary": "C:\\Users\\Administrator\\Documents\\GitHub\\BanquetOfHeroes\\build\\bestiary-lore-rewards-20260913\\bin\\map-server.exe",
+        "sha256": "d87f1e7da5e13ecf4589cd3defd539542fabbcd051ba5120cbec87538e1f7501",
+        "log": "C:\\Users\\Administrator\\Documents\\GitHub\\BanquetOfHeroes\\build\\bestiary-lore-rewards-20260913\\map-server.log",
+        "passed": true
+      },
+      {
+        "project": "src/map/map-server-generator.vcxproj",
+        "binary": "C:\\Users\\Administrator\\Documents\\GitHub\\BanquetOfHeroes\\build\\bestiary-lore-rewards-20260913\\bin\\map-server-generator.exe",
+        "sha256": "58f7d518c6834260e24a14490d1e1f659aa4adc1adb52ac1bc0444ef3c9dddbe",
+        "log": "C:\\Users\\Administrator\\Documents\\GitHub\\BanquetOfHeroes\\build\\bestiary-lore-rewards-20260913\\map-server-generator.log",
+        "passed": true
+      }
+    ],
+    "source_sha256": {
+      "src/common/bestiary_definitions.hpp": "163c1ac1202f84ddd9be99635039b8045dd0706e5e7550ae239cf9a58d1ba9c5",
+      "src/common/bestiary_research_types.hpp": "979a6d0252ae8a0a8556192314165dafe3826686ec99df61691ff3291c6b260c",
+      "src/map/bestiary_research.cpp": "9c4af07dd85535b15e8b11e8481bf5c006f74a8b09faa3da388692420f16e114",
+      "src/map/bestiary_research.hpp": "aeed2e2f2bf308f4f2078479f6fc4e5aed31747cacb95901a6ab104fef31df26",
+      "src/map/bestiary_journal.cpp": "430aad210c435e78a7ca828012193918bfdb0fbc2ab679a5560c2e86aef31874",
+      "src/map/bestiary_ui.cpp": "effa08c81894fd7964de4306de98e626bb6a239e7a6270f0f93ee1617a3d267a",
+      "src/map/bestiary_catalog.inc": "30060d18767e2bb6637d2357a5ba60d9918a0c1c727c306eebd867996544d60f",
+      "src/char/int_bestiary.cpp": "1da2b8b5b7fe923ad81759a70fcf2cb04269e6025e05b34419fde5b7d1698e6f",
+      "src/char/int_mail.cpp": "bb516db45cb62bae9a0ae326a37c8708338149c3000907d01647f08781d4c639",
+      "src/map/clif.cpp": "4084b92f1b30e3831aedb8516aa1d9e2107f3c8bf1ac97e9c92d1fc20229f600",
+      "src/map/achievement.cpp": "c47e5bca12f6d4d39865057e39a22079ab0ac8f63e6d79108fee229caef27c6a",
+      "db/bestiary_research.yml": "335a3400b0b11bb9f7aef0ecc6a1c36ed961ff073a091a4551a466041bd7813f",
+      "db/bestiary_lore.yml": "d5f30ce22e46592972bae4e67e4879bc9c9b43443677fcb124a34c4eaadddf93",
+      "db/bestiary_lore_sources.json": "a3018b42b2eda4773fcd622eccf393a22ffecedadf171f4e63238b2692c7b155",
+      "db/import/bestiary_lore.yml": "207a6ab25902d1449c6ba8795eb5021fbb5844e2a7b69444d097af033cd34178",
+      "db/import/bestiary_research.yml": "d72da8c54f264c0c62b2d996edc2fa969c7eedb465a79325ee41bb09fe1ff605",
+      "db/title_db.yml": "0b7a270be6e5b4c58e3e550ede35d8969ee6f79dd7ad99d360fd1aee118d57bb"
+    }
+  },
+  "server_source_scope": "Accepted local binaries were built from the full checkout; this session commits only Bestiary source changes. Unrelated staged work is preserved.",
+  "verification": {
+    "journal": {
+      "passed": true,
+      "checks": [
+        "Exact /bestiary dispatch, fallback, stack and register ownership",
+        "All emitted code and initial data match the actual patched PE",
+        "All 1154 resource files are deployed at the emitted native paths",
+        "128-byte requests: opcode, BSUI magic, sequence, query, filters, selection and subpages",
+        "Snapshot rejection: exact lengths, version/type, stale/future requests, counts, pages and detail identity",
+        "Busy snapshots preserve the displayed monster/subpages and use bounded request retries",
+        "All fixed strings, including 40 v2 statistic values, are terminated before drawing",
+        "Native clicks: selection, catalog/drop/habitat paging, both navigation buttons, filter and close",
+        "Info paging is local and bounded; Lore cannot page drops; Research/Rewards return to the selected monster",
+        "Map path allowlist rejects traversal, absolute paths, empty and overlong names",
+        "Numeric native sprite resolver and missing-resource guards preserve ABI without loader spam",
+        "Emitted draw uses enlarged portrait rectangles and renders every one of the 40 statistic fields",
+        "BSUI fallback wrapper preserves the shared 0x0BEF router and unrelated packet path",
+        "Installed shared router dispatches every present AHUI/ASUI/COUI/PINC peer correctly",
+        "800x600 viewport: 760x500 construction centered at 20,50; child edit, close/reopen and destruction",
+        "Destructor releases only Bestiary-owned focus and capture",
+        "Native Item Collection edit debounce and maximum-length search serialize correctly",
+        "Private vtable changes only the documented Bestiary destructor/draw/mouse slots"
+      ],
+      "live_accepted": false
+    },
+    "cache": {
+      "passed": true,
+      "checks": [
+        "Cache hits send no packets; misses preserve the last display; stale replies cannot replace cache hits",
+        "Main tab/action labels do not duplicate catalog keys; both navigation actions always reach the server",
+        "Info paging stays local during pending fetches; the visible recovery button sends an explicit refresh",
+        "Search, element, catalog, drop and habitat pages have isolated keys; bytes after query NUL cannot cause misses",
+        "BUSY retries preserve the exact request, stay visible, stop after three retries, and never populate cache",
+        "Idle windows send no refreshes; timeout is bounded; explicit retry fetches fresh data; reopen follows the build cache contract",
+        "A server catalog revision change invalidates older cached entries",
+        "Fixed 64-entry ring remains bounded and evicts old pages without corrupting new entries"
+      ],
+      "network_and_rendering_mocked": true,
+      "live_accepted": false
+    },
+    "encyclopedia": {
+      "passed": true,
+      "checks": [
+        "Draft filter edits are local; Cancel discards; Apply sends one request; every filter participates in cache identity",
+        "Skill, summon and lore pages use isolated cache keys and reset on monster selection",
+        "Each Navigate request carries the exact displayed map identity",
+        "Wheel paging is bounded, disabled during pending requests, and confined to Monsters",
+        "Stock Escape message dismisses popups before closing; focus/capture release and unrelated messages preserve native ownership",
+        "Native descriptions construct an identified CItem, forward the numeric ID/type/equip mask and release both strings even when the window factory fails",
+        "Only populated drop cards on Drops open native descriptions; clicking them emits no server request",
+        "Extended skill, habitat, lore/source and summon strings are terminated before native rendering"
+      ],
+      "native_and_network_boundaries_mocked": true,
+      "live_accepted": false
+    },
+    "live-fixes": {
+      "passed": true,
+      "checks": [
+        "Comma formatting preserves zero, negative, decimal percent and full 64-bit values without buffer overrun",
+        "Real ProcessPushButton entry closes owned topmost frame/popups; key-up, hidden, modal and foreign windows retain stock routing",
+        "@reloadmobdb notice retires stale replies, preserves display, triggers one visible fetch and defers hidden-window fetches; reopen uses cache",
+        "All 1129 minimaps contain no RGB565 magenta transparency-key pixels"
+      ],
+      "live_accepted": false,
+      "native_boundaries_mocked": true
+    },
+    "research-native": {
+      "passed": true,
+      "checks": [
+        "Independent personal request/snapshot never changes the encyclopedia payload or cache",
+        "Account snapshots reject stale/future identities, wrong schema, invalid pages/counts and terminate all strings",
+        "Research has a native fitted sprite, group-to-limiting-member selection and server-owned tracking/favorites",
+        "Only eligible rows claim; in-flight double clicks are blocked; Claim All and cabinet title equip send bounded account actions",
+        "Personal timeout preserves catalog/display, sends no idle polling and recovers through Sync progress",
+        "Destruction clears all personal payload/preferences, advances request identity and rejects the old account reply"
+      ],
+      "live_accepted": false,
+      "engine_boundaries_mocked": true
+    },
+    "native-fit": {
+      "passed": true,
+      "engine_compositor_mocked": true,
+      "live_accepted": false,
+      "cases": [
+        {
+          "name": "wide",
+          "frames": 2,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.10545454174280167
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 0.0918181836605072
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.013181817717850208
+            }
+          ]
+        },
+        {
+          "name": "tall",
+          "frames": 2,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.05385735258460045
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 0.058224163949489594
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.011280931532382965
+            }
+          ]
+        },
+        {
+          "name": "large_square",
+          "frames": 2,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.095607228577137
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 0.1033591628074646
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.020025838166475296
+            }
+          ]
+        },
+        {
+          "name": "small_native",
+          "frames": 2,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.22660818696022034
+            }
+          ]
+        },
+        {
+          "name": "small_stationary",
+          "frames": 1,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 1.0
+            }
+          ]
+        },
+        {
+          "name": "hidden_layer",
+          "frames": 1,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 1.0
+            }
+          ]
+        },
+        {
+          "name": "layered_bgra_offsets",
+          "frames": 2,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.23125000298023224
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 0.25
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.03815789520740509
+            }
+          ]
+        },
+        {
+          "name": "amon_ra",
+          "frames": 12,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.21678321063518524
+            }
+          ]
+        },
+        {
+          "name": "baphomet",
+          "frames": 8,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.23290757834911346
+            }
+          ]
+        },
+        {
+          "name": "beelzebub_",
+          "frames": 8,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.826815664768219
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 0.8938547372817993
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.1666666716337204
+            }
+          ]
+        },
+        {
+          "name": "detale",
+          "frames": 6,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.9548386931419373
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.15425531566143036
+            }
+          ]
+        },
+        {
+          "name": "doppelganger",
+          "frames": 1,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.3297872245311737
+            }
+          ]
+        },
+        {
+          "name": "gloomundernight",
+          "frames": 8,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.8087431788444519
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 0.874316930770874
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.16939890384674072
+            }
+          ]
+        },
+        {
+          "name": "ifrit",
+          "frames": 6,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.8604651093482971
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 0.930232584476471
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.18023255467414856
+            }
+          ]
+        },
+        {
+          "name": "ktullanux",
+          "frames": 6,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.891566276550293
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 0.9638554453849792
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.1867469847202301
+            }
+          ]
+        },
+        {
+          "name": "maya",
+          "frames": 6,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 0.886227548122406
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 0.9580838084220886
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.185628741979599
+            }
+          ]
+        },
+        {
+          "name": "phreeoni",
+          "frames": 6,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.20279720425605774
+            }
+          ]
+        },
+        {
+          "name": "randgris",
+          "frames": 6,
+          "scales": [
+            {
+              "viewport": [
+                240,
+                156
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                210,
+                168
+              ],
+              "scale": 1.0
+            },
+            {
+              "viewport": [
+                31,
+                33
+              ],
+              "scale": 0.17058824002742767
+            }
+          ]
+        }
+      ]
+    },
+    "rewards-preview-search": {
+      "passed": true,
+      "checks": [
+        "All five native ItemId icons render with their own quantity, within the existing reward card",
+        "Malformed item counts, quantities and message/length pairs are rejected; legacy snapshots erase old preview slots",
+        "Rewards search debounces for 250 ms, resets paging, blocks stale claims and leaves Monsters query/cache untouched",
+        "Tab changes hide the Rewards edit and release focus; destruction clears both input ownership and all preview data"
+      ],
+      "native_boundaries_mocked": true,
+      "live_accepted": false
+    },
+    "reward-item-interaction": {
+      "passed": true,
+      "checks": [
+        "Native itemInfo identified names resolve correctly for short/heap strings, with null-manager handling",
+        "All 30 icon slots show localized native tooltips and open their own ItemId; inspection sends no claim, while card text still claims",
+        "Mismatched/released-only clicks, stale snapshots, loading/search, other tabs, empty slots and missing names cannot open an item; destruction clears press state",
+        "Identified CItem information uses native constructor defaults and window 12 / message 24; both strings release even if window creation fails"
+      ],
+      "native_boundaries_mocked": true,
+      "live_accepted": false
+    },
+    "mouse-dispatch": {
+      "passed": true,
+      "checks": [
+        "Native poll preserves left presses through slot 30, stationary hover and slot-31 release",
+        "Monster selection, all main/detail tabs, search focus, element/filter controls and close survive actual native dispatch",
+        "Native slots 32/33 inspect the same item without claiming; slot 30 preserves that press and refresh cancels stale inspection"
+      ],
+      "dispatcher_range": [
+        "0xa46ed3",
+        "0xa46f4c"
+      ],
+      "native_graphics_and_network_boundaries_mocked": true,
+      "live_accepted": false
+    },
+    "lifecycle": {
+      "passed": true,
+      "checks": [
+        "Reapplication preserves actual native mouse dispatch and reward interactions",
+        "Removal restores original mouse/Escape/shared-route ownership"
+      ],
+      "live_accepted": false
+    }
+  },
+  "server_verification": {
+    "yaml": {
+      "passed": true,
+      "source": "Real server database.cpp and rapidyaml; allocator/log boundaries substituted",
+      "checks": "Passed: real lore parser rejects malformed Body, unknown MobId, oversized prose/source and embedded NUL.\nPassed: strict imports, invalid entries, missing imports, cycles, retained snapshot, legacy compatibility and recovery.\nPassed: complete production lore and preserved imports load for 1014 active monster IDs.",
+      "lore_sha256": "d5f30ce22e46592972bae4e67e4879bc9c9b43443677fcb124a34c4eaadddf93"
+    },
+    "core": {
+      "passed": true,
+      "checks": "Passed: real reward search/paging/preview serialization and legacy fallback; bundle bounds/duplicates/legacy compatibility, native title projection/equip/ownership; actual solo/support-party capture, account deduplication, death/spawn/instance/clone exclusions; roster/tier boundaries, fingerprint, group minimum, concurrent producers, file lock, durable replay, gap rejection, checkpoint/reopen, torn tail, corruption and bounded queue recovery.",
+      "artifacts": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\Bestiary\\verification\\research\\core-test\\run-meb2s202",
+      "boundaries": "Actual definitions, capture functions and WAL. Capture uses minimal player/map fixtures; allocator/log boundaries are stubbed."
+    },
+    "sql": {
+      "passed": true,
+      "checks": [
+        "Passed: nontransactional mail tables reject item claims without a receipt or message.",
+        "Passed: real SQL event replay/gaps, account sharing, committed eligibility, immutable points, recipient validation, atomic mail+claim rollback/retry and title entitlement.",
+        "Passed: historical groups reconcile once on load; six bundles round-trip through real mail with every item/account binding; second-stack failure rolls back; five cosmetic titles persist; full-catalog Claim All is bounded and duplicate-safe.",
+        "Eight simultaneous actual-service claim processes created one reward claim and one mail attachment.",
+        "Passed: bounded Claim All and replay preserve one claim per account/reward/version."
+      ],
+      "fixture": "codex_bestiary_v9_1b695125198e",
+      "production_modified": false,
+      "boundaries": "Actual char service, YAML, SQL driver and current mail insertion; socket/log/timer shims."
+    }
+  },
+  "lore": {
+    "passed": true,
+    "total_mobs": 1014,
+    "counts": {
+      "community_wiki": 203,
+      "original_field_note": 734,
+      "in_game_dialogue": 32,
+      "official_publisher": 45
+    },
+    "unique_web_sources": 211,
+    "lore_sha256": "d5f30ce22e46592972bae4e67e4879bc9c9b43443677fcb124a34c4eaadddf93",
+    "checks": [
+      "Every active MOB_DB import ID is covered, including battleground variants",
+      "Curated regeneration reproduces every lore entry",
+      "Each published account has a URL; dialogue accounts retain file/line provenance",
+      "Original field notes are labelled separately from published lore",
+      "All source/text byte limits and English client encoding pass; lore overrides preserved"
+    ]
+  },
+  "titles": {
+    "passed": true,
+    "title_db": "C:\\Users\\Administrator\\Documents\\GitHub\\BanquetOfHeroes\\db\\title_db.yml",
+    "title_db_sha256": "0b7a270be6e5b4c58e3e550ede35d8969ee6f79dd7ad99d360fd1aee118d57bb",
+    "research_definitions_sha256": "335a3400b0b11bb9f7aef0ecc6a1c36ed961ff073a091a4551a466041bd7813f",
+    "client_key": "data/luafiles514/lua files/datainfo/titletable.lub",
+    "source_archive": "maindata.grf",
+    "grf_list": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\Bestiary\\reward-item-interaction\\full-profile-v11\\warp-fixture\\Inputs\\Sample_DATA.INI",
+    "grf_list_sha256": "1bfcb395f472e30fd4a032f7e863e77fb1798ab7a4d1cf3221df89cb48c68288",
+    "archive_table_already_matches": true,
+    "before_sha256": "7d1962ebf9135284e8e25c86206ecc2d645032804f717ab36956e3e4be867583",
+    "after_sha256": "7d1962ebf9135284e8e25c86206ecc2d645032804f717ab36956e3e4be867583",
+    "changed_title_ids": [],
+    "total_title_labels": 63,
+    "awards": [
+      {
+        "reward_id": 3,
+        "title_id": 1000,
+        "name": "Beginner",
+        "scope": "Points",
+        "target": 0,
+        "required": 100,
+        "icon": "EFST_TITLE1",
+        "cosmetic": true
+      },
+      {
+        "reward_id": 5,
+        "title_id": 1001,
+        "name": "Specialist",
+        "scope": "Points",
+        "target": 0,
+        "required": 500,
+        "icon": "EFST_TITLE2",
+        "cosmetic": true
+      },
+      {
+        "reward_id": 7,
+        "title_id": 1002,
+        "name": "Expert",
+        "scope": "Points",
+        "target": 0,
+        "required": 1000,
+        "icon": "EFST_TITLE3",
+        "cosmetic": true
+      },
+      {
+        "reward_id": 11,
+        "title_id": 1003,
+        "name": "Master",
+        "scope": "Points",
+        "target": 0,
+        "required": 5000,
+        "icon": "EFST_TITLE4",
+        "cosmetic": true
+      },
+      {
+        "reward_id": 14,
+        "title_id": 1004,
+        "name": "Grand Master",
+        "scope": "Points",
+        "target": 0,
+        "required": 10000,
+        "icon": "EFST_TITLE5",
+        "cosmetic": true
+      },
+      {
+        "reward_id": 51001,
+        "title_id": 1025,
+        "name": "Poring Mania",
+        "scope": "Group",
+        "target": 1,
+        "required": 5,
+        "icon": "EFST_TITLE26",
+        "cosmetic": true
+      },
+      {
+        "reward_id": 51008,
+        "title_id": 1035,
+        "name": "Orc Slayer",
+        "scope": "Group",
+        "target": 8,
+        "required": 5,
+        "icon": "EFST_TITLE36",
+        "cosmetic": true
+      }
+    ],
+    "grant_contract": "Claim/Claim All records kind-2 account title entitlements atomically with the receipt. Entitlements project into each character title list; Cabinet equips only owned titles through clif_change_title.",
+    "installed": true,
+    "installed_path": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\data\\luafiles514\\lua files\\datainfo\\titletable.lub"
+  },
+  "menu_assets_sha256": {
+    "bt_bestiary_mouseon.bmp": "f631dfccb47bad48c43dd33b1916fac147c0f013785765441befa6cc31474e18",
+    "bt_bestiary_normal.bmp": "d0d50a16d05261a16af905a0b7d2756c6a3ea6abe50fbce019439310a4f9e946",
+    "bt_bestiary_old_mouseon.bmp": "82c860f3bf3bf20cc197112f82464d853bbe3375cd85ae88e85b68eba0f10c59",
+    "bt_bestiary_old_normal.bmp": "967c0ffdb16bf08606072aac14701e990b0a7cf104f3d1c32d951b871594703d",
+    "bt_bestiary_old_pressed.bmp": "e7855d38fe307f9d208f65e12078af34b31940870f690425a17ee17fde6084d4",
+    "bt_bestiary_pressed.bmp": "4c48c1ee0223d3080b755f63ce61b1c71472e682f44b20293d0a928c65eaeb42"
+  },
+  "mouse_regression": {
+    "passed": true,
+    "comparison": [
+      {
+        "game_exe": "Banquet_Bestiary_Lore_Rewards_20260913.exe",
+        "sha256": "51efcfa2501364c8275156f5ce90aee98619405d4a5f0f850d83c5572304fb80",
+        "native_dispatch_passed": true,
+        "failure": null
+      },
+      {
+        "game_exe": "Banquet_Bestiary_Interactive_Rewards_20260913.exe",
+        "sha256": "2296b95f09f7bc16878915d3dc8cb78d256fa95a9e4dde8732c075e02ccebc0f",
+        "native_dispatch_passed": false,
+        "failure": "Native slot-30 mouse poll erased Research tab click before left-button release"
+      },
+      {
+        "build": "Outputs\\Bestiary\\reward-item-interaction\\fixed-full-profile-v12",
+        "sha256": "14708cd6a9a3d3d526ea673d81f7def93878b68eeb284a2ee4103a9aed1c839f",
+        "native_dispatch_passed": true
+      }
+    ],
+    "root_cause": "V11 replaced unconditional native slot 30 with a handler that cleared the left press. Correct slots are 32/33 for right down/up.",
+    "corrected_slots": {
+      "tooltip_reset": 30,
+      "right_down": 32,
+      "right_up": 33
+    }
+  },
+  "deployment": {
+    "backends_restarted_by_cleanup": false,
+    "verified_deployment": "Outputs/Bestiary/lore-rewards-activation-20260913/deployment.json"
+  },
+  "release_directory": "Outputs/Bestiary/session-acceptance/release"
+}

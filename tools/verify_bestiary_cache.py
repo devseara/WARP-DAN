@@ -106,7 +106,7 @@ def verify(directory):
     before = payload(v)
     v.run('sender', [3, 1, 1004, 0])
     wire = v.sent[-1]
-    for attempt in range(3):
+    for _ in range(3):
         v.receive(reply(wire, result=2))
         assert payload(v) == before and v.state32(16) == 1
         v.now += 249

@@ -36,13 +36,13 @@ ButtonVis:
             title : Hide Buttons (New UI)
             recommend : no
             author : Neo-Mind,Skylove,Cremané
-            desc : Hides selected buttons below the HP/SP bars in the Basic Info Window (new UI style). Auto Hunt, AutoSupport, and Item Collection are always offered; their choices control the corresponding RO Global/Classic menu children when those UI patches and RO Global Zero Renewal Menu are enabled. Useful for removing buttons for features your server does not support.
+            desc : Hides selected buttons below the HP/SP bars in the Basic Info Window (new UI style). Auto Hunt, AutoSupport, Item Collection, and Bestiary are always offered; their choices control the corresponding RO Global/Classic menu children when those UI patches and RO Global Zero Renewal Menu are enabled. Useful for removing buttons for features your server does not support.
         
         - ShowNewButtons:
             title : Show Buttons (New UI)
             recommend : no
             author : Neo-Mind,Skylove,Cremané
-            desc : Restores selected hidden buttons below the HP/SP bars in the Basic Info Window (new UI style). Auto Hunt, AutoSupport, and Item Collection are always offered; their choices control the corresponding RO Global/Classic menu children when those UI patches and RO Global Zero Renewal Menu are enabled. Use to bring back buttons that were removed in newer client versions.
+            desc : Restores selected hidden buttons below the HP/SP bars in the Basic Info Window (new UI style). Auto Hunt, AutoSupport, Item Collection, and Bestiary are always offered; their choices control the corresponding RO Global/Classic menu children when those UI patches and RO Global Zero Renewal Menu are enabled. Use to bring back buttons that were removed in newer client versions.
 
 CharCreation:
     title : CHARACTER CREATION

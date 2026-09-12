@@ -18,6 +18,23 @@ import pefile
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
     "baseline": "",
+    "hide-native": 'apply("HideNewButtons");',
+    "unhide-native": 'apply("HideNewButtons"); remove("HideNewButtons");',
+    "bestiary-before-menu": "",
+    "without-bestiary": "",
+    "hide-bestiary": 'apply("HideNewButtons");',
+    "hide-before-bestiary": 'remove("BestiaryUI"); apply("HideNewButtons"); apply("BestiaryUI");',
+    "unhide-bestiary": 'apply("HideNewButtons"); remove("HideNewButtons");',
+    "overlap-show-bestiary": 'apply("HideNewButtons"); apply("ShowNewButtons");',
+    "overlap-hide-bestiary": 'apply("ShowNewButtons"); apply("HideNewButtons");',
+    "remove-show-bestiary": 'apply("HideNewButtons"); apply("ShowNewButtons"); remove("ShowNewButtons");',
+    "remove-hide-bestiary": 'apply("ShowNewButtons"); apply("HideNewButtons"); remove("HideNewButtons");',
+    "overlap-reapply-bestiary": 'apply("HideNewButtons"); apply("ShowNewButtons"); remove("BestiaryUI"); apply("BestiaryUI");',
+    "show-bestiary": 'apply("HideNewButtons"); remove("HideNewButtons"); apply("ShowNewButtons");',
+    "disable-bestiary": 'remove("BestiaryUI");',
+    "unhide-after-reapply": 'remove("BestiaryUI"); apply("HideNewButtons"); apply("BestiaryUI"); remove("HideNewButtons");',
+    "reapply-bestiary": 'remove("BestiaryUI"); apply("BestiaryUI");',
+    "reapply-menu": 'remove("ROGlobalZeroMenu"); apply("ROGlobalZeroMenu");',
     "hide-show": 'apply("HideNewButtons"); apply("ShowNewButtons");',
     "hide-before-menu": 'remove("ROGlobalZeroMenu"); apply("HideNewButtons"); apply("ROGlobalZeroMenu");',
     "reapply-autohunt": 'remove("AutoCombatUI"); apply("AutoCombatUI");',
@@ -25,10 +42,10 @@ CASES = {
     "disable-autohunt": 'remove("AutoCombatUI");',
     "disable-autosupport": 'remove("AutoSupportUI");',
     "disable-item": 'remove("ItemCollectionUI");',
-    "disable-all": 'remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI");',
-    "show-disabled": 'remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI"); apply("ShowNewButtons");',
+    "disable-all": 'remove("BestiaryUI"); remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI");',
+    "show-disabled": 'remove("BestiaryUI"); remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI"); apply("ShowNewButtons");',
     "reapply-item": 'remove("ItemCollectionUI"); apply("ItemCollectionUI");',
-    "reapply-all": 'remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI"); apply("ItemCollectionUI"); apply("AutoCombatUI"); apply("AutoSupportUI");',
+    "reapply-all": 'remove("BestiaryUI"); remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI"); apply("ItemCollectionUI"); apply("AutoCombatUI"); apply("AutoSupportUI"); apply("BestiaryUI");',
     "reapply-both": 'remove("AutoSupportUI"); remove("AutoCombatUI"); apply("AutoCombatUI"); apply("AutoSupportUI");',
 }
 
@@ -38,18 +55,30 @@ PROBE = r'''/*
 TestMenuLifecycle = function(_) {
 	const probeOwner = Exe.ActivePatch;
 	const functions = {AutoCombatUI, AutoSupportUI, ROGlobalZeroUITheme,
-		ItemCollectionUI, ROGlobalZeroMenu, HideNewButtons, ShowNewButtons};
+		ItemCollectionUI, BestiaryUI, ROGlobalZeroMenu, HideNewButtons, ShowNewButtons};
+	const trace = function(phase, name) {
+		const file = new TextFile(MARKER + ".trace", "w");
+		if (!file.Valid) throw Error("Cannot record lifecycle trace");
+		file.WriteLine(phase + ": " + name); file.Close();
+	};
+	const previousLog = $$;
+	$$ = function(...args) { trace("step " + args[1], String(args[2])); previousLog(...args); };
 	const apply = function(name) {
+		trace("applying", name);
 		Exe.SetActivePatch(name);
 		Warp.SetPatchState(name, true);
 		functions[name].call(functions[name], name);
+		trace("applied", name);
 		Exe.ActivePatch = probeOwner;
 	};
 	const remove = function(name) {
+		trace("removing", name);
 		Exe.SetActivePatch(name);
 		if (typeof functions[name].cleanup === "function") functions[name].cleanup(name);
+		trace("cleaned", name);
 		Exe.ClearPatch();
 		Warp.SetPatchState(name, false);
+		trace("removed", name);
 		Exe.ActivePatch = probeOwner;
 	};
 	let constructionError = null;
@@ -61,6 +90,7 @@ TestMenuLifecycle = function(_) {
 		}));
 		ACTION
 	} catch (error) { constructionError = String(error); }
+	$$ = previousLog;
 	const marker = new TextFile(MARKER, "w");
 	if (!marker.Valid) throw Error("menu lifecycle marker unavailable");
 	marker.WriteLine(JSON.stringify({
@@ -68,7 +98,12 @@ TestMenuLifecycle = function(_) {
 		hunt: CACHE.get("AutoCombatUI.MenuButton.v1"),
 		support: CACHE.get("AutoSupportUI.MenuButton.v1"),
 		item: CACHE.get("ItemCollectionUI.MenuButton.v1"),
+		bestiary: CACHE.get("BestiaryUI.MenuButton.v1"),
+		bestiaryNative: CACHE.get("BestiaryUI.Native.v1"),
 		visibility: CACHE.get("NewButtonVisibility.CustomVisibility.v1"),
+		nativeVisibility: CACHE.get("NBV_Refs"),
+		nativeIDs: Array.from((CACHE.get("NBV_Refs") || {}).IDMap ?? []),
+		nativeRegister: (CACHE.get("NBV_Refs") || {}).IDReg === EBX ? "EBX" : "EAX",
 		peer: CACHE.get("AutoCombatUI.LifecycleHooks.v1"),
 		events: CACHE.get("PatchDiagnostics.Events")
 	}));
@@ -126,8 +161,9 @@ def check_pe(path, state, case):
 
     disabled = {
         'disable-autohunt': {'hunt'}, 'disable-autosupport': {'support'},
-        'disable-item': {'item'}, 'disable-all': {'hunt','support','item'},
-        'show-disabled': {'hunt','support','item'}
+        'disable-item': {'item'}, 'disable-bestiary': {'bestiary'},
+        'without-bestiary': {'bestiary'}, 'disable-all': {'hunt','support','item','bestiary'},
+        'show-disabled': {'hunt','support','item','bestiary'}
     }.get(case, set())
     peer = state['peer']['scalarSenderVir']
     peer_target = u32(peer - 4)
@@ -136,7 +172,7 @@ def check_pe(path, state, case):
     if peer_target: assert read(peer_target, 8) != bytes(8), 'peer points to cleared code'
     execute_route(peer, peer_target, 12)
     rows = []
-    # Derive all three cloned child vtables from their emitted ensure checks.
+    # Derive all four cloned child vtables from their emitted ensure checks.
     import re
     raw = path.read_bytes()
     children = {}
@@ -145,14 +181,17 @@ def check_pe(path, state, case):
         if not menu["autoHunt"]["ensureVir"] <= va < menu["reflowVir"]:
             continue
         vt, child = struct.unpack("<I", match[1])[0], struct.unpack("<I", match[2])[0]
-        if child in (0x3F2, 0x3F4, 0x3F5):
+        if child in (0x3F2, 0x3F4, 0x3F5, 0x3FB):
             if child in children:
                 raise RuntimeError(f"Ambiguous child {child:#x}")
             children[child] = vt
     for label, key, child in (("Auto Hunt", "hunt", 0x3F2),
                               ("AutoSupport", "support", 0x3F5),
-                              ("Item Collection", "item", 0x3F4)):
-        bridge = state[key]
+                              ("Item Collection", "item", 0x3F4),
+                              ("Bestiary", "bestiary", 0x3FB)):
+        bridge = state.get(key)
+        if bridge is None and key == 'bestiary' and case == 'without-bestiary':
+            bridge = dict(menu['bestiary'], requestVir=0)
         mouse_up = u32(children[child] + 31 * 4)
         head = read(mouse_up, 24)
         if head.startswith(bytes.fromhex("55 8b ec e8")):
@@ -162,7 +201,11 @@ def check_pe(path, state, case):
         else:
             raise RuntimeError(f"Unknown {label} mouse-up ABI at {mouse_up:#x}")
         target_head = read(target, 25)
-        if child == 0x3F4:
+        if child == 0x3FB:
+            valid_entry = target_head.startswith(bytes.fromhex("9c 60 8b 35"))
+            if key not in disabled:
+                assert target == state['bestiaryNative']['toggle']['vir'], 'Bestiary opens a different callback'
+        elif child == 0x3F4:
             valid_entry = target_head.startswith(bytes.fromhex("9c 60 6a 00 6a 00 6a 00 6a 01 e8"))
         else:
             valid_entry = bool(re.fullmatch(
@@ -170,7 +213,9 @@ def check_pe(path, state, case):
                 target_head, re.DOTALL))
         if key in disabled:
             valid_entry = target == 0
-        expected_visible = 0 if case == "hide-before-menu" or (key in disabled and case != "show-disabled") else 1
+        expected_visible = 0 if case == "hide-before-menu" or (key in disabled) else 1
+        if key == 'bestiary' and case in ('hide-bestiary', 'hide-before-bestiary', 'overlap-hide-bestiary', 'remove-show-bestiary'):
+            expected_visible = 0
         execute_route(mouse_up, target, 8)
         actual_visible = u32(bridge["visibleVir"])
         rows.append({"button": label, "child": hex(child), "mouse_up": hex(mouse_up),
@@ -178,6 +223,37 @@ def check_pe(path, state, case):
                      "target_bytes": target_head.hex(), "entry_valid": valid_entry,
                      "target_matches_current": target == (0 if key in disabled else bridge["requestVir"]),
                      "visible": actual_visible, "expected_visible": expected_visible})
+    rows[0]["native_visibility_checks"] = check_native_visibility(pe, state, case)
+    return rows
+
+
+def check_native_visibility(pe, state, case):
+    refs = state.get('nativeVisibility')
+    if not refs or case not in ('hide-native', 'unhide-native', 'hide-before-menu'):
+        return []
+    from unicorn import Uc, UC_ARCH_X86, UC_MODE_32, UC_HOOK_CODE
+    from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ESP
+    base = pe.OPTIONAL_HEADER.ImageBase
+    u = Uc(UC_ARCH_X86, UC_MODE_32)
+    mapped = pe.get_memory_mapped_image()
+    u.mem_map(base, (len(mapped)+4095)&~4095); u.mem_write(base, mapped)
+    u.mem_map(0x60000000,0x4000)
+    reached = []
+    def step(uc, address, size, _):
+        if address in (refs['OnAddr'], refs['OffAddr']):
+            reached.append(address); uc.emu_stop()
+    u.hook_add(UC_HOOK_CODE, step)
+    hidden = set(refs['Hidden'])
+    if case != 'unhide-native': hidden.update(('Battleground','Twitter (SNS)','Booking'))
+    register = UC_X86_REG_EBX if state['nativeRegister']=='EBX' else UC_X86_REG_EAX
+    entry = base + pe.get_rva_from_offset(refs['HookAddr'])
+    rows = []
+    for name, identity in state['nativeIDs']:
+        reached.clear(); u.reg_write(register,identity); u.reg_write(UC_X86_REG_ESP,0x60002000)
+        u.emu_start(entry,0,count=1000)
+        expected = refs['OffAddr'] if name in hidden else refs['OnAddr']
+        assert reached == [expected], f'Native {name}: wrong visibility after {case}'
+        rows.append({'button':name,'visible':name not in hidden})
     return rows
 
 
@@ -197,6 +273,8 @@ def main():
         shutil.copytree(ROOT / name, fixture / name, ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copy2(ROOT / "Patches.yml", fixture / "Patches.yml")
     shutil.copytree(ROOT / "Assets", fixture / "Assets")
+    for name in ("BestiaryUI", "CollectionUI"):
+        shutil.copytree(ROOT / "Images" / name, fixture / "Images" / name)
     with (fixture / "Tables/Patch.yml").open("a", encoding="utf-8") as stream:
         stream.write("\n65001 : TestMenuLifecycle\n")
     with (fixture / "Patches/Premium.yml").open("a", encoding="utf-8") as stream:
@@ -214,16 +292,26 @@ def main():
         (fixture / "Scripts/Patches/MenuLifecycleProbe.qjs").write_bytes(code.replace("\n", "\r\n").encode("utf-8"))
         hidden = ["Battleground", "Twitter (SNS)", "Booking"]
         if case == "hide-before-menu":
-            hidden += ["Auto Hunt", "AutoSupport", "Item Collection"]
+            hidden += ["Auto Hunt", "AutoSupport", "Item Collection", "Bestiary"]
+        elif case in ("hide-bestiary", "hide-before-bestiary", "unhide-bestiary", "show-bestiary", "unhide-after-reapply",
+                      "overlap-show-bestiary", "overlap-hide-bestiary", "remove-show-bestiary",
+                      "remove-hide-bestiary", "overlap-reapply-bestiary"):
+            hidden = ["Bestiary"]
         inputs = {
             "$copyAutoSupportAssets": {"data": "", "display": "false", "type": 10},
             "$copyItemCollectionAssets": {"data": "", "display": "false", "type": 10},
             "$newHiddenButtons": {"data": "", "display": [{"type": 10, "value": x} for x in hidden]},
-            "$newShownButtons": {"data": "", "display": [{"type": 10, "value": x} for x in ("Auto Hunt", "AutoSupport", "Item Collection")]},
+            "$newShownButtons": {"data": "", "display": [{"type": 10, "value": x} for x in ("Auto Hunt", "AutoSupport", "Item Collection", "Bestiary")]},
         }
         profile = output / f"{case}.yml"
         patches = ["AutoCombatUI", "AutoSupportUI", "ROGlobalZeroUITheme", "ItemCollectionUI"]
-        patches += ["ROGlobalZeroMenu", "TestMenuLifecycle"]
+        if case == "bestiary-before-menu":
+            patches += ["BestiaryUI", "ROGlobalZeroMenu"]
+        elif case == "without-bestiary":
+            patches += ["ROGlobalZeroMenu"]
+        else:
+            patches += ["ROGlobalZeroMenu", "BestiaryUI"]
+        patches += ["TestMenuLifecycle"]
         profile.write_text("from: " + json.dumps(str(source)) + "\nto: " + json.dumps(str(target)) +
                            "\ninputs: " + json.dumps(inputs) + "\npatches:\n" +
                            "".join("    - " + name + "\n" for name in patches), encoding="utf-8")
@@ -231,7 +319,7 @@ def main():
                                  cwd=fixture, capture_output=True, timeout=180)
         (output / f"{case}.log").write_bytes(process.stdout + process.stderr)
         row = {"case": case, "returncode": process.returncode, "passed": False}
-        if process.returncode == 0 and marker.is_file() and target.is_file():
+        if process.returncode == 0 and b"-E-" not in process.stdout + process.stderr and marker.is_file() and target.is_file():
             state = json.loads(marker.read_text(encoding="utf-8"))
             if state["token"] != token:
                 raise RuntimeError("Stale WARP marker")

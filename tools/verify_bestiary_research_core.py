@@ -4,12 +4,19 @@ import subprocess,os,json,tempfile
 ROOT=Path(__file__).resolve().parents[1]
 def main():
     server=ROOT.parent/'BanquetOfHeroes';out=ROOT/'Outputs/Bestiary/verification/research/core-test';out.mkdir(parents=True,exist_ok=True)
-    source=(server/'src/map/bestiary_research.cpp').read_text()
+    source=(server/'src/map/bestiary_research.cpp').read_text(encoding='utf-8')
     def function(start,end):return source.split(start,1)[1].split(end,1)[0]
+    view='struct User {'+source.split('struct User {',1)[1].split('std::map<uint32_t,User> users;',1)[0]
+    view+='template<size_t N> void text'+function('template<size_t N> void text','uint32_t next_request')
+    view+='void index(User& u)'+function('void index(User& u)','void operation(')
+    (out/'reward-view-under-test.inc').write_text(view,encoding='utf-8')
     capture='int collect_party'+function('int collect_party','TIMER_FUNC(tick)')
     capture+='std::vector<Record> capture'+function('std::vector<Record> capture','void record(')
     (out/'capture-under-test.inc').write_text(capture,encoding='utf-8')
-    death=(server/'src/map/mob.cpp').read_text()
+    (out/'title-projection-under-test.inc').write_text('void project_titles'+function('void project_titles','std::vector<Record> capture'),encoding='utf-8')
+    clif=(server/'src/map/clif.cpp').read_text(encoding='utf-8')
+    (out/'title-equip-under-test.inc').write_text('void clif_change_title(map_session_data* sd, uint32 requested_title)'+clif.split('void clif_change_title(map_session_data *sd, uint32 requested_title)',1)[1].split('#ifdef DUMP_UNKNOWN_PACKET',1)[0],encoding='utf-8')
+    death=(server/'src/map/mob.cpp').read_text(encoding='utf-8')
     assert 'tmpsd[r] && md->dmglog[r].dmg>0' in death
     assert 'src && type==0 && !md->state.npc_killmonster' in death
     assert 'if( !rebirth ) { // Only trigger event on final kill\n\t\tbestiary_research::record(research_credit);' in death

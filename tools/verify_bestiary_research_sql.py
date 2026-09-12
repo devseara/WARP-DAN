@@ -7,7 +7,7 @@ import pymysql
 
 def main():
     server=ROOT.parent/'BanquetOfHeroes';out=ROOT/'Outputs/Bestiary/verification/research/sql-test';out.mkdir(parents=True,exist_ok=True)
-    source=(server/'src/char/int_mail.cpp').read_text(encoding='utf-8');a=source.index('int32 mail_savemessage_in_transaction(');b=source.index('/// Retrieves a single message',a)
+    source=(server/'src/char/int_mail.cpp').read_text(encoding='utf-8');a=source.index('int32 mail_savemessage_in_transaction(');b=source.index('int32 mail_timer_sub(',a)
     (out/'bestiary_mail_under_test.inc').write_text(source[a:b],encoding='utf-8')
     vc=Path('C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231');sdk=Path('C:/Program Files (x86)/Windows Kits/10');version='10.0.26100.0'
     env=os.environ.copy();env['INCLUDE']=';'.join(str(p) for p in [vc/'include',sdk/'Include'/version/'ucrt',sdk/'Include'/version/'shared',sdk/'Include'/version/'um'])
@@ -34,12 +34,18 @@ def main():
         result=subprocess.run([str(out/'research-sql-test.exe'),mode],cwd=server,env=env,capture_output=True,text=True,timeout=120)
         if result.returncode:raise RuntimeError(f'SQL test {mode} failed {result.returncode}: '+result.stdout+result.stderr)
         return result.stdout.strip()
-    checks=[execute('setup')]
+    # Only these empty cloned test tables are converted; live engines are untouched.
+    with connection.cursor() as cur:
+        for table in ('mail','mail_attachments'):cur.execute(f'ALTER TABLE `{name}`.`{table}` ENGINE=MyISAM')
+    checks=[execute('mail_guard')]
+    with connection.cursor() as cur:
+        for table in ('mail','mail_attachments'):cur.execute(f'ALTER TABLE `{name}`.`{table}` ENGINE=InnoDB')
+    checks += [execute('setup'),execute('expansion')]
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
         for result in pool.map(execute,['concurrent']*8):pass
     with connection.cursor() as cur:
         cur.execute('SELECT COUNT(*) FROM bestiary_claims WHERE account_id=2000000 AND reward_id=4');assert cur.fetchone()[0]==1
-        cur.execute('SELECT COUNT(*) FROM mail_attachments WHERE nameid=602');assert cur.fetchone()[0]==1
+        cur.execute('SELECT COUNT(*) FROM mail_attachments a JOIN bestiary_claims c ON c.mail_id=a.id WHERE c.account_id=2000000 AND c.reward_id=4 AND a.nameid=602');assert cur.fetchone()[0]==1
     checks.append('Eight simultaneous actual-service claim processes created one reward claim and one mail attachment.')
     checks.append(execute('claim_all'))
     connection.close()

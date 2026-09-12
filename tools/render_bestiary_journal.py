@@ -4,10 +4,12 @@ Graphics and portrait boundaries are substituted. The actual UI draw code
 owns text clipping, coordinates, tabs, resource formatting and composition.
 """
 from pathlib import Path
+from bestiary_paths import UI_TEXTURE_DIRECTORY, UI_TEXTURE_KOREAN
 import argparse,base64,configparser,io,json,re,struct
+import yaml,textwrap
 from PIL import Image,ImageDraw,ImageFont
 import pefile
-from verify_bestiary_journal import JournalVM,packet
+from verify_bestiary_journal import JournalVM
 from dual_weapon_formats.grf_reader import GrfFile
 from dual_weapon_formats.spr_reader import Spr
 from dual_weapon_formats.act_reader import parse_act
@@ -17,18 +19,18 @@ ROOT=Path(__file__).resolve().parents[1]
 
 
 def render(directory,game,tab=0,detail=0,popup=False,info_page=0,randgris=False,info_section=0,filters=False,personal_view=0):
-    m=json.loads((directory/'native-manifest.json').read_text())['bestiary']
+    m=json.loads((directory/'native-manifest.json').read_text(encoding='utf-8'))['bestiary']
     v=JournalVM(pefile.PE(str(directory/'bestiary-preview.exe'),fast_load=True),m)
     v.ready();v.state32(4,tab);v.state32(140,detail);v.state32(124,int(popup))
     v.state32(148,v.now);v.state32(160,info_page)
     if m.get('protocolVersion',2)>=3:
         v.state32(204,info_section);v.state32(208,int(filters))
-        v.u.mem_write(m['payload']['vir']+3414,struct.pack('<H',3))
-        for i,line in enumerate(['A small pink wanderer whose cheerful bounce is a familiar sight to new adventurers.',
-                                 'Its soft appearance is a poor reason to leave belongings unattended.',
-                                 'These preview packets demonstrate the journal layout.']):
-            v.u.mem_write(m['payload']['vir']+4288+i*112,line.encode()+b'\0')
-        v.u.mem_write(m['payload']['vir']+4736,b'Bestiary editorial field journal\0')
+        lore_db=yaml.safe_load((ROOT.parent/'BanquetOfHeroes/db/bestiary_lore.yml').read_text(encoding='utf-8'))['Body']
+        lore=next(row for row in lore_db if row['Id']==(1751 if randgris else 1002))
+        lines=textwrap.wrap(lore['Text'],width=90,break_on_hyphens=False)
+        v.u.mem_write(m['payload']['vir']+3410,struct.pack('<HHH',0,(len(lines)+3)//4,min(len(lines),4)))
+        for i,line in enumerate(lines[:4]):v.u.mem_write(m['payload']['vir']+4288+i*112,line.encode('ascii')+b'\0')
+        v.u.mem_write(m['payload']['vir']+4736,lore['Source'].encode('ascii')+b'\0')
         v.u.mem_write(m['payload']['vir']+3420,struct.pack('<H',1))
         v.u.mem_write(m['payload']['vir']+4808,b'Poring\0')
         v.u.mem_write(m['payload']['vir']+4856,b'Example follower summon\0')
@@ -64,9 +66,19 @@ def render(directory,game,tab=0,detail=0,popup=False,info_page=0,randgris=False,
             for i,name in enumerate(['First Field Kit','Apprentice Supplies','Beginner Title','Travel Supplies','Specialist Title','Poring Family Trophy']):
                 row=512+i*256;flag=1 if personal_view==2 else 2 if personal_view==1 or i<2 else 0
                 struct.pack_into('<I',data,row+8,flag);put(row+16,64,name);put(row+80,96,'A permanent journal milestone for this account.');put(row+176,48,'Claimed' if flag==1 else 'Available - click to claim' if flag==2 else 'Requires 100 journal points');put(row+224,32,'Field supplies' if i<2 else 'Cosmetic reward')
+        if m.get('layoutVersion',0)>=10 and tab==2 and personal_view!=3:
+            data.extend(bytes(264));struct.pack_into('<H',data,2,2440);struct.pack_into('<H',data,10,10)
+            definitions=yaml.safe_load((ROOT.parent/'BanquetOfHeroes/db/bestiary_research.yml').read_text(encoding='utf-8'))['Body']
+            rewards={r['Id']:r for r in definitions if r['Kind']=='Reward'}
+            for i,id_ in enumerate([6,8,9,10,7,11]):
+                reward=rewards[id_];row=512+i*256;items=reward.get('Items',[])
+                put(row+16,64,reward['Name']);put(row+80,96,reward['Description']);put(row+224,32,'Account-bound mail' if items else 'Cosmetic title')
+                put(row+176,48,'Claimed' if personal_view==2 else 'Available - click to claim' if personal_view==1 else f"Requires {reward['Required']:,} points")
+                struct.pack_into('<H',data,2176+i*44,len(items))
+                for j,item in enumerate(items):struct.pack_into('<II',data,2180+i*44+j*8,item['Item'],item['Quantity'])
         v.receive(bytes(data))
     canvas=Image.new('RGB',(760,500),'white');fontcache={};resources={};bounds=[]
-    data=json.loads((ROOT/'tools/fixtures/bestiary/native-sprites.json').read_text())
+    data=json.loads((ROOT/'tools/fixtures/bestiary/native-sprites.json').read_text(encoding='utf-8'))
     sprites={name:Image.open(io.BytesIO(base64.b64decode(data[name].split(',')[1]))).convert('RGBA') for name in ['poring','lunatic','fabre','pupa','drops','poporing']}
     roster=[(1002,'Poring'),(1063,'Lunatic'),(1007,'Fabre'),(1008,'Pupa'),(1113,'Drops'),(1031,'Poporing')]
     for i,(id,name) in enumerate(roster):
@@ -99,17 +111,24 @@ def render(directory,game,tab=0,detail=0,popup=False,info_page=0,randgris=False,
     v.stub(0xD5BB40,8,lambda ecx,a:v.string(names[a[0]]))
     iteminfo=(game/'System/LuaFiles514/itemInfo.lua').read_bytes()
     stems={}
-    for id in [909,713,1201,4001]:
+    item_ids={909,713,1201,4001}
+    if m.get('layoutVersion',0)>=10 and tab==2 and personal_view!=3:
+        for i in range(6):
+            off=m['personalPayload']['vir']+2176+i*44
+            for j in range(struct.unpack('<H',v.u.mem_read(off,2))[0]):item_ids.add(v.read32(off+4+j*8))
+    for id in sorted(item_ids):
         block=iteminfo.split(('['+str(id)+'] = {').encode(),1)[1].split(b'\n\t[',1)[0]
         stems[id]=re.search(rb'\n\s*identifiedResourceName\s*=\s*"([^"]*)"',block)[1]
     v.stub(m['itemResolver']['vir'],4,lambda ecx,a:v.string(stems[a[0]]))
     config=configparser.ConfigParser();config.read(game/'DATA.INI',encoding='utf-8-sig')
     grfs=[GrfFile(game/file) for _,file in sorted(config['Data'].items(),key=lambda pair:int(pair[0])) if (game/file).exists()]
+    journal_prefix=m.get("assetRoot","bestiary").encode("latin-1").decode("cp949").replace("\\","/")+"/journal/"
     def native_image(name):
-        own=directory/'data/texture'/name
+        local_name=name.replace(UI_TEXTURE_KOREAN+"/",UI_TEXTURE_DIRECTORY+"/",1)
+        own=directory/'data/texture'/local_name
         if own.exists():
             im=Image.open(own).convert('RGBA')
-            if any(name.startswith('bestiary/journal/'+kind+'_') for kind in ['element','race','size']):
+            if any(name.startswith(journal_prefix+kind+'_') for kind in ['element','race','size']):
                 im.putdata([(r,g,b,0 if (r,g,b)==(255,0,255) else a) for r,g,b,a in im.getdata()])
             return im
         key='data/texture/'+name
@@ -119,7 +138,7 @@ def render(directory,game,tab=0,detail=0,popup=False,info_page=0,randgris=False,
             if raw:break
         if not raw:return None
         im=Image.open(io.BytesIO(raw)).convert('RGBA')
-        if '/item/' in name or name.startswith('bestiary/journal/element_') or name.startswith('bestiary/journal/race_') or name.startswith('bestiary/journal/size_'):
+        if '/item/' in name or name.startswith(journal_prefix+'element_') or name.startswith(journal_prefix+'race_') or name.startswith(journal_prefix+'size_'):
             im.putdata([(r,g,b,0 if (r,g,b)==(255,0,255) else a) for r,g,b,a in im.getdata()])
         return im
     def font(size,bold):
@@ -147,10 +166,10 @@ def render(directory,game,tab=0,detail=0,popup=False,info_page=0,randgris=False,
         assert x+im.width<=760 and y+im.height<=500,(name,x,y,im.size)
         canvas.paste(im,(x,y),im)
     def sprite(ecx,a):
-        window,spr,act,x,y,w,h,cycle=a;name=resources[spr].split('/')[-1].split('.')[0]
+        _window,spr,_act,x,y,w,h,_cycle=a;name=resources[spr].split('/')[-1].split('.')[0]
         if name=='randgris':
             def read_sprite(suffix):
-                key='data/sprite/몬스터/randgris'+suffix
+                key='data/sprite/\ubaac\uc2a4\ud130/randgris'+suffix
                 loose=game/key
                 if loose.is_file():return loose.read_bytes()
                 for grf in grfs:
@@ -185,9 +204,9 @@ if __name__=='__main__':
     for page in range(1,4):print(render(args.build_directory,args.game,0,1,False,page))
     print(render(args.build_directory,args.game,0,1,False,0,True))
 
-    if json.loads((args.build_directory/'native-manifest.json').read_text())['bestiary'].get('protocolVersion',2)>=3:
+    if json.loads((args.build_directory/'native-manifest.json').read_text(encoding='utf-8'))['bestiary'].get('protocolVersion',2)>=3:
         for section in [1,2]:print(render(args.build_directory,args.game,0,1,False,info_section=section))
         print(render(args.build_directory,args.game,filters=True))
 
-    if json.loads((args.build_directory/'native-manifest.json').read_text())['bestiary'].get('layoutVersion',0)>=9:
+    if json.loads((args.build_directory/'native-manifest.json').read_text(encoding='utf-8'))['bestiary'].get('layoutVersion',0)>=9:
         for tab,view in [(1,1),(1,2),(2,1),(2,2),(2,3)]:print(render(args.build_directory,args.game,tab=tab,personal_view=view))

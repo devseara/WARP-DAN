@@ -13,7 +13,7 @@ from dual_weapon_formats.act_reader import parse_act
 
 
 def verify(directory,game):
-    m=json.loads((directory/'native-manifest.json').read_text())['bestiary']
+    m=json.loads((directory/'native-manifest.json').read_text(encoding='utf-8'))['bestiary']
     pe=pefile.PE(str(directory/'bestiary-preview.exe'),fast_load=True)
     v=JournalVM(pe,m);entry=m['preview']['vir']
     del v.stubs[entry];v.u.mem_write(entry,pe.get_data(entry-pe.OPTIONAL_HEADER.ImageBase,4))

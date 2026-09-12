@@ -4,6 +4,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include <set>
 #include <common/database.hpp>
 #include <common/showmsg.hpp>
 #include <common/malloc.hpp>
@@ -14,7 +15,7 @@ void ShowMessage(const char*,...){} void ShowStatus(const char*,...){}
 void ShowError(const char*,...){} void ShowWarning(const char*,...){}
 extern void do_init_database();
 char db_path[12]=".";
-struct TestMobDb{std::shared_ptr<int> find(uint32_t id){return id==1002?std::make_shared<int>(1):nullptr;}} mob_db;
+struct TestMobDb{std::set<uint32_t> ids{1002};std::shared_ptr<int> find(uint32_t id){return ids.count(id)?std::make_shared<int>(1):nullptr;}} mob_db;
 #include "bestiary_lore_under_test.inc"
 struct Entry{uint32_t id,value;};
 class Candidate final:public TypesafeYamlDatabase<uint32_t,Entry>{
@@ -30,7 +31,7 @@ public:
 const std::string header="Header:\n  Type: BESTIARY_TEST\n  Version: 1\n";
 void write(const char* path,const std::string& text){std::ofstream(path)<<text;}
 int main(int argc,char** argv){
-	assert(argc==2);std::filesystem::current_path(argv[1]);do_init_database();
+	assert(argc==3);std::filesystem::current_path(argv[1]);do_init_database();
 	write("root.yml",header+"Body:\n  - Id: 1\n    Value: 12\nFooter:\n  Imports:\n    - Path: import.yml\n");
 	write("import.yml",header+"Body:\n  - Id: 2\n    Value: 34\n");
 	auto active=std::make_unique<Candidate>();assert(active->load()&&active->size()==2);
@@ -65,4 +66,14 @@ int main(int argc,char** argv){
 	}
 	std::cout<<"Passed: real lore parser rejects malformed Body, unknown MobId, oversized prose/source and embedded NUL.\n";
 	std::cout<<"Passed: strict imports, invalid entries, missing imports, cycles, retained snapshot, legacy compatibility and recovery.\n";
+	// Load every generated entry through the real strict parser, with the
+	// complete active MOB_DB import roster supplying identity validation.
+	std::ifstream ids("active-mob-ids.txt");assert(ids.good());uint32_t id;mob_db.ids.clear();
+	while(ids>>id)mob_db.ids.insert(id);assert(mob_db.ids.size()>1000);
+	std::filesystem::current_path(argv[2]);std::strcpy(db_path,"db");
+	LoreDatabase complete;assert(complete.load()&&complete.valid);
+	for(auto id:mob_db.ids){auto entry=complete.find(id);assert(entry&&!entry->text.empty()&&!entry->source.empty());}
+	assert(complete.size()==mob_db.ids.size());
+	std::cout<<"Passed: complete production lore and preserved imports load for "<<complete.size()<<" active monster IDs.\n";
+
 }

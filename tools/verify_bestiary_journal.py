@@ -4,9 +4,10 @@ This verifies native ABI, transport isolation, malformed input, pagination,
 resource lookup and rendering bounds. It is not live visual acceptance.
 """
 from pathlib import Path
+from bestiary_paths import bestiary_texture_root
 import argparse,json,struct
 import pefile
-from unicorn.x86_const import UC_X86_REG_ESP,UC_X86_REG_EAX
+from unicorn.x86_const import UC_X86_REG_ESP
 from bestiary_test_vm import VM,verify_dispatch
 
 
@@ -67,7 +68,7 @@ class JournalVM(VM):
     def format(self,ecx,a):
         esp=self.u.reg_read(UC_X86_REG_ESP)
         args=[self.read32(esp+4+i*4) for i in range(5)]
-        dest,capacity,truncate,fmt,value=args
+        dest,capacity,_truncate,fmt,value=args
         pattern=self.cstring(fmt)
         result=pattern.replace(b'%s',self.cstring(value)) if b'%s' in pattern else pattern.replace(b'%u',str(value).encode())
         assert len(result)<capacity
@@ -83,7 +84,7 @@ class JournalVM(VM):
 
 
 def verify(directory):
-    full=json.loads((directory/'native-manifest.json').read_text())
+    full=json.loads((directory/'native-manifest.json').read_text(encoding='utf-8'))
     pe=pefile.PE(str(directory/'bestiary-preview.exe'),fast_load=True)
     verify_dispatch(pe,full)
     m=full['bestiary'];checks=['Exact /bestiary dispatch, fallback, stack and register ownership']
@@ -104,9 +105,9 @@ def verify(directory):
         assert pe.get_data(emitted['vir']-pe.OPTIONAL_HEADER.ImageBase,len(expect))==expect
     checks.append('All emitted code and initial data match the actual patched PE')
     for name in m['assets']:
-        path=directory/'data/texture/bestiary/journal'/name
+        path=directory/bestiary_texture_root(m)/'journal'/name
         assert path.is_file() and path.read_bytes()[:2]==b'BM',name
-    checks.append(f'All {len(m["assets"])} resource files are deployed at the emitted ASCII paths')
+    checks.append(f'All {len(m["assets"])} resource files are deployed at the emitted native paths')
     v=JournalVM(pe,m);v.u.mem_write(m['query']['vir'],b'Poring\0');v.state32(120,2);v.state32(132,1);v.state32(136,3)
     v.run('sender',[3,1,1002,0]);raw=v.sent[-1]
     assert len(raw)==request_size and struct.unpack_from('<HHIHH',raw)==(0xbf8,request_size,0x49555342,version,3)
@@ -241,7 +242,7 @@ def verify(directory):
     checks.append('Native Item Collection edit debounce and maximum-length search serialize correctly')
     native=struct.unpack('<53I',pe.get_data(0x102fe08-pe.OPTIONAL_HEADER.ImageBase,212))
     private=struct.unpack('<53I',pe.get_data(m['vtable']['vir']-pe.OPTIONAL_HEADER.ImageBase,212))
-    assert all(private[i]==native[i] for i in range(53) if i not in ([0,20,25,28,31,35,37] if version>=3 else [0,20,25,28,31]))
+    assert all(private[i]==native[i] for i in range(53) if i not in ([0,20,25,28,31,32,33,35,37] if m.get("layoutVersion",0)>=12 else [0,20,25,28,30,31,32,35,37] if m.get("layoutVersion",0)>=11 else [0,20,25,28,31,35,37] if version>=3 else [0,20,25,28,31]))
     checks.append('Private vtable changes only the documented Bestiary destructor/draw/mouse slots')
     report={'passed':True,'checks':checks,'live_accepted':False}
     (directory/'journal-verification.json').write_text(json.dumps(report,indent=2))

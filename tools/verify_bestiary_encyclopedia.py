@@ -2,7 +2,7 @@
 from pathlib import Path
 import argparse,json,struct
 import pefile
-from verify_bestiary_journal import JournalVM,packet
+from verify_bestiary_journal import JournalVM
 from verify_bestiary_cache import reply
 
 def verify(directory):

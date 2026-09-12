@@ -1,5 +1,6 @@
 """Regression tests for V8 physical Escape, server reload and numeric formatting."""
 from pathlib import Path
+from bestiary_paths import bestiary_texture_root
 import argparse,json,struct
 import pefile
 from PIL import Image
@@ -76,7 +77,7 @@ def verify(directory):
     v.u.mem_write(v.window+0x28,b'\1');v.run('requestTick');assert len(v.sent)==4
     checks.append('@reloadmobdb notice retires stale replies, preserves display, triggers one visible fetch and defers hidden-window fetches; reopen uses cache')
 
-    maps=list((directory/'data/texture/bestiary/journal').glob('map_*.bmp'))
+    maps=list((directory/bestiary_texture_root(m)/'journal').glob('map_*.bmp'))
     assert maps
     for path in maps:
         with Image.open(path) as im:

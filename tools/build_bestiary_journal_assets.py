@@ -35,7 +35,7 @@ def main():
 
     config = configparser.ConfigParser()
     config.read(args.game / 'DATA.INI', encoding='utf-8-sig')
-    filenames = [v for k, v in sorted(config['Data'].items(), key=lambda kv: int(kv[0]))]
+    filenames = [v for _, v in sorted(config['Data'].items(), key=lambda kv: int(kv[0]))]
     maps = {}
     prefix = 'data/texture/유저인터페이스/map/'
     for filename in filenames:
@@ -76,6 +76,13 @@ def main():
     manifest = {'reference': str(source.relative_to(ROOT)), 'reference_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
                 'chrome': records, 'maps': maps, 'files': files}
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
+    patch = ROOT/'Scripts/Patches/BestiaryUI.qjs'
+    text, count = re.subn(r'BestiaryNative.AssetFiles\s*=\s*\[.*?\];',
+                          lambda _: 'BestiaryNative.AssetFiles='+json.dumps(files)+';',
+                          patch.read_text(encoding='utf-8'))
+    if count != 1:
+        raise RuntimeError('Expected exactly one Bestiary asset list')
+    patch.write_bytes(text.replace('\n', '\r\n').encode('utf-8'))
     print(f'Extracted {len(maps)} real minimaps and {len(records)} UI chrome crops.')
 
 

@@ -1,12 +1,16 @@
 // Exercise real research definitions and WAL. Only allocator/log boundaries are substituted.
 #include <common/bestiary_definitions.hpp>
 #include <map/bestiary_journal.hpp>
+#include <map/bestiary_research.hpp>
+#include <atomic>
+#include <cstring>
 #include <common/showmsg.hpp>
 #include <cassert>
 #include <fstream>
 #include <iostream>
 #include <thread>
 #include <cstdarg>
+#include <memory>
 void* _mmalloc(size_t n,const char*,int32,const char*){auto p=std::malloc(n);if(!p)throw std::bad_alloc();return p;}
 void _mfree(void* p,const char*,int32,const char*){std::free(p);}
 int32 _vShowMessage(msg_type,const char*,va_list){return 0;}
@@ -63,15 +67,126 @@ void test(Definitions& db){
  nearby.clear();assert(capture(&mob,{&dead,&offline,&other_map,nullptr},true).empty());
 }
 }
+
+namespace title_fixture {
+struct s_title_bonus_db { int32 icon=1; };
+struct map_session_data {
+ int fd=1;uint32 account=1;
+ struct {int32 title_id=0;char name[24]="Researcher";} status;
+ struct {int32 mvp_ranking_title_display=0;} state;
+ std::vector<uint16> titles;
+};
+struct User {std::vector<AccountRow> rows;};
+std::map<uint32,User> accounts;
+std::map<uint16,std::shared_ptr<s_title_bonus_db>> titles;
+bool enabled=true;
+User& user(map_session_data* sd){return accounts[sd->account];}
+std::shared_ptr<s_title_bonus_db> title_get_entry(uint16 id){auto it=titles.find(id);return it==titles.end()?nullptr:it->second;}
+std::vector<std::pair<int32,int32>> acknowledgements;
+void clif_change_title_ack(map_session_data*,int32 result,int32 id){acknowledgements.emplace_back(result,id);}
+enum efst_type {EFST_BLANK=0};
+constexpr int SCO_FORCE=1,SCO_NONE=0,INFINITE_TICK=-1;
+void clif_status_change(map_session_data*,efst_type,int,int,int,int,int){}
+void mvp_ranking_on_title_changed(map_session_data* sd){sd->state.mvp_ranking_title_display=0;}
+void mvp_ranking_reapply_ladder_status(map_session_data*){}
+void status_calc_pc(map_session_data*,int){}
+void clif_name_area(map_session_data*){}
+#define nullpo_retv(ptr) if(!(ptr))return
+#include "title-projection-under-test.inc"
+#include "title-equip-under-test.inc"
+#undef nullpo_retv
+void test(){
+ for(uint16 id:{1000,1002,1003,1004,1025,1035})titles[id]=std::make_shared<s_title_bonus_db>();
+ for(uint32 id:{1002,1003,1004,1025,1035})accounts[1].rows.push_back({4,id,2});
+ accounts[1].rows.push_back({4,1002,2});accounts[1].rows.push_back({4,60000,2});accounts[1].rows.push_back({4,1000,1});
+ map_session_data first,second,foreign;first.titles={1000};foreign.account=2;
+ project_titles(&first);project_titles(&first);project_titles(&second);project_titles(&foreign);
+ assert(first.titles.size()==6 && second.titles.size()==5 && foreign.titles.empty());
+ clif_change_title(&first,1004);assert(first.status.title_id==1004 && acknowledgements.back().first==0);
+ clif_change_title(&foreign,1004);assert(foreign.status.title_id==0 && acknowledgements.back().first==1);
+ clif_change_title(&first,70000);assert(first.status.title_id==1004 && acknowledgements.back().first==1);
+ clif_change_title(&first,0);assert(first.status.title_id==0 && acknowledgements.back().first==0);
+ first.titles.clear();project_titles(&first);clif_change_title(&first,1002);assert(first.status.title_id==1002);
+ second.fd=0;second.titles.clear();project_titles(&second);assert(second.titles.empty());
+}
+}
+
+namespace reward_view_fixture {
+using namespace bestiary_research;
+using t_tick=int64_t;
+struct map_session_data {struct {uint32_t title_id=0;} status;};
+struct Item {std::string name,ename;};
+struct ItemDatabase {std::map<uint32_t,std::shared_ptr<Item>> rows;std::shared_ptr<Item> find(uint32_t id){auto it=rows.find(id);return it==rows.end()?nullptr:it->second;}} item_db;
+struct Title {std::string name;};
+std::map<uint16_t,std::shared_ptr<Title>> title_rows;
+std::shared_ptr<Title> title_get_entry(uint16_t id){auto it=title_rows.find(id);return it==title_rows.end()?nullptr:it->second;}
+struct Mob {std::string display_name,jname;struct {uint32_t look[1]{};} vd;};
+struct MobDatabase {std::shared_ptr<Mob> find(uint32_t){return nullptr;}} mob_db;
+constexpr int LOOK_BASE=0,SELF=0;
+struct JournalStub {std::string error(){return {};}size_t pending(){return 0;}} journal;
+Definitions* definitions=nullptr;bool enabled=true;std::atomic<uint64_t> rejected{0};
+bool link(){return true;}
+std::map<std::pair<uint32_t,uint32_t>,const Reward*> entitlement_labels;
+std::vector<uint8_t> output;
+void clif_send(const void* p,size_t n,map_session_data*,int){const auto* b=static_cast<const uint8_t*>(p);output.assign(b,b+n);}
+void safestrncpy(char* to,const char* from,size_t n){if(n){std::strncpy(to,from,n-1);to[n-1]=0;}}
+#include "reward-view-under-test.inc"
+void test(Definitions& database){
+ definitions=&database;
+ item_db.rows[504]=std::make_shared<Item>(Item{"White_Potion","White Potion"});
+ item_db.rows[505]=std::make_shared<Item>(Item{"Blue_Potion","Blue Potion"});
+ title_rows[1004]=std::make_shared<Title>(Title{"Grand Master"});
+ assert(search_fold("  WhItE PoTiOn  ")=="white potion");
+ assert(reward_matches(database.rewards.at(6),"504") && reward_matches(database.rewards.at(6),"white potion"));
+ assert(!reward_matches(database.rewards.at(7),"white potion"));
+ assert(!reward_matches(database.rewards.at(6),"0") && !reward_matches(database.rewards.at(6),"999999999999999999999999999"));
+ map_session_data player;User u;u.ui=true;u.ready=true;u.dirty=false;u.query.base.tab=2;u.query.filter_flags=reward_preview_flag;
+ u.rows.push_back({2,1002,1,5,10000,0});index(u);
+ auto send=[&](const char* query,uint16_t view){std::memset(u.query.base.query,0,28);std::strncpy(u.query.base.query,query,27);u.query.race=view;u.query.base.page=0;transmit(&player,u);PersonalSnapshotV2 result{};std::memcpy(&result,output.data(),output.size());return result;};
+ auto packet=send(" WhItE PoTiOn ",0);assert(output.size()==2440 && packet.base.message==10 && packet.base.count==2 && packet.base.pages==1);
+ assert(packet.base.rows[0].id==6 && packet.base.rows[1].id==10 && packet.previews[0].count==5);
+ assert(packet.previews[0].items[0].item_id==504 && packet.previews[0].items[0].quantity==20);
+ for(size_t i=2;i<6;++i)assert(packet.previews[i].count==0);
+ packet=send("504",0);assert(packet.base.count==2);
+ packet=send("not-a-reward",0);assert(packet.base.count==0 && packet.base.pages==0 && packet.base.page==0);
+ u.rows.push_back({3,6,1});index(u);packet=send("white potion",1);assert(packet.base.count==1 && packet.base.rows[0].id==10);
+ packet=send("white potion",2);assert(packet.base.count==1 && packet.base.rows[0].id==6);
+ packet=send("grand master",0);assert(packet.base.count==1 && packet.base.rows[0].id==14 && packet.previews[0].count==0);
+ u.rows.push_back({4,1004,2});index(u);packet=send("Grand",3);assert(packet.base.count==1 && packet.base.rows[0].id==1004 && packet.base.rows[0].flags==8);
+ u.query.filter_flags=0;packet=send("white potion",0);assert(output.size()==2176 && packet.base.message==9);
+}
+}
+
+void bundle_definitions_test(const std::filesystem::path& root){
+ const std::string base="Header:\n  Type: BESTIARY_RESEARCH_DB\n  Version: 1\nBody:\n"
+ "- Kind: Curve\n  Id: 1\n  Tiers: [{Kills: 1, Points: 1}, {Kills: 2, Points: 1}, {Kills: 3, Points: 1}, {Kills: 4, Points: 1}, {Kills: 5, Points: 1}]\n"
+ "- Kind: Monster\n  Id: 1002\n  Name: Poring\n  Curve: 1\n"
+ "- Kind: Reward\n  Id: 1\n  Version: 1\n  Name: Bundle\n  Description: Supplies\n  Scope: Points\n  Target: 0\n  Required: 1\n";
+ auto load=[&](const std::string& reward){const auto file=root/"bundle.yml";{std::ofstream f(file);f<<base<<reward;}Definitions db(file.string());return db.load()&&db.validate();};
+ assert(load("  Items: [{Item: 501, Quantity: 1}, {Item: 601, Quantity: 100}]\n"));
+ assert(load("  Item: 501\n  Quantity: 1\n"));
+ for(const auto& value:{
+ "  Items: []\n", "  Items: {Item: 501, Quantity: 1}\n",
+ "  Items: [{Item: 501, Quantity: 0}]\n", "  Items: [{Item: 501, Quantity: 101}]\n",
+ "  Items: [{Item: 0, Quantity: 1}]\n", "  Items: [{Item: 501, Quantity: 1}, {Item: 501, Quantity: 2}]\n",
+ "  Item: 0\n  Items: [{Item: 501, Quantity: 1}]\n",
+ "  Quantity: 0\n  Items: [{Item: 501, Quantity: 1}]\n",
+ "  Items: [{Item: 501, Quantity: 1}, {Item: 502, Quantity: 1}, {Item: 503, Quantity: 1}, {Item: 504, Quantity: 1}, {Item: 505, Quantity: 1}, {Item: 506, Quantity: 1}]\n"
+ })assert(!load(value));
+}
+
 int main(int argc,char** argv){
 	assert(argc==3);do_init_database();std::filesystem::current_path(argv[1]);
 	Definitions definitions;assert(definitions.load()&&definitions.validate());assert(definitions.monsters.count(1002));
-	capture_fixture::test(definitions);
+	capture_fixture::test(definitions);title_fixture::test();reward_view_fixture::test(definitions);
+	assert(definitions.rewards.at(1).items.size()==1 && definitions.rewards.at(1).items[0].id==601);
+	assert(definitions.rewards.at(6).items.size()==5 && definitions.groups.size()>=12);
+	const auto bundle_hash=definitions.fingerprint();definitions.rewards.at(6).items[0].quantity++;assert(definitions.fingerprint()!=bundle_hash);definitions.rewards.at(6).items[0].quantity--;
 	assert(definitions.monster_tier(1002,0)==0 && definitions.monster_tier(1002,1)==1 && definitions.monster_tier(1002,25)==2 && definitions.monster_tier(1002,1500)==5);
 	const auto fingerprint=definitions.fingerprint();assert(fingerprint);definitions.curves.at(1).kills[1]++;assert(definitions.fingerprint()!=fingerprint);definitions.curves.at(1).kills[1]--;
 	auto milestones=definitions.milestones({{1002,25},{1113,1},{1031,1}});bool group=false;for(auto e:milestones)if(e.source==2&&e.target==1&&e.tier==1)group=true;assert(group);
 	assert(!valid_curve({1,1,2,3,4}));assert(origin_allowed(Origin::Registered,false,false,false));assert(!origin_allowed(Origin::Summoned,false,true,true));assert(!origin_allowed(Origin::Registered,true,false,false));
-	const std::filesystem::path root=argv[2];std::filesystem::create_directories(root);
+	const std::filesystem::path root=argv[2];std::filesystem::create_directories(root);bundle_definitions_test(root);
 	Record r;r.account=2000000;r.mob=1002;r.occurred=1800000000;
 	Journal first;assert(first.open(root/"replay"));Journal locked;assert(!locked.open(root/"replay"));
 	std::vector<std::thread> producers;
@@ -95,5 +210,5 @@ int main(int argc,char** argv){
 	while(!bounded.batch().empty()){const auto batch=bounded.batch();assert(bounded.acknowledge(batch.back().sequence));}
 	assert(bounded.enqueue({r})&&bounded.flush());bounded.close();
 	Journal recovered;assert(recovered.open(root/"bounded"));assert(recovered.batch().back().sequence==max_backlog+1);recovered.close();
-	std::cout<<"Passed: actual solo/support-party capture, account deduplication, death/spawn/instance/clone exclusions; roster/tier boundaries, fingerprint, group minimum, concurrent producers, file lock, durable replay, gap rejection, checkpoint/reopen, torn tail, corruption and bounded queue recovery.\n";
+	std::cout<<"Passed: real reward search/paging/preview serialization and legacy fallback; bundle bounds/duplicates/legacy compatibility, native title projection/equip/ownership; actual solo/support-party capture, account deduplication, death/spawn/instance/clone exclusions; roster/tier boundaries, fingerprint, group minimum, concurrent producers, file lock, durable replay, gap rejection, checkpoint/reopen, torn tail, corruption and bounded queue recovery.\n";
 }

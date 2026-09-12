@@ -1,0 +1,142 @@
+{
+  "normal": {
+    "frame_sha256": "3153569fb809717a6649e708a66d8e861c5e43a753053aea344411c82c1b2db8",
+    "inputs": {
+      "bt_achievement_old_normal.bmp": "e951251efccf7a5f153f44307a551bb859f8d2d967c98c425fa04db7c8e95d36",
+      "bt_adventureguide_old_normal.bmp": "d399171d1a9b34f13dfe9ce0542754db4fe105c56525bb0726b7d7e52c747bd9",
+      "bt_adventureragency_old_normal.bmp": "e60186440c6764018550345d4e21cfd80d72110f9c6a9605b23f3aeb03dfdc57",
+      "bt_attendance_old_normal.bmp": "39c44e8111233d7d54d9f92b38e3730a3d30b85e30cf2cabb1d023ec4c4a81dc",
+      "bt_autohunt_old_normal.bmp": "c157c141b5df1ab0af327d7c70bb62d6d06dce525be430f9fdab7d0fc2caf329",
+      "bt_bank_old_normal.bmp": "c7d5092c2d36e232902bc7ef8eac3fa63ff47b24f0a274475832fb67f4482499",
+      "bt_battle_old_normal.bmp": "4888084be5ae485427855d6f0d42f77b71f5e1bc2f64e01f8e6c82109f02938e",
+      "bt_booking_old_normal.bmp": "e60186440c6764018550345d4e21cfd80d72110f9c6a9605b23f3aeb03dfdc57",
+      "bt_chatting_old_normal.bmp": "0afb9713f00fd08cca221213e68c55307a5f3db726b2eae6088b7d8c09914d10",
+      "bt_coupon_old_normal.bmp": "cf581b27b0508d08026a401fe0319e4afb0afb95148f6a3a23036e41cf9f3c7e",
+      "bt_equip_old_normal.bmp": "df08f878f9dbdf4a2b0018b02c418b7929dec3a4d47d9124f99b45824aa0c0a6",
+      "bt_guild_old_normal.bmp": "705bb56e29832617270ca9fe04dce61e7fcdf1f9bb0bef96b4b73b3459f848be",
+      "bt_item_old_normal.bmp": "16e13add59ee9227dfa579c5a7b1cc4a8cee858a354afb94f9c69bdc18503a2c",
+      "bt_itemcollection_old_normal.bmp": "cf581b27b0508d08026a401fe0319e4afb0afb95148f6a3a23036e41cf9f3c7e",
+      "bt_keyboard_old_normal.bmp": "f22676d0357e976f776563242824304a3cbca7485c3373e19648f7b3bb5c14f4",
+      "bt_mail_old_normal.bmp": "184934329967bb1ad71be6299eea21560c6d4458bd1ac14efa884e25d0c4fa34",
+      "bt_map_old_normal.bmp": "5f4f775d4dce993d96b25f43697a6146101d4039dd5553a5ffbb0749cfcde78b",
+      "bt_navigation_old_normal.bmp": "bf912123685b7681311a37604d1305b4f0e24064b84dba63fe06ac21ffafc0eb",
+      "bt_option_old_normal.bmp": "17d638c82efd3ffc0886375bb1a9203454174c1ba5262bd4f971396c081fddc2",
+      "bt_party_old_normal.bmp": "1aea24a0291ea309ef8aadd63ae35b34bff2dc0482b494fed8de2f0999651b4c",
+      "bt_probability_old_normal.bmp": "5c45eacc052add67787a10860f75cf1a58735ff5d278ad9b090c7315061a1ed1",
+      "bt_quest_old_normal.bmp": "43884f850ae23bddb7188816e9fe37b204b5b768f687c7f827b0b0d51aa785bf",
+      "bt_rec_old_normal.bmp": "8f67f293b2b20d0b91e66f14b1bf2abdf19f6f414917eb23f30dc7603c7c5715",
+      "bt_repute_old_normal.bmp": "d9a1ba4565d42b29e5e4d78a36f0199a8747a970704bff61656b9964847edd3f",
+      "bt_rofactory_old_normal.bmp": "1388beab11b0ccd5ab7a784ac8fc4bc7b1ef75e677ddc34b14fcaf3b168f8074",
+      "bt_shop_old_normal.bmp": "6e5a01b046c03d72f73a4cc6ac568fb52aba06c0756715628f218549fa4ee6c4",
+      "bt_skill_old_normal.bmp": "da180805b5154a16f430e82ed1d2f9809eff092e6a44d990622ae20b196d014a",
+      "bt_sns_old_normal.bmp": "830122f4530352885dd08873bd7c18208c6cb81d072b2d5131e68cf785fa0b29",
+      "bt_status_doram_old_normal.bmp": "c008db6eac21e1386c7d0d567814cf6bbc7fd4f903f9757706a6af1998bc70a4",
+      "bt_status_old_normal.bmp": "6b8508b1448ced39500bad4b376b25180721228137752cc08f365fb0fa48e142",
+      "bt_tip_old_normal.bmp": "9198de040f68205abcced7c501d543014ad0ae9fab45331d7daf4bd8154d510d"
+    },
+    "icon_clear_rectangle": [
+      4,
+      5,
+      28,
+      30
+    ],
+    "native_background_rgb": [
+      42,
+      57,
+      79
+    ]
+  },
+  "mouseon": {
+    "frame_sha256": "3153569fb809717a6649e708a66d8e861c5e43a753053aea344411c82c1b2db8",
+    "inputs": {
+      "bt_achievement_old_mouseon.bmp": "e951251efccf7a5f153f44307a551bb859f8d2d967c98c425fa04db7c8e95d36",
+      "bt_adventureguide_old_mouseon.bmp": "d399171d1a9b34f13dfe9ce0542754db4fe105c56525bb0726b7d7e52c747bd9",
+      "bt_adventureragency_old_mouseon.bmp": "e60186440c6764018550345d4e21cfd80d72110f9c6a9605b23f3aeb03dfdc57",
+      "bt_attendance_old_mouseon.bmp": "39c44e8111233d7d54d9f92b38e3730a3d30b85e30cf2cabb1d023ec4c4a81dc",
+      "bt_autohunt_old_mouseon.bmp": "c157c141b5df1ab0af327d7c70bb62d6d06dce525be430f9fdab7d0fc2caf329",
+      "bt_bank_old_mouseon.bmp": "c7d5092c2d36e232902bc7ef8eac3fa63ff47b24f0a274475832fb67f4482499",
+      "bt_battle_old_mouseon.bmp": "4888084be5ae485427855d6f0d42f77b71f5e1bc2f64e01f8e6c82109f02938e",
+      "bt_booking_old_mouseon.bmp": "e60186440c6764018550345d4e21cfd80d72110f9c6a9605b23f3aeb03dfdc57",
+      "bt_chatting_old_mouseon.bmp": "0afb9713f00fd08cca221213e68c55307a5f3db726b2eae6088b7d8c09914d10",
+      "bt_coupon_old_mouseon.bmp": "784f34836ed1373f1b36d391cd77348ab7d8e6f5ceb3b3268073a575875a3c88",
+      "bt_equip_old_mouseon.bmp": "df08f878f9dbdf4a2b0018b02c418b7929dec3a4d47d9124f99b45824aa0c0a6",
+      "bt_guild_old_mouseon.bmp": "705bb56e29832617270ca9fe04dce61e7fcdf1f9bb0bef96b4b73b3459f848be",
+      "bt_item_old_mouseon.bmp": "16e13add59ee9227dfa579c5a7b1cc4a8cee858a354afb94f9c69bdc18503a2c",
+      "bt_itemcollection_old_mouseon.bmp": "784f34836ed1373f1b36d391cd77348ab7d8e6f5ceb3b3268073a575875a3c88",
+      "bt_keyboard_old_mouseon.bmp": "f22676d0357e976f776563242824304a3cbca7485c3373e19648f7b3bb5c14f4",
+      "bt_mail_old_mouseon.bmp": "184934329967bb1ad71be6299eea21560c6d4458bd1ac14efa884e25d0c4fa34",
+      "bt_map_old_mouseon.bmp": "5f4f775d4dce993d96b25f43697a6146101d4039dd5553a5ffbb0749cfcde78b",
+      "bt_navigation_old_mouseon.bmp": "bf912123685b7681311a37604d1305b4f0e24064b84dba63fe06ac21ffafc0eb",
+      "bt_option_old_mouseon.bmp": "17d638c82efd3ffc0886375bb1a9203454174c1ba5262bd4f971396c081fddc2",
+      "bt_party_old_mouseon.bmp": "1aea24a0291ea309ef8aadd63ae35b34bff2dc0482b494fed8de2f0999651b4c",
+      "bt_probability_old_mouseon.bmp": "5c45eacc052add67787a10860f75cf1a58735ff5d278ad9b090c7315061a1ed1",
+      "bt_quest_old_mouseon.bmp": "43884f850ae23bddb7188816e9fe37b204b5b768f687c7f827b0b0d51aa785bf",
+      "bt_rec_old_mouseon.bmp": "8f67f293b2b20d0b91e66f14b1bf2abdf19f6f414917eb23f30dc7603c7c5715",
+      "bt_rofactory_old_mouseon.bmp": "1388beab11b0ccd5ab7a784ac8fc4bc7b1ef75e677ddc34b14fcaf3b168f8074",
+      "bt_shop_old_mouseon.bmp": "6e5a01b046c03d72f73a4cc6ac568fb52aba06c0756715628f218549fa4ee6c4",
+      "bt_skill_old_mouseon.bmp": "da180805b5154a16f430e82ed1d2f9809eff092e6a44d990622ae20b196d014a",
+      "bt_sns_old_mouseon.bmp": "830122f4530352885dd08873bd7c18208c6cb81d072b2d5131e68cf785fa0b29",
+      "bt_status_doram_old_mouseon.bmp": "c008db6eac21e1386c7d0d567814cf6bbc7fd4f903f9757706a6af1998bc70a4",
+      "bt_status_old_mouseon.bmp": "6b8508b1448ced39500bad4b376b25180721228137752cc08f365fb0fa48e142",
+      "bt_tip_old_mouseon.bmp": "9198de040f68205abcced7c501d543014ad0ae9fab45331d7daf4bd8154d510d"
+    },
+    "icon_clear_rectangle": [
+      4,
+      5,
+      28,
+      30
+    ],
+    "native_background_rgb": [
+      42,
+      57,
+      79
+    ]
+  },
+  "pressed": {
+    "frame_sha256": "99a00c67b3845558bc8d2c85c829e4549842bcfc2b0a48807ad2642fa69833fa",
+    "inputs": {
+      "bt_achievement_old_pressed.bmp": "3b047905778b9763b9813ccab4eacb59a2478d575c89d665b09c613e32448820",
+      "bt_adventureguide_old_pressed.bmp": "f6169561f5f6cceadf7af92498ac52f36fbe4717f02048477f1d9e5d3d1b20fe",
+      "bt_adventureragency_old_pressed.bmp": "e3e045ef6cc6e1fe4f954654688b9d312d0787b859c6d3866dd34dfc3db4d840",
+      "bt_attendance_old_pressed.bmp": "e472f730cf6cc263ddeb0756615e5681188dbc52ce7d5da5220ee45e7c8c3077",
+      "bt_autohunt_old_pressed.bmp": "3333dcf7cc48cf049a99d020f851ff74b8a7b6ef0348f652aaaa12c0834380d8",
+      "bt_bank_old_pressed.bmp": "bce612609134573d2c4536b27dc43a074896bd463ddb82f3b901e36681a0d3b6",
+      "bt_battle_old_pressed.bmp": "c8b431767b4f99694a81971520609a7f59a5599a2199b2435d4d62fb53c1b9e0",
+      "bt_booking_old_pressed.bmp": "e3e045ef6cc6e1fe4f954654688b9d312d0787b859c6d3866dd34dfc3db4d840",
+      "bt_chatting_old_pressed.bmp": "c87cdcde0a3f5bc0d451f160fbe4324ecb322706103fc58dd211c1675d45408a",
+      "bt_coupon_old_pressed.bmp": "74a3008e75d71ced922bc4dded4b932863676fb423dd9c794e755c5941c7fba1",
+      "bt_equip_old_pressed.bmp": "3238b208fd222e044807f78920fc40db526aa2dbac44950ff582c0afdff0b7c6",
+      "bt_guild_old_pressed.bmp": "9adcfef0522cef4f5882e98128081f33af58960b1b01656d078c164e40f954e1",
+      "bt_item_old_pressed.bmp": "5fe8caa51ffce45d757a954460ae95237aa4b550a341f83097fd10ac120f4332",
+      "bt_itemcollection_old_pressed.bmp": "74a3008e75d71ced922bc4dded4b932863676fb423dd9c794e755c5941c7fba1",
+      "bt_keyboard_old_pressed.bmp": "1d8ffa237a451b72be4fa9e7caba4321d242f9e397941d3d568be7787a4f0b7d",
+      "bt_mail_old_pressed.bmp": "ac3fd7bf5ce0e59c3c61cec963c50d116c9f45fde326c001527004fda2f721c5",
+      "bt_map_old_pressed.bmp": "50a75a11dea1fe56cdbe00153f8d5776b29a3a4d42ca60466f5c225d0853b921",
+      "bt_navigation_old_pressed.bmp": "386b2997a12acbb6ff158295f61019896f632a29f68d6a53abec67eb0ef04ef5",
+      "bt_option_old_pressed.bmp": "b5f0244cf832b58eb703c549c2e8573ca86455ce75f2b2deb771db2b6e934521",
+      "bt_party_old_pressed.bmp": "ad76f187d7f6d953080a93243dcd5cbecfc6e07aa884f8fedaf8b64fa4e76748",
+      "bt_probability_old_pressed.bmp": "ea162e849f5f6b6065bd8a74103f1140baf4f09e4ff1a5c19adb440befabe914",
+      "bt_quest_old_pressed.bmp": "5455d160c6802b7319659265686f1554041fbee6bfab0c5246adf5c67fcccd50",
+      "bt_rec_old_pressed.bmp": "8ffc641cdc9f1b4d0f9e499c57753815f382b1d49d6fcaa5ad39e7bd24e9a244",
+      "bt_repute_old_pressed.bmp": "f0349aa02e2827890d4c6a18b325aecb415c08691f74ef780ef1564b49baa533",
+      "bt_rofactory_old_pressed.bmp": "5ce00dc60da7fe066608de153f95ca0c0bfcd32868d674390363ebb39509f210",
+      "bt_shop_old_pressed.bmp": "84fd1252c6c9b0bd527b8c1d46c2dcaad0dfae35fa7b7025ace369a60e036d1b",
+      "bt_skill_old_pressed.bmp": "588c1cca5728dc369eb979b459ad71505fe82bac8cbf19f85c0bd5fa8cb35d7e",
+      "bt_sns_old_pressed.bmp": "7e282ca0a284af1d6fa1e4989f6b39aa14aee481a02bc43e58139848c44ac3ca",
+      "bt_status_doram_old_pressed.bmp": "8e42862e82e3ac2969380f0606e3d7298c197a4e3184bcc438ec8f0534f39314",
+      "bt_status_old_pressed.bmp": "e1f8256299c93db8ae7b912bde353a0c15addf3da4578034e63195c132b8b99a",
+      "bt_tip_old_pressed.bmp": "98c661ce0be818ce95674c2ce922391c278fea82b9e354a0967c2f88bce0b58b"
+    },
+    "icon_clear_rectangle": [
+      4,
+      5,
+      28,
+      30
+    ],
+    "native_background_rgb": [
+      60,
+      88,
+      131
+    ]
+  }
+}

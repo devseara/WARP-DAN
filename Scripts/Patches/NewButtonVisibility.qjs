@@ -386,130 +386,155 @@ NewButtonVis.stage = function(patchName)
 {
 	const _ = `${patchName}.stage : `;
 
-	$$(_, 1.1, `Begin the common tag`)
-	Exe.BeginTag(CACHE.getTag('NBV'), true);
-
-	$$(_, 1.2, `Prepare the array to store IDs of newly visible buttons (Used for Type 2)`)
-	let onIDs = [];
-
-	$$(_, 1.3, `Retrieve the stored reference db`)
-	const Refs = CACHE.get('NBV_Refs');
-
-	const {Type, IDMap, IDReg, TblAddrs} = Refs;
+	// Visibility cells belong to the feature allocation, never the NBV tag.
+	// WARP's tag deallocator may reclaim a foreign allocation containing a
+	// tagged write, so finish custom edits before beginning the native tag.
 	CACHE.del(this.CustomVisibilityKey);
-
-	$$(_, 2.2, `Iterate through the current selection and change the value in table or add corresponding JE to code`)
-	const index = this.Members.indexOf(patchName);
-	let selection = CACHE.get('Selection:' + patchName);
-
-	let prefix = '';
-	for (const key of selection)
+	this.restoreCustomVisibility();
+	const customIndex = this.Members.indexOf(patchName);
+	let hasNativeSelection = false;
+	// Apply the edited patch last when both selections contain a custom button.
+	for (const index of [1 - customIndex, customIndex])
 	{
-		if (this.applyCustomVisibility(key, index))
-			continue;
-		if (TblAddrs && TblAddrs.has(key))
-		{
-			Exe.SetInt8(TblAddrs.get(key), index);
-		}
-		else
-		{
-			const id = IDMap.get(key);
-			prefix +=
-				CMP(IDReg, id) //cmp regA, ID
-			+	JE(Filler(1))  //je <onAddr> / je <offAddr>
-			;
-
-			if (index === 1 && Type === 2)
-				onIDs.push(id);
-		}
+		for (const label of CACHE.get('Selection:' + this.Members[index]) ?? [])
+			if (!this.applyCustomVisibility(label, index)) hasNativeSelection = true;
 	}
+	if (!hasNativeSelection) return;
 
-	$$(_, 2.3, `Repeat the process for the other selection`)
-	const otherIndex = 1 - index;
-	const otherPatch = this.Members[otherIndex];
-	selection = CACHE.get('Selection:' + otherPatch);
+	$$(_, 1.1, `Begin the common tag`)
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag(CACHE.getTag('NBV'));
 
-	let suffix = '';
-	if (selection)
+	try
 	{
+		$$(_, 1.2, `Prepare the array to store IDs of newly visible buttons (Used for Type 2)`)
+		let onIDs = [];
+
+		$$(_, 1.3, `Retrieve the stored reference db`)
+		const Refs = CACHE.get('NBV_Refs');
+
+		const {Type, IDMap, IDReg, TblAddrs} = Refs;
+
+		$$(_, 2.2, `Iterate through the current selection and change the value in table or add corresponding JE to code`)
+		const index = this.Members.indexOf(patchName);
+		let selection = CACHE.get('Selection:' + patchName);
+
+		let prefix = '';
 		for (const key of selection)
 		{
-			if (this.applyCustomVisibility(key, otherIndex))
+			if (this.customButton(key))
 				continue;
 			if (TblAddrs && TblAddrs.has(key))
 			{
-				Exe.SetInt8(TblAddrs.get(key), otherIndex);
+				Exe.SetInt8(TblAddrs.get(key), index);
 			}
 			else
 			{
 				const id = IDMap.get(key);
-				suffix +=
+				prefix +=
 					CMP(IDReg, id) //cmp regA, ID
-				+	JE(Filler(2))  //je <offAddr> / je <onAddr>
+				+	JE(Filler(1))  //je <onAddr> / je <offAddr>
 				;
 
-				if (otherIndex === 1 && Type === 2)
+				if (index === 1 && Type === 2)
 					onIDs.push(id);
 			}
 		}
-	}
 
-	if (prefix.isEmpty() && suffix.isEmpty())
-		return;
+		$$(_, 2.3, `Repeat the process for the other selection`)
+		const otherIndex = 1 - index;
+		const otherPatch = this.Members[otherIndex];
+		selection = CACHE.get('Selection:' + otherPatch);
 
-	$$(_, 2.4, `Now fill up the rest`)
-	let parts =
-	[
-		prefix
-		,
-		suffix
-	];
-
-	if (Type === 1)
-	{
-		const {MinLimit, Range} = Refs;
-		parts.push(
-			LEA(EAX, [IDReg, -MinLimit]) //lea eax, [regA - minLimit]
-		+	CMP(EAX, Range)              //cmp eax, <range>
-		+	JA(Filler(3))                //ja <onAddr>
-		+	JMP(Filler(4))               //jmp <retnAddr> ; address of the MOVZX
-		);
-	}
-	else
-	{
-		const {OffIDs} = Refs;
-
-		for (const id of OffIDs)
+		let suffix = '';
+		if (selection)
 		{
-			if (onIDs.includes(id))
-				continue;
+			for (const key of selection)
+			{
+				if (this.customButton(key))
+					continue;
+				if (TblAddrs && TblAddrs.has(key))
+				{
+					Exe.SetInt8(TblAddrs.get(key), otherIndex);
+				}
+				else
+				{
+					const id = IDMap.get(key);
+					suffix +=
+						CMP(IDReg, id) //cmp regA, ID
+					+	JE(Filler(2))  //je <offAddr> / je <onAddr>
+					;
+
+					if (otherIndex === 1 && Type === 2)
+						onIDs.push(id);
+				}
+			}
+		}
+
+		if (prefix.isEmpty() && suffix.isEmpty())
+			return;
+
+		$$(_, 2.4, `Now fill up the rest`)
+		let parts =
+		[
+			prefix
+			,
+			suffix
+		];
+
+		if (Type === 1)
+		{
+			const {MinLimit, Range} = Refs;
+			parts.push(
+				LEA(EAX, [IDReg, -MinLimit]) //lea eax, [regA - minLimit]
+			+	CMP(EAX, Range)              //cmp eax, <range>
+			+	JA(Filler(3))                //ja <onAddr>
+			+	JMP(Filler(4))               //jmp <retnAddr> ; address of the MOVZX
+			);
+		}
+		else
+		{
+			const {OffIDs} = Refs;
+
+			for (const id of OffIDs)
+			{
+				if (onIDs.includes(id))
+					continue;
+
+				parts.push(
+					CMP(IDReg, id)           //cmp regA, ID
+				+	JZ(Filler(3))            //jz <offAddr>
+				);
+			}
 
 			parts.push(
-				CMP(IDReg, id)           //cmp regA, ID
-			+	JZ(Filler(3))            //jz <offAddr>
+				JMP(Filler(4))             //jmp <onAddr>
 			);
 		}
 
-		parts.push(
-			JMP(Filler(4))             //jmp <onAddr>
-		);
+		$$(_, 2.5, `Prepare the arguments for auto-hook`)
+		const {OffAddr, OnAddr, HookAddr, RetnAddr} = Refs;
+
+		const args =
+		{
+			targets : {
+				1 : index === 0 ? OffAddr : OnAddr,
+				2 : index === 0 ? OnAddr : OffAddr,
+				3 : Type  === 1 ? OnAddr : OffAddr,
+				4 : RetnAddr
+			}
+		};
+
+		$$(_, 2.6, `Add our code and jump to it from HookAddr`)
+		AutoHook(HookAddr, parts, args);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
 	}
 
-	$$(_, 2.5, `Prepare the arguments for auto-hook`)
-	const {OffAddr, OnAddr, HookAddr, RetnAddr} = Refs;
-
-	const args =
-	{
-		targets : {
-			1 : index === 0 ? OffAddr : OnAddr,
-			2 : index === 0 ? OnAddr : OffAddr,
-			3 : Type  === 1 ? OnAddr : OffAddr,
-			4 : RetnAddr
-		}
-	};
-
-	$$(_, 2.6, `Add our code and jump to it from HookAddr`)
-	AutoHook(HookAddr, parts, args);
 };
 
 ///
@@ -524,9 +549,13 @@ NewButtonVis.validate = () =>
 NewButtonVis.cleanup = function(patchName)
 {
 	/// 1 - Delete from UserRegistry & clear the selection
-	CACHE.delUser('NBV', patchName);
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	try { CACHE.delUser('NBV', patchName); }
+	finally { Exe.ActivePatch = owner; }
 	CACHE.del('Selection:' + patchName);
 	CACHE.del(this.CustomVisibilityKey);
+	this.restoreCustomVisibility();
 
 	/// 2 - Restage the changes without the selections in the other patch if it is present.
 	if (CACHE.hasUsers('NBV'))
@@ -534,7 +563,8 @@ NewButtonVis.cleanup = function(patchName)
 		patchName = CACHE.firstUser('NBV');
 
 		Exe.SetActivePatch(patchName);
-		this.stage(patchName);
+		try { this.stage(patchName); }
+		finally { Exe.ActivePatch = owner; }
 	}
 };
 
@@ -580,7 +610,8 @@ NewButtonVis.CustomVisibilityKey = "NewButtonVisibility.CustomVisibility.v1";
 NewButtonVis.CustomButtons = [
 	{label: "Auto Hunt", bridgeKey: "AutoCombatUI.MenuButton.v1"},
 	{label: "AutoSupport", bridgeKey: "AutoSupportUI.MenuButton.v1"},
-	{label: "Item Collection", bridgeKey: "ItemCollectionUI.MenuButton.v1"}
+	{label: "Item Collection", bridgeKey: "ItemCollectionUI.MenuButton.v1"},
+	{label: "Bestiary", bridgeKey: "BestiaryUI.MenuButton.v1"}
 ];
 
 NewButtonVis.customButton = function(label)
@@ -617,10 +648,29 @@ NewButtonVis.applyCustomVisibility = function(label, visible)
 		return false;
 
 	this.setCustomVisibility(customButton.label, visible);
-	const bridge = CACHE.get(customButton.bridgeKey);
-	if (bridge && Number.isInteger(bridge.visiblePhy))
-		Exe.SetUint32(bridge.visiblePhy, visible);
+	this.writeCustomVisibility(customButton, visible);
 	return true;
+};
+
+// A visibility edit inside another patch's allocation is not undone by DelTag.
+// Keep these writes under the producer and explicitly restore its default when
+// a selection is removed. Never reactivate an absent producer to edit its cell.
+NewButtonVis.writeCustomVisibility = function(customButton, visible)
+{
+	const bridge = CACHE.get(customButton.bridgeKey);
+	const producer = customButton.bridgeKey.split(".")[0];
+	if (!bridge || !Number.isInteger(bridge.visiblePhy) || !Warp.GetPatchState(producer))
+		return;
+	const owner = Exe.ActivePatch;
+	Exe.SetActivePatch(producer);
+	try { Exe.SetUint32(bridge.visiblePhy, visible); }
+	finally { Exe.ActivePatch = owner; }
+};
+
+NewButtonVis.restoreCustomVisibility = function()
+{
+	for (const customButton of this.CustomButtons)
+		this.writeCustomVisibility(customButton, 1);
 };
 
 // Address-stable cells are global to the loaded EXE. Only the selected producer

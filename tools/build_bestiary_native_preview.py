@@ -3,7 +3,7 @@
 No DLL is deployed. PE is only a build container; WARP injects its code/data.
 """
 from pathlib import Path
-import argparse,hashlib,json,struct,subprocess
+import argparse, hashlib, json, subprocess
 import pefile
 
 ROOT=Path(__file__).resolve().parents[1]
