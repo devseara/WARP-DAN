@@ -1,0 +1,28 @@
+{
+  "status": "accepted_installed",
+  "date": "2026-09-13",
+  "user_message": "accepted",
+  "files": [
+    {
+      "path": "assets/female-angel-mage-v8.spr",
+      "sha256": "7772443160846114870d1639651ce447522381d8ba53acb4087cfda0ab6f9d96"
+    },
+    {
+      "path": "assets/female-angel-mage-v8.act",
+      "sha256": "e85b0e1a6544b8515f26bacfb50711cf269333be88323743fe63d760cd6d215c"
+    }
+  ],
+  "asset_root": "Assets/ClanBodySkins/Mage/female-gait-v8",
+  "constant_torso_core_hash": "51236e181be727715e8349923b8656b4ad5cac6a52ccfc30ed9cdb06a2166d8c",
+  "changed_frames": 8,
+  "unchanged_frame_uses": 448,
+  "actions": 104,
+  "frame_uses": 456,
+  "maindata_sha256": "aeb805f9a303fbf7923c84496cc4bbc1da26f21dbcac65457170db73e83e4928",
+  "patch_sha256": "1446aa88ec2a9fba7b2a34774f463364c709856edfac0bc05f8a3e7c0d8172bb",
+  "unrelated_records_preserved": 18277,
+  "live_after_install_checked": false,
+  "transaction": "Assets/ClanBodySkins/Mage/female-gait-v8/maindata-correction-transaction.json",
+  "superseded_by": "clan-female-mage-v9.json",
+  "subsequent_live_issue": "Hand-removal masks erased dress pixels"
+}

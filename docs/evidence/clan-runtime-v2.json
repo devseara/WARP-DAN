@@ -1,0 +1,114 @@
+{
+  "status": "source_and_export_verified",
+  "cases": [
+    {
+      "client": "Outputs\\native-act-warp-q7rf0mjv\\clan-only\\client.exe",
+      "sha256": "b765acfde541918e32054f2dc04ed9d225bf1f632abda231e37373897e5f4f32",
+      "payload_va": "0x171d350",
+      "payload_bytes": 58416,
+      "hooks": 4,
+      "preview_calls": 0,
+      "stock_ui_calls_verified": 9,
+      "native_api": [
+        2,
+        24295312,
+        24295328,
+        24295344,
+        24295360,
+        5183808,
+        5179632,
+        5715792,
+        5714016,
+        16593012
+      ],
+      "relocated_payload_matches": true,
+      "unrelated_native_code_unchanged": true,
+      "live_game_tested": false,
+      "perspective": {
+        "bridge_va": 24295376,
+        "bridge_bytes": 208,
+        "continuation_va": 12887623,
+        "continuation": "independent_native_boundary",
+        "allocation_end": 24295584,
+        "canonical_code_matches": true,
+        "original_instructions_replayed": true
+      },
+      "case": "clan-only"
+    },
+    {
+      "client": "Outputs\\native-act-warp-q7rf0mjv\\clan-first\\client.exe",
+      "sha256": "728243bd0d01151a3e53288432d97ba807a442cdb1906b358695cf10e7119c8d",
+      "payload_va": "0x171d350",
+      "payload_bytes": 58416,
+      "hooks": 4,
+      "preview_calls": 0,
+      "stock_ui_calls_verified": 9,
+      "native_api": [
+        2,
+        24295312,
+        24295328,
+        24295344,
+        24295360,
+        5183808,
+        5179632,
+        5715792,
+        5714016,
+        16593012
+      ],
+      "relocated_payload_matches": true,
+      "unrelated_native_code_unchanged": false,
+      "live_game_tested": false,
+      "perspective": {
+        "bridge_va": 24295376,
+        "bridge_bytes": 208,
+        "continuation_va": 12887623,
+        "continuation": "independent_native_boundary",
+        "allocation_end": 24295584,
+        "canonical_code_matches": true,
+        "original_instructions_replayed": true
+      },
+      "native_preview_verified": true,
+      "unrelated_native_code_verified": true,
+      "native_changed_bytes": 194,
+      "case": "clan-first"
+    },
+    {
+      "client": "Outputs\\native-act-warp-q7rf0mjv\\native-first\\client.exe",
+      "sha256": "728243bd0d01151a3e53288432d97ba807a442cdb1906b358695cf10e7119c8d",
+      "payload_va": "0x171d350",
+      "payload_bytes": 58416,
+      "hooks": 4,
+      "preview_calls": 0,
+      "stock_ui_calls_verified": 9,
+      "native_api": [
+        2,
+        24295312,
+        24295328,
+        24295344,
+        24295360,
+        5183808,
+        5179632,
+        5715792,
+        5714016,
+        16593012
+      ],
+      "relocated_payload_matches": true,
+      "unrelated_native_code_unchanged": false,
+      "live_game_tested": false,
+      "perspective": {
+        "bridge_va": 24295376,
+        "bridge_bytes": 208,
+        "continuation_va": 12887623,
+        "continuation": "independent_native_boundary",
+        "allocation_end": 24295584,
+        "canonical_code_matches": true,
+        "original_instructions_replayed": true
+      },
+      "native_preview_verified": true,
+      "unrelated_native_code_verified": true,
+      "native_changed_bytes": 194,
+      "case": "native-first"
+    }
+  ],
+  "live_tested": false
+}

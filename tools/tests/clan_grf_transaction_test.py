@@ -1,0 +1,75 @@
+"""Prove record replacement/removal and exact rollback on small GRF fixtures."""
+from pathlib import Path
+import json
+import sys
+import tempfile
+import unittest
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'tools'))
+from package_clan_skin_assets import pack_payloads
+from clan_grf_transaction import replace_records, rollback, digest
+from grf_reader import GrfFile
+from release_accepted_clan_sprites import validate_active_release
+
+
+class TransactionTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix='clan-grf-test-', dir=ROOT / 'Outputs')
+        self.root = Path(self.temp.name).resolve()
+        assert self.root.is_relative_to((ROOT / 'Outputs').resolve())
+        self.target = self.root / 'fixture.grf'
+        self.receipt = self.root / 'receipt.json'
+        pack_payloads({'data/keep.bin': b'unchanged', 'data/change.bin': b'old',
+                       'data/remove.bin': b'duplicate'}, self.target)
+        self.before = self.target.read_bytes()
+
+    def tearDown(self):
+        assert self.root.is_relative_to((ROOT / 'Outputs').resolve())
+        self.temp.cleanup()
+
+    def test_replace_add_remove_preserve_and_rollback(self):
+        row = replace_records(self.target, {'data/change.bin': b'new', 'data/add.bin': b'added'},
+                              self.receipt, remove=['data/remove.bin'])
+        self.assertEqual(row['entries'], 3)
+        archive = GrfFile(self.target)
+        try:
+            self.assertEqual(set(archive.entries), {'data/keep.bin', 'data/change.bin', 'data/add.bin'})
+            self.assertEqual(archive.read('data/keep.bin'), b'unchanged')
+            self.assertEqual(archive.read('data/change.bin'), b'new')
+        finally:
+            archive.close()
+        rollback(self.receipt)
+        self.assertEqual(self.target.read_bytes(), self.before)
+
+    def test_unchanged_is_noop_and_changed_archive_blocks_rollback(self):
+        row = replace_records(self.target, {'data/change.bin': b'old'}, self.receipt)
+        self.assertEqual(row['status'], 'already_current')
+        self.assertEqual(self.target.read_bytes(), self.before)
+        replace_records(self.target, {'data/change.bin': b'new'}, self.receipt)
+        with self.target.open('ab') as stream:
+            stream.write(b'external change')
+        expected = digest(self.target)
+        with self.assertRaisesRegex(AssertionError, 'Archive changed'):
+            rollback(self.receipt)
+        self.assertEqual(digest(self.target), expected)
+
+
+class ReleaseManifestTests(unittest.TestCase):
+    def test_current_manifest_matches_active_correction_and_v7_is_rejected(self):
+        current = json.loads((ROOT / 'docs/evidence/clan-sprites-current.json').read_text(encoding='utf8'))
+        historical = json.loads((ROOT / 'docs/evidence/clan-sprites-accepted-v2.json').read_text(encoding='utf8'))
+        state = dict(status='deployed_requested_correction', resources=[
+            row for row in current['resources'] if row['job'] == 'mage' and row['sex'] == 'female'])
+        validate_active_release(current, state)
+        with self.assertRaisesRegex(ValueError, 'downgrade'):
+            validate_active_release(historical, state)
+
+    def test_unpinned_pending_correction_refuses_release(self):
+        current = json.loads((ROOT / 'docs/evidence/clan-sprites-current.json').read_text(encoding='utf8'))
+        with self.assertRaisesRegex(ValueError, 'downgrade'):
+            validate_active_release(current, dict(status='prepared_requested_correction', resources=[]))
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

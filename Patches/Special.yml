@@ -62,6 +62,12 @@ CustomSpecials:
             author : Louis T Steinhil
             desc : "2025-07-16 build-specific global HatEffect depth patch, live validated on 2026-07-14. It preserves every original HatEffect STR resource, animation, actor attachment, metadata, teardown, screen-space position, apparent scale, and RHW. During only the two generic HatEffect render methods, vertices at/below actor-anchor Y retain a floor-safe four-quantum contact-biased depth; upper vertices reconstruct Y-up reciprocal depth using projection-matrix +0x10/+0x14 and convert it through 0x00554040. Native world STR NPCs remain unchanged."
         
+        - ClanBodySkins:
+            title : Clan Body Skins (2025-07-16)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Routes server-selected clan body skins through native job, sex and resource paths. Preserves real jobs and body-only perspective correction. Select NativeActJobPreviews for Alt+Q/Alt+S rendering from the same world SPR/ACT pairs. Requires matching server integration and complete skin assets; no new job Lua declarations."
+
         - CustomJobs:
             title : Enable Custom Jobs (Reforged)
             recommend : no

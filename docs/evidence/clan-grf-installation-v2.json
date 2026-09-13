@@ -1,0 +1,51 @@
+{
+  "status": "installed",
+  "authoritative_archive": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+  "maindata_sha256": "e79b99083452943ac24d5fa30d7cc43bafb77d5353591b8d38ec3aaddd72f07b",
+  "update_sha256": "d695bf11d1cbcc7f1ad1a1e982f471eca3839c7432bd21949993c71a17bf9f28",
+  "patch_sha256": "3181e9a24ece43cab51a05d2c6be6e551c194df8f0f71a2e4f8afdf5f3c5861b",
+  "world_entries": 8,
+  "duplicate_update_entries_removed": 16,
+  "archive_priority_verified": true,
+  "exe_modified": false,
+  "maindata_changes": {
+    "before_sha256": "924ce6ab86ce069f1d20620347a646533ffabb505af664a97e522676b589ee74",
+    "after_sha256": "e79b99083452943ac24d5fa30d7cc43bafb77d5353591b8d38ec3aaddd72f07b",
+    "added": [],
+    "replaced": [
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.act",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.spr"
+    ],
+    "removed": [],
+    "entries": 18279,
+    "unrelated_records_preserved": 18277,
+    "rollback_reconstruction_sha256": "924ce6ab86ce069f1d20620347a646533ffabb505af664a97e522676b589ee74"
+  },
+  "update_changes": {
+    "before_sha256": "c6cf952f50142d5adf1ac28d5f4f9b81b188d4aa00979f34db3479b90d3c9ffc",
+    "after_sha256": "d695bf11d1cbcc7f1ad1a1e982f471eca3839c7432bd21949993c71a17bf9f28",
+    "added": [],
+    "replaced": [],
+    "removed": [
+      "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.act",
+      "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.spr",
+      "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.act",
+      "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.spr",
+      "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.act",
+      "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.spr",
+      "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.act",
+      "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.spr",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.act",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.spr",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.act",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.spr",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.act",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.spr",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.act",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.spr"
+    ],
+    "entries": 20405,
+    "unrelated_records_preserved": 20405,
+    "rollback_reconstruction_sha256": "c6cf952f50142d5adf1ac28d5f4f9b81b188d4aa00979f34db3479b90d3c9ffc"
+  }
+}

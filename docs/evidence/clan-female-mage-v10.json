@@ -1,0 +1,36 @@
+{
+  "status": "accepted_installed",
+  "files": [
+    {
+      "path": "assets/female-angel-mage-v10.spr",
+      "sha256": "c2b95522379e7177b2eb5ee048cd197a8341623db5aa351170f1298ce3451187"
+    },
+    {
+      "path": "assets/female-angel-mage-v10.act",
+      "sha256": "c0f57499f23f501230b24268f025c2c5da192b6b58b2587c44805fabbfe4dec6"
+    }
+  ],
+  "asset_root": "Assets/ClanBodySkins/Mage/female-gait-v10",
+  "maindata_sha256": "a6b7af09144a0c1490e01001badb29190f71142e2da62d17c9915068148ab627",
+  "patch_sha256": "c7dde6fc8833e4c44e9b307f8753b88c1185fbbc3dcb0e9b80d80d6fe854b352",
+  "changed_actions": [
+    8,
+    12
+  ],
+  "changed_frames": 16,
+  "unchanged_frame_uses": 440,
+  "actions": 104,
+  "frame_uses": 456,
+  "minimum_jacobian": 0.345121442238156,
+  "maximum_landmark_error_native": 7.162817862987955e-05,
+  "post_fit_scale_range": [
+    0.985,
+    1.0250000000000001
+  ],
+  "native_head_anchors_preserved": true,
+  "lower_stride_pixels_preserved": true,
+  "unrelated_grf_records_preserved": 18277,
+  "visual_acceptance": "Accepted by user 2026-09-13",
+  "user_message": "accepted",
+  "acceptance_date": "2026-09-13"
+}

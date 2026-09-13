@@ -38,6 +38,14 @@ tools/build_female_family_profile.py text eol=lf
 tools/build_male_axe_profile.py text eol=lf
 tools/inspect_client_grf_handles.py text eol=lf
 
+# Clan skin runtime: pin hashed source and WARP script bytes.
+Scripts/Patches/ClanBodySkins.qjs text eol=crlf
+Scripts/Runtime/ClanBodySkins/*.cpp text eol=crlf
+Inputs/ClanBodySkins/*.json text eol=lf
+Inputs/ClanBodySkins/*.cskb binary
+Inputs/ClanBodySkins/*.bin binary
+tools/clan_perspective_bridge.py text eol=crlf
+
 # Native ACT previews: preserve WARP and hashed payload source bytes.
 Scripts/Patches/NativeActJobPreviews.qjs text eol=crlf
 tools/native/native_act_job_ui.cpp text eol=crlf

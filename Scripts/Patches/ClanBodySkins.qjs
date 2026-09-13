@@ -1,0 +1,178 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-09-13                                             *
+*                                                                          *
+*   Description   : Routes reserved clan body values 30001..30255 on       *
+*                   2025-07-16 Ragexe to clan_skins/<skin>/<native path>   *
+*                   only when both SPR and ACT exist. Preserves native     *
+*                   job, sex, weapon and palette behavior with stock       *
+*                   fallback. Keeps completed clan world quads uniformly   *
+*                   mapped. Alt+Q/Alt+S ACT rendering is supplied by the   *
+*                   separate NativeActJobPreviews patch. Statically        *
+*                   injects the profiled runtime with no client DLL.       *
+*                                                                          *
+*   Source        : Scripts/Runtime/ClanBodySkins/runtime.cpp              *
+*                                                                          *
+\**************************************************************************/
+
+const ClanSkinStatic = {};
+ClanSkinStatic.readBytes = function(path)
+{
+	const file = new BinFile(path, "r");
+	if (!file.Valid) throw Error(`ClanBodySkins: missing ${path}`);
+	const hex = file.ReadHex();
+	file.Close();
+	return (hex.match(/[0-9a-fA-F]{2}/g) || []).map(x => parseInt(x, 16));
+};
+ClanSkinStatic.u32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
+ClanSkinStatic.put32 = function(b, o, v)
+{
+	for (let i = 0; i < 4; ++i) b[o + i] = (v >>> (i * 8)) & 255;
+};
+ClanSkinStatic.hex = b => b.map(x => x.toString(16).padStart(2, "0")).join(" ");
+ClanSkinStatic.crc32 = function(b, start)
+{
+	let crc = 0xFFFFFFFF;
+	for (let i = start; i < b.length; ++i)
+	{
+		crc ^= b[i];
+		for (let bit = 0; bit < 8; ++bit) crc = (crc >>> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+	}
+	return (crc ^ 0xFFFFFFFF) >>> 0;
+};
+ClanSkinStatic.assertBytes = function(label, va, expected)
+{
+	const phy = Exe.Vir2Phy(va, CODE);
+	if (phy < 0) throw Error(`ClanBodySkins: unmapped ${label}`);
+	const norm = x => x.replace(/\s+/g, "").toUpperCase();
+	if (norm(Exe.GetHex(phy, norm(expected).length / 2)) !== norm(expected))
+		throw Error(`ClanBodySkins: ${label} differs from the supported 2025-07-16 profile`);
+	return phy;
+};
+ClanSkinStatic.jump = function(from, to)
+{
+	const b = [0xE9, 0, 0, 0, 0];
+	ClanSkinStatic.put32(b, 1, (to - from - 5) >>> 0);
+	return b;
+};
+ClanSkinStatic.write = function(phy, bytes)
+{
+	for (let at = 0; at < bytes.length; at += 8192)
+		Exe.SetHex(phy + at, ClanSkinStatic.hex(bytes.slice(at, at + 8192)));
+};
+
+// This boundary precedes the weapon-depth hook. No shared hook, cache,
+// renderer-state override or patch-order dependency is required.
+ClanSkinStatic.preparePerspective = function()
+{
+	const code = ClanSkinStatic.readBytes(Warp.Path + "/Inputs/ClanBodySkins/perspective.bin");
+	const rawMeta = ClanSkinStatic.readBytes(Warp.Path + "/Inputs/ClanBodySkins/perspective.json");
+	const meta = JSON.parse(String.fromCharCode(...rawMeta));
+	if (meta.version !== 1 || meta.client !== 20250716 || code.length !== meta.bytes ||
+		code[code.length - 1] !== 0xC3 || ClanSkinStatic.crc32(code, 0) !== meta.crc32)
+		throw Error("ClanBodySkins: perspective bridge metadata/CRC mismatch");
+	const site = 0x00C4A63E;
+	const signature = "8B 45 D8 0B 88 24 01 00 00";
+	const phy = ClanSkinStatic.assertBytes("completed sprite quad", site, signature);
+	const original = signature.split(" ").map(x => parseInt(x, 16));
+	return {code, site, phy, signature, original};
+};
+ClanSkinStatic.installPerspective = function(state)
+{
+	ClanSkinStatic.assertBytes("completed sprite quad", state.site, state.signature);
+	const prefix = state.code.slice(0, -1);
+	const [phy, va] = Exe.Allocate(prefix.length + state.original.length + 5, 0x10);
+	const resumeVa = va + prefix.length + state.original.length;
+	ClanSkinStatic.write(phy, prefix.concat(state.original, ClanSkinStatic.jump(resumeVa, state.site + state.original.length)));
+	ClanSkinStatic.write(state.phy, ClanSkinStatic.jump(state.site, va).concat([0x90, 0x90, 0x90, 0x90]));
+};
+
+ClanBodySkins = function(_)
+{
+	if (!ClanBodySkins.validate()) throw Error("ClanBodySkins supports 2025-07-16 Ragexe only");
+	$$(_, 1, "Verify clan-skin payload and native calling conventions");
+	const bytes = ClanSkinStatic.readBytes(Warp.Path + "/Inputs/ClanBodySkins/runtime.cskb");
+	const metaBytes = ClanSkinStatic.readBytes(Warp.Path + "/Inputs/ClanBodySkins/runtime.json");
+	const meta = JSON.parse(String.fromCharCode(...metaBytes));
+	const u32 = ClanSkinStatic.u32;
+	if (bytes.length < 32 || u32(bytes, 0) !== 0x4E4B5343 || u32(bytes, 4) !== 1)
+		throw Error("ClanBodySkins: invalid runtime header");
+	const codeSize = u32(bytes, 8), relocCount = u32(bytes, 12), apiOffset = u32(bytes, 16);
+	const codeStart = 32 + relocCount * 4;
+	if (codeSize !== meta.code_size || codeStart + codeSize !== bytes.length || apiOffset + 40 > codeSize ||
+		apiOffset !== meta.exports.ClanSkinApi || meta.native_client !== 20250716 ||
+		meta.api_version !== 2 || meta.api_size !== 40 ||
+		ClanSkinStatic.crc32(bytes, 32) !== u32(bytes, 28))
+		throw Error("ClanBodySkins: runtime metadata/CRC mismatch");
+	const perspective = ClanSkinStatic.preparePerspective();
+	const hooks = [
+		{va: 0x00B43AF0, signature: "55 8B EC 6A FF 68 8B 4B F1 00", stolen: 5, entry: "@ClanBodyHook@32"},
+		{va: 0x00B42910, signature: "55 8B EC 6A FF 68 6B 48 F1 00", stolen: 5, entry: "@ClanAlternateBodyHook@32"},
+		{va: 0x00D99150, signature: "55 8B EC 56 8B 75 08 8D 46 EA", stolen: 7, entry: "@ClanBodyMapHook@20"},
+		{va: 0x00D999D0, signature: "55 8B EC 8B 4D 0C 8B 55 08", stolen: 6, entry: "@ClanPaletteHook@20"}
+	];
+	for (const hook of hooks)
+	{
+		hook.phy = ClanSkinStatic.assertBytes(hook.entry, hook.va, hook.signature);
+		if (!Number.isInteger(meta.exports[hook.entry]) || meta.exports[hook.entry] < 0 || meta.exports[hook.entry] >= codeSize)
+			throw Error("ClanBodySkins: invalid runtime entry");
+	}
+	ClanSkinStatic.assertBytes("native string assign", 0x004F1940, "55 8B EC 51 53 56 8B F1");
+	ClanSkinStatic.assertBytes("native string destructor", 0x004F08F0, "55 8B EC 6A FF 68 F0 DB E0 00");
+	ClanSkinStatic.assertBytes("native CFile open", 0x00573750, "55 8B EC 6A FF 68 45 AB E1 00");
+	ClanSkinStatic.assertBytes("native CFile close", 0x00573060, "56 8B F1 8B 46 04 83 F8 FF");
+	// Validate every relocation before performing any allocation or native edit.
+	const relocations = [];
+	for (let i = 0; i < relocCount; ++i)
+	{
+		const offset = u32(bytes, 32 + i * 4);
+		if (offset + 4 > codeSize || u32(bytes, codeStart + offset) >= codeSize)
+			throw Error("ClanBodySkins: invalid payload relocation");
+		relocations.push(offset);
+	}
+	$$(_, 2, "Install native-job normalization and body-only resource routing");
+	const [payloadPhy, payloadVa] = Exe.Allocate(codeSize, 0x10);
+	const code = bytes.slice(codeStart);
+	for (const offset of relocations) ClanSkinStatic.put32(code, offset, u32(code, offset) + payloadVa);
+	const originals = [];
+	for (const hook of hooks)
+	{
+		const [phy, va] = Exe.Allocate(hook.stolen + 5, 0x10);
+		const original = (hook.signature.match(/[0-9A-F]{2}/g) || []).slice(0, hook.stolen).map(x => parseInt(x, 16));
+		ClanSkinStatic.write(phy, original.concat(ClanSkinStatic.jump(va + hook.stolen, hook.va + hook.stolen)));
+		originals.push(va);
+	}
+	const api = [2, ...originals, 0x004F1940, 0x004F08F0, 0x00573750, 0x00573060, 0x00FD3074];
+	for (let i = 0; i < api.length; ++i) ClanSkinStatic.put32(code, apiOffset + i * 4, api[i]);
+	ClanSkinStatic.write(payloadPhy, code);
+	for (const hook of hooks)
+	{
+		ClanSkinStatic.assertBytes(hook.entry, hook.va, hook.signature);
+		const patch = ClanSkinStatic.jump(hook.va, payloadVa + meta.exports[hook.entry]);
+		while (patch.length < hook.stolen) patch.push(0x90);
+		ClanSkinStatic.write(hook.phy, patch);
+	}
+	ClanSkinStatic.installPerspective(perspective);
+	return true;
+};
+ClanBodySkins.validate = function()
+{
+	return Exe.BuildDate === 20250716;
+};

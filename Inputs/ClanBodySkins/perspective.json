@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "client": 20250716,
+  "bytes": 195,
+  "crc32": 2659057243,
+  "sha256": "74f9711cb92315c024daed59bcbc5684bd1dd0386d3bbde8183fdd9663ecda11",
+  "source": "tools/clan_perspective_bridge.py",
+  "source_sha256": "cb588614ebd4306a9b5f8ac56776a6b7752cb11a2ad8857aa24f17c1094bcc3e"
+}
