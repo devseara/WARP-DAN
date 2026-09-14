@@ -934,3 +934,7 @@ ModernChatUI.onApplied = function()
 };
 
 ModernChatUI.validate = () => Exe.BuildDate === ModernChatUIStatic.BuildDate;
+
+// Reusable, chat-independent PNG compositing helpers for scoped native UIs.
+// Exporting helpers does not enable or apply ModernChatUI.
+ModernChatUI.nativeHelpers = ModernChatUIStatic;

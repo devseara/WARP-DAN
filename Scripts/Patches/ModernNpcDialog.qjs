@@ -1,0 +1,296 @@
+/*
+ * Author: DevSeara.
+ * Description: Rounded light NPC text/choice frames and supplied generic PNG
+ * buttons for 2025-07-16 Ragexe. Native text, menus, cursor, button events and
+ * NPC/shop packets remain unchanged. Other windows retain their stock draw.
+ * Uses the native canvas helpers supplied with AutoCombatUI/ModernChatUI.
+ */
+
+const ModernNpcDialogStatic = {
+	BuildDate: 20250716,
+	SayVtable: 0x01033094, SayDraw: 0x008B5F30,
+	SayTextColorSite: 0x008AE357,
+	ChoiceVtable: 0x0103316C, ChoiceDraw: 0x008B30D0,
+	Choice3Vtable: 0x0104ADE0,
+	ButtonVtable: 0x01029820, ButtonDraw: 0x00823E10,
+	ButtonParents: [0x01033094, 0x0103316C, 0x0104ADE0, 0x010335A4,
+		0x01032824, 0x010328FC, 0x0103CBF0, 0x0103CCC8,
+		0x0103CE78, 0x0103CF50, 0x01026220],
+	// User-approved generic-button exceptions: Apply in Equipment/Skills,
+	// Preview in the native Emotion/Item Collection lists. No frame changes.
+	ExtraButtonParents: {apply: [0x0103223C, 0x0103F660], chance: [0x0104B070, 0x01032AAC]},
+	Assets: ["apply_out.png", "apply_over.png", "apply_press.png",
+		"buy_out.png", "buy_over.png", "buy_press.png", "buy_off.png",
+		"sell_out.png", "sell_over.png", "sell_press.png",
+		"chance_out.png", "chance_over.png", "chance_press.png",
+		"clos_out.png", "clos_over.png", "clos_press.png",
+		"cls_x_out.png", "cls_x_over.png", "next2_out.png", "next2_over.png",
+		"next2_press.png", "ok_out.png", "ok_over.png", "ok_press.png", "ok_off.png"],
+	OptionalAssets: ["sell_off.png"]
+};
+
+ModernNpcDialogStatic.buildRound = function(fill)
+{
+	const n = AutoCombatUI.nativeHelpers, a = n.asm();
+	// stdcall(window,x,y,width,height,color), clipped rounded rectangle.
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 8, 0x8B, 0x5D, 0x14, 0x8B, 0x7D, 0x18);
+	a.emit(0x83, 0xFB, 10); a.jcc(0x8C, "done");
+	a.emit(0x83, 0xFF, 10); a.jcc(0x8C, "done");
+	a.emit(0xFF, 0x75, 0x1C, 0x8D, 0x47, 0xF8, 0x50, 0x53);
+	a.emit(0x8B, 0x45, 0x10, 0x83, 0xC0, 4, 0x50, 0xFF, 0x75, 0x0C, 0x56); a.call(fill);
+	for (let row = 0; row < 4; row++)
+		for (const bottom of [false, true])
+		{
+			const inset = [4, 2, 1, 1][row];
+			a.emit(0xFF, 0x75, 0x1C, 0x6A, 1, 0x8D, 0x43, (256 - inset * 2) & 255, 0x50);
+			a.emit(0x8B, 0x45, 0x10);
+			if (bottom) a.emit(0x03, 0xC7, 0x83, 0xE8, row + 1);
+			else if (row) a.emit(0x83, 0xC0, row);
+			a.emit(0x50, 0x8B, 0x45, 0x0C, 0x83, 0xC0, inset, 0x50, 0x56); a.call(fill);
+		}
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x18, 0);
+	return a;
+};
+
+ModernNpcDialogStatic.buildFrame = function(round, choice)
+{
+	const c = ModernNpcDialogStatic, n = AutoCombatUI.nativeHelpers, a = n.asm();
+	a.emit(0x83, 0x79, 0x14, 40); a.jcc(0x8C, choice ? c.ChoiceDraw : c.SayDraw);
+	a.emit(0x83, 0x79, 0x18, 40); a.jcc(0x8C, choice ? c.ChoiceDraw : c.SayDraw);
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1, 0x6A, 0); a.call(0xA1CB30);
+	a.emit(0x8B, 0x5E, 0x14, 0x8B, 0x7E, 0x18);
+	for (const [inset, color] of [[0, 0xFFB1C7E1], [1, 0xFFE1EBF7], [2, 0xFFFFFFFF]])
+	{
+		n.pushImm(a, color); a.emit(0x8B, 0xC7, 0x83, 0xE8, inset * 2, 0x50);
+		a.emit(0x8B, 0xC3, 0x83, 0xE8, inset * 2, 0x50, 0x6A, inset, 0x6A, inset, 0x56); a.call(round);
+	}
+	n.pushImm(a, 0xFFEEF7FF);
+	a.emit(0x8B, 0xC7, 0x83, 0xE8, 38, 0x50, 0x8B, 0xC3, 0x83, 0xE8, 12, 0x50);
+	a.emit(0x6A, 6, 0x6A, 6, 0x56); a.call(round);
+	if (choice)
+	{
+		// Retain list size, selection, scroll state and native event IDs.
+		a.emit(0x8B, 0x8E); a.dword(0xC4); a.emit(0x85, 0xC9); a.jcc(0x84, "buttons");
+		for (const [offset, value] of [[0x7C, 0xEE], [0x80, 0xF7], [0x84, 0xFF]])
+		{
+			a.emit(0x81, 0xB9); a.dword(offset); a.dword(value); a.jcc(0x84, "color_" + offset);
+			a.emit(0xC7, 0x81); a.dword(offset); a.dword(value);
+			// Repaint a previously cached list once, without invalidating its
+			// parent recursively on every frame. UIWnd dirty field is +0x58.
+			a.emit(0xC7, 0x41, 0x58); a.dword(1); a.label("color_" + offset);
+		}
+		a.emit(0x6A, 10, 0x6A, 10); a.call(0xA23450);
+		a.label("buttons");
+		for (const [offset, delta] of [[0xD0, 0], [0xD4, 54]])
+		{
+			a.emit(0x8B, 0x8E); a.dword(offset); a.emit(0x85, 0xC9); a.jcc(0x84, "button_" + offset);
+			a.emit(0x8D, 0x47, 0xE8, 0x50, 0x8B, 0xC3, 0x83, 0xE8, 98, 0xD1, 0xF8);
+			if (delta) a.emit(0x83, 0xC0, delta);
+			a.emit(0x50); a.call(0xA23450); a.label("button_" + offset);
+		}
+	}
+	else
+	{
+		// UISayDialogWnd owns a separate scroll-text canvas (+0xB4). Its
+		// native Draw 0x807630 clears with COLORREF at +0x8C, over our panel.
+		// Store ABGR/COLORREF here, not the BGRA pixel constant above.
+		a.emit(0x8B, 0x8E); a.dword(0xB4); a.emit(0x85, 0xC9); a.jcc(0x84, "text_done");
+		a.emit(0x81, 0xB9); a.dword(0x8C); a.dword(0xFFFFF7EE); a.jcc(0x84, "text_done");
+		a.emit(0xC7, 0x81); a.dword(0x8C); a.dword(0xFFFFF7EE);
+		a.emit(0xC7, 0x41, 0x58); a.dword(1);
+		a.label("text_done");
+	}
+	a.emit(0x5F, 0x5E, 0x5B, 0xC3);
+	return a;
+};
+
+ModernNpcDialogStatic.buildLookup = function(roles)
+{
+	const c = ModernNpcDialogStatic, n = AutoCombatUI.nativeHelpers, a = n.asm();
+	// thiscall(button), descriptor or zero. Scope before reading resource data.
+	a.emit(0x56, 0x8B, 0x41, 0x10, 0x85, 0xC0); a.jcc(0x84, "none");
+	a.emit(0x8B, 0x30);
+	for (const parent of [...c.ButtonParents, ...c.ExtraButtonParents.apply, ...c.ExtraButtonParents.chance])
+	{ a.emit(0x81, 0xFE); a.dword(parent); a.jcc(0x84, "owned"); }
+	a.jmp("none"); a.label("owned");
+	a.emit(0x8B, 0x91); a.dword(0xCC); a.emit(0x85, 0xD2); a.jcc(0x8E, "none");
+	a.emit(0x81, 0xFA); a.dword(260); a.jcc(0x87, "none");
+	a.emit(0x8D, 0x81); a.dword(0xBC);
+	a.emit(0x83, 0xB9); a.dword(0xD0); a.emit(16); a.jcc(0x82, "inline");
+	a.emit(0x8B, 0x00, 0x85, 0xC0); a.jcc(0x84, "none"); a.label("inline");
+	a.emit(0x8B, 0xCA, 0x8B, 0xD0);
+	a.label("scan"); a.emit(0x80, 0x38, 0x5C); a.jcc(0x84, "separator");
+	a.emit(0x80, 0x38, 0x2F); a.jcc(0x85, "advance");
+	a.label("separator"); a.emit(0x8D, 0x50, 1);
+	a.label("advance"); a.emit(0x40, 0x49); a.jcc(0x85, "scan");
+	a.emit(0x8B, 0xC8, 0x2B, 0xCA);
+	for (const [index, role] of roles.entries())
+	{
+		a.emit(0x83, 0xF9, role.name.length); a.jcc(0x85, "role_" + index);
+		for (let i = 0; i < role.name.length; i++)
+		{
+			a.emit(0x80, 0x7A, i, role.name.charCodeAt(i)); a.jcc(0x85, "role_" + index);
+		}
+		for (const parent of role.parents)
+		{ a.emit(0x81, 0xFE); a.dword(parent); a.jcc(0x84, "take_" + index); }
+		a.jmp("role_" + index);
+		a.label("take_" + index); a.emit(0xB8); a.dword(role.descriptor); a.emit(0x5E, 0xC3); a.label("role_" + index);
+	}
+	a.label("none"); a.emit(0x33, 0xC0, 0x5E, 0xC3);
+	return a;
+};
+
+ModernNpcDialogStatic.buildBackground = function()
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// thiscall(button): copy clipped parent pixels behind PNG transparency.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x78, 0x18, 0x85, 0xFF); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x40, 4, 0x89, 0x45, 0xFC, 0x8B, 0x46, 0x10, 0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x58, 0x24, 0x85, 0xDB); a.jcc(0x84, "done");
+	a.emit(0x83, 0x7B, 0x18, 0); a.jcc(0x84, "done");
+	a.emit(0x33, 0xC0, 0x89, 0x45, 0xF8);
+	a.label("row"); a.emit(0x8B, 0x45, 0xF8, 0x3B, 0x46, 0x18); a.jcc(0x8D, "done");
+	a.emit(0xC7, 0x45, 0xF4); a.dword(0);
+	a.label("pixel"); a.emit(0x8B, 0x45, 0xF4, 0x3B, 0x45, 0xFC); a.jcc(0x8D, "next_row");
+	a.emit(0xB9); a.dword(0xFFFFFFFF);
+	a.emit(0x03, 0x46, 0x1C, 0x85, 0xC0); a.jcc(0x88, "write");
+	a.emit(0x3B, 0x43, 4); a.jcc(0x8D, "write"); a.emit(0x89, 0x45, 0xF0);
+	a.emit(0x8B, 0x45, 0xF8, 0x03, 0x46, 0x20, 0x85, 0xC0); a.jcc(0x88, "write");
+	a.emit(0x3B, 0x43, 8); a.jcc(0x8D, "write");
+	a.emit(0x0F, 0xAF, 0x43, 4, 0x03, 0x45, 0xF0, 0x8B, 0x53, 0x18, 0x8B, 0x0C, 0x82);
+	a.label("write"); a.emit(0x89, 0x0F, 0x83, 0xC7, 4, 0xFF, 0x45, 0xF4); a.jmp("pixel");
+	a.label("next_row"); a.emit(0xFF, 0x45, 0xF8); a.jmp("row");
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+ModernNpcDialogStatic.buildButton = function(lookup, background, pngDraw)
+{
+	const c = ModernNpcDialogStatic, n = AutoCombatUI.nativeHelpers, a = n.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 4, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.call(lookup); a.emit(0x85, 0xC0); a.jcc(0x84, "stock");
+	a.emit(0x89, 0x45, 0xFC, 0x8B, 0x56, 0x30, 0x83, 0xFA, 2); a.jcc(0x87, "stock");
+	a.emit(0x80, 0xBE); a.dword(0xAC); a.emit(0); a.jcc(0x84, "state");
+	a.emit(0xBA); a.dword(3); a.label("state");
+	a.emit(0x8B, 0x3C, 0x90, 0x85, 0xFF); a.jcc(0x84, "stock");
+	a.call(n.GetTexMgr); a.emit(0x85, 0xC0); a.jcc(0x84, "stock");
+	a.emit(0x8B, 0xD8, 0x57); a.call(n.ConvPath); a.emit(0x83, 0xC4, 4, 0x85, 0xC0); a.jcc(0x84, "stock");
+	a.emit(0x50, 0x8B, 0xCB); a.call(n.LoadSurface); a.emit(0x85, 0xC0); a.jcc(0x84, "stock");
+	a.emit(0x8B, 0xF8, 0x8B, 0x4D, 0xFC, 0x8B, 0x87); a.dword(0x114);
+	a.emit(0x3B, 0x41, 16); a.jcc(0x85, "stock");
+	a.emit(0x8B, 0x97); a.dword(0x118); a.emit(0x3B, 0x51, 20); a.jcc(0x85, "stock");
+	a.emit(0x3B, 0x46, 0x14); a.jcc(0x85, "resize");
+	a.emit(0x3B, 0x56, 0x18); a.jcc(0x84, "paint");
+	a.label("resize"); a.emit(0x52, 0x50, 0x8B, 0xCE); a.call(0xA1CB70);
+	a.label("paint"); a.emit(0x8B, 0xCE); a.call(background);
+	a.emit(0x6A, 0, 0x57, 0x6A, 0, 0x6A, 0, 0x8B, 0xCE); a.call(pngDraw);
+	// Preserve the original button's parent-invalidation behavior.
+	a.emit(0x80, 0xBE); a.dword(0x11C); a.emit(0); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x4E, 0x10, 0x85, 0xC9); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x01, 0xFF, 0x90); a.dword(0x98);
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	a.label("stock"); a.emit(0x8B, 0xCE, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D); a.jmp(c.ButtonDraw);
+	return a;
+};
+
+ModernNpcDialog = function(_)
+{
+	const c = ModernNpcDialogStatic;
+	if (Exe.BuildDate !== c.BuildDate || typeof AutoCombatUI === "undefined" ||
+		typeof AutoCombatUI.nativeHelpers === "undefined" || typeof ModernChatUI === "undefined" ||
+		typeof ModernChatUI.nativeHelpers === "undefined")
+		throw Error("ModernNpcDialog requires the 2025-07-16 DevSeara native chat/UI helper scripts");
+	const n = AutoCombatUI.nativeHelpers;
+	for (const [name, table, original] of [["NPC text", c.SayVtable, c.SayDraw],
+		["NPC choices", c.ChoiceVtable, c.ChoiceDraw], ["2025 NPC choices", c.Choice3Vtable, c.ChoiceDraw],
+		["bitmap button", c.ButtonVtable, c.ButtonDraw]])
+		if (Exe.GetUint32(Exe.Vir2Phy(table + 0x50)) !== original)
+			throw Error("ModernNpcDialog: unexpected or already patched " + name + " draw slot");
+	n.assertCode("NPC text draw", c.SayDraw, "6A 00 6A 00 6A 00 6A 00 E8");
+	n.assertCode("NPC choice draw", c.ChoiceDraw, "6A 00 6A 00 6A 00 6A 00 E8");
+	n.assertCode("native bitmap button draw", c.ButtonDraw, "55 8B EC 51 56 8B F1");
+	n.assertCode("NPC text child background", 0x807630, "56 8B F1 FF B6 8C 00 00 00 E8");
+	n.assertCode("NPC text initial background", c.SayTextColorSite, "C7 81 8C 00 00 00 F2 F2 F2 FF");
+	// UIChoose3Wnd inherits the same child layout/Create, but retains its own
+	// native event handler. Verify both, then replace only its draw slot.
+	if (Exe.GetUint32(Exe.Vir2Phy(c.Choice3Vtable + 0x3C)) !== 0x8A3FC0 ||
+		Exe.GetUint32(Exe.Vir2Phy(c.Choice3Vtable + 0x94)) !== 0x8BE590)
+		throw Error("ModernNpcDialog: unexpected 2025 choice layout/event handler");
+	// Set the NPC-only creation default before its first text/layout/paint.
+	// Parent-paint invalidation alone is too late for the initial cached canvas.
+	// Leave the correct choice frame, selection styling and button draws intact.
+	Exe.SetUint32(Exe.Vir2Phy(c.SayTextColorSite + 6, CODE), 0xFFFFF7EE);
+	const fill = n.allocateCode(n.buildFillRect());
+	const round = n.allocateCode(c.buildRound(fill.vir));
+	const say = n.allocateCode(c.buildFrame(round.vir, false));
+	const choice = n.allocateCode(c.buildFrame(round.vir, true));
+	const roles = [];
+	for (const [names, prefix, width, height, off] of [
+		[["btn_apply.bmp"], "apply", 44, 18, false],
+		[["btn_buy.bmp", "btn_buy_out.bmp", "btn_buy_normal.bmp"], "buy", 44, 18, true],
+		[["btn_sell.bmp"], "sell", 44, 18, true],
+		[["btn_view.bmp"], "chance", 66, 18, false],
+		[["btn_close.bmp", "btn_cancel.bmp", "btn_close_normal.bmp"], "clos", 44, 18, false],
+		[["sys_close_off.bmp"], "cls_x", 9, 9, false],
+		[["btn_next.bmp"], "next2", 44, 18, false],
+		[["btn_ok.bmp"], "ok", 44, 18, true]])
+	{
+		const paths = ["out", "over", prefix === "cls_x" ? "over" : "press", off ? "off" : null]
+			.map(state => state ? n.buildResourcePath("genericsui\\" + prefix + "_" + state + ".png").vir : 0);
+		const bytes = [];
+		for (const value of [...paths, width, height])
+			bytes.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
+		const descriptor = n.allocateBytes(bytes, 4).vir;
+		const parents = [...c.ButtonParents, ...(c.ExtraButtonParents[prefix] || [])];
+		for (const name of names) roles.push({name, descriptor, parents});
+	}
+	const lookup = n.allocateCode(c.buildLookup(roles));
+	const background = n.allocateCode(c.buildBackground());
+	const blend = n.allocateCode(ModernChatUI.nativeHelpers.buildBlendPixel());
+	const pngDraw = n.allocateCode(ModernChatUI.nativeHelpers.buildPngDraw(blend.vir));
+	const button = n.allocateCode(c.buildButton(lookup.vir, background.vir, pngDraw.vir));
+	for (const [table, draw] of [[c.SayVtable, say], [c.ChoiceVtable, choice],
+		[c.Choice3Vtable, choice], [c.ButtonVtable, button]])
+		Exe.SetUint32(Exe.Vir2Phy(table + 0x50), draw.vir);
+	const marker = n.allocateString("ModernNpcDialog.v3"), record = [];
+	for (const value of [marker.vir, say.vir, choice.vir, lookup.vir, background.vir, button.vir])
+		record.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
+	n.allocateBytes(record, 4);
+	CACHE.put("ModernNpcDialog.Contract.v3", {say, choice, lookup, background, button, roles});
+	ModernNpcDialog.onApplied();
+	return true;
+};
+
+ModernNpcDialog.onApplied = function()
+{
+	if (Warp.TestMode) return;
+	const c = ModernNpcDialogStatic, source = Warp.Path + "/Assets/ModernNpcDialog";
+	const folders = ["data", "texture", ModernChatUI.nativeHelpers.uiPrefix(), "genericsui"];
+	const root = System.DirPath(Warp.TgtExe), target = root + "/" + folders.join("/"), missing = [];
+	for (const file of [...c.Assets, ...c.OptionalAssets])
+	{
+		const existing = new BinFile(target + "/" + file, 'r');
+		const present = existing.Valid; existing.Close();
+		if (present) continue;
+		const asset = new BinFile(source + "/" + file, 'r');
+		const available = asset.Valid; asset.Close();
+		if (!available && c.OptionalAssets.includes(file)) continue;
+		if (!available) throw Error("ModernNpcDialog: missing bundled image " + source + "/" + file);
+		missing.push(file);
+	}
+	if (!missing.length) return;
+	let directory = root;
+	for (const folder of folders)
+	{
+		directory += "/" + folder;
+		if (!System.MkDir(directory)) throw Error("ModernNpcDialog: cannot create " + directory);
+	}
+	for (const file of missing)
+		if (!System.Copy(source + "/" + file, target + "/" + file, false))
+			throw Error("ModernNpcDialog: cannot copy " + file + " to " + target);
+};
+
+ModernNpcDialog.validate = () => Exe.BuildDate === ModernNpcDialogStatic.BuildDate;

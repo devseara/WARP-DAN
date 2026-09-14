@@ -1,4 +1,4 @@
-# WARP-DAN: Battle Pass and Chat UI
+# WARP-DAN: Battle Pass, Chat UI and NPC Dialog UI
 
 WARP patch package by **DevSeara** for the **2025-07-16 Ragexe** client.
 This is a focused add-on, not a full WARP distribution. It contains no game
@@ -14,10 +14,15 @@ executable, server source, credentials, or personal installation profiles.
   Includes 19 PNG images.
 - **Inline Chat Item Icons** (`ChatItemIcons`, ID 10004): item thumbnails in
   pickup/drop messages and Shift-click item links, preserving native item data.
+- **Renewal NPC Dialog UI v3** (`ModernNpcDialog`, ID 10005): Myth of Yggdrasil
+  reference styling, rounded frames, light-blue NPC text/choice panels, centered
+  choice buttons, and 25 supplied PNGs. Includes the first-paint NPC background
+  correction and the 2025 choice-window OK/Cancel fix. See the
+  [NPC dialog notes](docs/modern-npc-dialog.md) for scope and verification.
 
 The Battle Pass feature requires the matching Project Rebirth server-side BPUI
 implementation. Its server source is **not included** in this WARP-only package.
-Chat and item icons do not require a new server component.
+Chat, item icons and NPC dialogs do not require a new server component.
 
 ## Install into WARP
 
@@ -32,7 +37,7 @@ Other WARP forks/client builds are not assumed compatible.
 
    ```powershell
    $patchPackage = 'D:\warp\WARP-DAN'
-   $installDiff = Join-Path $patchPackage 'install\DevSeara-BattlePass-ChatUI.diff'
+   $installDiff = Join-Path $patchPackage 'install\DevSeara-BattlePass-ChatUI-NPC.diff'
    git apply --check -- $installDiff
    # Continue only if the check above succeeds.
    git apply --whitespace=nowarn -- $installDiff
@@ -40,8 +45,8 @@ Other WARP forks/client builds are not assumed compatible.
 
    The diff installs the scripts, all images, patch registrations, stable IDs,
    CRLF attributes, and the native UI helper export. Exporting the helper does
-   **not** enable Auto Combat. Do not copy only the three QJS files: their
-   registrations and helper export are also required.
+   **not** enable Auto Combat or Chat UI. Do not copy only the four QJS files:
+   their registrations, assets and helper exports are also required.
 
    If the check fails, do not force it. Check whether these patches are already
    installed or whether your WARP version/local changes differ. The original
@@ -50,6 +55,28 @@ Other WARP forks/client builds are not assumed compatible.
 4. Restart WARP, select the desired DevSeara patches, load the original
    **2025-07-16** client, choose the output EXE, and apply.
 
+### Upgrade an existing Battle Pass/Chat UI package installation
+
+If you already applied the original `DevSeara-BattlePass-ChatUI.diff` from
+package commit `048e704`, use the incremental diff instead of the combined one:
+
+```powershell
+$patchPackage = 'D:\warp\WARP-DAN'
+$upgradeDiff = Join-Path $patchPackage 'install\DevSeara-NPC-Dialog-upgrade.diff'
+git apply --check -- $upgradeDiff
+# Continue only if the check above succeeds.
+git apply --whitespace=nowarn -- $upgradeDiff
+```
+
+Run these commands from your WARP directory, with WARP closed and your changes
+backed up or committed. Do not apply both the combined and incremental diffs.
+The original Battle Pass/Chat UI diff is retained unchanged for reproducibility.
+Neither diff should be forced onto a working copy where NPC UI is already
+installed. Pulling this package updates the package files; it does not apply
+them to a separate WARP installation automatically.
+
+### Automatic client artwork deployment
+
 The assets are copied when the selected WARP diff is **applied**, not just when
 its checkbox is ticked. Every missing parent directory is created beside the
 chosen output EXE:
@@ -57,6 +84,7 @@ chosen output EXE:
 ```text
 <target EXE directory>/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/battlepassui/
 <target EXE directory>/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/uirenewal/chat/
+<target EXE directory>/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/genericsui/
 ```
 
 Existing client images are preserved. Reapplying repairs missing images without
@@ -64,6 +92,8 @@ overwriting edited skins/icons. The Battle Pass `.bgra` files and
 `Skin_Names.json` are WARP build inputs; only the 25 BMPs are deployed.
 The legacy chat textbox PNGs stay in the bundle but are not used to draw the
 neutral translucent gray message field.
+NPC UI can be selected by itself: the installed Chat UI and Auto Combat helper
+scripts are required, but their patches do not need to be selected.
 
 ## Verification
 
@@ -73,6 +103,7 @@ The package contains source-level installer/default-input regression tests:
 node tools/test_battlepass_asset_install.js
 node tools/test_modern_chat_asset_install.js
 node tools/test_modern_chat_font_inputs.js
+node tools/test_modern_npc_asset_install.js
 ```
 
 Offline native chat tests require Python, Pillow, pefile, Capstone, and Unicorn:
@@ -81,6 +112,7 @@ Offline native chat tests require Python, Pillow, pefile, Capstone, and Unicorn:
 uv run --with pillow --with pefile --with capstone --with unicorn python tools/test_modern_chat_ui.py path/to/patched.exe
 uv run --with pillow --with pefile --with capstone --with unicorn python tools/test_chat_item_icons.py path/to/patched.exe
 uv run --with pillow --with pefile --with capstone --with unicorn python tools/test_modern_chat_controls.py path/to/patched.exe --font Arial --size 12 --weight 400
+uv run --with pillow --with pefile --with capstone --with unicorn python tools/test_modern_npc_dialog.py path/to/patched.exe
 ```
 
 Use the same font values selected during patching for the controls test.
@@ -89,9 +121,13 @@ repeat/repair behavior, test-mode isolation, and file/directory errors.
 Real WARP builds verified Battle Pass by itself and the full combined patch
 profile, including automatic image deployment and preservation of edited assets.
 Offline checks are not a substitute for live testing with your client/server.
+NPC v3 passes the native first-paint regression and preserves the accepted v2
+choice frames/buttons pixel-for-pixel. Live NPC v3 visual acceptance is still
+pending. Run the tests from this package; test tools are not installed by the
+WARP installation diffs.
 
 ## License and attribution
 
 GPL-3.0-or-later; see [LICENSE](LICENSE). WARP and existing native helpers retain
 their original authorship and license. DevSeara is credited for these custom
-Battle Pass and chat diffs. Project Rebirth server/project names are retained.
+Battle Pass, chat and NPC dialog diffs. Project Rebirth server/project names are retained.

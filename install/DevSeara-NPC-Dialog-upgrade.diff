@@ -1,0 +1,851 @@
+diff --git a/.gitattributes b/.gitattributes
+index 940a056a2575000a58c6c64a9e6a271f0c0518f9..10739ed2ee5dfe22384256ef2130110a6e3b8d52 100644
+--- a/.gitattributes
++++ b/.gitattributes
+@@ -3,6 +3,7 @@
+ 
+ # DevSeara native UI patches require CRLF and byte-exact raw artwork.
+ Scripts/Patches/ModernChatUI.qjs text eol=crlf
++Scripts/Patches/ModernNpcDialog.qjs text eol=crlf
+ Scripts/Patches/ChatItemIcons.qjs text eol=crlf
+ Scripts/Patches/BattlepassUI.qjs text eol=crlf
+ Assets/BattlepassUI/*.bgra binary
+diff --git a/Assets/ModernNpcDialog/apply_out.png b/Assets/ModernNpcDialog/apply_out.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..edceff1b591ed94774c80d008a84b32b9b2b7bf4
+GIT binary patch
+literal 618
+zcmV-w0+s!VP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkQ97#k$R7i={mO)D!K^TUg*=#nw6iU!jDHMzA*^|FRC=>;~DTo(6
+zXb2wM975@-y@XJ6vxicU`aAaIIVnmZ1OkyDsKKt<?O}IzXVPT5CZ(w_49t8p>^%E^
+z-wY#s-v{8}xDj;zQ>`!B0zmk_&%trSpP!$ZG*hBZPR>|gw1xQiwI0FF=8Xws4c52r
+zPauFcWpFlcaB~~<ud@^38mM-s2Y{7%0>E#U{tMWB=P+@;-RVUQGGPm3stf-FD>o`R
+zt0RG`@>+GQ=W`lltQat71)lo%!B_(xb+b_wL&h#jKq<=<0Q`6;@V;|M$yvo~)hX9p
+zO3s`%r%Gm^KfbZ~S{qj@M{I1qi6B3`|IF^raw5lrt_9UuuT|IP_SP1nrh=;RYUKzu
+z-CNsBR4ZSwOcB9mFHW`Z3NwQ+ht%-6ip#{+eyD4`3|(}|d*9>rVY($`_TrSgDI1Zn
+zM=D_HSh?l`Zq!%H0#Hu1uAF5=aN{bq!+UEB+PGW`T<lse6tKb9%rIDCW+)U_D8Kzg
+zp|}F)jlTyBXmHYL38}ijyR!^on$>s`lzHCZZpt1XxZUXmr`v0yUOijeOK^1-xu<0y
+ztVMA3cnDP}+Ns=34cvb}<}8D2Ylf$Nsl9#nN;|>B92yjtv3DuTVcHNh2_BQ$<Hx(d
+zQ9$EMyuSujNU32dO_S=RHPeQmc^N-`9^dowu|42_0c|PjHg(PTlmGw#07*qoM6N<$
+Eg3k9CPyhe`
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/apply_over.png b/Assets/ModernNpcDialog/apply_over.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..37ed59555430493d3235bcd4d73fd362ae9f7e99
+GIT binary patch
+literal 389
+zcmV;00eb$4P)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkPH%UZ6R7i={mN9OFFcgM=N8P%mnJXm{$^mkckR><Bj5r5k?hRN7
+zC-DI)BqA}V-7=>GedHP0@NiR+d=irVWAlFhwvZKm`8a-F@xUCywE_SIG-j8pw`m;>
+zaH_s=2-iw+v-8F4#J22wpDzF!(=!qu)hu9ooAr$QH_{~Yo;%8Lnq+?}#;L2)Yo1ra
+zzQyjri*#U`WQgKD>Z(LuXhd;fyyHaizE|&l)77^zD&e{+@xBV$HfOipv=2Ax(rE#t
+z@j&_zCoF*$18AeLOD9O<fw&MQOey4rHri7lPI$N782!A^qC|$EV<9;Xz{n$Enllq_
+z64$K>D(=#|NEa_MY%A2&_zv8PYpWi`f%mUboUm>6UCotH-`p|B0RZlH`EhNjWUGh9
+j@XOEhT`x&^mJ9q3(onYbX_HF-00000NkvXXu0mjf6cVZs
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/apply_press.png b/Assets/ModernNpcDialog/apply_press.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..783625ae488b773878a60d952e24cfa89dadcb44
+GIT binary patch
+literal 437
+zcmV;m0ZRUfP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkPXGugsR7i={Ry|IHKp1^9EXKq{vF8BZfh$;UX!Zssgp!I7Vzs65
+z3^dkz1@5r@+OM%P8o^@y$OoBWW)N5RRq$qp_r9MQM&KLKecj?8qs}7%01Mz?wz$3d
+zTSo?zsM|V^gy3c`uFl{|`Rn4JP2;5Vx_<)zl$$NORmU<5z**<=`n-ESj>7@Mz@NO<
+z$#59>KN913e0Z9)&N;(bSxpw30}I=UVc_HW<wHBhLGyIH?wey8&W3?Q8Iv?d82HG_
+z3P~DwV_8}C=F*ssrvUgj`Mc5Z947<`Q9$crHOd3Px>$9b$t+;m!@RU}ZMvzjZV4(a
+zFR@KVOrV}M^)8`j*z^bD=BT_Jlzr9a;(XKguPxLTHo;qESQWjB;{oV4WRk|%?cZ%=
+zmFOAvq||0v75$LYWoXEIQsORI0<b&EI67x^!I*Md=mf`%kdDn!M&1BG04H+2+-y<j
+fkq|_j$_4%laCxam?f;Km00000NkvXXu0mjfYXrzu
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/buy_off.png b/Assets/ModernNpcDialog/buy_off.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..6d21f5bee2b507d2cc925a1b435ed9bfa7933e7e
+GIT binary patch
+literal 2075
+zcmb_d4Q$k8814|~2FwxgXCVZ;!XhK|`nA35UF#hKcEAqkWV=&New42L?yl~xEp4~k
+zMxtW~V<=#NV8V~gAw=WPRD>V|)C9ypA_h=`Q9>ZNh#?Y%C@x07-rY_xfF#<a?c4VG
+zp7(v9_x;{>&8eMHGGx>c48ux7HNkpxpNP&8MTO{!U-f^BZpB8;Qx=8|9qF6}*rqLI
+z7*;q+jYRFJI9rhQluJ_d2Iy)@83>JG{;C#3k{h9oH^8{61&E*ae@x)25+LS!L?9Z~
+zFrn78nK0Z|8<E=@WnLkwCgJ`T0THC2E#WPxq-F^%0V2aIAlrFO5qJh-HwK6)jzc^u
+z&cUm76XLv!CS?F<+>0zX$M|@DBF+GYr2t1U9+Ck9paqWy&m9DEXDTtFJ~%z+3_S&i
+zgl!uFMWxeeSDJO{W}KpVo~HmqF${?iq}8g~QVXeBV+R<5(2`BnuvJ~d9Y(1^Z?Xdf
+z3N@QU%E;4dR!%3R7}X*f6zu{|P8pyg=W#}pnans>WC|u>3Tn26uyh`4By?N168deZ
+z^Pg{WfV36GypLPPl1k-WSoXALltxaFTcWK<s{yHcXz5L+45u}tFvmLC7(%rPC0jQm
+zx}F@U)SQ8kamM4K@$pV=fR6>Pl*=*jn2(bH!&l<?__?a4=xM9+1}+$sY#1P%MI`W%
+zfRE5#fnfz2kbo5c$U;S3QDd!nsG9_I4oY(Z%iIJ-?W9Py^sit=7Gk=Yl8_c^N{U0u
+z(BcH1S6Halle&o<qv+U76rw1EG|QGW8HR!Z0?FZ0RYl-pJWB(HBV!FRAZf;}ki3tB
+zq~zs2vh4B18Wd$<eNdO1oT5AHvl~FsWyJBfS0%=AQ1ZG-4lrJl^SON_Pop;H7(V9n
+zavm@1h68Mmn=0CaQu0PtCn^Oox;c(xc^;`KD?G`@+zjbMv5^YTx>;mF2z*YXXL?7d
+zQ7u%}*4)+!!^Jr(sp6S-5hU5!1_45L>JL#q+1KhV^tda}x%KG;M5K2pe%6hp$LzFZ
+z!YOg2-GAvj>UMcqQuCd&y1Oc8!_8-PyFUG&v&xAnCnPNn(I}<}Cr`?mS=mxj|EzN6
+z+YR$=0FH*HW9G*-ddLras3B?-jdOl>cnyXXtPTaIL~6Re+9<B+m^^%W)y}$QL(?nf
+z8~3&Cc)0BN%Apqyg|?K8>6rhreg5kNv8!F{KK#fxA^Yk2;@#cXf4=mfs_&jx_vX0+
+z7YlxSA{?x{I(1|J(GT9n{M!nXWh<!V`*!+|clE5Ccx=dJAeEW^F$KPD$Ejtzc5E25
+z2$W$><6b&j@MQI%VV%|3s-6Y!KXhgLd&kD9*S5WQINbhaN%6V<it|6%6PBDVJygG`
+z53akqVo!nR^}<slredBeog+!GwN~`N{k{EgUH1lN_pI<em--J@mIvQT@{c8#eYdWD
+zRdi;vdNetyFTTHG<B7dz?rj#IA5ok*(!*<?>@B+X`J?N*PNugmy*z$$$+LZRYe)V5
+z(V2?)qP>GhuRU_{wUWtil*^UZ=k-!MPtG{dzIpo|cJ!>S;T_SL2fdrW__b-+f(uwF
+z=3RKIwwXWmLhEOrF1a*#Px<B4nAOw0r3b$6ZXDf#pEG<PF8#&tt%@&EUtRdXJJF+O
+z7Z-K3|M8sO*1NCt&(0q!BBy6zz5DcoyZr6XgkM?PSKj6ALI3FcVKfvIMQj4Hi=3Y}
+TI!=VwJGaoZ+TgoW7j^sv_d>4j
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/buy_out.png b/Assets/ModernNpcDialog/buy_out.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..53c5952daae492f80adeddbbd409f682956f58ec
+GIT binary patch
+literal 537
+zcmV+!0_OdRP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkP%Sl8*R7i={)-g--Kpe;M?<Fx6aS(Z&+$`4FDX+un*`6)JgD)XN
+z>mUyg&)`%<#|nxd`Z_u}tKi~ND7Z*VHMRE)>0NV|w3;|ne{l3J7s!YI{Zk^OlmMJu
+z-zAeTn%$k601#42POk6d_V&iSO*3<I^T6&-O^D;GTaDdZb>_^<&;8Q~NYI|TxVh>u
+zh?9A5VJ@!Rbh>>2e0LFG0#^A7ScOdD8hZx#qu6?*Wvurbze>T<nTD+RNt?>IWSyz-
+zM-zpCp4S_#!ssl}HGnF<CjfXEgG;|<{`!_4>Dbj*>w2R_r`y-#sClWO72nar_k=O*
+zl&-K1o0U$tPZS0mG%xwR_miXM1yLB#8&@+ArXsv?d%VccfzvGkW?PuY4dBvS-T>PA
+z$m5kN{w&~>lm^?a0PPgi>_>Ifkgeu>Ks%+uKn`#r1B3}O3Ih)Qoe_lr!-7ziLg4gK
+z+dUkG0kJ0%)Zw|Yr>Z#oQ3KlJ-*R~uY*x|LI6Lu5RimQN+#8nWWs?iGkrnH0j+d(X
+zURAwxXHKi&-#@2GI}}8&If6&5e~J625wCB96qF3qMixyJ28G*U%@I64k0#IlcAuBu
+b?F0TlUcRP+WP0Bx00000NkvXXu0mjf2NC*}
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/buy_over.png b/Assets/ModernNpcDialog/buy_over.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..ad45f0368a33513f93d4ed4cc0ebe57baca534e9
+GIT binary patch
+literal 331
+zcmV-R0kr;!P)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkO{YgYYR7i={mOl=HFcgP>C2nr&Od<*40GtH6cmrnRIS8{iVDcs$
+zz(p^hZq7R3BL%_QXXVeAknl>IetG?cRN%$_aC~6IByk`BKmeue+FK55q~UzJB8dYb
+zRN2L9KCo6hx62(sDechUSY?5_oAY7bD4B5<Wocfkx4VrMnQveT1AvUe>OD*I-lW-)
+za6P|zRGQtVx@+7Nc85(jlu=lnM3&~Y6EeX{BmjLZ%9AJ>wK;6z_YI5IdA8~Gw??tx
+z#sRRHVUi%JHYgU{H~>uHwhobm>-mro+eZsaSl6Mh@4v<YP%=yxjDI4dkQE2jZF<*B
+d8kouj{s|{!RA3dDgIE9n002ovPDHLkV1j5_hfDwf
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/buy_press.png b/Assets/ModernNpcDialog/buy_press.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..4e225e457dbc961c8d91ce5d6beb1bb841f3ed78
+GIT binary patch
+literal 402
+zcmV;D0d4+?P)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkPL`g(JR7i={mOE~PKomvKU=u}(l#reUWDjg1H4SS(lvD_fQc+r7
+z1C48MfjxKu?qj8jWW`RA3_sg~88C@&#Tyvr=y7#<f?s)W#gTukBJl*k9DZQa*O$K~
+z>X4*37KtZB9roerj+td${qV2DLF=54_fG)idPBKuDp)}KoX6+;@_HJ=5j8j2<T`ev
+z-tP9J!1R$3FhDHxMjb}}V3<BK28IgKb!=jp6GlF+V>ddk>Pzdo8suTuu}|y)uw1N8
+z>g{e{t}EE~bA42H*d!s^w&+rp2E;NaO9PgRm644`u>@4M$kJfQD?2r5tSQe9NtH&2
+zb^kzh|F&Vyc^fKQn5K%6B^1=9XbU4>+uwcF0G?S^?=E+B=-mB!l<9s=rE-TFFs?aI
+ws3;2~-)Q&&5O5>o<$6PrctWU!TN&WL0TtMVO_+9za{vGU07*qoM6N<$f)etn)&Kwi
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/chance_out.png b/Assets/ModernNpcDialog/chance_out.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..1dab952cf5033b9729ab69532c89443d3965932f
+GIT binary patch
+literal 1984
+zcmbVN4N%io91n^Uikw(H`~<R~4maBLi<U;BE0hV&0>hrvZ_*@%NSl;2rG>e3ic@!T
+zWB9F19CJD+=PK%Or>^41iMqq7yHk-l6;B*fM5nUdaJtt5J>A^AnM+<?-uu1Z|NEa0
+zvoj}$i$;nd2nx?g*XMwD3V6gJuYj@hQb;U#h1%0+I3Or2()R>G8$THiLBV$zqe(Cs
+zreY*#lM)nXrloG19iSm7d6L^skcG4Wo9TRp#gWbfhY*;da3nX;AT!ug=>jIbl&7ba
+zW*W)TLQ+d1lP1E+ZVV9EXn}y;HY@AE+&JRr#lYORj3TffA{63?&L<Ey8M5J2j;CRb
+zR3RZ{G8wGVO66vCBB9YHzzUf{fy&gVTq%)jFqImUtKi-X0pfVdg5~Jn>J<jQaHK#G
+z>==r=TrR0gDdqTlRIb%(QJDf&C?o(Oag?wE;g+zDxIP9w?I3x^E-)Mm`xpr`=M-=R
+zsM=$L%^sj-9ld@69z)%P9hFOEKAZeNiVWcFPTuMlPLU{WrEN4TH~>~2z}gEqfpZja
+z|3V$uentTBt-%nG@myVOwtxtSkX8)L=yk|*(GFvYoknwL2j}ETI;|L}8RxUcj-~Q6
+zA#l8r<E(v=%I;GcRw$*3aC|PqQk=^%{;31Bo)Bmp0Z~&*WEzP=ZIml9|1FUzF`29f
+zYTziwQu0q|5~fVT6tZWaAZI8-AYKTjNX)|VHUb#T*ob@@wX^vM9B?C+%2_!c2nO0I
+z{aP3dSO)752$rNX^f&@+mNE>5kz|sRCMlIfour~9YOP8kA=DPRgw`g}7NtfZqcwr^
+zdX9AZBHMSK`k&{scm|XfVSQ;HU%~lO0!wEcAXp{66)}x2>YZ5`*q;R$LHe>AM@U~-
+zX$t9GW?tF@J+!U@8j$`+xO-p@&LX%7p4R09Z@n;`P@p{OtHT~U(7&7L-+QWN`{1Av
+z_@;pt1U>>yjAlXS;z5g=UG}LPg8I2L^g5&IgAS9fFj6=4@wm&|+~dXDTWiiAyS+mb
+z7T(T9)a<PsGo`Xx)S5Q9w5e3QD)rsa!_`OBpRdc~9xqKFd~d!vE^*)%9lA0iVt-7%
+za?_^fF;!NpsH?2;bk*g32RpyjaF%uJw}nC%n>{njo(!t09T^0fH;yars%>jE7o3}D
+z2wpQK8mzv`U3t%}%kJ+DJ>ab0{wMZI-hkAaRr4E`-H9#yvATNsy!^$M+M~z!>{)ll
+zHY-~9`l9<0OIEYxH}IzElUI&-qKb?Wc?LxWpKZ?l<N8@VYFC{%d2je;MpS8?6kitG
+z9{$rcfR+qDyzBgL-bkh)y68~K=$p8+G0#M%=-wE+byWS1n*B+QW&51Fx7^tD-C9%0
+z{p%e&@s{pKqRJ)l)26!JJC@H)Z(nMZu(iu9RpPb|zFAz2FN|-#J0nUd72g?<wdks{
+zal*kmZ^9avH+${v&MOC2tY)vC{9)h;`fby!8Ri=X&u7tNf5{Cww*e8?`Np|kcW?t<
+zG=#i0B)RB|M5(&LQd@R+=Y)ptit+~!KgP~v9t-bKzh73_|4n&UOwfszC}?(dnBwHH
+zQ{@YgsKZ_7V*t;r#s;R%GdoNUmf=%FSKf;U%wUAz5f!aXx8`iC==VK-q^bVv`rT9^
+zwOR!wEHOd@U)z8W$XdTxJm;G)gMPR3YaYJS@X<x!?#=yU+A=iW1;-c25-K0h^wf!O
+zj=E66In`c_o7eBksKl1hp4jN=&B<90e%^H{*R_Ie(QnP^j9yL*j?e7gbHUl|k>89f
+zcr>woVIfrf>(Q9Z(-W8>s*s_>HeY+7eAL=l{*Y`#J?*0T^G;S=_5EWr(lYg5rQ|LC
+E3xPJ!-~a#s
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/chance_over.png b/Assets/ModernNpcDialog/chance_over.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..e679c1fb33b5d06a896426ca22fad20332d8a323
+GIT binary patch
+literal 411
+zcmV;M0c8G(P)<h;3K|Lk000e1NJLTq002S&000sQ1^@s6@7f3-00009a7bBm000XU
+z000XU0RWnu7ytkPO-V#SR9J=Wm@$sRFc3w*5#4qyHPS{x93Ur2(r^Q6#5tnWdxJC!
+zC*c4z%LR7nsG$fGjh)yS+mOOMDTOWn$;^0cWg>9ndwaMbLRR@g0Du6RBzz^G!+JCj
+z$KQXf@`VsQ36tr^z;3;k)883DlZ+8f#+C#?j(KEQHyBk}zx<tJSE1_cdb9L)hA6T$
+zm@QkJ69LE$S7jY68M9;_#Lgpl9gSHsZy$mxr7CNwYG|y^ak$o2XR`MQUKOFED(g<Q
+zxKxj;&IPYT@Eza|7g^dV@1Nbiqc5_w4NeW(q~q`BHhc(nNASS=&Ujyt&APoZzOOUc
+za3%O1VY8O+GVQ1?;69zIxo5+Mr`!=L<R~8#w4=Ie=+mhhlMP#(6QRq#?g$i_JT_@~
+zz&f2y<4W6W#Q2E~H2sFuYfu9c6Fla38%}LFO~n3V<_bh7q0kP`aA5!d002ovPDHLk
+FV1j#ltw#U=
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/chance_press.png b/Assets/ModernNpcDialog/chance_press.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..f31ef680019c6680bcdc5460b34fc15fe19370dc
+GIT binary patch
+literal 502
+zcmV<S0SW$zP)<h;3K|Lk000e1NJLTq002S&000sQ1^@s6@7f3-00009a7bBm000XU
+z000XU0RWnu7ytkPs7XXYR9J=OSUqloFckirhN@DfmhK#&ci;-0v*Zj>My3c^oiZZM
+zz`~p>aEGjsm{ZiL5en(h+I_ZSVoZJ-<&zM$d7u6K`T2oi_(k|$>~Mo9W+4NBA@CzY
+z{PucTk1hm`Vpq&U#;6F7&-b_+3{F1ywrQ-!v9)ux|NQs@0Pw{Ul65W-09cRH)t|2R
+zPcIL$e4d$iMBsa8AJbWg!1t8vm?*0nX_6nc&qEmYAxAt@>XYfHmoum8%LcuK0R9{f
+zd=C-NFptM5t6D}$S=I8n0BsXxTBq%Yc&2h!oFqr2Nsh9r5%COZl1m38p2;?9t8>NO
+zme<ywEo4NvzA^Nbrw-BZPLmw-cr5D?&y?q;)!fGu^*#}xqxaUJd4f)C-yYX<3INRG
+zv7DSPUK>w92t@^Q!O?O=7hAfL`rU?S;`WISWj}12#<`<5&}0_)9#-p(vX@QKuv%{v
+z9(}FqoVJLvfpbKd)Hk(HrX%Av(mAwl;<a&HAkP}&bF=IB`hSDVc|$pChy%zqivV=<
+sU(6W*7;xjq@Wm3vEM!bH-1?81Z<SXIP^Tf)SO5S307*qoM6N<$f)`unSO5S3
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/clos_out.png b/Assets/ModernNpcDialog/clos_out.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..316a74f3138eccf264ce90b4fee1e192a0a00150
+GIT binary patch
+literal 644
+zcmV-~0(<?5P)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkQHc3Q5R7i={mceV<P#niUi7}2sLByV9Fed7`r~Vy<!mv<pEr=IA
+zv?4vIhcUJtwo57NZVomEW&JyP>RF3rAc9~g!d9_r%?>dyiHS86!SxG|yx%u3d7u1V
+z@_UgqO#|TUqNaELQypx_B>+j&G|nz++UDlVRWm)RtE(Fhw&RlY=|@$-#zOLnvD|gt
+z83Q`BVwkazOn<2N@BAy_a#gF{13>jX1Hh5eMPZAj%HmX0YPEZ!fp5}uDb|5rV5h;#
+zr4)l^bt#ahOu&Gu=Tv*pV;k^16-yP4_qRl>MiLHhaX_C9P|Tr70Nnp8aIsXOTuRxz
+zL9^<bVe2Ybud({+%qsv+PreH;n@bA7S@HxtYsu9}!r@snZmd8$v%~4hx$ryc3j(Ul
+z#}D6xHw;F3_x>wKhr71>Ny_B)xYxV`dzJBE9rZZ?p-CJXGyr)0`I2ld$+{xp@79H<
+z>(UN5LrVoV<(%|*e@kT1h^<F}Q8+&L&YpLQaw+Ag5UqC4wVVZ1ne{ajdKio{3`X&H
+z>y8g}6poAb_RW{M9G)_)MiLB~RnnOq2Vgdrgg-YTK04eLSp>)z_5f@!`NAID*2ow3
+zoc<h%tvMEw`Q<XeEI&R%gP*o@!(bEuf46Sy8#0zyxve?8$9y;S?=<_?JPQ(hqBaiK
+zqK>hW;$sw!V-zE|iD$uhd1nDOWQhh-RpPocX7JFrfSN^ox;D=Hl9#CsS)%cKY|j1U
+eelMTe5By(io9Wj5^ACXl0000<MNUMnLSTZL5h&^a
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/clos_over.png b/Assets/ModernNpcDialog/clos_over.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..1f881894b50f9a526767e46c62630a5a9c523951
+GIT binary patch
+literal 390
+zcmV;10eSw3P)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkPI7vi7R7i={mNAZkKoo}mA$Hrj)+9R#@c^DgZMcCo;T(i|Z$Pu|
+zNj$)YWK5{l&e|>5N1l&i93mU=YsmZz@G*}EDE#rc|G8np>^4gU01BvOKlJ;!Mh`fe
+zGj^M$Qe1YvcpF*E&gFCkP)i3CPE{7TcMBZzdXZ<vP^WS->wAC{OVSvXDF+jJL@(hy
+zE3jR!nsKP3R`%a`3+GvZB#rN~%9Pd>=2hUw*z&HqPYHLGJk(Ju<10=TNYc2KyXHPE
+z><ir(3DKCgU*CsDh-Wni_%Nuji|u;VtRjv17O+=L;{95qvPyhjXQ7S|>Iju7TMbJ4
+z_|3TRT4B1FO<FdcoYU1@w)6QkUGr)7`O?Ye<Ik#mZsmTNxpEtq(-lW^?k7AZBpmQy
+ks&Kd0`@N*#Res=q0e&~K5mpFl2><{907*qoM6N<$f)DGfoB#j-
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/clos_press.png b/Assets/ModernNpcDialog/clos_press.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..6f0aeb0fb06e962bdaa408a68c0d8b27e3201d60
+GIT binary patch
+literal 430
+zcmV;f0a5;mP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkPU`a$lR7i={mN9OFFcgM=r=hA8siivy=pDF1$BKm;RI(VE5JH_8
+z5ocgw&K0;r4v;-jr%F*shxQ?x7_bvJO@0XpnP<O`_nz&?@GJkLIpB)bBt8RxIq(CU
+zzP|h~(S$NIhbHkE6JZxm_qdzQ{@nS#ZH@eVZoU8j*>Z($)}>$p82fpAe(2t<5qhp;
+zYpGEg1ADF`J)+8@wgxt&xrwpoI#_RaM_@b(tU`@R8(4(x1C~XNJPjpV(t5ia9Urni
+z8<@aU(G<s2S>REi9M98GX{!Zn^Mnw8%yS*YS%o|ewXzdu)hM)4gwGMBn*hc1$62Ml
+zjyCX6eNn1)M3EyvimaH8skNj!*thMZ!?LKQW369<;${*7#5wQ$ZP0e=Xf!Sf9tB4!
+z<WV3+rf);vRhvs?JEpFepzF`{o<CKm^b=AqK@G+=_7lVg01UX1_HwyGllY9$z^yd!
+Y-@oO))DS9bOaK4?07*qoM6N<$f-keTKL7v#
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/cls_x_out.png b/Assets/ModernNpcDialog/cls_x_out.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..0c837989a97bdeb13bf55897fbd9bc92825f3368
+GIT binary patch
+literal 352
+zcmV-m0iXVfP)<h;3K|Lk000e1NJLTq000R9000RH1^@s6;E@Ip00009a7bBm000XU
+z000XU0RWnu7ytkP5=lfsR2Y?2&^<^(Q5=Tx=YQ@M(^|z!ErO!vh^7W>s0J&%drNa4
+zTZ4NLjS4m85)`x)R1_4nG(@xo;u>^GBXck{<=%4|f~<G`!3&Q#jsrk4oiR##{GAdd
+zH>cZ(<2cMLZJK}`U~zWz7o1!c&_<&~iAtt3ru_O$y-{OpCr`cUvAcgk;pv`grHnS(
+zC;&^@q~<1wL=)up4yjhktgo%m74H7I1rVhO1uYg*)A*jp<kUQ&phdg=)j^SHoMy}C
+z?EDrH;o<IzX3Hl&Fw#NV_c=Pg=Kbx3jn!p_$HvL#@`wn1{ewvM;1R&YdSeVFLiB`f
+yJ{uk%H7FK}C{bbq*hY(6a*bR1mkC>x0DJ?O-(LQ`^JAv~0000<MNUMnLSTYYY?D3!
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/cls_x_over.png b/Assets/ModernNpcDialog/cls_x_over.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..7fe20c717f6ca720586366ee8d08cabe8fcbbd98
+GIT binary patch
+literal 325
+zcmV-L0lNN)P)<h;3K|Lk000e1NJLTq000R9000RH1^@s6;E@Ip00009a7bBm000XU
+z000XU0RWnu7ytkO_en%SR2Y>_(5+6x02oH$^On~22KZ@0x)~gD7l5S(6a+!|5jYGE
+zg(CrUfiTS6GLjk0FuepqAT{m8#;PziO_uJ%5VoTqb;MtBFSVsv&0>;tw6lQ#9=o6B
+zc^(JbjepR7Nij1d$%%WZ<#|q7mK>fx0C0KpN|GcLMS+=_1K_$YXM3B3VaVylGo#Un
+z_T34-?*rffIF19r{_Ymj>69pn0H~^Jj)EW{n}|+#fF%0;KG{Sxo6R|@>zYn?K%VD3
+z-5%3wwYa*zM-o90ptzR;*!t=UjWwTe*~lj1r-b*9FC@tYaBZgH_}hkKcw6}7N&@%=
+Xe4AR9Njnly00000NkvXXu0mjf@8^Y9
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/next2_out.png b/Assets/ModernNpcDialog/next2_out.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..ae3c8a829b64f05b4e4f58dc2a02b5dd3f4f3209
+GIT binary patch
+literal 661
+zcmV;G0&4w<P)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkOAY({UO#lFTB>(_`g8%^e{{R4h=>PzAFaQARU;qF*m;eA5Z<1fd
+zMgRZ;8%ab#RCwCdmcMV>KorM6XRd~!LqwY?OGN~oGx2w1%s@6WClf*pAp?qNhjxjg
+zhAoj=WoiBnrpyqj3qnGIWT`-4ez=2shtDy>kTy!b(#gJeckjOU^}F{hT-OEQ;-=}n
+zyigqMW(0t6U6+fSrn|F~ddYmbz5T_(Zbpc2KO35CI%)lv&F&Z2-$h)1_b}6>r81_I
+z7Q?ak-hcBvs@+GJ)9DTXuww~;Ibnt8A{&LIhnO*DtwQ#=e93Y7@{w&__}6y21Km85
+zUW?lnaeGcvMs@DA8<A|Q`s;K@hLV1A0JanWjHV$9N5M&Xf1#@C3;4$ueUVD74#4@@
+zHRos7T1i_9qXi+?RVIvVDWCOJ+4`va>VWEbc(jMpZcxf+snqI}@>wSDGun?knHqkD
+z{2Rj~cRj*>l@&pC2&Ed-HF2li;P7ZqlZ_`NlSBsDYXTT#4T1}>GGRp`4C(*?{kJIw
+zBbREePAPB3<5RG9r8p_?`xHg1rP|joKL98cb5v?|3dJ0sK7W5QVYzya9D)6TWI*LY
+zF-P_E%IE`BPp>ExbI4v(&rxIkHOjUOx-_SgR%qo>Nj&MajCfNqINsPs$e8Z?<5KpT
+zkJg0w2*z<3hJDv8&Eb`1p1k{Z3fp&s#~a(mB?;R!Xj|4_giTA(B9JBS9%eYxVQ3N$
+vUY2Dy`Cnqw610BL=6k=o-^<tb1OI0L*S7r20A#%?00000NkvXXu0mjf3u!5A
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/next2_over.png b/Assets/ModernNpcDialog/next2_over.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..d76d67a39210e514721aa027b3c20b6d2f9eaea1
+GIT binary patch
+literal 421
+zcmV;W0b2fvP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkOAY({UO#lFTB>(_`g8%^e{{R4h=>PzAFaQARU;qF*m;eA5Z<1fd
+zMgRZ-D@jB_RCwCdmN5>3KoCX$5<5G!Hqpd*08WB5-hi5T4npk>Xq1z107J4S)M{s~
+zg$@pD78gXbOhO<7yS(}HlO2I)Z1;y7ERJBc6aXLyb~Yc|%!{KuBUmkk;IN~~&`Q|L
+z=~_ZNl(ZFAWpmK8XapQb3F0Vu%e9R*YmI>mnH%N4*{^ej0U+G0waQQj_<LPPc4?;V
+zTBpD|W#TA-@44_jw=AlVd8NQON)T?=C}a-ba{-|I-ZTbn+CmWYQ!0W~10MJ3d{KcW
+zFv`<&lV}Xgf2IZ%z(MN1|BHvY$}dG<kaTfh?$WH*`#)7!r<w{x?dQH#t-;rr`nWur
+zKb>@i%qxCVJ;)2-Idx6l9-ofqqdc1f+b~a5W(gWFY#x64IbQZ{fWHp_Diysc)8*gO
+P00000NkvXXu0mjfkZGr^
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/next2_press.png b/Assets/ModernNpcDialog/next2_press.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..f57e5f53f8e9521d10fb93587cdf629bb7aa0d24
+GIT binary patch
+literal 449
+zcmV;y0Y3hTP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkOAY({UO#lFTB>(_`g8%^e{{R4h=>PzAFaQARU;qF*m;eA5Z<1fd
+zMgRZ-M@d9MRCwCdRxxgaKoFcG5JigQke&zR4}2jtjo*MMT_J>0xkS9d4Yj{;fA9n7
+zja*qm#x9aQ-C=>eCt|@g?45SCbF+Kg3j87bkyp$ZG7SX)xI{Ml{+csi<d9dHhC=9M
+z-#=dQ;yC}F{L*!-Jg4LNm-PMs74<B#0N8m}pKr=`urNGKIPg6LzIV503)@(h!kc`D
+zvZ#!`{+a`u*vVRgDxfPjRFN^C$q8?>^_?<-@1bs5Z1SB^g}P~#O+IB&Dc_;0jlt#K
+z+`4H8%e&3iM*GA`ggA*%7M1a(gOd*ju1)zVnNE;Mj`?%RO-6V~Wg<l7@7t6A)-GMg
+zR#`s)T{`Mj-KLi4ADVmVTw7K9>o|#wmWY$cAWM7wHN`yIE^3yb=a2i&KMSYh*_<V4
+rz?dsprSM|L%l!c|4TV_R0Dl_*2r#j<@{U#=00000NkvXXu0mjfYO2AZ
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/ok_off.png b/Assets/ModernNpcDialog/ok_off.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..867a387e5a0b93c8cfc19751a5abbedc1f03c55e
+GIT binary patch
+literal 548
+zcmV+<0^9wGP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkP)=5M`R7i={);((DKp4jH|11(?VFU)b(<yv`4C_=$VO4PzpDtTv
+ztGLKkQP2r=2Z1^ZEK~_&D}|YfBul&N4{-9pz|45SKfiwUA@V#2Ac~@jFC3+m0I*<>
+zolGXz75yVo6je$oA(qRf!Frx|Wmb2xECV2p<9&r;kKJy!0PJ?V>&QBiBnbec(FouZ
+ztn(GH8VO)oP2!LG;vDR+rzbPo`(0<dka}2_WrmazDdp!6I9b>NJT4ZbY1&xpq-l!p
+z`v+%r3u+wDzya8{-B>p&d@k1aeSF{Nak1#F?2S^SX^Ifypo&sTY};;(b}mxkdIj72
+zb?o%^ma3`{LNqGb1=G>z%Cfv1xSje%1MnV(08~}QU@-VEU|%i<*2sE4>inEefjxW{
+z1V;heIje`0B;iIW-op^fvKS7BNGS>5-VR`{>oN-hmM<@jo;@~4Rk(eB)ECU%{XKtP
+zU(IK;AfPA;T-P;w8uu`t^ZWUkhxz<yEP#15d!EN;v*|_F|7QK=?OrU3!pz6xv6-({
+ztH!!-?{6u~viWH4L+UDa0qgkoyq+%DF<8fO4(}3Kma$&14YUquLr>|wQ{y;}aRG=t
+m&%ed%WgN#SrG)ryFYq5`i_YF><(xAB0000<MNUMnLSTYA*!a`{
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/ok_out.png b/Assets/ModernNpcDialog/ok_out.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..26de2890078358040bfb081ec1d22a119170cd56
+GIT binary patch
+literal 573
+zcmV-D0>b@?P)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkP?@2^KR7i={md{HYK@`V7vp;5gltoXuluDAbC;tvXC>6|2A>?8Y
+zD&oP-K}z+|UPNkd7VJgp-_eujL@a^`f>wm0#6&Y5*4@pnvmwbAqF;D0^WMOI`10P)
+z2&EJNI|p@t@j^8}RS*C|DaFn~T}@298#Yr{9UlH+eySkEw_mjoHt!lk#?tHPstx$i
+zR*=lQ291`#zOjeGrPcYxEdbJd0}ufRdI_)rq%Sj8i}gSj*fnoAjAUMSRtFh`59x;^
+z4ICL^K67|b*wwj70A#Mnnzu{UE73fwY0p-@lEy{f$xb)`X$b)C9{hdgDGLB(u87PP
+zX`a=ndZkon%a!R=7aeIJEfI^PGC8bsFo5pV`Nb{UTl<tN@55ZDlRB_K!g}iAJCz-{
+zS8Z?Y0}*6TfGPTKz)??{xQW{8+$61$aW*#hSX!Lv3oxn7JzTC#KlQ7LBW)aMu>Spb
+z46HRWj(vU1(&7von|lb$45MH5<?yq~mTz&JCoFvYz}GK7!-~$u`_TgSWu4`fSw4UI
+z!Sc#%->?AT)tq+?{&t0o+(`DKeSI9(?nevZ+PbXA_G!6Z)VNXct2rIg>^dxgdphaz
+zgTRg%f>RQIiKDAF&4)$@X!=wS(tCqy%n+RZYe(OHb<fM!_JDr`0hhvHPI|};00000
+LNkvXXu0mjf!#)Nc
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/ok_over.png b/Assets/ModernNpcDialog/ok_over.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..6e050248a9d1a58d65fe3137d79ec1458f7d451a
+GIT binary patch
+literal 348
+zcmV-i0i*tjP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkP4oO5oR7i={mOl=HFcgP>HEwR|Okxwl0XT`Ua06z-IgGP6U{O!v
+z0gMSG&cep51D2Gg6=?~7zJ!67NBHvk+CG9Wr_23~2@`q_0RRG2vOBsN*QkXo%@KMI
+zA-wE*yBb+bPVp)MRMHC;oT@C)bX)w$n<Tvn9}h|Wh;do2E=%n%1p$BW0st&(<9J9A
+z#Q~n_Lz)}Kf%d<QE6fBeYQv&7p6LTo94ISmA`2J_%PPpEMf#8h2HJEcJu5PZu)lYe
+zZPFEEVVTJJdTT6yTW@#4=#)^2$a+=G)$Ql{YBss)_)TU}yAkK#Rk434UL~?L@8=v=
+u3CQ9)vOIMUvjJm@@NV-PFIiwN1N;ZA9D;dC+GkP#0000<MNUMnLSTYNPKUk#
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/ok_press.png b/Assets/ModernNpcDialog/ok_press.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..eaf3fb856940706e0f93ef96c69561b34503cdc3
+GIT binary patch
+literal 381
+zcmV-@0fPRCP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkPFG)l}R7i={mN8DlFcgMAmlh!*LD_o%?vN`mR#~_KQj{@MR9Q@n
+zh%;ni?iGB89-w<GCZwt<1H8xyp%B{*?Jq@&ooByKw)6Zez7##09Y-vaM+#sFpRlvL
+z+y5o{MH;g+d8CvLdwG4%*<f(+<lD0Bl;>^r4uGC7s7Cb#3v|wNb#qa@_d^&^!GI^@
+zQS~(Y+hSc61b8wYv0QJ+bU~&IUY=iT-|e=<He>#(p%-ZbAW7pIq}|>Z+eJZExDDWG
+zcK_qby2645+((7*g@qogM5c=%^LPU<*PCyBvi-J_G$u)7=buef1KyUU(<A~SWo_SC
+z^@aAX5;lmv?E>4j0}sj6`8-!%Lax8A_q?lI{6x)5h`~5UKOt-Y3Qojc&KH<GQc5~b
+b#lU|6HY|z@B*0YT00000NkvXXu0mjf;$WTx
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/sell_out.png b/Assets/ModernNpcDialog/sell_out.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..489a55f82a9918a9f10ae0855931b9f515ab5dfc
+GIT binary patch
+literal 538
+zcmV+#0_FXQP)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkP%t=H+R7i={mc4GmFcgK4lMpI(K?o)mR79AWcn+jW-MR${@dz16
+z2d2&)N;ig1Re6q1%ms;s1&NlW1wjM2Lx^MNhmz2WawIGEwH1Fp^0iGUr2v3-w{KVe
+zscKb?005zsqTTJ&a{1!eOgq)<4N<FVgxo*BGT35TIx<$U2Gb1y8(MLK#k7QlW!Gnk
+zqi_XkJedOkRQU`5;Is5EVVh=0_=agbnX>}O+hR-M2S$bUPJCltNBaRM$4Of*U{bX`
+zrE9w_07p^N?7+|~zSzFden43ObfhW-0I)n17y#5<NoX6oTj$;97vX~XUE~476dTyk
+zD-6m3au(oqziD<*Z(ItX`$7_ByRaoa3|P&Tn4?~B0BAkD2;-A#LI4eeWPl<1l`X-8
+z*Be*cn7F^KEua_lCqS=a-xN)=!;YS*n#WYl18^O*QUz9cw;e#D$dO@zhz|3aZRi!W
+z?w*8xL$AP6h~0PlD8yGW;DW@i=3-jH`%XxIR-b<kg|Swuz+6+_`YgW6Xe_qMXzUwB
+ziy0NK=5R<kG*Ng!0N{IrfSg!V*sMe_g6EVNOgH#iFF4TfjE=MS;wmc<j6OE*+$Z<E
+cJhcb>H!$3{^pS96a{vGU07*qoM6N<$g8iB1{{R30
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/sell_over.png b/Assets/ModernNpcDialog/sell_over.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..51d8394a50ff004adf04358cfdb97d31f1d25a61
+GIT binary patch
+literal 333
+zcmeAS@N?(olHy`uVBq!ia0vp^IzTMM!3HE1zS!IWQk(@Ik;M!Q+`=Ht$S`Y;1W@q5
+zr;B5VN9WaPwtP(v0<HIjtgW}+JK}35(=eH#*L;E5yyk#vW~r|#atGY>7nEI#dT{8&
+z;u)ztA7-^mI_;~hyxDUg`u5+Kos8OCF^mjMClaP--O~^3)_X3!=zwU`p>txF=WU!-
+zy5Ei=<wBn(pQxC|X3O|}$>BoFmtJ-g=3`j=HSOxta{H4~7M;N@`@&cMmEJY^aL~(3
+z)i1=)U#UH(xTewh{^^B06C@YBvRnT7+JT^#cP?sKFudVAo|htjM2M3sZ^7!H&nA7{
+z>SnApb=}jOSC(8_leal##<f{hbD*?q$(~D@%Ga{ju61YM6gn?)a{^D`l-!!vOEr5^
+b8|xW;r^otv&MXcC1_gtstDnm{r-UW|o2iTO
+
+literal 0
+HcmV?d00001
+
+diff --git a/Assets/ModernNpcDialog/sell_press.png b/Assets/ModernNpcDialog/sell_press.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..89edf0753ec292f4caa847e00af2e4f05f02edfa
+GIT binary patch
+literal 407
+zcmV;I0cie-P)<h;3K|Lk000e1NJLTq001li000sQ1^@s6AoM)k00009a7bBm000XU
+z000XU0RWnu7ytkPNl8ROR7i={mN9O^FcgMAQ>ZE-wRGnIy+f|hISXfqGBQO`)QJ&s
+z1{P+nkUOxK9mG@>k#q>pwNs=fHl^@OQR0_4@5|F4`zekJ-tv+wR-Ob3pbHgj`ug&}
+zM87B_FY_c&%7pDd-E-IJ{CV<2QMAgl+k60!Em!DSmx2Xa=Xrd7(ASqCJZd=TS!Wk{
+z0S^Z~>u93cbYY#_s_Qh13U<BS|41Cgq3bIf$r%``D%AlcW>$Q?-TS1m<P0njQfZOE
+z)~kQ6%4=Yk6(Wj5#@QTzNjkE?XVV3fbfm}QY;KKR<z)%@uAG3Im6X^y<^9u%#0q95
+z1-|~Qk1QV?ilXsE@u<1136$yYQ+_T=_qN5$5~hdE*r|I_9O@5w-+Vgf)V+jke{J`9
+zSGn{PRxcq9#x?d6!Umw=M%v5eiaZIFlEAGr@LvlrnGc&m3!nf1002ovPDHLkV1iyf
+BvI_tJ
+
+literal 0
+HcmV?d00001
+
+diff --git a/Patches/UI.yml b/Patches/UI.yml
+index 0599943cfa988d98c00bfc1a22014f61f32474e1..78962ee20708c8c2afce6be627e7e4bfb5d0eff9 100644
+--- a/Patches/UI.yml
++++ b/Patches/UI.yml
+@@ -32,6 +32,12 @@ CustomUI:
+     color : orangered
+     
+     patches:
++        - ModernNpcDialog:
++            title : Renewal NPC Dialog UI
++            recommend : no
++            author : DevSeara
++            desc : "Myth of Yggdrasil reference: rounded NPC frames, light-blue text/choice panels and centered supplied buttons. v3 initializes the NPC middle text canvas as light blue before its first layout/paint, retaining the accepted v2 choice styling and 2025 UIChoose3Wnd OK/Cancel fix. Uses 25 supplied PNGs in NPC/shop windows, plus Apply in equipment/skills and Preview in native emotion/item-collection lists. Retains native text, scrolling, choices, hand cursor and actions. Copies missing images automatically to data/texture/<UI prefix>/genericsui beside the output EXE; existing files are preserved. Missing optional disabled artwork retains native rendering. Requires the DevSeara chat/native helper scripts, but not the selected chat patch. Target: 2025-07-16; no DLL."
++
+         - ModernChatUI:
+             title : Supplied Renewal Chat UI
+             recommend : no
+diff --git a/Scripts/Patches/ModernChatUI.qjs b/Scripts/Patches/ModernChatUI.qjs
+index 26397fec090ac928beec786ebc8f233a09b5259a..bfd2e6512b0845241bbebd7aa82995cf68e2074b 100644
+--- a/Scripts/Patches/ModernChatUI.qjs
++++ b/Scripts/Patches/ModernChatUI.qjs
+@@ -934,3 +934,7 @@ ModernChatUI.onApplied = function()
+ };
+ 
+ ModernChatUI.validate = () => Exe.BuildDate === ModernChatUIStatic.BuildDate;
++
++// Reusable, chat-independent PNG compositing helpers for scoped native UIs.
++// Exporting helpers does not enable or apply ModernChatUI.
++ModernChatUI.nativeHelpers = ModernChatUIStatic;
+diff --git a/Scripts/Patches/ModernNpcDialog.qjs b/Scripts/Patches/ModernNpcDialog.qjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..b483023379040ca48cf045540eaa18a2aff3bf6d
+--- /dev/null
++++ b/Scripts/Patches/ModernNpcDialog.qjs
+@@ -0,0 +1,296 @@
++/*
++ * Author: DevSeara.
++ * Description: Rounded light NPC text/choice frames and supplied generic PNG
++ * buttons for 2025-07-16 Ragexe. Native text, menus, cursor, button events and
++ * NPC/shop packets remain unchanged. Other windows retain their stock draw.
++ * Uses the native canvas helpers supplied with AutoCombatUI/ModernChatUI.
++ */
++
++const ModernNpcDialogStatic = {
++	BuildDate: 20250716,
++	SayVtable: 0x01033094, SayDraw: 0x008B5F30,
++	SayTextColorSite: 0x008AE357,
++	ChoiceVtable: 0x0103316C, ChoiceDraw: 0x008B30D0,
++	Choice3Vtable: 0x0104ADE0,
++	ButtonVtable: 0x01029820, ButtonDraw: 0x00823E10,
++	ButtonParents: [0x01033094, 0x0103316C, 0x0104ADE0, 0x010335A4,
++		0x01032824, 0x010328FC, 0x0103CBF0, 0x0103CCC8,
++		0x0103CE78, 0x0103CF50, 0x01026220],
++	// User-approved generic-button exceptions: Apply in Equipment/Skills,
++	// Preview in the native Emotion/Item Collection lists. No frame changes.
++	ExtraButtonParents: {apply: [0x0103223C, 0x0103F660], chance: [0x0104B070, 0x01032AAC]},
++	Assets: ["apply_out.png", "apply_over.png", "apply_press.png",
++		"buy_out.png", "buy_over.png", "buy_press.png", "buy_off.png",
++		"sell_out.png", "sell_over.png", "sell_press.png",
++		"chance_out.png", "chance_over.png", "chance_press.png",
++		"clos_out.png", "clos_over.png", "clos_press.png",
++		"cls_x_out.png", "cls_x_over.png", "next2_out.png", "next2_over.png",
++		"next2_press.png", "ok_out.png", "ok_over.png", "ok_press.png", "ok_off.png"],
++	OptionalAssets: ["sell_off.png"]
++};
++
++ModernNpcDialogStatic.buildRound = function(fill)
++{
++	const n = AutoCombatUI.nativeHelpers, a = n.asm();
++	// stdcall(window,x,y,width,height,color), clipped rounded rectangle.
++	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
++	a.emit(0x8B, 0x75, 8, 0x8B, 0x5D, 0x14, 0x8B, 0x7D, 0x18);
++	a.emit(0x83, 0xFB, 10); a.jcc(0x8C, "done");
++	a.emit(0x83, 0xFF, 10); a.jcc(0x8C, "done");
++	a.emit(0xFF, 0x75, 0x1C, 0x8D, 0x47, 0xF8, 0x50, 0x53);
++	a.emit(0x8B, 0x45, 0x10, 0x83, 0xC0, 4, 0x50, 0xFF, 0x75, 0x0C, 0x56); a.call(fill);
++	for (let row = 0; row < 4; row++)
++		for (const bottom of [false, true])
++		{
++			const inset = [4, 2, 1, 1][row];
++			a.emit(0xFF, 0x75, 0x1C, 0x6A, 1, 0x8D, 0x43, (256 - inset * 2) & 255, 0x50);
++			a.emit(0x8B, 0x45, 0x10);
++			if (bottom) a.emit(0x03, 0xC7, 0x83, 0xE8, row + 1);
++			else if (row) a.emit(0x83, 0xC0, row);
++			a.emit(0x50, 0x8B, 0x45, 0x0C, 0x83, 0xC0, inset, 0x50, 0x56); a.call(fill);
++		}
++	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x18, 0);
++	return a;
++};
++
++ModernNpcDialogStatic.buildFrame = function(round, choice)
++{
++	const c = ModernNpcDialogStatic, n = AutoCombatUI.nativeHelpers, a = n.asm();
++	a.emit(0x83, 0x79, 0x14, 40); a.jcc(0x8C, choice ? c.ChoiceDraw : c.SayDraw);
++	a.emit(0x83, 0x79, 0x18, 40); a.jcc(0x8C, choice ? c.ChoiceDraw : c.SayDraw);
++	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1, 0x6A, 0); a.call(0xA1CB30);
++	a.emit(0x8B, 0x5E, 0x14, 0x8B, 0x7E, 0x18);
++	for (const [inset, color] of [[0, 0xFFB1C7E1], [1, 0xFFE1EBF7], [2, 0xFFFFFFFF]])
++	{
++		n.pushImm(a, color); a.emit(0x8B, 0xC7, 0x83, 0xE8, inset * 2, 0x50);
++		a.emit(0x8B, 0xC3, 0x83, 0xE8, inset * 2, 0x50, 0x6A, inset, 0x6A, inset, 0x56); a.call(round);
++	}
++	n.pushImm(a, 0xFFEEF7FF);
++	a.emit(0x8B, 0xC7, 0x83, 0xE8, 38, 0x50, 0x8B, 0xC3, 0x83, 0xE8, 12, 0x50);
++	a.emit(0x6A, 6, 0x6A, 6, 0x56); a.call(round);
++	if (choice)
++	{
++		// Retain list size, selection, scroll state and native event IDs.
++		a.emit(0x8B, 0x8E); a.dword(0xC4); a.emit(0x85, 0xC9); a.jcc(0x84, "buttons");
++		for (const [offset, value] of [[0x7C, 0xEE], [0x80, 0xF7], [0x84, 0xFF]])
++		{
++			a.emit(0x81, 0xB9); a.dword(offset); a.dword(value); a.jcc(0x84, "color_" + offset);
++			a.emit(0xC7, 0x81); a.dword(offset); a.dword(value);
++			// Repaint a previously cached list once, without invalidating its
++			// parent recursively on every frame. UIWnd dirty field is +0x58.
++			a.emit(0xC7, 0x41, 0x58); a.dword(1); a.label("color_" + offset);
++		}
++		a.emit(0x6A, 10, 0x6A, 10); a.call(0xA23450);
++		a.label("buttons");
++		for (const [offset, delta] of [[0xD0, 0], [0xD4, 54]])
++		{
++			a.emit(0x8B, 0x8E); a.dword(offset); a.emit(0x85, 0xC9); a.jcc(0x84, "button_" + offset);
++			a.emit(0x8D, 0x47, 0xE8, 0x50, 0x8B, 0xC3, 0x83, 0xE8, 98, 0xD1, 0xF8);
++			if (delta) a.emit(0x83, 0xC0, delta);
++			a.emit(0x50); a.call(0xA23450); a.label("button_" + offset);
++		}
++	}
++	else
++	{
++		// UISayDialogWnd owns a separate scroll-text canvas (+0xB4). Its
++		// native Draw 0x807630 clears with COLORREF at +0x8C, over our panel.
++		// Store ABGR/COLORREF here, not the BGRA pixel constant above.
++		a.emit(0x8B, 0x8E); a.dword(0xB4); a.emit(0x85, 0xC9); a.jcc(0x84, "text_done");
++		a.emit(0x81, 0xB9); a.dword(0x8C); a.dword(0xFFFFF7EE); a.jcc(0x84, "text_done");
++		a.emit(0xC7, 0x81); a.dword(0x8C); a.dword(0xFFFFF7EE);
++		a.emit(0xC7, 0x41, 0x58); a.dword(1);
++		a.label("text_done");
++	}
++	a.emit(0x5F, 0x5E, 0x5B, 0xC3);
++	return a;
++};
++
++ModernNpcDialogStatic.buildLookup = function(roles)
++{
++	const c = ModernNpcDialogStatic, n = AutoCombatUI.nativeHelpers, a = n.asm();
++	// thiscall(button), descriptor or zero. Scope before reading resource data.
++	a.emit(0x56, 0x8B, 0x41, 0x10, 0x85, 0xC0); a.jcc(0x84, "none");
++	a.emit(0x8B, 0x30);
++	for (const parent of [...c.ButtonParents, ...c.ExtraButtonParents.apply, ...c.ExtraButtonParents.chance])
++	{ a.emit(0x81, 0xFE); a.dword(parent); a.jcc(0x84, "owned"); }
++	a.jmp("none"); a.label("owned");
++	a.emit(0x8B, 0x91); a.dword(0xCC); a.emit(0x85, 0xD2); a.jcc(0x8E, "none");
++	a.emit(0x81, 0xFA); a.dword(260); a.jcc(0x87, "none");
++	a.emit(0x8D, 0x81); a.dword(0xBC);
++	a.emit(0x83, 0xB9); a.dword(0xD0); a.emit(16); a.jcc(0x82, "inline");
++	a.emit(0x8B, 0x00, 0x85, 0xC0); a.jcc(0x84, "none"); a.label("inline");
++	a.emit(0x8B, 0xCA, 0x8B, 0xD0);
++	a.label("scan"); a.emit(0x80, 0x38, 0x5C); a.jcc(0x84, "separator");
++	a.emit(0x80, 0x38, 0x2F); a.jcc(0x85, "advance");
++	a.label("separator"); a.emit(0x8D, 0x50, 1);
++	a.label("advance"); a.emit(0x40, 0x49); a.jcc(0x85, "scan");
++	a.emit(0x8B, 0xC8, 0x2B, 0xCA);
++	for (const [index, role] of roles.entries())
++	{
++		a.emit(0x83, 0xF9, role.name.length); a.jcc(0x85, "role_" + index);
++		for (let i = 0; i < role.name.length; i++)
++		{
++			a.emit(0x80, 0x7A, i, role.name.charCodeAt(i)); a.jcc(0x85, "role_" + index);
++		}
++		for (const parent of role.parents)
++		{ a.emit(0x81, 0xFE); a.dword(parent); a.jcc(0x84, "take_" + index); }
++		a.jmp("role_" + index);
++		a.label("take_" + index); a.emit(0xB8); a.dword(role.descriptor); a.emit(0x5E, 0xC3); a.label("role_" + index);
++	}
++	a.label("none"); a.emit(0x33, 0xC0, 0x5E, 0xC3);
++	return a;
++};
++
++ModernNpcDialogStatic.buildBackground = function()
++{
++	const a = AutoCombatUI.nativeHelpers.asm();
++	// thiscall(button): copy clipped parent pixels behind PNG transparency.
++	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10, 0x53, 0x56, 0x57, 0x8B, 0xF1);
++	a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0); a.jcc(0x84, "done");
++	a.emit(0x8B, 0x78, 0x18, 0x85, 0xFF); a.jcc(0x84, "done");
++	a.emit(0x8B, 0x40, 4, 0x89, 0x45, 0xFC, 0x8B, 0x46, 0x10, 0x85, 0xC0); a.jcc(0x84, "done");
++	a.emit(0x8B, 0x58, 0x24, 0x85, 0xDB); a.jcc(0x84, "done");
++	a.emit(0x83, 0x7B, 0x18, 0); a.jcc(0x84, "done");
++	a.emit(0x33, 0xC0, 0x89, 0x45, 0xF8);
++	a.label("row"); a.emit(0x8B, 0x45, 0xF8, 0x3B, 0x46, 0x18); a.jcc(0x8D, "done");
++	a.emit(0xC7, 0x45, 0xF4); a.dword(0);
++	a.label("pixel"); a.emit(0x8B, 0x45, 0xF4, 0x3B, 0x45, 0xFC); a.jcc(0x8D, "next_row");
++	a.emit(0xB9); a.dword(0xFFFFFFFF);
++	a.emit(0x03, 0x46, 0x1C, 0x85, 0xC0); a.jcc(0x88, "write");
++	a.emit(0x3B, 0x43, 4); a.jcc(0x8D, "write"); a.emit(0x89, 0x45, 0xF0);
++	a.emit(0x8B, 0x45, 0xF8, 0x03, 0x46, 0x20, 0x85, 0xC0); a.jcc(0x88, "write");
++	a.emit(0x3B, 0x43, 8); a.jcc(0x8D, "write");
++	a.emit(0x0F, 0xAF, 0x43, 4, 0x03, 0x45, 0xF0, 0x8B, 0x53, 0x18, 0x8B, 0x0C, 0x82);
++	a.label("write"); a.emit(0x89, 0x0F, 0x83, 0xC7, 4, 0xFF, 0x45, 0xF4); a.jmp("pixel");
++	a.label("next_row"); a.emit(0xFF, 0x45, 0xF8); a.jmp("row");
++	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
++	return a;
++};
++
++ModernNpcDialogStatic.buildButton = function(lookup, background, pngDraw)
++{
++	const c = ModernNpcDialogStatic, n = AutoCombatUI.nativeHelpers, a = n.asm();
++	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 4, 0x53, 0x56, 0x57, 0x8B, 0xF1);
++	a.call(lookup); a.emit(0x85, 0xC0); a.jcc(0x84, "stock");
++	a.emit(0x89, 0x45, 0xFC, 0x8B, 0x56, 0x30, 0x83, 0xFA, 2); a.jcc(0x87, "stock");
++	a.emit(0x80, 0xBE); a.dword(0xAC); a.emit(0); a.jcc(0x84, "state");
++	a.emit(0xBA); a.dword(3); a.label("state");
++	a.emit(0x8B, 0x3C, 0x90, 0x85, 0xFF); a.jcc(0x84, "stock");
++	a.call(n.GetTexMgr); a.emit(0x85, 0xC0); a.jcc(0x84, "stock");
++	a.emit(0x8B, 0xD8, 0x57); a.call(n.ConvPath); a.emit(0x83, 0xC4, 4, 0x85, 0xC0); a.jcc(0x84, "stock");
++	a.emit(0x50, 0x8B, 0xCB); a.call(n.LoadSurface); a.emit(0x85, 0xC0); a.jcc(0x84, "stock");
++	a.emit(0x8B, 0xF8, 0x8B, 0x4D, 0xFC, 0x8B, 0x87); a.dword(0x114);
++	a.emit(0x3B, 0x41, 16); a.jcc(0x85, "stock");
++	a.emit(0x8B, 0x97); a.dword(0x118); a.emit(0x3B, 0x51, 20); a.jcc(0x85, "stock");
++	a.emit(0x3B, 0x46, 0x14); a.jcc(0x85, "resize");
++	a.emit(0x3B, 0x56, 0x18); a.jcc(0x84, "paint");
++	a.label("resize"); a.emit(0x52, 0x50, 0x8B, 0xCE); a.call(0xA1CB70);
++	a.label("paint"); a.emit(0x8B, 0xCE); a.call(background);
++	a.emit(0x6A, 0, 0x57, 0x6A, 0, 0x6A, 0, 0x8B, 0xCE); a.call(pngDraw);
++	// Preserve the original button's parent-invalidation behavior.
++	a.emit(0x80, 0xBE); a.dword(0x11C); a.emit(0); a.jcc(0x84, "done");
++	a.emit(0x8B, 0x4E, 0x10, 0x85, 0xC9); a.jcc(0x84, "done");
++	a.emit(0x8B, 0x01, 0xFF, 0x90); a.dword(0x98);
++	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
++	a.label("stock"); a.emit(0x8B, 0xCE, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D); a.jmp(c.ButtonDraw);
++	return a;
++};
++
++ModernNpcDialog = function(_)
++{
++	const c = ModernNpcDialogStatic;
++	if (Exe.BuildDate !== c.BuildDate || typeof AutoCombatUI === "undefined" ||
++		typeof AutoCombatUI.nativeHelpers === "undefined" || typeof ModernChatUI === "undefined" ||
++		typeof ModernChatUI.nativeHelpers === "undefined")
++		throw Error("ModernNpcDialog requires the 2025-07-16 DevSeara native chat/UI helper scripts");
++	const n = AutoCombatUI.nativeHelpers;
++	for (const [name, table, original] of [["NPC text", c.SayVtable, c.SayDraw],
++		["NPC choices", c.ChoiceVtable, c.ChoiceDraw], ["2025 NPC choices", c.Choice3Vtable, c.ChoiceDraw],
++		["bitmap button", c.ButtonVtable, c.ButtonDraw]])
++		if (Exe.GetUint32(Exe.Vir2Phy(table + 0x50)) !== original)
++			throw Error("ModernNpcDialog: unexpected or already patched " + name + " draw slot");
++	n.assertCode("NPC text draw", c.SayDraw, "6A 00 6A 00 6A 00 6A 00 E8");
++	n.assertCode("NPC choice draw", c.ChoiceDraw, "6A 00 6A 00 6A 00 6A 00 E8");
++	n.assertCode("native bitmap button draw", c.ButtonDraw, "55 8B EC 51 56 8B F1");
++	n.assertCode("NPC text child background", 0x807630, "56 8B F1 FF B6 8C 00 00 00 E8");
++	n.assertCode("NPC text initial background", c.SayTextColorSite, "C7 81 8C 00 00 00 F2 F2 F2 FF");
++	// UIChoose3Wnd inherits the same child layout/Create, but retains its own
++	// native event handler. Verify both, then replace only its draw slot.
++	if (Exe.GetUint32(Exe.Vir2Phy(c.Choice3Vtable + 0x3C)) !== 0x8A3FC0 ||
++		Exe.GetUint32(Exe.Vir2Phy(c.Choice3Vtable + 0x94)) !== 0x8BE590)
++		throw Error("ModernNpcDialog: unexpected 2025 choice layout/event handler");
++	// Set the NPC-only creation default before its first text/layout/paint.
++	// Parent-paint invalidation alone is too late for the initial cached canvas.
++	// Leave the correct choice frame, selection styling and button draws intact.
++	Exe.SetUint32(Exe.Vir2Phy(c.SayTextColorSite + 6, CODE), 0xFFFFF7EE);
++	const fill = n.allocateCode(n.buildFillRect());
++	const round = n.allocateCode(c.buildRound(fill.vir));
++	const say = n.allocateCode(c.buildFrame(round.vir, false));
++	const choice = n.allocateCode(c.buildFrame(round.vir, true));
++	const roles = [];
++	for (const [names, prefix, width, height, off] of [
++		[["btn_apply.bmp"], "apply", 44, 18, false],
++		[["btn_buy.bmp", "btn_buy_out.bmp", "btn_buy_normal.bmp"], "buy", 44, 18, true],
++		[["btn_sell.bmp"], "sell", 44, 18, true],
++		[["btn_view.bmp"], "chance", 66, 18, false],
++		[["btn_close.bmp", "btn_cancel.bmp", "btn_close_normal.bmp"], "clos", 44, 18, false],
++		[["sys_close_off.bmp"], "cls_x", 9, 9, false],
++		[["btn_next.bmp"], "next2", 44, 18, false],
++		[["btn_ok.bmp"], "ok", 44, 18, true]])
++	{
++		const paths = ["out", "over", prefix === "cls_x" ? "over" : "press", off ? "off" : null]
++			.map(state => state ? n.buildResourcePath("genericsui\\" + prefix + "_" + state + ".png").vir : 0);
++		const bytes = [];
++		for (const value of [...paths, width, height])
++			bytes.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
++		const descriptor = n.allocateBytes(bytes, 4).vir;
++		const parents = [...c.ButtonParents, ...(c.ExtraButtonParents[prefix] || [])];
++		for (const name of names) roles.push({name, descriptor, parents});
++	}
++	const lookup = n.allocateCode(c.buildLookup(roles));
++	const background = n.allocateCode(c.buildBackground());
++	const blend = n.allocateCode(ModernChatUI.nativeHelpers.buildBlendPixel());
++	const pngDraw = n.allocateCode(ModernChatUI.nativeHelpers.buildPngDraw(blend.vir));
++	const button = n.allocateCode(c.buildButton(lookup.vir, background.vir, pngDraw.vir));
++	for (const [table, draw] of [[c.SayVtable, say], [c.ChoiceVtable, choice],
++		[c.Choice3Vtable, choice], [c.ButtonVtable, button]])
++		Exe.SetUint32(Exe.Vir2Phy(table + 0x50), draw.vir);
++	const marker = n.allocateString("ModernNpcDialog.v3"), record = [];
++	for (const value of [marker.vir, say.vir, choice.vir, lookup.vir, background.vir, button.vir])
++		record.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
++	n.allocateBytes(record, 4);
++	CACHE.put("ModernNpcDialog.Contract.v3", {say, choice, lookup, background, button, roles});
++	ModernNpcDialog.onApplied();
++	return true;
++};
++
++ModernNpcDialog.onApplied = function()
++{
++	if (Warp.TestMode) return;
++	const c = ModernNpcDialogStatic, source = Warp.Path + "/Assets/ModernNpcDialog";
++	const folders = ["data", "texture", ModernChatUI.nativeHelpers.uiPrefix(), "genericsui"];
++	const root = System.DirPath(Warp.TgtExe), target = root + "/" + folders.join("/"), missing = [];
++	for (const file of [...c.Assets, ...c.OptionalAssets])
++	{
++		const existing = new BinFile(target + "/" + file, 'r');
++		const present = existing.Valid; existing.Close();
++		if (present) continue;
++		const asset = new BinFile(source + "/" + file, 'r');
++		const available = asset.Valid; asset.Close();
++		if (!available && c.OptionalAssets.includes(file)) continue;
++		if (!available) throw Error("ModernNpcDialog: missing bundled image " + source + "/" + file);
++		missing.push(file);
++	}
++	if (!missing.length) return;
++	let directory = root;
++	for (const folder of folders)
++	{
++		directory += "/" + folder;
++		if (!System.MkDir(directory)) throw Error("ModernNpcDialog: cannot create " + directory);
++	}
++	for (const file of missing)
++		if (!System.Copy(source + "/" + file, target + "/" + file, false))
++			throw Error("ModernNpcDialog: cannot copy " + file + " to " + target);
++};
++
++ModernNpcDialog.validate = () => Exe.BuildDate === ModernNpcDialogStatic.BuildDate;
+diff --git a/Tables/Patch.yml b/Tables/Patch.yml
+index cdd53f60e989c2baf0d911dbaf21da9d24569c6b..7d1d8bfe6d793fd756399d70875a22c52e81db43 100644
+--- a/Tables/Patch.yml
++++ b/Tables/Patch.yml
+@@ -1,7 +1,8 @@
+-# DevSeara Battle Pass and chat patch IDs.
++# DevSeara Battle Pass, chat and NPC dialog patch IDs.
+ 10001 : ModernChatUI
+ 10003 : BattlepassUI
+ 10004 : ChatItemIcons
++10005 : ModernNpcDialog
+ 
+ ############################################################################
+ #                                                                          #
