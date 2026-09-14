@@ -1,0 +1,936 @@
+/*
+ * Author: DevSeara.
+ * Description: 2025-07-16 renewal chat skin, preserving native filter identity.
+ * Own main/tab paint, retaining native message rendering, edits and selection.
+ * Suppress obsolete top-strip paint, retaining native detach/re-dock behavior.
+ * Composite supplied PNGs with straight alpha before finalizing GDI text.
+ */
+
+const ModernChatUIStatic = {
+	BuildDate: 20250716,
+	MainVtable: 0x01037F80,
+	MainDraw: 0x008F3340,
+	ParentClick: 0x008F6C20,
+	ParentEvent: 0x008FC220,
+	PaneDraw: 0x00851960,
+	TabDraw: 0x00857910,
+	ControlsLayout: 0x008F96B0,
+	InputLayout: 0x008F9840,
+	FloatVtable: 0x01037EA8,
+	FloatDraw: 0x008F6270,
+	FloatLayout: 0x008F97B0,
+	BottomReserve: 42,
+	ControlsReserve: 60,
+	InputSplit: 108,
+	MessageX: 116,
+	InputTools: 51,
+	ToolbarFill: 0x80404040,
+	PanelFill: 0x80111114,
+	PanelBorder: 0xA034353B,
+	ClearSites: [0x8F6CE7, 0x8FC555, 0x8FC9C2, 0x8FCAD8, 0x8FCB33,
+		0x8FE02A, 0x8FE229, 0x9022A2, 0x90235D],
+	AssetPath: "/Assets/ModernChatUI",
+	Assets: [
+		"btn_close.png", "btn_close1.png", "btn_emote2.png",
+		"btn_expand.png", "btn_min.png", "icon_blocked.png",
+		"icon_chanel.png", "icon_direct.png", "icon_emotion.png",
+		"icon_general.png", "icon_guild.png", "icon_lock_off.png",
+		"icon_lock_on.png", "icon_off.png", "icon_party.png",
+		"icon_pm.png", "icon_settings.png", "textbox_off.png", "textbox_on.png"
+	]
+};
+
+ModernChatUIStatic.uiPrefix = function()
+{
+	return String.fromCharCode(0xC0, 0xAF, 0xC0, 0xFA, 0xC0, 0xCE, 0xC5,
+		0xCD, 0xC6, 0xE4, 0xC0, 0xCC, 0xBD, 0xBA);
+};
+
+ModernChatUIStatic.emitChatChildGuard = function(a, original)
+{
+	a.emit(0x8B, 0x41, 0x10, 0x85, 0xC0); a.jcc(0x84, original);
+	a.emit(0x81, 0x38); a.dword(ModernChatUIStatic.MainVtable);
+	a.jcc(0x85, original);
+};
+
+ModernChatUIStatic.buildFinalizePixels = function(background = 0)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x56, 0x57, 0x8B, 0x71, 0x24, 0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x7E, 0x18, 0x85, 0xFF); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x56, 0x04, 0x0F, 0xAF, 0x56, 0x08, 0x85, 0xD2);
+	a.jcc(0x8E, "done");
+	a.label("pixel");
+	a.emit(0x8B, 0x07, 0x8B, 0xC8, 0x81, 0xE1); a.dword(0x00FFFFFF);
+	a.emit(0x81, 0xF9); a.dword(0x00FF00FF); a.jcc(0x84, "key");
+	// GDI TextOut zeroes alpha; preserve existing PNG alpha and transparent zero.
+	if (!background) { a.emit(0x85, 0xC9); a.jcc(0x84, "next"); }
+	a.emit(0xA9); a.dword(0xFF000000); a.jcc(0x85, "next");
+	a.emit(0x0D); a.dword(0xFF000000); a.jmp("write");
+	a.label("key"); a.emit(0xB8); a.dword(background);
+	a.label("write"); a.emit(0x89, 0x07);
+	a.label("next"); a.emit(0x83, 0xC7, 0x04, 0x4A); a.jcc(0x85, "pixel");
+	a.emit(0xC6, 0x46, 0x28, 0x01);
+	a.label("done"); a.emit(0x5F, 0x5E, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildPaneDraw = function(finalize)
+{
+	const c = ModernChatUIStatic;
+	const a = AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x8B, 0x41, 0x10, 0x85, 0xC0); a.jcc(0x84, c.PaneDraw);
+	a.emit(0x81, 0x38); a.dword(c.MainVtable); a.jcc(0x84, "chat");
+	a.emit(0x81, 0x38); a.dword(c.FloatVtable); a.jcc(0x85, c.PaneDraw);
+	a.label("chat");
+	a.emit(0x56, 0x8B, 0xF1); a.call(c.PaneDraw);
+	a.emit(0x8B, 0xCE); a.call(finalize);
+	// The floating list is copied over its parent's surface. Transparent list
+	// pixels erase the body's backing, so this child must own its gray fill.
+	a.emit(0x8B, 0x46, 0x10, 0x81, 0x38); a.dword(c.FloatVtable); a.jcc(0x85, "done");
+	a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x50, 4, 0x0F, 0xAF, 0x50, 8, 0x8B, 0x40, 0x18, 0x85, 0xC0);
+	a.jcc(0x84, "done"); a.emit(0x85, 0xD2); a.jcc(0x8E, "done");
+	a.label("background"); a.emit(0x83, 0x38, 0); a.jcc(0x85, "next");
+	a.emit(0xC7, 0x00); a.dword(c.PanelFill);
+	a.label("next"); a.emit(0x83, 0xC0, 4, 0x4A); a.jcc(0x85, "background");
+	a.label("done"); a.emit(0x5E, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildBlendPixel = function()
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// stdcall(source ARGB, destination ARGB), straight-alpha source-over.
+	// Transparent PNG RGB is unspecified: never interpret it as GDI text.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18);
+	a.emit(0x8B, 0x45, 0x08, 0x8B, 0xC8, 0x81, 0xE1); a.dword(0xFFFFFF);
+	a.emit(0x81, 0xF9); a.dword(0xFF00FF); a.jcc(0x84, "destination");
+	a.emit(0x8B, 0xC8, 0xC1, 0xE9, 24, 0x85, 0xC9); a.jcc(0x84, "destination");
+	a.emit(0x81, 0xF9); a.dword(255); a.jcc(0x84, "done");
+	a.emit(0x89, 0x4D, 0xFC, 0x8B, 0x55, 0x0C, 0xC1, 0xEA, 24);
+	a.emit(0x85, 0xD2); a.jcc(0x84, "done");
+	a.emit(0xB8); a.dword(255); a.emit(0x2B, 0xC1, 0x0F, 0xAF, 0xC2, 0x83, 0xC0, 127);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(255); a.emit(0xF7, 0xF1);
+	a.emit(0x89, 0x45, 0xF8, 0x03, 0x45, 0xFC, 0x89, 0x45, 0xF4);
+	a.emit(0xC1, 0xE0, 24, 0x89, 0x45, 0xE8);
+	for (const shift of [0, 8, 16])
+	{
+		a.emit(0x8B, 0x45, 0x08, 0x8B, 0x55, 0x0C);
+		if (shift) a.emit(0xC1, 0xE8, shift, 0xC1, 0xEA, shift);
+		a.emit(0x25); a.dword(255); a.emit(0x81, 0xE2); a.dword(255);
+		a.emit(0x0F, 0xAF, 0x45, 0xFC, 0x0F, 0xAF, 0x55, 0xF8, 0x03, 0xC2);
+		a.emit(0x8B, 0x4D, 0xF4, 0xD1, 0xE9, 0x03, 0xC1, 0x33, 0xD2, 0xF7, 0x75, 0xF4);
+		if (shift) a.emit(0xC1, 0xE0, shift);
+		a.emit(0x09, 0x45, 0xE8);
+	}
+	a.emit(0x8B, 0x45, 0xE8); a.jmp("done");
+	a.label("destination"); a.emit(0x8B, 0x45, 0x0C);
+	a.label("done"); a.emit(0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+ModernChatUIStatic.buildPngDraw = function(blend)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// ImageDraw-compatible thiscall(x,y,texture,stretchInput).
+	// Native ImageDraw is a raw copy (0x53F140), not PNG source-over.
+	// Local blit clips rows/columns and preserves the input's 3px end caps.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x20, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x71, 0x24, 0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x4D, 0x10, 0x85, 0xC9); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x86); a.dword(0x18); a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x83, 0x7D, 0x08, 0); a.jcc(0x8C, "done");
+	a.emit(0x83, 0x7D, 0x0C, 0); a.jcc(0x8C, "done");
+	a.emit(0x8B, 0x81); a.dword(0x114); a.emit(0x83, 0xF8, 7); a.jcc(0x8C, "done");
+	a.emit(0x89, 0x45, 0xF4, 0xC1, 0xE0, 2, 0x89, 0x45, 0xE4);
+	a.emit(0x8B, 0x81); a.dword(0x11C); a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x56, 4, 0x2B, 0x55, 8, 0x83, 0x7D, 0x14, 0); a.jcc(0x84, "fixed_width");
+	a.emit(0x83, 0xEA, 3); a.jmp("width_ready");
+	a.label("fixed_width"); a.emit(0x3B, 0x55, 0xF4); a.jcc(0x8E, "width_ready");
+	a.emit(0x8B, 0x55, 0xF4);
+	a.label("width_ready"); a.emit(0x83, 0xFA, 7); a.jcc(0x8C, "done");
+	a.emit(0x89, 0x55, 0xF0, 0x8B, 0x56, 8, 0x2B, 0x55, 0x0C);
+	a.emit(0x3B, 0x91); a.dword(0x118); a.jcc(0x8E, "height_ready");
+	a.emit(0x8B, 0x91); a.dword(0x118);
+	a.label("height_ready"); a.emit(0x85, 0xD2); a.jcc(0x8E, "done");
+	a.emit(0x89, 0x55, 0xEC, 0x8B, 0x46, 4, 0xC1, 0xE0, 2, 0x89, 0x45, 0xE8);
+	a.emit(0x0F, 0xAF, 0x45, 0x0C, 0x8B, 0x56, 0x18, 0x03, 0xD0);
+	a.emit(0x8B, 0x45, 8, 0x8D, 0x14, 0x82, 0x89, 0x55, 0xFC);
+	a.label("row"); a.emit(0x8B, 0x7D, 0xFC, 0x33, 0xDB);
+	a.label("pixel"); a.emit(0x8B, 0xC3, 0x83, 0x7D, 0x14, 0); a.jcc(0x84, "source");
+	a.emit(0x83, 0xFB, 3); a.jcc(0x8C, "source");
+	a.emit(0x8B, 0x4D, 0xF0, 0x83, 0xE9, 3, 0x3B, 0xD9); a.jcc(0x8C, "middle");
+	a.emit(0x03, 0x45, 0xF4, 0x2B, 0x45, 0xF0); a.jmp("source");
+	a.label("middle"); a.emit(0x83, 0xE8, 3, 0x8B, 0x4D, 0xF4, 0x83, 0xE9, 6);
+	a.emit(0x0F, 0xAF, 0xC1, 0x33, 0xD2, 0x8B, 0x4D, 0xF0, 0x83, 0xE9, 6, 0xF7, 0xF1, 0x83, 0xC0, 3);
+	a.label("source"); a.emit(0x8B, 0x55, 0xF8, 0xFF, 0x37, 0xFF, 0x34, 0x82); a.call(blend);
+	a.emit(0x89, 0x07, 0x83, 0xC7, 4, 0x43, 0x3B, 0x5D, 0xF0); a.jcc(0x8C, "pixel");
+	a.emit(0x8B, 0x45, 0xE4, 0x01, 0x45, 0xF8, 0x8B, 0x45, 0xE8, 0x01, 0x45, 0xFC);
+	a.emit(0xFF, 0x4D, 0xEC); a.jcc(0x85, "row");
+	a.emit(0xC6, 0x46, 0x28, 1, 0xC6, 0x46, 0x1C, 1);
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x10, 0);
+	return a;
+};
+
+ModernChatUIStatic.buildInputColor = function()
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// Both states use the same neutral gray, including the native edit surface.
+	a.emit(0xB8); a.dword(0xC7C7C7); a.emit(0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildEditDraw = function(original, finalize, inputColor)
+{
+	const c = ModernChatUIStatic;
+	const a = AutoCombatUI.nativeHelpers.asm();
+	c.emitChatChildGuard(a, original);
+	a.emit(0x56, 0x8B, 0xF1);
+	// Chat edits use our single gray backing, with native text and blinking caret.
+	for (const [offset, value] of [[0x8C, 1], [0x90, 255], [0x94, 0],
+		[0x98, 255], [0xF4, 0]])
+	{
+		a.emit(0xC7, 0x86); a.dword(offset); a.dword(value);
+	}
+	a.call(inputColor); a.emit(0x89, 0x86); a.dword(0xA8);
+	a.emit(0xC6, 0x86); a.dword(0xD4); a.emit(0);
+	a.emit(0x8B, 0xCE); a.call(original);
+	a.emit(0x8B, 0xCE); a.call(finalize);
+	a.emit(0x5E, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildLayout = function(tabVtable)
+{
+	const c = ModernChatUIStatic;
+	const a = AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xD9);
+	const place = (offset, right, bottom, label, x = null) => {
+		a.emit(0x8B, 0x8B); a.dword(offset);
+		a.emit(0x85, 0xC9); a.jcc(0x84, label);
+		if (bottom === -100) a.emit(0x6A, 0x9C);
+		else a.emit(0x8B, 0x43, 0x18, 0x83, 0xE8, bottom, 0x50);
+		if (x !== null) { a.emit(0x68); a.dword(x); }
+		else a.emit(0x8B, 0x43, 0x14, 0x83, 0xE8, right, 0x50);
+		a.emit(0x8B, 0x11, 0xFF, 0x52, 0x10); a.label(label);
+	};
+	// The separate dialog_mid layer is the white strip seen while typing.
+	// Keep the native whisper recipient; hide only the obsolete graphics and
+	// group popup. Blank recipient means public chat, a name means native PM.
+	for (const offset of [0xB8, 0xE0, 0xE4, 0xE8, 0x100, 0x104, 0x128])
+		place(offset, 0, -100, `hide_${offset}`, -100);
+	a.emit(0x80, 0x3D); a.dword(0x131F50C); a.emit(0); a.jcc(0x84, "hide_message");
+	for (const [offset, x, label] of [[0xBC, c.MessageX, "message"], [0xC0, 23, "recipient"]])
+	{
+		// 2px outer padding + native 2px text offset centers a 12px line in 20px.
+		place(offset, 0, 40, `${label}_position`, x);
+		a.emit(0x8B, 0xB3); a.dword(offset); a.emit(0x85, 0xF6); a.jcc(0x84, `${label}_sized`);
+		if (offset === 0xBC) { a.emit(0x8B, 0x43, 0x14, 0x2D); a.dword(c.MessageX + c.InputTools + 4); }
+		else { a.emit(0xB8); a.dword(c.InputSplit - x - 4); }
+		a.emit(0x83, 0xF8, 20); a.jcc(0x8C, `${label}_sized`);
+		a.emit(0x3B, 0x46, 0x14); a.jcc(0x85, `${label}_resize`);
+		a.emit(0x83, 0x7E, 0x18, 16); a.jcc(0x84, `${label}_sized`);
+		a.label(`${label}_resize`); a.emit(0x6A, 16, 0x50, 0x8B, 0xCE); a.call(0xA245C0);
+		a.label(`${label}_sized`);
+	}
+	a.jmp("message_done");
+	a.label("hide_message"); place(0xBC, 0, -100, "message_hidden", -100);
+	place(0xC0, 0, -100, "recipient_hidden", -100);
+	a.label("message_done");
+	place(0x12C, 45, 14, "settings");
+	place(0x138, 0, 20, "tab_position", 3);
+	// Inventory skins hook the global UITabCtrl vtable too. Give this chat
+	// instance its own table, so subsequent patches cannot replace its draw.
+	a.emit(0x8B, 0x83); a.dword(0x138);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "no_tab_vtable");
+	a.emit(0xC7, 0x00); a.dword(tabVtable);
+	a.label("no_tab_vtable");
+	// Reclaim the old 16px header in every native resize/selection path.
+	a.emit(0xC7, 0x83); a.dword(0x11C); a.dword(2);
+	a.emit(0x8B, 0xB3); a.dword(0xF4);
+	a.emit(0x33, 0xFF);
+	a.label("pane_layout");
+	a.emit(0x3B, 0xB3); a.dword(0xF8); a.jcc(0x83, "panes_done");
+	a.emit(0x8B, 0x0E, 0x85, 0xC9); a.jcc(0x84, "pane_next");
+	a.emit(0x8B, 0x43, 0x18, 0x83, 0xE8, 48, 0x83, 0xF8, 14);
+	a.jcc(0x8C, "pane_next");
+	a.emit(0x8B, 0x53, 0x14, 0x83, 0xEA, 8, 0x3B, 0x41, 0x18);
+	a.jcc(0x85, "pane_resize");
+	a.emit(0x3B, 0x51, 0x14); a.jcc(0x84, "pane_position");
+	a.label("pane_resize");
+	a.emit(0x50, 0x52, 0x8B, 0x01, 0xFF, 0x50, 0x04);
+	a.label("pane_position");
+	a.emit(0x8B, 0x0E, 0x3B, 0xBB); a.dword(0x114);
+	a.jcc(0x85, "pane_hide");
+	a.emit(0x6A, 4, 0x6A, 5); a.jmp("pane_place");
+	a.label("pane_hide");
+	a.emit(0x6A, 0x9C, 0xB8); a.dword(0xFFFFFF9C);
+	a.emit(0x2B, 0x43, 0x14, 0x50);
+	a.label("pane_place"); a.emit(0x8B, 0x01, 0xFF, 0x50, 0x10);
+	a.label("pane_next"); a.emit(0x83, 0xC6, 0x04, 0x47); a.jmp("pane_layout");
+	a.label("panes_done");
+	// Resize the surface AND native hit widths. Never rename only a page label.
+	a.emit(0x8B, 0xB3); a.dword(0x138);
+	a.emit(0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x86); a.dword(0xB8);
+	a.emit(0x2B, 0x86); a.dword(0xB4);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(24); a.emit(0xF7, 0xF1);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x83, 0xF8, 0x0C); a.jcc(0x87, "done");
+	a.emit(0x8B, 0xF8, 0x8B, 0x43, 0x14, 0x83, 0xE8, c.ControlsReserve);
+	a.emit(0x33, 0xD2, 0xF7, 0xF7, 0x83, 0xF8, 0x20); a.jcc(0x8C, "done");
+	a.emit(0x89, 0x83); a.dword(0x120);
+	a.emit(0x8B, 0x8E); a.dword(0xCC);
+	a.emit(0x8B, 0x96); a.dword(0xD0);
+	a.emit(0x2B, 0xD1, 0xC1, 0xEA, 0x02, 0x3B, 0xD7); a.jcc(0x82, "done");
+	a.emit(0x8B, 0xD7);
+	a.label("width");
+	a.emit(0x89, 0x01, 0x83, 0xC1, 0x04, 0x4A); a.jcc(0x85, "width");
+	a.emit(0x0F, 0xAF, 0xC7, 0x3B, 0x46, 0x14); a.jcc(0x85, "resize");
+	a.emit(0x83, 0x7E, 0x18, 20); a.jcc(0x84, "done");
+	a.label("resize"); a.emit(0x6A, 20, 0x50, 0x8B, 0xCE); a.call(0x00A245C0);
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildInputLayout = function(layout, trampoline)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x56, 0x8B, 0xF1); a.call(trampoline);
+	a.emit(0x8B, 0xCE); a.call(layout); a.emit(0x5E, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildEvent = function()
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// Removed selectors cannot dispatch popups through stale/keyboard events.
+	a.emit(0x8B, 0x44, 0x24, 4, 0x85, 0xC0); a.jcc(0x84, "event");
+	for (const offset of [0xE0, 0xE4, 0xE8])
+	{
+		a.emit(0x3B, 0x81); a.dword(offset); a.jcc(0x84, "ignore");
+	}
+	a.label("event");
+	// Keep native selection, detach (0x75), and re-dock (0x76) notifications.
+	a.emit(0x83, 0x7C, 0x24, 0x08, 0x74); a.jcc(0x84, "ignore");
+	a.jmp(ModernChatUIStatic.ParentEvent);
+	a.label("ignore");
+	a.emit(0x33, 0xC0, 0xC2, 0x18, 0x00);
+	return a;
+};
+
+ModernChatUIStatic.buildRoundButton = function(fill)
+{
+	const n = AutoCombatUI.nativeHelpers;
+	const a = n.asm();
+	// stdcall(window,x,width,selected), fixed 20px height.
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x5D, 0x0C, 0x8B, 0x7D, 0x10);
+	const row = (y, inset, color, active) => {
+		a.emit(0xB8); a.dword(color);
+		a.emit(0x83, 0x7D, 0x14, 0x00); a.jcc(0x84, `row_${y}_${inset}`);
+		a.emit(0xB8); a.dword(active); a.label(`row_${y}_${inset}`);
+		a.emit(0x50, 0x6A, 0x01, 0x8B, 0xC7, 0x83, 0xE8, inset * 2, 0x50);
+		n.pushImm(a, y); a.emit(0x8D, 0x43, inset, 0x50, 0x56); a.call(fill);
+	};
+	for (let y = 0; y < 20; y++)
+	{
+		const inset = y === 0 || y === 19 ? 1 : 0;
+		row(y, inset, 0xA03A3D46, 0xC0717582);
+		if (y > 0 && y < 19)
+		{
+			const shade = Math.max(0, 8 - Math.floor(y / 2));
+			row(y, inset + 1, 0x8017191F + shade * 0x010101, 0x8022252D + shade * 0x010101);
+		}
+	}
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x10, 0x00);
+	return a;
+};
+
+ModernChatUIStatic.buildTabDraw = function(round, finalize, label)
+{
+	const c = ModernChatUIStatic;
+	const n = AutoCombatUI.nativeHelpers;
+	const a = n.asm();
+	c.emitChatChildGuard(a, c.TabDraw);
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1, 0x6A, 0x00); a.call(0x00A1CB30);
+	a.emit(0xC7, 0x45, 0xFC); a.dword(0);
+	a.emit(0xC7, 0x45, 0xF8); a.dword(0);
+	a.label("tab");
+	a.emit(0x8B, 0x7D, 0xFC, 0x8D, 0x04, 0x7F, 0xC1, 0xE0, 0x03);
+	a.emit(0x03, 0x86); a.dword(0xB4);
+	a.emit(0x3B, 0x86); a.dword(0xB8); a.jcc(0x83, "done");
+	a.emit(0x83, 0xFF, 0x0C); a.jcc(0x83, "done");
+	a.emit(0x83, 0x78, 0x14, 0x10); a.jcc(0x82, "inline"); a.emit(0x8B, 0x00);
+	a.label("inline"); a.emit(0x89, 0x45, 0xF4);
+	a.emit(0x8B, 0x86); a.dword(0xCC);
+	a.emit(0x8B, 0x04, 0xB8, 0x89, 0x45, 0xF0);
+	a.emit(0x33, 0xD2, 0x39, 0x7E, 0x7C, 0x0F, 0x94, 0xC2);
+	a.emit(0x52, 0x48, 0x50, 0xFF, 0x75, 0xF8, 0x56); a.call(round);
+	// Text-only native titles, centered without an icon or reserved icon gap.
+	// The actual native selection owns the highlight, never hover or tab name.
+	a.emit(0x33, 0xC0, 0x39, 0x7E, 0x7C, 0x0F, 0x94, 0xC0, 0x50);
+	a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0xF8, 0xFF, 0x75, 0xF4);
+	a.emit(0x8B, 0xCE); a.call(label);
+	a.emit(0x8B, 0x45, 0xF0, 0x01, 0x45, 0xF8, 0xFF, 0x45, 0xFC); a.jmp("tab");
+	a.label("done"); a.emit(0x8B, 0xCE); a.call(finalize);
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildMainDraw = function(layout, fill, finalize, pngDraw, paths, prompt)
+{
+	const c = ModernChatUIStatic;
+	const n = AutoCombatUI.nativeHelpers;
+	const a = n.asm();
+	a.emit(0x56, 0x53, 0x57, 0x8B, 0xF1); a.call(layout);
+	a.emit(0x6A, 0x00, 0x8B, 0xCE); a.call(0x00A1CB30);
+	a.emit(0x83, 0x7E, 0x18, 0x38); a.jcc(0x8E, "done");
+	const panel = (x, y, wr, hr, color) => {
+		n.pushImm(a, color);
+		a.emit(0x8B, 0x46, 0x18, 0x83, 0xE8, hr, 0x50);
+		a.emit(0x8B, 0x46, 0x14, 0x83, 0xE8, wr, 0x50);
+		n.pushImm(a, y); n.pushImm(a, x); a.emit(0x56); a.call(fill);
+	};
+	panel(5, 2, 10, 48, ModernChatUIStatic.PanelBorder);
+	panel(3, 4, 6, 52, ModernChatUIStatic.PanelBorder);
+	panel(4, 5, 8, 54, ModernChatUIStatic.PanelFill);
+	panel(6, 3, 12, 50, ModernChatUIStatic.PanelFill);
+	const image = (path, x, right, bottom, label, stretch = 0) => {
+		n.emitLoadSurface(a, path, label); a.emit(0x6A, stretch, 0x50);
+		a.emit(0x8B, 0x46, 0x18, 0x83, 0xE8, bottom, 0x50);
+		if (right) a.emit(0x8B, 0x46, 0x14, 0x83, 0xE8, right, 0x50);
+		else n.pushImm(a, x);
+		a.emit(0x8B, 0xCE); a.call(pngDraw); a.label(label);
+	};
+	// No textbox_on/off image or white focus overlay. One gray input row.
+	n.pushImm(a, c.ToolbarFill); n.pushImm(a, 20);
+	a.emit(0x8B, 0x46, 0x14, 0x83, 0xE8, 6, 0x50);
+	a.emit(0x8B, 0x46, 0x18, 0x83, 0xE8, 42, 0x50, 0x6A, 3, 0x56); a.call(fill);
+	const rect = (x, right, bottom, width, height, color) => {
+		n.pushImm(a, color); n.pushImm(a, height); n.pushImm(a, width);
+		a.emit(0x8B, 0x46, 0x18, 0x83, 0xE8, bottom, 0x50);
+		if (right) a.emit(0x8B, 0x46, 0x14, 0x83, 0xE8, right, 0x50);
+		else n.pushImm(a, x);
+		a.emit(0x56); a.call(fill);
+	};
+	// Fixed recipient/message partition, with no focus-state white overlay.
+	rect(c.InputSplit, 0, 39, 1, 14, 0xA0A0A3AA);
+	rect(c.InputSplit + 1, 0, 39, 1, 14, 0x800E1016);
+	rect(0, c.InputTools, 41, 1, 18, 0x807C808B);
+	rect(0, 27, 41, 1, 18, 0x807C808B);
+	// Shared translucent slate-gray backing and a narrow control divider.
+	rect(0, 57, 20, 54, 20, 0xA05D616D);
+	rect(0, 56, 19, 52, 18, c.ToolbarFill);
+	rect(0, 30, 18, 1, 16, 0x807C808B);
+	a.emit(0x80, 0x3D); a.dword(0x0131F50C); a.emit(0); a.jcc(0x85, "input_done");
+	n.pushImm(a, 0); n.pushImm(a, 0); n.pushImm(a, 0x00C7C7C7);
+	n.pushImm(a, 12); n.pushImm(a, n.FontSelector); n.pushImm(a, 0); n.pushImm(a, prompt);
+	a.emit(0x8B, 0x46, 0x18, 0x83, 0xE8, 38, 0x50);
+	n.pushImm(a, c.MessageX + 3); a.emit(0x8B, 0xCE); a.call(n.TextDraw);
+	a.label("input_done");
+	// PM is the existing recipient field, not a renamed Battle filter.
+	a.emit(0x8B, 0x86); a.dword(0xC0); a.emit(0x85, 0xC0); a.jcc(0x84, "public_icon");
+	a.emit(0x83, 0xB8); a.dword(0xE8); a.emit(0); a.jcc(0x84, "public_icon");
+	image(paths.pm, 5, 0, 39, "pm_done"); a.jmp("recipient_icon_done");
+	a.label("public_icon"); image(paths.general, 5, 0, 39, "general_done");
+	a.label("recipient_icon_done");
+	image(paths.emotion, 0, 45, 38, "emotion_done");
+	image(paths.direct, 0, 20, 37, "direct_done");
+	// CanDragWnd == 1 means unlocked, not locked.
+	a.emit(0x80, 0x3D); a.dword(0x015FAAEC); a.emit(0x00); a.jcc(0x84, "locked");
+	image(paths.lockOff, 0, 18, 14, "unlocked_done"); a.jmp("lock_done");
+	a.label("locked"); image(paths.lockOn, 0, 18, 14, "locked_done");
+	a.label("lock_done");
+	a.emit(0xC7, 0x86); a.dword(0x10C); a.dword(5);
+	a.emit(0x8B, 0x46, 0x14, 0x83, 0xE8, 18, 0x89, 0x86); a.dword(0x108);
+	a.label("done"); a.emit(0x8B, 0xCE); a.call(finalize);
+	a.emit(0x5F, 0x5B, 0x5E, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildParentClick = function(send, emoji)
+{
+	const c = ModernChatUIStatic;
+	const a = AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x8B, 0x54, 0x24, 0x08, 0x8B, 0x41, 0x18, 0x83, 0xE8, 42);
+	a.emit(0x3B, 0xD0); a.jcc(0x8C, "lock");
+	a.emit(0x83, 0xC0, 20, 0x3B, 0xD0); a.jcc(0x8D, "lock");
+	// Parent-painted controls have disjoint 24px hit cells; the edit ends
+	// before them. Sending occurs only here on mouse-down, never on release.
+	a.emit(0x8B, 0x54, 0x24, 4, 0x83, 0xFA, 3); a.jcc(0x8C, "input_miss");
+	a.emit(0x8B, 0x41, 0x14, 0x83, 0xE8, 3, 0x3B, 0xD0); a.jcc(0x8D, "input_miss");
+	a.emit(0x83, 0xE8, 24, 0x3B, 0xD0); a.jcc(0x8D, "send");
+	a.emit(0x83, 0xE8, 24, 0x3B, 0xD0); a.jcc(0x8D, "emoji");
+	// Left partition focuses the actual native whisper recipient edit. Right
+	// partition focuses the message. Remember B4 for native Enter/focus routing.
+	a.emit(0x56, 0x57, 0x8B, 0xF1, 0x8B, 0x7C, 0x24, 0x0C, 0xC6, 0x05); a.dword(0x131F50C); a.emit(1);
+	a.call(c.InputLayout);
+	a.emit(0x8B, 0x86); a.dword(0xC0);
+	a.emit(0x81, 0xFF); a.dword(c.InputSplit); a.jcc(0x8C, "focus_target");
+	a.emit(0x8B, 0x86); a.dword(0xBC);
+	a.label("focus_target"); a.emit(0x85, 0xC0); a.jcc(0x84, "focus_done");
+	a.emit(0x89, 0x86); a.dword(0xB4);
+	a.emit(0x50, 0xB9); a.dword(0x131F4E8); a.call(0xA4B760);
+	a.label("focus_done"); a.emit(0x5F, 0x5E, 0x33, 0xC0, 0xC2, 8, 0);
+	a.label("send"); a.call(send); a.emit(0xC2, 8, 0);
+	a.label("emoji"); a.call(emoji); a.emit(0xC2, 8, 0);
+	a.label("input_miss"); a.emit(0x33, 0xC0, 0xC2, 8, 0);
+	a.label("lock");
+	a.emit(0x8B, 0x41, 0x18, 0x83, 0xE8, 20, 0x3B, 0xD0); a.jcc(0x8C, "pass");
+	a.emit(0x8B, 0x41, 0x14, 0x83, 0xE8, 18);
+	a.emit(0x39, 0x44, 0x24, 0x04); a.jcc(0x8C, "pass");
+	a.emit(0x83, 0xC0, 8, 0x39, 0x44, 0x24, 0x04); a.jcc(0x8D, "pass");
+	a.emit(0x8B, 0x81); a.dword(0x108); a.emit(0x40); a.jmp("map");
+	a.label("map"); a.emit(0x89, 0x44, 0x24, 0x04, 0xC7, 0x44, 0x24, 0x08); a.dword(5);
+	a.jmp(c.ParentClick);
+	a.label("pass");
+	// Unoccupied frame/background moves the whole chat; tabs retain their
+	// separate native detach gesture. Never steal capture from the input.
+	a.emit(0x80, 0x3D); a.dword(0x15FAAEC); a.emit(0); a.jcc(0x85, 0x880AD0);
+	a.emit(0x33, 0xC0, 0xC2, 8, 0);
+	return a;
+};
+
+ModernChatUIStatic.buildControlCursor = function()
+{
+	const c = ModernChatUIStatic, a = AutoCombatUI.nativeHelpers.asm();
+	// The native +0x78 cursor callback receives local coordinates only for
+	// the hit-tested window. Leave global cursor drawing and other UI alone.
+	a.emit(0x83, 0x79, 0x30, 0); a.jcc(0x8E, "stock");
+	// Captured window/tab dragging must not turn into button hover feedback.
+	a.emit(0x83, 0x3D); a.dword(0x131F4E8 + 0x19C); a.emit(0); a.jcc(0x85, "stock");
+	a.emit(0x8B, 0x44, 0x24, 8, 0x3B, 0x41, 0x18); a.jcc(0x8D, "stock");
+	a.emit(0x8B, 0x51, 0x18, 0x83, 0xEA, 42, 0x3B, 0xC2); a.jcc(0x8C, "stock");
+	a.emit(0x83, 0xC2, 20, 0x3B, 0xC2); a.jcc(0x8C, "input");
+	// Lock: [width-18,width-10), [height-20,height).
+	a.emit(0x83, 0xC2, 2, 0x3B, 0xC2); a.jcc(0x8C, "stock");
+	a.emit(0x8B, 0x44, 0x24, 4, 0x8B, 0x51, 0x14, 0x83, 0xEA, 18);
+	a.emit(0x3B, 0xC2); a.jcc(0x8C, "stock");
+	a.emit(0x83, 0xC2, 8, 0x3B, 0xC2); a.jcc(0x8D, "stock"); a.jmp("hand");
+	a.label("input");
+	a.emit(0x83, 0xB9); a.dword(0xBC); a.emit(0); a.jcc(0x84, "stock");
+	// Both 24px input actions share [width-51,width-3).
+	a.emit(0x8B, 0x44, 0x24, 4, 0x8B, 0x51, 0x14, 0x83, 0xEA, c.InputTools);
+	a.emit(0x3B, 0xC2); a.jcc(0x8C, "stock");
+	a.emit(0x83, 0xC2, 48, 0x3B, 0xC2); a.jcc(0x8D, "stock");
+	a.label("hand");
+	// Same cursors.act action 2 as stock buttons. The native renderer reads
+	// the left-button state and advances its pressed animation automatically.
+	a.emit(0x8B, 0x0D); a.dword(0x121333C); a.emit(0x6A, 2); a.call(0xA764A0);
+	a.emit(0xC2, 8, 0);
+	a.label("stock"); a.jmp(0xA23470);
+	return a;
+};
+
+ModernChatUIStatic.getTabFont = function()
+{
+	const name = Exe.GetUserInput("$modernChatTabFontName", D_FontName,
+		"Chat Tab Font", "Font family for Main, Party, Battle, Guild and Market only",
+		"Tahoma", {saveDefault: true, sampleSize: 8});
+	if (name === false) Cancel("Chat Tab Font", "Tahoma");
+	const size = Exe.GetUserInput("$modernChatTabFontSize", D_FontSize,
+		"Chat Tab Font Size", "Character height in pixels (8-16, tab rows stay 20px)",
+		8, {sampleName: name, min: 8, max: 16, saveDefault: true});
+	if (size === false) Cancel("Chat Tab Font Size selection cancelled");
+	if (!Number.isInteger(size) || size < 8 || size > 16)
+		throw Error("ModernChatUI: chat tab font size must be between 8 and 16");
+	const style = Exe.GetUserInput("$modernChatTabFontStyle", D_Choice,
+		"Chat Tab Font Style", "Weight for unselected tabs; the selected tab is always white and bold", "Normal",
+		{choices: ["Normal", "Bold"], saveDefault: true});
+	if (style === false) Cancel("Chat Tab Font Style selection cancelled");
+	if (!["Normal", "Bold"].includes(style)) throw Error("ModernChatUI: unsupported tab font style");
+	return {name, size, weight: style === "Bold" ? 700 : 400};
+};
+
+ModernChatUIStatic.buildTabFont = function(font, face, state, gdi, extent, output)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// stdcall(selected). Cache base and selected-bold HFONTs for the process
+	// lifetime (reuse one handle if the base is already Bold). Never mutate FONTAIN, the
+	// global font selector table, or another window's font/cache. Failed GDI
+	// setup is attempted once and falls back to the native label renderer.
+	a.emit(0x83, 0x3D); a.dword(state + 12); a.emit(0); a.jcc(0x85, "cached");
+	a.emit(0xC7, 0x05); a.dword(state + 12); a.dword(1);
+	a.emit(0x53, 0x68); a.dword(gdi); a.emit(0xFF, 0x15); a.dword(0xFC1268);
+	a.emit(0x8B, 0xD8, 0x85, 0xC0); a.jcc(0x84, "done");
+	for (const [name, offset] of [[extent, 4], [output, 8]]) {
+		a.emit(0x68); a.dword(name); a.emit(0x53, 0xFF, 0x15); a.dword(0xFC1390);
+		a.emit(0xA3); a.dword(state + offset); a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	}
+	const create = (weight, offset) => {
+		a.emit(0x68); a.dword(face);
+		// pitch, non-antialiased quality, clipping/output precision, DEFAULT_CHARSET
+		for (const value of [0, 3, 0, 0, 1, 0, 0, 0, weight, 0, 0, 0, -font.size])
+			AutoCombatUI.nativeHelpers.pushImm(a, value);
+		a.emit(0xFF, 0x15); a.dword(0xFC1114); a.emit(0xA3); a.dword(state + offset);
+	};
+	create(font.weight, 0);
+	if (font.weight === 700) { a.emit(0xA1); a.dword(state); a.emit(0xA3); a.dword(state + 16); }
+	else create(700, 16);
+	a.label("done"); a.emit(0x5B);
+	a.label("cached"); a.emit(0x83, 0x7C, 0x24, 4, 0); a.jcc(0x85, "selected");
+	a.emit(0xA1); a.dword(state); a.emit(0xC2, 4, 0);
+	a.label("selected"); a.emit(0xA1); a.dword(state + 16); a.emit(0xC2, 4, 0);
+	return a;
+};
+
+ModernChatUIStatic.buildTabLabel = function(getFont, state)
+{
+	const n = AutoCombatUI.nativeHelpers, a = n.asm();
+	// thiscall(text, left, cellWidth, selected). Use the native surface DC
+	// acquire/release pair; restore selected font, text color and background mode.
+	// RECT clipping prevents a large/renamed label from crossing a tab partition.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x60, 0x53, 0x56, 0x57, 0x8B, 0xF1, 0x8B, 0x7D, 8);
+	a.emit(0x85, 0xFF); a.jcc(0x84, "done");
+	a.emit(0x83, 0x7D, 16, 4); a.jcc(0x8C, "done");
+	a.emit(0x83, 0x7E, 0x24, 0); a.jcc(0x84, "done");
+	a.emit(0xB8); a.dword(0xC7C7C7);
+	a.emit(0x83, 0x7D, 20, 0); a.jcc(0x84, "color");
+	a.emit(0xB8); a.dword(0xFFFFFF);
+	a.label("color"); a.emit(0x89, 0x45, 0xAC);
+	a.emit(0x33, 0xC9);
+	a.label("length"); a.emit(0x80, 0x3C, 0x0F, 0); a.jcc(0x84, "length_done");
+	a.emit(0x41, 0x81, 0xF9); a.dword(255); a.jcc(0x82, "length");
+	a.label("length_done"); a.emit(0x89, 0x4D, 0xC4, 0xFF, 0x75, 20); a.call(getFont);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "fallback");
+	a.emit(0x89, 0x45, 0xA8, 0xFF, 0x76, 0x24, 0x8D, 0x4D, 0xE0); a.call(0x5443C0);
+	a.emit(0x8B, 0x5D, 0xE0, 0x85, 0xDB); a.jcc(0x84, "release_fallback");
+	a.emit(0xFF, 0x75, 0xA8, 0x53, 0xFF, 0x15); a.dword(0xFC1120);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "release_fallback");
+	a.emit(0x83, 0xF8, 0xFF); a.jcc(0x84, "release_fallback");
+	a.emit(0x89, 0x45, 0xC0, 0x6A, 1, 0x53, 0xFF, 0x15); a.dword(0xFC10E8);
+	a.emit(0x89, 0x45, 0xB8, 0xFF, 0x75, 0xAC, 0x53, 0xFF, 0x15); a.dword(0xFC10E0);
+	a.emit(0x89, 0x45, 0xBC, 0xC7, 0x45, 0xD8); a.dword(0);
+	a.emit(0xC7, 0x45, 0xDC); a.dword(12);
+	a.emit(0x8D, 0x45, 0xD8, 0x50, 0xFF, 0x75, 0xC4, 0x57, 0x53, 0xFF, 0x15); a.dword(state + 4);
+	a.emit(0x8B, 0x45, 0xD8);
+	const placement = tag => {
+		a.emit(0x8B, 0x4D, 16, 0x2B, 0xC8, 0xD1, 0xF9, 0x83, 0xF9, 2);
+		a.jcc(0x8D, `left_${tag}`); a.emit(0xB9); a.dword(2);
+		a.label(`left_${tag}`); a.emit(0x03, 0x4D, 12, 0x89, 0x4D, 0xB4);
+		a.emit(0xB8); a.dword(20); a.emit(0x2B, 0x45, 0xDC, 0xD1, 0xF8, 0x83, 0xF8, 1);
+		a.jcc(0x8D, `top_${tag}`); a.emit(0xB8); a.dword(1);
+		a.label(`top_${tag}`); a.emit(0x89, 0x45, 0xB0);
+	};
+	placement("gdi");
+	a.emit(0x8B, 0x45, 12, 0x83, 0xC0, 2, 0x89, 0x45, 0xC8);
+	a.emit(0xC7, 0x45, 0xCC); a.dword(1);
+	a.emit(0x03, 0x45, 16, 0x83, 0xE8, 4, 0x89, 0x45, 0xD0);
+	a.emit(0xC7, 0x45, 0xD4); a.dword(19);
+	a.emit(0x6A, 0, 0xFF, 0x75, 0xC4, 0x57, 0x8D, 0x45, 0xC8, 0x50, 0x6A, 4);
+	a.emit(0xFF, 0x75, 0xB0, 0xFF, 0x75, 0xB4, 0x53);
+	a.emit(0xFF, 0x15); a.dword(state + 8);
+	for (const [offset, iat] of [[0xBC, 0xFC10E0], [0xB8, 0xFC10E8], [0xC0, 0xFC1120]]) {
+		a.emit(0xFF, 0x75, offset, 0x53, 0xFF, 0x15); a.dword(iat);
+	}
+	a.emit(0x8D, 0x4D, 0xE0); a.call(0x5446F0); a.jmp("done");
+	a.label("release_fallback"); a.emit(0x8D, 0x4D, 0xE0); a.call(0x5446F0);
+	a.label("fallback");
+	for (const value of [0, 0, 12, n.FontSelector, 0]) n.pushImm(a, value);
+	a.emit(0x57, 0x8B, 0xCE); a.call(n.TextWidth);
+	a.emit(0xC7, 0x45, 0xDC); a.dword(12); placement("native");
+	for (const value of [0, 0]) n.pushImm(a, value);
+	a.emit(0xFF, 0x75, 0xAC);
+	for (const value of [12, n.FontSelector, 0]) n.pushImm(a, value);
+	a.emit(0x57, 0xFF, 0x75, 0xB0, 0xFF, 0x75, 0xB4, 0x8B, 0xCE); a.call(n.TextDraw);
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 16, 0);
+	return a;
+};
+
+ModernChatUIStatic.buildInputAction = function(isEmoji)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x56, 0x8B, 0xF1, 0x8B, 0x86); a.dword(0xBC);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0xC6, 0x05); a.dword(0x131F50C); a.emit(1);
+	a.emit(0x89, 0x86); a.dword(0xB4);
+	a.emit(0x50, 0xB9); a.dword(0x131F4E8); a.call(0xA4B760);
+	a.emit(0x8B, 0xCE); a.call(ModernChatUIStatic.InputLayout);
+	if (isEmoji) {
+		// UICashEmotionListWnd is the native Emoji List (Alt+L), not Alt+M.
+		a.emit(0x6A, 0x57, 0xB9); a.dword(0x131F4E8); a.call(0xA39340);
+	} else {
+		// Exact native submit notification: preserve chat type, PM recipient,
+		// command checks, message history, item-link encoding and input clearing.
+		a.emit(0x6A, 0, 0x6A, 0, 0x6A, 0, 0x68); a.dword(0xB8);
+		a.emit(0x6A, 6, 0xFF, 0xB6); a.dword(0xBC);
+		a.emit(0x8B, 0xCE); a.call(ModernChatUIStatic.ParentEvent);
+	}
+	a.label("done"); a.emit(0x33, 0xC0, 0x5E, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildDockCapacity = function()
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// thiscall main -> bool: fit the NEW count using the same 32px minimum
+	// and 12-page bound as layout. Old occupied-width + old step always fails.
+	a.emit(0x51, 0x8B, 0x91); a.dword(0x138);
+	a.emit(0x85, 0xD2); a.jcc(0x84, "reject");
+	a.emit(0x8B, 0x82); a.dword(0xB8);
+	a.emit(0x2B, 0x82); a.dword(0xB4);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(24); a.emit(0xF7, 0xF1);
+	a.emit(0x83, 0xF8, 12); a.jcc(0x83, "reject");
+	a.emit(0x40, 0xC1, 0xE0, 5, 0x8B, 0x0C, 0x24, 0x8B, 0x49, 0x14, 0x83, 0xE9, ModernChatUIStatic.ControlsReserve);
+	a.emit(0x3B, 0xC8); a.jcc(0x8C, "reject");
+	a.emit(0xB8); a.dword(1); a.emit(0x59, 0xC3);
+	a.label("reject"); a.emit(0x33, 0xC0, 0x59, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildFloatLayout = function()
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x53, 0x8B, 0xD9);
+	const place = (offset, right, hidden, label) => {
+		a.emit(0x8B, 0x8B); a.dword(offset); a.emit(0x85, 0xC9); a.jcc(0x84, label);
+		if (hidden) a.emit(0x6A, 0x9C, 0x6A, 0x9C);
+		else a.emit(0x6A, 4, 0x8B, 0x43, 0x14, 0x83, 0xE8, right, 0x50);
+		a.emit(0x8B, 0x01, 0xFF, 0x50, 0x10); a.label(label);
+	};
+	// Video header has only settings and the native return-to-main chevron.
+	// DC is native ID 0x165 (dock); E4 is ID 0xCA (delete page).
+	// Do not relabel the delete button as return: it discards page identity.
+	place(0xE4, 0, true, "delete_hidden");
+	place(0xE0, 28, false, "gear_done");
+	a.emit(0x80, 0x3D); a.dword(0x15FAAEC); a.emit(0); a.jcc(0x84, "locked");
+	place(0xDC, 12, false, "return_done"); a.jmp("done");
+	a.label("locked"); place(0xDC, 0, true, "return_hidden");
+	a.label("done"); a.emit(0x5B, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.buildFloatDraw = function(layout, fill, finalize)
+{
+	const c = ModernChatUIStatic, n = AutoCombatUI.nativeHelpers, a = n.asm();
+	a.emit(0x56, 0x8B, 0xF1); a.call(layout);
+	a.emit(0x6A, 0, 0x8B, 0xCE); a.call(0xA1CB30);
+	const panel = (inset, color) => {
+		n.pushImm(a, color);
+		a.emit(0x8B, 0x46, 0x18, 0x83, 0xE8, inset * 2, 0x50);
+		a.emit(0x8B, 0x46, 0x14, 0x83, 0xE8, inset * 2, 0x50);
+		n.pushImm(a, inset); n.pushImm(a, inset); a.emit(0x56); a.call(fill);
+	};
+	panel(0, c.PanelBorder); panel(1, c.PanelFill);
+	// Read the native page std::string, including heap-backed renamed titles.
+	a.emit(0x8D, 0x86); a.dword(0x114);
+	a.emit(0x83, 0x78, 0x14, 16); a.jcc(0x82, "inline"); a.emit(0x8B, 0x00);
+	a.label("inline");
+	n.pushImm(a, 0); n.pushImm(a, 0); n.pushImm(a, 0x00C7C7C7);
+	n.pushImm(a, 12); n.pushImm(a, n.FontSelector); n.pushImm(a, 0);
+	a.emit(0x50, 0x6A, 3, 0x6A, 5, 0x8B, 0xCE); a.call(n.TextDraw);
+	a.emit(0x8B, 0xCE); a.call(finalize);
+	a.emit(0x5E, 0xC3);
+	return a;
+};
+
+ModernChatUIStatic.verify = function()
+{
+	const c = ModernChatUIStatic;
+	if (Exe.BuildDate !== c.BuildDate || typeof AutoCombatUI === "undefined" ||
+		typeof AutoCombatUI.nativeHelpers === "undefined")
+		throw Error("ModernChatUI requires the profiled 2025-07-16 native helpers");
+	const n = AutoCombatUI.nativeHelpers;
+	for (const check of [
+		[0x8D7731, "C7 86 24 01 00 00 18 00 00 00"],
+		[c.ControlsLayout, "80 3D EC AA 5F 01 00"], [c.InputLayout, "80 3D 0C F5 31 01 00"],
+		[c.FloatLayout, "80 3D EC AA 5F 01 00"],
+		[0x8FC637, "0F 8F 3C 1E 00 00"],
+		[0x8E9407, "E8 B4 46 F4 FF"], [0x8E944C, "E8 6F 46 F4 FF"],
+		[0x8E9491, "E8 2A 46 F4 FF"], [0x8F6CE7, "68 FF 00 FF FF"],
+		[0x8F0933, "E8 88 D1 F3 FF"], [0x8F0972, "E8 49 D1 F3 FF"],
+		[0x8F09B1, "E8 0A D1 F3 FF"], [0x8F072A, "E8 91 D3 F3 FF"],
+		[0x8F0769, "E8 52 D3 F3 FF"], [0x8F07A8, "E8 13 D3 F3 FF"],
+		[0x8F0D25, "E8 D6 CC F3 FF"],
+		[0x858B90, "55 8B EC 56 57 FF 75 0C"],
+		[0x880AD0, "55 8B EC 83 EC 08 56 8B F1"],
+		[0x8F87C0, "55 8B EC 56 8B F1 B9 E8 F4 31 01"],
+		[0x8F72E0, "55 8B EC 5D E9 C7 98 F8 FF"],
+		[0xA4B760, "55 8B EC 53 56 8B 75 08"],
+		[0xA3DEFE, "E8 0D EF D4 FF"], // Emoji List factory -> UICashEmotionListWnd
+		[0x8FD8E3, "80 3D 0C F5 31 01 00"], // native submit branch
+		[0x5443C0, "55 8B EC 56 8B F1 8B 4D 08"],
+		[0x5446F0, "55 8B EC 6A FF 68 B0 40 E1 00"],
+		[0xA23470, "8B 0D 3C 33 21 01 6A 00"], // default cursor callback
+		[0xA764A0, "55 8B EC 8B 45 08 56 8B F1 39 46 50"], // native cursor action setter
+		[0x827C82, "8B 0D 3C 33 21 01 6A 02"], // stock button hand action
+		[0xA7447D, "83 3D E4 40 1E 01 00"], // native hand pressed-state animation
+		[n.TextWidth, "55 8B EC 6A FF 68 5D B6 EE 00"]
+	]) n.assertCode("ModernChatUI profile", check[0], check[1]);
+	for (const site of c.ClearSites) n.assertCode("Chat clear key", site, "68 FF 00 FF FF");
+	for (const [slot, target] of [
+		[c.MainVtable + 0x50, c.MainDraw], [c.MainVtable + 0x64, c.ParentClick],
+		[c.MainVtable + 0x94, c.ParentEvent], [c.MainVtable + 0xAC, 0x8DE120],
+		[c.MainVtable + 0x6C, 0x8F87C0], [c.MainVtable + 0x7C, 0x8F72E0],
+		[c.MainVtable + 0x78, 0xA23470],
+		[c.FloatVtable + 0x50, c.FloatDraw], [c.FloatVtable + 0xAC, 0x8DE230],
+		[c.FloatVtable + 0x64, 0x8F71E0], [c.FloatVtable + 0x6C, 0x8F8A40],
+		[c.FloatVtable + 0x7C, 0x8F7610], [c.FloatVtable + 0x94, 0x9020B0],
+		[0x102D2D0, c.PaneDraw],
+		[0x102DD44 + 0x64, 0x858B90], [0x102DD44 + 0x6C, 0x85A620],
+		[0x1028DFC, 0x824870], [0x1028EE8, 0x824FC0],
+		[0x1028DC0, 0x5A4960], [0x1028EAC, 0x5A4960]
+	]) if (Exe.GetUint32(Exe.Vir2Phy(slot)) !== target)
+		throw Error("ModernChatUI: native vtable changed at " + slot.toString(16));
+};
+
+ModernChatUI = function(_)
+{
+	const c = ModernChatUIStatic;
+	const n = AutoCombatUI.nativeHelpers;
+	c.verify();
+	const font = c.getTabFont();
+	$$(_, 1, "Install gray chat input, white emoji/send controls and configurable text tabs");
+	const texture = name => n.buildResourcePath("uirenewal\\chat\\" + name).vir;
+	const paths = {
+		general: texture("icon_general.png"), direct: texture("icon_direct.png"),
+		emotion: texture("btn_emote2.png"), pm: texture("icon_pm.png"),
+		settings: texture("icon_settings.png"),
+		returnTab: texture("btn_min.png"), resize: texture("btn_expand.png"),
+		lockOn: texture("icon_lock_on.png"), lockOff: texture("icon_lock_off.png")
+	};
+	const fill = n.allocateCode(n.buildFillRect());
+	const finalize = n.allocateCode(c.buildFinalizePixels());
+	const blend = n.allocateCode(c.buildBlendPixel());
+	const pngDraw = n.allocateCode(c.buildPngDraw(blend.vir));
+	const inputColor = n.allocateCode(c.buildInputColor());
+	const inputFinalize = n.allocateCode(c.buildFinalizePixels(c.ToolbarFill));
+	const fontState = n.allocateBytes(new Array(20).fill(0), 4);
+	const fontFace = Exe.AddFromVar("$modernChatTabFontName")[1];
+	const getFont = n.allocateCode(c.buildTabFont(font, fontFace, fontState.vir,
+		n.allocateString("gdi32.dll").vir, n.allocateString("GetTextExtentPoint32A").vir,
+		n.allocateString("ExtTextOutA").vir));
+	const tabLabel = n.allocateCode(c.buildTabLabel(getFont.vir, fontState.vir));
+	// Include the MSVC RTTI locator at vtable[-1]. Native TabCtrl methods
+	// through +0xD0 are copied; other tabs retain their shared stock/skin table.
+	const tabVtableBytes = [];
+	for (let offset = -4; offset <= 0xD0; offset += 4)
+	{
+		const value = Exe.GetUint32(Exe.Vir2Phy(0x102DD44 + offset));
+		tabVtableBytes.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
+	}
+	const tabVtable = n.allocateBytes(tabVtableBytes, 4);
+	const layout = n.allocateCode(c.buildLayout(tabVtable.vir + 4));
+	const round = n.allocateCode(c.buildRoundButton(fill.vir));
+	const tab = n.allocateCode(c.buildTabDraw(round.vir, finalize.vir, tabLabel.vir));
+	Exe.SetUint32(tabVtable.phy + 4 + 0x50, tab.vir);
+	// Keep native tab selection/capture/move/release for real page detachment.
+	const dockCapacity = n.allocateCode(c.buildDockCapacity());
+	const dockGateAsm = n.asm();
+	dockGateAsm.emit(0x51, 0x8B, 0xCF); dockGateAsm.call(dockCapacity.vir);
+	dockGateAsm.emit(0x59, 0x85, 0xC0); dockGateAsm.jcc(0x84, 0x8FE479);
+	dockGateAsm.jmp(0x8FC63D);
+	const dockGate = n.allocateCode(dockGateAsm);
+	const floatLayout = n.allocateCode(c.buildFloatLayout());
+	const floating = n.allocateCode(c.buildFloatDraw(floatLayout.vir, fill.vir, finalize.vir));
+	const pane = n.allocateCode(c.buildPaneDraw(finalize.vir));
+	const messageEdit = n.allocateCode(c.buildEditDraw(0x824870, inputFinalize.vir, inputColor.vir));
+	const recipientEdit = n.allocateCode(c.buildEditDraw(0x824FC0, inputFinalize.vir, inputColor.vir));
+	const main = n.allocateCode(c.buildMainDraw(layout.vir, fill.vir, finalize.vir, pngDraw.vir,
+		paths, n.allocateString("Enter to type a message").vir));
+	const send = n.allocateCode(c.buildInputAction(false)), emoji = n.allocateCode(c.buildInputAction(true));
+	const click = n.allocateCode(c.buildParentClick(send.vir, emoji.vir));
+	const cursor = n.allocateCode(c.buildControlCursor());
+	const event = n.allocateCode(c.buildEvent());
+	const noopAsm = n.asm(); noopAsm.emit(0xC3);
+	const noop = n.allocateCode(noopAsm);
+	const trampolineAsm = n.asm();
+	trampolineAsm.emit(0x80, 0x3D); trampolineAsm.dword(0x0131F50C); trampolineAsm.emit(0);
+	trampolineAsm.jmp(c.InputLayout + 7);
+	const trampoline = n.allocateCode(trampolineAsm);
+	const input = n.allocateCode(c.buildInputLayout(layout.vir, trampoline.vir));
+	const gearAsm = n.asm();
+	n.pushImm(gearAsm, paths.settings); gearAsm.emit(0x8F, 0x44, 0x24, 0x04); gearAsm.jmp(0x0082DAC0);
+	const gear = n.allocateCode(gearAsm);
+	const returnAsm = n.asm();
+	n.pushImm(returnAsm, paths.returnTab); returnAsm.emit(0x8F, 0x44, 0x24, 0x04); returnAsm.jmp(0x82DAC0);
+	const returnTab = n.allocateCode(returnAsm);
+	const resizeAsm = n.asm();
+	n.pushImm(resizeAsm, paths.resize); resizeAsm.emit(0x8F, 0x44, 0x24, 0x04); resizeAsm.jmp(0x82DA00);
+	const resize = n.allocateCode(resizeAsm);
+	Exe.SetUint32(Exe.Vir2Phy(0x8D7737, CODE), c.BottomReserve);
+	for (const site of c.ClearSites) Exe.SetUint32(Exe.Vir2Phy(site + 1, CODE), 0);
+	Exe.SetJMP(Exe.Vir2Phy(0x8FC637, CODE), dockGate.vir, 0);
+	Exe.SetNOPs(Exe.Vir2Phy(0x8FC63C, CODE), 1);
+	for (const [slot, target] of [
+		[c.MainVtable + 0x50, main.vir], [c.MainVtable + 0x64, click.vir],
+		[c.MainVtable + 0x78, cursor.vir],
+		[c.MainVtable + 0x94, event.vir], [c.MainVtable + 0xAC, noop.vir],
+		[c.FloatVtable + 0x50, floating.vir], [c.FloatVtable + 0xAC, noop.vir],
+		[0x102D2D0, pane.vir],
+		[0x1028DFC, messageEdit.vir], [0x1028EE8, recipientEdit.vir]
+	]) Exe.SetUint32(Exe.Vir2Phy(slot), target);
+	Exe.SetJMP(Exe.Vir2Phy(c.ControlsLayout, CODE), layout.vir, 0);
+	Exe.SetJMP(Exe.Vir2Phy(c.InputLayout, CODE), input.vir, 0);
+	Exe.SetJMP(Exe.Vir2Phy(c.FloatLayout, CODE), floatLayout.vir, 0);
+	for (const call of [0x8E9407, 0x8E944C, 0x8E9491, 0x8F0933, 0x8F0972, 0x8F09B1])
+		Exe.SetCALL(Exe.Vir2Phy(call, CODE), gear.vir, 0);
+	for (const call of [0x8F072A, 0x8F0769, 0x8F07A8]) Exe.SetCALL(Exe.Vir2Phy(call, CODE), returnTab.vir, 0);
+	Exe.SetCALL(Exe.Vir2Phy(0x8F0D25, CODE), resize.vir, 0);
+	const contract = {version: 12, buildDate: c.BuildDate, paths, main, pane, tab,
+		layout, input, round, finalize, click, event, fill, messageEdit, recipientEdit, tabVtable,
+		blend, pngDraw, inputColor, tabDetachmentDisabled: false,
+		dockCapacity, dockGate, floatLayout, floating, returnTab, resize,
+		wholeWindowDragFromFrame: true, panelFill: c.PanelFill, panelBorder: c.PanelBorder,
+		inputFill: c.ToolbarFill, recipientFieldRestored: true, font, fontState,
+		getFont, tabLabel, tabIcons: false, inputFinalize, send, emoji, cursor, emojiWindowId: 0x57,
+		selectedTabColor: 0xFFFFFF, selectedTabWeight: 700,
+		controlsReserve: c.ControlsReserve, inputSplit: c.InputSplit, messageX: c.MessageX,
+		toolbarFill: c.ToolbarFill, centeredNativeText: true, floatingBodyFill: c.PanelFill,
+		nativeNamesAndFiltersPreserved: true, postDrawAlpha: true,
+		obsoletePaintNotificationsSuppressed: true};
+	CACHE.put("ModernChatUI.Contract.v12", contract);
+	// Versioned, read-only offline test contract. No runtime input/config file.
+	const descriptor = n.allocateString("ModernChatUI.v12"), record = [];
+	for (const value of [descriptor.vir, fontFace, font.size, font.weight,
+		...[fontState, getFont, tabLabel, inputFinalize, send, emoji, cursor].map(x => x.vir)])
+		record.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
+	n.allocateBytes(record, 4);
+	if (typeof PatchDiagnostics !== "undefined" && typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add("ModernChatUI.Native", contract);
+	ModernChatUI.onApplied();
+	return true;
+};
+
+ModernChatUI.onApplied = function()
+{
+	if (Warp.TestMode) return;
+	const c = ModernChatUIStatic;
+	const source = Warp.Path + c.AssetPath;
+	const root = System.DirPath(Warp.TgtExe);
+	const folders = ["data", "texture", c.uiPrefix(), "uirenewal", "chat"];
+	const target = root + "/" + folders.join("/");
+	const missing = [];
+	for (const file of c.Assets)
+	{
+		// User-owned PNGs may have been recolored since the previous build.
+		const existing = new BinFile(target + "/" + file, 'r');
+		const present = existing.Valid;
+		existing.Close();
+		if (present) continue;
+		// Check the complete missing set before creating folders or copying.
+		const asset = new BinFile(source + "/" + file, 'r');
+		const available = asset.Valid;
+		asset.Close();
+		if (!available) throw Error("ModernChatUI: missing bundled image " + source + "/" + file);
+		missing.push(file);
+	}
+	if (missing.length === 0) return;
+	// Create every parent explicitly, including a previously absent data folder.
+	// Always use the selected output EXE, never the source client or WARP folder.
+	let directory = root;
+	for (const folder of folders)
+	{
+		directory += "/" + folder;
+		if (!System.MkDir(directory)) throw Error("ModernChatUI: cannot create " + directory);
+	}
+	for (const file of missing)
+		if (!System.Copy(source + "/" + file, target + "/" + file, false))
+			throw Error("ModernChatUI: cannot copy " + source + "/" + file + " to " + target + "/" + file);
+};
+
+ModernChatUI.validate = () => Exe.BuildDate === ModernChatUIStatic.BuildDate;

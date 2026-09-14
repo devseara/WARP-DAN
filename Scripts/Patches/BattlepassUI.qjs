@@ -1,0 +1,1647 @@
+/*
+ * Project Rebirth - native Battle Pass window, GPL-3.0-or-later.
+ * Author: DevSeara.
+ * Description: Adds a 796x510 UIFrameWnd using the 2025-07-16 client's
+ * own surface/text/input functions. @battlepassui opens it. BPUI snapshots
+ * use a magic-gated 0x0BF6 route; other emotion packets retain stock handling.
+ * No custom DLL, WebView, foreign UI thread, or runtime EXE/IAT patching.
+ * Native canvas/assembler helpers are provided by AutoCombatUI.qjs.
+ */
+
+const BattlepassUIStatic = {
+	BuildDate: 20250716, Width: 796, Height: 510, WindowId: 0x3F8,
+	// Transparent drawing space lets the original 26px hand cross the right
+	// edge. It is excluded from hit testing and from the visible layout.
+	CursorMargin: 25, FrameHitTest: 0x00A23220,
+	// One WARP height for every label; headings use bold for emphasis.
+	Font: { Body: 16, Heading: 16, Notes: 16, Button: 16, Title: 16, Tab: 16 },
+	RequestId: 0x0BF9, SnapshotId: 0x0BF6, Magic: 0x49555042,
+	PacketSize: 2872, VisualsSize: 2272, DetailsSize: 2240, LegacySize: 788, StateSize: 3028, Snapshot: 32, UserHidden: 3020,
+	EscapeHeld: 3024, KeyEvent: 0x00A471E0,
+	BrowsePage: 3012, BrowseTrack: 3016,
+	SelectionType: 2904, Difficulty: 2908, Pending: 2912, RequestValue: 2916, RewardMode: 2920,
+	RewardPending: 2924, Hover: 2928, Modal: 2932, QuoteToken: 2936, QuoteFee: 2940, CursorX: 2988, CursorY: 2992,
+	CursorPainted: 2996, PaintedX: 3000, PaintedY: 3004, QuoteNonce: 3008,
+	NativeSelection: 0x4000, DetailsAvailable: 0x8000,
+	Window: 0, Tab: 4, Pressed: 8, Timer: 12, SetTimer: 16, KillTimer: 20, Ready: 24,
+	Dragging: 28, FrameDragMove: 0x00880E00, FrameDragMoveSlot: 27,
+	Fields: {
+		player: [20, 24], mission: [44, 64], target: [108, 64],
+		progress: [172, 32], remaining: [204, 32], reward: [236, 48],
+		exp: [284, 32], level: [316, 32], track: [348, 24], fee: [372, 48],
+		status: [420, 48], limit: [468, 48], next: [516, 48], primary: [564, 32],
+		hunt: [596, 96], collect: [692, 96],
+		overall: [1200, 80], levelProgress: [1280, 80],
+		nextNormal: [1360, 64], nextNormalItem: [1424, 64],
+		nextPremium: [1488, 64], nextPremiumItem: [1552, 64],
+		rewardTitle: [1616, 80], rewardStatus: [1696, 64], habitatHint: [2776, 96]
+	}
+};
+for (let i = 0; i < 8; ++i) {
+	BattlepassUIStatic.Fields["count" + i] = [788 + i * 48, 24];
+	BattlepassUIStatic.Fields["tierExp" + i] = [812 + i * 48, 24];
+	BattlepassUIStatic.Fields["tierStatus" + i] = [2272 + i * 32, 32];
+}
+for (let i = 0; i < 5; ++i) {
+	BattlepassUIStatic.Fields["item" + i] = [1760 + i * 96, 64];
+	BattlepassUIStatic.Fields["amount" + i] = [1824 + i * 96, 32];
+	BattlepassUIStatic.Fields["habitatMap" + i] = [2536 + i * 48, 24];
+	BattlepassUIStatic.Fields["habitatPopulation" + i] = [2560 + i * 48, 24];
+}
+
+BattlepassUIStatic.ClientAssets = [
+	"Abandon_Dialog_Background.bmp", "Button_Disabled_Off.bmp",
+	"Button_Hover_Over.bmp", "Button_Mouse_Press.bmp",
+	"Button_Normal_Out.bmp", "Cursor_Hover.bmp",
+	"Cursor_Mouse_Press.bmp", "Difficulty_Easy_Background.bmp",
+	"Difficulty_Hard_Background.bmp", "Difficulty_Hardcore_Background.bmp",
+	"Difficulty_Normal_Background.bmp", "Difficulty_Reward_Row_Border.bmp",
+	"Menu_Tab_Disabled.bmp", "Menu_Tab_Hover.bmp", "Menu_Tab_Normal.bmp",
+	"Menu_Tab_Selected.bmp", "Progress_Background.bmp", "Progress_Border.bmp",
+	"Progress_Fill.bmp", "Quest_Type_Border.bmp",
+	"Quest_Type_Border_Disabled.bmp", "Reward_Row_Background.bmp",
+	"Section_Divider.bmp", "Selection_Border.bmp", "Window_Background.bmp"
+];
+
+BattlepassUIStatic.uiPrefix = function()
+{
+	return String.fromCharCode(
+		0xC0, 0xAF, 0xC0, 0xFA, 0xC0, 0xCE, 0xC5, 0xCD,
+		0xC6, 0xE4, 0xC0, 0xCC, 0xBD, 0xBA
+	);
+};
+
+BattlepassUIStatic.getFontSettings = function()
+{
+	const defaults = BattlepassUIStatic.Font;
+	const height = Exe.GetUserInput(
+		"$battlepassUIFontHeight", D_FontSize, "Battle Pass Font Height",
+		"Height for all Battle Pass text (recommended: 16)",
+		defaults.Body, {sampleName: "Arial"}
+	);
+	if (height === false)
+		Cancel("Battle Pass Font Height", defaults.Body);
+	if (!Number.isInteger(height) || height < 1 || height > 127)
+		throw Error("BattlepassUI: font height must be between 1 and 127");
+	const font = {};
+	for (const role in defaults)
+		font[role] = height;
+	return font;
+};
+
+BattlepassUIStatic.verify = function()
+{
+	if (Exe.BuildDate !== BattlepassUIStatic.BuildDate ||
+		typeof AutoCombatUI === "undefined" || typeof AutoCombatUI.nativeHelpers === "undefined")
+		throw Error("BattlepassUI requires WARP's 2025-07-16 native UI helpers");
+	const n = AutoCombatUI.nativeHelpers;
+	const dispatch = Exe.Vir2Phy(n.packetTableEntryVir(BattlepassUIStatic.SnapshotId), CODE);
+	if (dispatch < 0) throw Error("BattlepassUI: packet dispatcher is not mapped");
+	const handler = Exe.Vir2Phy(Exe.GetUint32(dispatch), CODE);
+	if (handler >= 0 && Exe.GetHex(handler, 3).replace(/\s/g, "").toUpperCase() === "9C60BE" &&
+		Exe.GetUint32(handler + 22) === BattlepassUIStatic.Magic)
+		throw Error("BattlepassUI is already installed in this EXE. Load your original source EXE before rebuilding.");
+	n.assertCode("Battlepass frame constructor", n.FrameConstructor, "55 8B EC 6A FF 68 F9 45 EA 00");
+	n.assertCode("Battlepass frame mouse down", n.FrameMouseDown, "55 8B EC 83 EC 08 56 8B F1");
+	n.assertCode("Battlepass frame mouse up", n.FrameMouseUp, "56 8B F1 B9 E8 F4 31 01 E8");
+	n.assertCode("Battlepass frame captured movement", BattlepassUIStatic.FrameDragMove, "55 8B EC 83 EC 1C 53 8B D9");
+	n.assertVtableSlot("Battlepass frame destructor", 0, n.FrameVtableDestructor);
+	n.assertVtableSlot("Battlepass frame draw", 20, n.FrameVtableDraw);
+	n.assertVtableSlot("Battlepass frame mouse down", 25, n.FrameVtableMouseDown);
+	n.assertVtableSlot("Battlepass frame captured movement", BattlepassUIStatic.FrameDragMoveSlot, BattlepassUIStatic.FrameDragMove);
+	n.assertVtableSlot("Battlepass frame mouse up", 31, n.FrameVtableMouseUp);
+	n.assertVtableSlot("Battlepass frame right up", 32, 0x005A8A50);
+	n.assertVtableSlot("Battlepass frame hit test", 50, BattlepassUIStatic.FrameHitTest);
+	n.assertCode("Battlepass frame hit test", BattlepassUIStatic.FrameHitTest, "55 8B EC 53 8B 5D 08 56 8B F1");
+	n.assertCode("Battlepass stock mesitemicon right click", 0x00803D15, "6A 0C B9 E8 F4 31 01 C6 85 54 FF FF FF 01 E8 18 56 23 00");
+	n.assertCode("Battlepass native CItem constructor", 0x006A1B20, "55 8B EC 6A FF 68 8B 54 E5 00");
+	n.assertCode("Battlepass native text measurement", n.TextWidth, "55 8B EC 6A FF 68 5D B6 EE 00");
+	n.assertCode("Battlepass CItem numeric ID", 0x005D98A0, "83 C1 2C 83 79 14 10");
+};
+
+BattlepassUIStatic.sender = function(refs, action, state)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10, 0x56, 0x53);
+	if (action === 18) {
+		a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(4); a.jcc(0x82, "done");
+		a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 1188); a.word(256); a.jcc(0x84, "done");
+	}
+	a.emit(0x66, 0xC7, 0x45, 0xF0); a.word(b.RequestId);
+	a.emit(0x66, 0xC7, 0x45, 0xF2); a.word(16);
+	a.emit(0xC7, 0x45, 0xF4); a.dword(b.Magic);
+	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(2);
+	a.emit(0x66, 0xC7, 0x45, 0xFA); a.word(action);
+	a.emit(0xA1); a.dword(action === 17 ? state + b.QuoteToken : (action === 14 || action === 15) ? state + b.Snapshot + 1184 : state + b.RequestValue);
+	a.emit(0x89, 0x45, 0xFC, 0xBB); a.dword(16);
+	// v3 keeps the 16-byte request; older servers retain their exact envelopes.
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(2); a.jcc(0x82, "no_visuals");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 1188); a.emit(16); a.jcc(0x84, "no_visuals");
+	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(3);
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 1188); a.emit(32); a.jcc(0x84, "send");
+	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(4); a.jmp("send");
+	a.label("no_visuals");
+	if (action >= 16) a.jmp("done");
+	// Negotiate only after the server advertises variable-length v2 requests.
+	// Old servers still receive their exact 12-byte v1 messages.
+	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 10); a.word(b.DetailsAvailable); a.jcc(0x85, "send");
+	if (action >= 12) a.jmp("done");
+	a.emit(0x66, 0xC7, 0x45, 0xF2); a.word(12);
+	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(1);
+	a.emit(0xBB); a.dword(12);
+	a.label("send");
+	a.call(refs.packetCtorA);
+	a.emit(0x8B, 0xF0, 0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x8D, 0x45, 0xF0, 0x50, 0x53);
+	a.emit(0x8B, 0xCE); a.call(refs.packetSend);
+	a.label("done");
+	a.emit(0x5B, 0x5E, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+BattlepassUIStatic.receiver = function(state, fallback, open)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x9C, 0x60, 0xBE); a.dword(n.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(b.PacketSize); a.jcc(0x85, "visuals");
+	a.emit(0x81, 0x7E, 0x04); a.dword(b.Magic); a.jcc(0x85, "stock");
+	a.emit(0x66, 0x83, 0x7E, 0x08, 0x04); a.jcc(0x85, "consumed");
+	a.emit(0xB9); a.dword(b.PacketSize); a.jmp("copy");
+	a.label("visuals");
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(b.VisualsSize); a.jcc(0x85, "details");
+	a.emit(0x81, 0x7E, 0x04); a.dword(b.Magic); a.jcc(0x85, "stock");
+	a.emit(0x66, 0x83, 0x7E, 0x08, 0x03); a.jcc(0x85, "consumed");
+	a.emit(0xB9); a.dword(b.VisualsSize); a.jmp("copy");
+	a.label("details");
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(b.DetailsSize); a.jcc(0x85, "legacy");
+	a.emit(0x81, 0x7E, 0x04); a.dword(b.Magic); a.jcc(0x85, "stock");
+	a.emit(0x66, 0x83, 0x7E, 0x08, 0x02); a.jcc(0x85, "consumed");
+	a.emit(0xB9); a.dword(b.DetailsSize); a.jmp("copy");
+	a.label("legacy");
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(b.LegacySize); a.jcc(0x85, "stock");
+	a.emit(0x81, 0x7E, 0x04); a.dword(b.Magic); a.jcc(0x85, "stock");
+	a.emit(0x66, 0x83, 0x7E, 0x08, 0x01); a.jcc(0x85, "consumed");
+	a.emit(0xB9); a.dword(b.LegacySize);
+	a.label("copy"); a.emit(0xBF); a.dword(state + b.Snapshot);
+	a.emit(0xFC, 0xF3, 0xA4); // cld; rep movsb
+	for (const key in b.Fields) {
+		const field = b.Fields[key];
+		a.emit(0xC6, 0x05); a.dword(state + b.Snapshot + field[0] + field[1] - 1); a.emit(0);
+	}
+	a.emit(0xC7, 0x05); a.dword(state + b.Ready); a.dword(1);
+	// Keep an expired mission visible until the server clears it. Older poll
+	// replies must not prematurely release the explicit new-mission request.
+	a.emit(0x83, 0x3D); a.dword(state + b.Pending); a.emit(2); a.jcc(0x85, "start_reply");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x84, "new_mission_ready");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(4); a.jcc(0x84, "selection_done");
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(4); a.jcc(0x82, "selection_done");
+	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 1188); a.word(256); a.jcc(0x85, "selection_pending");
+	a.jmp("selection_done");
+	a.label("new_mission_ready"); a.emit(0xC7, 0x05); a.dword(state + b.Tab); a.dword(0); a.jmp("selection_done");
+	// A successful Start returns directly to the Active page. Rejections keep
+	// the Board visible; either reply releases the local double-click guard.
+	a.label("start_reply");
+	a.emit(0x83, 0x3D); a.dword(state + b.Pending); a.emit(0); a.jcc(0x84, "selection_done");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x84, "selection_done");
+	a.emit(0xC7, 0x05); a.dword(state + b.Tab); a.dword(1);
+	a.label("selection_done");
+	a.emit(0xC7, 0x05); a.dword(state + b.Pending); a.dword(0);
+	a.label("selection_pending");
+	// Navigation can accept more clicks while a reply is in flight. A stale
+	// refresh/page reply must not discard the latest requested destination.
+	a.emit(0x83, 0x3D); a.dword(state + b.RewardPending); a.emit(2); a.jcc(0x85, "browse_ack");
+	a.emit(0xA1); a.dword(state + b.Snapshot + 1192); a.emit(0x3B, 0x05); a.dword(state + b.BrowseTrack); a.jcc(0x85, "browse_pending");
+	a.emit(0xA1); a.dword(state + b.Snapshot + 1180); a.emit(0x85, 0xC0); a.jcc(0x84, "browse_last"); a.emit(0x48); a.label("browse_last");
+	a.emit(0x39, 0x05); a.dword(state + b.BrowsePage); a.jcc(0x86, "browse_in_range");
+	a.emit(0xA3); a.dword(state + b.BrowsePage); a.label("browse_in_range");
+	a.emit(0xA1); a.dword(state + b.Snapshot + 1176); a.emit(0x3B, 0x05); a.dword(state + b.BrowsePage); a.jcc(0x85, "browse_pending");
+	a.label("browse_ack");
+	a.emit(0xC7, 0x05); a.dword(state + b.RewardPending); a.dword(0);
+	a.label("browse_pending");
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(2); a.jcc(0x82, "active_type_done");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x84, "active_type_done");
+	a.emit(0xA1); a.dword(state + b.Snapshot + 1196); a.emit(0x83, 0xF8, 1); a.jcc(0x87, "active_type_done");
+	a.emit(0xA3); a.dword(state + b.SelectionType);
+	a.label("active_type_done");
+	// The quote is frozen when its reply arrives. Refreshes can invalidate it,
+	// but can never silently substitute a new fee under the Confirm button.
+	a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(0); a.jcc(0x84, "modal_done");
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(3); a.jcc(0x82, "modal_close");
+	a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(1); a.jcc(0x85, "quote_ack_done");
+	a.emit(0x0F, 0xB7, 0x05); a.dword(state + b.Snapshot + 1190); a.emit(0x3B, 0x05); a.dword(state + b.QuoteNonce); a.jcc(0x85, "modal_done");
+	a.label("quote_ack_done");
+	a.emit(0xA1); a.dword(state + b.Snapshot + 2268); a.emit(0x85, 0xC0); a.jcc(0x84, "modal_close");
+	a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(1); a.jcc(0x85, "modal_check");
+	a.emit(0xA3); a.dword(state + b.QuoteToken);
+	a.emit(0xBE); a.dword(state + b.Snapshot + b.Fields.fee[0]);
+	a.emit(0xBF); a.dword(state + b.QuoteFee); a.emit(0xB9); a.dword(48); a.emit(0xFC, 0xF3, 0xA4);
+	a.emit(0xC7, 0x05); a.dword(state + b.Modal); a.dword(2); a.jmp("modal_done");
+	a.label("modal_check"); a.emit(0x3B, 0x05); a.dword(state + b.QuoteToken); a.jcc(0x84, "modal_done");
+	a.label("modal_close");
+	a.emit(0xC7, 0x05); a.dword(state + b.Modal); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(state + b.QuoteToken); a.dword(0);
+	a.label("modal_done");
+	a.emit(0x8B, 0x35); a.dword(state + b.Window);
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(32); a.jcc(0x84, "refresh_only");
+	// Only the explicit command toggles; mission/reward replies merely show.
+	// A late reply cannot reopen a window that the user just closed.
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(2); a.jcc(0x82, "show_only");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 1188); a.emit(64); a.jcc(0x85, "open");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 1188); a.emit(128); a.jcc(0x84, "show_only");
+	a.emit(0x83, 0x3D); a.dword(state + b.UserHidden); a.emit(0); a.jcc(0x85, "refresh_only");
+	a.label("show_only");
+	a.emit(0x85, 0xF6); a.jcc(0x84, "open");
+	a.emit(0x80, 0x7E, n.WindowVisibleOffset, 0); a.jcc(0x85, "refresh_only");
+	a.label("open"); a.call(open); a.jmp("consumed");
+	a.label("refresh_only");
+	a.emit(0x85, 0xF6); a.jcc(0x84, "consumed");
+	n.emitMarkDirty(a);
+	a.label("consumed");
+	a.emit(0x61, 0x9D); a.jmp(n.PacketMainLoopReturn);
+	a.label("stock");
+	a.emit(0x61, 0x9D); a.jmp(fallback);
+	return a;
+};
+
+BattlepassUIStatic.timerProc = function(state, senders)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	// TIMERPROC executes on the native UI thread that created the timer.
+	a.emit(0x9C, 0x60, 0x8B, 0x35); a.dword(state + b.Window);
+	a.emit(0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x80, 0x7E, n.WindowVisibleOffset, 0); a.jcc(0x84, "done");
+	// A new-mission retry is idempotent and cannot clear a live mission.
+	a.emit(0x83, 0x3D); a.dword(state + b.Pending); a.emit(2); a.jcc(0x85, "browse");
+	a.call(senders[18]); a.jmp("done"); a.label("browse");
+	// Retry browsing if an older server dropped it under its refresh throttle.
+	a.emit(0x83, 0x3D); a.dword(state + b.RewardPending); a.emit(2); a.jcc(0x85, "refresh");
+	a.emit(0xA1); a.dword(state + b.BrowsePage); a.emit(0xA3); a.dword(state + b.RequestValue);
+	a.emit(0x83, 0x3D); a.dword(state + b.BrowseTrack); a.emit(0); a.jcc(0x85, "premium");
+	a.call(senders[12]); a.jmp("done"); a.label("premium"); a.call(senders[13]); a.jmp("done");
+	a.label("refresh"); a.call(senders[0]);
+	a.label("done");
+	a.emit(0x61, 0x9D, 0xC2, 0x10, 0x00);
+	return a;
+};
+
+BattlepassUIStatic.stopTimer = function(state)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x9C, 0x60, 0xA1); a.dword(state + b.Timer);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x83, 0x3D); a.dword(state + b.KillTimer); a.emit(0); a.jcc(0x84, "done");
+	a.emit(0x50); n.pushImm(a, 0);
+	a.emit(0xFF, 0x15); a.dword(state + b.KillTimer);
+	a.emit(0xC7, 0x05); a.dword(state + b.Timer); a.dword(0);
+	a.label("done"); a.emit(0x61, 0x9D, 0xC3);
+	return a;
+};
+
+BattlepassUIStatic.startTimer = function(state, callback, imports, strings)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x9C, 0x60);
+	a.emit(0x83, 0x3D); a.dword(state + b.Timer); a.emit(0); a.jcc(0x85, "done");
+	a.emit(0x83, 0x3D); a.dword(state + b.SetTimer); a.emit(0); a.jcc(0x85, "start");
+	n.pushImm(a, strings.user32);
+	a.emit(0xFF, 0x15); a.dword(imports.module);
+	a.emit(0x8B, 0xD8, 0x85, 0xDB); a.jcc(0x84, "done");
+	n.pushImm(a, strings.killTimer); a.emit(0x53);
+	a.emit(0xFF, 0x15); a.dword(imports.proc);
+	a.emit(0xA3); a.dword(state + b.KillTimer);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	n.pushImm(a, strings.setTimer); a.emit(0x53);
+	a.emit(0xFF, 0x15); a.dword(imports.proc);
+	a.emit(0xA3); a.dword(state + b.SetTimer);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.label("start");
+	n.pushImm(a, callback); n.pushImm(a, 1000); n.pushImm(a, 0); n.pushImm(a, 0);
+	a.emit(0xFF, 0x15); a.dword(state + b.SetTimer);
+	a.emit(0xA3); a.dword(state + b.Timer);
+	a.label("done"); a.emit(0x61, 0x9D, 0xC3);
+	return a;
+};
+
+// ESI owns this frame. Control capture must not finish a native drag that
+// never started; title dragging must retain the stock cleanup and grouping.
+BattlepassUIStatic.emitReleaseInput = function(a, state, prefix)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic;
+	a.emit(0xC7, 0x05); a.dword(state + b.Pressed); a.dword(0);
+	a.emit(0x83, 0x3D); a.dword(state + b.Dragging); a.emit(0); a.jcc(0x84, prefix + "_capture");
+	a.emit(0xC7, 0x05); a.dword(state + b.Dragging); a.dword(0);
+	n.pushImm(a, 0); n.pushImm(a, 0); a.emit(0x8B, 0xCE); a.call(n.FrameMouseUp);
+	a.label(prefix + "_capture");
+	a.emit(0xB9); a.dword(n.WindowManager); a.call(n.WindowCaptureGet);
+	a.emit(0x3B, 0xC6); a.jcc(0x85, prefix + "_done");
+	a.emit(0xB9); a.dword(n.WindowManager); a.call(n.WindowCaptureRelease);
+	a.label(prefix + "_done");
+};
+
+BattlepassUIStatic.destructor = function(state, stop)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x56, 0x8B, 0xF1);
+	a.emit(0xC7, 0x05); a.dword(state + b.Window); a.dword(0);
+	a.call(stop);
+	b.emitReleaseInput(a, state, "destroy_input");
+	a.emit(0x8B, 0xCE, 0x5E); a.jmp(n.FrameDeletingDestructor);
+	return a;
+};
+
+BattlepassUIStatic.toggle = function(state, vtable, refresh, start, stop)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x9C, 0x60, 0x8B, 0x35); a.dword(state + b.Window);
+	a.emit(0x85, 0xF6); a.jcc(0x85, "existing");
+	n.pushImm(a, n.FrameObjectSize); a.call(n.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x8B, 0xF0); n.pushImm(a, 0);
+	a.emit(0x8B, 0xCE); a.call(n.FrameConstructor);
+	a.emit(0xC7, 0x06); a.dword(vtable);
+	n.pushImm(a, b.Height); n.pushImm(a, b.Width + b.CursorMargin);
+	a.emit(0x8B, 0xCE); a.call(n.WindowSetSize);
+	a.emit(0xC7, 0x46, n.WindowIdOffset); a.dword(b.WindowId);
+	a.emit(0x8B, 0x15); a.dword(n.Renderer);
+	a.emit(0x85, 0xD2); a.jcc(0x84, "positioned");
+	a.emit(0x8B, 0x42, n.RendererWidthOffset, 0x2D); a.dword(b.Width);
+	a.emit(0xD1, 0xF8); a.jcc(0x89, "x_ready"); a.emit(0x33, 0xC0);
+	a.label("x_ready"); a.emit(0x89, 0x46, n.WindowXOffset);
+	a.emit(0x8B, 0x42, n.RendererHeightOffset, 0x2D); a.dword(b.Height);
+	a.emit(0xD1, 0xF8); a.jcc(0x89, "y_ready"); a.emit(0x33, 0xC0);
+	a.label("y_ready"); a.emit(0x89, 0x46, n.WindowYOffset);
+	a.label("positioned");
+	a.emit(0x89, 0x35); a.dword(state + b.Window);
+	a.emit(0x56, 0xB9); a.dword(n.WindowManager); a.call(n.WindowAddTopLevelFront);
+	a.jmp("show");
+	a.label("existing");
+	a.emit(0x80, 0x7E, n.WindowVisibleOffset, 0); a.jcc(0x84, "show");
+	b.emitReleaseInput(a, state, "hide_input");
+	for (const offset of [b.Modal, b.QuoteToken, b.Hover, b.CursorPainted]) {
+		a.emit(0xC7, 0x05); a.dword(state + offset); a.dword(0);
+	}
+	a.emit(0xC7, 0x05); a.dword(state + b.UserHidden); a.dword(1);
+	a.emit(0xC7, 0x46, n.WindowVisibleOffset); a.dword(0);
+	a.call(stop); a.jmp("done");
+	a.label("show");
+	a.emit(0xC7, 0x05); a.dword(state + b.UserHidden); a.dword(0);
+	a.emit(0xC7, 0x46, n.WindowVisibleOffset); a.dword(1);
+	a.emit(0xC7, 0x05); a.dword(state + b.Pressed); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(state + b.Dragging); a.dword(0);
+	n.emitMarkDirty(a); a.call(refresh); a.call(start);
+	a.label("done"); a.emit(0x61, 0x9D, 0xC3);
+	return a;
+};
+
+BattlepassUIStatic.challengeGate = function(a, state, disabled)
+{
+	const b = BattlepassUIStatic;
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x85, disabled);
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(16); a.jcc(0x84, disabled);
+	a.emit(0x83, 0x3D); a.dword(state + b.Pending); a.emit(0); a.jcc(0x85, disabled);
+};
+
+BattlepassUIStatic.escapeKey = function(state, toggle, stock)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	// UIWindowMgr key events are thiscall(vk, lParam, firstPress), ret 12.
+	// The WM_KEYDOWN caller checks AL to stop further hotkey/menu processing.
+	a.emit(0x9C, 0x60, 0x81, 0xF9); a.dword(n.WindowManager); a.jcc(0x85, "stock");
+	a.emit(0x83, 0x7C, 0x24, 40, 27); a.jcc(0x85, "stock");
+	// Leave system shortcuts and native modal keyboard input to the game.
+	a.emit(0xF7, 0x44, 0x24, 44); a.dword(0x20000000); a.jcc(0x85, "stock");
+	a.emit(0x83, 0x3D); a.dword(n.WindowManager + 0x404); a.emit(0); a.jcc(0x85, "stock");
+	a.emit(0xF7, 0x44, 0x24, 44); a.dword(0x80000000); a.jcc(0x85, "release");
+	a.emit(0xF7, 0x44, 0x24, 44); a.dword(0x40000000); a.jcc(0x85, "repeat");
+	// Key-up normally bypasses this method except for Print Screen. A fresh
+	// Escape clears the old latch even if focus changed before its release.
+	a.emit(0xC7, 0x05); a.dword(state + b.EscapeHeld); a.dword(0);
+	a.emit(0x8B, 0x35); a.dword(state + b.Window); a.emit(0x85, 0xF6); a.jcc(0x84, "stock");
+	a.emit(0x80, 0x7E, n.WindowVisibleOffset, 0); a.jcc(0x84, "stock");
+	// Reuse command-close cleanup: timer, capture, modal quote and late replies.
+	a.call(toggle);
+	a.emit(0xC7, 0x05); a.dword(state + b.EscapeHeld); a.dword(1); a.jmp("handled");
+	a.label("release");
+	a.emit(0x83, 0x3D); a.dword(state + b.EscapeHeld); a.emit(0); a.jcc(0x84, "stock");
+	a.emit(0xC7, 0x05); a.dword(state + b.EscapeHeld); a.dword(0); a.jmp("handled");
+	a.label("repeat");
+	a.emit(0x83, 0x3D); a.dword(state + b.EscapeHeld); a.emit(0); a.jcc(0x84, "stock");
+	a.label("handled"); a.emit(0x61, 0x9D, 0xB8); a.dword(1); a.emit(0xC2, 12, 0);
+	a.label("stock"); a.emit(0x61, 0x9D); a.jmp(stock);
+	return a;
+};
+
+// The game's cursor is a software sprite. Draw the supplied hand into this
+// window only, and suppress that sprite only when our matching hand is already
+// painted. Native hit-testing prevents a hand leaking onto another window.
+BattlepassUIStatic.cursorScope = function(state, hover)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0x35); a.dword(state + b.Window);
+	a.emit(0x85, 0xF6); a.jcc(0x84, "no_window");
+	a.emit(0x80, 0x7E, n.WindowVisibleOffset, 0); a.jcc(0x84, "clear");
+	a.emit(0x83, 0x3D); a.dword(state + b.Dragging); a.emit(0); a.jcc(0x85, "clear");
+	a.emit(0x8B, 0x1D); a.dword(0x11E40D4); a.emit(0x8B, 0x3D); a.dword(0x11E40D8);
+	a.emit(0x57, 0x53, 0xB9); a.dword(n.WindowManager); a.call(0xA336D0);
+	a.emit(0x3B, 0xC6); a.jcc(0x85, "clear");
+	a.emit(0x2B, 0x5E, n.WindowXOffset, 0x2B, 0x7E, n.WindowYOffset);
+	// Close can use the transparent cursor margin. Its hotspot and orientation
+	// are identical to the hand over every other control.
+	a.emit(0x81, 0xFB); a.dword(b.Width - 1); a.jcc(0x87, "clear");
+	a.emit(0x81, 0xFF); a.dword(b.Height - 1); a.jcc(0x87, "clear");
+	a.emit(0x57, 0x53, 0x8B, 0xCE); a.call(hover);
+	a.emit(0x83, 0x3D); a.dword(state + b.Hover); a.emit(5); a.jcc(0x84, "eligible");
+	a.emit(0x81, 0xFB); a.dword(b.Width - 26); a.jcc(0x87, "no_window");
+	a.emit(0x81, 0xFF); a.dword(b.Height - 22); a.jcc(0x87, "no_window");
+	a.label("eligible");
+	a.emit(0x31, 0xC0, 0x83, 0x3D); a.dword(state + b.Hover); a.emit(0); a.emit(0x0F, 0x95, 0xC0); a.jmp("done");
+	a.label("clear");
+	a.emit(0x83, 0x3D); a.dword(state + b.Hover); a.emit(0); a.jcc(0x84, "no_window");
+	a.emit(0xC7, 0x05); a.dword(state + b.Hover); a.dword(0); n.emitMarkDirty(a);
+	a.label("no_window"); a.emit(0x31, 0xC0);
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0xC3);
+	return a;
+};
+
+BattlepassUIStatic.cursorDraw = function(state, scope, stock)
+{
+	const b = BattlepassUIStatic, n = AutoCombatUI.nativeHelpers, a = n.asm();
+	a.emit(0x9C, 0x60); a.call(scope); a.emit(0x85, 0xC0); a.jcc(0x84, "stock");
+	a.emit(0x83, 0x3D); a.dword(state + b.CursorPainted); a.emit(1); a.jcc(0x85, "stock");
+	for (const [current, painted] of [[b.CursorX, b.PaintedX], [b.CursorY, b.PaintedY]]) {
+		a.emit(0xA1); a.dword(state + current); a.emit(0x3B, 0x05); a.dword(state + painted); a.jcc(0x85, "stock");
+	}
+	a.emit(0x61, 0x9D, 0xC3);
+	a.label("stock"); a.emit(0x61, 0x9D); a.jmp(stock);
+	return a;
+};
+
+// Native hit testing receives screen coordinates. Keep the extra drawing
+// margin click-through, then retain the stock visibility/child-window checks.
+BattlepassUIStatic.hitTest = function()
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x8B, 0x44, 0x24, 4, 0x2B, 0x41, n.WindowXOffset, 0x3D); a.dword(b.Width);
+	a.jcc(0x83, "outside");
+	a.emit(0x8B, 0x44, 0x24, 8, 0x2B, 0x41, n.WindowYOffset, 0x3D); a.dword(b.Height);
+	a.jcc(0x83, "outside"); a.jmp(b.FrameHitTest);
+	a.label("outside"); a.emit(0x31, 0xC0, 0xC2, 8, 0);
+	return a;
+};
+
+// The existing panel is opaque, including GDI text whose alpha may be zero.
+// Preserve that behavior while enabling alpha only for the extra cursor area.
+BattlepassUIStatic.prepareCursorCanvas = function()
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	if (b.Width % 4 !== 0) throw Error("BattlepassUI: panel alpha pass requires a multiple of four pixels");
+	a.emit(0x53, 0x57, 0x8B, 0x41, n.WindowSurfaceOffset, 0x85, 0xC0); a.jcc(0x84, "missing");
+	a.emit(0x81, 0x78, n.SurfaceWidthOffset); a.dword(b.Width + b.CursorMargin); a.jcc(0x85, "missing");
+	a.emit(0x8B, 0x78, n.SurfacePixelsOffset, 0x85, 0xFF); a.jcc(0x84, "missing");
+	// SSE2 operates on four pixels at once; unaligned rows are intentional.
+	a.emit(0x66, 0x0F, 0x76, 0xC0, 0x66, 0x0F, 0x72, 0xF0, 24);
+	a.emit(0xBB); a.dword(b.Height); a.emit(0xFC);
+	a.label("row"); a.emit(0xB9); a.dword(b.Width / 4);
+	a.label("pixels");
+	a.emit(0xF3, 0x0F, 0x6F, 0x0F, 0x66, 0x0F, 0xEB, 0xC8, 0xF3, 0x0F, 0x7F, 0x0F);
+	a.emit(0x83, 0xC7, 16, 0x49); a.jcc(0x85, "pixels");
+	a.emit(0x31, 0xC0, 0xB9); a.dword(b.CursorMargin); a.emit(0xF3, 0xAB, 0x4B); a.jcc(0x85, "row");
+	a.emit(0xB8); a.dword(1); a.jmp("done");
+	a.label("missing"); a.emit(0x31, 0xC0);
+	a.label("done"); a.emit(0x5F, 0x5B, 0xC3);
+	return a;
+};
+
+BattlepassUIStatic.mapThumbnail = function()
+{
+	const n = AutoCombatUI.nativeHelpers, a = n.asm();
+	// stdcall(texture, outputPixels): bounded nearest-neighbor 32x32 minimap.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x10, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x45, 8, 0x85, 0xC0); a.jcc(0x84, "missing");
+	for (const [offset, local] of [[n.TextureWidthOffset, -4], [n.TextureHeightOffset, -8]]) {
+		a.emit(0x8B, 0x88); a.dword(offset); a.emit(0x49, 0x81, 0xF9); a.dword(1023); a.jcc(0x87, "missing");
+		a.emit(0x41, 0x89, 0x4D, local);
+	}
+	a.emit(0x8B, 0xB0); a.dword(n.TexturePixelsOffset); a.emit(0x85, 0xF6); a.jcc(0x84, "missing");
+	a.emit(0x8B, 0x7D, 12, 0x31, 0xDB);
+	a.label("row");
+	a.emit(0x8B, 0xC3, 0x0F, 0xAF, 0x45, -8, 0xC1, 0xE8, 5, 0x0F, 0xAF, 0x45, -4, 0x89, 0x45, -12, 0x31, 0xC9);
+	a.label("pixel");
+	a.emit(0x8B, 0xC1, 0x0F, 0xAF, 0x45, -4, 0xC1, 0xE8, 5, 0x03, 0x45, -12, 0x8B, 0x04, 0x86, 0x89, 0x07);
+	a.emit(0x83, 0xC7, 4, 0x41, 0x83, 0xF9, 32); a.jcc(0x82, "pixel");
+	a.emit(0x43, 0x83, 0xFB, 32); a.jcc(0x82, "row");
+	a.emit(0xB8); a.dword(1); a.jmp("done");
+	a.label("missing"); a.emit(0x31, 0xC0);
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 8, 0);
+	return a;
+};
+
+BattlepassUIStatic.artwork = function()
+{
+	const n = AutoCombatUI.nativeHelpers, cache = {}, source = {}, resources = [];
+	// One shared manifest names runtime BMPs, bundled fallbacks, and installer
+	// migrations. Internal source keys keep the original supplied-art names.
+	const namesFile = new BinFile(Warp.Path + "/Assets/BattlepassUI/Skin_Names.json", 'r');
+	if (!namesFile.Valid) throw Error("BattlepassUI: missing Skin_Names.json. Run Install-WarpPatch.ps1.");
+	const namesHex = namesFile.ReadHex(); namesFile.Close();
+	const names = JSON.parse((namesHex.match(/[0-9A-Fa-f]{2}/g) || []).map(x => String.fromCharCode(parseInt(x, 16))).join(""));
+	const filename = key => {
+		if (typeof names[key] !== "string" || !/^[A-Za-z][A-Za-z0-9_]*$/.test(names[key]))
+			throw Error("BattlepassUI: invalid skin filename for " + key);
+		return names[key];
+	};
+	const blit = n.allocateCode(n.buildColorKeyBlit()).vir;
+	// The full opaque background uses row copies (no per-pixel key test).
+	const copy = n.asm();
+	copy.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	copy.emit(0x8B, 0x45, 8, 0x8B, 0x40, n.WindowSurfaceOffset, 0x8B, 0x78, n.SurfacePixelsOffset);
+	copy.emit(0x8B, 0x58, n.SurfaceWidthOffset, 0x8B, 0x45, 20, 0x0F, 0xAF, 0xC3, 0x03, 0x45, 16, 0x8D, 0x3C, 0x87);
+	copy.emit(0x8B, 0x55, 12, 0x8B, 0x82); copy.dword(n.TextureWidthOffset);
+	copy.emit(0x2B, 0xD8, 0xC1, 0xE3, 2, 0x8B, 0xB2); copy.dword(n.TexturePixelsOffset);
+	copy.emit(0x8B, 0x92); copy.dword(n.TextureHeightOffset);
+	copy.emit(0xFC); copy.label("row"); copy.emit(0x8B, 0xC8, 0xF3, 0xA5, 0x03, 0xFB, 0x4A); copy.jcc(0x85, "row");
+	copy.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x10, 0x00);
+	const opaqueBlit = n.allocateCode(copy).vir;
+	// Only Battle Pass-owned descriptors have a lazy loader in their first
+	// word. Item textures continue through the unmodified native icon path.
+	const wrapper = n.asm();
+	wrapper.emit(0x55, 0x8B, 0xEC, 0x8B, 0x45, 0x0C, 0xFF, 0x10);
+	for (const offset of [20, 16, 12, 8]) wrapper.emit(0xFF, 0x75, offset);
+	wrapper.emit(0x8B, 0x45, 12, 0x83, 0x78, 4, 1); wrapper.jcc(0x84, "opaque");
+	wrapper.call(blit); wrapper.jmp("done"); wrapper.label("opaque"); wrapper.call(opaqueBlit);
+	wrapper.label("done"); wrapper.emit(0x5D, 0xC2, 0x10, 0x00);
+	const skinBlit = n.allocateCode(wrapper).vir;
+	const read = name => {
+		if (source[name]) return source[name];
+		const file = new BinFile(Warp.Path + "/Assets/BattlepassUI/" + filename(name) + ".bgra", 'r');
+		if (!file.Valid) throw Error("BattlepassUI: missing bundled artwork " + name + ". Run Install-WarpPatch.ps1.");
+		const hex = file.ReadHex(); file.Close();
+		const bytes = (hex.match(/[0-9A-Fa-f]{2}/g) || []).map(x => parseInt(x, 16));
+		const u32 = i => (bytes[i] | bytes[i+1] << 8 | bytes[i+2] << 16 | bytes[i+3] << 24) >>> 0;
+		const w = u32(0), h = u32(4);
+		if (!w || !h || w > 796 || h > 510 || bytes.length !== 8 + w * h * 4)
+			throw Error("BattlepassUI: malformed artwork " + name);
+		return source[name] = {w, h, bytes};
+	};
+	const texturePixels = {};
+	const texture = (w, h, pixels) => {
+		const descriptor = n.allocateBytes(new Array(n.TextureDescriptorSize).fill(0), 4);
+		const data = n.allocateBytes(pixels, 4);
+		Exe.SetUint32(descriptor.phy + n.TextureWidthOffset, w);
+		Exe.SetUint32(descriptor.phy + n.TextureHeightOffset, h);
+		Exe.SetUint32(descriptor.phy + n.TexturePixelsOffset, data.vir);
+		texturePixels[descriptor.vir] = data.vir;
+		return descriptor.vir;
+	};
+	const external = (name, image, w, h, pixels, offsets = null) => {
+		const descriptor = texture(w, h, pixels), attempted = n.allocateBytes([0, 0, 0, 0], 4).vir;
+		const path = n.buildResourcePath("battlepassui\\" + filename(name) + ".bmp").vir, a = n.asm();
+		a.emit(0x53, 0x56, 0x57);
+		a.emit(0x83, 0x3D); a.dword(attempted); a.emit(0); a.jcc(0x85, "done");
+		a.emit(0xC7, 0x05); a.dword(attempted); a.dword(1);
+		n.emitLoadSurface(a, path, "done");
+		// Fixed source dimensions bound the nine-slice lookup table. Bad or
+		// missing files keep the embedded default rather than corrupt memory.
+		for (const [offset, value] of [[n.TextureWidthOffset, image.w], [n.TextureHeightOffset, image.h]]) {
+			a.emit(0x81, 0xB8); a.dword(offset); a.dword(value); a.jcc(0x85, "done");
+		}
+		a.emit(0x8B, 0xB0); a.dword(n.TexturePixelsOffset); a.emit(0x85, 0xF6); a.jcc(0x84, "done");
+		a.emit(0x8B, 0x3D); a.dword(descriptor + n.TexturePixelsOffset);
+		a.emit(0xB9); a.dword(w * h);
+		if (offsets) {
+			const map = [];
+			for (const offset of offsets) map.push(offset & 255, (offset >>> 8) & 255, (offset >>> 16) & 255, (offset >>> 24) & 255);
+			a.emit(0xBB); a.dword(n.allocateBytes(map, 4).vir);
+			a.label("pixel"); a.emit(0x8B, 0x13, 0x8B, 0x04, 0x16, 0x89, 0x07, 0x83, 0xC3, 4, 0x83, 0xC7, 4, 0x49); a.jcc(0x85, "pixel");
+		} else if (name === "cursorshover" || name === "cursorsclick") {
+			// Native BMP loading may leave alpha unset. These cursors have
+			// always used magenta color-key transparency, so keep their visible
+			// RGB pixels opaque when the hand extends into the alpha margin.
+			a.emit(0xFC); a.label("pixel"); a.emit(0xAD, 0x0D); a.dword(0xFF000000);
+			a.emit(0xAB, 0x49); a.jcc(0x85, "pixel");
+		} else a.emit(0xFC, 0xF3, 0xA5);
+		a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0xC3);
+		const loader = n.allocateCode(a).vir;
+		Exe.SetUint32(Exe.Vir2Phy(descriptor), loader);
+		if (name === "background") Exe.SetUint32(Exe.Vir2Phy(descriptor) + 4, 1);
+		resources.push({name: filename(name) + ".bmp", width: image.w, height: image.h, descriptor, attempted, loader});
+		return descriptor;
+	};
+	const skin = (w, h, tab) => {
+		const key = w + "x" + h + (tab ? "tab" : "button");
+		if (cache[key]) return cache[key];
+		const skins = {};
+		for (const variant of ["out", "over", "press", "off"]) {
+			const name = tab ? (variant === "press" ? "menu_select" : "menu_" + variant) : "trade_" + variant;
+			const image = read(name), data = [], offsets = [];
+			const edgeX = tab ? 10 : 5, edgeY = 4;
+			const slice = (pos, length, original, edge) => pos < edge ? pos : pos >= length - edge ? original - (length - pos) : edge + Math.floor((pos - edge) * (original - 2 * edge) / (length - 2 * edge));
+			for (let y = 0; y < h; ++y) for (let x = 0; x < w; ++x) {
+				const offset = 8 + (slice(y, h, image.h, edgeY) * image.w + slice(x, w, image.w, edgeX)) * 4;
+				const [blue, green, red, alpha] = image.bytes.slice(offset, offset + 4);
+				data.push(blue, green, red, alpha);
+				offsets.push(offset - 8);
+			}
+			skins[variant] = external(name, image, w, h, data, offsets);
+		}
+		return cache[key] = skins;
+	};
+	// Resize each caption's skin once, after the native font has been measured.
+	// Keep both edge strips intact; only the center of the editable BMP scales.
+	const fitSkin = (layout, panel = false) => {
+		if (layout.skins) return layout.skins;
+		let sources;
+		if (panel) {
+			const image = read("abandon_dialog"), data = [], offsets = [];
+			// Retain the editable panel's border and title strip at their native
+			// height; only its blank body stretches to the compact dialog size.
+			const slice = (p, size, original, start, end) => p < start ? p : p >= size - end ? original - size + p : start + Math.floor((p - start) * (original - start - end) / (size - start - end));
+			for (let y = 0; y < layout.h; ++y) for (let x = 0; x < layout.w; ++x) {
+				const offset = (slice(y, layout.h, image.h, 28, 5) * image.w + slice(x, layout.w, image.w, 5, 5)) * 4;
+				data.push(...image.bytes.slice(offset + 8, offset + 12)); offsets.push(offset);
+			}
+			sources = {out: external("abandon_dialog", image, layout.w, layout.h, data, offsets)};
+		} else sources = skin(layout.w, layout.h, layout.tab);
+		const result = {};
+		for (const variant of Object.keys(sources)) {
+			const descriptor = texture(layout.w, layout.h, new Array(layout.w * layout.h * 4).fill(0));
+			const width = descriptor + n.TextureWidthOffset, pixels = texturePixels[descriptor];
+			Exe.SetUint32(Exe.Vir2Phy(width), 0);
+			const a = n.asm(), edge = layout.tab ? 10 : 5, source = sources[variant];
+			a.emit(0x60, 0x83, 0x3D); a.dword(width); a.emit(0); a.jcc(0x85, "done");
+			a.emit(0xB8); a.dword(source); a.emit(0xFF, 0x10);
+			a.emit(0x8B, 0x2D); a.dword(layout.geometry + 4);
+			a.emit(0x89, 0x2D); a.dword(width); a.emit(0x31, 0xDB);
+			a.label("column"); a.emit(0x8B, 0xC3, 0x83, 0xFB, edge); a.jcc(0x82, "sample");
+			a.emit(0x8B, 0xCD, 0x83, 0xE9, edge, 0x3B, 0xD9); a.jcc(0x82, "center");
+			a.emit(0x05); a.dword(layout.w); a.emit(0x2B, 0xC5); a.jmp("sample");
+			a.label("center"); a.emit(0x83, 0xE8, edge, 0x69, 0xC0); a.dword(layout.w - 2 * edge);
+			a.emit(0x83, 0xE9, edge, 0x31, 0xD2, 0xF7, 0xF1, 0x83, 0xC0, edge);
+			a.label("sample"); a.emit(0x8B, 0x35); a.dword(source + n.TexturePixelsOffset);
+			a.emit(0x8D, 0x34, 0x86, 0x8D, 0x3C, 0x9D); a.dword(pixels);
+			a.emit(0x8D, 0x14, 0xAD); a.dword(0); a.emit(0xB9); a.dword(layout.h);
+			a.label("row"); a.emit(0x8B, 0x06, 0x89, 0x07, 0x81, 0xC6); a.dword(layout.w * 4);
+			a.emit(0x03, 0xFA, 0x49); a.jcc(0x85, "row");
+			a.emit(0x43, 0x3B, 0xDD); a.jcc(0x82, "column");
+			a.label("done"); a.emit(0x61, 0xC3);
+			Exe.SetUint32(Exe.Vir2Phy(descriptor), n.allocateCode(a).vir);
+			result[variant] = descriptor;
+		}
+		return layout.skins = result;
+	};
+	const full = name => { const img = read(name); return external(name, img, img.w, img.h, img.bytes.slice(8)); };
+	const palette = color => {
+		const name = "color_" + (color >>> 0).toString(16).slice(2);
+		if (!cache[name]) cache[name] = full(name);
+		return cache[name];
+	};
+	const mapPixels = n.allocateBytes(new Array(32 * 32 * 4).fill(0), 4).vir;
+	const mapTexture = n.allocateBytes(new Array(n.TextureDescriptorSize).fill(0), 4);
+	Exe.SetUint32(mapTexture.phy + n.TextureWidthOffset, 32); Exe.SetUint32(mapTexture.phy + n.TextureHeightOffset, 32);
+	Exe.SetUint32(mapTexture.phy + n.TexturePixelsOffset, mapPixels);
+	return {skin, fitSkin, fitPanel: layout => fitSkin(layout, true).out, blit, skinBlit, read, full, palette, resources,
+		mapScale: n.allocateCode(BattlepassUIStatic.mapThumbnail()).vir, mapPixels, mapTexture: mapTexture.vir,
+		mapFormat: n.buildResourcePath("map\\%s.bmp").vir,
+		resolver: n.allocateCode(n.buildItemIconResolver()).vir,
+		format: n.buildResourcePath("item\\%s.bmp").vir,
+		path: n.allocateBytes(new Array(512).fill(0), 4).vir};
+};
+
+BattlepassUIStatic.emitItemIcon = function(a, state, art, offset, x, y, label)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, done = label + "_icon_done";
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(3); a.jcc(0x82, done);
+	a.emit(0xA1); a.dword(state + b.Snapshot + offset); a.emit(0x85, 0xC0); a.jcc(0x84, done);
+	a.emit(0x50); a.call(art.resolver); a.emit(0x85, 0xC0); a.jcc(0x84, done);
+	// Bound the client resource key before passing it to the native formatter.
+	a.emit(0x31, 0xC9);
+	a.label(label + "_key");
+	a.emit(0x80, 0x3C, 0x08, 0); a.jcc(0x84, label + "_path");
+	a.emit(0x41, 0x81, 0xF9); a.dword(180); a.jcc(0x82, label + "_key"); a.jmp(done);
+	a.label(label + "_path");
+	a.emit(0x50); n.pushImm(a, art.format); n.pushImm(a, art.path);
+	a.call(n.StringFormat); a.emit(0x83, 0xC4, 0x0C);
+	n.emitLoadSurface(a, art.path, done);
+	// Stock item images are 24px; reject malformed/oversized resources before
+	// calling the local blitter, which assumes its destination is in bounds.
+	for (const dimension of [n.TextureWidthOffset, n.TextureHeightOffset]) {
+		a.emit(0x8B, 0x88); a.dword(dimension); a.emit(0x49, 0x83, 0xF9, 31); a.jcc(0x87, done);
+	}
+	n.pushImm(a, y); n.pushImm(a, x); a.emit(0x50, 0x56); a.call(art.blit);
+	a.label(done);
+};
+
+BattlepassUIStatic.emitHabitat = function(a, state, art, row, x, y)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, label = "habitat_" + row, done = label + "_done";
+	const name = state + b.Snapshot + 2536 + row * 48;
+	// Validate the bounded map token before using it in a texture path.
+	a.emit(0xB8); a.dword(name); a.emit(0x31, 0xC9);
+	a.label(label + "_key"); a.emit(0x0F, 0xB6, 0x14, 0x08, 0x85, 0xD2); a.jcc(0x84, label + "_path");
+	for (const char of [64, 95]) { a.emit(0x83, 0xFA, char); a.jcc(0x84, label + "_char"); }
+	for (const [low, high, suffix] of [[48, 57, "number"], [65, 90, "upper"], [97, 122, "lower"]]) {
+		a.emit(0x83, 0xFA, low); a.jcc(0x82, label + "_not_" + suffix);
+		a.emit(0x83, 0xFA, high); a.jcc(0x86, label + "_char"); a.label(label + "_not_" + suffix);
+	}
+	a.jmp(done); a.label(label + "_char"); a.emit(0x41, 0x83, 0xF9, 24); a.jcc(0x82, label + "_key"); a.jmp(done);
+	a.label(label + "_path"); a.emit(0x85, 0xC9); a.jcc(0x84, done);
+	a.emit(0x50); n.pushImm(a, art.mapFormat); n.pushImm(a, art.path); a.call(n.StringFormat); a.emit(0x83, 0xC4, 12);
+	n.emitLoadSurface(a, art.path, done);
+	n.pushImm(a, art.mapPixels); a.emit(0x50); a.call(art.mapScale); a.emit(0x85, 0xC0); a.jcc(0x84, done);
+	n.pushImm(a, y); n.pushImm(a, x); n.pushImm(a, art.mapTexture); a.emit(0x56); a.call(art.blit);
+	a.label(done);
+};
+
+BattlepassUIStatic.draw = function(state, fill, font, art)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	const field = key => state + b.Snapshot + b.Fields[key][0];
+	const rect = (x, y, w, h, c) => {
+		const tile = art.palette(c);
+		a.emit(0xB8); a.dword(tile); a.emit(0xFF, 0x10);
+		a.emit(0xA1); a.dword(tile + n.TexturePixelsOffset); a.emit(0xFF, 0x30);
+		n.pushImm(a, h); n.pushImm(a, w); n.pushImm(a, y); n.pushImm(a, x); a.emit(0x56); a.call(fill);
+	};
+	const full = (name, x, y) => {
+		n.pushImm(a, y); n.pushImm(a, x); n.pushImm(a, art.full(name)); a.emit(0x56); a.call(art.skinBlit);
+	};
+	const text = (s, x, y, c = 0x00474747, bold = 0, size = font.Body) =>
+		n.emitText(a, n.allocateString(s).vir, x, y, size, c, bold);
+	const value = (key, x, y, c = 0x00474747, size = font.Body) => n.emitText(a, field(key), x, y, size, c);
+	const note = (s, x, y, c = 0x00474747, bold = 0) => text(s, x, y, c, bold, font.Notes);
+	const noteValue = (key, x, y, c = 0x00474747) => value(key, x, y, c, font.Notes);
+	const heading = (s, y) => { text(s, 92, y, 0x00965B35, 1, font.Heading); rect(92, y + 18, 526, 1, 0xFFC5D1E5); };
+	let skinSequence = 0;
+	const skin = (x, y, w, h, disabled = false, tab = false, layout = null) => {
+		const key = "skin_" + (++skinSequence);
+		if (layout) a.call(layout.measure);
+		const skins = layout ? art.fitSkin(layout) : art.skin(w, h, tab);
+		const blit = address => {
+			n.pushImm(a, layout ? layout.y : y);
+			if (layout) { a.emit(0xFF, 0x35); a.dword(layout.geometry); }
+			else n.pushImm(a, x);
+			n.pushImm(a, address); a.emit(0x56); a.call(art.skinBlit);
+		};
+		const matches = b.controls.filter(c => c.x === x && c.y === y && c.w === w && c.h === h);
+		if (disabled) blit(skins.off);
+		else {
+			for (const c of matches) {
+				const next = key + "_" + c.id;
+				b.controlGate(a, state, c, next, next);
+				a.emit(0x83, 0x3D); a.dword(state + b.Pressed); a.emit(c.id); a.jcc(0x85, next + "_not_pressed");
+				a.emit(0x83, 0x3D); a.dword(state + b.Hover); a.emit(c.id); a.jcc(0x84, key + "_press");
+				a.label(next + "_not_pressed");
+				a.emit(0x83, 0x3D); a.dword(state + b.Hover); a.emit(c.id); a.jcc(0x84, key + "_over");
+				if (tab) { a.emit(0x83, 0x3D); a.dword(state + b.Tab); a.emit(c.tab); a.jcc(0x84, key + "_press"); }
+				a.jmp(key + "_out"); a.label(next);
+			}
+			blit(skins.off); a.jmp(key + "_done");
+			a.label(key + "_press"); blit(skins.press); a.jmp(key + "_done");
+			a.label(key + "_over"); blit(skins.over); a.jmp(key + "_done");
+			a.label(key + "_out"); blit(skins.out); a.label(key + "_done");
+		}
+	};
+	const button = (s, x, y, w, h = 24, disabled = false, selected = null) => {
+		const layout = b.buttonLayouts.find(l => l.label === s && l.x === x && l.slotY === y);
+		skin(x, y, w, h, disabled, layout && layout.tab, layout);
+		if (!layout) {
+			text(s, x + 4, y + Math.max(2, Math.floor((h - font.Button) / 2)), disabled ? 0x00909090 : 0x00965B35, 0, font.Button);
+			return;
+		}
+		if (selected !== null && !disabled) {
+			const done = "selected_button_" + skinSequence, tile = art.palette(0xFF7199D0);
+			a.emit(0x83, 0x3D); a.dword(state + b.SelectionType); a.emit(selected); a.jcc(0x85, done);
+			a.emit(0xB8); a.dword(tile); a.emit(0xFF, 0x10);
+			a.emit(0xA1); a.dword(tile + n.TexturePixelsOffset); a.emit(0xFF, 0x30);
+			n.pushImm(a, 2); a.emit(0xA1); a.dword(layout.geometry + 4); a.emit(0x83, 0xE8, 10, 0x50);
+			n.pushImm(a, layout.y + layout.h - 4); a.emit(0xA1); a.dword(layout.geometry); a.emit(0x83, 0xC0, 5, 0x50, 0x56); a.call(fill);
+			a.label(done);
+		}
+		n.pushImm(a, 0); n.pushImm(a, layout.bold); n.pushImm(a, disabled ? 0x00909090 : 0x00965B35);
+		n.pushImm(a, layout.height); n.pushImm(a, 1); n.pushImm(a, 0); n.pushImm(a, layout.text);
+		n.pushImm(a, layout.y + Math.max(2, Math.floor((layout.h - layout.height) / 2)));
+		a.emit(0xFF, 0x35); a.dword(layout.geometry + 8); a.emit(0x8B, 0xCE); a.call(n.TextDraw);
+	};
+	const icon = (offset, x, y, label) => b.emitItemIcon(a, state, art, offset, x, y, label);
+	let liveSequence = 0;
+	const liveValue = (key, x, y, color = 0x00474747) => {
+		const label = "live_" + (++liveSequence);
+		a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(2); a.jcc(0x82, label);
+		value(key, x, y, color); a.jmp(label + "_done");
+		a.label(label); text("--", x, y, 0x00909090); a.label(label + "_done");
+	};
+	const progress = (percent, x, y, w, label) => {
+		rect(x, y, w, 8, 0xFF91A9CF); rect(x + 1, y + 1, w - 2, 6, 0xFFFFFFFF);
+		const tile = art.palette(0xFF8BAFE7);
+		a.emit(0xB8); a.dword(tile); a.emit(0xFF, 0x10);
+		a.emit(0xA1); a.dword(percent); a.emit(0x83, 0xF8, 100); a.jcc(0x86, label + "_cap");
+		a.emit(0xB8); a.dword(100); a.label(label + "_cap");
+		a.emit(0x69, 0xC0); a.dword(w - 4); a.emit(0x33, 0xD2, 0xB9); a.dword(100); a.emit(0xF7, 0xF1);
+		a.emit(0x85, 0xC0); a.jcc(0x84, label + "_done");
+		a.emit(0x8B, 0x15); a.dword(tile + n.TexturePixelsOffset); a.emit(0xFF, 0x32); n.pushImm(a, 4); a.emit(0x50);
+		n.pushImm(a, y + 2); n.pushImm(a, x + 2); a.emit(0x56); a.call(fill);
+		a.label(label + "_done");
+	};
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0xC7, 0x05); a.dword(state + b.CursorPainted); a.dword(0);
+	n.pushImm(a, 0x00FFFFFF); a.emit(0x8B, 0xCE); a.call(n.WindowClearSurface);
+	full("background", 0, 0);
+	text("Battle Pass", 5, 1, 0x00965B35, 1, font.Title);
+	button("x", 776, 0, 20, 20);
+	for (let i = 0; i < 4; ++i) {
+		button(["Quests", "Mission", "Rewards", "My Stats"][i], 4, 38 + i * 40, 77, 34);
+	}
+	note("Hunter", 643, 30, 0x00965B35, 1); rect(643, 47, 141, 1, 0xFFC5D1E5);
+	noteValue("player", 643, 52, 0x00965B35); noteValue("track", 643, 72);
+	note("Pass EXP", 643, 98); noteValue("exp", 715, 98);
+	note("Level", 643, 119); noteValue("level", 715, 119);
+	note("Difficulty Tiers", 643, 149, 0x00965B35, 1); rect(643, 167, 141, 1, 0xFFC5D1E5);
+	note("Tier", 643, 174); note("Count", 708, 174); note("EXP", 753, 174);
+	const colors = [0xFFDEF0D0, 0xFFFFEFBC, 0xFFFFE0C7, 0xFFF5D5D0];
+	const tiers = ["Easy", "Normal", "Hard", "Hardcore"];
+	// Show the selected type while browsing, or the active mission's type.
+	a.emit(0xA1); a.dword(state + b.SelectionType);
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x84, "notes_type");
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(2); a.jcc(0x82, "notes_type");
+	a.emit(0xA1); a.dword(state + b.Snapshot + 1196);
+	a.label("notes_type");
+	for (let type = 0; type < 2; ++type) {
+		const next = "notes_type_" + type;
+		a.emit(0x83, 0xF8, type); a.jcc(0x85, next);
+		for (let i = 0; i < 4; ++i) {
+			const y = 196 + i * 21;
+			rect(643, y, 63, 18, colors[i]); note(tiers[i], 645, y + 1);
+			liveValue("count" + (type * 4 + i), 711, y + 1);
+			liveValue("tierExp" + (type * 4 + i), 754, y + 1);
+		}
+		a.jmp("notes_done"); a.label(next);
+	}
+	a.label("notes_done");
+	note("Rules", 643, 291, 0x00965B35, 1); rect(643, 309, 141, 1, 0xFFC5D1E5);
+	note("One mission per", 643, 318); note("account.", 643, 335);
+	note("Claim before expiry.", 643, 358);
+	note("Items used on", 643, 381); note("turn-in.", 643, 398);
+	note("Abandon fee:", 643, 421); noteValue("fee", 643, 440);
+	note("Pass resets monthly.", 643, 479);
+	rect(92, 479, 526, 1, 0xFFC5D1E5); text("Battle Pass EXP", 92, 487, 0x002B789A);
+	value("exp", 210, 487, 0x002B789A); value("status", 457, 487, 0x00965B35);
+	a.emit(0xA1); a.dword(state + b.Tab);
+	a.emit(0x83, 0xF8, 0); a.jcc(0x84, "board");
+	a.emit(0x83, 0xF8, 2); a.jcc(0x84, "rewards");
+	a.emit(0x83, 0xF8, 3); a.jcc(0x84, "stats");
+	heading("Your Mission", 29); value("mission", 92, 51, 0x00965B35);
+	value("limit", 92, 73, 0x00666666); value("remaining", 442, 73, 0x0038864B);
+	value("reward", 92, 94, 0x002B789A);
+	progress(state + b.Snapshot + 12, 92, 112, 526, "mission_bar");
+	heading("Objectives", 132); text(">", 98, 158, 0x00D68543); value("target", 111, 158, 0x00965B35);
+	value("progress", 111, 179);
+	progress(state + b.Snapshot + 12, 400, 181, 210, "objective_bar");
+	heading("Where to Hunt", 204);
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(4); a.jcc(0x82, "habitat_legacy");
+	value("habitatHint", 97, 226, 0x00666666);
+	for (let i = 0; i < 5; ++i) {
+		const next = "map_row_" + i, y = 247 + i * 38;
+		a.emit(0x83, 0x3D); a.dword(state + b.Snapshot + 2532); a.emit(i); a.jcc(0x86, next);
+		rect(97, y, 516, 36, 0xFFD8DFEA); rect(98, y + 1, 514, 34, 0xFFF7F9FC);
+		b.emitHabitat(a, state, art, i, 100, y + 2);
+		value("habitatMap" + i, 145, y + 2, 0x00965B35); value("habitatPopulation" + i, 145, y + 18);
+		a.label(next);
+	}
+	a.jmp("habitat_done"); a.label("habitat_legacy"); text("Update the server to see hunting locations.", 97, 230, 0x00666666); a.label("habitat_done");
+	button("Abandon", 367, 445, 101);
+	a.emit(0x83, 0x3D); a.dword(state + b.Pending); a.emit(2); a.jcc(0x84, "mission_opening_quests");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x84, "mission_get_new");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(4); a.jcc(0x85, "mission_get_new");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(2); a.jcc(0x84, "done");
+	button("Claim Reward", 478, 445, 140); a.jmp("done");
+	a.label("mission_get_new"); button("Get New Mission", 478, 445, 140); a.jmp("done");
+	a.label("mission_opening_quests"); button("Opening Quests...", 478, 445, 140, 24, true);
+	a.jmp("done");
+	a.label("board");
+	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 10); a.word(b.NativeSelection); a.jcc(0x84, "legacy_board");
+	heading("Choose a Challenge", 29);
+	text("Select a mission type, then choose your difficulty.", 92, 55, 0x00666666);
+	for (const disabled of [false, true]) {
+		const prefix = disabled ? "disabled_" : "enabled_";
+		if (!disabled) b.challengeGate(a, state, "disabled_challenges");
+		else a.label("disabled_challenges");
+		for (let type = 0; type < 2; ++type) {
+			button(type === 0 ? "Hunt Random Monsters" : "Collect Random Items", 92 + type * 270, 82, 256, 36, disabled, type);
+		}
+		text("Difficulty", 107, 141, 0x00965B35, 1); text("Count", 250, 141, 0x00965B35);
+		text("EXP", 339, 141, 0x00965B35); text("Availability", 430, 141, 0x00965B35);
+		for (let type = 0; type < 2; ++type) {
+			const nextType = prefix + "difficulty_type_" + type;
+			a.emit(0x83, 0x3D); a.dword(state + b.SelectionType); a.emit(type); a.jcc(0x85, nextType);
+			for (let d = 1; d <= 4; ++d) {
+				const y = 165 + (d - 1) * 49, key = prefix + "difficulty_" + type + "_" + d;
+				rect(92, y, 526, 43, 0xFFD8DFEA);
+				if (!disabled) {
+					a.emit(0x83, 0x3D); a.dword(state + b.Difficulty); a.emit(d); a.jcc(0x85, key + "_border");
+					rect(92, y, 526, 43, 0xFF7199D0); a.label(key + "_border");
+				}
+				skin(92, y, 526, 43, disabled);
+				if (!disabled) {
+					a.emit(0x83, 0x3D); a.dword(state + b.Difficulty); a.emit(d); a.jcc(0x85, key + "_selected");
+					rect(97, y + 39, 516, 2, 0xFF7199D0); a.label(key + "_selected");
+				}
+				text(tiers[d - 1], 107, y + 13, disabled ? 0x00909090 : 0x00965B35, 1);
+				liveValue("count" + (type * 4 + d - 1), 250, y + 13, disabled ? 0x00909090 : 0x00474747);
+				liveValue("tierExp" + (type * 4 + d - 1), 339, y + 13, disabled ? 0x00909090 : 0x00474747);
+				a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(4); a.jcc(0x82, key + "_legacy_status");
+				if (!disabled) {
+					a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 10); a.word(1 << (6 + type * 4 + d - 1));
+					a.jcc(0x84, key + "_waiting");
+					value("tierStatus" + (type * 4 + d - 1), 430, y + 13, 0x003B883E); a.jmp(key + "_status_done");
+					a.label(key + "_waiting");
+				}
+				value("tierStatus" + (type * 4 + d - 1), 430, y + 13, disabled ? 0x00909090 : 0x00666688); a.jmp(key + "_status_done");
+				a.label(key + "_legacy_status");
+				if (disabled) text("Unavailable", 430, y + 13, 0x00909090);
+				else {
+					a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 10); a.word(1 << (6 + type * 4 + d - 1));
+					a.jcc(0x84, key + "_locked");
+					text("Available", 430, y + 13, 0x003B883E); a.jmp(key + "_status");
+					a.label(key + "_locked"); text("Unavailable", 430, y + 13, 0x00666688); a.label(key + "_status");
+				}
+				a.label(key + "_status_done");
+			}
+			a.label(nextType);
+		}
+		if (!disabled) a.jmp("challenges_drawn");
+	}
+	a.label("challenges_drawn");
+	text("Completed difficulties unlock at the daily server reset.", 92, 374, 0x00666666);
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x84, "board_idle");
+	text("Finish or abandon your active mission before starting another.", 92, 399, 0x00666688); a.jmp("board_actions");
+	a.label("board_idle"); text("A random target is assigned when you press Start Challenge.", 92, 399, 0x00666666);
+	a.label("board_actions");
+	b.challengeGate(a, state, "start_disabled");
+	a.emit(0xA1); a.dword(state + b.Difficulty); a.emit(0x83, 0xF8, 1); a.jcc(0x82, "start_disabled");
+	a.emit(0x83, 0xF8, 4); a.jcc(0x87, "start_disabled");
+	a.emit(0x8B, 0x0D); a.dword(state + b.SelectionType); a.emit(0xC1, 0xE1, 2, 0x03, 0xC8, 0x83, 0xC1, 5, 0xB8); a.dword(1);
+	a.emit(0xD3, 0xE0, 0x0F, 0xB7, 0x15); a.dword(state + b.Snapshot + 10); a.emit(0x85, 0xD0); a.jcc(0x84, "start_disabled");
+	button("Start Challenge", 458, 445, 160); a.jmp("start_drawn");
+	a.label("start_disabled"); button("Start Challenge", 458, 445, 160, 24, true); a.label("start_drawn");
+	a.jmp("done");
+	a.label("legacy_board");
+	heading("Quests", 29); text("Choose your challenge", 92, 56, 0x00965B35, 1, font.Heading);
+	text("Your target is selected randomly when the mission begins.", 92, 79, 0x00666666);
+	heading("Hunt Random Monsters", 127); value("hunt", 97, 153);
+	text("Defeat the assigned monster to earn Battle Pass EXP.", 97, 177, 0x00666666);
+	heading("Collect Random Items", 226); value("collect", 97, 252);
+	text("Bring the full item amount when you claim your reward.", 97, 276, 0x00666666);
+	text("Choose Challenge opens the mission selection dialog.", 92, 395, 0x00666666);
+	button("Choose Challenge", 476, 445, 142);
+	a.jmp("done");
+	a.label("rewards");
+	heading("Battle Pass Rewards", 29);
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(2); a.jcc(0x83, "rewards_ready");
+	text("Waiting for updated Battle Pass server data.", 97, 75);
+	a.jmp("done");
+	a.label("rewards_ready");
+	a.emit(0x83, 0x3D); a.dword(state + b.RewardMode); a.emit(1); a.jcc(0x84, "reward_catalog");
+	text("Level", 97, 60); value("level", 165, 60, 0x00965B35); value("track", 450, 60, 0x00965B35);
+	text("Overall Progress", 97, 99, 0x00965B35, 1); value("overall", 97, 122);
+	progress(state + b.Snapshot + 16, 97, 146, 516, "rewards_overall_bar");
+	text("Level Progress", 97, 181, 0x00965B35, 1); value("levelProgress", 97, 204);
+	progress(state + b.Snapshot + 1172, 97, 228, 516, "rewards_level_bar");
+	value("nextNormal", 97, 272, 0x00965B35); icon(2240, 100, 296, "next_normal"); value("nextNormalItem", 137, 300);
+	value("nextPremium", 97, 340, 0x00965B35); icon(2244, 100, 364, "next_premium"); value("nextPremiumItem", 137, 368);
+	text("Browse both tracks. Unlocked rewards are delivered by RODEX.", 97, 408, 0x00666666);
+	button("View Rewards", 478, 445, 140);
+	a.jmp("done");
+	a.label("reward_catalog");
+	button("Normal Rewards", 92, 59, 256, 30); button("Premium Rewards", 362, 59, 256, 30);
+	value("rewardTitle", 97, 105, 0x00965B35); value("rewardStatus", 97, 129, 0x00666666);
+	for (let i = 0; i < 5; ++i) {
+		const y = 162 + i * 50;
+		rect(92, y, 526, 44, 0xFFD8DFEA); rect(94, y + 2, 522, 40, 0xFFF7F9FC);
+		icon(2248 + i * 4, 102, y + 6, "reward_item_" + i);
+		value("item" + i, 140, y + 13, 0x00965B35); value("amount" + i, 514, y + 13);
+	}
+	button("Back", 92, 445, 91);
+	for (const [label, x, w, flag] of [["Previous", 200, 100, 2], ["Next", 310, 100, 4], ["Claim Reward", 458, 160, 1]]) {
+		const key = "reward_button_" + flag;
+		b.controlGate(a, state, b.controls.find(c => c.id === (flag === 2 ? 35 : flag === 4 ? 36 : 37)), key, key);
+		button(label, x, 445, w); a.jmp(key + "_done");
+		a.label(key); button(label, x, 445, w, 24, true); a.label(key + "_done");
+	}
+	a.jmp("done");
+	a.label("stats");
+	heading("My Stats", 29); value("player", 92, 57, 0x00965B35);
+	heading("Battle Pass Progress", 118);
+	text("Current level", 97, 148); value("level", 260, 148);
+	text("Total EXP", 97, 175); value("exp", 260, 175);
+	text("Reward track", 97, 202); value("track", 260, 202);
+	progress(state + b.Snapshot + 16, 97, 239, 516, "pass_bar");
+	n.emitCenteredText(a, field("next"), 97, 266, 516, font.Body, 0x00965B35, b.Fields.next[1] - 1, "next_level");
+	text("Unlock levels with EXP, then claim rewards", 92, 433, 0x00666666);
+	text("from the Rewards page.", 92, 454, 0x00666666);
+	button("View / Claim Rewards", 448, 445, 170);
+	a.label("done");
+	a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(0); a.jcc(0x84, "draw_done");
+	const dialog = b.abandonLayout;
+	a.call(dialog.measure);
+	n.pushImm(a, dialog.y); a.emit(0xFF, 0x35); a.dword(dialog.geometry);
+	n.pushImm(a, art.fitPanel(dialog)); a.emit(0x56); a.call(art.skinBlit);
+	const dialogText = (pointer, dx, dy, color = 0x00474747, bold = 0, height = font.Body) => {
+		for (const arg of [0, bold, color, height, 1, 0, pointer, dialog.y + dy]) n.pushImm(a, arg);
+		a.emit(0xA1); a.dword(dialog.geometry); a.emit(0x83, 0xC0, dx, 0x50, 0x8B, 0xCE); a.call(n.TextDraw);
+	};
+	dialogText(dialog.title, 16, 6, 0x00965B35, 1, font.Title);
+	dialogText(dialog.question, 20, 44);
+	dialogText(dialog.warning, 20, 68, 0x00666666);
+	dialogText(dialog.fee, 20, 111, 0x00965B35, 1);
+	a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(1); a.jcc(0x84, "quote_loading");
+	dialogText(state + b.QuoteFee, 73, 111); a.jmp("quote_drawn");
+	a.label("quote_loading"); dialogText(dialog.loading, 73, 111);
+	a.label("quote_drawn");
+	button("Cancel", 250, 309, 132); button("Confirm", 396, 309, 132);
+	a.label("draw_done");
+	// Clear the cursor margin each frame, including after a move off Close.
+	// Never pass the unflipped hand to the old 796px-wide surface.
+	a.emit(0x8B, 0xCE); a.call(art.prepareCursorCanvas);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "canvas_done");
+	a.call(art.scope); a.emit(0x85, 0xC0); a.jcc(0x84, "cursor_done");
+	a.emit(0xB8); a.dword(art.cursors[0]);
+	a.emit(0x83, 0x3D); a.dword(state + b.Pressed); a.emit(0); a.jcc(0x84, "cursor_ready");
+	a.emit(0xB8); a.dword(art.cursors[1]);
+	a.label("cursor_ready");
+	a.emit(0xFF, 0x35); a.dword(state + b.CursorY); a.emit(0xFF, 0x35); a.dword(state + b.CursorX);
+	a.emit(0x50, 0x56); a.call(art.skinBlit);
+	for (const [current, painted] of [[b.CursorX, b.PaintedX], [b.CursorY, b.PaintedY]]) {
+		a.emit(0xA1); a.dword(state + current); a.emit(0xA3); a.dword(state + painted);
+	}
+	a.emit(0xC7, 0x05); a.dword(state + b.CursorPainted); a.dword(1);
+	a.label("cursor_done");
+	n.emitPreserveSurfaceAlpha(a, "battlepass_cursor");
+	a.label("canvas_done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+BattlepassUIStatic.controls = [
+	{id: 1, x: 4, y: 38, w: 77, h: 34, tab: 0},
+	{id: 2, x: 4, y: 78, w: 77, h: 34, tab: 1},
+	{id: 3, x: 4, y: 118, w: 77, h: 34, tab: 2},
+	{id: 4, x: 4, y: 158, w: 77, h: 34, tab: 3},
+	{id: 5, x: 776, y: 0, w: 20, h: 20, close: true},
+	{id: 7, x: 367, y: 445, w: 101, h: 24, pages: [1], abandon: true},
+	{id: 8, x: 478, y: 445, w: 140, h: 24, action: 1, pages: [1], mission: true},
+	{id: 9, x: 476, y: 445, w: 142, h: 24, action: 1, pages: [0], legacy: true},
+	{id: 10, x: 448, y: 445, w: 170, h: 24, tab: 2, pages: [3]},
+	{id: 30, x: 478, y: 445, w: 140, h: 24, pages: [2], rewardMode: 0, setRewardMode: 1, reward: true},
+	{id: 32, x: 92, y: 445, w: 91, h: 24, pages: [2], rewardMode: 1, setRewardMode: 0},
+	{id: 33, x: 92, y: 59, w: 256, h: 30, pages: [2], rewardMode: 1, reward: true, rewardTrack: 0},
+	{id: 34, x: 362, y: 59, w: 256, h: 30, pages: [2], rewardMode: 1, reward: true, rewardTrack: 1},
+	{id: 35, x: 200, y: 445, w: 100, h: 24, pages: [2], rewardMode: 1, reward: true, rewardFlag: 2, rewardDelta: -1},
+	{id: 36, x: 310, y: 445, w: 100, h: 24, pages: [2], rewardMode: 1, reward: true, rewardFlag: 4, rewardDelta: 1},
+	{id: 37, x: 458, y: 445, w: 160, h: 24, pages: [2], rewardMode: 1, reward: true, rewardFlag: 1, rewardClaim: true},
+	{id: 38, x: 250, y: 309, w: 132, h: 24, modal: true, cancel: true},
+	{id: 39, x: 396, y: 309, w: 132, h: 24, modal: true, confirm: true}
+];
+for (let type = 0; type < 2; ++type) {
+	BattlepassUIStatic.controls.push({id: 11 + type, x: 92 + type * 270, y: 82, w: 256, h: 36, pages: [0], native: true, chooseType: type});
+	for (let d = 1; d <= 4; ++d) {
+		const option = type * 4 + d - 1;
+		BattlepassUIStatic.controls.push({id: 13 + option, x: 92, y: 165 + (d - 1) * 49, w: 526, h: 43,
+			pages: [0], native: true, type, available: 1 << (6 + option), chooseDifficulty: d});
+		BattlepassUIStatic.controls.push({id: 21 + option, x: 458, y: 445, w: 160, h: 24,
+			pages: [0], native: true, type, difficulty: d, available: 1 << (6 + option), action: 4 + option});
+	}
+}
+
+BattlepassUIStatic.prepareButtonLayout = function(font)
+{
+	const b = BattlepassUIStatic, n = AutoCombatUI.nativeHelpers;
+	const dialog = {w: 600, h: 176, y: 167, geometry: n.allocateBytes(new Array(12).fill(0), 4).vir};
+	for (const [key, text] of Object.entries({title: "Abandon Mission", question: "Are you sure you want to abandon this mission?", warning: "Your current mission progress will be lost.", fee: "Fee:", loading: "Checking current fee..."}))
+		dialog[key] = n.allocateString(text).vir;
+	const dialogAsm = n.asm();
+	dialogAsm.emit(0x60, 0x83, 0x3D); dialogAsm.dword(dialog.geometry + 4); dialogAsm.emit(0); dialogAsm.jcc(0x85, "done");
+	dialogAsm.emit(0xBB); dialogAsm.dword(180);
+	for (const [pointer, height, bold, extra] of [[dialog.question, font.Body, 0, 0], [dialog.warning, font.Body, 0, 0], [dialog.title, font.Title, 1, 0], [dialog.loading, font.Body, 0, 53], [n.allocateString("2,147,483,647 Zeny").vir, font.Body, 0, 53]]) {
+		for (const arg of [0, bold, height, 1, 0, pointer]) n.pushImm(dialogAsm, arg);
+		dialogAsm.emit(0x8B, 0xCE); dialogAsm.call(n.TextWidth);
+		if (extra) { dialogAsm.emit(0x83, 0xC0, extra); }
+		dialogAsm.emit(0x3B, 0xD8, 0x0F, 0x42, 0xD8);
+	}
+	dialogAsm.emit(0x83, 0xC3, 40, 0x81, 0xFB); dialogAsm.dword(dialog.w); dialogAsm.jcc(0x86, "bounded");
+	dialogAsm.emit(0xBB); dialogAsm.dword(dialog.w); dialogAsm.label("bounded");
+	dialogAsm.emit(0x89, 0x1D); dialogAsm.dword(dialog.geometry + 4);
+	dialogAsm.emit(0xB8); dialogAsm.dword(b.Width); dialogAsm.emit(0x2B, 0xC3, 0xD1, 0xE8, 0xA3); dialogAsm.dword(dialog.geometry);
+	dialogAsm.label("done"); dialogAsm.emit(0x61, 0xC3);
+	dialog.measure = n.allocateCode(dialogAsm).vir; b.abandonLayout = dialog;
+	const captions = {
+		1: "Quests", 2: "Mission", 3: "Rewards", 4: "My Stats", 7: "Abandon",
+		8: ["Claim Reward", "Get New Mission", "Opening Quests..."],
+		9: "Choose Challenge", 10: "View / Claim Rewards",
+		11: "Hunt Random Monsters", 12: "Collect Random Items",
+		30: "View Rewards", 32: "Back",
+		33: "Normal Rewards", 34: "Premium Rewards", 35: "Previous", 36: "Next",
+		37: "Claim Reward", 38: "Cancel", 39: "Confirm"
+	};
+	// Footer placement is independent of caption width. Keep primary actions
+	// against the content edge and pack related controls with a fixed gap.
+	const anchors = {
+		7: {right: 618}, 8: {before: 7, gap: 8}, 9: {right: 618}, 10: {right: 618},
+		30: {right: 618}, 32: {left: 118}, 35: {after: 32, gap: 5},
+		36: {after: 35, gap: 5}, 37: {right: 618},
+		38: {center: b.Width / 2, nextLabel: "Confirm", nextMax: 132, gap: 10}, 39: {after: 38, gap: 10}
+	};
+	for (let id = 21; id <= 28; ++id) anchors[id] = {right: 618};
+	b.buttonLayouts = [];
+	for (const c of b.controls) {
+		const caption = captions[c.id] || (c.id >= 21 && c.id <= 28 ? "Start Challenge" : null);
+		if (!caption) continue; // Close is an icon; difficulty choices are table rows.
+		c.layouts = (Array.isArray(caption) ? caption : [caption]).map(label => {
+			let layout = b.buttonLayouts.find(l => l.label === label && l.x === c.x && l.slotY === c.y);
+			if (layout) return layout;
+			const tab = c.id <= 4, bold = tab || c.chooseType !== undefined ? 1 : 0;
+			const height = tab ? font.Tab : font.Button, padding = tab ? 10 : 8;
+			const h = Math.min(c.h, height + 8), y = c.y + Math.floor((c.h - h) / 2);
+			const geometry = n.allocateBytes(new Array(12).fill(0), 4).vir, text = n.allocateString(label).vir;
+			const anchor = anchors[c.id];
+			const a = n.asm();
+			// Layout is immutable during this client session. Save all registers so
+			// drawing and input can share it without disturbing pointer coordinates.
+			a.emit(0x60, 0x83, 0x3D); a.dword(geometry + 4); a.emit(0); a.jcc(0x85, "done");
+			n.pushImm(a, 0); n.pushImm(a, bold); n.pushImm(a, height); n.pushImm(a, 1); n.pushImm(a, 0); n.pushImm(a, text);
+			a.emit(0x8B, 0xCE); a.call(n.TextWidth); a.emit(0x8B, 0xD8, 0x83, 0xC0, 2 * padding);
+			// Bound texture writes and keep exceptionally large fonts in their slot.
+			a.emit(0x3D); a.dword(c.w); a.jcc(0x86, "bounded"); a.emit(0xB8); a.dword(c.w);
+			a.label("bounded"); a.emit(0xA3); a.dword(geometry + 4);
+			if (anchor && anchor.right !== undefined) {
+				a.emit(0xB9); a.dword(anchor.right); a.emit(0x2B, 0xC8);
+			} else if (anchor && anchor.left !== undefined) {
+				a.emit(0xB9); a.dword(anchor.left);
+			} else if (anchor && anchor.center !== undefined) {
+				// Center the combined measured captions, rather than two wide slots.
+				a.emit(0x50);
+				for (const arg of [0, bold, height, 1, 0, n.allocateString(anchor.nextLabel).vir]) n.pushImm(a, arg);
+				a.emit(0x8B, 0xCE); a.call(n.TextWidth); a.emit(0x83, 0xC0, 2 * padding, 0x3D); a.dword(anchor.nextMax);
+				a.jcc(0x86, "peer_bounded"); a.emit(0xB8); a.dword(anchor.nextMax); a.label("peer_bounded");
+				a.emit(0x59, 0x03, 0xC1, 0x83, 0xC0, anchor.gap, 0xD1, 0xE8, 0xBA); a.dword(anchor.center);
+				a.emit(0x2B, 0xD0, 0x8B, 0xC1, 0x8B, 0xCA);
+			} else if (anchor) {
+				const reference = b.controls.find(control => control.id === (anchor.before || anchor.after));
+				if (!reference || !reference.layouts) throw Error("BattlepassUI: footer anchor must precede its dependent control");
+				const target = reference.layouts[0];
+				a.call(target.measure); a.emit(0x8B, 0x0D); a.dword(target.geometry);
+				if (anchor.before) { a.emit(0x83, 0xE9, anchor.gap, 0x2B, 0xC8); }
+				else { a.emit(0x03, 0x0D); a.dword(target.geometry + 4); a.emit(0x83, 0xC1, anchor.gap); }
+			} else {
+				a.emit(0xB9); a.dword(c.w); a.emit(0x2B, 0xC8, 0xD1, 0xE9, 0x81, 0xC1); a.dword(c.x);
+			}
+			a.emit(0x89, 0x0D); a.dword(geometry);
+			a.emit(0x2B, 0xC3, 0xD1, 0xF8, 0x03, 0xC1, 0xA3); a.dword(geometry + 8);
+			a.label("done"); a.emit(0x61, 0xC3);
+			layout = {label, x: c.x, slotY: c.y, w: c.w, y, h, height, bold, tab, padding, anchor, geometry, text, measure: n.allocateCode(a).vir};
+			b.buttonLayouts.push(layout); return layout;
+		});
+	}
+};
+
+BattlepassUIStatic.emitControlRect = function(a, state, c, next)
+{
+	const b = BattlepassUIStatic, n = AutoCombatUI.nativeHelpers;
+	if (!c.layouts) { n.emitRectGate(a, c.x, c.y, c.x + c.w, c.y + c.h, next); return; }
+	const bounds = layout => {
+		a.call(layout.measure);
+		a.emit(0x3B, 0x1D); a.dword(layout.geometry); a.jcc(0x8C, next);
+		a.emit(0xA1); a.dword(layout.geometry); a.emit(0x03, 0x05); a.dword(layout.geometry + 4);
+		a.emit(0x3B, 0xD8); a.jcc(0x8D, next);
+		a.emit(0x81, 0xFA); a.dword(layout.y); a.jcc(0x8C, next);
+		a.emit(0x81, 0xFA); a.dword(layout.y + layout.h); a.jcc(0x8D, next);
+	};
+	if (!c.mission) { bounds(c.layouts[0]); return; }
+	a.emit(0x83, 0x3D); a.dword(state + b.Pending); a.emit(2); a.jcc(0x84, next + "_opening");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x84, next + "_new");
+	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(4); a.jcc(0x85, next + "_new");
+	bounds(c.layouts[0]); a.jmp(next + "_rect_done");
+	a.label(next + "_new"); bounds(c.layouts[1]); a.jmp(next + "_rect_done");
+	a.label(next + "_opening"); bounds(c.layouts[2]); a.label(next + "_rect_done");
+};
+
+BattlepassUIStatic.controlGate = function(a, state, c, next, disabled)
+{
+	const b = BattlepassUIStatic;
+	if (c.modal) {
+		a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(0); a.jcc(0x84, next);
+		a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(3); a.jcc(0x84, disabled);
+		if (c.confirm) { a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(2); a.jcc(0x85, disabled); }
+	} else {
+		a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(0); a.jcc(0x85, next);
+	}
+		if (c.pages) {
+			for (const page of c.pages) {
+				a.emit(0x83, 0x3D); a.dword(state + b.Tab); a.emit(page); a.jcc(0x84, next + "_page");
+			}
+			a.jmp(next); a.label(next + "_page");
+		}
+		if (c.native || c.legacy) {
+			a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 10); a.word(b.NativeSelection);
+			a.jcc(c.legacy ? 0x85 : 0x84, next);
+		}
+		if (Number.isInteger(c.type)) {
+			a.emit(0x83, 0x3D); a.dword(state + b.SelectionType); a.emit(c.type); a.jcc(0x85, next);
+		}
+		if (Number.isInteger(c.difficulty)) {
+			a.emit(0x83, 0x3D); a.dword(state + b.Difficulty); a.emit(c.difficulty); a.jcc(0x85, next);
+		}
+		if (c.native) {
+			b.challengeGate(a, state, disabled);
+		}
+		if (Number.isInteger(c.rewardMode)) {
+			a.emit(0x83, 0x3D); a.dword(state + b.RewardMode); a.emit(c.rewardMode); a.jcc(0x85, next);
+		}
+		if (c.reward) {
+			a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(2); a.jcc(0x82, disabled);
+			a.emit(0x83, 0x3D); a.dword(state + b.RewardPending); a.emit(c.rewardClaim ? 0 : 1); a.jcc(c.rewardClaim ? 0x85 : 0x84, disabled);
+		}
+		if (Number.isInteger(c.rewardDelta)) {
+			a.emit(0xA1); a.dword(state + b.Snapshot + 1176);
+			a.emit(0x83, 0x3D); a.dword(state + b.RewardPending); a.emit(2); a.jcc(0x85, next + "_nav_page");
+			a.emit(0xA1); a.dword(state + b.BrowseTrack); a.emit(0x3B, 0x05); a.dword(state + b.Snapshot + 1192); a.jcc(0x85, disabled);
+			a.emit(0xA1); a.dword(state + b.BrowsePage); a.label(next + "_nav_page");
+			if (c.rewardDelta < 0) { a.emit(0x85, 0xC0); a.jcc(0x84, disabled); }
+			else { a.emit(0x40, 0x3B, 0x05); a.dword(state + b.Snapshot + 1180); a.jcc(0x83, disabled); }
+		} else if (c.rewardFlag) {
+			a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 1188); a.emit(c.rewardFlag); a.jcc(0x84, disabled);
+		}
+		if (c.available) {
+			a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 10); a.word(c.available); a.jcc(0x84, disabled);
+		}
+		if (c.action >= 4 && c.action <= 11) {
+			a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x85, disabled);
+		}
+		if (Number.isInteger(c.action) && c.action !== 0) {
+			a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(16); a.jcc(0x84, disabled);
+		}
+		if (c.abandon) {
+			a.emit(0x0F, 0xB7, 0x05); a.dword(state + b.Snapshot + 10);
+			a.emit(0x83, 0xE0, 7, 0x83, 0xF8, 1); a.jcc(0x85, disabled);
+		}
+		if (c.mission) {
+			a.emit(0x83, 0x3D); a.dword(state + b.Pending); a.emit(0); a.jcc(0x85, disabled);
+			a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x84, next + "_mission_ready");
+			a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(4); a.jcc(0x85, next + "_mission_expired");
+			a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(2); a.jcc(0x84, disabled); a.jmp(next + "_mission_ready");
+			a.label(next + "_mission_expired");
+			a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(4); a.jcc(0x82, disabled);
+			a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 1188); a.word(256); a.jcc(0x84, disabled);
+			a.label(next + "_mission_ready");
+		}
+};
+
+BattlepassUIStatic.hover = function(state)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0x8B, 0x5D, 0x08, 0x8B, 0x55, 0x0C);
+	a.emit(0x3B, 0x1D); a.dword(state + b.CursorX); a.jcc(0x85, "pointer_changed");
+	a.emit(0x3B, 0x15); a.dword(state + b.CursorY); a.jcc(0x84, "pointer_unchanged");
+	a.label("pointer_changed"); n.emitMarkDirty(a); a.label("pointer_unchanged");
+	a.emit(0x89, 0x1D); a.dword(state + b.CursorX); a.emit(0x89, 0x15); a.dword(state + b.CursorY);
+	a.emit(0x31, 0xFF);
+	a.emit(0x80, 0x7E, n.WindowVisibleOffset, 0); a.jcc(0x84, "found");
+	for (const c of b.controls) {
+		const next = "hover_" + c.id;
+		b.emitControlRect(a, state, c, next);
+		b.controlGate(a, state, c, next, next);
+		a.emit(0xBF); a.dword(c.id); a.jmp("found"); a.label(next);
+	}
+	a.label("found");
+	a.emit(0x3B, 0x3D); a.dword(state + b.Hover); a.jcc(0x84, "hover_unchanged");
+	a.emit(0x89, 0x3D); a.dword(state + b.Hover); n.emitMarkDirty(a); a.label("hover_unchanged");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+BattlepassUIStatic.itemRightClick = function(state, resolver)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	// UIItemImage::OnRButtonUp (0x803CB0), also used by mesitemicon:
+	// construct a CItem, put its decimal ID in the inline string at +0x2C,
+	// mark identified (+0x5C), acquire window 12, dispatch message 24 with
+	// the CItem pointer, then destroy the temporary. Stock owns the panel.
+	// The 0xF8-byte CItem never escapes this synchronous message dispatch.
+	a.emit(0x55, 0x8B, 0xEC, 0x81, 0xEC); a.dword(0xF8);
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0x80, 0x7E, n.WindowVisibleOffset, 0); a.jcc(0x84, "done");
+	for (const offset of [b.Modal, b.Dragging, b.Pressed]) {
+		a.emit(0x83, 0x3D); a.dword(state + offset); a.emit(0); a.jcc(0x85, "done");
+	}
+	a.emit(0x83, 0x3D); a.dword(state + b.Tab); a.emit(2); a.jcc(0x85, "done");
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(3); a.jcc(0x82, "done");
+	a.emit(0x8B, 0x5D, 0x08, 0x8B, 0x55, 0x0C);
+	const icons = [[0, 100, 296, 2240], [0, 100, 364, 2244]];
+	for (let i = 0; i < 5; ++i) icons.push([1, 102, 168 + i * 50, 2248 + i * 4]);
+	for (const [mode, x, y, offset] of icons) {
+		const next = "icon_" + offset;
+		a.emit(0x83, 0x3D); a.dword(state + b.RewardMode); a.emit(mode); a.jcc(0x85, next);
+		n.emitRectGate(a, x, y, x + 32, y + 32, next);
+		a.emit(0x8B, 0x3D); a.dword(state + b.Snapshot + offset); a.jmp("item"); a.label(next);
+	}
+	a.jmp("done"); a.label("item");
+	a.emit(0x85, 0xFF); a.jcc(0x84, "done"); a.emit(0x57); a.call(resolver);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x8D, 0x9D); a.dword(-0xF8); a.emit(0x8B, 0xCB); a.call(0x006A1B20);
+	a.emit(0x57); n.pushImm(a, n.allocateString("%u").vir); a.emit(0x8D, 0x43, 0x2C, 0x50);
+	a.call(n.StringFormat); a.emit(0x83, 0xC4, 0x0C, 0x89, 0x43, 0x3C, 0xC6, 0x43, 0x5C, 1);
+	n.pushImm(a, 12); a.emit(0xB9); a.dword(n.WindowManager); a.call(0x00A39340);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "destroy_item");
+	a.emit(0x8B, 0x10); n.pushImm(a, 0); n.pushImm(a, 0); n.pushImm(a, 0);
+	a.emit(0x53); n.pushImm(a, 24); n.pushImm(a, 0); a.emit(0x8B, 0xC8, 0xFF, 0x92); a.dword(0x94);
+	a.label("destroy_item"); a.emit(0x8B, 0xCB); a.call(0x005A4300);
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+BattlepassUIStatic.mouse = function(state, senders, stop, release)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	if (!release) b.emitReleaseInput(a, state, "down_reset");
+	a.emit(0x8B, 0x5D, 0x08, 0x8B, 0x55, 0x0C);
+	if (release) {
+		a.emit(0x8B, 0x3D); a.dword(state + b.Pressed);
+		a.emit(0xC7, 0x05); a.dword(state + b.Pressed); a.dword(0);
+	}
+	for (const c of b.controls) {
+		const next = "next_" + c.id;
+		if (release) { a.emit(0x83, 0xFF, c.id); a.jcc(0x85, next); }
+		b.emitControlRect(a, state, c, next);
+		b.controlGate(a, state, c, next, "consumed");
+		if (!release) {
+			a.emit(0xC7, 0x05); a.dword(state + b.Pressed); a.dword(c.id);
+			a.emit(0xC7, 0x05); a.dword(state + b.Hover); a.dword(c.id);
+			a.emit(0x56, 0xB9); a.dword(n.WindowManager); a.call(n.WindowCaptureSet);
+			a.jmp("consumed");
+		} else {
+			if (c.cancel) {
+				a.emit(0xC7, 0x05); a.dword(state + b.Modal); a.dword(0); a.jmp("base");
+			}
+			if (c.confirm) {
+				a.emit(0xC7, 0x05); a.dword(state + b.Modal); a.dword(3);
+				a.call(senders[17]); a.jmp("base");
+			}
+			if (c.abandon) {
+				a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(3); a.jcc(0x82, "legacy_abandon");
+				a.emit(0xC7, 0x05); a.dword(state + b.Modal); a.dword(1);
+				a.emit(0xC7, 0x05); a.dword(state + b.QuoteToken); a.dword(0);
+				a.emit(0xA1); a.dword(state + b.QuoteNonce); a.emit(0x40, 0x25); a.dword(0xFFFF);
+				a.emit(0x75, 0x01, 0x40, 0xA3); a.dword(state + b.QuoteNonce); a.emit(0xA3); a.dword(state + b.RequestValue);
+				a.call(senders[16]); a.jmp("base");
+				a.label("legacy_abandon"); a.call(senders[3]);
+				a.emit(0xC7, 0x46, n.WindowVisibleOffset); a.dword(0); a.call(stop); a.jmp("base");
+			}
+			if (Number.isInteger(c.setRewardMode)) {
+				a.emit(0xC7, 0x05); a.dword(state + b.RewardMode); a.dword(c.setRewardMode);
+			}
+			if (Number.isInteger(c.rewardTrack) || Number.isInteger(c.rewardDelta) || c.rewardClaim) {
+				if (Number.isInteger(c.rewardTrack)) {
+					a.emit(0xC7, 0x05); a.dword(state + b.RequestValue); a.dword(0);
+					a.emit(0xB8); a.dword(c.rewardTrack);
+				} else {
+					if (Number.isInteger(c.rewardDelta)) {
+						a.emit(0xA1); a.dword(state + b.Snapshot + 1176);
+						a.emit(0x83, 0x3D); a.dword(state + b.RewardPending); a.emit(2); a.jcc(0x85, "nav_current_" + c.id);
+						a.emit(0xA1); a.dword(state + b.BrowsePage); a.label("nav_current_" + c.id);
+						a.emit(0x05); a.dword(c.rewardDelta); a.emit(0xA3); a.dword(state + b.RequestValue);
+					}
+					a.emit(0xA1); a.dword(state + b.Snapshot + 1192);
+				}
+				if (!c.rewardClaim) {
+					a.emit(0xA3); a.dword(state + b.BrowseTrack);
+					a.emit(0x8B, 0x0D); a.dword(state + b.RequestValue); a.emit(0x89, 0x0D); a.dword(state + b.BrowsePage);
+				}
+				a.emit(0xC7, 0x05); a.dword(state + b.RewardPending); a.dword(c.rewardClaim ? 1 : 2);
+				a.emit(0x85, 0xC0); a.jcc(0x85, "reward_premium_" + c.id);
+				a.call(senders[c.rewardClaim ? 14 : 12]); a.jmp("base");
+				a.label("reward_premium_" + c.id); a.call(senders[c.rewardClaim ? 15 : 13]); a.jmp("base");
+			}
+			if (c.mission) {
+				a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(4); a.jcc(0x84, "mission_current");
+				a.emit(0xC7, 0x05); a.dword(state + b.Pending); a.dword(2);
+				a.call(senders[18]); a.jmp("base"); a.label("mission_current");
+				a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 10); a.word(b.NativeSelection); a.jcc(0x84, "mission_dialog");
+				a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 10); a.emit(1); a.jcc(0x85, "mission_dialog");
+				a.emit(0xC7, 0x05); a.dword(state + b.Tab); a.dword(0); a.jmp("base");
+				a.label("mission_dialog");
+			}
+			if (Number.isInteger(c.chooseType)) {
+				a.emit(0xC7, 0x05); a.dword(state + b.SelectionType); a.dword(c.chooseType);
+				a.emit(0xC7, 0x05); a.dword(state + b.Difficulty); a.dword(0);
+			}
+			if (Number.isInteger(c.chooseDifficulty)) {
+				a.emit(0xC7, 0x05); a.dword(state + b.Difficulty); a.dword(c.chooseDifficulty);
+			}
+			if (Number.isInteger(c.tab)) {
+				a.emit(0xC7, 0x05); a.dword(state + b.Tab); a.dword(c.tab);
+			}
+			if (c.close || (c.action > 0 && c.action < 4)) {
+				if (c.close) { a.emit(0xC7, 0x05); a.dword(state + b.UserHidden); a.dword(1); }
+				a.emit(0xC7, 0x46, n.WindowVisibleOffset); a.dword(0); a.call(stop);
+				a.emit(0xC7, 0x05); a.dword(state + b.Modal); a.dword(0);
+			}
+			if (c.action >= 4) {
+				a.emit(0xC7, 0x05); a.dword(state + b.Pending); a.dword(1);
+			}
+			if (Number.isInteger(c.action)) a.call(senders[c.action]);
+			a.jmp("base");
+		}
+		a.label(next);
+	}
+	a.jmp("base");
+	a.label("consumed");
+	n.emitMarkDirty(a);
+	if (release) a.jmp("base");
+	else {
+		a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	}
+	a.label("base");
+	n.emitMarkDirty(a);
+	if (release) b.emitReleaseInput(a, state, "up_input");
+	else {
+		// Only the title bar starts a native drag. Empty body space and disabled
+		// controls must never initialize the frame's movement state.
+		a.emit(0x83, 0x3D); a.dword(state + b.Modal); a.emit(0); a.jcc(0x85, "done");
+		n.emitRectGate(a, 0, 0, b.Width, 22, "done");
+		a.emit(0xC7, 0x05); a.dword(state + b.Dragging); a.dword(1);
+		a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08, 0x8B, 0xCE);
+		a.call(n.FrameMouseDown);
+	}
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+BattlepassUIStatic.dragMove = function(state, hover)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	// Slot 27 (captured movement), not slot 28 (hover), moves UIFrameWnd.
+	// Stock checks capture ownership only, then uses the anchors initialized
+	// by FrameMouseDown. Our buttons also capture, so explicitly gate it.
+	a.emit(0x83, 0x3D); a.dword(state + b.Dragging); a.emit(1); a.jcc(0x85, "done");
+	a.emit(0x83, 0x3D); a.dword(state + b.Pressed); a.emit(0); a.jcc(0x85, "done");
+	a.emit(0x80, 0x79, n.WindowVisibleOffset, 0); a.jcc(0x84, "done");
+	a.jmp(b.FrameDragMove);
+	a.label("done"); a.jmp(hover);
+	return a;
+};
+
+BattlepassUI = function(_)
+{
+	BattlepassUIStatic.verify();
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic;
+	// Ask before allocating or writing any client code, so Cancel is clean.
+	const font = b.getFontSettings();
+	b.prepareButtonLayout(font);
+	const state = n.allocateBytes(new Array(b.StateSize).fill(0), 4);
+	const putText = (key, text) => {
+		const bytes = n.asciiBytes(text).slice(0, b.Fields[key][1] - 1);
+		bytes.push(0); Exe.SetHex(state.phy + b.Snapshot + b.Fields[key][0], n.bytesToHex(bytes));
+	};
+	Exe.SetUint32(state.phy + b.Tab, 1);
+	putText("mission", "Waiting for Battle Pass data...");
+	putText("status", "Connecting to map server");
+	putText("primary", "Get New Mission");
+	const refs = n.resolvePacketRefs(_);
+	const senders = Array.from({length: 19}, (_, action) => n.allocateCode(b.sender(refs, action, state.vir)).vir);
+	const timer = n.allocateCode(b.timerProc(state.vir, senders));
+	const stop = n.allocateCode(b.stopTimer(state.vir));
+	const imports = {
+		module: Exe.FindFunc("GetModuleHandleA", "KERNEL32.dll"),
+		proc: Exe.FindFunc("GetProcAddress", "KERNEL32.dll")
+	};
+	if (imports.module < 0 || imports.proc < 0) throw Error("BattlepassUI: required Windows imports not found");
+	const strings = {
+		user32: n.allocateString("user32.dll").vir,
+		setTimer: n.allocateString("SetTimer").vir,
+		killTimer: n.allocateString("KillTimer").vir
+	};
+	const start = n.allocateCode(b.startTimer(state.vir, timer.vir, imports, strings));
+	const destroy = n.allocateCode(b.destructor(state.vir, stop.vir));
+	const fill = n.allocateCode(n.buildFillRect());
+	const hover = n.allocateCode(b.hover(state.vir));
+	const scope = n.allocateCode(b.cursorScope(state.vir, hover.vir));
+	const art = b.artwork();
+	art.scope = scope.vir;
+	art.prepareCursorCanvas = n.allocateCode(b.prepareCursorCanvas()).vir;
+	art.cursors = ["cursorshover", "cursorsclick"].map(name => art.full(name));
+	for (const name of ["cursorshover", "cursorsclick"]) {
+		const image = art.read(name);
+		if (image.w !== 26 || image.h < 1 || image.h > 22) throw Error("BattlepassUI: unsupported cursor dimensions");
+	}
+	const draw = n.allocateCode(b.draw(state.vir, fill.vir, font, art));
+	const down = n.allocateCode(b.mouse(state.vir, senders, stop.vir, false));
+	const up = n.allocateCode(b.mouse(state.vir, senders, stop.vir, true));
+	const drag = n.allocateCode(b.dragMove(state.vir, hover.vir));
+	const right = n.allocateCode(b.itemRightClick(state.vir, art.resolver));
+	const vtable = n.cloneFrameVtable(draw.vir, down.vir, up.vir, destroy.vir, hover.vir);
+	Exe.SetUint32(vtable.phy + b.FrameDragMoveSlot * 4, drag.vir);
+	Exe.SetUint32(vtable.phy + 32 * 4, right.vir);
+	const hitTest = n.allocateCode(b.hitTest());
+	Exe.SetUint32(vtable.phy + 50 * 4, hitTest.vir);
+	const toggle = n.allocateCode(b.toggle(state.vir, vtable.vir, senders[0], start.vir, stop.vir));
+	// Seven bytes covering complete original instructions; other keys retain stock ABI.
+	n.assertCode("Battlepass native key dispatcher", b.KeyEvent, "55 8B EC 53 56 8B F1");
+	const keyStockAsm = n.asm(); keyStockAsm.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x8B, 0xF1); keyStockAsm.jmp(b.KeyEvent + 7);
+	const keyStock = n.allocateCode(keyStockAsm);
+	const key = n.allocateCode(b.escapeKey(state.vir, toggle.vir, keyStock.vir));
+	Exe.SetJMP(Exe.Vir2Phy(b.KeyEvent, CODE), key.vir); Exe.SetNOPs(Exe.Vir2Phy(b.KeyEvent + 5, CODE), 2);
+	const entryVir = n.packetTableEntryVir(b.SnapshotId);
+	const entryPhy = Exe.Vir2Phy(entryVir, CODE);
+	if (entryPhy < 0) throw Error("BattlepassUI: snapshot dispatch entry is not mapped");
+	const stock = Exe.GetUint32(entryPhy);
+	if (Exe.Vir2Phy(stock, CODE) < 0) throw Error("BattlepassUI: stock emotion handler is not executable");
+	const fallback = stock === n.PacketDefaultHandler ? n.PacketMainLoopReturn : stock;
+	const receive = n.allocateCode(b.receiver(state.vir, fallback, toggle.vir));
+	// A dedicated envelope on 0x0BF6 leaves AutoHunt/Pincode's 0x0BEF router untouched.
+	if (Exe.GetUint32(entryPhy) !== stock) throw Error("BattlepassUI: dispatcher changed during installation");
+	Exe.SetUint32(entryPhy, receive.vir);
+	// Six bytes covering complete instructions from the unmodified software cursor.
+	// Keep a trampoline for all non-Battle-Pass windows and frame-edge cases.
+	n.assertCode("Battlepass software cursor", 0xA74410, "55 8B EC 83 EC 5C");
+	const cursorStockAsm = n.asm(); cursorStockAsm.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x5C); cursorStockAsm.jmp(0xA74416);
+	const cursorStock = n.allocateCode(cursorStockAsm);
+	const cursor = n.allocateCode(b.cursorDraw(state.vir, scope.vir, cursorStock.vir));
+	Exe.SetJMP(Exe.Vir2Phy(0xA74410, CODE), cursor.vir); Exe.SetNOPs(Exe.Vir2Phy(0xA74415, CODE), 1);
+	const contract = {
+		buildDate: b.BuildDate, width: b.Width, height: b.Height, font,
+		buttonLayouts: b.buttonLayouts, controls: b.controls, abandonLayout: b.abandonLayout,
+		canvasWidth: b.Width + b.CursorMargin, hitTestVir: hitTest.vir, frameHitTestVir: b.FrameHitTest,
+		prepareCursorCanvasVir: art.prepareCursorCanvas,
+		selectionTypeOffset: b.SelectionType, difficultyOffset: b.Difficulty, pendingOffset: b.Pending, requestValueOffset: b.RequestValue, rewardModeOffset: b.RewardMode, rewardPendingOffset: b.RewardPending,
+		cursorScopeVir: scope.vir, cursorDrawVir: cursor.vir, cursorStockVir: cursorStock.vir,
+		cursorPaintedOffset: b.CursorPainted, cursorXOffset: b.CursorX, cursorYOffset: b.CursorY,
+		hoverVir: hover.vir, hoverOffset: b.Hover, modalOffset: b.Modal, quoteTokenOffset: b.QuoteToken, quoteFeeOffset: b.QuoteFee, quoteNonceOffset: b.QuoteNonce,
+		userHiddenOffset: b.UserHidden,
+		keyEventVir: b.KeyEvent, keyVir: key.vir, keyStockVir: keyStock.vir, escapeHeldOffset: b.EscapeHeld,
+		cursorTextures: art.cursors,
+		itemResolverVir: art.resolver, iconBlitVir: art.blit,
+		itemRightClickVir: right.vir, browsePageOffset: b.BrowsePage, browseTrackOffset: b.BrowseTrack,
+		mapScaleVir: art.mapScale, mapPixelsVir: art.mapPixels,
+		skinResources: art.resources,
+		stateVir: state.vir, vtableVir: vtable.vir, drawVir: draw.vir,
+		mouseDownVir: down.vir, mouseUpVir: up.vir, destructorVir: destroy.vir,
+		dragMoveVir: drag.vir, draggingOffset: b.Dragging, frameDragMoveVir: b.FrameDragMove,
+		toggleVir: toggle.vir, timerVir: timer.vir, startTimerVir: start.vir, stopTimerVir: stop.vir,
+		senders, packetRefs: refs, receiverVir: receive.vir, stockVir: fallback, dispatchVir: entryVir,
+		packetSize: b.PacketSize, requestId: b.RequestId, snapshotId: b.SnapshotId,
+		imports, externalModules: 0
+	};
+	CACHE.put("BattlepassUI.Contract.v1", contract);
+	if (typeof PatchDiagnostics !== "undefined" && typeof PatchDiagnostics.add === "function")
+		PatchDiagnostics.add("BattlepassUI.Native", contract);
+	console.info("BattlepassUI contract: " + JSON.stringify(contract));
+	// Also deploy during direct patch application; a later callback is a no-op.
+	BattlepassUI.onApplied();
+	return true;
+};
+
+BattlepassUI.validate = function()
+{
+	// Detailed signature errors are reported by verify() when applying the patch.
+	return Exe.BuildDate === BattlepassUIStatic.BuildDate;
+};
+
+BattlepassUIStatic.onApplied = function()
+{
+	if (Warp.TestMode)
+		return;
+	const b = BattlepassUIStatic;
+	const source = Warp.Path + "/Assets/BattlepassUI/client";
+	const root = System.DirPath(Warp.TgtExe);
+	const folders = ["data", "texture", b.uiPrefix(), "battlepassui"];
+	const target = root + "/" + folders.join("/");
+	const missing = [];
+	for (const file of b.ClientAssets)
+	{
+		// Preserve client-side skin edits; install only absent images.
+		const existing = new BinFile(target + "/" + file, 'r');
+		const present = existing.Valid;
+		existing.Close();
+		if (present) continue;
+		const asset = new BinFile(source + "/" + file, 'r');
+		const available = asset.Valid;
+		asset.Close();
+		if (!available) throw Error("BattlepassUI: missing bundled image " + source + "/" + file);
+		missing.push(file);
+	}
+	if (missing.length === 0) return;
+	// Create every parent beside the selected target EXE, even without data/.
+	let directory = root;
+	for (const folder of folders)
+	{
+		directory += "/" + folder;
+		if (!System.MkDir(directory)) throw Error("BattlepassUI: cannot create " + directory);
+	}
+	for (const file of missing)
+		if (!System.Copy(source + "/" + file, target + "/" + file, false))
+			throw Error("BattlepassUI: cannot copy " + source + "/" + file + " to " + target + "/" + file);
+};
+
+BattlepassUI.onApplied = BattlepassUIStatic.onApplied;

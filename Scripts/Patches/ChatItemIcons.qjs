@@ -1,0 +1,288 @@
+/*
+ * Author: DevSeara.
+ * Description: Inline ItemId-based chat icons for 2025-07-16 Ragexe.
+ * Adds ^i[ItemId] to profiled pickup/drop-name call sites. Chat-only input
+ * converts this syntax into a private, zero-padded native item-link token.
+ * Shift-click ITEML links show an icon plus name without angle brackets.
+ * Native chat owns wrapping, scrollback, children, detachment and item info.
+ * No shared item-name, TextOut, NPC, inventory or network hook is changed.
+ */
+
+const ChatItemIconsStatic = {
+	PickupNames: [0xCC2AB9, 0xCC2D02, 0xCC3034, 0xCC32C0, 0xCC3645,
+		0xCC36BE, 0xCC3966, 0xCC3D90, 0xCC40AA, 0xCC4565, 0xCC4916,
+		0xCC4DDB, 0xCC51BA, 0xCC56A0, 0xCC5AC1],
+	DropNames: [0xCA05EA, 0xCC5F46],
+	// Five equipment-mask zeros, one non-equipment flag, seven ID-padding
+	// zeros. Base62 leading zeros do not change the decoded numeric item ID.
+	Prefix: "<ITEML>0000000000000",
+	Tail: "'00)00)00)00)00</ITEML>",
+	RowHeight: 20,
+	IconSize: 18
+};
+
+ChatItemIconsStatic.guard = function(a, fallback)
+{
+	a.emit(0x8B, 0x41, 0x10, 0x85, 0xC0); a.jcc(0x84, fallback);
+	a.emit(0x81, 0x38); a.dword(0x1037F80); a.jcc(0x84, "chat_parent");
+	a.emit(0x81, 0x38); a.dword(0x1037EA8); a.jcc(0x85, fallback);
+	a.label("chat_parent");
+};
+
+ChatItemIconsStatic.converter = function(prefix, tail, alphabet)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// stdcall(source, destination[1536]). Null, oversized and malformed inputs
+	// fall back to the original pointer. At most 1023 input bytes are read.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x20, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 8, 0x8B, 0x7D, 12, 0x85, 0xF6); a.jcc(0x84, "fallback");
+	a.emit(0x33, 0xC9);
+	a.label("length"); a.emit(0x80, 0x3C, 0x0E, 0); a.jcc(0x84, "length_ok");
+	a.emit(0x41, 0x81, 0xF9); a.dword(1024); a.jcc(0x82, "length"); a.jmp("fallback");
+	a.label("length_ok"); a.emit(0x8D, 0x04, 0x0E, 0x89, 0x45, 0xFC);
+	a.emit(0x8D, 0x87); a.dword(1535); a.emit(0x89, 0x45, 0xF8);
+	a.label("scan"); a.emit(0x3B, 0x75, 0xFC); a.jcc(0x83, "success");
+	a.emit(0x8B, 0x45, 0xFC, 0x2B, 0xC6, 0x83, 0xF8, 5); a.jcc(0x82, "literal");
+	a.emit(0x66, 0x81, 0x3E, 0x5E, 0x69); a.jcc(0x85, "literal");
+	a.emit(0x80, 0x7E, 2, 0x5B); a.jcc(0x85, "literal");
+	a.emit(0x8D, 0x56, 3, 0x33, 0xC0, 0x33, 0xC9);
+	a.label("digit"); a.emit(0x3B, 0x55, 0xFC); a.jcc(0x83, "literal");
+	a.emit(0x0F, 0xB6, 0x1A, 0x83, 0xFB, 0x5D); a.jcc(0x84, "number_end");
+	a.emit(0x83, 0xEB, 48, 0x83, 0xFB, 9); a.jcc(0x87, "literal");
+	a.emit(0x41, 0x83, 0xF9, 7); a.jcc(0x87, "literal");
+	a.emit(0x6B, 0xC0, 10, 0x03, 0xC3, 0x42); a.jmp("digit");
+	a.label("number_end"); a.emit(0x85, 0xC0); a.jcc(0x84, "literal");
+	a.emit(0x42, 0x89, 0x55, 0xF4, 0x89, 0x45, 0xF0);
+	a.emit(0x8B, 0x45, 0xF8, 0x2B, 0xC7, 0x83, 0xF8, 48); a.jcc(0x82, "fallback");
+	a.emit(0x56, 0xBE); a.dword(prefix); a.emit(0xB9); a.dword(ChatItemIconsStatic.Prefix.length);
+	a.emit(0xF3, 0xA4, 0x5E, 0x8B, 0x45, 0xF0, 0x33, 0xC9, 0xBB); a.dword(62);
+	a.label("encode"); a.emit(0x33, 0xD2, 0xF7, 0xF3, 0x8A, 0x92); a.dword(alphabet);
+	a.emit(0x88, 0x54, 0x0D, 0xE0, 0x41, 0x85, 0xC0); a.jcc(0x85, "encode");
+	a.label("reverse"); a.emit(0x49, 0x8A, 0x44, 0x0D, 0xE0, 0xAA, 0x85, 0xC9); a.jcc(0x85, "reverse");
+	a.emit(0xBE); a.dword(tail); a.emit(0xB9); a.dword(ChatItemIconsStatic.Tail.length);
+	a.emit(0xF3, 0xA4, 0x8B, 0x75, 0xF4); a.jmp("scan");
+	a.label("literal"); a.emit(0x3B, 0x7D, 0xF8); a.jcc(0x83, "fallback");
+	a.emit(0xA4); a.jmp("scan");
+	a.label("success"); a.emit(0xC6, 0x07, 0, 0x8B, 0x45, 12); a.jmp("done");
+	a.label("fallback"); a.emit(0x8B, 0x45, 8);
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 8, 0);
+	return a;
+};
+
+ChatItemIconsStatic.addLine = function(convert, stock)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	ChatItemIconsStatic.guard(a, stock);
+	a.emit(0x55, 0x8B, 0xEC, 0x81, 0xEC); a.dword(0xC00);
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xD9);
+	a.emit(0xC7, 0x83); a.dword(0xB8); a.dword(ChatItemIconsStatic.RowHeight);
+	a.emit(0x8D, 0x85); a.dword(-0x600); a.emit(0x50, 0xFF, 0x75, 8); a.call(convert);
+	a.emit(0x8B, 0xF0, 0x8D, 0x85); a.dword(-0xC00); a.emit(0x50, 0xFF, 0x75, 16); a.call(convert);
+	a.emit(0x50, 0xFF, 0x75, 12, 0x56, 0x8B, 0xCB); a.call(stock);
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 12, 0);
+	return a;
+};
+
+ChatItemIconsStatic.marker = function()
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// thiscall(std::string* in ECX), after native ITEML syntax validation.
+	a.emit(0x8B, 0x51, 16, 0x83, 0xFA, 29); a.jcc(0x82, "no");
+	a.emit(0x83, 0xFA, 32); a.jcc(0x87, "no");
+	a.emit(0x8B, 0x09, 0x33, 0xD2);
+	a.label("zero"); a.emit(0x80, 0x3C, 0x11, 48); a.jcc(0x85, "no");
+	a.emit(0x42, 0x83, 0xFA, 13); a.jcc(0x82, "zero");
+	a.emit(0xB8); a.dword(1); a.emit(0xC3);
+	a.label("no"); a.emit(0x33, 0xC0, 0xC3);
+	return a;
+};
+
+ChatItemIconsStatic.decorate = function(marker, rawOffset)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	ChatItemIconsStatic.guard(a, 0x84C6B0);
+	a.emit(0x51, 0x8D, 0x8D); a.dword(rawOffset); a.call(marker);
+	a.emit(0x59, 0x8B, 0xD0);
+	// Eight spaces give native wrapping/hit testing a real 24px advance with
+	// the client's 12px font. Synthetic ^i links contain only this slot;
+	// ordinary ITEML links append their native name and retain the full CItem.
+	a.emit(0x8B, 0x44, 0x24, 4, 0xC7, 0x00); a.dword(0x20202020);
+	a.emit(0xC7, 0x40, 4); a.dword(0x20202020);
+	for (const [offset, value] of [[8, 0], [12, 0], [16, 8], [20, 15]]) {
+		a.emit(0xC7, 0x40, offset); a.dword(value);
+	}
+	a.emit(0x85, 0xD2); a.jcc(0x85, "done");
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 24, 0x56, 0x8B, 0xF0);
+	// Native codepage-aware truncation, leaving the icon inside the stock
+	// half-pane link width. Do not slice multi-byte names or alter pane state.
+	a.emit(0x8B, 0x41, 0x14, 0xD1, 0xF8, 0x83, 0xE8, 24, 0x83, 0xF8, 12);
+	a.jcc(0x8D, "width"); a.emit(0xB8); a.dword(12);
+	a.label("width"); a.emit(0x50, 0xFF, 0x75, 12, 0x8D, 0x45, 0xE8, 0x50); a.call(0xA24EE0);
+	a.emit(0xFF, 0x70, 16, 0x83, 0x78, 20, 16); a.jcc(0x82, "name"); a.emit(0x8B, 0x00);
+	a.label("name"); a.emit(0x50, 0x8B, 0xCE); a.call(0x4F1610);
+	a.emit(0x8D, 0x4D, 0xE8); a.call(0x4F08F0);
+	a.emit(0x8B, 0xC6, 0x5E, 0x8B, 0xE5, 0x5D);
+	a.label("done"); a.emit(0xC2, 8, 0);
+	return a;
+};
+
+ChatItemIconsStatic.sizeChild = function(marker, vtable, linkVtable)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x51, 0x8B, 0x8D); a.dword(-0x238);
+	ChatItemIconsStatic.guard(a, "stock");
+	a.emit(0x8D, 0x4D, 0xD8); a.call(marker);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "link");
+	a.emit(0x59, 0xC7, 0x01); a.dword(vtable);
+	a.emit(0xC7, 0x44, 0x24, 8); a.dword(18); a.jmp(0xA245C0);
+	// Preserve native text sizing/truncation and its cached display string.
+	// Only the draw vtable and final icon-height surface are chat-specific.
+	a.label("link"); a.emit(0x59, 0x55, 0x8B, 0xEC, 0x56, 0x8B, 0xF1);
+	a.emit(0x6A, 18, 0xFF, 0x75, 8); a.call(0x85F480);
+	a.emit(0xC7, 0x06); a.dword(linkVtable);
+	a.emit(0x6A, 18, 0xFF, 0x76, 0x14, 0x8B, 0xCE); a.call(0xA245C0);
+	a.emit(0x5E, 0x5D, 0xC2, 8, 0);
+	a.label("stock"); a.emit(0x59); a.jmp(0x85F480);
+	return a;
+};
+
+ChatItemIconsStatic.pickupName = function(format)
+{
+	const n = AutoCombatUI.nativeHelpers, a = n.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x81, 0xEC); a.dword(512);
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1, 0x8B, 0x7D, 8);
+	a.emit(0xFF, 0x75, 12, 0x57); a.call(0x6A2CE0);
+	a.emit(0x8B, 0xCE); a.call(0x5D98A0);
+	a.emit(0x85, 0xC0); a.jcc(0x8E, "done");
+	a.emit(0x3D); a.dword(9999999); a.jcc(0x87, "done");
+	a.emit(0x81, 0x7F, 16); a.dword(400); a.jcc(0x87, "done");
+	a.emit(0x8B, 0xCF, 0x83, 0x7F, 20, 16); a.jcc(0x82, "name_ready"); a.emit(0x8B, 0x0F);
+	a.label("name_ready"); a.emit(0x51, 0x50, 0x68); a.dword(format);
+	a.emit(0x8D, 0x9D); a.dword(-512); a.emit(0x53); a.call(n.StringFormat);
+	a.emit(0x83, 0xC4, 16, 0x33, 0xC9);
+	a.label("length"); a.emit(0x80, 0x3C, 0x0B, 0); a.jcc(0x84, "assign"); a.emit(0x41); a.jmp("length");
+	a.label("assign"); a.emit(0x51, 0x53, 0x8B, 0xCF); a.call(0x4F1940);
+	a.label("done"); a.emit(0x8B, 0xC7, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 8, 0);
+	return a;
+};
+
+ChatItemIconsStatic.blit = function()
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// stdcall(window, texture). Nearest-neighbour 18px square; clip both axes.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x45, 8, 0x8B, 0x40, 0x24, 0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x48, 4, 0x89, 0x4D, 0xFC, 0x8B, 0x48, 8, 0x89, 0x4D, 0xF8);
+	a.emit(0x8B, 0x78, 0x18, 0x85, 0xFF); a.jcc(0x84, "done");
+	a.emit(0xC6, 0x40, 0x28, 1, 0xC6, 0x40, 0x1C, 1, 0x8B, 0x75, 12);
+	for (const [offset, local] of [[0x114, 0xF4], [0x118, 0xF0]]) {
+		a.emit(0x8B, 0x86); a.dword(offset); a.emit(0x48, 0x83, 0xF8, 63); a.jcc(0x87, "done");
+		a.emit(0x40, 0x89, 0x45, local);
+	}
+	a.emit(0x8B, 0xB6); a.dword(0x11C); a.emit(0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x33, 0xDB);
+	a.label("row"); a.emit(0x3B, 0x5D, 0xF8); a.jcc(0x83, "done");
+	a.emit(0x8B, 0xC3, 0x0F, 0xAF, 0x45, 0xF0, 0x33, 0xD2, 0xB9); a.dword(18);
+	a.emit(0xF7, 0xF1, 0x0F, 0xAF, 0x45, 0xF4, 0x8D, 0x04, 0x86, 0x89, 0x45, 0xEC, 0x33, 0xC9);
+	a.label("pixel"); a.emit(0x3B, 0x4D, 0xFC); a.jcc(0x83, "next_row");
+	a.emit(0x51, 0x8B, 0xC1, 0x0F, 0xAF, 0x45, 0xF4, 0x33, 0xD2, 0xB9); a.dword(18);
+	a.emit(0xF7, 0xF1, 0x8B, 0x55, 0xEC, 0x8B, 0x04, 0x82, 0x59, 0x25); a.dword(0xFFFFFF);
+	a.emit(0x3D); a.dword(0xFF00FF); a.jcc(0x84, "skip");
+	a.emit(0x0D); a.dword(0xFF000000); a.emit(0x89, 0x04, 0x8F);
+	a.label("skip"); a.emit(0x41, 0x83, 0xF9, 18); a.jcc(0x82, "pixel");
+	a.label("next_row"); a.emit(0x8B, 0x45, 0xFC, 0x8D, 0x3C, 0x87, 0x43, 0x83, 0xFB, 18); a.jcc(0x82, "row");
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 8, 0);
+	return a;
+};
+
+ChatItemIconsStatic.draw = function(resolver, format, path, blit, withName = false)
+{
+	const n = AutoCombatUI.nativeHelpers, a = n.asm();
+	a.emit(0x53, 0x56, 0x8B, 0xF1);
+	if (withName) {
+		// Keep native text, hover colors, underline and item-link events. Only
+		// this private chat child gets the icon and gray surface conversion.
+		a.call(0x853730);
+		a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0); a.jcc(0x84, "done");
+		a.emit(0x8B, 0x50, 4, 0x0F, 0xAF, 0x50, 8, 0x8B, 0x40, 0x18);
+		a.emit(0x85, 0xC0); a.jcc(0x84, "done"); a.emit(0x85, 0xD2); a.jcc(0x8E, "done");
+		a.label("background"); a.emit(0x8B, 0x08, 0x81, 0xE1); a.dword(0xFFFFFF);
+		a.emit(0x81, 0xF9); a.dword(0xFF00FF); a.jcc(0x85, "foreground");
+		a.emit(0xB9); a.dword(0x80111114); a.jmp("write_pixel");
+		a.label("foreground"); a.emit(0x81, 0xC9); a.dword(0xFF000000);
+		a.label("write_pixel"); a.emit(0x89, 0x08, 0x83, 0xC0, 4, 0x4A); a.jcc(0x85, "background");
+	} else {
+		a.emit(0x68); a.dword(0x80111114); a.call(0xA1CB30);
+	}
+	a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0xC6, 0x40, 0x28, 1);
+	a.emit(0x8D, 0x8E); a.dword(0xF8); a.call(0x5D98A0);
+	a.emit(0x50); a.call(resolver); a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x33, 0xC9);
+	a.label("key"); a.emit(0x80, 0x3C, 0x08, 0); a.jcc(0x84, "path");
+	a.emit(0x41, 0x81, 0xF9); a.dword(180); a.jcc(0x82, "key"); a.jmp("done");
+	a.label("path"); a.emit(0x85, 0xC9); a.jcc(0x84, "done");
+	a.emit(0x50, 0x68); a.dword(format); a.emit(0x68); a.dword(path); a.call(n.StringFormat);
+	a.emit(0x83, 0xC4, 12); n.emitLoadSurface(a, path, "done");
+	a.emit(0x50, 0x56); a.call(blit);
+	a.label("done"); a.emit(0x5E, 0x5B, 0xC3);
+	return a;
+};
+
+ChatItemIcons = function(_)
+{
+	const c = ChatItemIconsStatic, n = AutoCombatUI.nativeHelpers;
+	if (Exe.BuildDate !== 20250716) throw Error("ChatItemIcons requires 2025-07-16 Ragexe");
+	n.assertCode("Chat item input", 0x83D840, "55 8B EC 6A FF 68 0D FC E9 00");
+	n.assertCode("Chat pre-wrap input", 0x83D3F0, "55 8B EC 6A FF 68 95 FB E9 00");
+	n.assertCode("Chat item ID getter", 0x5D98A0, "83 C1 2C 83 79 14 10 72 02 8B 09 51");
+	const calls = [[0x841937, 0x84C6B0], [0x84AE83, 0x84C6B0], [0x84AFA7, 0x85F480],
+		...[...c.PickupNames, ...c.DropNames].map(site => [site, 0x6A2CE0])];
+	for (const [site, target] of calls) {
+		// Verify an existing CALL by its opcode and resolved rel32, not a wildcard.
+		const phy = Exe.Vir2Phy(site, CODE);
+		if (Exe.GetUint8(phy) !== 0xE8 || ((site + 5 + Exe.GetUint32(phy + 1)) >>> 0) !== target)
+			throw Error("ChatItemIcons call profile changed at " + site.toString(16));
+	}
+	$$(_, 1, "Install pickup/drop icons and icon-plus-name chat item links");
+	const convert = n.allocateCode(c.converter(n.allocateString(c.Prefix).vir,
+		n.allocateString(c.Tail).vir, n.allocateString("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ").vir));
+	const trampolineAsm = n.asm(); trampolineAsm.emit(0x55, 0x8B, 0xEC, 0x6A, 0xFF); trampolineAsm.jmp(0x83D845);
+	const stock = n.allocateCode(trampolineAsm), add = n.allocateCode(c.addLine(convert.vir, stock.vir));
+	// Convert before the native plain-text wrapping gate as well. A literal
+	// ^i marker must never be split as text before ITEML recognition runs.
+	const rawTrampoline = n.asm(); rawTrampoline.emit(0x55, 0x8B, 0xEC, 0x6A, 0xFF); rawTrampoline.jmp(0x83D3F5);
+	const rawStock = n.allocateCode(rawTrampoline), rawAdd = n.allocateCode(c.addLine(convert.vir, rawStock.vir));
+	const marker = n.allocateCode(c.marker());
+	const decorateFirst = n.allocateCode(c.decorate(marker.vir, -0x40));
+	const decorateChild = n.allocateCode(c.decorate(marker.vir, -0x28));
+	const blit = n.allocateCode(c.blit()), resolver = n.allocateCode(n.buildItemIconResolver());
+	const iconFormat = n.buildResourcePath("item\\%s.bmp").vir;
+	const iconPath = n.allocateBytes(new Array(512).fill(0), 4).vir;
+	const draw = n.allocateCode(c.draw(resolver.vir, iconFormat, iconPath, blit.vir));
+	const linkDraw = n.allocateCode(c.draw(resolver.vir, iconFormat, iconPath, blit.vir, true));
+	const vtBytes = [];
+	for (let offset = -4; offset <= 0xD4; offset += 4) {
+		const value = Exe.GetUint32(Exe.Vir2Phy(0x102E648 + offset));
+		vtBytes.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
+	}
+	const vtable = n.allocateBytes(vtBytes, 4); Exe.SetUint32(vtable.phy + 4 + 0x50, draw.vir);
+	const linkVtable = n.allocateBytes(vtBytes, 4); Exe.SetUint32(linkVtable.phy + 4 + 0x50, linkDraw.vir);
+	const size = n.allocateCode(c.sizeChild(marker.vir, vtable.vir + 4, linkVtable.vir + 4));
+	const pickup = n.allocateCode(c.pickupName(n.allocateString("^i[%u]%s").vir));
+	Exe.SetJMP(Exe.Vir2Phy(0x83D840, CODE), add.vir, 0);
+	Exe.SetJMP(Exe.Vir2Phy(0x83D3F0, CODE), rawAdd.vir, 0);
+	for (const [site, target] of [[0x841937, decorateFirst.vir], [0x84AE83, decorateChild.vir], [0x84AFA7, size.vir],
+		...[...c.PickupNames, ...c.DropNames].map(site => [site, pickup.vir])]) Exe.SetCALL(Exe.Vir2Phy(site, CODE), target, 0);
+	// Embedded, versioned test contract: read-only tests locate emitted helpers.
+	const descriptor = n.allocateString("ChatItemIcons.v2");
+	const contract = {version: 2, convert, stock, add, marker, decorateFirst, decorateChild, blit, resolver, draw, vtable, size, pickup, rawStock, rawAdd, linkDraw, linkVtable};
+	const record = [];
+	for (const value of [descriptor.vir, ...[convert, stock, add, marker, decorateFirst, decorateChild, blit, resolver, draw, vtable, size, pickup, rawStock, rawAdd, linkDraw, linkVtable].map(x => x.vir)])
+		record.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
+	n.allocateBytes(record, 4);
+	if (typeof PatchDiagnostics !== "undefined") PatchDiagnostics.add("ChatItemIcons.Native", contract);
+	return true;
+};
+
+ChatItemIcons.validate = () => Exe.BuildDate === 20250716;

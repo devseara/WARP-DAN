@@ -1,0 +1,10 @@
+* text=auto
+*.qjs text eol=crlf
+*.js text eol=crlf
+*.py text eol=lf
+*.md text eol=lf
+*.bgra binary
+*.bmp binary
+*.png binary
+# Keep the generated Git binary diff and its original context whitespace intact.
+install/*.diff -text -whitespace
