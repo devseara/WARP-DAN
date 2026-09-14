@@ -68,6 +68,15 @@ def main() -> int:
         require("asuiHandlerCellPhy" in text, f"{relative} lacks the ASUI handler cell")
 
     require("PacketMagic: 0x49555341" in support, "AutoSupportUI magic is not ASUI")
+    for text, offset, total in ((autocombat, 3792, 3856), (support, 3840, 3904)):
+        require(f"SnapshotSessionTextOffset: {offset}" in text and
+                f"SnapshotSessionTextSize: {total}" in text and
+                "SessionTextLength: 64" in text and
+                "a.label(\"snapshot_no_session_text\")" in text and
+                "StateSessionText + " in text and
+                "SessionTextLength - 1" in text,
+                "optional session text must be bounded and preserve the legacy prefix")
+
     require('["Basic", "Player", "Skill", "Potion", "Looting", "Move", "Item"]' in support,
             "AutoSupportUI tab contract changed")
     require("dynamic_all" not in support, "Player tab still exposes All Monsters")
@@ -156,7 +165,7 @@ def main() -> int:
         button_visibility and
         '{label: "Item Collection", bridgeKey: "ItemCollectionUI.MenuButton.v1"}' in
         button_visibility and
-        "this.applyCustomVisibility(key, index)" in button_visibility,
+        "this.applyCustomVisibility(label, index)" in button_visibility,
         "Show/Hide Buttons does not expose all custom menu choices order-independently",
     )
     require(

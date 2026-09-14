@@ -388,7 +388,11 @@ const AutoSupportUIStatic = {
 	StateControllerLastY: 176,
 	StateControllerPositionValid: 180,
 	StateRejectResult: 184,
-	StateSize: 188
+	SnapshotSessionTextOffset: 3840,
+	SnapshotSessionTextSize: 3904,
+	SessionTextLength: 64,
+	StateSessionText: 188,
+	StateSize: 252
 };
 
 AutoSupportUIStatic.bytesToHex = function(bytes)
@@ -1266,6 +1270,20 @@ AutoSupportUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, a
 	a.emit(0x81, 0x0D); a.dword(stateVir + AutoSupportUIStatic.StateServerFeatures);
 	a.dword(AutoSupportUIStatic.FeatureStatusItemRow);
 	a.label("snapshot_no_status_item_row");
+	// Optional append-only session line. Old snapshots clear the display;
+	// truncated extensions must never be read as a complete text buffer.
+	a.emit(0xC6, 0x05); a.dword(stateVir + AutoSupportUIStatic.StateSessionText); a.emit(0);
+	a.emit(0xBE); a.dword(AutoSupportUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoSupportUIStatic.SnapshotSessionTextSize);
+	a.jcc(0x82, "snapshot_no_session_text");
+	a.emit(0x8D, 0xB6); a.dword(AutoSupportUIStatic.SnapshotSessionTextOffset);
+	a.emit(0xBF); a.dword(stateVir + AutoSupportUIStatic.StateSessionText);
+	a.emit(0xB9); a.dword(AutoSupportUIStatic.SessionTextLength / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0xC6, 0x05);
+	a.dword(stateVir + AutoSupportUIStatic.StateSessionText + AutoSupportUIStatic.SessionTextLength - 1);
+	a.emit(0);
+	a.label("snapshot_no_session_text");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoSupportUIStatic.StateReady);
 	a.dword(1);
 	a.emit(0x8B, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StateWindow);
@@ -1306,7 +1324,7 @@ AutoSupportUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsV
 	const route = AutoSupportUIStatic.ensureSharedPacketRoute(entryVir, entryPhy);
 	AutoSupportUIStatic.endSharedPacketRoute(_);
 
-	const stateKey = "AutoSupportUI.SnapshotReceiver.v12";
+	const stateKey = "AutoSupportUI.SnapshotReceiver.v13";
 	const receiver = AutoSupportUIStatic.allocateCode(
 		AutoSupportUIStatic.buildSnapshotReceiver(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, statusItemRowVir, route)
 	);
@@ -2537,6 +2555,15 @@ AutoSupportUIStatic.emitSkillRejectDialog = function(a, stateVir, fillRectVir, s
 	a.label("skill_reject_dialog_done");
 };
 
+AutoSupportUIStatic.emitSessionStatus = function(a, stateVir)
+{
+	a.emit(0x80, 0x3D); a.dword(stateVir + AutoSupportUIStatic.StateSessionText); a.emit(0);
+	a.jcc(0x84, "session_status_done");
+	// Reserved footer gap: Reset ends at x=47; page navigation starts at x=199.
+	AutoSupportUIStatic.emitText(a, stateVir + AutoSupportUIStatic.StateSessionText, 53, 324, 11, 0x0078432C);
+	a.label("session_status_done");
+};
+
 AutoSupportUIStatic.emitFooterButtons = function(a, stateVir, paths)
 {
 	const drawButton = function(controlId, normal, pressed, x, label)
@@ -3210,6 +3237,7 @@ AutoSupportUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, 
 		attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
 		healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, potionRowsVir, statusItemRowVir, moveRowsVir, moveIconKeysVir,
 		itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir);
+	AutoSupportUIStatic.emitSessionStatus(a, stateVir);
 	AutoSupportUIStatic.emitLootDropdown(a, stateVir, fillRectVir, strings);
 	AutoSupportUIStatic.emitSkillRejectDialog(a, stateVir, fillRectVir, strings);
 	AutoSupportUIStatic.emitFooterButtons(a, stateVir, paths);

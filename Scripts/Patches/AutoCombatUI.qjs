@@ -523,7 +523,11 @@ const AutoCombatUIStatic = {
 	StateControllerLastX: 172,
 	StateControllerLastY: 176,
 	StateControllerPositionValid: 180,
-	StateSize: 184
+	SnapshotSessionTextOffset: 3792,
+	SnapshotSessionTextSize: 3856,
+	SessionTextLength: 64,
+	StateSessionText: 184,
+	StateSize: 248
 };
 
 AutoCombatUIStatic.bytesToHex = function(bytes)
@@ -1358,6 +1362,20 @@ AutoCombatUIStatic.buildSnapshotReceiver = function(stateVir, monsterRowsVir, at
 	a.emit(0x81, 0x0D); a.dword(stateVir + AutoCombatUIStatic.StateServerFeatures);
 	a.dword(AutoCombatUIStatic.FeatureBasicThresholds);
 	a.label("snapshot_no_basic_thresholds");
+	// Optional append-only session line. Old snapshots clear the display;
+	// truncated extensions must never be read as a complete text buffer.
+	a.emit(0xC6, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateSessionText); a.emit(0);
+	a.emit(0xBE); a.dword(AutoCombatUIStatic.PacketBuffer);
+	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(AutoCombatUIStatic.SnapshotSessionTextSize);
+	a.jcc(0x82, "snapshot_no_session_text");
+	a.emit(0x8D, 0xB6); a.dword(AutoCombatUIStatic.SnapshotSessionTextOffset);
+	a.emit(0xBF); a.dword(stateVir + AutoCombatUIStatic.StateSessionText);
+	a.emit(0xB9); a.dword(AutoCombatUIStatic.SessionTextLength / 4);
+	a.emit(0xF3, 0xA5);
+	a.emit(0xC6, 0x05);
+	a.dword(stateVir + AutoCombatUIStatic.StateSessionText + AutoCombatUIStatic.SessionTextLength - 1);
+	a.emit(0);
+	a.label("snapshot_no_session_text");
 	a.emit(0xC7, 0x05); a.dword(stateVir + AutoCombatUIStatic.StateReady);
 	a.dword(1);
 	a.emit(0x8B, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateWindow);
@@ -1398,7 +1416,7 @@ AutoCombatUIStatic.installSnapshotReceiver = function(_, stateVir, monsterRowsVi
 	const route = AutoCombatUIStatic.ensureSharedPacketRoute(entryVir, entryPhy);
 	AutoCombatUIStatic.endSharedPacketRoute(_);
 
-	const stateKey = "AutoCombatUI.SnapshotReceiver.v11";
+	const stateKey = "AutoCombatUI.SnapshotReceiver.v12";
 	const receiver = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildSnapshotReceiver(stateVir, monsterRowsVir, attackSkillRowsVir, attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir, healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, itemIconKeysVir, potionRowsVir, potionIconKeysVir, moveRowsVir, moveIconKeysVir, route)
 	);
@@ -2604,6 +2622,15 @@ AutoCombatUIStatic.emitSkillRejectDialog = function(a, stateVir, fillRectVir, st
 	a.label("skill_reject_dialog_done");
 };
 
+AutoCombatUIStatic.emitSessionStatus = function(a, stateVir)
+{
+	a.emit(0x80, 0x3D); a.dword(stateVir + AutoCombatUIStatic.StateSessionText); a.emit(0);
+	a.jcc(0x84, "session_status_done");
+	// Reserved footer gap: Reset ends at x=47; page navigation starts at x=199.
+	AutoCombatUIStatic.emitText(a, stateVir + AutoCombatUIStatic.StateSessionText, 53, 324, 11, 0x0078432C);
+	a.label("session_status_done");
+};
+
 AutoCombatUIStatic.emitFooterButtons = function(a, stateVir, paths)
 {
 	const drawButton = function(controlId, normal, pressed, x, label)
@@ -3254,6 +3281,7 @@ AutoCombatUIStatic.buildDraw = function(stateVir, paths, fillRectVir, strings, m
 		attackSkillIconKeysVir, supportSkillRowsVir, supportSkillIconKeysVir, healingSkillRowVir,
 		healingSkillIconKeyVir, recoverySkillRowsVir, recoverySkillIconKeysVir, itemRowsVir, potionRowsVir, moveRowsVir, moveIconKeysVir,
 		itemResolverVir, skillIconPathVir, skillLevelTextVir, lootWeaponTextVir);
+	AutoCombatUIStatic.emitSessionStatus(a, stateVir);
 	AutoCombatUIStatic.emitLootDropdown(a, stateVir, fillRectVir, strings);
 	AutoCombatUIStatic.emitSkillRejectDialog(a, stateVir, fillRectVir, strings);
 	AutoCombatUIStatic.emitFooterButtons(a, stateVir, paths);
@@ -6630,7 +6658,7 @@ AutoCombatUI = function(_)
 		x: AutoCombatUIStatic.allocateString("ControllerX"),
 		y: AutoCombatUIStatic.allocateString("ControllerY")
 	};
-	const state = NewButtonVis.sharedStorage("AutoCombatUI.State.v1", AutoCombatUIStatic.StateSize);
+	const state = NewButtonVis.sharedStorage("AutoCombatUI.State.v2", AutoCombatUIStatic.StateSize);
 	const monsterRows = AutoCombatUIStatic.allocateBytes(
 		new Array(AutoCombatUIStatic.MonsterRowsSize).fill(0), 4
 	);
