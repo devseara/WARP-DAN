@@ -202,9 +202,16 @@ def check_pe(path, state, case):
             raise RuntimeError(f"Unknown {label} mouse-up ABI at {mouse_up:#x}")
         target_head = read(target, 25)
         if child == 0x3FB:
-            valid_entry = target_head.startswith(bytes.fromhex("9c 60 8b 35"))
+            valid_entry = False
             if key not in disabled:
-                assert target == state['bestiaryNative']['toggle']['vir'], 'Bestiary opens a different callback'
+                native = state['bestiaryNative']
+                assert target == native['toggle']['vir'], 'Bestiary opens a different callback'
+                # Compare the complete emitted function; the toggle may reset
+                # state before loading its window, while retaining PUSHFD/PUSHAD.
+                expected = next(bytes.fromhex(e['hex']) for e in native['emissions']
+                                if e['vir'] == target)
+                valid_entry = (expected.startswith(bytes.fromhex("9c 60")) and
+                               read(target, len(expected)) == expected)
         elif child == 0x3F4:
             valid_entry = target_head.startswith(bytes.fromhex("9c 60 6a 00 6a 00 6a 00 6a 01 e8"))
         else:

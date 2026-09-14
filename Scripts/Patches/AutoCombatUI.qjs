@@ -6037,8 +6037,14 @@ AutoCombatUIStatic.cloneFrameVtable = function(
 	if (sourcePhy < 0)
 		throw Error("AutoCombatUI: UIFrameWnd vtable is not mapped");
 	const byteCount = AutoCombatUIStatic.FrameVtableEntries * 4;
-	const [clonePhy, cloneVir] = Exe.Allocate(byteCount, 4);
-	Exe.SetHex(clonePhy, Exe.GetHex(sourcePhy, byteCount));
+	// Native pub/vending checks use typeid() on every top-level window.
+	// Preserve the MSVC Complete Object Locator at vtable[-1].
+	if (sourcePhy < 4 || Exe.Vir2Phy(Exe.GetUint32(sourcePhy - 4)) < 0)
+		throw Error("AutoCombatUI: native vtable RTTI is not mapped");
+	const [storagePhy, storageVir] = Exe.Allocate(byteCount + 4, 4);
+	const clonePhy = storagePhy + 4;
+	const cloneVir = storageVir + 4;
+	Exe.SetHex(storagePhy, Exe.GetHex(sourcePhy - 4, byteCount + 4));
 	Exe.SetUint32(clonePhy + 0 * 4, destructorVir);
 	Exe.SetUint32(clonePhy + 20 * 4, drawVir);
 	Exe.SetUint32(clonePhy + 25 * 4, mouseDownVir);

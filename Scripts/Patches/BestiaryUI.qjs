@@ -1020,11 +1020,14 @@ BestiaryUI = function(_) {
 	m.move=b.code(b.buildJournalMouse(m.state.vir,m.payload.vir,m.sender.vir,"move",m.itemDetail.vir,m));m.up=b.code(b.buildJournalMouse(m.state.vir,m.payload.vir,m.sender.vir,"up",m.itemDetail.vir,m));
 	m.baseDestructor=b.code(c.buildDestructor(m.state.vir));m.destructor=b.code(b.buildPersonalDestructor(m,m.baseDestructor.vir));
 	const source=Exe.Vir2Phy(c.FrameVtable),bytes=[];
-	for(let i=0;i<c.FrameVtableEntries;i++){
+	// typeid() in native pub/vending checks requires the original vtable[-1].
+	if(source<4 || Exe.Vir2Phy(Exe.GetUint32(source-4))<0)throw Error("BestiaryUI: native vtable RTTI is not mapped");
+	for(let i=-1;i<c.FrameVtableEntries;i++){
 		const replacements={0:m.destructor.vir,20:m.draw.vir,25:m.down.vir,28:m.move.vir,31:m.up.vir,32:m.rightDown.vir,33:m.rightUp.vir,35:m.wheel.vir,37:m.message.vir};const value=replacements[i]??Exe.GetUint32(source+i*4);
 		bytes.push(value&255,(value>>>8)&255,(value>>>16)&255,(value>>>24)&255);
 	}
-	m.vtable=b.alloc(bytes);
+	const vtableStorage=b.alloc(bytes);
+	m.vtable={phy:vtableStorage.phy+4,vir:vtableStorage.vir+4,size:bytes.length-4};
 	m.escapeKey=b.code(b.buildEscapeKey(m));
 	const escapeSite=Exe.Vir2Phy(0xA449A0,CODE);
 	AutoHook(escapeSite,"E9"+Filler(1),{targets:{1:m.escapeKey.vir},nops:1});
