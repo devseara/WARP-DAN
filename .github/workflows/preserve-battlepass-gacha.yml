@@ -1,0 +1,16 @@
+name: Preserve accepted Battle Pass and Gacha
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python tools/test_stable_feature_guard.py
+      - run: python tools/verify_stable_features.py --manifest docs/stable-battlepass-gacha.json
+      - run: node tools/test_battlepass_asset_install.js
+      - run: node tools/test_gacha_asset_install.js

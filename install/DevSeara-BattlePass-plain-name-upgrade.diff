@@ -1,0 +1,123 @@
+diff --git a/Scripts/Patches/BattlepassUI.qjs b/Scripts/Patches/BattlepassUI.qjs
+index 0fbae90..fa4ef1d 100644
+--- a/Scripts/Patches/BattlepassUI.qjs
++++ b/Scripts/Patches/BattlepassUI.qjs
+@@ -117,6 +117,59 @@ BattlepassUIStatic.verify = function()
+ 	n.assertCode("Battlepass native CItem constructor", 0x006A1B20, "55 8B EC 6A FF 68 8B 54 E5 00");
+ 	n.assertCode("Battlepass native text measurement", n.TextWidth, "55 8B EC 6A FF 68 5D B6 EE 00");
+ 	n.assertCode("Battlepass CItem numeric ID", 0x005D98A0, "83 C1 2C 83 79 14 10");
++	n.assertCode("Battlepass name surface DC", 0x005443C0, "55 8B EC 56 8B F1 8B 4D 08 56 C7 06");
++	n.assertCode("Battlepass name font settings", 0x00546F60, "55 8B EC 8B 55 08 53 8A 1D A4 B8 59 01");
++	n.assertCode("Battlepass name font cache", 0x00546270, "55 8B EC 83 EC 5C A1 24 B9 22 01 33");
++	n.assertCode("Battlepass name DC release", 0x005446F0, "55 8B EC 6A FF 68 B0 40 E1 00");
++	for (const [name, dll, address] of [
++		["MultiByteToWideChar", "KERNEL32.dll", 0xFC1200],
++		["SelectObject", "GDI32.dll", 0xFC1120],
++		["SetTextColor", "GDI32.dll", 0xFC10E0],
++		["GetTextExtentPoint32W", "GDI32.dll", 0xFC112C],
++		["TextOutW", "GDI32.dll", 0xFC10DC]
++	]) if (Exe.FindFunc(name, dll) !== address) throw Error("BattlepassUI: unsupported name renderer import " + name);
++};
++
++// Private stdcall(window, source, x, y, maxWidth, color). Only the BPUI player
++// field uses this path: the server already sends sd->status.name. Calling the
++// shared TextDraw would match that name to an actor and add EXTN decorations.
++// Keep stock surface/font ownership and the user's font height, but draw the
++// bounded UTF-8 name directly through GDI, as Gacha does. No global hook changes
++// and no dependency on selecting the separate Gacha feature.
++BattlepassUIStatic.plainPlayer = function(height)
++{
++	const n = AutoCombatUI.nativeHelpers, a = n.asm();
++	const iat = address => { a.emit(0xFF, 0x15); a.dword(address); };
++	a.emit(0x55, 0x8B, 0xEC, 0x81, 0xEC); a.dword(320);
++	a.emit(0x53, 0x56, 0x57, 0x8B, 0x75, 8, 0x8B, 0x7D, 12, 0x33, 0xDB);
++	a.label("length"); a.emit(0x83, 0xFB, BattlepassUIStatic.Fields.player[1] - 1); a.jcc(0x83, "convert");
++	a.emit(0x80, 0x3C, 0x1F, 0); a.jcc(0x84, "convert"); a.emit(0x43); a.jmp("length");
++	a.label("convert"); a.emit(0x85, 0xDB); a.jcc(0x84, "done");
++	n.pushImm(a, 128); a.emit(0x8D, 0x85); a.dword(-320); a.emit(0x50, 0x53, 0x57);
++	n.pushImm(a, 0); n.pushImm(a, 65001); iat(0xFC1200);
++	a.emit(0x8B, 0xD8, 0x85, 0xDB); a.jcc(0x84, "done");
++	a.emit(0xFF, 0x76, 0x24, 0x8D, 0x4D, 0xE0); a.call(0x5443C0);
++	a.emit(0x83, 0x7D, 0xE0, 0); a.jcc(0x84, "destroy");
++	for (const v of [0, 0, height, 0]) n.pushImm(a, v);
++	a.emit(0x8D, 0x4D, 0xE0); a.call(0x546F60);
++	a.emit(0x0F, 0xB6, 0x45, 0xFE, 0x50, 0x0F, 0xB6, 0x45, 0xFD, 0x50, 0x6A, 0,
++		0xFF, 0x75, 0xF0, 0xFF, 0x75, 0xEC, 0xB9); a.dword(0x124F3CC); a.call(0x546270);
++	a.emit(0x50, 0xFF, 0x75, 0xE0); iat(0xFC1120);
++	a.emit(0xFF, 0x75, 28, 0xFF, 0x75, 0xE0); iat(0xFC10E0); a.emit(0x89, 0x45, 0xD4);
++	a.label("measure"); a.emit(0x8D, 0x45, 0xD8, 0x50, 0x53, 0x8D, 0x85); a.dword(-320);
++	a.emit(0x50, 0xFF, 0x75, 0xE0); iat(0xFC112C);
++	a.emit(0x85, 0xC0); a.jcc(0x84, "restore");
++	a.emit(0x8B, 0x45, 0xD8, 0x3B, 0x45, 24); a.jcc(0x86, "draw");
++	a.emit(0x4B); a.jcc(0x84, "restore");
++	// Never leave a dangling high surrogate when fitting a Unicode name.
++	a.emit(0x0F, 0xB7, 0x84, 0x5D); a.dword(-322);
++	a.emit(0x25); a.dword(0xFC00); a.emit(0x3D); a.dword(0xD800); a.jcc(0x85, "measure");
++	a.emit(0x4B); a.jcc(0x84, "restore"); a.jmp("measure");
++	a.label("draw"); a.emit(0x53, 0x8D, 0x85); a.dword(-320);
++	a.emit(0x50, 0xFF, 0x75, 20, 0xFF, 0x75, 16, 0xFF, 0x75, 0xE0); iat(0xFC10DC);
++	a.label("restore"); a.emit(0xFF, 0x75, 0xD4, 0xFF, 0x75, 0xE0); iat(0xFC10E0);
++	a.label("destroy"); a.emit(0x8D, 0x4D, 0xE0); a.call(0x5446F0);
++	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 24, 0); return a;
+ };
+ 
+ BattlepassUIStatic.sender = function(refs, action, state)
+@@ -768,6 +821,10 @@ BattlepassUIStatic.draw = function(state, fill, font, art)
+ 	const text = (s, x, y, c = 0x00474747, bold = 0, size = font.Body) =>
+ 		n.emitText(a, n.allocateString(s).vir, x, y, size, c, bold);
+ 	const value = (key, x, y, c = 0x00474747, size = font.Body) => n.emitText(a, field(key), x, y, size, c);
++	const player = (x, y, width) => {
++		for (const v of [0x00965B35, width, y, x, field("player")]) n.pushImm(a, v);
++		a.emit(0x56); a.call(art.plainPlayer);
++	};
+ 	const note = (s, x, y, c = 0x00474747, bold = 0) => text(s, x, y, c, bold, font.Notes);
+ 	const noteValue = (key, x, y, c = 0x00474747) => value(key, x, y, c, font.Notes);
+ 	const heading = (s, y) => { text(s, 92, y, 0x00965B35, 1, font.Heading); rect(92, y + 18, 526, 1, 0xFFC5D1E5); };
+@@ -852,7 +909,7 @@ BattlepassUIStatic.draw = function(state, fill, font, art)
+ 		button(["Quests", "Mission", "Rewards", "My Stats"][i], 4, 38 + i * 40, 77, 34);
+ 	}
+ 	note("Hunter", 643, 30, 0x00965B35, 1); rect(643, 47, 141, 1, 0xFFC5D1E5);
+-	noteValue("player", 643, 52, 0x00965B35); noteValue("track", 643, 72);
++	player(643, 52, 141); noteValue("track", 643, 72);
+ 	note("Pass EXP", 643, 98); noteValue("exp", 715, 98);
+ 	note("Level", 643, 119); noteValue("level", 715, 119);
+ 	note("Difficulty Tiers", 643, 149, 0x00965B35, 1); rect(643, 167, 141, 1, 0xFFC5D1E5);
+@@ -1029,7 +1086,7 @@ BattlepassUIStatic.draw = function(state, fill, font, art)
+ 	}
+ 	a.jmp("done");
+ 	a.label("stats");
+-	heading("My Stats", 29); value("player", 92, 57, 0x00965B35);
++	heading("My Stats", 29); player(92, 57, 526);
+ 	heading("Battle Pass Progress", 118);
+ 	text("Current level", 97, 148); value("level", 260, 148);
+ 	text("Total EXP", 97, 175); value("exp", 260, 175);
+@@ -1528,6 +1585,7 @@ BattlepassUI = function(_)
+ 	const hover = n.allocateCode(b.hover(state.vir));
+ 	const scope = n.allocateCode(b.cursorScope(state.vir, hover.vir));
+ 	const art = b.artwork();
++	art.plainPlayer = n.allocateCode(b.plainPlayer(font.Body)).vir;
+ 	art.scope = scope.vir;
+ 	art.prepareCursorCanvas = n.allocateCode(b.prepareCursorCanvas()).vir;
+ 	art.cursors = ["cursorshover", "cursorsclick"].map(name => art.full(name));
+@@ -1570,6 +1628,7 @@ BattlepassUI = function(_)
+ 	Exe.SetJMP(Exe.Vir2Phy(0xA74410, CODE), cursor.vir); Exe.SetNOPs(Exe.Vir2Phy(0xA74415, CODE), 1);
+ 	const contract = {
+ 		buildDate: b.BuildDate, width: b.Width, height: b.Height, font,
++		plainPlayerVir: art.plainPlayer, playerOffset: b.Snapshot + b.Fields.player[0], playerCapacity: b.Fields.player[1],
+ 		buttonLayouts: b.buttonLayouts, controls: b.controls, abandonLayout: b.abandonLayout,
+ 		canvasWidth: b.Width + b.CursorMargin, hitTestVir: hitTest.vir, frameHitTestVir: b.FrameHitTest,
+ 		prepareCursorCanvasVir: art.prepareCursorCanvas,
+@@ -1593,6 +1652,13 @@ BattlepassUI = function(_)
+ 		imports, externalModules: 0
+ 	};
+ 	CACHE.put("BattlepassUI.Contract.v1", contract);
++	// Small read-only contract for offline verification of the emitted name
++	// helper and both call sites, including Battle-Pass-only patch selections.
++	const nameMarker = n.allocateString("BattlepassUI.PlainName.v1").vir;
++	const nameContract = [];
++	for (const v of [nameMarker, state.vir, draw.vir, art.plainPlayer, font.Body, b.Snapshot + b.Fields.player[0], b.Fields.player[1]])
++		nameContract.push(v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255);
++	n.allocateBytes(nameContract, 4);
+ 	if (typeof PatchDiagnostics !== "undefined" && typeof PatchDiagnostics.add === "function")
+ 		PatchDiagnostics.add("BattlepassUI.Native", contract);
+ 	console.info("BattlepassUI contract: " + JSON.stringify(contract));

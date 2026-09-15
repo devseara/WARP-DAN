@@ -1,5 +1,9 @@
 # Gacha v20 package verification — September 15, 2026
 
+The sections below record the original `a1a0f7b` Gacha v20 publication. The
+fresh installer now also contains the accepted Battle Pass plain-name fix.
+Current installer hashes/checks are in [the stable baseline guide](stable-battlepass-gacha.md).
+
 The current Gacha script is byte-identical to the tested/deployed v20 client
 source and uses GCHA wire v9. Existing Battle Pass, Chat, NPC and native helper
 dependencies are unchanged. Only Gacha changed in the installation tree.
@@ -9,7 +13,7 @@ isolated-index `git apply --check` and actual cached application. All three
 produce the identical Git tree `ff5def6607c7db3e9d9e94580a97b1120fec080f`.
 This verification did not modify the live WARP working tree or its Git index.
 
-- Current fresh diff SHA-256:
+- Original v20 fresh diff SHA-256 (before the Battle Pass name fix):
   `BDD507C9853891C787ABC4E9906484F323CF3C211CBD227A33CEF60E1588325A`
 - v15-to-v20 diff SHA-256:
   `9776C9C0869E31F8C33505F325753676645DA34C581C8057C088B3A0EE3943CD`

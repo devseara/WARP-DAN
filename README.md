@@ -4,10 +4,16 @@ WARP patch package by **DevSeara** for the **2025-07-16 Ragexe** client.
 This is a focused add-on, not a full WARP distribution. It contains no game
 executable, server source, credentials, or personal installation profiles.
 
+**Accepted stable release:** Battle Pass and Gacha were confirmed working by
+the user on September 15, 2026. Both repositories are preserved at tag
+`stable-battlepass-gacha-2026-09-15`. See the [baseline, checks and restore guide](docs/stable-battlepass-gacha.md)
+before developing another feature.
+
 ## Included patches
 
 - **Project Rebirth Battle Pass Window [QJS]** (`BattlepassUI`, ID 10003):
-  native Battle Pass window and its 25 runtime BMP images.
+  native Battle Pass window and its 25 runtime BMP images. My Stats and Hunter
+  show only the canonical character name, without actor-title decorations.
 - **Supplied Renewal Chat UI** (`ModernChatUI`, ID 10001): translucent chat,
   movable/detachable/redockable native tabs, PM input, white emoji/send icons,
   hand cursor feedback, configurable tab font, and white/bold selected tabs.
@@ -65,6 +71,22 @@ Other WARP forks/client builds are not assumed compatible.
 4. Restart WARP, select the desired DevSeara patches, load the original
    **2025-07-16** client, choose the output EXE, and apply.
 
+### Upgrade an existing v20 package with the Battle Pass name fix
+
+For a WARP tree installed from package commit `a1a0f7b`, apply:
+
+```powershell
+$patchPackage = 'D:\warp\WARP-DAN'
+$nameDiff = Join-Path $patchPackage 'install\DevSeara-BattlePass-plain-name-upgrade.diff'
+git apply --check -- $nameDiff
+# Continue only if the check above succeeds.
+git apply --whitespace=nowarn -- $nameDiff
+```
+
+This changes only BattlepassUI.qjs. Rebuild from the original client with the
+same patch selections. No server/NPC/database change is required. The fresh
+combined diff includes this fix; do not apply the incremental diff twice.
+
 ### Upgrade an existing Gacha v15 installation to v20
 
 For a WARP tree installed from package commit `144adb2`, use:
@@ -82,6 +104,7 @@ packet router and four arrow images remain required. Install the matching
 wire-v9 map-server/client pair and v16 char-server/mail schema from the server
 repository. Do not mix old and new Gacha wire versions. Existing player records
 and pity are retained; no Admin reset is needed.
+Then apply the Battle Pass plain-name upgrade above to reach the stable release.
 
 ### Upgrade an existing Battle Pass/Chat/NPC package to Gacha
 
