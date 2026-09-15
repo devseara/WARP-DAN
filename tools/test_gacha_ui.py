@@ -16,7 +16,11 @@ FIELDS = ('state draw hit down up move cursor drag open receiver sender timer st
           'itemHit rightDown rightUp spinOffset rightOffset rollLead revealStep rollIds rollCount plain png plainCenter').split()
 
 def contract(m):
-    data=m.pe.get_memory_mapped_image(); marker=data.find(b'GachaUI.v15\0');version=7
+    data=m.pe.get_memory_mapped_image(); marker=data.find(b'GachaUI.v20\0');version=9
+    if marker<0: marker=data.find(b'GachaUI.v19\0');version=8
+    if marker<0: marker=data.find(b'GachaUI.v17\0')
+    if marker<0: marker=data.find(b'GachaUI.v16\0')
+    if marker<0: marker=data.find(b'GachaUI.v15\0');version=7
     if marker<0: marker=data.find(b'GachaUI.v14\0')
     if marker<0: marker=data.find(b'GachaUI.v13\0');version=6
     if marker<0: marker=data.find(b'GachaUI.v12\0')
@@ -35,9 +39,9 @@ def contract(m):
     return {**{name:m.r(places[0]+4+4*i) for i,name in enumerate(FIELDS)},'wireVersion':version}
 
 def snapshot(message=1,request=0,session=77,token=0,view=0,page=1,pages=None,has_next=None,admin=False):
-    p=bytearray(3600)
+    p=bytearray(3788)
     pages=pages if pages is not None else (10 if view in (2,3,4) else 1)
-    struct.pack_into('<HHIHH',p,0,0xBF6,len(p),0x41484347,7,message)
+    struct.pack_into('<HHIHH',p,0,0xBF6,len(p),0x41484347,9,message)
     has_next=(view!=0 and page<pages) if has_next is None else has_next
     struct.pack_into('<13I',p,12,request,session,token,1|(2 if token else 0)|(8 if has_next else 0)|(16 if admin else 0),1000000,54321000,12,50,100,9850,12,view,12)
     def text(off,size,value): p[off:off+size]=value.encode()[:size-1].ljust(size,b'\0')
@@ -50,6 +54,8 @@ def snapshot(message=1,request=0,session=77,token=0,view=0,page=1,pages=None,has
     struct.pack_into('<3I',p,656,2289,1716,1715)
     struct.pack_into('<6I',p,3472,2270,501,page,pages,10,2)
     for i,name in enumerate(('Grand','Major','Minor')):text(3528+i*24,24,name)
+    struct.pack_into('<I',p,3660,3)
+    text(3604,32,'0.00%');text(3636,24,'Legendary');text(3664,64,'1,000,000 per pull');text(3728,48,'Featured Grand prizes')
     ids=[2289,1716,1715,40001,40002,501,14003,14533,14592,12210,501,12210]
     names=['Crown','Gakkung Bow','Arbalest','Paragon Token','Infinite Flywing Box (4 Hours)','Red Potion',
         'Battle Manual','Insurance','Job Manual','Bubble Gum','Red Potion','Bubble Gum']
@@ -173,7 +179,7 @@ class GachaMachine(Machine):
         for iat,fn in [(0xFC1200,convert),(0xFC1120,lambda:self.ret(8,88)),(0xFC112C,extent),(0xFC10E0,color),(0xFC10DC,draw)]:
             address=self.alloc(16);self.stub(address,fn);self.w(iat,address)
     def load_texture(self,name):
-        if name.startswith('arrow_'):
+        if (name.startswith('arrow_') or name=='itembox_000.png'):
             old=self.assets;self.assets=Path(__file__).resolve().parents[1]/'Assets/GachaUI'
             try:return super().load_texture(name)
             finally:self.assets=old
@@ -202,7 +208,7 @@ class GachaMachine(Machine):
         self.real_icons={};self.item_nodes={}
         prefix=bytes.fromhex('c0afc0fac0cec5cdc6e4c0ccbdb a'.replace(' ',''))
         try:
-            for item in (2289,1716,1715,2270,40001,40002,501,14003,14533,14592,12210):
+            for item in (1161,2289,1716,1715,2270,40001,40002,501,14003,14533,14592,12210):
                 block=re.search(rb'\n\t\['+str(item).encode()+rb'\] = \{(.*?)(?=\n\t\[\d+\] = |\Z)',data,re.S)
                 if not block:continue
                 resource=re.search(rb'\n\s+identifiedResourceName = "([^"]+)"',block[1])
@@ -232,7 +238,7 @@ class GachaMachine(Machine):
         self.stub(0x529850,format_path)
         def texture():
             key=self.cstr(self.args(1)[0]).split('\\')[-1]
-            if key.startswith('arrow_'):self.ret(4,self.load_texture(key));return
+            if (key.startswith('arrow_') or key=='itembox_000.png'):self.ret(4,self.load_texture(key));return
             if key not in self.real_icons:self.ret(4,0);return
             if key not in self.textures:
                 image=Image.open(io.BytesIO(self.real_icons[key])).convert('RGBA');w,h=image.size
@@ -257,7 +263,7 @@ class GachaMachine(Machine):
         # receiver directly concealed the Battlepass/Gacha overwrite regression.
         self.u.mem_write(0x15E8198,bytes(p)); self.invoke(self.r(0xCAD0EC),0)
     def ready(self):
-        p=snapshot();struct.pack_into('<H',p,8,self.c['wireVersion'])
+        p=snapshot()[:self.c['packetSize']];struct.pack_into('<H',p,2,len(p));struct.pack_into('<H',p,8,self.c['wireVersion'])
         if self.c['wireVersion']<6:
             p=p[:self.c['packetSize']];struct.pack_into('<H',p,2,len(p))
         if self.c['wireVersion']<5:
@@ -290,20 +296,20 @@ def rolling_tests(exe):
             duration=1020 if index==1 else 220
             before=len(m.sent);origin=m.now
             m.now=origin+duration-1;m.invoke(c['timer'],0,(0,0,0,0))
-            assert len(m.sent)==before and m.r(s+3664)==1 and m.r(s+24)==index-1
+            assert len(m.sent)==before and m.r(s+3852)==1 and m.r(s+24)==index-1
             m.now+=1;m.invoke(c['timer'],0,(0,0,0,0))
-            assert len(m.sent)==before+1 and m.r(s+3664)==2
+            assert len(m.sent)==before+1 and m.r(s+3852)==2
             fields=struct.unpack('<HHIHH5I',m.sent[-1])
-            assert fields[3]==7 and fields[4]==6 and fields[7:]==(0,index,0),fields
+            assert fields[3]==9 and fields[4]==6 and fields[7:]==(0,index,0),fields
             spin=m.r(s+56)
             m.now+=100;m.invoke(c['timer'],0,(0,0,0,0))
             assert len(m.sent)==before+1 and m.r(s+56)!=spin,'remaining icons froze while awaiting server'
             # Reveal is queued before the matching inventory packet. A delayed
             # delivery ACK must not permit the next slot, retries or a new pull.
             m.receive(step_snapshot(7,m.r(s+44),count,index))
-            assert m.r(s+24)==index and m.r(s+3664)==2 and m.r(s+16)==1
+            assert m.r(s+24)==index and m.r(s+3852)==2 and m.r(s+16)==1
             m.now+=7000;m.invoke(c['timer'],0,(0,0,0,0))
-            assert len(m.sent)==before+1 and m.r(s+3664)==2
+            assert len(m.sent)==before+1 and m.r(s+3852)==2
             if count==12 and index in (1,6,12):
                 m.lookups=[];m.texts=[];m.invoke(c['draw'],obj)
                 labels=[t for t,x,y,_ in m.texts if y in (143,219,295) and x>40]
@@ -312,15 +318,15 @@ def rolling_tests(exe):
             message=6 if index<count else 4
             m.receive(step_snapshot(message,m.r(s+44),count,index))
             assert m.r(s+24)==(index if index<count else 12)
-            assert m.r(s+3664)==(1 if index<count else 0) and m.r(s+16)==0
+            assert m.r(s+3852)==(1 if index<count else 0) and m.r(s+16)==0
         m.lookups=[];m.texts=[];m.invoke(c['draw'],obj)
         assert any(t[0]=='Crown' for t in m.texts)
     # Timer failure never requests a paid completion. Closing remains possible.
     m.invoke(c['stop'],obj);before=len(m.sent);m.receive(snapshot(5,m.r(s+44)))
-    assert m.r(s+3664)==2 and len(m.sent)==before
+    assert m.r(s+3852)==2 and len(m.sent)==before
     # timeGetTime wraps without extending the roll or dividing by a bad denominator.
     m.invoke(c['start'],obj);m.now=0xffffff00;m.receive(snapshot(5,m.r(s+44)))
-    m.now=(m.now+1020)&0xffffffff;m.invoke(c['timer'],0,(0,0,0,0));assert m.r(s+3664)==2 and len(m.sent)==before+1
+    m.now=(m.now+1020)&0xffffffff;m.invoke(c['timer'],0,(0,0,0,0));assert m.r(s+3852)==2 and len(m.sent)==before+1
     m.invoke(c['down'],obj,(746,9));m.invoke(c['up'],obj,(746,9))
     assert m.r(s+32)==0 and m.r(s+20)==1
     print('PASS: x1/x5/x10 ordered slot requests; reveal/label then delivery ACK before next slot; remaining icons keep spinning; no hidden IDs/retry/double animation; timer failure/wrap/close safety')
@@ -355,6 +361,14 @@ def item_description_tests(exe):
         for i,id_ in enumerate(ids):click(30+(i%4)*185,149+(i//4)*76);assert opened[-1]==id_
     for i,id_ in enumerate([2289,1716,1715,2270,501]):click(27+i*35,93);assert opened[-1]==id_
     assert len(opened)==53 and constructed==destroyed and not m.sent
+    p=snapshot(view=4)
+    for off,id_ in zip((3776,3780,3784),(1161,1201,1202)):struct.pack_into('<I',p,off,id_)
+    m.receive(p)
+    for i,id_ in enumerate((1161,1201,1202),5):click(27+i*35,93);assert opened[-1]==id_
+    assert len(opened)==56 and constructed==destroyed and not m.sent
+    m.receive(snapshot(view=4))
+    for i in range(5,8):click(27+i*35,93)
+    assert len(opened)==56,'empty featured slots opened item descriptions'
     for x,y,up in [(30,149,(90,149)),(30,149,(215,149)),(90,149,None),(450,311,None)]:
         before=len(opened);click(x,y,up);assert len(opened)==before
     # Same item in another slot is still a cancelled right click.
@@ -380,7 +394,7 @@ def main():
     assert m.r(s+32)==567 and len(m.timer_calls)==1
     m.invoke(c['start'],0);assert len(m.timer_calls)==1
     if args.game:m.client_artwork(args.game)
-    assert c['packetSize']==3600
+    assert c['packetSize']==3788
     m.invoke(c['draw'],obj)
     assert any(t[0]=='Grand: 37/100 | Major+: 3/10' for t in m.texts)
     assert any(t[0]=='Pull x10' for t in m.texts)
@@ -396,10 +410,10 @@ def main():
         Image.frombytes('RGBA',(w,h),bytes(m.u.mem_read(pix,w*h*4)),'raw','BGRA').save(args.preview)
     print('PASS: native frame, bounded long names, rarity cards, persistent pity text/bar and opaque text; missing icons safe')
     # Invalid wire lengths/versions/counts/tiers/pity denominators cannot alter state.
-    for off,fmt,value in [(2,'H',1936),(8,'H',1),(8,'H',2),(8,'H',4),(52,'I',13),(56,'I',5),(680,'I',3),(1832,'I',0),(1836,'I',10001),
+    for off,fmt,value in [(2,'H',1936),(8,'H',1),(8,'H',2),(8,'H',4),(52,'I',13),(56,'I',5),(680,'I',4),(1832,'I',0),(1836,'I',10001),
                           (3480,'I',0),(3484,'I',0),(3484,'I',101),(3488,'I',6),(3492,'I',3),(36,'I',10)]:
-        p=snapshot();struct.pack_into('<'+fmt,p,off,value);before=bytes(m.u.mem_read(s,3668));m.receive(p)
-        assert bytes(m.u.mem_read(s,3668))==before,(off,value)
+        p=snapshot();struct.pack_into('<'+fmt,p,off,value);before=bytes(m.u.mem_read(s,3856));m.receive(p)
+        assert bytes(m.u.mem_read(s,3856))==before,(off,value)
     print('PASS: malformed snapshot rejection and bounded packet-owned strings/counts')
     # Confirm requires server quote: first click only sends a quote request.
     m.invoke(c['down'],obj,(705,395));m.invoke(c['up'],obj,(705,395))
@@ -430,7 +444,7 @@ def main():
     m.invoke(c['down'],obj,(746,9));m.invoke(c['up'],obj,(746,9));assert m.r(s+20)==1 and m.r(obj+0x28)==0
     assert m.r(s+32)==0 and [call[0] for call in m.timer_calls]==['set','kill']
     m.invoke(c['stop'],0);assert len(m.timer_calls)==2
-    before=bytes(m.u.mem_read(s+64,3600));m.receive(snapshot(4,m.r(s+44)));assert bytes(m.u.mem_read(s+64,3600))==before
+    before=bytes(m.u.mem_read(s+64,3788));m.receive(snapshot(4,m.r(s+44)));assert bytes(m.u.mem_read(s+64,3788))==before
     print('PASS: title-only native drag, release-outside cancellation, native hand cursor and late-reply close guard')
     print('PASS: actual timer start/stop helpers, 100ms interval, duplicate-start guard and close cleanup')
     if args.preview:
@@ -513,14 +527,14 @@ def pagination_tests(exe,preview):
                 before=len(m.sent);m.invoke(c['down'],obj,(x,364));m.invoke(c['up'],obj,(x,364))
                 assert len(m.sent)==before+enabled
                 if enabled:
-                    fields=struct.unpack('<HHIHH5I',m.sent[-1]);assert fields[3]==7 and fields[4]==3 and fields[8:]==(page+delta,view),fields
+                    fields=struct.unpack('<HHIHH5I',m.sent[-1]);assert fields[3]==9 and fields[4]==3 and fields[8:]==(page+delta,view),fields
                     m.receive(p)
             if preview and page in (1,10,100):
                 pix,w,h=m.pixels(obj);Image.frombytes('RGBA',(w,h),bytes(m.u.mem_read(pix,w*h*4)),'raw','BGRA').save(preview.with_name(preview.stem+f'-view{view}-page{page}.png'))
     for view in (1,2,3,4):
         for page in (0,11,0xffffffff):
-            p=snapshot(view=view,page=page,pages=10);before=bytes(m.u.mem_read(s,3668));m.receive(p)
-            assert bytes(m.u.mem_read(s,3668))==before
+            p=snapshot(view=view,page=page,pages=10);before=bytes(m.u.mem_read(s,3856));m.receive(p)
+            assert bytes(m.u.mem_read(s,3856))==before
     # No icon inset under spender text; plain drawing restores the previous GDI color.
     p=snapshot(view=3);m.receive(p);m.invoke(c['draw'],obj);pix,w,h=m.pixels(obj)
     # y=170 now crosses the updated Zeny fixture glyph; sample the blank gap
@@ -567,13 +581,13 @@ def configurable_text_tests(exe,preview=None):
     footer='Legendary within 80; Rare within 8.'
     put(272,64,costs);put(528,128,footer);put(1840,96,'Legendary: 37/80 | Rare+: 3/8')
     m.receive(p);m.texts=[];m.text_colors=[];m.invoke(c['draw'],obj)
-    assert any(t[0]==costs for t in m.texts) and any(t[0]==footer for t in m.texts)
+    assert any(t[0]=='1,000,000 per pull' for t in m.texts) and any(t[0]==footer for t in m.texts)
     for i,name in enumerate(names):
-        assert any(t[0]==name and t[1:3]==(323,68+i*15) for t in m.texts)
+        assert any(t[0]==name and t[1:3]==(323,66+(2-i)*13) for t in m.texts)
         assert any(t[0]==name and t[2] in (182,258,334) for t in m.texts)
     rate_x=331+max(int(m.font.getlength(name)) for name in names)
     for i,rate in enumerate(('0.50%','1.00%','98.50%')):
-        assert any(t[0]==rate and t[1:3]==(rate_x,68+i*15) for t in m.texts)
+        assert any(t[0]==rate and t[1:3]==(rate_x,66+(2-i)*13) for t in m.texts)
     assert any(t[0]=='Legendary: 37/80 | Rare+: 3/8' and t[1:3]==(503,75) for t in m.texts)
     assert any(t.startswith('Bonus:') and color==0xFF0000 for t,color,x,y in m.text_colors)
     if preview:
@@ -583,17 +597,17 @@ def configurable_text_tests(exe,preview=None):
     for aliases in [('Grand','Major','Minor'),('Grand1','Major1','Minor1'),('W'*20,'Rare','Common')]:
         for i,name in enumerate(aliases):put(3528+i*24,24,name)
         m.receive(p);m.texts=[];m.invoke(c['draw'],obj)
-        visible=[next(t[0] for t in m.texts if t[1:3]==(323,68+i*15)) for i in range(3)]
+        visible=[next(t[0] for t in m.texts if t[1:3]==(323,66+(2-i)*13)) for i in range(3)]
         rate_x=331+max(int(m.font.getlength(name)) for name in visible)
         assert rate_x<=441
         for i,rate in enumerate(('0.50%','1.00%','98.50%')):
-            assert any(t[0]==rate and t[1:3]==(rate_x,68+i*15) for t in m.texts)
+            assert any(t[0]==rate and t[1:3]==(rate_x,66+(2-i)*13) for t in m.texts)
     # Every new wire string is bounded; long display aliases cannot cover percentages.
     for i in range(3):p[3528+i*24:3528+(i+1)*24]=b'W'*24
     p[528:656]=b'W'*128;p[1840:1936]=b'W'*96;m.receive(p);m.texts=[];m.invoke(c['draw'],obj)
     for i in range(3):assert bytes(m.u.mem_read(s+64+3528+i*24+23,1))==b'\0'
     for text,x,y,_ in m.texts:
-        if x==323 and y in (68,83,98):assert m.font.getlength(text)<=110
+        if x==323 and y in (66,79,92):assert m.font.getlength(text)<=110
         if y==419:assert x+m.font.getlength(text)<=740
         if x==503 and y==75:assert m.font.getlength(text)<235
     print('PASS: editable names in pity counter, compact measured name/rate spacing, bounded long labels and descriptions, blue bonus text, terminated wire strings')
@@ -621,11 +635,11 @@ def button_fit_tests(exe,preview=None):
             m.invoke(c['cursor'],obj,(x+bw+1,y+4));assert m.forwards[-1]==('cursor',[0])
         if modal and preview:
             Image.frombytes('RGBA',(w,h),bytes(m.u.mem_read(pix,w*h*4)),'raw','BGRA').save(preview.with_name(preview.stem+'-confirmation.png'))
-        m.w(s+3664,1);m.texts=[];m.text_colors=[];m.invoke(c['draw'],obj)
+        m.w(s+3852,1);m.texts=[];m.text_colors=[];m.invoke(c['draw'],obj)
         for _,label,x,y,bw,bh in group:
             assert any(t==label and color==0xACACAC and ty==y+4 for t,color,tx,ty in m.text_colors)
             m.invoke(c['hit'],0,(x+bw//2,y+bh//2));assert m.u.reg_read(UC_X86_REG_EAX)==0
-        m.w(s+3664,0)
+        m.w(s+3852,0)
     # Each shrunken target still maps to the same quote/confirm/cancel action.
     for id_,label,x,y,bw,bh in buttons:
         q=GachaMachine(exe);qc=q.c;qs=qc['state'];qo=q.ready()
@@ -651,17 +665,22 @@ def admin_tab_tests(exe,preview=None):
             pix,w,h=m.pixels(obj);Image.frombytes('RGBA',(w,h),bytes(m.u.mem_read(pix,w*h*4)),'raw','BGRA').save(preview.with_name(preview.stem+'-'+suffix+'.png'))
     def click(x,y):m.invoke(c['down'],obj,(x,y));m.invoke(c['up'],obj,(x,y))
     draw();assert not any(t[0]=='Admin' for t in m.texts)
-    click(580,31);click(380,302);assert not m.sent
+    click(440,31);click(380,302);assert not m.sent
     for view,description in [(1,'List of Possible Rewards'),(2,'Your Latest Zeny Gacha History'),(3,'Top 12 Zeny Gacha Spenders'),(4,'Total List of Winners')]:
         m.receive(snapshot(view=view));draw('description'+str(view))
-        assert any(t[0]==description and t[2]==389 for t in m.texts)
+        assert not any(t[0]==description or t[2]==389 for t in m.texts)
         assert not any(t[2]>=360 and (t[0].startswith(('Bonus:','x1 :','Grand guaranteed','Pull x')) or 'equally likely' in t[0]) for t in m.texts)
         if view==3:
             assert all(any(t[0]==f'Rank #{i+1}' for t in m.texts) for i in range(12))
+        p=snapshot(view=view);p[112:240]=b'History storage is unavailable.'.ljust(128,b'\0');m.receive(p);draw()
+        assert any(t[0]=='History storage is unavailable.' and t[1:3]==(20,408) for t in m.texts),'server errors must remain visible'
     m.receive(snapshot(view=3,page=2));draw();assert any(t[0]=='Rank #13' for t in m.texts) and any(t[0]=='Rank #24' for t in m.texts)
     m.receive(snapshot(admin=True));draw();assert any(t[0]=='Admin' for t in m.texts)
-    click(580,31);fields=struct.unpack('<HHIHH5I',m.sent[-1]);assert fields[4]==3 and fields[9]==5
+    click(440,31);fields=struct.unpack('<HHIHH5I',m.sent[-1]);assert fields[4]==3 and fields[9]==5
     m.receive(snapshot(2,m.r(s+44),view=5,admin=True));draw('admin')
+    assert any(t[0]=='Administrator Control Panel' and t[1:3]==(34,150) for t in m.texts)
+    assert not any('GM level 99+' in t[0] for t in m.texts)
+    assert {x for _,x,y,_ in m.texts if y in (150,180,201,221,253)}=={34},'Admin panel text is not left-aligned'
     assert any(t[0]=='Reset This Machine' for t in m.texts) and not any(t[0].startswith(('Pull x','Page ')) for t in m.texts)
     before=len(m.sent);click(613,364);click(736,364);assert len(m.sent)==before # no Admin pagination
     click(380,302);fields=struct.unpack('<HHIHH5I',m.sent[-1]);assert fields[4]==7
@@ -678,18 +697,18 @@ def admin_tab_tests(exe,preview=None):
     # Malformed/unauthorized Admin snapshots cannot alter the live UI state.
     for p in [snapshot(2,m.r(s+44),view=5),snapshot(8,m.r(s+44),token=789,admin=True),
               snapshot(8,m.r(s+44),view=5,admin=True),snapshot(2,m.r(s+44),view=5,pages=10,admin=True)]:
-        before=bytes(m.u.mem_read(s,3668));m.receive(p);assert bytes(m.u.mem_read(s,3668))==before
+        before=bytes(m.u.mem_read(s,3856));m.receive(p);assert bytes(m.u.mem_read(s,3856))==before
     m.receive(snapshot(2,m.r(s+44)));draw();assert not any(t[0]=='Admin' for t in m.texts)
-    before=len(m.sent);click(580,31);click(380,302);assert len(m.sent)==before
+    before=len(m.sent);click(465,31);click(380,302);assert len(m.sent)==before
     # Independent machines reuse the same stable native frame with fresh server
     # sessions; custom titles fit the header and old-machine replies are ignored.
     for nonce,name in [(88,'Potion Gacha'),(99,'Equipment Gacha'),(100,'W'*47)]:
         p=snapshot(session=nonce,admin=True);p[64:112]=name.encode().ljust(48,b'\0');m.receive(p);draw('machine'+str(nonce))
         t=next(t for t in m.texts if t[1]==22 and t[2]==55)
         assert name.startswith(t[0]) and m.font.getlength(t[0])<=276
-        before=bytes(m.u.mem_read(s,3668));m.receive(snapshot(2,m.r(s+44),session=77))
-        assert bytes(m.u.mem_read(s,3668))==before
-    print('PASS: per-tab descriptions, spender ranks, GM-only controls, per-machine reset scope, distinct confirmation/cancel, stable modal, custom fitted machine titles and stale-machine packet rejection')
+        before=bytes(m.u.mem_read(s,3856));m.receive(snapshot(2,m.r(s+44),session=77))
+        assert bytes(m.u.mem_read(s,3856))==before
+    print('PASS: removed public-tab captions, left-aligned Administrator Control Panel, unchanged GM-only controls, spender ranks, per-machine reset scope, distinct confirmation/cancel, stable modal and stale-machine rejection')
 
 
 if __name__=='__main__':main()

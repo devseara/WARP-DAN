@@ -10,7 +10,7 @@ const installer = source.slice(start, source.indexOf('\n};', start) + 3);
 const create = new Function('Warp', 'System', 'BinFile', 'ModernChatUI', config + '\nconst GachaUI={};\n' + installer + '\nreturn {assets:GachaUIStatic.Assets,install:GachaUI.onApplied};');
 const parent = p => p.slice(0, p.lastIndexOf('/'));
 function fixture() {
-    const root = 'F:/Custom target/game folder', target = root + '/data/texture/UI-prefix/genericsui';
+    const root = 'F:/Custom target/game folder', target = root + '/data/texture/UI-prefix/genericsui/gacha';
     const env = {Path:'X:/WARP',TgtExe:root+'/game.exe',TestMode:false};
     const files = new Map(), dirs = new Set([root]), calls = [];
     const state = {opened:0,closed:0,failDir:null,failCopy:null};
@@ -31,7 +31,7 @@ function fixture() {
     }
     return {...api,env,files,dirs,calls,state,root,target};
 }
-let f=fixture();f.install();assert.equal(f.calls.filter(c=>c[0]==='mkdir').length,4);
+let f=fixture();f.install();assert.equal(f.calls.filter(c=>c[0]==='mkdir').length,5);
 assert.equal(f.calls.filter(c=>c[0]==='copy').length,4);
 for(const name of f.assets)assert.equal(f.files.get(f.target+'/'+name),'bundled:'+name);
 assert.equal(f.state.opened,f.state.closed);
@@ -43,4 +43,4 @@ f=fixture();f.env.TestMode=true;f.install();assert.equal(f.calls.length,0);asser
 f=fixture();f.state.failDir=f.root+'/data/texture';assert.throws(f.install,/cannot create/);assert(!f.calls.some(c=>c[0]==='copy'));
 f=fixture();f.state.failCopy=f.target+'/arrow_off_right.png';assert.throws(f.install,/cannot install arrow_off_right.png/);
 f=fixture();f.files.delete(f.env.Path+'/Assets/GachaUI/arrow_on_left.png');assert.throws(f.install,/cannot install arrow_on_left.png/);
-console.log('PASS: four packaged Gacha arrow PNGs, arbitrary target folder creation, no-overwrite repeat/repair, test-mode isolation and explicit failure handling');
+console.log('PASS: four arrows only, dedicated Gacha folder creation, no-overwrite repeat/repair, test-mode isolation and explicit failure handling');

@@ -19,17 +19,19 @@ executable, server source, credentials, or personal installation profiles.
   choice buttons, and 25 supplied PNGs. Includes the first-paint NPC background
   correction and the 2025 choice-window OK/Cancel fix. See the
   [NPC dialog notes](docs/modern-npc-dialog.md) for scope and verification.
-- **Universal Zeny Gacha UI v15** (`GachaUI`, ID 10006): multiple independently
+- **Universal Zeny Gacha UI v20** (`GachaUI`, ID 10006): multiple independently
   configured NPC machines; costs, reward pools, rates, pity, history, spending
   rankings, winners and GM99 reset scoped per machine. Native rolling/reveal/
   sequential delivery, item right-click descriptions, 12-slot pages and four
-  automatically deployed arrow PNGs. See the [Gacha guide](docs/gacha-ui.md).
+  automatically deployed arrow PNGs. Four tiers, inventory-overflow mail, and
+  up to eight Legendary featured items with hidden unused boxes. See the
+  [Gacha guide](docs/gacha-ui.md).
 
 The Battle Pass feature requires the matching Project Rebirth server-side BPUI
 implementation. Its server source is **not included** in this WARP-only package.
 Chat, item icons and NPC dialogs do not require a new server component.
-Gacha requires the matching GCHA wire-v7 server bridge and NPCs from
-[devseara/Ragnarok](https://github.com/devseara/Ragnarok/commit/6416b1a946809d2628efcb4c6b81c12d0f332736).
+Gacha requires the matching GCHA wire-v9 server bridge, NPCs and mail worker from
+[devseara/Ragnarok](https://github.com/devseara/Ragnarok/commit/7b3e48a2dd4c2bcd618e0661389c59e2757c129e).
 The [Gacha guide](docs/gacha-ui.md) links the exact server files and SQL setup.
 
 ## Install into WARP
@@ -63,7 +65,25 @@ Other WARP forks/client builds are not assumed compatible.
 4. Restart WARP, select the desired DevSeara patches, load the original
    **2025-07-16** client, choose the output EXE, and apply.
 
-### Upgrade an existing Battle Pass/Chat/NPC package to Gacha v15
+### Upgrade an existing Gacha v15 installation to v20
+
+For a WARP tree installed from package commit `144adb2`, use:
+
+```powershell
+$patchPackage = 'D:\warp\WARP-DAN'
+$upgradeDiff = Join-Path $patchPackage 'install\DevSeara-Gacha-v20-upgrade.diff'
+git apply --check -- $upgradeDiff
+# Continue only if the check above succeeds.
+git apply --whitespace=nowarn -- $upgradeDiff
+```
+
+This changes the Gacha client script only; the prior registrations, shared
+packet router and four arrow images remain required. Install the matching
+wire-v9 map-server/client pair and v16 char-server/mail schema from the server
+repository. Do not mix old and new Gacha wire versions. Existing player records
+and pity are retained; no Admin reset is needed.
+
+### Upgrade an existing Battle Pass/Chat/NPC package to Gacha
 
 For a WARP tree installed using package commit `35ef127`'s
 `DevSeara-BattlePass-ChatUI-NPC.diff`, apply only this incremental diff:
@@ -76,10 +96,11 @@ git apply --check -- $upgradeDiff
 git apply --whitespace=nowarn -- $upgradeDiff
 ```
 
-It adds Gacha and its arrow assets, and safely routes Battle Pass/Gacha to
+This historical step adds Gacha v15. Then apply `DevSeara-Gacha-v20-upgrade.diff`
+above before building the current client. It adds Gacha and its arrow assets, and safely routes Battle Pass/Gacha to
 independent handlers. Either feature can still be selected alone. Do not apply
 both the fresh combined diff and this upgrade, or force either onto a WARP
-tree that already has Gacha. The author's live WARP tree already has it.
+tree that already has Gacha. The author's live WARP tree already has v20.
 
 ### Upgrade an existing Battle Pass/Chat UI package installation
 
@@ -121,7 +142,7 @@ The legacy chat textbox PNGs stay in the bundle but are not used to draw the
 neutral translucent gray message field.
 NPC UI can be selected by itself: the installed Chat UI and Auto Combat helper
 scripts are required, but their patches do not need to be selected.
-The same applies to Gacha. Its four arrow PNGs deploy under `genericsui` without
+The same applies to Gacha. Its four arrow PNGs deploy under `genericsui/gacha` without
 overwriting existing images; item icons come from the client's own resources.
 
 ## Verification

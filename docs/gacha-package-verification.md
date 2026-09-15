@@ -1,4 +1,27 @@
-# Gacha v15 package verification — September 15, 2026
+# Gacha v20 package verification — September 15, 2026
+
+The current Gacha script is byte-identical to the tested/deployed v20 client
+source and uses GCHA wire v9. Existing Battle Pass, Chat, NPC and native helper
+dependencies are unchanged. Only Gacha changed in the installation tree.
+
+Fresh installation, v15-to-v20 upgrade, and NPC-package -> v15 -> v20 all passed
+isolated-index `git apply --check` and actual cached application. All three
+produce the identical Git tree `ff5def6607c7db3e9d9e94580a97b1120fec080f`.
+This verification did not modify the live WARP working tree or its Git index.
+
+- Current fresh diff SHA-256:
+  `BDD507C9853891C787ABC4E9906484F323CF3C211CBD227A33CEF60E1588325A`
+- v15-to-v20 diff SHA-256:
+  `9776C9C0869E31F8C33505F325753676645DA34C581C8057C088B3A0EE3943CD`
+
+The v20 development build passed the full native Gacha suite, 0/1/5/8 featured
+box/state/description checks, stable cached-surface and capture-crash regressions,
+independent BPUI/GCHA dispatch, four-tier layout and server bridge/NPC tests.
+The package copies retain portable test asset paths, not local installation paths.
+No executable, PDB, credentials, player records, private backup or personal
+profile is included. Matching server commit is linked in the current guide.
+
+## Historical v15 verification
 
 This package was assembled from the tested v15 Gacha implementation. The
 matching server source is pinned in [the Gacha guide](gacha-ui.md). No live

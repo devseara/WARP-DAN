@@ -4085,10 +4085,10 @@ index 0000000000000000000000000000000000000000..f9a013ab08c11fc1a2af86ac7ba64ef0
 +ChatItemIcons.validate = () => Exe.BuildDate === 20250716;
 diff --git a/Scripts/Patches/GachaUI.qjs b/Scripts/Patches/GachaUI.qjs
 new file mode 100644
-index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee3660ab8f83
+index 0000000000000000000000000000000000000000..f3fa774f5fbfff370e16325654c1d5f6a17ead1e
 --- /dev/null
 +++ b/Scripts/Patches/GachaUI.qjs
-@@ -0,0 +1,641 @@
+@@ -0,0 +1,656 @@
 +/*
 + * Author: DevSeara. GPL-3.0-or-later.
 + * Description: Native 760x440 Zeny Gacha window for 2025-07-16 Ragexe,
@@ -4098,9 +4098,11 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 + */
 +const GachaUIStatic = {
 +	Width: 760, Height: 440, WindowId: 0x3FB, Magic: 0x41484347,
-+	PacketSize: 3600, Snapshot: 64, StateSize: 3668, Rolling: 3664,
++	PacketSize: 3788, Snapshot: 64, StateSize: 3856, Rolling: 3852, WireVersion: 9,
 +	TierNames: 3528,
-+	FeaturedOffsets: [656,660,664,3472,3476], Page: 3480, Pages: 3484, PageText: 3496,
++	TierNameOffsets: [3528,3552,3576,3636], RateOffsets: [432,464,496,3604], TierCount: 3660,
++	PerPull: 3664, FeaturedLabel: 3728,
++	FeaturedOffsets: [656,660,664,3472,3476,3776,3780,3784], Page: 3480, Pages: 3484, PageText: 3496,
 +	HasNextPage: 8, Administrator: 16,
 +	Window: 0, Pressed: 4, Hover: 8, Dragging: 12, Pending: 16, Hidden: 20,
 +	Reveal: 24, RevealTick: 28, Timer: 32, SetTimer: 36, KillTimer: 40,
@@ -4111,14 +4113,14 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +	Assets: ["arrow_off_left.png","arrow_off_right.png","arrow_on_left.png","arrow_on_right.png"],
 +	controls: [
 +		{id:1,x:738,y:2,w:18,h:16,label:"X",close:true},
-+		{id:2,x:10,y:22,w:103,h:20,label:"Zeny Gacha",view:0},
-+		{id:3,x:116,y:22,w:103,h:20,label:"Show Prizes",view:1},
-+		{id:4,x:222,y:22,w:88,h:20,label:"History",view:2},
-+		{id:5,x:313,y:22,w:118,h:20,label:"Top Spenders",view:3},
-+		{id:6,x:434,y:22,w:118,h:20,label:"Grand Winners",view:4},
++		{id:2,x:10,y:22,w:77,h:20,label:"Zeny Gacha",view:0,compact:true},
++		{id:3,x:91,y:22,w:78,h:20,label:"Show Prizes",view:1,compact:true},
++		{id:4,x:173,y:22,w:51,h:20,label:"History",view:2,compact:true},
++		{id:5,x:228,y:22,w:87,h:20,label:"Top Spenders",view:3,compact:true},
++		{id:6,x:319,y:22,w:116,h:20,label:"Legendary Winners",view:4,compact:true},
 +		{id:7,x:600,y:355,w:22,h:22,page:-1},
 +		{id:8,x:725,y:355,w:22,h:22,page:1},
-+		{id:9,x:556,y:22,w:66,h:20,label:"Admin",view:5,admin:true},
++		{id:9,x:439,y:22,w:48,h:20,label:"Admin",view:5,admin:true,compact:true},
 +		// Compact English labels at 12px, with seven pixels of horizontal padding.
 +		// These same bounds drive drawing, clicks and the native hand cursor.
 +		{id:10,x:574,y:385,w:51,h:20,label:"Pull x1",count:1,compact:true},
@@ -4288,7 +4290,7 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +	a.emit(0x55,0x8B,0xEC,0x83,0xEC,32,0x53,0x56,0x57,0xFC,0x8D,0x7D,0xE0,0x33,0xC0,0xB9); a.dword(8); a.emit(0xF3,0xAB);
 +	a.emit(0xC7,0x45,0xE0); a.dword(0x00200BF8);
 +	a.emit(0xC7,0x45,0xE4); a.dword(g.Magic);
-+	a.emit(0x66,0xC7,0x45,0xE8,7,0,0x8B,0x45,8,0x66,0x89,0x45,0xEA);
++	a.emit(0x66,0xC7,0x45,0xE8,g.WireVersion,0,0x8B,0x45,8,0x66,0x89,0x45,0xEA);
 +	a.emit(0xFF,0x05); a.dword(s+g.Sequence); a.emit(0xA1); a.dword(s+g.Sequence); a.emit(0x89,0x45,0xEC);
 +	for(const [off,local] of [[16,0xF0],[20,0xF4]]) {
 +		a.emit(0xA1); a.dword(s+g.Snapshot+off); a.emit(0x89,0x45,local);
@@ -4379,7 +4381,7 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +	a.emit(0x66,0x83,0x7E,2,8); a.jcc(0x82,"stock");
 +	a.emit(0x81,0x7E,4); a.dword(g.Magic); a.jcc(0x85,"stock");
 +	a.emit(0x66,0x81,0x7E,2); a.word(g.PacketSize); a.jcc(0x85,"done");
-+	a.emit(0x66,0x83,0x7E,8,7); a.jcc(0x85,"done");
++	a.emit(0x66,0x83,0x7E,8,g.WireVersion); a.jcc(0x85,"done");
 +	// Appended v5 fields leave every existing row/name/pity offset unchanged.
 +	a.emit(0x8B,0x96); a.dword(g.Pages); a.emit(0x8D,0x42,0xFF,0x83,0xF8,99); a.jcc(0x87,"done");
 +	a.emit(0x8B,0x86); a.dword(g.Page); a.emit(0x85,0xC0); a.jcc(0x84,"done"); a.emit(0x3B,0xC2); a.jcc(0x87,"done");
@@ -4403,7 +4405,8 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +	a.emit(0x8B,0x86); a.dword(668); a.emit(0x48,0x3D); a.dword(9999); a.jcc(0x87,"done");
 +	a.emit(0x8B,0x46,24,0xC1,0xE8,16,0x3B,0x46,52); a.jcc(0x87,"done"); a.label("valid_roll");
 +	a.emit(0x83,0x7E,52,12); a.jcc(0x87,"done"); a.emit(0x83,0x7E,56,5); a.jcc(0x87,"done");
-+	for(let i=0;i<12;i++) { a.emit(0x83,0xBE); a.dword(672+i*96+8); a.emit(2); a.jcc(0x87,"done"); }
++	a.emit(0x8B,0x86);a.dword(g.TierCount);a.emit(0x83,0xE8,3,0x83,0xF8,1);a.jcc(0x87,"done");
++	for(let i=0;i<12;i++) { a.emit(0x83,0xBE); a.dword(672+i*96+8); a.emit(3); a.jcc(0x87,"done"); }
 +	// Pity bars cannot divide by zero or walk outside their bounded canvas.
 +	for(const off of [1832,1836]) { a.emit(0x8B,0x86); a.dword(off); a.emit(0x48,0x3D); a.dword(9999); a.jcc(0x87,"done"); }
 +	a.emit(0x66,0x83,0x7E,10,1); a.jcc(0x84,"copy");
@@ -4413,7 +4416,8 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +	a.label("copy");
 +	a.label("copy_rows"); a.emit(0xBF); a.dword(s+g.Snapshot); a.emit(0xB9); a.dword(g.PacketSize/4); a.emit(0xFC,0xF3,0xA5);
 +	const ends=[111,239,271,335,431,463,495,527,655,1935,3527];
-+	for(let i=0;i<3;i++) ends.push(g.TierNames+i*24+23);
++	for(const off of g.TierNameOffsets) ends.push(off+23);
++	ends.push(3635,3727,3775);
 +	for(let i=0;i<12;i++) ends.push(672+i*96+63,672+i*96+95,1936+i*128+127);
 +	for(const off of ends) { a.emit(0xC6,0x05); a.dword(s+g.Snapshot+off); a.emit(0); }
 +	for(const off of [g.Pending,g.Modal,g.RightPressed,g.Rolling]) g.store(a,s+off,0); g.store(a,s+g.Reveal,12);
@@ -4480,7 +4484,7 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +	const rect=(x,y,w,h,c)=>n.emitFillRect(a,fill,x,y,w,h,c);
 +	const text=(v,x,y,c=0x005A5A5A,b=0,h=12)=>g.text(a,n.allocateString(v).vir,x,y,c,b,h);
 +	const val=(off,x,y,c=0x005A5A5A)=>g.text(a,p+off,x,y,c);
-+	const fitval=(off,x,y,width,c=0x005A5A5A)=>{ for(const v of [c,width,y,x,p+off]) n.pushImm(a,v); a.emit(0x56); a.call(fit); };
++	const fitval=(off,x,y,width,c=0x005A5A5A,center=false)=>{ for(const v of [c,width,y,x,p+off]) n.pushImm(a,v); a.emit(0x56); a.call(center?art.buttonText:fit); };
 +	const nameval=(off,x,y,width,c=0x005A5A5A,center=false)=>{ for(const v of [c,width,y,x,p+off]) n.pushImm(a,v); a.emit(0x56); a.call(center?art.plainCenter:art.plain); };
 +	const panel=(x,y,w,h,c=0xFFF4FBFD)=>{ rect(x+2,y,w-4,h,0xFFD4DFE9); rect(x,y+2,w,h-4,0xFFD4DFE9); rect(x+1,y+3,w-2,h-6,c); rect(x+3,y+1,w-6,h-2,c); };
 +	const button=c=>{
@@ -4510,23 +4514,34 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +	for(let y=2;y<18;y++) rect(3,y,g.Width-6,1,(0xFF000000|(164+y*3)<<16|(184+y*3)<<8|(218+y*2))>>>0);
 +	text("Gacha",20,3,0x0070543E); rect(8,7,6,6,0xFF8FAED5);
 +	for(const c of g.controls.filter(c=>!c.modal&&!c.page&&!c.reset)) button(c);
-+	panel(10,48,740,76); fitval(64,22,55,276); text("Featured Grand prizes",22,73,0x00888888,0,11);
-+	for(let i=0;i<g.FeaturedOffsets.length;i++) { panel(22+i*35,88,31,30,0xFFE7EDF8); g.icon(a,s,art,g.FeaturedOffsets[i],25+i*35,91,"featured"+i); }
++	panel(10,48,740,76); fitval(64,22,55,276); fitval(g.FeaturedLabel,22,73,276,0x00888888);
++	for(let i=0;i<g.FeaturedOffsets.length;i++) {
++		const empty="featured"+i+"_empty",off=g.FeaturedOffsets[i];
++		// Item ID owns both the box and its right-click target. Zero paints nothing.
++		a.emit(0x83,0x3D); a.dword(p+off); a.emit(0); a.jcc(0x84,empty);
++		panel(22+i*35,88,31,30,0xFFE7EDF8); g.icon(a,s,art,off,25+i*35,91,"featured"+i);
++		a.label(empty);
++	}
 +	text("Base rates",310,54,0x00888888,0,11);
 +	// Align percentages eight pixels after the widest fitted tier name, instead
-+	// of reserving the full long-name column for short labels such as Grand1.
++	// of reserving the full long-name column for short labels such as Epic.
 +	a.emit(0x33,0xDB);
-+	for(let i=0;i<3;i++) {
-+		rect(311,72+i*15,6,6,[0xFFCAA248,0xFFC583C9,0xFFACB7C5][i]);
-+		fitval(g.TierNames+i*24,323,68+i*15,110);
++	for(let i=0;i<4;i++) {
++		const tier=[2,1,0,3][i];
++		if(tier===3) {a.emit(0x83,0x3D);a.dword(p+g.TierCount);a.emit(4);a.jcc(0x85,"rate_width"+i);}
++		rect(311,70+i*13,6,6,[0xFFACB7C5,0xFF64A670,0xFFC583C9,0xFFCAA248][i]);
++		fitval(g.TierNameOffsets[tier],323,66+i*13,110);
 +		a.emit(0x3B,0xC3); a.jcc(0x86,"rate_width"+i); a.emit(0x8B,0xD8); a.label("rate_width"+i);
 +	}
 +	a.emit(0x81,0xC3); a.dword(331);
-+	for(let i=0;i<3;i++) {
-+		for(const v of [0,0,0x005A5A5A,12,0,0,p+432+i*32,68+i*15]) n.pushImm(a,v);
++	for(let i=0;i<4;i++) {
++		const tier=[2,1,0,3][i];
++		if(tier===3) {a.emit(0x83,0x3D);a.dword(p+g.TierCount);a.emit(4);a.jcc(0x85,"rate_done"+i);}
++		for(const v of [0,0,0x005A5A5A,12,0,0,p+g.RateOffsets[tier],66+i*13]) n.pushImm(a,v);
 +		a.emit(0x53,0x8B,0xCE); a.call(n.TextDraw);
++		a.label("rate_done"+i);
 +	}
-+	val(240,531,53); fitval(1840,503,75,234);
++	fitval(240,531,53,206); fitval(1840,503,75,234);
 +	rect(506,94,231,6,0xFFE2E8F2);
 +	a.emit(0xA1); a.dword(p+1824); a.emit(0x3B,0x05); a.dword(p+1832); a.jcc(0x82,"pity_bound"); a.emit(0xA1); a.dword(p+1832);
 +	a.label("pity_bound"); a.emit(0x69,0xC0); a.dword(229); a.emit(0x33,0xD2,0xF7,0x35); a.dword(p+1832);
@@ -4534,10 +4549,10 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +	text("Pity carries across all pull amounts",507,104,0x00888888,0,11);
 +	a.emit(0x83,0x3D); a.dword(p+56); a.emit(5); a.jcc(0x85,"prize_grid");
 +	panel(20,134,720,212);
-+	text("Administrator controls - GM level 99+",34,150,0x007D6045,1);
++	text("Administrator Control Panel",34,150,0x007D6045,1);
 +	text("Reset THIS machine only. Other Gacha machines are unaffected.",34,180);
-+	text("This machine's history, Top Spenders and Grand Winners for all players",46,201);
-+	text("Every character's pity for THIS machine, including offline characters",46,221);
++	text("This machine's history, Top Spenders and Legendary Winners for all players",34,201);
++	text("Every character's pity for THIS machine, including offline characters",34,221);
 +	text("Recovery copies are kept. Awarded items and spent Zeny are not refunded.",34,253,0x00808080,0,11);
 +	for(const c of g.controls.filter(c=>c.reset)) button(c);
 +	a.jmp("grid_done"); a.label("prize_grid");
@@ -4557,14 +4572,14 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +		nameval(1936+i*128,x+8,y+9,159); fitval(off+64,x+8,y+27,159,0x00808080); fitval(off+16,x+8,y+48,159,0x00808080); a.jmp(done);
 +		a.label("card"+i+"_item_text"); panel(x+5,y+6,33,33,0xFFE7EDF8); g.icon(a,s,art,off,x+8,y+9,"shown"+i); fitval(off+16,x+44,y+9,124);
 +		a.emit(0x83,0x3D); a.dword(p+56); a.emit(4); a.jcc(0x85,"card"+i+"_detail");
-+		text("Grand winner",x+44,y+25,0x00808080);
++		fitval(off+64,x+44,y+25,124,0x00808080);
 +		rect(x+5,y+47,165,15,0xFFFFF3BB); nameval(1936+i*128,x+8,y+48,159,0x0070543E,true); a.jmp(done);
 +		a.label("card"+i+"_detail"); fitval(off+64,x+44,y+25,124,0x00808080);
-+		for(let tier=0;tier<3;tier++) {
++		for(let tier=0;tier<4;tier++) {
 +			const next="card"+i+"_tier"+tier;
 +			a.emit(0x83,0x3D); a.dword(p+off+8); a.emit(tier); a.jcc(0x85,next);
-+			rect(x+5,y+47,165,15,[0xFFFFF3BB,0xFFF0D5F2,0xFFF0F0F2][tier]);
-+			text(String(i+1),x+9,y+48,0x00887868,0,11); fitval(g.TierNames+tier*24,x+29,y+48,137,0x00887868); a.label(next);
++			rect(x+5,y+47,165,15,[0xFFF0D5F2,0xFFDCEEDF,0xFFF0F0F2,0xFFFFF3BB][tier]);
++			text(String(i+1),x+9,y+48,0x00887868,0,11); fitval(g.TierNameOffsets[tier],x+29,y+48,137,0x00887868); a.label(next);
 +		}
 +		a.label(done);
 +	}
@@ -4577,14 +4592,13 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +		g.gate(a,s,c,off,true);png(art.arrows[c.page<0?2:3],end);a.jmp(end);
 +		a.label(off);png(art.arrows[c.page<0?0:1],end);a.label(end);
 +	}
-+	fitval(g.PageText,634,360,90);
++	fitval(g.PageText,622,360,103,0x005A5A5A,true);
 +	a.label("information_footer");
-+	for(const [view,description] of [[1,"List of Possible Rewards"],[2,"Your Latest Zeny Gacha History"],[3,"Top 12 Zeny Gacha Spenders"],[4,"Total List of Winners"],[5,"Administrator controls"]]) {
-+		a.emit(0x83,0x3D); a.dword(p+56); a.emit(view); a.jcc(0x85,"description"+view);
-+		text(description,20,389); a.label("description"+view);
-+	}
++	// Public tabs retain pagination and server status/errors, without captions.
++	a.emit(0x83,0x3D); a.dword(p+56); a.emit(5); a.jcc(0x85,"description_done");
++	text("Administrator Control Panel",20,389); a.label("description_done");
 +	fitval(112,20,408,720,0x00808080); a.jmp("modal");
-+	a.label("main_footer"); val(272,20,368,0x00808080);
++	a.label("main_footer"); fitval(g.PerPull,20,368,520,0x00808080);
 +	a.emit(0x83,0x3D); a.dword(s+g.Reveal); a.emit(12); a.jcc(0x83,"final_status");
 +	a.emit(0x83,0x3D); a.dword(s+g.Rolling); a.emit(1); a.jcc(0x85,"finishing");
 +	text("Rolling...",20,389,0x00808080); a.jmp("footer");
@@ -4596,8 +4610,9 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +	a.emit(0x83,0x3D); a.dword(s+g.Modal); a.emit(0); a.jcc(0x84,"done");
 +	panel(174,176,412,132,0xFFFFFFFF); rect(177,179,406,17,0xFFB9CEE9);
 +	a.emit(0x83,0x3D); a.dword(s+g.Modal); a.emit(2); a.jcc(0x84,"reset_modal");
-+	text("Confirm Gacha Pull",184,180,0x00624C38); fitval(336,188,207,384); val(240,188,226);
-+	text("Prizes go to your bag. Pity saves automatically.",228,246,0x00808080,0,11);
++	text("Confirm Gacha Pull",184,180,0x00624C38); fitval(336,188,207,384);
++	text("Prizes go to inventory, or mail if they cannot fit.",208,236,0x00808080,0,11);
++	text("Pity saves automatically.",316,250,0x00808080,0,11);
 +	a.jmp("modal_buttons"); a.label("reset_modal");
 +	text("Confirm Gacha Reset",184,180,0x002020A0); fitval(336,188,207,384);
 +	text("THIS machine only; all players, including offline characters.",188,226,0x00808080,0,11);
@@ -4691,7 +4706,7 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +		plain:n.allocateCode(g.plainText()).vir,
 +		plainCenter:n.allocateCode(g.plainText(true)).vir,
 +		png:n.allocateCode(g.arrowDraw(n.allocateCode(ModernChatUI.nativeHelpers.buildPngDraw(n.allocateCode(ModernChatUI.nativeHelpers.buildBlendPixel()).vir)).vir)).vir,
-+		arrows:g.Assets.map(file=>n.buildResourcePath("genericsui\\"+file).vir),
++		arrows:g.Assets.map(file=>n.buildResourcePath("genericsui\\gacha\\"+file).vir),
 +		rollIds:n.allocateBytes(rollBytes,4).vir,
 +		finalize:n.allocateCode(g.finalize()).vir,
 +		format:n.buildResourcePath("item\\%s.bmp").vir,path:n.allocateBytes(new Array(512).fill(0),4).vir};
@@ -4714,16 +4729,16 @@ index 0000000000000000000000000000000000000000..091828891258dcd8a047df58a943ee36
 +		packetCtor:refs.packetCtorA,packetSend:refs.packetSend,
 +		itemHit:itemHit.vir,rightDown:rightDown.vir,rightUp:rightUp.vir,spinOffset:g.Spin,rightOffset:g.RightPressed,
 +		rollLead:g.RollLeadMs,revealStep:g.RevealStepMs,rollIds:art.rollIds,rollCount:g.RollIcons.length,plain:art.plain,png:art.png,plainCenter:art.plainCenter,refs};
-+	const marker=n.allocateString("GachaUI.v15"),record=[];
++	const marker=n.allocateString("GachaUI.v20"),record=[];
 +	for(const value of [marker.vir,...Object.values(contract).filter(Number.isInteger)]) record.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
-+	n.allocateBytes(record,4); CACHE.put("GachaUI.Contract.v15",contract);
++	n.allocateBytes(record,4); CACHE.put("GachaUI.Contract.v20",contract);
 +	GachaUI.onApplied();
 +	console.info("GachaUI contract: "+JSON.stringify(contract)); return true;
 +};
 +GachaUI.validate = () => Exe.BuildDate===20250716;
 +GachaUI.onApplied = function() {
 +	if(Warp.TestMode) return;
-+	const root=System.DirPath(Warp.TgtExe),folders=["data","texture",ModernChatUI.nativeHelpers.uiPrefix(),"genericsui"];
++	const root=System.DirPath(Warp.TgtExe),folders=["data","texture",ModernChatUI.nativeHelpers.uiPrefix(),"genericsui","gacha"];
 +	let target=root;for(const folder of folders) {target+="/"+folder;if(!System.MkDir(target))throw Error("GachaUI: cannot create "+target);}
 +	for(const file of GachaUIStatic.Assets) {
 +		const existing=new BinFile(target+"/"+file,'r'),present=existing.Valid;existing.Close();if(present)continue;
