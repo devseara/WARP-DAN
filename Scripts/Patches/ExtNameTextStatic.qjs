@@ -18,7 +18,7 @@
 *                                                                          *
 *   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
 *   Created Date  : 2026-07-13                                             *
-*   Last Modified : 2026-09-08                                             *
+*   Last Modified : 2026-09-15                                             *
 *                                                                          *
 *   Description   : Drains the dispatcher-table EXTN ring into a bounded   *
 *                   exact-text map and redirects the four known Ragexe     *
@@ -32,6 +32,8 @@
 \**************************************************************************/
 
 ExtNameTextStatic = {
+	ApiVersion: 1,
+	Version: "1.0.0",
 	Profiles: {
 		20250716: {
 			Name: "2025-07-16 Ragexe",
@@ -252,470 +254,67 @@ ExtNameTextStatic.isStateLive = function(state)
 	return !!state.minimal || Number.isInteger(state.bridgeVir);
 };
 
-ExtNameTextStatic.buildHashAnsi = function()
+ExtNameTextStatic.buildHashAnsi = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x56);
-	a.emit(0x8B, 0x75, 0x08);
-	a.emit(0xB8); a.dword(0x811C9DC5);
-	a.label("loop");
-	a.emit(0x0F, 0xB6, 0x0E, 0x84, 0xC9);
-	a.jcc(0x84, "done");
-	a.emit(0x33, 0xC1, 0x69, 0xC0); a.dword(0x01000193);
-	a.emit(0x46);
-	a.jmp("loop");
-	a.label("done");
-	a.emit(0x85, 0xC0);
-	a.jcc(0x85, "return");
-	a.emit(0x40);
-	a.label("return");
-	a.emit(0x5E, 0x5D, 0xC2, 0x04, 0x00);
-	return a;
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildHashAnsi(...args);
 };
 
-ExtNameTextStatic.buildStrEqual = function()
+ExtNameTextStatic.buildStrEqual = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x56, 0x57);
-	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x7D, 0x0C);
-	a.label("loop");
-	a.emit(0x8A, 0x06, 0x3A, 0x07);
-	a.jcc(0x85, "different");
-	a.emit(0x84, 0xC0);
-	a.jcc(0x84, "equal");
-	a.emit(0x46, 0x47);
-	a.jmp("loop");
-	a.label("equal");
-	a.emit(0xB8); a.dword(1);
-	a.jmp("done");
-	a.label("different");
-	a.emit(0x33, 0xC0);
-	a.label("done");
-	a.emit(0x5F, 0x5E, 0x5D, 0xC2, 0x08, 0x00);
-	return a;
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildStrEqual(...args);
 };
 
-ExtNameTextStatic.buildCopyZ = function()
+ExtNameTextStatic.buildCopyZ = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
-	a.emit(0x8B, 0x7D, 0x08, 0x8B, 0x75, 0x0C, 0x8B, 0x5D, 0x10);
-	a.emit(0x8B, 0xC7, 0x85, 0xDB);
-	a.jcc(0x84, "done");
-	a.emit(0x4B);
-	a.label("loop");
-	a.emit(0x85, 0xDB);
-	a.jcc(0x84, "terminate");
-	a.emit(0x8A, 0x0E, 0x84, 0xC9);
-	a.jcc(0x84, "terminate");
-	a.emit(0x88, 0x0F, 0x46, 0x47, 0x4B);
-	a.jmp("loop");
-	a.label("terminate");
-	a.emit(0xC6, 0x07, 0x00);
-	a.label("done");
-	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x0C, 0x00);
-	return a;
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildCopyZ(...args);
 };
 
-ExtNameTextStatic.buildAppendZ = function()
+ExtNameTextStatic.buildAppendZ = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
-	a.emit(0x8B, 0x7D, 0x08, 0x8B, 0x75, 0x0C, 0x8B, 0x5D, 0x10);
-	a.emit(0x8B, 0xC7, 0x85, 0xDB);
-	a.jcc(0x84, "done");
-	a.label("find_end");
-	a.emit(0x80, 0x3F, 0x00);
-	a.jcc(0x84, "copy");
-	a.emit(0x47, 0x4B);
-	a.jcc(0x85, "find_end");
-	a.jmp("done");
-	a.label("copy");
-	a.emit(0x4B);
-	a.label("copy_loop");
-	a.emit(0x85, 0xDB);
-	a.jcc(0x84, "terminate");
-	a.emit(0x8A, 0x0E, 0x84, 0xC9);
-	a.jcc(0x84, "terminate");
-	a.emit(0x88, 0x0F, 0x46, 0x47, 0x4B);
-	a.jmp("copy_loop");
-	a.label("terminate");
-	a.emit(0xC6, 0x07, 0x00);
-	a.label("done");
-	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x0C, 0x00);
-	return a;
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildAppendZ(...args);
 };
 
-ExtNameTextStatic.buildMapPut = function(tableVir, hashVir, equalVir, copyVir)
+ExtNameTextStatic.buildMapPut = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57);
-	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x5D, 0x0C);
-	a.emit(0x85, 0xF6);
-	a.jcc(0x84, "done");
-	a.emit(0x80, 0x3E, 0x00);
-	a.jcc(0x84, "done");
-	a.emit(0x85, 0xDB);
-	a.jcc(0x84, "done");
-	a.emit(0x80, 0x3B, 0x00);
-	a.jcc(0x84, "done");
-	a.emit(0x56);
-	a.call(hashVir);
-	a.emit(0x89, 0x45, 0xF4);
-	a.emit(0x25); a.dword(ExtNameTextStatic.MapCapacity - 1);
-	a.emit(0x89, 0x45, 0xF8);
-	a.emit(0xC7, 0x45, 0xFC); a.dword(ExtNameTextStatic.ProbeLimit);
-	a.label("probe");
-	a.emit(0x8B, 0x45, 0xF8, 0x69, 0xC0); a.dword(ExtNameTextStatic.EntrySize);
-	a.emit(0xBF); a.dword(tableVir);
-	a.emit(0x03, 0xF8);
-	a.emit(0x8B, 0x07, 0x85, 0xC0);
-	a.jcc(0x84, "store");
-	a.emit(0x3B, 0x45, 0xF4);
-	a.jcc(0x85, "next");
-	a.emit(0x8D, 0x47, ExtNameTextStatic.EntryKey, 0x50, 0x56);
-	a.call(equalVir);
-	a.emit(0x85, 0xC0);
-	a.jcc(0x85, "store");
-	a.label("next");
-	a.emit(0xFF, 0x45, 0xF8);
-	a.emit(0x81, 0x65, 0xF8); a.dword(ExtNameTextStatic.MapCapacity - 1);
-	a.emit(0xFF, 0x4D, 0xFC);
-	a.jcc(0x85, "probe");
-	// A saturated probe window replaces its base bucket deterministically.
-	a.emit(0x8B, 0x45, 0xF4, 0x25); a.dword(ExtNameTextStatic.MapCapacity - 1);
-	a.emit(0x69, 0xC0); a.dword(ExtNameTextStatic.EntrySize);
-	a.emit(0xBF); a.dword(tableVir);
-	a.emit(0x03, 0xF8);
-	a.label("store");
-	a.emit(0x68); a.dword(ExtNameTextStatic.KeyCapacity);
-	a.emit(0x56, 0x8D, 0x47, ExtNameTextStatic.EntryKey, 0x50);
-	a.call(copyVir);
-	a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
-	// EntryValue exceeds signed disp8 after widening the key to 128 bytes.
-	a.emit(0x53, 0x8D, 0x87); a.dword(ExtNameTextStatic.EntryValue); a.emit(0x50);
-	a.call(copyVir);
-	a.emit(0x8B, 0x45, 0x10, 0x89, 0x47, ExtNameTextStatic.EntryKind);
-	a.emit(0x8B, 0x45, 0x14, 0x89, 0x47, ExtNameTextStatic.EntryEntityType);
-	a.emit(0x8B, 0x45, 0x18, 0x89, 0x47, ExtNameTextStatic.EntryColor);
-	a.emit(0x8B, 0x45, 0xF4, 0x89, 0x07);
-	a.label("done");
-	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x14, 0x00);
-	return a;
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildMapPut(...args);
 };
 
-ExtNameTextStatic.buildMapLookup = function(tableVir, hashVir, equalVir)
+ExtNameTextStatic.buildMapLookup = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57);
-	a.emit(0x8B, 0x75, 0x08, 0x85, 0xF6);
-	a.jcc(0x84, "missing");
-	a.emit(0x56);
-	a.call(hashVir);
-	a.emit(0x89, 0x45, 0xF4);
-	a.emit(0x25); a.dword(ExtNameTextStatic.MapCapacity - 1);
-	a.emit(0x89, 0x45, 0xF8);
-	a.emit(0xC7, 0x45, 0xFC); a.dword(ExtNameTextStatic.ProbeLimit);
-	a.label("probe");
-	a.emit(0x8B, 0x45, 0xF8, 0x69, 0xC0); a.dword(ExtNameTextStatic.EntrySize);
-	a.emit(0xBF); a.dword(tableVir);
-	a.emit(0x03, 0xF8);
-	a.emit(0x8B, 0x07, 0x85, 0xC0);
-	a.jcc(0x84, "missing");
-	a.emit(0x3B, 0x45, 0xF4);
-	a.jcc(0x85, "next");
-	a.emit(0x8D, 0x47, ExtNameTextStatic.EntryKey, 0x50, 0x56);
-	a.call(equalVir);
-	a.emit(0x85, 0xC0);
-	a.jcc(0x85, "found");
-	a.label("next");
-	a.emit(0xFF, 0x45, 0xF8);
-	a.emit(0x81, 0x65, 0xF8); a.dword(ExtNameTextStatic.MapCapacity - 1);
-	a.emit(0xFF, 0x4D, 0xFC);
-	a.jcc(0x85, "probe");
-	a.label("missing");
-	a.emit(0x33, 0xC0);
-	a.jmp("done");
-	a.label("found");
-	a.emit(0x8B, 0xC7);
-	a.label("done");
-	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x04, 0x00);
-	return a;
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildMapLookup(...args);
 };
 
-ExtNameTextStatic.buildPacketStore = function(
-	putVir,
-	copyVir,
-	appendVir,
-	scratchVir,
-	scratch2Vir,
-	literals
-)
+ExtNameTextStatic.buildPacketStore = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	const callCopy = function(dstVir, srcRegBytes)
-	{
-		a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
-		a.emit(...srcRegBytes);
-		a.emit(0x68); a.dword(dstVir);
-		a.call(copyVir);
-	};
-	const appendPtr = function(dstVir, ptrBytes)
-	{
-		a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
-		a.emit(...ptrBytes);
-		a.emit(0x68); a.dword(dstVir);
-		a.call(appendVir);
-	};
-	const appendLiteral = function(dstVir, literalVir)
-	{
-		appendPtr(dstVir, [0x68, literalVir & 0xFF, (literalVir >>> 8) & 0xFF,
-			(literalVir >>> 16) & 0xFF, (literalVir >>> 24) & 0xFF]);
-	};
-	const appendField = function(dstVir, offset, prefixVir = 0, suffixVir = 0)
-	{
-		const skip = `skip_${offset}_${a.bytes.length}`;
-		a.emit(0x80, 0xBB); a.dword(offset); a.emit(0x00);
-		a.jcc(0x84, skip);
-		if (prefixVir)
-			appendLiteral(dstVir, prefixVir);
-		appendPtr(dstVir, [0x8D, 0x83, offset & 0xFF, (offset >>> 8) & 0xFF,
-			(offset >>> 16) & 0xFF, (offset >>> 24) & 0xFF, 0x50]);
-		if (suffixVir)
-			appendLiteral(dstVir, suffixVir);
-		a.label(skip);
-	};
-	const put = function(keyOffset, valueOffset, valueIsScratch, kind)
-	{
-		a.emit(0x6A, 0x00);                      // color, overridden below for main
-		a.emit(0x56);                            // entity type
-		a.emit(0x6A, kind);
-		if (valueIsScratch)
-		{
-			a.emit(0x68); a.dword(valueOffset);
-		}
-		else
-		{
-			a.emit(0x8D, 0x83); a.dword(valueOffset);
-			a.emit(0x50);
-		}
-		a.emit(0x8D, 0x83); a.dword(keyOffset);
-		a.emit(0x50);
-		a.call(putVir);
-	};
-	const putMain = function()
-	{
-		a.emit(0x57, 0x56, 0x6A, 0x00);
-		a.emit(0x68); a.dword(scratchVir);
-		a.emit(0x8D, 0x43, 0x0C, 0x50);
-		a.call(putVir);
-	};
-	const putMainPacketKey = function(keyOffset)
-	{
-		a.emit(0x57, 0x56, 0x6A, 0x00);
-		a.emit(0x68); a.dword(scratchVir);
-		a.emit(0x8D, 0x83); a.dword(keyOffset);
-		a.emit(0x50);
-		a.call(putVir);
-	};
-
-	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
-	a.emit(0x8B, 0x5D, 0x08, 0x8B, 0x75, 0x0C, 0x8B, 0x7D, 0x10);
-	a.emit(0x0F, 0xB7, 0x43, 0x02);
-	a.emit(0x3D); a.dword(653);
-	a.jcc(0x84, "v4");
-	a.emit(0x3D); a.dword(657);
-	a.jcc(0x84, "v4");
-	a.emit(0x3D); a.dword(773);
-	a.jcc(0x84, "v3");
-	a.emit(0x3D); a.dword(777);
-	a.jcc(0x84, "v3");
-
-	// Legacy layout.
-	a.emit(0x8D, 0x43, 0x24);
-	a.emit(0x80, 0x38, 0x00);
-	a.jcc(0x85, "legacy_base");
-	a.emit(0x8D, 0x43, 0x0C);
-	a.label("legacy_base");
-	callCopy(scratchVir, [0x50]);
-	a.emit(0x83, 0xFE, 0x01);
-	a.jcc(0x85, "legacy_main");
-	appendField(scratchVir, 67, literals.pipe);
-	appendField(scratchVir, 98, literals.pipe);
-	appendField(scratchVir, 129, literals.pipe);
-	a.label("legacy_main");
-	putMain();
-	put(160, 67, false, 1);
-	put(184, 98, false, 2);
-	put(208, 129, false, 3);
-	a.jmp("done");
-
-	// V3 layout.
-	a.label("v3");
-	a.emit(0x8D, 0x43, 0x24);
-	a.emit(0x80, 0x38, 0x00);
-	a.jcc(0x85, "v3_base");
-	a.emit(0x8D, 0x43, 0x0C);
-	a.label("v3_base");
-	callCopy(scratchVir, [0x50]);
-	a.emit(0x83, 0xFE, 0x01);
-	a.jcc(0x84, "v3_mob");
-	a.emit(0x83, 0xFE, 0x00);
-	a.jcc(0x85, "v3_main");
-	// PC packets without a prebuilt extended name retain the DLL's compact
-	// title/name/party/guild/position composition.
-	a.emit(0x80, 0x7B, 0x24, 0x00);
-	a.jcc(0x85, "v3_pc_title");
-	appendField(scratchVir, 164, literals.openSquare, literals.closeSquare);
-	appendField(scratchVir, 292, literals.openBrace, literals.closeBrace);
-	appendField(scratchVir, 420, literals.openParen, literals.closeParen);
-	a.label("v3_pc_title");
-	a.emit(0x80, 0xBB); a.dword(548); a.emit(0x00);
-	a.jcc(0x84, "v3_pc_name");
-	callCopy(scratch2Vir, [0x8D, 0x83, 0x24, 0x02, 0x00, 0x00, 0x50]);
-	appendLiteral(scratch2Vir, literals.space);
-	appendPtr(scratch2Vir, [0x68, scratchVir & 0xFF, (scratchVir >>> 8) & 0xFF,
-		(scratchVir >>> 16) & 0xFF, (scratchVir >>> 24) & 0xFF]);
-	callCopy(scratchVir, [0x68, scratch2Vir & 0xFF, (scratch2Vir >>> 8) & 0xFF,
-		(scratch2Vir >>> 16) & 0xFF, (scratch2Vir >>> 24) & 0xFF]);
-	a.label("v3_pc_name");
-	// PC packet.name is the canonical 128-byte character name; shortName is
-	// only the stock 24-byte wire key. putMain() below maps the wire key, and
-	// this alias covers client surfaces that already contain the full name.
-	a.emit(0x80, 0x7B, 0x24, 0x00);
-	a.jcc(0x84, "v3_main");
-	putMainPacketKey(36);
-	a.jmp("v3_main");
-	a.label("v3_mob");
-	// The official 0x0ADF title field owns the Group Title/ID row. EXTN maps
-	// that packet's truncated title to its long form; keep the mob name intact.
-	a.jmp("v3_main");
-	a.label("v3_main");
-	putMain();
-	put(676, 164, false, 1);
-	put(700, 292, false, 2);
-	put(724, 420, false, 3);
-	put(748, 548, false, 4);
-	a.jmp("done");
-	// V4 single-name layout: every name and title field is 128 bytes.
-	a.label("v4");
-	callCopy(scratchVir, [0x8D, 0x43, 0x0C, 0x50]);
-	a.emit(0x83, 0xFE, 0x00);
-	a.jcc(0x85, "v4_main");
-	appendField(scratchVir, 140, literals.openSquare, literals.closeSquare);
-	appendField(scratchVir, 268, literals.openBrace, literals.closeBrace);
-	appendField(scratchVir, 396, literals.openParen, literals.closeParen);
-	a.emit(0x80, 0xBB); a.dword(524); a.emit(0x00);
-	a.jcc(0x84, "v4_main");
-	callCopy(scratch2Vir, [0x8D, 0x83, 0x0C, 0x02, 0x00, 0x00, 0x50]);
-	appendLiteral(scratch2Vir, literals.space);
-	appendPtr(scratch2Vir, [0x68, scratchVir & 0xFF, (scratchVir >>> 8) & 0xFF,
-		(scratchVir >>> 16) & 0xFF, (scratchVir >>> 24) & 0xFF]);
-	callCopy(scratchVir, [0x68, scratch2Vir & 0xFF, (scratch2Vir >>> 8) & 0xFF,
-		(scratch2Vir >>> 16) & 0xFF, (scratch2Vir >>> 24) & 0xFF]);
-	a.label("v4_main");
-	putMain();
-	put(140, 140, false, 1);
-	put(268, 268, false, 2);
-	put(396, 396, false, 3);
-	put(524, 524, false, 4);
-	a.label("done");
-	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x0C, 0x00);
-	return a;
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildPacketStore(...args);
 };
 
-ExtNameTextStatic.buildFrame = function(stateVir, extnVir, storeVir)
+ExtNameTextStatic.buildFrame = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C, 0x53, 0x56, 0x57);
-	a.emit(0xA1); a.dword(extnVir + 4);
-	a.emit(0x89, 0x45, 0xF4);
-	a.emit(0x8B, 0x15); a.dword(stateVir + ExtNameTextStatic.StateReadSequence);
-	a.emit(0x8B, 0xC8, 0x2B, 0xCA);
-	a.emit(0x81, 0xF9); a.dword(ExtNameTextStatic.RingCapacity);
-	a.jcc(0x86, "sequence_ready");
-	a.emit(0x8B, 0xD0, 0x81, 0xEA); a.dword(ExtNameTextStatic.RingCapacity);
-	a.label("sequence_ready");
-	a.emit(0x89, 0x55, 0xF8);
-	a.label("loop");
-	a.emit(0x8B, 0x55, 0xF8);
-	a.emit(0x3B, 0x55, 0xF4);
-	a.jcc(0x84, "publish");
-	a.emit(0x8B, 0xC2, 0x25); a.dword(ExtNameTextStatic.RingCapacity - 1);
-	a.emit(0xC1, 0xE0, ExtNameTextStatic.RingSlotShift);
-	a.emit(0x05); a.dword(extnVir + 16);
-	a.emit(0x8B, 0x08, 0x8D, 0x58, 0x04);
-	a.emit(0x66, 0x81, 0x3B, 0xB7, 0x0B);
-	a.jcc(0x85, "next");
-	a.emit(0x0F, 0xB7, 0x43, 0x02, 0x3B, 0xC1);
-	a.jcc(0x85, "next");
-	a.emit(0x81, 0x7B, 0x04); a.dword(ExtNameTextStatic.PacketMagic);
-	a.jcc(0x85, "next");
-	a.emit(0x3D); a.dword(653);
-	a.jcc(0x84, "v4_no_color");
-	a.emit(0x3D); a.dword(657);
-	a.jcc(0x84, "v4_color");
-	a.emit(0x3D); a.dword(773);
-	a.jcc(0x84, "v3_no_color");
-	a.emit(0x3D); a.dword(777);
-	a.jcc(0x84, "v3_color");
-	a.emit(0x3D); a.dword(233);
-	a.jcc(0x84, "legacy_no_color");
-	a.emit(0x3D); a.dword(237);
-	a.jcc(0x84, "legacy_color");
-	a.jmp("next");
-	a.label("v4_no_color");
-	a.emit(0x0F, 0xB6, 0xB3); a.dword(652);
-	a.emit(0x33, 0xFF);
-	a.jmp("store");
-	a.label("v4_color");
-	a.emit(0x0F, 0xB6, 0xB3); a.dword(652);
-	a.emit(0x8B, 0xBB); a.dword(653);
-	a.jmp("convert");
-	a.label("v3_no_color");
-	a.emit(0x0F, 0xB6, 0xB3); a.dword(772);
-	a.emit(0x33, 0xFF);
-	a.jmp("store");
-	a.label("v3_color");
-	a.emit(0x0F, 0xB6, 0xB3); a.dword(772);
-	a.emit(0x8B, 0xBB); a.dword(773);
-	a.jmp("convert");
-	a.label("legacy_no_color");
-	a.emit(0x0F, 0xB6, 0xB3); a.dword(232);
-	a.emit(0x33, 0xFF);
-	a.jmp("store");
-	a.label("legacy_color");
-	a.emit(0x0F, 0xB6, 0xB3); a.dword(232);
-	a.emit(0x8B, 0xBB); a.dword(233);
-	a.label("convert");
-	a.emit(0x81, 0xE7); a.dword(0x00FFFFFF);
-	a.emit(0x85, 0xFF);
-	a.jcc(0x84, "store");
-	a.emit(0x8B, 0xC7, 0x0F, 0xC8, 0xC1, 0xE8, 0x08, 0x8B, 0xF8);
-	a.label("store");
-	a.emit(0x83, 0xFE, 0x07);
-	a.jcc(0x87, "next");
-	a.emit(0x57, 0x56, 0x53);
-	a.call(storeVir);
-	a.label("next");
-	a.emit(0xFF, 0x45, 0xF8);
-	a.jmp("loop");
-	a.label("publish");
-	a.emit(0x8B, 0x55, 0xF8);
-	a.emit(0x89, 0x15); a.dword(stateVir + ExtNameTextStatic.StateReadSequence);
-	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
-	return a;
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildFrame(...args);
 };
 
-ExtNameTextStatic.buildFrameBridge = function(frameVir, previousTarget)
+ExtNameTextStatic.buildFrameBridge = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x51);
-	a.call(frameVir);
-	a.emit(0x59);
-	a.call(previousTarget);
-	a.emit(0xC3);
-	return a;
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildFrameBridge(...args);
 };
 
 ExtNameTextStatic.buildFindWide = function(lookupVir, ansiScratchVir, wideToMultiIat)
@@ -992,392 +591,53 @@ ExtNameTextStatic.patchFrameCaller = function(callerPhy, bridgeVir)
 	}
 };
 
-ExtNameTextStatic.buildPacketLengthBridge = function()
+ExtNameTextStatic.buildPacketLengthBridge = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x0F, 0xB7, 0x45, 0xFC);
-	a.emit(0x3D); a.dword(0x0095);
-	a.jcc(0x84, "name");
-	a.emit(0x3D); a.dword(0x02DF);
-	a.jcc(0x84, "bg_position");
-	a.emit(0x3D); a.dword(0x0A30);
-	a.jcc(0x84, "name_all");
-	a.emit(0x3D); a.dword(0x0ADF);
-	a.jcc(0x84, "name_npc");
-	a.emit(0x3D); a.dword(0x0AE4);
-	a.jcc(0x84, "party_member");
-	a.emit(0x3D); a.dword(0x01A2);
-	a.jcc(0x84, "pet_status");
-	a.emit(0x3D); a.dword(0x0BA4);
-	a.jcc(0x84, "hom_status");
-	a.emit(0x3D); a.dword(0x029B);
-	a.jcc(0x84, "mer_status");
-	a.emit(0x3D); a.dword(0x02F7);
-	a.jcc(0x84, "guild_affiliation");
-	a.emit(0x3D); a.dword(0x0B7B);
-	a.jcc(0x84, "guild_info");
-	a.emit(0x3D); a.dword(0x0206);
-	a.jcc(0x84, "friend_state");
-	a.emit(0x3D); a.dword(0x0209);
-	a.jcc(0x84, "friend_ack");
-	a.emit(0x3D); a.dword(0x0207);
-	a.jcc(0x84, "friend_request");
-	a.emit(0x3D); a.dword(0x0AF7);
-	a.jcc(0x84, "name_by_gid");
-	for(const id of [0x02C5,0x02C6,0x016A,0x0171]){
-		a.emit(0x3D); a.dword(id); a.jcc(0x84, "social_invite");
-	}
-	a.emit(0x3D); a.dword(0x0105); a.jcc(0x84, "party_withdraw");
-	a.emit(0x3D); a.dword(0x020E); a.jcc(0x84, "star_target");
-	a.emit(0x3D); a.dword(0x0A12); a.jcc(0x84, "mail_begin");
-	a.emit(0x3D); a.dword(0x0A51); a.jcc(0x84, "mail_checkname");
-	a.emit(0x3D); a.dword(0x0809); a.jcc(0x85,"not_booking");
-	a.emit(0xBE); a.dword(154); a.jmp("consume"); a.label("not_booking");
-	for(const [id,length] of [[0x0B6F,281],[0x006D,281],[0x00DC,132],[0x00DD,133],[0x00E1,134],[0x0AE7,142],[0x0AFA,266],[0x01F4,136],[0x09F9,455],[0x0293,147],[0x01F6,138],[0x02DD,136],[0x0979,154],[0x0BE3,138]]){
-		a.emit(0x3D); a.dword(id); a.jcc(0x85,"not_identity_"+id);
-		a.emit(0xBE); a.dword(length); a.jmp("consume"); a.label("not_identity_"+id);
-	}
-
-	a.jmp("consume");
-	a.label("mail_begin");
-	a.emit(0xBE); a.dword(131); a.jmp("consume");
-	a.label("mail_checkname");
-	a.emit(0xBE); a.dword(138); a.jmp("consume");
-	a.label("star_target");
-	a.emit(0xBE); a.dword(136);
-	a.jmp("consume");
-	a.label("social_invite");
-	a.emit(0xBE); a.dword(134);
-	a.jmp("consume");
-	a.label("party_withdraw");
-	a.emit(0xBE); a.dword(135);
-	a.jmp("consume");
-	a.label("friend_request");
-	a.emit(0xBE); a.dword(138);
-	a.jmp("consume");
-	a.label("friend_ack");
-	a.emit(0xBE); a.dword(140);
-	a.jmp("consume");
-	a.label("name_by_gid");
-	a.emit(0xBE); a.dword(136);
-	a.jmp("consume");
-	a.label("friend_state");
-	a.emit(0xBE); a.dword(139);
-	a.jmp("consume");
-	a.label("guild_affiliation");
-	a.emit(0xBE); a.dword(151);
-	a.jmp("consume");
-	a.label("guild_info");
-	a.emit(0xBE); a.dword(326);
-	a.jmp("consume");
-	a.label("pet_status");
-	a.emit(0xBE); a.dword(141);
-	a.jmp("consume");
-	a.label("hom_status");
-	a.emit(0xBE); a.dword(189);
-	a.jmp("consume");
-	a.label("mer_status");
-	a.emit(0xBE); a.dword(184);
-	a.jmp("consume");
-	a.label("party_member");
-	a.emit(0xBE); a.dword(297);
-	a.jmp("consume");
-	a.label("bg_position");
-	a.emit(0xBE); a.dword(140);
-	a.jmp("consume");
-	a.label("name");
-	a.emit(0xBE); a.dword(134);
-	a.jmp("consume");
-	a.label("name_all");
-	a.emit(0xBE); a.dword(522);
-	a.jmp("consume");
-	a.label("name_npc");
-	a.emit(0xBE); a.dword(266);
-	a.label("consume");
-	a.emit(0xFF, 0x75, 0x08, 0x0F, 0xB7, 0xC6, 0x8B, 0xCF, 0x50);
-	a.call(ExtNameTextStatic.PacketReadCopy);
-	a.jmp(ExtNameTextStatic.PacketLengthReturn);
-	return a;
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildPacketLengthBridge(...args);
 };
 
-ExtNameTextStatic.buildAckNameAll128 = function()
+ExtNameTextStatic.buildAckNameAll128 = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0xFF, 0x35); a.dword(ExtNameTextStatic.PacketBufferVir + 518);
-	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 390);
-	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 262);
-	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 134);
-	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 6);
-	a.emit(0xFF, 0x35); a.dword(ExtNameTextStatic.PacketBufferVir + 2);
-	a.emit(0x8B, 0xCF);
-	a.call(ExtNameTextStatic.AckNameAllHandler);
-	a.jmp(ExtNameTextStatic.MainLoopReturnVir);
-	return a;
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildAckNameAll128(...args);
 };
 
-ExtNameTextStatic.buildAckName128LengthBridge = function()
+ExtNameTextStatic.buildAckName128LengthBridge = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x68); a.dword(128);
-	a.emit(0xC7, 0x85); a.dword(0xFFFFDFE8); a.dword(0);
-	a.jmp(ExtNameTextStatic.AckNameLengthReturn);
-	return a;
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildAckName128LengthBridge(...args);
 };
 
-ExtNameTextStatic.buildAckNameNpcTitleBridge = function()
+ExtNameTextStatic.buildAckNameNpcTitleBridge = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x8D, 0xBB); a.dword(138);
-	a.emit(0x83, 0xEC, 0x18);
-	a.jmp(ExtNameTextStatic.AckNameNpcTitleReturn);
-	return a;
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildAckNameNpcTitleBridge(...args);
 };
 
-ExtNameTextStatic.buildAckNameNpcLengthBridge = function()
+ExtNameTextStatic.buildAckNameNpcLengthBridge = function(...args)
 {
-	const a = ExtNameStaticAsm.asm();
-	a.emit(0x68); a.dword(128);
-	a.emit(0x56, 0x8D, 0x4D, 0xD8);
-	a.jmp(ExtNameTextStatic.AckNameNpcLengthReturn);
-	return a;
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildAckNameNpcLengthBridge(...args);
 };
 
-ExtNameTextStatic.patch128ByteNamePackets = function(state)
+ExtNameTextStatic.patch128ByteNamePackets = function(...args)
 {
-	if (ExtNameTextStatic.ActiveBuildDate !== 20250716 || state.namePackets128)
-		return state;
-	const routes = CACHE.get("CustomPacketDispatch.Routes");
-	if (!routes || !Number.isInteger(routes.switchTableVir) ||
-		!Number.isInteger(routes.packetBufferVir) ||
-		!Number.isInteger(routes.mainLoopReturnVir))
-		throw Error("ExtNameTextStatic: dispatcher state unavailable for 128-byte names");
-	ExtNameTextStatic.PacketBufferVir = routes.packetBufferVir;
-	ExtNameTextStatic.MainLoopReturnVir = routes.mainLoopReturnVir;
-	if (typeof ExtNamePartyStatic === "undefined" || typeof ExtNamePartyStatic.install !== "function")
-		throw Error("ExtNameTextStatic: party name adapter unavailable");
-	ExtNamePartyStatic.install(state, routes);
-	if (typeof CompanionNamesStatic === "undefined")
-		throw Error("ExtNameTextStatic: companion name adapter unavailable");
-	CompanionNamesStatic.install(state);
-	CompanionRenameNamesStatic.install(state);
-	if (typeof GuildNamesStatic === "undefined")
-		throw Error("ExtNameTextStatic: guild name adapter unavailable");
-	GuildNamesStatic.install(state);
-	// Clan labels retain stock wire layout; clan chat still carries player names.
-	if (typeof FriendNamesStatic === "undefined")
-		throw Error("ExtNameTextStatic: friend name adapter unavailable");
-	FriendNamesStatic.install(state, routes);
-	if(typeof CharacterNamesStatic === "undefined")
-		throw Error("ExtNameTextStatic: character name adapter unavailable");
-	CharacterNamesStatic.install(state);
-	CharacterCreateNamesStatic.install(state);
-	CharacterOldCreateNamesStatic.install(state);
-	CharacterRenameNamesStatic.install(state);
-	SocialNamesStatic.install(state, routes);
-	OutgoingSocialNamesStatic.install(state);
-	WhisperNamesStatic.install(state, routes);
-	BookingNamesStatic.install(state, routes);
-	ChatRoomNamesStatic.install(state, routes);
-	ModernPartyNamesStatic.install(state, routes);
-	WhisperBlockNamesStatic.install(state, routes);
-	StarNamesStatic.install(state);
-	// BG queue/lobby identifiers retain their stock wire layout.
-	GuildStorageLogNamesStatic.install(state, routes);
-	QuestNamesStatic.install(state, routes);
-	BossTrackerNamesStatic.install(state);
-	AuxiliaryIdentityNamesStatic.install(state,routes);
-	NameRequestGapsStatic.install(state,routes);
-	if(typeof MailNamesStatic === "undefined")
-		throw Error("ExtNameTextStatic: mail name adapter unavailable");
-	MailNamesStatic.install(state, routes);
-	const lengthPhy = ExtNameStaticAsm.assertCode(
-		"packet length hook", ExtNameTextStatic.PacketLengthHook,
-		ExtNameTextStatic.PacketLengthHookPrefix);
-	const nameLengthPhy = ExtNameStaticAsm.assertCode(
-		"0x0095 name length", ExtNameTextStatic.AckNameLengthHook,
-		ExtNameTextStatic.AckNameLengthPrefix);
-	const npcTitlePhy = ExtNameStaticAsm.assertCode(
-		"0x0ADF title offset", ExtNameTextStatic.AckNameNpcTitleHook,
-		ExtNameTextStatic.AckNameNpcTitlePrefix);
-	const npcLengthPhy = ExtNameStaticAsm.assertCode(
-		"0x0ADF name length", ExtNameTextStatic.AckNameNpcLengthHook,
-		ExtNameTextStatic.AckNameNpcLengthPrefix);
-	const bgYPhy = ExtNameStaticAsm.assertCode(
-		"0x02DF Y field", 0x00CA2AEF, "0F BF 05 BA 81 5E 01") + 3;
-	const bgXPhy = ExtNameStaticAsm.assertCode(
-		"0x02DF X field", 0x00CA2AFB, "0F BF 05 B8 81 5E 01") + 3;
-	const nameAllEntryPhy = Exe.Vir2Phy(
-		CustomPacketDispatch.tableEntryVir(routes.switchTableVir, 0x0A30), CODE);
-	if (nameAllEntryPhy < 0 ||
-		Exe.GetUint32(nameAllEntryPhy) !== ExtNameTextStatic.AckNameAllEntry)
-		throw Error("ExtNameTextStatic: unexpected 0x0A30 stock handler");
-	const lengthBridge = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildPacketLengthBridge());
-	const nameLength = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildAckName128LengthBridge());
-	const nameAll = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildAckNameAll128());
-	const npcTitle = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildAckNameNpcTitleBridge());
-	const npcLength = ExtNameTextStatic.allocateCode(
-		ExtNameTextStatic.buildAckNameNpcLengthBridge());
-	const owner = Exe.ActivePatch;
-	Exe.BeginTag("ExtNameTextStatic.NamePackets128", true);
-	try
-	{
-		Exe.SetJMP(lengthPhy, lengthBridge.virAddr, 0);
-		Exe.SetNOPs(lengthPhy + 5, 9);
-		Exe.SetJMP(nameLengthPhy, nameLength.virAddr, 0);
-		Exe.SetNOPs(nameLengthPhy + 5, 7);
-		Exe.SetJMP(npcTitlePhy, npcTitle.virAddr, 0);
-		Exe.SetNOPs(npcTitlePhy + 5, 1);
-		Exe.SetJMP(npcLengthPhy, npcLength.virAddr, 0);
-		Exe.SetNOPs(npcLengthPhy + 5, 1);
-		Exe.SetUint32(bgYPhy, routes.packetBufferVir + 138);
-		Exe.SetUint32(bgXPhy, routes.packetBufferVir + 136);
-		Exe.SetUint32(nameAllEntryPhy, nameAll.virAddr);
-	}
-	finally
-	{
-		Exe.EndTag();
-		Exe.ActivePatch = owner;
-	}
-	state.namePackets128 = {
-		lengthPhy, lengthBridgeVir: lengthBridge.virAddr,
-		nameLengthPhy, nameLengthVir: nameLength.virAddr,
-		nameAllEntryPhy, nameAllVir: nameAll.virAddr,
-		npcTitlePhy, npcTitleVir: npcTitle.virAddr,
-		npcLengthPhy, npcLengthVir: npcLength.virAddr
-	};
-	return state;
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.install(...args);
 };
-ExtNameTextStatic.ensureInstalled = function(_, extnVir)
+
+ExtNameTextStatic.ensureInstalled = function(...args)
 {
-	return ExtNameTextStatic.withSharedOwner(function()
-	{
-		let state = CACHE.get("ExtNameTextStatic.State");
-		const stateLive = ExtNameTextStatic.isStateLive(state);
-		if (stateLive && !state.minimal)
-		{
-			ExtNameTextStatic.patchFrameCaller(state.callerPhy, state.bridgeVir);
-			ExtNameTextStatic.patchTextSurfaces(state, (state.features & ExtNameTextStatic.FeatureColors) !== 0);
-			return state;
-		}
-		const previousFeatures = stateLive && Number.isInteger(state.features)
-			? state.features
-			: 0;
-		const previousOwner = _;
-
-		const callerPhy = ExtNameStaticAsm.assertCode(
-			"frame caller prefix",
-			ExtNameTextStatic.FrameCaller - 2,
-			ExtNameTextStatic.FrameCallerPrefix
-		) + 2;
-		const npcState = CACHE.get("AlwaysShowNpcName.QjsState");
-		const previousTarget = npcState && Number.isInteger(npcState.bridgeVir)
-			? npcState.bridgeVir
-			: Exe.GetTgtAddr(callerPhy + 1);
-
-		const [statePhy, stateVir] = Exe.Allocate(ExtNameTextStatic.StateSize, 4);
-		ExtNameTextStatic.zeroBlock(statePhy, ExtNameTextStatic.StateSize);
-		const tableSize = ExtNameTextStatic.MapCapacity * ExtNameTextStatic.EntrySize;
-		const [tablePhy, tableVir] = Exe.Allocate(tableSize, 0x10);
-		ExtNameTextStatic.zeroBlock(tablePhy, tableSize);
-		const [ansiScratchPhy, ansiScratchVir] = Exe.Allocate(256, 0x10);
-		ExtNameTextStatic.zeroBlock(ansiScratchPhy, 256);
-		const [wideScratchPhy, wideScratchVir] = Exe.Allocate(
-			ExtNameTextStatic.ValueCapacity * 2,
-			0x10
-		);
-		ExtNameTextStatic.zeroBlock(wideScratchPhy, ExtNameTextStatic.ValueCapacity * 2);
-		const [packetScratchPhy, packetScratchVir] = Exe.Allocate(
-			ExtNameTextStatic.ValueCapacity * 2,
-			0x10
-		);
-		ExtNameTextStatic.zeroBlock(packetScratchPhy, ExtNameTextStatic.ValueCapacity * 2);
-		const literals = {
-			space: ExtNameTextStatic.allocateText(" "),
-			pipe: ExtNameTextStatic.allocateText(" | "),
-			openSquare: ExtNameTextStatic.allocateText(" ["),
-			closeSquare: ExtNameTextStatic.allocateText("]"),
-			openBrace: ExtNameTextStatic.allocateText(" {"),
-			closeBrace: ExtNameTextStatic.allocateText("}"),
-			openParen: ExtNameTextStatic.allocateText(" ("),
-			closeParen: ExtNameTextStatic.allocateText(")")
-		};
-		const hash = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildHashAnsi());
-		const equal = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildStrEqual());
-		const copy = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
-		const append = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildAppendZ());
-		const put = ExtNameTextStatic.allocateCode(
-			ExtNameTextStatic.buildMapPut(tableVir, hash.virAddr, equal.virAddr, copy.virAddr)
-		);
-		const lookup = ExtNameTextStatic.allocateCode(
-			ExtNameTextStatic.buildMapLookup(tableVir, hash.virAddr, equal.virAddr)
-		);
-		const store = ExtNameTextStatic.allocateCode(
-			ExtNameTextStatic.buildPacketStore(
-				put.virAddr,
-				copy.virAddr,
-				append.virAddr,
-				packetScratchVir,
-				packetScratchVir + ExtNameTextStatic.ValueCapacity,
-				literals
-			)
-		);
-		const frame = ExtNameTextStatic.allocateCode(
-			ExtNameTextStatic.buildFrame(
-				stateVir,
-				extnVir,
-				store.virAddr
-			)
-		);
-		const bridge = ExtNameTextStatic.allocateCode(
-			ExtNameTextStatic.buildFrameBridge(frame.virAddr, previousTarget)
-		);
-		ExtNameTextStatic.patchFrameCaller(callerPhy, bridge.virAddr);
-
-		state = {
-			statePhy,
-			stateVir,
-			tablePhy,
-			tableVir,
-			ansiScratchVir,
-			wideScratchVir,
-			lookupVir: lookup.virAddr,
-			putVir: put.virAddr,
-			storeVir: store.virAddr,
-			frameVir: frame.virAddr,
-			bridgeVir: bridge.virAddr,
-			previousTarget,
-			callerPhy,
-			extnVir,
-			ownerPatch: previousOwner,
-			shared: true,
-			features: previousFeatures
-		};
-		ExtNameTextStatic.writeFeatures(state);
-		CACHE.put("ExtNameTextStatic.State", state);
-		ExtNameTextStatic.patchTextSurfaces(state, false);
-		CACHE.put("ExtNameTextStatic.State", state);
-
-		StaticPatchRefresh.add("CustomExtName.StaticTextBridge", function()
-		{
-			const current = CACHE.get("ExtNameTextStatic.State");
-			if (!ExtNameTextStatic.isStateLive(current) ||
-				Object.keys(CACHE.get("ExtNameTextStatic.Users") ?? {}).length === 0)
-				return false;
-			ExtNameTextStatic.writeFeatures(current);
-			ExtNameTextStatic.patchFrameCaller(current.callerPhy, current.bridgeVir);
-			ExtNameTextStatic.patchTextSurfaces(
-				current,
-				(current.features & ExtNameTextStatic.FeatureColors) !== 0
-			);
-			CACHE.put("ExtNameTextStatic.State", current);
-			return true;
-		});
-		return state;
-	});
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.ensureInstalled(...args);
 };
 
 ExtNameTextStatic.buildMissingFindWide = function()

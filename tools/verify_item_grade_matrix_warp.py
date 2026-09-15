@@ -9,9 +9,12 @@ import argparse,json,subprocess,itertools,sys,hashlib,shutil,re
 root=Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--source-2025',type=Path,default=root/'2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe')
-parser.add_argument('--source-2026',type=Path,required=True)
+parser.add_argument('--source-2026',type=Path)
+parser.add_argument('--only-2025',action='store_true',help='Verify all eleven configurations for the currently supported 2025 client only')
 parser.add_argument('--output',type=Path,required=True)
 args=parser.parse_args()
+if not args.only_2025 and args.source_2026 is None: parser.error("--source-2026 is required unless --only-2025 is selected")
+if args.only_2025 and args.source_2026 is not None: parser.error("--only-2025 cannot be combined with --source-2026")
 out=args.output.resolve();out.mkdir(parents=True,exist_ok=False);fixture=out/'fixture'
 
 for folder in ('win32','Scripts','Tables','Patches','Inputs','Languages','Styles'):shutil.copytree(root/folder,fixture/folder,dirs_exist_ok=True)
@@ -35,7 +38,8 @@ for short,name in names.items():
  assert entry in code,name
  code=code.replace(entry,entry+trace,1)
  path.write_bytes(code.replace('\n','\r\n').encode())
-sources={2025:args.source_2025.resolve(),2026:args.source_2026.resolve()}
+sources={2025:args.source_2025.resolve()}
+if not args.only_2025: sources[2026]=args.source_2026.resolve()
 orders=[('item','stock',('item',))]+[('item','custom',o) for o in itertools.permutations(('item','labels'))]+[('grade','stock',o) for o in itertools.permutations(('item','grade'))]+[('grade','custom',o) for o in itertools.permutations(('item','grade','labels'))]
 cases=[]
 for version,source in sources.items():
@@ -63,7 +67,9 @@ ItemGradeMatrixProbe=TestItemGradeMatrix;
   print(('BUILT ' if passed else 'FAIL ')+key+' observed='+str(seen),flush=True)
   cases.append({'case':key,'path':str(target),'built':passed,'observed_order':seen,'source':str(source),'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest()})
 (out/'build-summary.json').write_text(json.dumps(cases,indent=2)+'\n')
-args=[sys.executable,str(root/'tools/verify_item_grade_color_contract.py'),'--strict-matrix']
+assert len(cases)==11*len(sources)
+args=[sys.executable,str(root/'tools/verify_item_grade_color_contract.py')]
+if len(sources)==2: args+=['--strict-matrix']
 for c in cases:args+=['--case',c['case']+'='+c['path']]
 with (out/'matrix-validation.log').open('wb') as log:r=subprocess.run(args,stdout=log,stderr=subprocess.STDOUT,timeout=600)
 print((out/'matrix-validation.log').read_text(),flush=True)

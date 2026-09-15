@@ -38,6 +38,7 @@ ITEM_SOURCE = Path("Scripts/Patches/CustomColoredItemName.qjs")
 GRADE_SOURCE = Path("Scripts/Patches/CustomColoredEnchantGradeName.qjs")
 LABEL_SOURCE = Path("Scripts/Patches/CustomEnchantGradeLabels.qjs")
 EXTNAME_SOURCE = Path("Scripts/Patches/ExtNameTextStatic.qjs")
+ENTITY_TEXT_SOURCE = Path("Scripts/Patches/EntityTextStatic.qjs")
 EMOJI_SOURCE = Path("Scripts/Patches/FluentEmoji.qjs")
 
 IMAGE_FILE_MACHINE_I386 = 0x014C
@@ -300,6 +301,8 @@ class SourceChecks:
         grade = self.read_qjs(GRADE_SOURCE)
         labels = self.read_qjs(LABEL_SOURCE)
         extname = self.read_qjs(EXTNAME_SOURCE)
+        if (self.root / ENTITY_TEXT_SOURCE).exists():
+            extname += self.read_qjs(ENTITY_TEXT_SOURCE)
         emoji = self.read_qjs(EMOJI_SOURCE)
 
         self.require(

@@ -43,7 +43,13 @@ def build(features: list[str], output: Path) -> dict:
     modules = resolve(catalog, features)
     files = {}
     for spec in [catalog["modules"][m] for m in modules] + [catalog["features"][f] for f in features]:
-        for name in spec["files"]:
+        declared = list(spec["files"])
+        for tree in spec.get("asset_trees", []):
+            folder = (ROOT / tree).resolve()
+            if not folder.is_relative_to(ROOT) or not folder.is_dir():
+                raise ValueError(f"Invalid declared asset directory: {tree}")
+            declared.extend(p.relative_to(ROOT).as_posix() for p in sorted(folder.rglob("*")) if p.is_file())
+        for name in declared:
             source = (ROOT / name).resolve()
             if not source.is_relative_to(ROOT):
                 raise ValueError(f"Dependency path escapes repository: {name}")
@@ -54,17 +60,18 @@ def build(features: list[str], output: Path) -> dict:
                     raise ValueError(f"QJS must be UTF-8 without BOM and CRLF: {name}")
             files[name] = data
     rows = [catalog["features"][f] for f in features]
-    metadata = "LouisTelemetry:\n    title: Louis T Steinhil - Telemetry\n    mutex: false\n    patches:\n"
+    metadata = "LouisTelemetry:\n    title: Louis T Steinhil - Custom Patches\n    mutex: false\n    patches:\n"
     for row in rows:
         metadata += (f"        - {row['patch']}:\n"
                      f"            title: {json.dumps(row['title'])}\n"
                      "            recommend: no\n            author: Louis T Steinhil\n"
                      f"            desc: {json.dumps(row['description'])}\n")
     files["Patches/LouisTelemetry.yml"] = metadata.encode("utf-8")
-    commands = [row["command"] for row in rows]
-    files["runtime-options.lua"] = ("-- Optional: merge these entries into the existing savedata/OptionInfo.lua.\n"
-        "-- Keep the existing CmdOnOffList table and all other player settings.\n" +
-        "".join(f'CmdOnOffList["{cmd}"] = 1\n' for cmd in commands)).encode("utf-8")
+    commands = [row["command"] for row in rows if row.get("command")]
+    if commands:
+        files["runtime-options.lua"] = ("-- Optional: merge these entries into the existing savedata/OptionInfo.lua.\n"
+            "-- Keep the existing CmdOnOffList table and all other player settings.\n" +
+            "".join(f'CmdOnOffList["{cmd}"] = 1\n' for cmd in commands)).encode("utf-8")
     files["LICENSE"] = (ROOT / "LICENSE").read_bytes()
     files["install.py"] = (ROOT / "packaging/louis/install.py").read_bytes()
     readme = (f"Louis T Steinhil patches {catalog['release']}\n\n"
@@ -72,19 +79,23 @@ def build(features: list[str], output: Path) -> dict:
         "Target client: 2025-07-16 Ragexe only.\n\n"
         "1. Extract this ZIP to a separate folder. Close WARP.\n"
         '2. Run: python install.py --warp "C:/path/to/WARP" --check\n'
-        "   Then run the same command without --check to install. Python 3.10+; no extra libraries.\n"
-        "3. Open WARP, load your original client EXE, and select the purchased overlays.\n"
-        "   Choose coordinates and an overlay font. Patch to a new EXE.\n\n"
-        "Type " + " or ".join(commands) + " in game to toggle the purchased overlay.\n"
-        "If initially hidden, type its command once. For enabled-by-default settings, merge\n"
-        "runtime-options.lua into the existing savedata/OptionInfo.lua after its table definition.\n"
-        "No replacement Game Settings Lua, custom DLL, server patch, or image assets are required.\n\n"
+        "   Then run without --check to install. Python 3.10+; no extra libraries.\n"
+        "3. Open WARP, load your original client EXE, select the purchased patches,\n"
+        "   and patch to a new EXE. Answer any feature-specific prompts.\n\n")
+    if commands:
+        readme += ("Type " + " or ".join(commands) + " in game to toggle the purchased overlay.\n"
+            "If initially hidden, type its command once. For enabled-by-default settings, merge\n"
+            "runtime-options.lua into savedata/OptionInfo.lua after its existing table definition.\n\n")
+    for row in rows:
+        for instruction in row.get("instructions", []):
+            readme += instruction + "\n"
+    readme += ("\nNo custom DLL is added.\n"
         "For additional purchases request one cumulative package containing all your features.\n"
         "The installer preserves WARP registrations and rejects older or conflicting managed files.\n"
         "It does not replace your client EXE, profiles, or player settings.\n"
-        "This archive is a patch distribution, not a live-game acceptance certificate.\n")
+        "This archive records packaged inputs; live-game acceptance is recorded separately.\n")
     files["README.txt"] = readme.encode("utf-8")
-    managed = {name: digest(data) for name, data in files.items() if name.startswith(("Scripts/", "Patches/"))}
+    managed = {name: digest(data) for name, data in files.items() if name.startswith(("Scripts/", "Patches/", "Images/"))}
     manifest = {
         "schema": 1, "release": catalog["release"], "features": features,
         "client_profiles": catalog["client_profiles"],
@@ -114,10 +125,12 @@ def build(features: list[str], output: Path) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--feature", action="append", choices=["ping", "fps"], required=True)
+    parser.add_argument("--feature", action="append", choices=sorted(json.loads(CATALOG.read_text(encoding="utf-8"))["features"]), required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    print(json.dumps(build(args.feature, args.output), indent=2))
+    result = build(args.feature, args.output)
+    result["managed_file_count"] = len(result.pop("managed_files"))
+    print(json.dumps(result, indent=2))
 
 
 if __name__ == "__main__":

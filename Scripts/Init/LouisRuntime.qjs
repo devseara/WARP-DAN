@@ -1,0 +1,53 @@
+/**************************************************************************\
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*   This file is part of WARP, distributed under GNU GPL v3 or later.      *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-09-15                                             *
+*   Description   : Initialize missing 2025 profile/allocation helpers for *
+*                   customer text packages on the clean WARP0716 base.    *
+*                   Existing profiled runtimes keep their own definitions.*
+*                   Installs no client hook and performs no EXE write.    *
+\**************************************************************************/
+
+if (typeof RagexeClientProfile === "undefined")
+{
+	if (Exe.BuildDate !== 20250716)
+		throw Error("Louis text packages require the profiled 2025-07-16 client");
+	RagexeClientProfile = {Id: 20250716, Name: "2025-07-16 Ragexe", PeBuildDate: 20250716};
+}
+
+if (typeof RagexeAllocationStatic === "undefined")
+{
+	if (RagexeClientProfile.Id !== 20250716)
+		throw Error("Louis text packages: client allocation support is unavailable");
+	RagexeAllocationStatic = {
+		UsesStaticCave: false,
+		prepare: function() { return true; },
+		isPrepared: function() { return true; },
+		allocate: function(size, alignment) { return Exe.Allocate(size, alignment); }
+	};
+}
+
+// Clean upstream WARP does not define the custom import-refresh registry.
+// Preserve an existing implementation when installed in the full distribution.
+if (typeof StaticPatchRefresh === "undefined")
+{
+	StaticPatchRefresh = {
+		Key: "StaticPatchRefresh.HooksByName",
+		add: function(name, callback)
+		{
+			if (typeof name !== "string" || !name.length || typeof callback !== "function")
+				throw Error("StaticPatchRefresh.add requires a name and callback");
+			const hooks = CACHE.get(StaticPatchRefresh.Key) ?? {};
+			hooks[name] = callback;
+			CACHE.put(StaticPatchRefresh.Key, hooks);
+		},
+		run: function(owner)
+		{
+			const hooks = CACHE.get(StaticPatchRefresh.Key) ?? {};
+			for (const name of Object.keys(hooks))
+				if (typeof hooks[name] === "function") hooks[name]();
+			return true;
+		}
+	};
+}

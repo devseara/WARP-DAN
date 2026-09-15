@@ -1,0 +1,289 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-07-13                                             *
+*   Last Modified : 2026-09-15                                             *
+*                                                                          *
+*   Description   : Optional 128-byte name protocol and native adapters.   *
+*                   Loaded only by features requiring this implementation.*
+*                   Static code and native contracts remain unchanged.    *
+*                                                                          *
+\**************************************************************************/
+
+NamePackets128Static = {ApiVersion: 1, Version: "1.0.0"};
+
+NamePackets128Static.buildPacketLengthBridge = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x0F, 0xB7, 0x45, 0xFC);
+	a.emit(0x3D); a.dword(0x0095);
+	a.jcc(0x84, "name");
+	a.emit(0x3D); a.dword(0x02DF);
+	a.jcc(0x84, "bg_position");
+	a.emit(0x3D); a.dword(0x0A30);
+	a.jcc(0x84, "name_all");
+	a.emit(0x3D); a.dword(0x0ADF);
+	a.jcc(0x84, "name_npc");
+	a.emit(0x3D); a.dword(0x0AE4);
+	a.jcc(0x84, "party_member");
+	a.emit(0x3D); a.dword(0x01A2);
+	a.jcc(0x84, "pet_status");
+	a.emit(0x3D); a.dword(0x0BA4);
+	a.jcc(0x84, "hom_status");
+	a.emit(0x3D); a.dword(0x029B);
+	a.jcc(0x84, "mer_status");
+	a.emit(0x3D); a.dword(0x02F7);
+	a.jcc(0x84, "guild_affiliation");
+	a.emit(0x3D); a.dword(0x0B7B);
+	a.jcc(0x84, "guild_info");
+	a.emit(0x3D); a.dword(0x0206);
+	a.jcc(0x84, "friend_state");
+	a.emit(0x3D); a.dword(0x0209);
+	a.jcc(0x84, "friend_ack");
+	a.emit(0x3D); a.dword(0x0207);
+	a.jcc(0x84, "friend_request");
+	a.emit(0x3D); a.dword(0x0AF7);
+	a.jcc(0x84, "name_by_gid");
+	for(const id of [0x02C5,0x02C6,0x016A,0x0171]){
+		a.emit(0x3D); a.dword(id); a.jcc(0x84, "social_invite");
+	}
+	a.emit(0x3D); a.dword(0x0105); a.jcc(0x84, "party_withdraw");
+	a.emit(0x3D); a.dword(0x020E); a.jcc(0x84, "star_target");
+	a.emit(0x3D); a.dword(0x0A12); a.jcc(0x84, "mail_begin");
+	a.emit(0x3D); a.dword(0x0A51); a.jcc(0x84, "mail_checkname");
+	a.emit(0x3D); a.dword(0x0809); a.jcc(0x85,"not_booking");
+	a.emit(0xBE); a.dword(154); a.jmp("consume"); a.label("not_booking");
+	for(const [id,length] of [[0x0B6F,281],[0x006D,281],[0x00DC,132],[0x00DD,133],[0x00E1,134],[0x0AE7,142],[0x0AFA,266],[0x01F4,136],[0x09F9,455],[0x0293,147],[0x01F6,138],[0x02DD,136],[0x0979,154],[0x0BE3,138]]){
+		a.emit(0x3D); a.dword(id); a.jcc(0x85,"not_identity_"+id);
+		a.emit(0xBE); a.dword(length); a.jmp("consume"); a.label("not_identity_"+id);
+	}
+
+	a.jmp("consume");
+	a.label("mail_begin");
+	a.emit(0xBE); a.dword(131); a.jmp("consume");
+	a.label("mail_checkname");
+	a.emit(0xBE); a.dword(138); a.jmp("consume");
+	a.label("star_target");
+	a.emit(0xBE); a.dword(136);
+	a.jmp("consume");
+	a.label("social_invite");
+	a.emit(0xBE); a.dword(134);
+	a.jmp("consume");
+	a.label("party_withdraw");
+	a.emit(0xBE); a.dword(135);
+	a.jmp("consume");
+	a.label("friend_request");
+	a.emit(0xBE); a.dword(138);
+	a.jmp("consume");
+	a.label("friend_ack");
+	a.emit(0xBE); a.dword(140);
+	a.jmp("consume");
+	a.label("name_by_gid");
+	a.emit(0xBE); a.dword(136);
+	a.jmp("consume");
+	a.label("friend_state");
+	a.emit(0xBE); a.dword(139);
+	a.jmp("consume");
+	a.label("guild_affiliation");
+	a.emit(0xBE); a.dword(151);
+	a.jmp("consume");
+	a.label("guild_info");
+	a.emit(0xBE); a.dword(326);
+	a.jmp("consume");
+	a.label("pet_status");
+	a.emit(0xBE); a.dword(141);
+	a.jmp("consume");
+	a.label("hom_status");
+	a.emit(0xBE); a.dword(189);
+	a.jmp("consume");
+	a.label("mer_status");
+	a.emit(0xBE); a.dword(184);
+	a.jmp("consume");
+	a.label("party_member");
+	a.emit(0xBE); a.dword(297);
+	a.jmp("consume");
+	a.label("bg_position");
+	a.emit(0xBE); a.dword(140);
+	a.jmp("consume");
+	a.label("name");
+	a.emit(0xBE); a.dword(134);
+	a.jmp("consume");
+	a.label("name_all");
+	a.emit(0xBE); a.dword(522);
+	a.jmp("consume");
+	a.label("name_npc");
+	a.emit(0xBE); a.dword(266);
+	a.label("consume");
+	a.emit(0xFF, 0x75, 0x08, 0x0F, 0xB7, 0xC6, 0x8B, 0xCF, 0x50);
+	a.call(ExtNameTextStatic.PacketReadCopy);
+	a.jmp(ExtNameTextStatic.PacketLengthReturn);
+	return a;
+};
+
+NamePackets128Static.buildAckNameAll128 = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0xFF, 0x35); a.dword(ExtNameTextStatic.PacketBufferVir + 518);
+	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 390);
+	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 262);
+	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 134);
+	a.emit(0x68); a.dword(ExtNameTextStatic.PacketBufferVir + 6);
+	a.emit(0xFF, 0x35); a.dword(ExtNameTextStatic.PacketBufferVir + 2);
+	a.emit(0x8B, 0xCF);
+	a.call(ExtNameTextStatic.AckNameAllHandler);
+	a.jmp(ExtNameTextStatic.MainLoopReturnVir);
+	return a;
+};
+
+NamePackets128Static.buildAckName128LengthBridge = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x68); a.dword(128);
+	a.emit(0xC7, 0x85); a.dword(0xFFFFDFE8); a.dword(0);
+	a.jmp(ExtNameTextStatic.AckNameLengthReturn);
+	return a;
+};
+
+NamePackets128Static.buildAckNameNpcTitleBridge = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x8D, 0xBB); a.dword(138);
+	a.emit(0x83, 0xEC, 0x18);
+	a.jmp(ExtNameTextStatic.AckNameNpcTitleReturn);
+	return a;
+};
+
+NamePackets128Static.buildAckNameNpcLengthBridge = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x68); a.dword(128);
+	a.emit(0x56, 0x8D, 0x4D, 0xD8);
+	a.jmp(ExtNameTextStatic.AckNameNpcLengthReturn);
+	return a;
+};
+
+NamePackets128Static.install = function(state)
+{
+	if (ExtNameTextStatic.ActiveBuildDate !== 20250716 || state.namePackets128)
+		return state;
+	const routes = CACHE.get("CustomPacketDispatch.Routes");
+	if (!routes || !Number.isInteger(routes.switchTableVir) ||
+		!Number.isInteger(routes.packetBufferVir) ||
+		!Number.isInteger(routes.mainLoopReturnVir))
+		throw Error("ExtNameTextStatic: dispatcher state unavailable for 128-byte names");
+	ExtNameTextStatic.PacketBufferVir = routes.packetBufferVir;
+	ExtNameTextStatic.MainLoopReturnVir = routes.mainLoopReturnVir;
+	if (typeof ExtNamePartyStatic === "undefined" || typeof ExtNamePartyStatic.install !== "function")
+		throw Error("ExtNameTextStatic: party name adapter unavailable");
+	ExtNamePartyStatic.install(state, routes);
+	if (typeof CompanionNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: companion name adapter unavailable");
+	CompanionNamesStatic.install(state);
+	CompanionRenameNamesStatic.install(state);
+	if (typeof GuildNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: guild name adapter unavailable");
+	GuildNamesStatic.install(state);
+	// Clan labels retain stock wire layout; clan chat still carries player names.
+	if (typeof FriendNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: friend name adapter unavailable");
+	FriendNamesStatic.install(state, routes);
+	if(typeof CharacterNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: character name adapter unavailable");
+	CharacterNamesStatic.install(state);
+	CharacterCreateNamesStatic.install(state);
+	CharacterOldCreateNamesStatic.install(state);
+	CharacterRenameNamesStatic.install(state);
+	SocialNamesStatic.install(state, routes);
+	OutgoingSocialNamesStatic.install(state);
+	WhisperNamesStatic.install(state, routes);
+	BookingNamesStatic.install(state, routes);
+	ChatRoomNamesStatic.install(state, routes);
+	ModernPartyNamesStatic.install(state, routes);
+	WhisperBlockNamesStatic.install(state, routes);
+	StarNamesStatic.install(state);
+	// BG queue/lobby identifiers retain their stock wire layout.
+	GuildStorageLogNamesStatic.install(state, routes);
+	QuestNamesStatic.install(state, routes);
+	BossTrackerNamesStatic.install(state);
+	AuxiliaryIdentityNamesStatic.install(state,routes);
+	NameRequestGapsStatic.install(state,routes);
+	if(typeof MailNamesStatic === "undefined")
+		throw Error("ExtNameTextStatic: mail name adapter unavailable");
+	MailNamesStatic.install(state, routes);
+	const lengthPhy = ExtNameStaticAsm.assertCode(
+		"packet length hook", ExtNameTextStatic.PacketLengthHook,
+		ExtNameTextStatic.PacketLengthHookPrefix);
+	const nameLengthPhy = ExtNameStaticAsm.assertCode(
+		"0x0095 name length", ExtNameTextStatic.AckNameLengthHook,
+		ExtNameTextStatic.AckNameLengthPrefix);
+	const npcTitlePhy = ExtNameStaticAsm.assertCode(
+		"0x0ADF title offset", ExtNameTextStatic.AckNameNpcTitleHook,
+		ExtNameTextStatic.AckNameNpcTitlePrefix);
+	const npcLengthPhy = ExtNameStaticAsm.assertCode(
+		"0x0ADF name length", ExtNameTextStatic.AckNameNpcLengthHook,
+		ExtNameTextStatic.AckNameNpcLengthPrefix);
+	const bgYPhy = ExtNameStaticAsm.assertCode(
+		"0x02DF Y field", 0x00CA2AEF, "0F BF 05 BA 81 5E 01") + 3;
+	const bgXPhy = ExtNameStaticAsm.assertCode(
+		"0x02DF X field", 0x00CA2AFB, "0F BF 05 B8 81 5E 01") + 3;
+	const nameAllEntryPhy = Exe.Vir2Phy(
+		CustomPacketDispatch.tableEntryVir(routes.switchTableVir, 0x0A30), CODE);
+	if (nameAllEntryPhy < 0 ||
+		Exe.GetUint32(nameAllEntryPhy) !== ExtNameTextStatic.AckNameAllEntry)
+		throw Error("ExtNameTextStatic: unexpected 0x0A30 stock handler");
+	const lengthBridge = ExtNameTextStatic.allocateCode(
+		NamePackets128Static.buildPacketLengthBridge());
+	const nameLength = ExtNameTextStatic.allocateCode(
+		NamePackets128Static.buildAckName128LengthBridge());
+	const nameAll = ExtNameTextStatic.allocateCode(
+		NamePackets128Static.buildAckNameAll128());
+	const npcTitle = ExtNameTextStatic.allocateCode(
+		NamePackets128Static.buildAckNameNpcTitleBridge());
+	const npcLength = ExtNameTextStatic.allocateCode(
+		NamePackets128Static.buildAckNameNpcLengthBridge());
+	const owner = Exe.ActivePatch;
+	Exe.BeginTag("ExtNameTextStatic.NamePackets128", true);
+	try
+	{
+		Exe.SetJMP(lengthPhy, lengthBridge.virAddr, 0);
+		Exe.SetNOPs(lengthPhy + 5, 9);
+		Exe.SetJMP(nameLengthPhy, nameLength.virAddr, 0);
+		Exe.SetNOPs(nameLengthPhy + 5, 7);
+		Exe.SetJMP(npcTitlePhy, npcTitle.virAddr, 0);
+		Exe.SetNOPs(npcTitlePhy + 5, 1);
+		Exe.SetJMP(npcLengthPhy, npcLength.virAddr, 0);
+		Exe.SetNOPs(npcLengthPhy + 5, 1);
+		Exe.SetUint32(bgYPhy, routes.packetBufferVir + 138);
+		Exe.SetUint32(bgXPhy, routes.packetBufferVir + 136);
+		Exe.SetUint32(nameAllEntryPhy, nameAll.virAddr);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+	state.namePackets128 = {
+		lengthPhy, lengthBridgeVir: lengthBridge.virAddr,
+		nameLengthPhy, nameLengthVir: nameLength.virAddr,
+		nameAllEntryPhy, nameAllVir: nameAll.virAddr,
+		npcTitlePhy, npcTitleVir: npcTitle.virAddr,
+		npcLengthPhy, npcLengthVir: npcLength.virAddr
+	};
+	return state;
+};

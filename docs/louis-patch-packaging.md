@@ -1,17 +1,26 @@
 # Louis customer patch packages
 
-The first migration supports **Ping**, **FPS**, and **FPS + Ping** on the profiled
-2025-07-16 Ragexe. Other products are not yet registered in this package catalog.
-The existing full WARP distribution continues to load both feature scripts.
+Release **1.1.0** supports **Ping**, **FPS**, **Fluent Emoji**, **Player Name Colors**,
+and **128-byte Entity Names**, individually or in cumulative packages, on the
+profiled **2025-07-16 Ragexe**. Item colors/grade policies and Auto UI products
+are not yet registered. The existing full WARP distribution remains compatible.
+
+The user confirmed that the 2026-02-19 client is no longer in their current scope.
+This migration is verified for 2025-07-16 only. Existing 2026 profile definitions
+remain available, but this release makes no new 2026 validation claim.
 
 ## Seller workflow
 
 Run from the WARP repository:
 
 ~~~powershell
-python tools/package_louis_patches.py --feature ping --output Outputs/customer-packages/Louis-Ping-1.0.0.zip
-python tools/package_louis_patches.py --feature fps --output Outputs/customer-packages/Louis-FPS-1.0.0.zip
-python tools/package_louis_patches.py --feature ping --feature fps --output Outputs/customer-packages/Louis-FPS-Ping-1.0.0.zip
+python tools/package_louis_patches.py --feature ping --output Outputs/customer-packages/Louis-Ping-1.1.0.zip
+python tools/package_louis_patches.py --feature fps --output Outputs/customer-packages/Louis-FPS-1.1.0.zip
+python tools/package_louis_patches.py --feature ping --feature fps --output Outputs/customer-packages/Louis-FPS-Ping-1.1.0.zip
+python tools/package_louis_patches.py --feature emoji --output Outputs/customer-packages/Louis-Emoji-1.1.0.zip
+python tools/package_louis_patches.py --feature player-colors --output Outputs/customer-packages/Louis-Player-Colors-1.1.0.zip
+python tools/package_louis_patches.py --feature extended-names --output Outputs/customer-packages/Louis-Extended-Names-1.1.0.zip
+python tools/package_louis_patches.py --feature ping --feature emoji --output Outputs/customer-packages/Louis-Ping-Emoji-1.1.0.zip
 ~~~
 
 Existing archives are never overwritten. Choose a new output filename for another
@@ -33,6 +42,17 @@ It contains no FpsOverlay.qjs, FPS sampling implementation, extended-name
 implementation, other paid UI, custom DLL, client EXE, or image assets.
 The common state layout retains reserved slots so combined packages use the same ABI.
 
+An Emoji-only sale contains FluentEmoji.qjs, ExtNameTextStatic.qjs,
+Class_StaticAsm.qjs and LouisRuntime.qjs, its generated category, and the declared
+Images/BohEmoji/fluent asset tree. It excludes CustomExtName.qjs, EntityTextStatic,
+CustomPacketDispatch, NamePackets128Static and the 23 native name-adapter files.
+WARP copies the 3,145 PNGs and accompanying manifest/license beside the client.
+
+Player Name Colors adds the shared entity map and EXTN/ICOL dispatch support but
+still excludes the 128-byte name feature and its native adapters. Extended Names
+adds those adapters explicitly. Both server-driven features require their matching
+server protocol; customer ZIPs contain client code and do not install server changes.
+
 ## Customer installation and upgrades
 
 Extract the ZIP outside the customer's WARP folder, close WARP, and run:
@@ -45,8 +65,10 @@ python install.py --warp "C:/path/to/WARP"
 Python 3.10+ is sufficient; the installer has no third-party dependencies.
 The first command performs the complete preflight without changing the destination.
 
-The installer merges the category include into Patches.yml and patch IDs into
-Tables/Patch.yml. IDs 45000 and 45001 are used for these customer packages;
+The stable Patches/LouisTelemetry.yml filename is retained for upgrades from 1.0.0;
+its category now displays all purchased custom products. The installer merges
+the category include into Patches.yml and patch IDs into
+Tables/Patch.yml. IDs 45000 through 45004 are reserved for these customer products;
 collisions are refused. The category explicitly permits simultaneous selection.
 
 A lock file records features, support versions and managed hashes. Reinstalling
@@ -99,10 +121,35 @@ Change ApiVersion and feature requirements for incompatible descriptor/layout
 changes. Every archive must contain matching feature and support code. Patch IDs
 are stable across customer upgrades.
 
+## Text module contract
+
+Class_StaticAsm.qjs owns the x86 assembler previously embedded in CustomExtName.
+The existing ExtNameStaticAsm name is retained so all current consumers keep their
+API. The assembler implementation is unchanged.
+
+ExtNameTextStatic owns generic TextOut/extent composition and exposes the original
+helper entry points. Optional calls delegate to EntityTextStatic for the bounded
+EXTN map/frame receiver, and to NamePackets128Static for native 128-byte packet
+adaptation. The latter module declares all 23 name-adapter files as dependencies.
+These modules expose API 1 / version 1.0.0. Their code-generation algorithms and
+allocation order are preserved.
+
+LouisRuntime.qjs runs after the normal initializer and fills missing 2025 profile,
+allocation and static-refresh helpers on the clean upstream base. It preserves
+existing definitions in the full distribution and performs no EXE writes.
+
+The item/grade verifier reads the relocated entity-map code in addition to the
+shared bridge. Its behavioral assertions remain intact. The matrix runner still
+requires both clients by default; --only-2025 explicitly selects the eleven-case
+matrix appropriate to the user's current client scope.
+
 ## Verification
 
 ~~~powershell
 python tools/verify_louis_package_installer.py --output Outputs/customer-packages/installer-check
+python tools/verify_text_package_installer.py --output Outputs/customer-packages/text-installer-check --previous-ping Outputs/customer-packages/releases/1.0.0/Louis-ping-1.0.0.zip
+.\.venv-target-hud\Scripts\python.exe tools/verify_text_packages.py --base ..\WARP0716 --reference-ref b6584b3 --output Outputs/customer-packages/text-check
+.\.venv-target-hud\Scripts\python.exe tools/verify_item_grade_matrix_warp.py --only-2025 --output Outputs/customer-packages/item-grade-check
 .\.venv-target-hud\Scripts\python.exe tools/verify_telemetry_packages.py --base ..\WARP0716 --output Outputs/customer-packages/native-check
 ~~~
 
@@ -137,18 +184,22 @@ an isolated copy and executes the combined telemetry bridges. These checks do no
 establish live Ragexe rendering acceptance. Before a customer release, check the
 actual overlay in game, /ping or /fps, font/position, map transitions and exit.
 
+The text package verifier compares complete before/after EXEs against the specified
+reference commit, exercises the production emoji match entry and entity text/color
+code, checks dark passes and HDC restoration, and verifies copied PNG hashes.
+A complete-bundle case also executes the FPS/Ping code alongside all text features.
+Live acceptance is recorded as the user's "all working" report on 2026-09-15 for the current 2025-07-16 client.
+
 ## Following migrations
 
 Extend the catalog after extracting each feature's real dependencies:
 
-1. Move ExtNameStaticAsm out of CustomExtName.qjs; separate neutral text
-   infrastructure from the extended-name adapters.
-2. Extract AutoUILanguage from AutoCombatUI and consolidate the shared
+1. Extract AutoUILanguage from AutoCombatUI and consolidate the shared
    0x0BEF router used by Auto Hunt, Auto Support, PIN and Collection.
-3. Separate item-title rendering from item-color, grade-color and label policies.
+2. Separate item-title rendering from item-color, grade-color and label policies.
    This migration must preserve the normative item/grade contract and repeat its
    complete two-client/live visual acceptance matrix.
-4. Register the remaining UI, theme, payload and asset dependencies explicitly.
+3. Register the remaining UI, theme, payload and asset dependencies explicitly.
 
 Optional cross-feature callbacks must not force distribution of another product.
 A package being syntactically complete is insufficient: validate the exported

@@ -63,7 +63,7 @@ def install(package: Path, warp: Path, check=False):
                 raise ValueError(f"Previously installed file was edited or removed: {name}")
     changes = {}
     for name, expected in manifest["managed_files"].items():
-        if not name.startswith(("Scripts/", "Patches/")):
+        if not name.startswith(("Scripts/", "Patches/", "Images/")):
             raise ValueError(f"Unexpected managed path: {name}")
         data = safe(package, name).read_bytes()
         if sha(data) != expected:

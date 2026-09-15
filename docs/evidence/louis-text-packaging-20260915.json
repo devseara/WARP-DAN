@@ -1,0 +1,435 @@
+{
+  "implementation_verified": true,
+  "release": "1.1.0",
+  "client_profile": 20250716,
+  "scope_confirmation": {
+    "date": "2026-09-15",
+    "user_statement": "i dont currently use 2026 02 19",
+    "validation_scope": "2025-07-16 only"
+  },
+  "reference_commit": "b6584b3bed1ef81e03305bc186dcfb2cd188cb7e",
+  "source_exe_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+  "archives": {
+    "emoji": {
+      "file": "Louis-emoji-1.1.0.zip",
+      "sha256": "1f1aad531ef2b32d222a8d6c963ac3a43739a63a9cee1b7f8491f8fdd03bd39d",
+      "features": [
+        "emoji"
+      ],
+      "modules": [
+        "static-asm",
+        "text-runtime",
+        "static-text"
+      ],
+      "managed_file_count": 3153
+    },
+    "player-colors": {
+      "file": "Louis-player-colors-1.1.0.zip",
+      "sha256": "21d390806d0cb1cbad6a5ec1622fef210ed39dafa37621ff2108082fe80ae093",
+      "features": [
+        "player-colors"
+      ],
+      "modules": [
+        "static-asm",
+        "text-runtime",
+        "static-text",
+        "packet-dispatch",
+        "entity-text"
+      ],
+      "managed_file_count": 7
+    },
+    "extended-names": {
+      "file": "Louis-extended-names-1.1.0.zip",
+      "sha256": "afb146931eabe1347e11d06911f0a7f3f1fb289f8d4c1b58f64bdd88a40237fa",
+      "features": [
+        "extended-names"
+      ],
+      "modules": [
+        "static-asm",
+        "text-runtime",
+        "static-text",
+        "packet-dispatch",
+        "entity-text",
+        "name-packets"
+      ],
+      "managed_file_count": 31
+    },
+    "emoji+extended-names+player-colors": {
+      "file": "Louis-text-bundle-1.1.0.zip",
+      "sha256": "c48a9db730afb4c56234c01f57c0a0d65f97f716075e1d8e562608fe59c836e0",
+      "features": [
+        "emoji",
+        "extended-names",
+        "player-colors"
+      ],
+      "modules": [
+        "static-asm",
+        "text-runtime",
+        "static-text",
+        "packet-dispatch",
+        "entity-text",
+        "name-packets"
+      ],
+      "managed_file_count": 3181
+    },
+    "emoji+extended-names+fps+ping+player-colors": {
+      "file": "Louis-complete-bundle-1.1.0.zip",
+      "sha256": "728bb3f5d4e64ffd6d66c8dc17bafa5c252f4968a472a02991cd4700121f38e4",
+      "features": [
+        "emoji",
+        "extended-names",
+        "fps",
+        "ping",
+        "player-colors"
+      ],
+      "modules": [
+        "static-asm",
+        "text-runtime",
+        "static-text",
+        "packet-dispatch",
+        "entity-text",
+        "name-packets",
+        "slash-commands",
+        "telemetry-core"
+      ],
+      "managed_file_count": 3185
+    }
+  },
+  "text_package_cases": [
+    {
+      "case": "player-colors",
+      "passed": true,
+      "verification": {
+        "features": 2,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "a81ebc30a7cf10c6a7b8b18ac1effea710e85031a8bf2c6603676b73e36c48be",
+      "identical_to_baseline": true
+    },
+    {
+      "case": "extended-names",
+      "passed": true,
+      "verification": {
+        "features": 1,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "b749bf0ebc2d29951e201c4dc0f0b1c8a707fafcdd80e6a7f8cf4a16eed72c6b",
+      "identical_to_baseline": true
+    },
+    {
+      "case": "emoji",
+      "passed": true,
+      "verification": {
+        "features": 4,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "bcf25861eb29194445103ec4c67de9c3c9830078bc2be01313ee885801716f16",
+      "identical_to_baseline": true,
+      "runtime_pngs_verified": 3145
+    },
+    {
+      "case": "emoji-colors",
+      "passed": true,
+      "verification": {
+        "features": 6,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "eaff0913c2f365168cbf0f4add1d59e8b0834921526c85fa1ca8a6ed309b5f59",
+      "identical_to_baseline": true,
+      "runtime_pngs_verified": 3145
+    },
+    {
+      "case": "colors-emoji",
+      "passed": true,
+      "verification": {
+        "features": 6,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "d917e3224c54b5048cf6909c058b950ac40235d6a64a2dc9a111d0bd2cdbcea4",
+      "identical_to_baseline": true,
+      "runtime_pngs_verified": 3145
+    },
+    {
+      "case": "emoji-names",
+      "passed": true,
+      "verification": {
+        "features": 5,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "24241aba575b91689516422cf4539f613ee3981a7f298501f1c9ce5dd1f4b32a",
+      "identical_to_baseline": true,
+      "runtime_pngs_verified": 3145
+    },
+    {
+      "case": "names-emoji",
+      "passed": true,
+      "verification": {
+        "features": 5,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "bfbf8f71662bf6a958c8e66ad682ea48d20dee9dff9b46738b0661391c1f7c6e",
+      "identical_to_baseline": true,
+      "runtime_pngs_verified": 3145
+    },
+    {
+      "case": "names-colors",
+      "passed": true,
+      "verification": {
+        "features": 3,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "7f7f98fa5e096b4a69d1bebc30300d2b62400015a490ed638ab0c941e1776144",
+      "identical_to_baseline": true
+    },
+    {
+      "case": "colors-names",
+      "passed": true,
+      "verification": {
+        "features": 3,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "3c4d072c416b6a12c65f2706d06640f46c1b3969fd6d03c7b5e3975618d3686f",
+      "identical_to_baseline": true
+    },
+    {
+      "case": "all",
+      "passed": true,
+      "verification": {
+        "features": 7,
+        "generated_code_execution": true,
+        "imports_unchanged": true
+      },
+      "sha256": "e9c2d7616793526833ca77f067d12ace5d11a539c2034e6e593995501dc84df6",
+      "identical_to_baseline": true,
+      "runtime_pngs_verified": 3145
+    },
+    {
+      "case": "complete-bundle",
+      "passed": true,
+      "verification": {
+        "features": 7,
+        "generated_code_execution": true,
+        "imports_unchanged": true,
+        "telemetry": {
+          "channels": [
+            "fps",
+            "ping"
+          ],
+          "registers_preserved": true,
+          "draw_and_toggle_passed": true
+        }
+      },
+      "sha256": "4027f04ea6deb6b8d0260507b097f5a706a0b6dfc57e60876500dccc13b20d36",
+      "identical_to_baseline": true,
+      "runtime_pngs_verified": 3145
+    },
+    {
+      "case": "production-bundle",
+      "passed": true,
+      "verification": {
+        "features": 7,
+        "generated_code_execution": true,
+        "imports_unchanged": true,
+        "telemetry": {
+          "channels": [
+            "fps",
+            "ping"
+          ],
+          "registers_preserved": true,
+          "draw_and_toggle_passed": true
+        }
+      },
+      "sha256": "37eb7ba39f7329277377cd223279b0813f52af6f98bc85c9959b2f9458d76838",
+      "identical_to_baseline": true,
+      "production_metadata_unchanged": true,
+      "runtime_pngs_verified": 3145
+    }
+  ],
+  "item_grade_matrix": {
+    "passed": true,
+    "client_profile": 20250716,
+    "cases": [
+      {
+        "case": "2025/item/stock/item",
+        "identical": true,
+        "sha256": "85f7d47a15f14b72fa3362250188d18d8f984bd226562fa30ff39e467a39ad28"
+      },
+      {
+        "case": "2025/item/custom/item-labels",
+        "identical": true,
+        "sha256": "04075e0b87103725f983148b1c65b70dc4336560302dbeb5f17e1e7b9aba8ca6"
+      },
+      {
+        "case": "2025/item/custom/labels-item",
+        "identical": true,
+        "sha256": "14b469b043c335c90c5c1dbd87c54c439fdace328da54843a3750ee63adce990"
+      },
+      {
+        "case": "2025/grade/stock/item-grade",
+        "identical": true,
+        "sha256": "b332d43d9b279ee206967dfda7c8d920fa95ea78197ec8a40f9a5d8128dcbd23"
+      },
+      {
+        "case": "2025/grade/stock/grade-item",
+        "identical": true,
+        "sha256": "b332d43d9b279ee206967dfda7c8d920fa95ea78197ec8a40f9a5d8128dcbd23"
+      },
+      {
+        "case": "2025/grade/custom/item-grade-labels",
+        "identical": true,
+        "sha256": "4cbf1f950113eec31fbd85edc1150cb57e051fd9f362119403c8addce512dd1b"
+      },
+      {
+        "case": "2025/grade/custom/item-labels-grade",
+        "identical": true,
+        "sha256": "4cbf1f950113eec31fbd85edc1150cb57e051fd9f362119403c8addce512dd1b"
+      },
+      {
+        "case": "2025/grade/custom/grade-item-labels",
+        "identical": true,
+        "sha256": "4cbf1f950113eec31fbd85edc1150cb57e051fd9f362119403c8addce512dd1b"
+      },
+      {
+        "case": "2025/grade/custom/grade-labels-item",
+        "identical": true,
+        "sha256": "860c5f2a253f7171c31a3bfb083afc06e099113ac2b01d724f697bf31b917acd"
+      },
+      {
+        "case": "2025/grade/custom/labels-item-grade",
+        "identical": true,
+        "sha256": "860c5f2a253f7171c31a3bfb083afc06e099113ac2b01d724f697bf31b917acd"
+      },
+      {
+        "case": "2025/grade/custom/labels-grade-item",
+        "identical": true,
+        "sha256": "860c5f2a253f7171c31a3bfb083afc06e099113ac2b01d724f697bf31b917acd"
+      }
+    ]
+  },
+  "full_text_item_composition": {
+    "passed": true,
+    "cases": [
+      {
+        "order": [
+          "CustomExtName",
+          "CustomPlayerNameColor",
+          "CustomColoredItemName",
+          "CustomColoredEnchantGradeName",
+          "CustomEnchantGradeLabels",
+          "FluentEmoji"
+        ],
+        "identical": true,
+        "path": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\customer-packages\\text-composition-01\\composition-0-after.exe",
+        "sha256": "c5ae2ff0a0aa5f4c67c4d321843ab9e9dedf61339391bac7bf12371b6406b85e"
+      },
+      {
+        "order": [
+          "FluentEmoji",
+          "CustomEnchantGradeLabels",
+          "CustomColoredEnchantGradeName",
+          "CustomColoredItemName",
+          "CustomExtName",
+          "CustomPlayerNameColor"
+        ],
+        "identical": true,
+        "path": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\customer-packages\\text-composition-01\\composition-1-after.exe",
+        "sha256": "2dd02630f579df021f98f9376d4503bf04a624c8cabd494811284a086b8f6ea6"
+      }
+    ]
+  },
+  "installer": {
+    "passed": true,
+    "previous_archive_sha256": "452bf314a5f7ad066107604f9e8fdcb705435664b41c8dd2b151361ae9bb0bf6",
+    "features": [
+      "ping",
+      "fps",
+      "emoji",
+      "extended-names",
+      "player-colors"
+    ],
+    "png_files": 3145,
+    "new_archive_sha256": "728bb3f5d4e64ffd6d66c8dc17bafa5c252f4968a472a02991cd4700121f38e4",
+    "checks": [
+      "1.0.0 Ping to 1.1.0 cumulative upgrade",
+      "unchanged existing telemetry modules",
+      "asset hashes and license",
+      "deterministic asset archives",
+      "dry-run upgrade",
+      "idempotent cumulative install",
+      "existing registrations",
+      "edited asset rejection without partial writes"
+    ]
+  },
+  "telemetry_installer_regression": {
+    "passed": true,
+    "checks": [
+      "deterministic archives",
+      "Ping-only source closure",
+      "QJS encoding",
+      "dry-run",
+      "idempotent install",
+      "existing WARP registrations preserved",
+      "cumulative upgrade",
+      "partial upgrade refused",
+      "downgrade refused",
+      "local edits preserved",
+      "shared version mismatch refused",
+      "checksum failure refused",
+      "unmanaged conflict refused"
+    ]
+  },
+  "source_contract_checks": 100,
+  "assembler_body_unchanged": true,
+  "source_hashes": {
+    "Scripts/Patches/CustomExtName.qjs": "8193b221ecb50db5662ef3fad5755a4b05c9cda79ba9af3cec50b366a57bbcf2",
+    "Scripts/Patches/ExtNameTextStatic.qjs": "3341b6e71c81a662536d4f701899f28435552f2c5cd04f18a86ccb079745b342",
+    "Scripts/Patches/EntityTextStatic.qjs": "af1a48ffe775dd256beb03607406952959923215d7136175bf0c017b29f110a8",
+    "Scripts/Patches/NamePackets128Static.qjs": "90652475b7c58c61890023edf0c712b7d003a59e785dc1fdd3859a7834507ed4",
+    "Scripts/Support/Class_StaticAsm.qjs": "930ab25fed4bd609221e059c863a1b25296313e9102dda601c49e8f47076b702",
+    "Scripts/Init/LouisRuntime.qjs": "398238c9976ec8951f41a4276cf248646c177510378680e6fddedb815fca9858",
+    "tools/package_louis_patches.py": "ea07f4e6d4255718a261784990b72d50d89a4c487f2a5c99708b9fabadfd45a5",
+    "packaging/louis/catalog.json": "037ba011b9d0a7dad2ae4a0f2597bce6bb58d2cb9e7ca06519ee03fac74c39ca",
+    "packaging/louis/install.py": "92564574099da3fea7df39f03d85cd59d75ecdde6961dcc8e5da3292d95e30ac",
+    "tools/verify_item_grade_color_contract.py": "bba1a40718d0cad553d2b5bd3d9787e60a2532a22abe12139a050778305b7c64",
+    "tools/verify_item_grade_matrix_warp.py": "b3d5343a612cbc78ac5ed9df3b0a00ada0c8af969108e2064b5f3d79beb08dd4",
+    "tools/verify_text_packages.py": "68eff9a91845cfedf1d96e9df189d5a2942998669000b81526b3d2bab4944f66",
+    "tools/verify_text_package_installer.py": "10c315b4bedbde94a0ddce82b7afb36880b35765dea3a0acf8c3a09171e6292e",
+    "docs/louis-patch-packaging.md": "1fef2180f0d399a07e45749c5f31edaba3f48b21019f16716e84f60362020113"
+  },
+  "live_visual_accepted": true,
+  "evidence_runs": [
+    "text-verification-01/verification.json",
+    "text-verification-02/execution-recheck.json",
+    "text-verification-03/verification.json",
+    "text-verification-04/verification.json",
+    "text-grade-matrix-01/baseline-comparison.json",
+    "text-composition-01/verification.json",
+    "text-installer-01/verification.json",
+    "text-installer-base-01/verification.json"
+  ],
+  "live_acceptance": {
+    "date": "2026-09-15",
+    "source": "user report",
+    "statement": "all working",
+    "client_profile": 20250716,
+    "features": [
+      "emoji",
+      "player-colors",
+      "extended-names",
+      "fps",
+      "ping"
+    ],
+    "tested_exe_sha256": null,
+    "screenshots_recorded": false,
+    "individual_matrix_cases_enumerated": false
+  }
+}
