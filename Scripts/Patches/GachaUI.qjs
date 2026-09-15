@@ -1,0 +1,641 @@
+/*
+ * Author: DevSeara. GPL-3.0-or-later.
+ * Description: Native 760x440 Zeny Gacha window for 2025-07-16 Ragexe,
+ * styled after the supplied Myth of Yggdrasil video. GCHA server snapshots
+ * own prices, prizes, persistent pity and single-use purchase quotes.
+ * Private frame/cursor methods; no DLL, web view or shared text hook.
+ */
+const GachaUIStatic = {
+	Width: 760, Height: 440, WindowId: 0x3FB, Magic: 0x41484347,
+	PacketSize: 3600, Snapshot: 64, StateSize: 3668, Rolling: 3664,
+	TierNames: 3528,
+	FeaturedOffsets: [656,660,664,3472,3476], Page: 3480, Pages: 3484, PageText: 3496,
+	HasNextPage: 8, Administrator: 16,
+	Window: 0, Pressed: 4, Hover: 8, Dragging: 12, Pending: 16, Hidden: 20,
+	Reveal: 24, RevealTick: 28, Timer: 32, SetTimer: 36, KillTimer: 40,
+	Sequence: 44, PendingTick: 48, Modal: 52, Spin: 56, RightPressed: 60,
+	RollLeadMs: 800, RevealStepMs: 220,
+	// Cosmetic stand-ins only: never use hidden reward IDs to select animation frames.
+	RollIcons: [501,1715,12210,14533,2289,14592,1716,14003,40001,40002],
+	Assets: ["arrow_off_left.png","arrow_off_right.png","arrow_on_left.png","arrow_on_right.png"],
+	controls: [
+		{id:1,x:738,y:2,w:18,h:16,label:"X",close:true},
+		{id:2,x:10,y:22,w:103,h:20,label:"Zeny Gacha",view:0},
+		{id:3,x:116,y:22,w:103,h:20,label:"Show Prizes",view:1},
+		{id:4,x:222,y:22,w:88,h:20,label:"History",view:2},
+		{id:5,x:313,y:22,w:118,h:20,label:"Top Spenders",view:3},
+		{id:6,x:434,y:22,w:118,h:20,label:"Grand Winners",view:4},
+		{id:7,x:600,y:355,w:22,h:22,page:-1},
+		{id:8,x:725,y:355,w:22,h:22,page:1},
+		{id:9,x:556,y:22,w:66,h:20,label:"Admin",view:5,admin:true},
+		// Compact English labels at 12px, with seven pixels of horizontal padding.
+		// These same bounds drive drawing, clicks and the native hand cursor.
+		{id:10,x:574,y:385,w:51,h:20,label:"Pull x1",count:1,compact:true},
+		{id:11,x:631,y:385,w:51,h:20,label:"Pull x5",count:5,compact:true},
+		{id:12,x:688,y:385,w:58,h:20,label:"Pull x10",count:10,compact:true},
+		{id:13,x:318,y:292,w:124,h:20,label:"Reset This Machine",action:7,reset:true,admin:true,compact:true},
+		{id:20,x:334,y:264,w:49,h:20,label:"Cancel",modal:1,compact:true},
+		{id:21,x:393,y:264,w:34,h:20,label:"Pull",modal:1,compact:true},
+		{id:22,x:380,y:264,w:59,h:20,label:"Reset",modal:2,action:8,admin:true,compact:true,danger:true},
+		{id:23,x:321,y:264,w:49,h:20,label:"Cancel",modal:2,action:5,admin:true,compact:true}
+	]
+};
+GachaUIStatic.store = function(a, address, value) {
+	a.emit(0xC7,0x05); a.dword(address); a.dword(value);
+};
+GachaUIStatic.text = function(a, ptr, x, y, color=0x005A5A5A, bold=0, height=12) {
+	const n=AutoCombatUI.nativeHelpers;
+	for(const v of [0,bold,color,height,0,0,ptr,y,x]) n.pushImm(a,v);
+	a.emit(0x8B,0xCE); a.call(n.TextDraw);
+};
+// stdcall(window, source, x, y, maxWidth, color). Explicit byte lengths preserve
+// complete short labels; long text is bounded to its card. Returns the fitted
+// native pixel width in EAX, also used by the compact base-rate column.
+GachaUIStatic.fitText = function(center=false) {
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x57,0x8B,0x75,8,0x8B,0x7D,12,0x33,0xDB);
+	a.label("length"); a.emit(0x83,0xFB,127); a.jcc(0x83,"measure");
+	a.emit(0x80,0x3C,0x1F,0); a.jcc(0x84,"measure"); a.emit(0x43); a.jmp("length");
+	a.label("measure"); a.emit(0x33,0xC0,0x85,0xDB); a.jcc(0x84,"done");
+	for(const v of [0,0,12,0]) n.pushImm(a,v);
+	a.emit(0x53,0x57,0x8B,0xCE); a.call(n.TextWidth);
+	a.emit(0x3B,0x45,24); a.jcc(0x86,"draw");
+	a.emit(0x4B); a.jmp("measure");
+	a.label("draw"); a.emit(0x50);
+	if(center) a.emit(0x8B,0x55,24,0x2B,0xD0,0xD1,0xEA,0x03,0x55,16,0x89,0x55,16);
+	for(const v of [0,0]) n.pushImm(a,v);
+	a.emit(0xFF,0x75,28); for(const v of [12,0]) n.pushImm(a,v);
+	a.emit(0x53,0x57,0xFF,0x75,20,0xFF,0x75,16,0x8B,0xCE); a.call(n.TextDraw); a.emit(0x58);
+	a.label("done"); a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC2,24,0); return a;
+};
+// Same six-argument fit ABI, but ONLY canonical Gacha character names use this
+// private GDI path. Never toggle shared EXTN features or patch global TextOut.
+// Native surface acquisition/font cache are retained; raw imported GDI consumes
+// the exact SQL UTF-8 span, so matching actor titles cannot replace it.
+GachaUIStatic.plainText = function(center=false) {
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	const iat=(v)=>{a.emit(0xFF,0x15);a.dword(v);};
+	a.emit(0x55,0x8B,0xEC,0x81,0xEC);a.dword(320);a.emit(0x53,0x56,0x57,0x8B,0x75,8,0x8B,0x7D,12,0x33,0xDB);
+	a.label("length");a.emit(0x83,0xFB,127);a.jcc(0x83,"convert");a.emit(0x80,0x3C,0x1F,0);a.jcc(0x84,"convert");a.emit(0x43);a.jmp("length");
+	a.label("convert");a.emit(0x85,0xDB);a.jcc(0x84,"done");
+	n.pushImm(a,128);a.emit(0x8D,0x85);a.dword(-320);a.emit(0x50,0x53,0x57);n.pushImm(a,0);n.pushImm(a,65001);iat(0xFC1200);
+	a.emit(0x8B,0xD8,0x85,0xDB);a.jcc(0x84,"done");
+	a.emit(0xFF,0x76,0x24,0x8D,0x4D,0xE0);a.call(0x5443C0);
+	a.emit(0x83,0x7D,0xE0,0);a.jcc(0x84,"destroy");
+	for(const v of [0,0,12,0])n.pushImm(a,v);a.emit(0x8D,0x4D,0xE0);a.call(0x546F60);
+	a.emit(0x0F,0xB6,0x45,0xFE,0x50,0x0F,0xB6,0x45,0xFD,0x50,0x6A,0,0xFF,0x75,0xF0,0xFF,0x75,0xEC,0xB9);a.dword(0x124F3CC);a.call(0x546270);
+	a.emit(0x50,0xFF,0x75,0xE0);iat(0xFC1120);
+	a.emit(0xFF,0x75,28,0xFF,0x75,0xE0);iat(0xFC10E0);a.emit(0x89,0x45,0xD4);
+	a.label("measure");a.emit(0x8D,0x45,0xD8,0x50,0x53,0x8D,0x85);a.dword(-320);a.emit(0x50,0xFF,0x75,0xE0);iat(0xFC112C);
+	a.emit(0x85,0xC0);a.jcc(0x84,"restore");a.emit(0x8B,0x45,0xD8,0x3B,0x45,24);a.jcc(0x86,"draw");
+	a.emit(0x4B);a.jcc(0x84,"restore");a.jmp("measure");
+	a.label("draw");
+	// Center the measured, fitted UTF-16 span, not an estimated byte length.
+	if(center) a.emit(0x8B,0x55,24,0x2B,0x55,0xD8,0xD1,0xEA,0x03,0x55,16,0x89,0x55,16);
+	a.emit(0x53,0x8D,0x85);a.dword(-320);a.emit(0x50,0xFF,0x75,20,0xFF,0x75,16,0xFF,0x75,0xE0);iat(0xFC10DC);
+	a.label("restore");a.emit(0xFF,0x75,0xD4,0xFF,0x75,0xE0);iat(0xFC10E0);
+	a.label("destroy");a.emit(0x8D,0x4D,0xE0);a.call(0x5446F0);
+	a.label("done");a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC2,24,0);return a;
+};
+GachaUIStatic.gate = function(a,s,c,fail,paint=false) {
+	const g=GachaUIStatic;
+	if(c.close) return;
+	if(c.admin) { a.emit(0xF6,0x05); a.dword(s+g.Snapshot+24); a.emit(g.Administrator); a.jcc(0x84,fail); }
+	// Pending input stays locked without flashing every button to disabled gray.
+	if(!paint) { a.emit(0x83,0x3D); a.dword(s+g.Pending); a.emit(0); a.jcc(0x85,fail); }
+	a.emit(0x83,0x3D); a.dword(s+g.Rolling); a.emit(0); a.jcc(0x85,fail);
+	a.emit(0x83,0x3D); a.dword(s+g.Modal); a.emit(0); a.jcc(c.modal?0x84:0x85,fail);
+	if(c.modal) { a.emit(0x83,0x3D); a.dword(s+g.Modal); a.emit(c.modal); a.jcc(0x85,fail); }
+	if(c.reset || c.id===22 || c.id===23) { a.emit(0x83,0x3D); a.dword(s+g.Snapshot+56); a.emit(5); a.jcc(0x85,fail); }
+	if(!c.modal) { a.emit(0x83,0x3D); a.dword(s+g.Reveal); a.emit(12); a.jcc(0x82,fail); }
+	if(c.page) {
+		a.emit(0x83,0x3D); a.dword(s+g.Snapshot+56); a.emit(4); a.jcc(0x87,fail);
+		a.emit(0x83,0x3D); a.dword(s+g.Snapshot+56); a.emit(0); a.jcc(0x84,fail);
+		a.emit(0xA1); a.dword(s+g.Snapshot+g.Page);
+		if(c.page<0) {a.emit(0x83,0xF8,1);a.jcc(0x86,fail);}
+		else {
+			a.emit(0x3B,0x05);a.dword(s+g.Snapshot+g.Pages);a.jcc(0x83,fail);
+			// The server probes the next record; a full page alone proves nothing.
+			a.emit(0xF6,0x05);a.dword(s+g.Snapshot+24);a.emit(g.HasNextPage);a.jcc(0x84,fail);
+		}
+	}
+	if(c.count || c.id===21) {
+		a.emit(0x83,0x3D); a.dword(s+g.Snapshot+56); a.emit(0); a.jcc(0x85,fail);
+		a.emit(0xF6,0x05); a.dword(s+g.Snapshot+24); a.emit(1); a.jcc(0x84,fail);
+	}
+};
+// stdcall(x,y) -> eligible control id. Same partition for paint/input/cursor.
+GachaUIStatic.hit = function(s) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x53,0x8B,0x5D,8,0x8B,0x55,12);
+	for(const c of g.controls) {
+		const next="hit_"+c.id; g.gate(a,s,c,next);
+		n.emitRectGate(a,c.x,c.y,c.x+c.w,c.y+c.h,next);
+		a.emit(0xB8); a.dword(c.id); a.jmp("done"); a.label(next);
+	}
+	a.emit(0x33,0xC0); a.label("done"); a.emit(0x5B,0x5D,0xC2,8,0); return a;
+};
+// thiscall(x,y) -> address of a visible, revealed icon's snapshot ItemId.
+// The address identifies the slot too, so releasing over another copy of the
+// same item cannot open the wrong card. No hidden result IDs are read here.
+GachaUIStatic.itemHit = function(s) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x53,0x8B,0x5D,8,0x8B,0x55,12);
+	a.emit(0x80,0x79,n.WindowVisibleOffset,0); a.jcc(0x84,"none");
+	for(const off of [g.Hidden,g.Pending,g.Modal,g.Dragging,g.Pressed]) {
+		a.emit(0x83,0x3D); a.dword(s+off); a.emit(0); a.jcc(0x85,"none");
+	}
+	// Native +0x19C capture is a LEFT-button/drag route. Its poll does not
+	// dispatch right-up, and dereferences capture again after left-down.
+	// Never inspect or change capture while any window owns that route.
+	a.emit(0x83,0x3D); a.dword(n.WindowManager+0x19C); a.emit(0); a.jcc(0x85,"none");
+	const slots=[];
+	for(let i=0;i<g.FeaturedOffsets.length;i++) slots.push({off:g.FeaturedOffsets[i],x:22+i*35,y:88,w:31,h:30});
+	for(let i=0;i<12;i++) slots.push({off:672+i*96,x:25+(i%4)*185,y:140+Math.floor(i/4)*76,w:33,h:33,row:i});
+	for(const c of slots) {
+		const next="item_"+c.off;
+		n.emitRectGate(a,c.x,c.y,c.x+c.w,c.y+c.h,next);
+		if(c.row!==undefined) {
+			for(const off of [g.Snapshot+52,g.Reveal]) { a.emit(0x83,0x3D); a.dword(s+off); a.emit(c.row); a.jcc(0x86,"none"); }
+		}
+		a.emit(0xB8); a.dword(s+g.Snapshot+c.off); a.emit(0x83,0x38,0); a.jcc(0x85,"done"); a.jmp("none"); a.label(next);
+	}
+	a.label("none"); a.emit(0x33,0xC0); a.label("done"); a.emit(0x5B,0x5D,0xC2,8,0); return a;
+};
+GachaUIStatic.itemRight = function(s,hit,resolver,release) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x81,0xEC); a.dword(0xF8); a.emit(0x53,0x56,0x57,0x8B,0xF1);
+	if(release) {
+		a.emit(0x8B,0x1D); a.dword(s+g.RightPressed); a.emit(0x85,0xDB); a.jcc(0x84,"done");
+		g.store(a,s+g.RightPressed,0);
+	} else {
+		// Do not steal an active left-button drag or button press.
+		for(const off of [g.Pressed,g.Dragging]) { a.emit(0x83,0x3D); a.dword(s+off); a.emit(0); a.jcc(0x85,"done"); }
+		g.store(a,s+g.RightPressed,0);
+	}
+	a.emit(0xFF,0x75,12,0xFF,0x75,8,0x8B,0xCE); a.call(hit); a.emit(0x85,0xC0); a.jcc(0x84,"done");
+	if(!release) {
+		a.emit(0xA3); a.dword(s+g.RightPressed);
+	} else {
+		a.emit(0x3B,0xC3); a.jcc(0x85,"done"); a.emit(0x8B,0x38,0x57); a.call(resolver); a.emit(0x85,0xC0); a.jcc(0x84,"done");
+		// Same synchronous CItem -> window 12/message 24 path as mesitemicon.
+		// Only the local CItem is temporary; the native item-description owns its UI.
+		a.emit(0x8D,0x9D); a.dword(-0xF8); a.emit(0x8B,0xCB); a.call(0x006A1B20);
+		a.emit(0x57); n.pushImm(a,n.allocateString("%u").vir); a.emit(0x8D,0x43,0x2C,0x50);
+		a.call(n.StringFormat); a.emit(0x83,0xC4,12,0x89,0x43,0x3C,0xC6,0x43,0x5C,1);
+		n.pushImm(a,12); a.emit(0xB9); a.dword(n.WindowManager); a.call(0x00A39340);
+		a.emit(0x85,0xC0); a.jcc(0x84,"destroy_item");
+		a.emit(0x8B,0x10); for(const v of [0,0,0]) n.pushImm(a,v);
+		a.emit(0x53); n.pushImm(a,24); n.pushImm(a,0); a.emit(0x8B,0xC8,0xFF,0x92); a.dword(0x94);
+		a.label("destroy_item"); a.emit(0x8B,0xCB); a.call(0x005A4300);
+	}
+	a.label("done"); a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC2,8,0); return a;
+};
+// stdcall(action,count,view), using the normal client packet serializer.
+GachaUIStatic.sender = function(s,refs) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x83,0xEC,32,0x53,0x56,0x57,0xFC,0x8D,0x7D,0xE0,0x33,0xC0,0xB9); a.dword(8); a.emit(0xF3,0xAB);
+	a.emit(0xC7,0x45,0xE0); a.dword(0x00200BF8);
+	a.emit(0xC7,0x45,0xE4); a.dword(g.Magic);
+	a.emit(0x66,0xC7,0x45,0xE8,7,0,0x8B,0x45,8,0x66,0x89,0x45,0xEA);
+	a.emit(0xFF,0x05); a.dword(s+g.Sequence); a.emit(0xA1); a.dword(s+g.Sequence); a.emit(0x89,0x45,0xEC);
+	for(const [off,local] of [[16,0xF0],[20,0xF4]]) {
+		a.emit(0xA1); a.dword(s+g.Snapshot+off); a.emit(0x89,0x45,local);
+	}
+	a.emit(0x8B,0x45,12,0x89,0x45,0xF8,0x8B,0x45,16,0x89,0x45,0xFC);
+	g.store(a,s+g.Pending,1); a.emit(0xFF,0x15); a.dword(n.TimeGetTimeIat); a.emit(0xA3); a.dword(s+g.PendingTick);
+	a.call(refs.packetCtorA); a.emit(0x85,0xC0); a.jcc(0x84,"failed");
+	a.emit(0x8B,0xF0,0x8D,0x45,0xE0,0x50,0x6A,32,0x8B,0xCE); a.call(refs.packetSend); a.jmp("done");
+	a.label("failed"); g.store(a,s+g.Pending,0);
+	a.label("done"); a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC2,12,0); return a;
+};
+GachaUIStatic.release = function(a,s,label) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic;
+	g.store(a,s+g.RightPressed,0);
+	a.emit(0x83,0x3D); a.dword(s+g.Dragging); a.emit(0); a.jcc(0x84,label+"_capture");
+	g.store(a,s+g.Dragging,0); a.emit(0x6A,0,0x6A,0,0x8B,0xCE); a.call(n.FrameMouseUp);
+	a.label(label+"_capture"); a.emit(0xB9); a.dword(n.WindowManager); a.call(n.WindowCaptureGet);
+	a.emit(0x3B,0xC6); a.jcc(0x85,label+"_done"); a.emit(0xB9); a.dword(n.WindowManager); a.call(n.WindowCaptureRelease);
+	a.label(label+"_done");
+};
+GachaUIStatic.timer = function(s,sender) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x9C,0x60,0x8B,0x35); a.dword(s+g.Window); a.emit(0x85,0xF6); a.jcc(0x84,"done");
+	a.emit(0x80,0x7E,n.WindowVisibleOffset,0); a.jcc(0x84,"done");
+	// Cancel a right press released outside this window; no native capture is
+	// taken for inspection, so that outside right-up belongs to another window.
+	a.emit(0x83,0x3D); a.dword(0x11E40E8); a.emit(0); a.jcc(0x85,"right_held");
+	g.store(a,s+g.RightPressed,0); a.label("right_held");
+	a.emit(0xFF,0x15); a.dword(n.TimeGetTimeIat); a.emit(0x8B,0xD8);
+	a.emit(0x83,0x3D); a.dword(s+g.Rolling); a.emit(0); a.jcc(0x84,"pending");
+	a.emit(0x2B,0x05); a.dword(s+g.RevealTick); a.emit(0x8B,0xF8);
+	a.emit(0x33,0xD2,0xB9); a.dword(100); a.emit(0xF7,0xF1);
+	a.emit(0xA3); a.dword(s+g.Spin); n.emitMarkDirty(a);
+	// Remaining slots keep spinning while this slot's authoritative reply is
+	// pending. Revealed slots no longer read Spin or cosmetic item IDs.
+	a.emit(0x83,0x3D); a.dword(s+g.Rolling); a.emit(1); a.jcc(0x85,"pending");
+	a.emit(0x3B,0x3D); a.dword(s+g.Snapshot+668); a.jcc(0x82,"pending");
+	a.label("finish_roll"); g.store(a,s+g.Rolling,2);
+	// Request only the exact next slot, never a reward ID or price. The server
+	// enforces the deadline and this index, preventing replay/skip-ahead pulls.
+	n.pushImm(a,0); a.emit(0xA1); a.dword(s+g.Snapshot+24); a.emit(0xC1,0xE8,16,0x40,0x50); n.pushImm(a,6);
+	a.call(sender); n.emitMarkDirty(a); a.jmp("done");
+	a.label("pending"); a.emit(0x83,0x3D); a.dword(s+g.Pending); a.emit(0); a.jcc(0x84,"done");
+	a.emit(0x2B,0x1D); a.dword(s+g.PendingTick); a.emit(0x81,0xFB); a.dword(5000); a.jcc(0x82,"done");
+	// Never automatically retry a purchase. A new request must use server state.
+	g.store(a,s+g.Pending,0); g.store(a,s+g.Modal,0);
+	// An uncertain completion is never retried automatically. Close/reopen to
+	// recover; keep pull input locked instead of creating a second purchase.
+	n.emitMarkDirty(a);
+	a.label("done"); a.emit(0x61,0x9D,0xC2,16,0); return a;
+};
+GachaUIStatic.stop = function(s) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm(); a.emit(0x9C,0x60,0xA1); a.dword(s+g.Timer);
+	a.emit(0x85,0xC0); a.jcc(0x84,"done"); a.emit(0x50,0x6A,0,0xFF,0x15); a.dword(s+g.KillTimer);
+	g.store(a,s+g.Timer,0); a.label("done"); a.emit(0x61,0x9D,0xC3); return a;
+};
+GachaUIStatic.start = function(s,timer,imports,strings) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm(); a.emit(0x9C,0x60);
+	a.emit(0x83,0x3D); a.dword(s+g.Timer); a.emit(0); a.jcc(0x85,"done");
+	n.pushImm(a,strings.user32); a.emit(0xFF,0x15); a.dword(imports.module); a.emit(0x8B,0xD8,0x85,0xC0); a.jcc(0x84,"done");
+	for(const [key,off] of [["kill",g.KillTimer],["set",g.SetTimer]]) {
+		n.pushImm(a,strings[key]); a.emit(0x53,0xFF,0x15); a.dword(imports.proc); a.emit(0x85,0xC0); a.jcc(0x84,"done"); a.emit(0xA3); a.dword(s+off);
+	}
+	n.pushImm(a,timer); for(const v of [100,0,0]) n.pushImm(a,v);
+	a.emit(0xFF,0x15); a.dword(s+g.SetTimer); a.emit(0xA3); a.dword(s+g.Timer);
+	a.label("done"); a.emit(0x61,0x9D,0xC3); return a;
+};
+GachaUIStatic.open = function(s,vt,start) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x9C,0x60,0x8B,0x35); a.dword(s+g.Window); a.emit(0x85,0xF6); a.jcc(0x85,"show");
+	n.pushImm(a,n.FrameObjectSize); a.call(n.OperatorNew); a.emit(0x83,0xC4,4,0x85,0xC0); a.jcc(0x84,"done");
+	a.emit(0x8B,0xF0,0x6A,0,0x8B,0xCE); a.call(n.FrameConstructor);
+	a.emit(0xC7,0x06); a.dword(vt); n.pushImm(a,g.Height); n.pushImm(a,g.Width); a.emit(0x8B,0xCE); a.call(n.WindowSetSize);
+	a.emit(0xC7,0x46,n.WindowIdOffset); a.dword(g.WindowId);
+	a.emit(0x8B,0x15); a.dword(n.Renderer); a.emit(0x85,0xD2); a.jcc(0x84,"positioned");
+	for(const [render,win,size,label] of [[n.RendererWidthOffset,n.WindowXOffset,g.Width,"x"],[n.RendererHeightOffset,n.WindowYOffset,g.Height,"y"]]) {
+		a.emit(0x8B,0x42,render,0x2D); a.dword(size); a.emit(0xD1,0xF8); a.jcc(0x89,label); a.emit(0x33,0xC0); a.label(label); a.emit(0x89,0x46,win);
+	}
+	a.label("positioned"); a.emit(0x89,0x35); a.dword(s+g.Window); a.emit(0x56,0xB9); a.dword(n.WindowManager); a.call(n.WindowAddTopLevelFront);
+	a.label("show"); a.emit(0xC7,0x46,n.WindowVisibleOffset); a.dword(1);
+	for(const off of [g.Hidden,g.Pressed,g.Hover,g.Dragging,g.Modal,g.Pending,g.RightPressed]) g.store(a,s+off,0);
+	n.emitMarkDirty(a); a.call(start);
+	a.label("done"); a.emit(0x61,0x9D,0xC3); return a;
+};
+GachaUIStatic.receiver = function(s,fallback,open) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x9C,0x60,0xBE); a.dword(n.PacketBuffer);
+	a.emit(0x66,0x83,0x7E,2,8); a.jcc(0x82,"stock");
+	a.emit(0x81,0x7E,4); a.dword(g.Magic); a.jcc(0x85,"stock");
+	a.emit(0x66,0x81,0x7E,2); a.word(g.PacketSize); a.jcc(0x85,"done");
+	a.emit(0x66,0x83,0x7E,8,7); a.jcc(0x85,"done");
+	// Appended v5 fields leave every existing row/name/pity offset unchanged.
+	a.emit(0x8B,0x96); a.dword(g.Pages); a.emit(0x8D,0x42,0xFF,0x83,0xF8,99); a.jcc(0x87,"done");
+	a.emit(0x8B,0x86); a.dword(g.Page); a.emit(0x85,0xC0); a.jcc(0x84,"done"); a.emit(0x3B,0xC2); a.jcc(0x87,"done");
+	a.emit(0x83,0x7E,56,1); a.jcc(0x84,"page_valid"); a.jcc(0x87,"information_pages");
+	a.emit(0x83,0xFA,1); a.jcc(0x85,"done"); a.jmp("page_valid");
+	a.label("information_pages"); a.emit(0x83,0x7E,56,5); a.jcc(0x85,"public_pages");
+	a.emit(0xF6,0x46,24,g.Administrator); a.jcc(0x84,"done"); a.emit(0x83,0xFA,1); a.jcc(0x85,"done"); a.jmp("page_valid");
+	a.label("public_pages"); a.emit(0x83,0xFA,10); a.jcc(0x85,"done"); a.label("page_valid");
+	a.emit(0x8B,0x86); a.dword(3488); a.emit(0x33,0xD2,0x85,0xC0); a.jcc(0x84,"bundle_valid");
+	a.emit(0x83,0xF8,1); a.jcc(0x84,"bundle_valid");
+	a.emit(0x42,0x83,0xF8,5); a.jcc(0x84,"bundle_valid");
+	a.emit(0x42,0x83,0xF8,10); a.jcc(0x85,"done"); a.label("bundle_valid");
+	a.emit(0x3B,0x96); a.dword(3492); a.jcc(0x85,"done"); a.emit(0x03,0xC2,0x3B,0x46,36); a.jcc(0x85,"done");
+	a.emit(0x0F,0xB7,0x46,10,0x48,0x83,0xF8,7); a.jcc(0x87,"done");
+	a.emit(0x66,0x83,0x7E,10,8); a.jcc(0x85,"ordinary_message");
+	a.emit(0x83,0x7E,56,5); a.jcc(0x85,"done"); a.emit(0x83,0x7E,20,0); a.jcc(0x84,"done"); a.jmp("valid_roll");
+	a.label("ordinary_message");
+	a.emit(0x66,0x83,0x7E,10,5); a.jcc(0x82,"valid_roll");
+	a.emit(0x8B,0x46,52,0x48,0x83,0xF8,11); a.jcc(0x87,"done");
+	a.emit(0x8B,0x46,52,0x3B,0x46,36); a.jcc(0x85,"done");
+	a.emit(0x8B,0x86); a.dword(668); a.emit(0x48,0x3D); a.dword(9999); a.jcc(0x87,"done");
+	a.emit(0x8B,0x46,24,0xC1,0xE8,16,0x3B,0x46,52); a.jcc(0x87,"done"); a.label("valid_roll");
+	a.emit(0x83,0x7E,52,12); a.jcc(0x87,"done"); a.emit(0x83,0x7E,56,5); a.jcc(0x87,"done");
+	for(let i=0;i<12;i++) { a.emit(0x83,0xBE); a.dword(672+i*96+8); a.emit(2); a.jcc(0x87,"done"); }
+	// Pity bars cannot divide by zero or walk outside their bounded canvas.
+	for(const off of [1832,1836]) { a.emit(0x8B,0x86); a.dword(off); a.emit(0x48,0x3D); a.dword(9999); a.jcc(0x87,"done"); }
+	a.emit(0x66,0x83,0x7E,10,1); a.jcc(0x84,"copy");
+	a.emit(0xA1); a.dword(s+g.Snapshot+16); a.emit(0x3B,0x46,16); a.jcc(0x85,"done");
+	a.emit(0xA1); a.dword(s+g.Sequence); a.emit(0x3B,0x46,12); a.jcc(0x85,"done");
+	a.emit(0x83,0x3D); a.dword(s+g.Hidden); a.emit(0); a.jcc(0x85,"done");
+	a.label("copy");
+	a.label("copy_rows"); a.emit(0xBF); a.dword(s+g.Snapshot); a.emit(0xB9); a.dword(g.PacketSize/4); a.emit(0xFC,0xF3,0xA5);
+	const ends=[111,239,271,335,431,463,495,527,655,1935,3527];
+	for(let i=0;i<3;i++) ends.push(g.TierNames+i*24+23);
+	for(let i=0;i<12;i++) ends.push(672+i*96+63,672+i*96+95,1936+i*128+127);
+	for(const off of ends) { a.emit(0xC6,0x05); a.dword(s+g.Snapshot+off); a.emit(0); }
+	for(const off of [g.Pending,g.Modal,g.RightPressed,g.Rolling]) g.store(a,s+off,0); g.store(a,s+g.Reveal,12);
+	a.emit(0x66,0x83,0x3D); a.dword(s+g.Snapshot+10); a.emit(1); a.jcc(0x85,"quote");
+	g.store(a,s+g.Sequence,0); a.call(open); a.jmp("dirty");
+	a.label("quote"); a.emit(0x66,0x83,0x3D); a.dword(s+g.Snapshot+10); a.emit(8); a.jcc(0x85,"purchase_quote");
+	g.store(a,s+g.Modal,2); a.jmp("dirty");
+	a.label("purchase_quote"); a.emit(0x66,0x83,0x3D); a.dword(s+g.Snapshot+10); a.emit(3); a.jcc(0x85,"results");
+	a.emit(0x83,0x3D); a.dword(s+g.Snapshot+20); a.emit(0); a.jcc(0x84,"dirty"); g.store(a,s+g.Modal,1); a.jmp("dirty");
+	a.label("results"); a.emit(0x66,0x83,0x3D); a.dword(s+g.Snapshot+10); a.emit(5); a.jcc(0x82,"dirty");
+	// A timer failure spends nothing. Closing/reopening is always available.
+	g.store(a,s+g.Rolling,2);
+	a.emit(0xA1); a.dword(s+g.Snapshot+24); a.emit(0xC1,0xE8,16,0xA3); a.dword(s+g.Reveal);
+	a.emit(0x66,0x83,0x3D); a.dword(s+g.Snapshot+10); a.emit(7); a.jcc(0x85,"step_ready");
+	// Reveal icon + label before inventory delivery, but do not start the next
+	// step until the post-delivery message arrives (SQL may still be pending).
+	g.store(a,s+g.Pending,1); a.emit(0xFF,0x15); a.dword(n.TimeGetTimeIat); a.emit(0xA3); a.dword(s+g.PendingTick); a.jmp("dirty");
+	a.label("step_ready");
+	a.emit(0x83,0x3D); a.dword(s+g.Timer); a.emit(0); a.jcc(0x84,"dirty");
+	g.store(a,s+g.Rolling,1); g.store(a,s+g.Spin,0);
+	a.emit(0xFF,0x15); a.dword(n.TimeGetTimeIat); a.emit(0xA3); a.dword(s+g.RevealTick);
+	a.label("dirty"); a.emit(0x8B,0x35); a.dword(s+g.Window); a.emit(0x85,0xF6); a.jcc(0x84,"done"); n.emitMarkDirty(a);
+	a.label("done"); a.emit(0x61,0x9D); a.jmp(n.PacketMainLoopReturn);
+	a.label("stock"); a.emit(0x61,0x9D); a.jmp(fallback); return a;
+};
+GachaUIStatic.icon = function(a,s,art,off,x,y,label) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,done=label+"_done";
+	if(off!==null) { a.emit(0xA1); a.dword(s+g.Snapshot+off); }
+	a.emit(0x85,0xC0); a.jcc(0x84,done);
+	a.emit(0x50); a.call(art.resolver); a.emit(0x85,0xC0); a.jcc(0x84,done); a.emit(0x33,0xC9);
+	a.label(label+"_key"); a.emit(0x80,0x3C,0x08,0); a.jcc(0x84,label+"_path");
+	a.emit(0x41,0x81,0xF9); a.dword(180); a.jcc(0x82,label+"_key"); a.jmp(done);
+	a.label(label+"_path"); a.emit(0x50); n.pushImm(a,art.format); n.pushImm(a,art.path); a.call(n.StringFormat); a.emit(0x83,0xC4,12);
+	n.emitLoadSurface(a,art.path,done);
+	for(const dim of [n.TextureWidthOffset,n.TextureHeightOffset]) { a.emit(0x8B,0x88); a.dword(dim); a.emit(0x49,0x83,0xF9,31); a.jcc(0x87,done); }
+	n.pushImm(a,y); n.pushImm(a,x); a.emit(0x50,0x56); a.call(art.blit); a.label(done);
+};
+GachaUIStatic.finalize = function() {
+	const a=AutoCombatUI.nativeHelpers.asm();
+	// GDI TextDraw leaves zero alpha in its colored foreground pixels.
+	// Preserve untouched transparent corners, normalize painted pixels only.
+	a.emit(0x53,0x56,0x8B,0x71,0x24,0x85,0xF6); a.jcc(0x84,"done");
+	a.emit(0x8B,0x4E,4,0x0F,0xAF,0x4E,8,0x8B,0x76,0x18,0x85,0xC9); a.jcc(0x84,"done");
+	a.label("pixel"); a.emit(0x8B,0x06,0x85,0xC0); a.jcc(0x84,"next");
+	a.emit(0x0D); a.dword(0xFF000000); a.emit(0x89,0x06);
+	a.label("next"); a.emit(0x83,0xC6,4,0x49); a.jcc(0x85,"pixel");
+	a.label("done"); a.emit(0x5E,0x5B,0xC3); return a;
+};
+// thiscall(x,y,texture,stretchInput), private to Gacha. PNG pixels are already
+// composited over the opaque parent; never switch CSurface's upload mode.
+// Stock 0x53F290/0x53EA90 caches six opaque <=256px tiles for 760x440. Setting
+// +0x28 to 1 later reuses those tiles as full-window alpha textures: the entire
+// window shrinks into each tile and all six are presented at the same origin.
+GachaUIStatic.arrowDraw = function(png) {
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x8B,0x71,0x24,0x85,0xF6);a.jcc(0x84,"done");
+	a.emit(0x0F,0xB6,0x5E,0x28);
+	for(const off of [20,16,12,8])a.emit(0xFF,0x75,off);
+	a.call(png);a.emit(0x88,0x5E,0x28);
+	a.label("done");a.emit(0x5E,0x5B,0x5D,0xC2,16,0);return a;
+};
+GachaUIStatic.draw = function(s,fill,fit,art) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm(),p=s+g.Snapshot;
+	const rect=(x,y,w,h,c)=>n.emitFillRect(a,fill,x,y,w,h,c);
+	const text=(v,x,y,c=0x005A5A5A,b=0,h=12)=>g.text(a,n.allocateString(v).vir,x,y,c,b,h);
+	const val=(off,x,y,c=0x005A5A5A)=>g.text(a,p+off,x,y,c);
+	const fitval=(off,x,y,width,c=0x005A5A5A)=>{ for(const v of [c,width,y,x,p+off]) n.pushImm(a,v); a.emit(0x56); a.call(fit); };
+	const nameval=(off,x,y,width,c=0x005A5A5A,center=false)=>{ for(const v of [c,width,y,x,p+off]) n.pushImm(a,v); a.emit(0x56); a.call(center?art.plainCenter:art.plain); };
+	const panel=(x,y,w,h,c=0xFFF4FBFD)=>{ rect(x+2,y,w-4,h,0xFFD4DFE9); rect(x,y+2,w,h-4,0xFFD4DFE9); rect(x+1,y+3,w-2,h-6,c); rect(x+3,y+1,w-6,h-2,c); };
+	const button=c=>{
+		const end="button_"+c.id,disabled=end+"_disabled",base=end+"_base";
+		if(c.admin) { a.emit(0xF6,0x05); a.dword(p+24); a.emit(g.Administrator); a.jcc(0x84,end); }
+		if(c.reset) { a.emit(0x83,0x3D); a.dword(p+56); a.emit(5); a.jcc(0x85,end); }
+		if(c.modal) { a.emit(0x83,0x3D); a.dword(s+g.Modal); a.emit(c.modal); a.jcc(0x85,end); }
+		const label=color=>{
+			if(!c.compact) { text(c.label,c.x+7,c.y+4,color); return; }
+			for(const v of [color,c.w-4,c.y+4,c.x+2,n.allocateString(c.label).vir]) n.pushImm(a,v);
+			a.emit(0x56); a.call(art.buttonText);
+		};
+		if(c.count) { a.emit(0x83,0x3D); a.dword(p+56); a.emit(0); a.jcc(0x85,end); }
+		g.gate(a,s,c,disabled,true); panel(c.x,c.y,c.w,c.h,0xFFDEEFFB);
+		a.emit(0x83,0x3D); a.dword(s+g.Hover); a.emit(c.id); a.jcc(0x85,base);
+		panel(c.x,c.y,c.w,c.h,0xFFEFFAFF);
+		a.emit(0x83,0x3D); a.dword(s+g.Pressed); a.emit(c.id); a.jcc(0x85,base); panel(c.x,c.y,c.w,c.h,0xFFB9D7F0);
+		a.label(base);
+		if(c.view!==undefined) { a.emit(0x83,0x3D); a.dword(p+56); a.emit(c.view); a.jcc(0x85,end+"_label"); rect(c.x+3,c.y+c.h-3,c.w-6,2,0xFF7E9FCC); a.label(end+"_label"); }
+		label(c.danger?0x002020A0:0x007D6045); a.jmp(end);
+		a.label(disabled); panel(c.x,c.y,c.w,c.h,0xFFF3F5F7); label(0x00ACACAC); a.label(end);
+	};
+	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x57,0x8B,0xF1);
+	for(const [off,value] of [[n.WindowWidthOffset,g.Width],[n.WindowHeightOffset,g.Height]]) { a.emit(0x81,0x7E,off); a.dword(value); a.jcc(0x82,"done"); }
+	a.emit(0x6A,0,0x8B,0xCE); a.call(n.WindowClearSurface);
+	panel(0,0,g.Width,g.Height,0xFFFFFFFF);
+	for(let y=2;y<18;y++) rect(3,y,g.Width-6,1,(0xFF000000|(164+y*3)<<16|(184+y*3)<<8|(218+y*2))>>>0);
+	text("Gacha",20,3,0x0070543E); rect(8,7,6,6,0xFF8FAED5);
+	for(const c of g.controls.filter(c=>!c.modal&&!c.page&&!c.reset)) button(c);
+	panel(10,48,740,76); fitval(64,22,55,276); text("Featured Grand prizes",22,73,0x00888888,0,11);
+	for(let i=0;i<g.FeaturedOffsets.length;i++) { panel(22+i*35,88,31,30,0xFFE7EDF8); g.icon(a,s,art,g.FeaturedOffsets[i],25+i*35,91,"featured"+i); }
+	text("Base rates",310,54,0x00888888,0,11);
+	// Align percentages eight pixels after the widest fitted tier name, instead
+	// of reserving the full long-name column for short labels such as Grand1.
+	a.emit(0x33,0xDB);
+	for(let i=0;i<3;i++) {
+		rect(311,72+i*15,6,6,[0xFFCAA248,0xFFC583C9,0xFFACB7C5][i]);
+		fitval(g.TierNames+i*24,323,68+i*15,110);
+		a.emit(0x3B,0xC3); a.jcc(0x86,"rate_width"+i); a.emit(0x8B,0xD8); a.label("rate_width"+i);
+	}
+	a.emit(0x81,0xC3); a.dword(331);
+	for(let i=0;i<3;i++) {
+		for(const v of [0,0,0x005A5A5A,12,0,0,p+432+i*32,68+i*15]) n.pushImm(a,v);
+		a.emit(0x53,0x8B,0xCE); a.call(n.TextDraw);
+	}
+	val(240,531,53); fitval(1840,503,75,234);
+	rect(506,94,231,6,0xFFE2E8F2);
+	a.emit(0xA1); a.dword(p+1824); a.emit(0x3B,0x05); a.dword(p+1832); a.jcc(0x82,"pity_bound"); a.emit(0xA1); a.dword(p+1832);
+	a.label("pity_bound"); a.emit(0x69,0xC0); a.dword(229); a.emit(0x33,0xD2,0xF7,0x35); a.dword(p+1832);
+	a.emit(0x85,0xC0); a.jcc(0x84,"pity_empty"); n.pushImm(a,0xFF87A6DB); n.pushImm(a,4); a.emit(0x50); n.pushImm(a,95); n.pushImm(a,507); a.emit(0x56); a.call(fill); a.label("pity_empty");
+	text("Pity carries across all pull amounts",507,104,0x00888888,0,11);
+	a.emit(0x83,0x3D); a.dword(p+56); a.emit(5); a.jcc(0x85,"prize_grid");
+	panel(20,134,720,212);
+	text("Administrator controls - GM level 99+",34,150,0x007D6045,1);
+	text("Reset THIS machine only. Other Gacha machines are unaffected.",34,180);
+	text("This machine's history, Top Spenders and Grand Winners for all players",46,201);
+	text("Every character's pity for THIS machine, including offline characters",46,221);
+	text("Recovery copies are kept. Awarded items and spent Zeny are not refunded.",34,253,0x00808080,0,11);
+	for(const c of g.controls.filter(c=>c.reset)) button(c);
+	a.jmp("grid_done"); a.label("prize_grid");
+	for(let i=0;i<12;i++) {
+		const x=20+(i%4)*185,y=134+Math.floor(i/4)*76,off=672+i*96,done="card"+i+"_done",revealed="card"+i+"_reveal";
+		panel(x,y,175,67,0xFFE9E9EE);
+		a.emit(0x83,0x3D); a.dword(p+52); a.emit(i); a.jcc(0x86,done);
+		a.emit(0x83,0x3D); a.dword(s+g.Reveal); a.emit(i); a.jcc(0x87,revealed);
+		// Centered cycling icons until this card stops. Do not read its real item,
+		// name, quantity or rarity on the rolling branch.
+		a.emit(0xA1); a.dword(s+g.Spin); a.emit(0x6B,0xC0,7,0x05); a.dword(i*3);
+		a.emit(0x03,0x05); a.dword(s+g.RevealTick); a.emit(0x33,0xD2,0xB9); a.dword(g.RollIcons.length); a.emit(0xF7,0xF1);
+		a.emit(0x8B,0x04,0x95); a.dword(art.rollIds);
+		g.icon(a,s,art,null,x+75,y+21,"rolling"+i); a.jmp(done);
+		a.label(revealed); panel(x,y,175,67);
+		a.emit(0x83,0x3D); a.dword(p+56); a.emit(3); a.jcc(0x85,"card"+i+"_item_text");
+		nameval(1936+i*128,x+8,y+9,159); fitval(off+64,x+8,y+27,159,0x00808080); fitval(off+16,x+8,y+48,159,0x00808080); a.jmp(done);
+		a.label("card"+i+"_item_text"); panel(x+5,y+6,33,33,0xFFE7EDF8); g.icon(a,s,art,off,x+8,y+9,"shown"+i); fitval(off+16,x+44,y+9,124);
+		a.emit(0x83,0x3D); a.dword(p+56); a.emit(4); a.jcc(0x85,"card"+i+"_detail");
+		text("Grand winner",x+44,y+25,0x00808080);
+		rect(x+5,y+47,165,15,0xFFFFF3BB); nameval(1936+i*128,x+8,y+48,159,0x0070543E,true); a.jmp(done);
+		a.label("card"+i+"_detail"); fitval(off+64,x+44,y+25,124,0x00808080);
+		for(let tier=0;tier<3;tier++) {
+			const next="card"+i+"_tier"+tier;
+			a.emit(0x83,0x3D); a.dword(p+off+8); a.emit(tier); a.jcc(0x85,next);
+			rect(x+5,y+47,165,15,[0xFFFFF3BB,0xFFF0D5F2,0xFFF0F0F2][tier]);
+			text(String(i+1),x+9,y+48,0x00887868,0,11); fitval(g.TierNames+tier*24,x+29,y+48,137,0x00887868); a.label(next);
+		}
+		a.label(done);
+	}
+	a.label("grid_done");
+	a.emit(0x83,0x3D); a.dword(p+56); a.emit(0); a.jcc(0x84,"main_footer");
+	a.emit(0x83,0x3D); a.dword(p+56); a.emit(5); a.jcc(0x84,"information_footer");
+	for(const c of g.controls.filter(c=>c.page)) {
+		const off="arrow_off"+c.id,end="arrow_end"+c.id;
+		const png=(path,label)=>{n.emitLoadSurface(a,path,label);n.pushImm(a,0);a.emit(0x50);n.pushImm(a,c.y+4);n.pushImm(a,c.x+7);a.emit(0x8B,0xCE);a.call(art.png);};
+		g.gate(a,s,c,off,true);png(art.arrows[c.page<0?2:3],end);a.jmp(end);
+		a.label(off);png(art.arrows[c.page<0?0:1],end);a.label(end);
+	}
+	fitval(g.PageText,634,360,90);
+	a.label("information_footer");
+	for(const [view,description] of [[1,"List of Possible Rewards"],[2,"Your Latest Zeny Gacha History"],[3,"Top 12 Zeny Gacha Spenders"],[4,"Total List of Winners"],[5,"Administrator controls"]]) {
+		a.emit(0x83,0x3D); a.dword(p+56); a.emit(view); a.jcc(0x85,"description"+view);
+		text(description,20,389); a.label("description"+view);
+	}
+	fitval(112,20,408,720,0x00808080); a.jmp("modal");
+	a.label("main_footer"); val(272,20,368,0x00808080);
+	a.emit(0x83,0x3D); a.dword(s+g.Reveal); a.emit(12); a.jcc(0x83,"final_status");
+	a.emit(0x83,0x3D); a.dword(s+g.Rolling); a.emit(1); a.jcc(0x85,"finishing");
+	text("Rolling...",20,389,0x00808080); a.jmp("footer");
+	a.label("finishing"); text("Revealing prizes...",20,389,0x00808080); a.jmp("footer");
+	a.label("final_status"); fitval(112,20,389,482); a.label("footer");
+	text("Bonus: x5 = 6 rolls (1 free) | x10 = 12 rolls (2 free).",20,404,0x00FF0000,0,11);
+	fitval(528,20,419,720,0x008F8F8F);
+	a.label("modal");
+	a.emit(0x83,0x3D); a.dword(s+g.Modal); a.emit(0); a.jcc(0x84,"done");
+	panel(174,176,412,132,0xFFFFFFFF); rect(177,179,406,17,0xFFB9CEE9);
+	a.emit(0x83,0x3D); a.dword(s+g.Modal); a.emit(2); a.jcc(0x84,"reset_modal");
+	text("Confirm Gacha Pull",184,180,0x00624C38); fitval(336,188,207,384); val(240,188,226);
+	text("Prizes go to your bag. Pity saves automatically.",228,246,0x00808080,0,11);
+	a.jmp("modal_buttons"); a.label("reset_modal");
+	text("Confirm Gacha Reset",184,180,0x002020A0); fitval(336,188,207,384);
+	text("THIS machine only; all players, including offline characters.",188,226,0x00808080,0,11);
+	text("No item/Zeny refunds. Recovery copies are kept.",188,246,0x00808080,0,11);
+	a.label("modal_buttons");
+	for(const c of g.controls.filter(c=>c.modal)) button(c);
+	a.label("done"); a.emit(0x8B,0xCE); a.call(art.finalize);
+	a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC3); return a;
+};
+GachaUIStatic.mouse = function(s,hit,sender,stop,release) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x57,0x8B,0xF1,0xFF,0x75,12,0xFF,0x75,8); a.call(hit); a.emit(0x8B,0xD8);
+	if(release) {
+		a.emit(0x8B,0x3D); a.dword(s+g.Pressed); g.store(a,s+g.Pressed,0); g.release(a,s,"release");
+		a.emit(0x85,0xDB); a.jcc(0x84,"done"); a.emit(0x3B,0xDF); a.jcc(0x85,"done");
+		for(const c of g.controls) {
+			const next="action"+c.id; a.emit(0x83,0xFB,c.id); a.jcc(0x85,next);
+			const action=c.action??(c.close?4:c.id===20?5:c.id===21?2:c.count?1:3);
+			if(c.page) {
+				a.emit(0xFF,0x35);a.dword(s+g.Snapshot+56);
+				a.emit(0xA1);a.dword(s+g.Snapshot+g.Page);a.emit(c.page<0?0x48:0x40,0x50);
+			} else {n.pushImm(a,c.view||0);n.pushImm(a,c.count||0);}
+			n.pushImm(a,action); a.call(sender);
+			// Keep the confirmation surface until its response arrives. Removing it
+			// here briefly exposed stale results + a waiting label behind the modal.
+			if(c.close) { a.emit(0xC7,0x46,n.WindowVisibleOffset); a.dword(0); g.store(a,s+g.Hidden,1); g.store(a,s+g.Modal,0); a.call(stop); }
+			a.jmp("done"); a.label(next);
+		}
+	} else {
+		g.release(a,s,"down"); g.store(a,s+g.Pressed,0);
+		a.emit(0x85,0xDB); a.jcc(0x84,"drag"); a.emit(0x89,0x1D); a.dword(s+g.Pressed);
+		a.emit(0x56,0xB9); a.dword(n.WindowManager); a.call(n.WindowCaptureSet); a.jmp("done");
+		a.label("drag"); a.emit(0x83,0x7D,12,18); a.jcc(0x83,"done");
+		g.store(a,s+g.Dragging,1); a.emit(0xFF,0x75,12,0xFF,0x75,8,0x8B,0xCE); a.call(n.FrameMouseDown);
+	}
+	a.label("done"); n.emitMarkDirty(a); a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC2,8,0); return a;
+};
+GachaUIStatic.move = function(s,hit,itemHit,cursor=false) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x56,0x8B,0xF1);
+	if(cursor) { a.emit(0xFF,0x75,12,0xFF,0x75,8,0x8B,0xCE); a.call(0xA23470); }
+	a.emit(0xFF,0x75,12,0xFF,0x75,8); a.call(hit);
+	a.emit(0x85,0xC0); a.jcc(0x85,"hover_ready");
+	a.emit(0xFF,0x75,12,0xFF,0x75,8,0x8B,0xCE); a.call(itemHit); a.label("hover_ready");
+	a.emit(0x83,0x3D); a.dword(s+g.RightPressed); a.emit(0); a.jcc(0x84,"right_valid");
+	a.emit(0x3B,0x05); a.dword(s+g.RightPressed); a.jcc(0x84,"right_valid");
+	g.store(a,s+g.RightPressed,0); a.label("right_valid");
+	a.emit(0x3B,0x05); a.dword(s+g.Hover); a.jcc(0x84,"same"); a.emit(0xA3); a.dword(s+g.Hover); n.emitMarkDirty(a); a.label("same");
+	if(cursor) {
+		a.emit(0x85,0xC0,0x0F,0x95,0xC0,0x0F,0xB6,0xC0,0xD1,0xE0,0x50,0x8B,0x0D); a.dword(0x121333C); a.call(0xA764A0);
+	}
+	a.emit(0x5E,0x5D,0xC2,8,0); return a;
+};
+GachaUIStatic.drag = function(s,move) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x83,0x3D); a.dword(s+g.Dragging); a.emit(1); a.jcc(0x85,"hover"); a.jmp(0x880E00);
+	a.label("hover"); a.jmp(move); return a;
+};
+GachaUIStatic.destroy = function(s,stop) {
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic,a=n.asm();
+	a.emit(0x56,0x8B,0xF1); g.release(a,s,"destroy"); a.call(stop); g.store(a,s+g.Window,0); g.store(a,s+g.Hidden,1);
+	a.emit(0x8B,0xCE,0x5E); a.jmp(n.FrameDeletingDestructor); return a;
+};
+GachaUI = function(_) {
+	if(Exe.BuildDate!==20250716 || typeof AutoCombatUI==="undefined" || !AutoCombatUI.nativeHelpers) throw Error("GachaUI requires the 2025-07-16 native helpers");
+	const n=AutoCombatUI.nativeHelpers,g=GachaUIStatic;
+	for(const [name,va,bytes] of [
+		["frame constructor",n.FrameConstructor,"55 8B EC 6A FF 68 F9 45 EA 00"],
+		["frame down",n.FrameMouseDown,"55 8B EC 83 EC 08 56 8B F1"],
+		["frame drag",0x880E00,"55 8B EC 83 EC 1C 53 8B D9"],
+		["text metrics",n.TextWidth,"55 8B EC 6A FF 68 5D B6 EE 00"],
+		["mesitemicon dispatch",0x00803D15,"6A 0C B9 E8 F4 31 01 C6 85 54 FF FF FF 01 E8 18 56 23 00"],
+		["CItem constructor",0x006A1B20,"55 8B EC 6A FF 68 8B 54 E5 00"],
+		["CItem destructor",0x005A4300,"55 8B EC 6A FF 68 8B 33 E2 00"],
+		["cursor action",0xA764A0,"55 8B EC 8B 45 08 56 8B F1 39 46 50"]]) n.assertCode("Gacha "+name,va,bytes);
+	n.assertCode("Gacha manager right down",0xA46ECD,"FF 90 80 00 00 00");
+	n.assertCode("Gacha manager right up",0xA46F32,"FF 90 84 00 00 00");
+	n.assertCode("Gacha native surface mode",0x53EAB2,"80 7F 28 01");
+	for(const [slot,expected] of [[0,n.FrameDeletingDestructor],[20,n.FrameVtableDraw],[25,n.FrameMouseDown],[27,0x880E00],[31,n.FrameMouseUp],[32,0x005A8A50],[33,0x005A8A60]]) n.assertVtableSlot("Gacha frame",slot,expected);
+	const state=n.allocateBytes(new Array(g.StateSize).fill(0),4),s=state.vir;
+	const refs=n.resolvePacketRefs(),sender=n.allocateCode(g.sender(s,refs));
+	const timer=n.allocateCode(g.timer(s,sender.vir)),stop=n.allocateCode(g.stop(s));
+	const imports={module:Exe.FindFunc("GetModuleHandleA","KERNEL32.dll"),proc:Exe.FindFunc("GetProcAddress","KERNEL32.dll")};
+	if(imports.module<0 || imports.proc<0) throw Error("GachaUI: timer imports unavailable");
+	const strings={user32:n.allocateString("user32.dll").vir,set:n.allocateString("SetTimer").vir,kill:n.allocateString("KillTimer").vir};
+	const start=n.allocateCode(g.start(s,timer.vir,imports,strings));
+	const fill=n.allocateCode(n.buildFillRect()),fit=n.allocateCode(g.fitText());
+	const rollBytes=[]; for(const id of g.RollIcons) rollBytes.push(id&255,id>>>8&255,id>>>16&255,id>>>24);
+	const art={resolver:n.allocateCode(n.buildItemIconResolver()).vir,blit:n.allocateCode(n.buildColorKeyBlit()).vir,
+		buttonText:n.allocateCode(g.fitText(true)).vir,
+		plain:n.allocateCode(g.plainText()).vir,
+		plainCenter:n.allocateCode(g.plainText(true)).vir,
+		png:n.allocateCode(g.arrowDraw(n.allocateCode(ModernChatUI.nativeHelpers.buildPngDraw(n.allocateCode(ModernChatUI.nativeHelpers.buildBlendPixel()).vir)).vir)).vir,
+		arrows:g.Assets.map(file=>n.buildResourcePath("genericsui\\"+file).vir),
+		rollIds:n.allocateBytes(rollBytes,4).vir,
+		finalize:n.allocateCode(g.finalize()).vir,
+		format:n.buildResourcePath("item\\%s.bmp").vir,path:n.allocateBytes(new Array(512).fill(0),4).vir};
+	const hit=n.allocateCode(g.hit(s)),draw=n.allocateCode(g.draw(s,fill.vir,fit.vir,art));
+	const down=n.allocateCode(g.mouse(s,hit.vir,sender.vir,stop.vir,false)),up=n.allocateCode(g.mouse(s,hit.vir,sender.vir,stop.vir,true));
+	const itemHit=n.allocateCode(g.itemHit(s)),rightDown=n.allocateCode(g.itemRight(s,itemHit.vir,art.resolver,false)),rightUp=n.allocateCode(g.itemRight(s,itemHit.vir,art.resolver,true));
+	const move=n.allocateCode(g.move(s,hit.vir,itemHit.vir)),cursor=n.allocateCode(g.move(s,hit.vir,itemHit.vir,true));
+	const drag=n.allocateCode(g.drag(s,move.vir)),destroy=n.allocateCode(g.destroy(s,stop.vir));
+	const source=Exe.Vir2Phy(n.FrameVtable-4),table=n.allocateBytes(new Array(4+n.FrameVtableEntries*4).fill(0),4);
+	Exe.SetHex(table.phy,Exe.GetHex(source,table.size));
+	for(const [slot,code] of [[0,destroy],[20,draw],[25,down],[27,drag],[28,move],[30,cursor],[31,up],[32,rightDown],[33,rightUp]]) Exe.SetUint32(table.phy+4+slot*4,code.vir);
+	const open=n.allocateCode(g.open(s,table.vir+4,start.vir));
+	const entry=n.packetTableEntryVir(0x0BF6),phy=Exe.Vir2Phy(entry,CODE);
+	if(phy<0) throw Error("GachaUI: snapshot dispatcher unavailable");
+	const receiver=n.allocateCode(g.receiver(s,n.PacketMainLoopReturn,open.vir));
+	n.registerPacket0BF6(_,"gcha",receiver.vir);
+	const contract={state:s,draw:draw.vir,hit:hit.vir,down:down.vir,up:up.vir,move:move.vir,cursor:cursor.vir,drag:drag.vir,
+		open:open.vir,receiver:receiver.vir,sender:sender.vir,timer:timer.vir,start:start.vir,stop:stop.vir,destroy:destroy.vir,
+		vtable:table.vir+4,fill:fill.vir,fit:fit.vir,resolver:art.resolver,blit:art.blit,packetSize:g.PacketSize,
+		packetCtor:refs.packetCtorA,packetSend:refs.packetSend,
+		itemHit:itemHit.vir,rightDown:rightDown.vir,rightUp:rightUp.vir,spinOffset:g.Spin,rightOffset:g.RightPressed,
+		rollLead:g.RollLeadMs,revealStep:g.RevealStepMs,rollIds:art.rollIds,rollCount:g.RollIcons.length,plain:art.plain,png:art.png,plainCenter:art.plainCenter,refs};
+	const marker=n.allocateString("GachaUI.v15"),record=[];
+	for(const value of [marker.vir,...Object.values(contract).filter(Number.isInteger)]) record.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
+	n.allocateBytes(record,4); CACHE.put("GachaUI.Contract.v15",contract);
+	GachaUI.onApplied();
+	console.info("GachaUI contract: "+JSON.stringify(contract)); return true;
+};
+GachaUI.validate = () => Exe.BuildDate===20250716;
+GachaUI.onApplied = function() {
+	if(Warp.TestMode) return;
+	const root=System.DirPath(Warp.TgtExe),folders=["data","texture",ModernChatUI.nativeHelpers.uiPrefix(),"genericsui"];
+	let target=root;for(const folder of folders) {target+="/"+folder;if(!System.MkDir(target))throw Error("GachaUI: cannot create "+target);}
+	for(const file of GachaUIStatic.Assets) {
+		const existing=new BinFile(target+"/"+file,'r'),present=existing.Valid;existing.Close();if(present)continue;
+		if(!System.Copy(Warp.Path+"/Assets/GachaUI/"+file,target+"/"+file,false))throw Error("GachaUI: cannot install "+file);
+	}
+};

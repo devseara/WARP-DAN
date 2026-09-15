@@ -1,4 +1,4 @@
-# WARP-DAN: Battle Pass, Chat UI and NPC Dialog UI
+# WARP-DAN: Battle Pass, Chat UI, NPC Dialog and Universal Gacha
 
 WARP patch package by **DevSeara** for the **2025-07-16 Ragexe** client.
 This is a focused add-on, not a full WARP distribution. It contains no game
@@ -19,10 +19,18 @@ executable, server source, credentials, or personal installation profiles.
   choice buttons, and 25 supplied PNGs. Includes the first-paint NPC background
   correction and the 2025 choice-window OK/Cancel fix. See the
   [NPC dialog notes](docs/modern-npc-dialog.md) for scope and verification.
+- **Universal Zeny Gacha UI v15** (`GachaUI`, ID 10006): multiple independently
+  configured NPC machines; costs, reward pools, rates, pity, history, spending
+  rankings, winners and GM99 reset scoped per machine. Native rolling/reveal/
+  sequential delivery, item right-click descriptions, 12-slot pages and four
+  automatically deployed arrow PNGs. See the [Gacha guide](docs/gacha-ui.md).
 
 The Battle Pass feature requires the matching Project Rebirth server-side BPUI
 implementation. Its server source is **not included** in this WARP-only package.
 Chat, item icons and NPC dialogs do not require a new server component.
+Gacha requires the matching GCHA wire-v7 server bridge and NPCs from
+[devseara/Ragnarok](https://github.com/devseara/Ragnarok/commit/6416b1a946809d2628efcb4c6b81c12d0f332736).
+The [Gacha guide](docs/gacha-ui.md) links the exact server files and SQL setup.
 
 ## Install into WARP
 
@@ -37,7 +45,7 @@ Other WARP forks/client builds are not assumed compatible.
 
    ```powershell
    $patchPackage = 'D:\warp\WARP-DAN'
-   $installDiff = Join-Path $patchPackage 'install\DevSeara-BattlePass-ChatUI-NPC.diff'
+   $installDiff = Join-Path $patchPackage 'install\DevSeara-BattlePass-ChatUI-NPC-Gacha.diff'
    git apply --check -- $installDiff
    # Continue only if the check above succeeds.
    git apply --whitespace=nowarn -- $installDiff
@@ -45,7 +53,7 @@ Other WARP forks/client builds are not assumed compatible.
 
    The diff installs the scripts, all images, patch registrations, stable IDs,
    CRLF attributes, and the native UI helper export. Exporting the helper does
-   **not** enable Auto Combat or Chat UI. Do not copy only the four QJS files:
+   **not** enable Auto Combat or Chat UI. Do not copy only the five QJS files:
    their registrations, assets and helper exports are also required.
 
    If the check fails, do not force it. Check whether these patches are already
@@ -54,6 +62,24 @@ Other WARP forks/client builds are not assumed compatible.
 
 4. Restart WARP, select the desired DevSeara patches, load the original
    **2025-07-16** client, choose the output EXE, and apply.
+
+### Upgrade an existing Battle Pass/Chat/NPC package to Gacha v15
+
+For a WARP tree installed using package commit `35ef127`'s
+`DevSeara-BattlePass-ChatUI-NPC.diff`, apply only this incremental diff:
+
+```powershell
+$patchPackage = 'D:\warp\WARP-DAN'
+$upgradeDiff = Join-Path $patchPackage 'install\DevSeara-Gacha-v15-upgrade.diff'
+git apply --check -- $upgradeDiff
+# Continue only if the check above succeeds.
+git apply --whitespace=nowarn -- $upgradeDiff
+```
+
+It adds Gacha and its arrow assets, and safely routes Battle Pass/Gacha to
+independent handlers. Either feature can still be selected alone. Do not apply
+both the fresh combined diff and this upgrade, or force either onto a WARP
+tree that already has Gacha. The author's live WARP tree already has it.
 
 ### Upgrade an existing Battle Pass/Chat UI package installation
 
@@ -70,6 +96,7 @@ git apply --whitespace=nowarn -- $upgradeDiff
 
 Run these commands from your WARP directory, with WARP closed and your changes
 backed up or committed. Do not apply both the combined and incremental diffs.
+After this historical NPC upgrade, apply the Gacha upgrade above if desired.
 The original Battle Pass/Chat UI diff is retained unchanged for reproducibility.
 Neither diff should be forced onto a working copy where NPC UI is already
 installed. Pulling this package updates the package files; it does not apply
@@ -94,6 +121,8 @@ The legacy chat textbox PNGs stay in the bundle but are not used to draw the
 neutral translucent gray message field.
 NPC UI can be selected by itself: the installed Chat UI and Auto Combat helper
 scripts are required, but their patches do not need to be selected.
+The same applies to Gacha. Its four arrow PNGs deploy under `genericsui` without
+overwriting existing images; item icons come from the client's own resources.
 
 ## Verification
 
@@ -104,6 +133,7 @@ node tools/test_battlepass_asset_install.js
 node tools/test_modern_chat_asset_install.js
 node tools/test_modern_chat_font_inputs.js
 node tools/test_modern_npc_asset_install.js
+node tools/test_gacha_asset_install.js
 ```
 
 Offline native chat tests require Python, Pillow, pefile, Capstone, and Unicorn:
@@ -126,8 +156,12 @@ choice frames/buttons pixel-for-pixel. Live NPC v3 visual acceptance is still
 pending. Run the tests from this package; test tools are not installed by the
 WARP installation diffs.
 
+Gacha tests and server requirements are in [the Gacha guide](docs/gacha-ui.md).
+Fresh/upgrade installer and feature-routing checks are recorded in
+[package verification](docs/gacha-package-verification.md).
+
 ## License and attribution
 
 GPL-3.0-or-later; see [LICENSE](LICENSE). WARP and existing native helpers retain
 their original authorship and license. DevSeara is credited for these custom
-Battle Pass, chat and NPC dialog diffs. Project Rebirth server/project names are retained.
+Battle Pass, chat, NPC dialog and Gacha diffs. Project Rebirth server/project names are retained.

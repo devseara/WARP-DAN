@@ -1555,13 +1555,12 @@ BattlepassUI = function(_)
 	const entryVir = n.packetTableEntryVir(b.SnapshotId);
 	const entryPhy = Exe.Vir2Phy(entryVir, CODE);
 	if (entryPhy < 0) throw Error("BattlepassUI: snapshot dispatch entry is not mapped");
-	const stock = Exe.GetUint32(entryPhy);
-	if (Exe.Vir2Phy(stock, CODE) < 0) throw Error("BattlepassUI: stock emotion handler is not executable");
-	const fallback = stock === n.PacketDefaultHandler ? n.PacketMainLoopReturn : stock;
+	// The globally owned 0x0BF6 router handles foreign/stock envelopes. Never
+	// compete with GachaUI for an independently serialized dispatch-slot write.
+	const fallback = n.PacketMainLoopReturn;
 	const receive = n.allocateCode(b.receiver(state.vir, fallback, toggle.vir));
 	// A dedicated envelope on 0x0BF6 leaves AutoHunt/Pincode's 0x0BEF router untouched.
-	if (Exe.GetUint32(entryPhy) !== stock) throw Error("BattlepassUI: dispatcher changed during installation");
-	Exe.SetUint32(entryPhy, receive.vir);
+	n.registerPacket0BF6(_, "bpui", receive.vir);
 	// Six bytes covering complete instructions from the unmodified software cursor.
 	// Keep a trampoline for all non-Battle-Pass windows and frame-edge cases.
 	n.assertCode("Battlepass software cursor", 0xA74410, "55 8B EC 83 EC 5C");
