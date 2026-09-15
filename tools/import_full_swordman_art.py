@@ -17,6 +17,21 @@ def extract(batch, work=WORK):
     green=(rgb[:,:,1]>95)&(rgb[:,:,1]-rgb[:,:,0]>48)&(rgb[:,:,1]-rgb[:,:,2]>48)
     pink=(rgb[:,:,0]>160)&(rgb[:,:,2]>145)&(rgb[:,:,1]<120)
     marks=[p for p in components(pink) if len(p)>=12]
+    if batch.get('allow_empty_cell_marks') and len(marks)>batch['cells']:
+        # Ignore added page markers only after proving their trailing cells
+        # contain no body artwork. This never discards a drawn pose.
+        assert len(marks)==batch['columns']*batch['rows']
+        marks.sort(key=lambda p:float(p[:,0].mean()))
+        full=[]
+        for start in range(0,len(marks),batch['columns']):
+            full+=sorted(marks[start:start+batch['columns']],key=lambda p:float(p[:,1].mean()))
+        centers=np.array([[p[:,1].mean(),p[:,0].mean()] for p in full])
+        spacing=float(np.median(np.diff(centers[:batch['columns'],0])))
+        for mark in full[batch['cells']:]:
+            x=float(mark[:,1].mean());y=int(mark[:,0].max())+8
+            left=max(0,round(x-spacing*.45));right=min(a.shape[1],round(x+spacing*.45))
+            assert (green[y:,left:right]|pink[y:,left:right]).all(),(path,'extra marker cell is not empty')
+        marks=full[:batch['cells']]
     assert len(marks)==batch['cells'],(path,'registration mark count',len(marks),batch['cells'])
     # Each row has a wide vertical separation; then sort marks left to right.
     marks.sort(key=lambda p:float(p[:,0].mean()))

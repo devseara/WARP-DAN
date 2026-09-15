@@ -1,0 +1,80 @@
+{
+  "status": "accepted_installed",
+  "date": "2026-09-14",
+  "job": "acolyte",
+  "revision": "v2",
+  "files": [
+    {
+      "sex": "male",
+      "path": "assets/male-angel-acolyte-v2.spr",
+      "sha256": "df078b653080cc3236ddad8fce0d852717ff001d037007eaf5dcf54c0a8b98a8",
+      "bytes": 36239400
+    },
+    {
+      "sex": "male",
+      "path": "assets/male-angel-acolyte-v2.act",
+      "sha256": "69588c067fe42b333ff6e86c02134121a77c715de38711b8e4601fd09beff23c",
+      "bytes": 44748
+    },
+    {
+      "sex": "female",
+      "path": "assets/female-angel-acolyte-v2.spr",
+      "sha256": "964415c069f78b3bb5bfc218656a52400aa38f95d861d04989dca683bbdc0bc2",
+      "bytes": 37624104
+    },
+    {
+      "sex": "female",
+      "path": "assets/female-angel-acolyte-v2.act",
+      "sha256": "55a9046d0aa51ac06316b70abff77b66911313e2770b9fea5174cee2eb3e0e61",
+      "bytes": 44708
+    }
+  ],
+  "actions_per_sex": 104,
+  "frame_uses_per_sex": 456,
+  "checked_frame_uses": 912,
+  "installed": true,
+  "accepted": true,
+  "native_head_metadata_preserved": false,
+  "artifact_root": "Assets/ClanBodySkins/Acolyte/registration-v2",
+  "method": "ACT-only body-root translation and head attachment correction; no image resampling",
+  "native_head_artwork_and_phases_preserved": true,
+  "body_spr_bytes_preserved": true,
+  "head_anchors_corrected": true,
+  "visual_acceptance_date": "2026-09-14",
+  "acceptance_record": "Assets/ClanBodySkins/Acolyte/registration-v2/user-review.json",
+  "installation": {
+    "status": "installed",
+    "date": "2026-09-14",
+    "files": [
+      {
+        "sex": "male",
+        "path": "assets/male-angel-acolyte-v2.spr",
+        "sha256": "df078b653080cc3236ddad8fce0d852717ff001d037007eaf5dcf54c0a8b98a8",
+        "bytes": 36239400
+      },
+      {
+        "sex": "male",
+        "path": "assets/male-angel-acolyte-v2.act",
+        "sha256": "69588c067fe42b333ff6e86c02134121a77c715de38711b8e4601fd09beff23c",
+        "bytes": 44748
+      },
+      {
+        "sex": "female",
+        "path": "assets/female-angel-acolyte-v2.spr",
+        "sha256": "964415c069f78b3bb5bfc218656a52400aa38f95d861d04989dca683bbdc0bc2",
+        "bytes": 37624104
+      },
+      {
+        "sex": "female",
+        "path": "assets/female-angel-acolyte-v2.act",
+        "sha256": "55a9046d0aa51ac06316b70abff77b66911313e2770b9fea5174cee2eb3e0e61",
+        "bytes": 44708
+      }
+    ],
+    "target": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+    "archive_sha256": "da0709434d7a3b2b1067dfd50802e6981d2baefdaf4bd1ab10dbb1f2982db923",
+    "release_id": "swordman-mage-acolyte-v5",
+    "receipt": "Assets/ClanBodySkins/releases/swordman-mage-acolyte-v5/maindata-transaction.json",
+    "live_client_checked": false
+  }
+}

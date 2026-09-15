@@ -1,6 +1,7 @@
 """Prove record replacement/removal and exact rollback on small GRF fixtures."""
 from pathlib import Path
 import json
+import copy
 import sys
 import tempfile
 import unittest
@@ -10,7 +11,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from package_clan_skin_assets import pack_payloads
 from clan_grf_transaction import replace_records, rollback, digest
 from grf_reader import GrfFile
-from release_accepted_clan_sprites import validate_active_release
+from release_accepted_clan_sprites import validate_active_release, validate_resource_pairs, validate_update_shadows
 
 
 class TransactionTests(unittest.TestCase):
@@ -56,9 +57,31 @@ class TransactionTests(unittest.TestCase):
 
 
 class ReleaseManifestTests(unittest.TestCase):
+    def test_release_requires_both_sexes_and_matching_spr_act(self):
+        rows = json.loads((ROOT / 'Inputs/ClanBodySkins/records/clan-sprites-current.json').read_text(encoding='utf8'))['resources']
+        self.assertEqual({row['job'] for row in rows}, {'swordman', 'mage', 'acolyte'})
+        validate_resource_pairs(rows)
+        with self.assertRaisesRegex(ValueError, 'Incomplete'):
+            validate_resource_pairs(rows[:-1])
+        with self.assertRaisesRegex(ValueError, 'Duplicate'):
+            validate_resource_pairs(rows + [rows[-1]])
+        with self.assertRaisesRegex(ValueError, 'Missing male/female'):
+            validate_resource_pairs([row for row in rows if not (row['job'] == 'acolyte' and row['sex'] == 'female')])
+        bad = copy.deepcopy(rows)
+        bad[-1]['entry'] = bad[-1]['entry'].replace('.act', '-wrong.act')
+        with self.assertRaisesRegex(ValueError, 'Incomplete'):
+            validate_resource_pairs(bad)
+
+    def test_new_job_shadow_is_rejected_before_archive_mutation(self):
+        desired = {'data/sprite/clan_skins/1/new.act': b'accepted'}
+        validate_update_shadows(desired, {}, {})
+        with self.assertRaisesRegex(ValueError, 'Unreviewed'):
+            validate_update_shadows(desired, desired, {})
+        validate_update_shadows(desired, desired, desired)
+
     def test_current_manifest_matches_active_correction_and_v7_is_rejected(self):
-        current = json.loads((ROOT / 'docs/evidence/clan-sprites-current.json').read_text(encoding='utf8'))
-        historical = json.loads((ROOT / 'docs/evidence/clan-sprites-accepted-v2.json').read_text(encoding='utf8'))
+        current = json.loads((ROOT / 'Inputs/ClanBodySkins/records/clan-sprites-current.json').read_text(encoding='utf8'))
+        historical = json.loads((ROOT / 'Inputs/ClanBodySkins/records/clan-sprites-accepted-v2.json').read_text(encoding='utf8'))
         state = dict(status='deployed_requested_correction', resources=[
             row for row in current['resources'] if row['job'] == 'mage' and row['sex'] == 'female'])
         validate_active_release(current, state)
@@ -66,7 +89,7 @@ class ReleaseManifestTests(unittest.TestCase):
             validate_active_release(historical, state)
 
     def test_unpinned_pending_correction_refuses_release(self):
-        current = json.loads((ROOT / 'docs/evidence/clan-sprites-current.json').read_text(encoding='utf8'))
+        current = json.loads((ROOT / 'Inputs/ClanBodySkins/records/clan-sprites-current.json').read_text(encoding='utf8'))
         with self.assertRaisesRegex(ValueError, 'downgrade'):
             validate_active_release(current, dict(status='prepared_requested_correction', resources=[]))
 

@@ -1,16 +1,18 @@
 {
-  "release_id": "swordman-mage-v4",
+  "release_id": "swordman-mage-acolyte-v5",
   "status": "accepted",
-  "date": "2026-09-13",
+  "date": "2026-09-14",
   "versions": {
     "swordman": "V9 both sexes",
     "mage_male": "V3",
-    "mage_female": "V10"
+    "mage_female": "V10",
+    "acolyte": "V2 both sexes"
   },
   "visual_acceptance": {
     "swordman": "accepted",
     "mage_male": "accepted",
-    "mage_female": "V10 accepted by user 2026-09-13"
+    "mage_female": "V10 accepted by user 2026-09-13",
+    "acolyte": "V2 accepted by user 2026-09-14"
   },
   "resources": [
     {
@@ -68,6 +70,34 @@
       "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.act",
       "source": "Assets/ClanBodySkins/Mage/female-gait-v10/assets/female-angel-mage-v10.act",
       "sha256": "c0f57499f23f501230b24268f025c2c5da192b6b58b2587c44805fabbfe4dec6"
+    },
+    {
+      "job": "acolyte",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc131\uc9c1\uc790_\ub0a8.spr",
+      "source": "Assets/ClanBodySkins/Acolyte/registration-v2/assets/male-angel-acolyte-v2.spr",
+      "sha256": "df078b653080cc3236ddad8fce0d852717ff001d037007eaf5dcf54c0a8b98a8"
+    },
+    {
+      "job": "acolyte",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc131\uc9c1\uc790_\ub0a8.act",
+      "source": "Assets/ClanBodySkins/Acolyte/registration-v2/assets/male-angel-acolyte-v2.act",
+      "sha256": "69588c067fe42b333ff6e86c02134121a77c715de38711b8e4601fd09beff23c"
+    },
+    {
+      "job": "acolyte",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc131\uc9c1\uc790_\uc5ec.spr",
+      "source": "Assets/ClanBodySkins/Acolyte/registration-v2/assets/female-angel-acolyte-v2.spr",
+      "sha256": "964415c069f78b3bb5bfc218656a52400aa38f95d861d04989dca683bbdc0bc2"
+    },
+    {
+      "job": "acolyte",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc131\uc9c1\uc790_\uc5ec.act",
+      "source": "Assets/ClanBodySkins/Acolyte/registration-v2/assets/female-angel-acolyte-v2.act",
+      "sha256": "55a9046d0aa51ac06316b70abff77b66911313e2770b9fea5174cee2eb3e0e61"
     }
   ],
   "preview_renderer": "NativeActJobPreviews",
@@ -79,7 +109,12 @@
     "build_mage_pose_set.py",
     "build_male_mage_gait.py",
     "build_female_mage_v10.py",
-    "package_female_mage_v10.py"
+    "package_female_mage_v10.py",
+    "fit_acolyte_necks.py",
+    "acolyte_neck_registration.py",
+    "angel_job_pipeline.py",
+    "import_angel_job_art.py",
+    "prepare_angel_job_sources.py"
   ],
   "source_distribution": "Sprite artwork and authoring dependencies are restored from the saved work bundles; binary artwork is not stored in Git.",
   "legacy_update_resources": [
@@ -147,5 +182,17 @@
       "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.spr",
       "sha256": "3c1c98f741bd6ce49f3417295b02bd64b443107d6f7deaf9386bfb1b6d9337b6"
     }
+  ],
+  "acceptance_records": [
+    {
+      "job": "acolyte",
+      "path": "Assets/ClanBodySkins/Acolyte/registration-v2/user-review.json"
+    }
+  ],
+  "additional_source_roots": [
+    "Assets/ClanBodySkins/Acolyte/complete-v1",
+    "Assets/ClanBodySkins/Acolyte/registration-v2",
+    "Assets/ClanBodySkins/Acolyte/native",
+    "Assets/ClanBodySkins/Acolyte/design"
   ]
 }

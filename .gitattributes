@@ -50,3 +50,4 @@ tools/clan_perspective_bridge.py text eol=crlf
 Scripts/Patches/NativeActJobPreviews.qjs text eol=crlf
 tools/native/native_act_job_ui.cpp text eol=crlf
 tools/native/native_act_job_ui.qjs.in text eol=crlf
+Inputs/ClanBodySkins/records/*.json text eol=lf

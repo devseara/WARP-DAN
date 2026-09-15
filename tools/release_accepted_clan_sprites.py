@@ -13,7 +13,7 @@ from grf_reader import GrfFile
 from spr_reader import Spr
 
 ROOT = Path(__file__).resolve().parents[1]
-MANIFEST = ROOT / 'docs/evidence/clan-sprites-current.json'
+MANIFEST = ROOT / 'Inputs/ClanBodySkins/records/clan-sprites-current.json'
 CONFIG = json.loads(MANIFEST.read_text(encoding='utf8'))
 assert re.fullmatch(r'[a-z0-9-]+', CONFIG['release_id'])
 RELEASE = ROOT / 'Assets/ClanBodySkins/releases' / CONFIG['release_id']
@@ -32,9 +32,47 @@ def validate_active_release(manifest, state):
         raise ValueError('Release manifest would downgrade the active correction. Use ' + tool + ' or update the pinned current manifest.')
 
 
+def validate_resource_pairs(resources):
+    """Require complete male/female SPR/ACT sets for every declared job."""
+    names, groups = set(), {}
+    for row in resources:
+        name = row['entry']
+        if name in names or not name.startswith('data/sprite/clan_skins/1/') or '/preview/' in name:
+            raise ValueError('Duplicate or non-world release resource: ' + name)
+        names.add(name)
+        stem, suffix = name.rsplit('.', 1)
+        pair = groups.setdefault(row['job'], {}).setdefault(row['sex'], {})
+        if suffix not in ('spr', 'act') or suffix in pair:
+            raise ValueError('Invalid or duplicate pair member: ' + name)
+        pair[suffix] = stem
+    if not groups:
+        raise ValueError('Empty release')
+    for job, sexes in groups.items():
+        if set(sexes) != {'male', 'female'}:
+            raise ValueError('Missing male/female pair: ' + job)
+        for pair in sexes.values():
+            if set(pair) != {'spr', 'act'} or pair['spr'] != pair['act']:
+                raise ValueError('Incomplete SPR/ACT pair: ' + job)
+
+
+def validate_update_shadows(payloads, entries, legacy):
+    unexpected = (set(payloads) & set(entries)) - set(legacy)
+    if unexpected:
+        raise ValueError('Unreviewed update.grf shadows: ' + ', '.join(sorted(unexpected)))
+
+
 def current_payloads():
     manifest = CONFIG
     assert manifest['status'] in ('accepted', 'installed_correction')
+    validate_resource_pairs(manifest['resources'])
+    for record in manifest.get('acceptance_records', []):
+        path = ROOT / record['path']
+        review = json.loads(path.read_text(encoding='utf8'))
+        assert review['status'] == 'accepted', path
+        reviewed = {str((path.parent / row['path']).resolve()): row['sha256'] for row in review['files']}
+        selected = {str((ROOT / row['source']).resolve()): row['sha256'] for row in manifest['resources']
+                    if row['job'] == record['job']}
+        assert reviewed == selected and selected, ('Acceptance does not match release', path)
     correction = ROOT / 'Assets/ClanBodySkins/Mage/installed-correction.json'
     if correction.exists():
         validate_active_release(manifest, json.loads(correction.read_text(encoding='utf8')))
@@ -45,7 +83,7 @@ def current_payloads():
             raise FileNotFoundError('Restore the sprite source/work bundle before packaging: ' + str(path))
         assert digest(path) == row['sha256'], path
         result[row['entry']] = path.read_bytes()
-    assert len(result) == 8 and not any('/preview/' in name for name in result)
+    assert len(result) == len(manifest['resources'])
     return result
 
 
@@ -77,7 +115,7 @@ def build():
         pairs.append(dict(entry=name, actions=104, frame_uses=456, independent_decoder_match=True))
     pack_payloads(payloads, PATCH)
     report = dict(status=CONFIG['status'], visual_acceptance=CONFIG['visual_acceptance'], patch=str(PATCH.relative_to(ROOT)),
-                  sha256=digest(PATCH), entries=8, pairs=pairs,
+                  sha256=digest(PATCH), entries=len(payloads), pairs=pairs,
                   previews='NativeActJobPreviews consumes these same world SPR/ACT pairs',
                   generated_preview_entries=0)
     (RELEASE / 'verification.json').write_text(json.dumps(report, indent=2), encoding='utf8')
@@ -90,6 +128,7 @@ def install(payloads, game):
     assert len(legacy) == 16
     a, b = GrfFile(main), GrfFile(update)
     try:
+        validate_update_shadows(payloads, b.entries, legacy)
         duplicates = {name for name in legacy if name in b.entries}
         # Remove only verified copies of the exact previous release. Every
         # removed name must already exist safely in the destination archive.
@@ -122,7 +161,7 @@ def install(payloads, game):
         b.close()
     report = dict(status='installed', authoritative_archive=str(main),
                   maindata_sha256=digest(main), update_sha256=digest(update),
-                  patch_sha256=digest(PATCH), world_entries=8,
+                  patch_sha256=digest(PATCH), world_entries=len(payloads),
                   duplicate_update_entries_removed=len(duplicates),
                   archive_priority_verified=True, exe_modified=False,
                   maindata_transaction=main_result, update_transaction=update_result)

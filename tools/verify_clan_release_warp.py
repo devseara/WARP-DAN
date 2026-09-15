@@ -31,7 +31,7 @@ def run(existing=None):
         rows.append(row)
         print('PASS ' + name, flush=True)
     report = dict(status='source_and_export_verified', cases=rows, live_tested=False)
-    (ROOT / 'docs/evidence/clan-runtime-v2.json').write_text(json.dumps(report, indent=2), encoding='utf8')
+    (ROOT / 'Inputs/ClanBodySkins/records/clan-runtime-v2.json').write_text(json.dumps(report, indent=2), encoding='utf8')
     return report
 
 

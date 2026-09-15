@@ -86,7 +86,7 @@ def install():
 
 def package(report):
     archive=OUT.parent/'Mage-female-v10-SPR-ACT-correction.zip';files={p for p in OUT.rglob('*') if p.is_file() and p.suffix not in ('.grf','.zip') and p.name!='delivery.json'}
-    files.update(source_closure([ROOT/'tools/build_female_mage_v10.py',ROOT/'tools/package_female_mage_v10.py']));files.update((ROOT/'tools/dual_weapon_formats').glob('*.py'));files.update(p for p in (OUT.parent/'native').rglob('*') if p.is_file());files.update((ROOT/'docs/evidence').glob('clan-*.json'))
+    files.update(source_closure([ROOT/'tools/build_female_mage_v10.py',ROOT/'tools/package_female_mage_v10.py']));files.update((ROOT/'tools/dual_weapon_formats').glob('*.py'));files.update(p for p in (OUT.parent/'native').rglob('*') if p.is_file());files.update((ROOT/'Inputs/ClanBodySkins/records').glob('clan-*.json'))
     for version in (7,9):files.update(OUT.parent/f'female-gait-v{version}/assets/female-angel-mage-v{version}{suffix}' for suffix in ('.spr','.act'))
     files.update([ROOT/'docs/clan-body-skins.md',BASE/'deployment.json',OUT.parent/'installed-correction.json'])
     with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:

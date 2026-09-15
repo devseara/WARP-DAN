@@ -4,7 +4,7 @@ import hashlib
 import json
 from pathlib import Path
 import zipfile
-from release_accepted_clan_sprites import ROOT, RELEASE, CONFIG, current_payloads
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def source_closure(seeds):
@@ -27,6 +27,7 @@ def source_closure(seeds):
 
 
 def main():
+    from release_accepted_clan_sprites import RELEASE, CONFIG, current_payloads
     current_payloads()  # Verify pinned current sources before saving.
     seeds = CONFIG['authoring_tools'] + ['release_accepted_clan_sprites.py', 'save_accepted_clan_work.py']
     missing = [name for name in seeds if not (ROOT / 'tools' / name).is_file()]
@@ -53,11 +54,22 @@ def main():
                         or '/'.join(parts[:2]) in bases and 'assets' in parts)
             if selected:
                 files.add(path)
+    for name in CONFIG.get('additional_source_roots', []):
+        source = (ROOT / name).resolve()
+        if not source.is_relative_to(assets.resolve()) or not source.is_dir():
+            raise ValueError('Missing or invalid source root: ' + name)
+        for path in source.rglob('*'):
+            if not path.is_file() or set(path.relative_to(source).parts) & {'review', 'diagnostics', 'rejected', '__pycache__'}:
+                continue
+            parts = path.relative_to(assets).parts
+            if (path.suffix == '.json' or 'native' in parts or 'assets' in parts
+                    or path.suffix == '.png' and set(parts) & {'art', 'refs', 'design', 'whole-frames'}):
+                files.add(path)
     files.update(ROOT / row['source'] for row in CONFIG['resources'])
     files.add(ROOT / 'docs/clan-body-skins.md')
-    files.update((ROOT / 'docs/evidence').glob('clan-*.json'))
+    files.update((ROOT / 'Inputs/ClanBodySkins/records').glob('clan-*.json'))
     files.update(RELEASE.glob('*transaction.json'))
-    for path in (RELEASE / 'verification.json', assets / 'releases/cleanup-manifest.json'):
+    for path in (RELEASE / 'verification.json', RELEASE / 'installation.json', RELEASE / 'previous-manifest.json', assets / 'releases/cleanup-manifest.json'):
         if path.is_file():
             files.add(path)
     archive = RELEASE / 'current-work.zip'
