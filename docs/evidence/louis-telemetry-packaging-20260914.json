@@ -1,0 +1,243 @@
+{
+  "passed": true,
+  "scope": [
+    "ping",
+    "fps"
+  ],
+  "client_profile": 20250716,
+  "source_exe_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+  "clean_base_commit": "5cca9b1f268c4a46fa229fb239f00f81d07cb04c",
+  "archives": {
+    "ping": {
+      "file": "Louis-ping-1.0.0.zip",
+      "sha256": "452bf314a5f7ad066107604f9e8fdcb705435664b41c8dd2b151361ae9bb0bf6",
+      "features": [
+        "ping"
+      ]
+    },
+    "fps": {
+      "file": "Louis-fps-1.0.0.zip",
+      "sha256": "35475d08af2264cff4f3bd716b77062fd4d7ea7eeaeb929e5961468936f7da52",
+      "features": [
+        "fps"
+      ]
+    },
+    "fps-ping": {
+      "file": "Louis-fps-ping-1.0.0.zip",
+      "sha256": "2833efe5930a39e7d2e1a9b81e6262f94f88bac18207313a2f9ca370c8d44e36",
+      "features": [
+        "fps",
+        "ping"
+      ]
+    }
+  },
+  "native_cases": [
+    {
+      "case": "ping-only",
+      "passed": true,
+      "verification": {
+        "channels": [
+          "ping"
+        ],
+        "registers_preserved": true,
+        "draw_and_toggle_passed": true
+      },
+      "sha256": "3e2a26df9fa23fed0af819c6cac2f8b19e94f43451dd2da62be0f4517e136a66"
+    },
+    {
+      "case": "fps-only",
+      "passed": true,
+      "verification": {
+        "channels": [
+          "fps"
+        ],
+        "registers_preserved": true,
+        "draw_and_toggle_passed": true
+      },
+      "sha256": "41981f5e890fbbae4c23c1d5dbc17a88d30477e90e5f9451175acacdd56714b1"
+    },
+    {
+      "case": "fps-ping",
+      "passed": true,
+      "verification": {
+        "channels": [
+          "fps",
+          "ping"
+        ],
+        "registers_preserved": true,
+        "draw_and_toggle_passed": true
+      },
+      "sha256": "3d0bc6052b3a0c4d5e36ace425bb644be64495b7008a2f657207f6fc809d0318"
+    },
+    {
+      "case": "ping-fps",
+      "passed": true,
+      "verification": {
+        "channels": [
+          "fps",
+          "ping"
+        ],
+        "registers_preserved": true,
+        "draw_and_toggle_passed": true
+      },
+      "sha256": "d29084e529b8a5d70b49c7fa86dd2f16fcf34bf4e35b2ab4c6f49d8b4c2bf9aa"
+    },
+    {
+      "case": "remove-fps",
+      "passed": true,
+      "verification": {
+        "channels": [
+          "fps",
+          "ping"
+        ],
+        "registers_preserved": true,
+        "draw_and_toggle_passed": true
+      },
+      "sha256": "f17e8e395a385754f8679ca285d140485c9e659d55c4cf014f643447db3a22d0"
+    },
+    {
+      "case": "remove-ping",
+      "passed": true,
+      "verification": {
+        "channels": [
+          "fps",
+          "ping"
+        ],
+        "registers_preserved": true,
+        "draw_and_toggle_passed": true
+      },
+      "sha256": "46223106c6112ae705cf12d6e35593d1b79e32ee6e895df7948da1d361919f49"
+    },
+    {
+      "case": "reapply-ping",
+      "passed": true,
+      "verification": {
+        "channels": [
+          "fps",
+          "ping"
+        ],
+        "registers_preserved": true,
+        "draw_and_toggle_passed": true
+      },
+      "sha256": "645d03fdad35699870640f468a1db382727e945bca322f7a87919f7a04d0f590"
+    },
+    {
+      "case": "remove-all",
+      "passed": true,
+      "verification": {
+        "restored_stock": true,
+        "removed_commands_inert": true
+      },
+      "sha256": "152c61025e252d9a7eb42690d56be2ac5389285cfda0b1ac034097f9d7a475c9"
+    },
+    {
+      "case": "reapply-all",
+      "passed": true,
+      "verification": {
+        "channels": [
+          "fps",
+          "ping"
+        ],
+        "registers_preserved": true,
+        "draw_and_toggle_passed": true
+      },
+      "sha256": "c7fa62243fa37f1f9637a7c36dacf4810a4ed367fc9c0efaa96e2116a978c784"
+    },
+    {
+      "case": "failed-ping",
+      "passed": true,
+      "verification": {
+        "channels": [
+          "fps",
+          "ping"
+        ],
+        "registers_preserved": true,
+        "draw_and_toggle_passed": true
+      },
+      "sha256": "8239deaca212ee9ffa012d4bc4a9118d753e0e9ba76e79eb84c5731e02e96bfb"
+    }
+  ],
+  "installer": {
+    "passed": true,
+    "checks": [
+      "deterministic archives",
+      "Ping-only source closure",
+      "QJS encoding",
+      "dry-run",
+      "idempotent install",
+      "existing WARP registrations preserved",
+      "cumulative upgrade",
+      "partial upgrade refused",
+      "downgrade refused",
+      "local edits preserved",
+      "shared version mismatch refused",
+      "checksum failure refused",
+      "unmanaged conflict refused"
+    ]
+  },
+  "full_repository_integration": {
+    "passed": true,
+    "verification": {
+      "channels": [
+        "fps",
+        "ping"
+      ],
+      "registers_preserved": true,
+      "draw_and_toggle_passed": true
+    }
+  },
+  "source_hashes": {
+    "Scripts/Support/Class_NativeTelemetry.qjs": "ab860ab67606372c4548a3ca29fa09520c0618ff636d5e02b32f34a453088f13",
+    "Scripts/Patches/FpsOverlay.qjs": "640363b965a893aef736a83713cbebdcbe24b5d2be745dda7fa2bf78fd3544da",
+    "Scripts/Patches/PingOverlay.qjs": "39ea28317500778bee1c5b4b29dcb22127e62760a225014f6a43742b21af0747",
+    "Scripts/Patches/CustomSlashCommand.qjs": "80de984726a1a0334ca671d1392b6d987ea4fe89124c37f97b999f9771b5fb1d",
+    "packaging/louis/catalog.json": "1d91a84ced1bbc723366f75961f5158321c0cc445e452572d7004d9703088fc8",
+    "packaging/louis/install.py": "0fe971e78485d4b2b9ef9ecdc22fbeba06bdb095e412da33530b9485424570c9",
+    "tools/package_louis_patches.py": "9ef59efa27fdb419737e9d3cb942f0c7e90d5af0ddf94c171ac232eb77a24f96",
+    "tools/verify_telemetry_packages.py": "08fccb7231ec5f22920951491800f01f30f3cab3841770161c811df305f971d1",
+    "tools/verify_louis_package_installer.py": "731f60af5fa6d755a66d2bb5732edaa0768ef2161f8bf1716c965beb762776f9"
+  },
+  "live_visual_accepted": false,
+  "evidence_runs": [
+    "verification-04",
+    "verification-06",
+    "installer-01",
+    "integration-01"
+  ],
+  "user_reported_live_test": {
+    "date": "2026-09-15",
+    "statement": "patches seemed to be working",
+    "scope": [
+      "fps",
+      "ping"
+    ],
+    "exact_tested_exe_sha256": null,
+    "status": "positive user report; exact build and complete visual matrix not recorded"
+  },
+  "commit_preparation": {
+    "date": "2026-09-15",
+    "changes": "Removed trailing blank lines only; Python ASTs unchanged. QJS/runtime sources unchanged. Archive hashes refer to the previously verified release ZIPs.",
+    "normalization": [
+      {
+        "file": "docs/louis-patch-packaging.md",
+        "before_sha256": "f6ee636a76d73222d15a9cdf0758832189c28dc833405b3b4bc662480de5c2c8",
+        "after_sha256": "5b2a381d914a67940e5ea79c08f82dd9881b00da0b9ce6752b666206fc191ef6"
+      },
+      {
+        "file": "packaging/louis/install.py",
+        "before_sha256": "5d987c6180996b70006682ce6282e9371d7fcf338e2cfbd1d9d627a1104c8d0f",
+        "after_sha256": "0fe971e78485d4b2b9ef9ecdc22fbeba06bdb095e412da33530b9485424570c9"
+      },
+      {
+        "file": "tools/verify_louis_package_installer.py",
+        "before_sha256": "dbec22f7aa8ff26dbeb0661226759c68519e784c427f0fef15424532659af0b6",
+        "after_sha256": "731f60af5fa6d755a66d2bb5732edaa0768ef2161f8bf1716c965beb762776f9"
+      },
+      {
+        "file": "tools/verify_telemetry_packages.py",
+        "before_sha256": "a6419ae6c10cac5bcddfdbdcf37cb5ea58d96fc88da42b7dfb1c033e52aedf70",
+        "after_sha256": "08fccb7231ec5f22920951491800f01f30f3cab3841770161c811df305f971d1"
+      }
+    ]
+  }
+}

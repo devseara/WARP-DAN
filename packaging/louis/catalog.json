@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "release": "1.0.0",
+  "client_profiles": [
+    20250716
+  ],
+  "modules": {
+    "telemetry-core": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Support/Class_NativeTelemetry.qjs"
+      ],
+      "requires": [
+        "slash-commands"
+      ]
+    },
+    "slash-commands": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Patches/CustomSlashCommand.qjs"
+      ],
+      "requires": []
+    }
+  },
+  "features": {
+    "ping": {
+      "patch": "PingOverlay",
+      "patch_id": 45000,
+      "title": "Native Ping Overlay (/ping)",
+      "description": "Stock application RTT with a native overlay and /ping toggle. Target: 2025-07-16.",
+      "files": [
+        "Scripts/Patches/PingOverlay.qjs"
+      ],
+      "requires": [
+        "telemetry-core"
+      ],
+      "command": "/ping"
+    },
+    "fps": {
+      "patch": "FpsOverlay",
+      "patch_id": 45001,
+      "title": "Native FPS Overlay (/fps)",
+      "description": "Native frame counter with a shared overlay and /fps toggle. Target: 2025-07-16.",
+      "files": [
+        "Scripts/Patches/FpsOverlay.qjs"
+      ],
+      "requires": [
+        "telemetry-core"
+      ],
+      "command": "/fps"
+    }
+  }
+}

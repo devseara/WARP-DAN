@@ -101,6 +101,8 @@ CustomSlashCommand.register = function(_, spec)
 
 CustomSlashCommand.refresh = function(_)
 {
+	if (!CACHE.getTag('CustomSlashCommand.Dispatch'))
+		CACHE.setup('CustomSlashCommand.Dispatch', 'CustomSlashCommand.Dispatch');
 	const currentOwner = CustomSlashCommand.ownerPatchName(_);
 	CACHE.put('CustomSlashCommand.CurrentRefreshOwner', currentOwner);
 	const registryByOwner = CACHE.get('CustomSlashCommand.RegistryByOwner') ?? {};
@@ -319,4 +321,15 @@ CustomSlashCommand.refresh = function(_)
 		Exe.EndTag();
 		Exe.ActivePatch = callerPatch;
 	}
+};
+
+// Consumers call this before clearing their private callback allocations.
+CustomSlashCommand.unregister = function(owner)
+{
+	const key = "CustomSlashCommand.RegistryByOwner";
+	const registry = CACHE.get(key) ?? {};
+	if (!Object.prototype.hasOwnProperty.call(registry, owner)) return;
+	delete registry[owner];
+	CACHE.put(key, registry);
+	CustomSlashCommand.refresh(owner);
 };

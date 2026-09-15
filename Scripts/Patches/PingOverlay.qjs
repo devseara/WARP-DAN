@@ -17,7 +17,7 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-07-13                                             *
+*   Last Modified : 2026-09-14                                             *
 *                                                                          *
 *   Description   : Adds a QJS-only ping overlay to the 2025-07-16 client. *
 *                   The static response cave captures the client's own     *
@@ -25,6 +25,37 @@
 *                   ICMP worker, Winsock recv hook or custom DLL is used.  *
 *                                                                          *
 \**************************************************************************/
+
+NativeTelemetryOverlay.requireApi(1);
+NativeTelemetryOverlay.PingOption = 10003;
+NativeTelemetryOverlay.StatePingInstalled = 4;
+NativeTelemetryOverlay.StatePingX = 16;
+NativeTelemetryOverlay.StatePingY = 20;
+NativeTelemetryOverlay.StatePingValue = 36;
+NativeTelemetryOverlay.StatePingBuffer = 76;
+
+NativeTelemetryOverlay.registerChannel({
+	apiVersion: 1, id: "ping", flag: 2, optionId: 10003,
+	installedOffset: 4, xOffset: 16, yOffset: 20, valueOffset: 36, bufferOffset: 76,
+	prefix: "Ping: ", suffix: " ms",
+	emitColor: function(a, valueVir, flag)
+	{
+		a.emit(0x8B, 0x0D); a.dword(valueVir);
+		a.emit(0x81, 0xF9); a.dword(50);
+		a.jcc(0x86, `line_${flag}_green`);
+		a.emit(0x81, 0xF9); a.dword(100);
+		a.jcc(0x86, `line_${flag}_yellow`);
+		a.emit(0xBA); a.dword(0x000000FF);
+		a.jmp(`line_${flag}_color_ready`);
+		a.label(`line_${flag}_green`);
+		a.emit(0xBA); a.dword(0x0000FF00);
+		a.jmp(`line_${flag}_color_ready`);
+		a.label(`line_${flag}_yellow`);
+		a.emit(0xBA); a.dword(0x0000FFFF);
+		a.label(`line_${flag}_color_ready`);
+		a.emit(0x52);
+	}
+});
 
 NativeTelemetryOverlay.RequestTickStore = 0x00C82D32;
 NativeTelemetryOverlay.RequestTickBytes =
@@ -66,50 +97,57 @@ NativeTelemetryOverlay.installPingCapture = function(_, state)
 
 PingOverlay = function(_)
 {
-	if (typeof NativeTelemetryOverlay === "undefined" ||
-		typeof NativeTelemetryOverlay.ensure !== "function")
-		throw Error("PingOverlay: NativeTelemetryOverlay helper unavailable");
+	try
+	{
+		if (typeof NativeTelemetryOverlay === "undefined" ||
+			typeof NativeTelemetryOverlay.ensure !== "function")
+			throw Error("PingOverlay: NativeTelemetryOverlay helper unavailable");
 
-	$$(_, 1, "Read ping overlay coordinates");
-	const coordinates = NativeTelemetryOverlay.getCoordinates(
-		"$pingOverlayXY",
-		"Ping Overlay",
-		[-195, 66]
-	);
-	$$(_, 2, "Install shared native post-Present overlay");
-	const state = NativeTelemetryOverlay.ensure(_);
-	NativeTelemetryOverlay.configure(
-		state,
-		NativeTelemetryOverlay.StatePingInstalled,
-		NativeTelemetryOverlay.StatePingX,
-		NativeTelemetryOverlay.StatePingY,
-		coordinates
-	);
-	$$(_, 3, "Capture stock application-packet RTT");
-	const captureVir = NativeTelemetryOverlay.installPingCapture(_, state);
-	$$(_, 4, "Register /ping static command");
-	const toggleVir = NativeTelemetryOverlay.registerCommand(
-		_,
-		"/ping",
-		NativeTelemetryOverlay.PingOption
-	);
-	if (typeof PatchDiagnostics !== "undefined" &&
-		typeof PatchDiagnostics.add === "function")
-		PatchDiagnostics.add("PingOverlay.QjsOnly", {
-			coordinates,
-			stateVir: state.stateVir,
-			captureVir,
-			toggleVir,
-			requestPacket: 0x0360,
-			responsePacket: 0x007F
-		});
-	return true;
+		$$(_, 1, "Read ping overlay coordinates");
+		const coordinates = NativeTelemetryOverlay.getCoordinates(
+			"$pingOverlayXY",
+			"Ping Overlay",
+			[-195, 66]
+		);
+		$$(_, 2, "Install shared native post-Present overlay");
+		const state = NativeTelemetryOverlay.ensure(_);
+		NativeTelemetryOverlay.configure(
+			state,
+			NativeTelemetryOverlay.StatePingInstalled,
+			NativeTelemetryOverlay.StatePingX,
+			NativeTelemetryOverlay.StatePingY,
+			coordinates
+		);
+		$$(_, 3, "Capture stock application-packet RTT");
+		const captureVir = NativeTelemetryOverlay.installPingCapture(_, state);
+		$$(_, 4, "Register /ping static command");
+		const toggleVir = NativeTelemetryOverlay.registerCommand(
+			_,
+			"/ping",
+			NativeTelemetryOverlay.PingOption
+		);
+		if (typeof PatchDiagnostics !== "undefined" &&
+			typeof PatchDiagnostics.add === "function")
+			PatchDiagnostics.add("PingOverlay.QjsOnly", {
+				coordinates,
+				stateVir: state.stateVir,
+				captureVir,
+				toggleVir,
+				requestPacket: 0x0360,
+				responsePacket: 0x007F
+			});
+		return true;
+	}
+	catch (error)
+	{
+		PingOverlay.cleanup(Exe.ActivePatch);
+		throw error;
+	}
 };
 
 PingOverlay.cleanup = function(patchName)
 {
-	NativeTelemetryOverlay.disable(NativeTelemetryOverlay.StatePingInstalled);
-	CACHE.delUser(NativeTelemetryOverlay.CacheKey, patchName);
+	NativeTelemetryOverlay.release(patchName, NativeTelemetryOverlay.StatePingInstalled);
 };
 
 PingOverlay.validate = function()
