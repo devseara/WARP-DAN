@@ -1,0 +1,108 @@
+﻿group,path,archive_candidate,width,height,bpp,magenta_pixels,variant_count,evidence
+normal frame,data/texture/유저인터페이스/sysbox_bg.bmp,maindata.grf,14,14,8,0,5,0x8B4334 -> 0x871EA0
+normal frame,data/texture/유저인터페이스/sysbox_lu.bmp,maindata.grf,14,14,8,32,5,0x8B4334 -> 0x871EA0
+normal frame,data/texture/유저인터페이스/sysbox_mu.bmp,maindata.grf,14,14,8,14,5,0x8B4334 -> 0x871EA0
+normal frame,data/texture/유저인터페이스/sysbox_ru.bmp,maindata.grf,14,14,8,32,5,0x8B4334 -> 0x871EA0
+normal frame,data/texture/유저인터페이스/sysbox_lm.bmp,maindata.grf,14,14,8,14,5,0x8B4334 -> 0x871EA0
+normal frame,data/texture/유저인터페이스/sysbox_rm.bmp,maindata.grf,14,14,8,14,5,0x8B4334 -> 0x871EA0
+normal frame,data/texture/유저인터페이스/sysbox_ld.bmp,maindata.grf,14,14,8,32,5,0x8B4334 -> 0x871EA0
+normal frame,data/texture/유저인터페이스/sysbox_md.bmp,maindata.grf,14,14,8,14,5,0x8B4334 -> 0x871EA0
+normal frame,data/texture/유저인터페이스/sysbox_rd.bmp,maindata.grf,14,14,8,32,5,0x8B4334 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g1_lu.bmp,maindata.grf,14,14,8,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g1_mu.bmp,maindata.grf,14,14,8,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g1_ru.bmp,maindata.grf,14,14,8,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g1_lm.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g1_rm.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g1_ld.bmp,maindata.grf,14,14,24,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g1_md.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g1_rd.bmp,maindata.grf,14,14,24,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade background,data/texture/유저인터페이스/basic_interface/collection_bg_g1.bmp,maindata.grf,280,120,24,2196,3,0x8B42DF
+grade icon / connected title surfaces,data/texture/유저인터페이스/grade_enchant/grade_icon1.bmp,maindata.grf,12,12,24,48,4,profiled native format 0x101FB6C
+grade frame,data/texture/유저인터페이스/sysbox_g2_lu.bmp,maindata.grf,14,14,8,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g2_mu.bmp,maindata.grf,14,14,8,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g2_ru.bmp,maindata.grf,14,14,8,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g2_lm.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g2_rm.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g2_ld.bmp,maindata.grf,14,14,24,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g2_md.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g2_rd.bmp,maindata.grf,14,14,24,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade background,data/texture/유저인터페이스/basic_interface/collection_bg_g2.bmp,maindata.grf,280,120,24,2196,3,0x8B42DF
+grade icon / connected title surfaces,data/texture/유저인터페이스/grade_enchant/grade_icon2.bmp,maindata.grf,12,12,24,48,4,profiled native format 0x101FB6C
+grade frame,data/texture/유저인터페이스/sysbox_g3_lu.bmp,maindata.grf,14,14,8,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g3_mu.bmp,maindata.grf,14,14,8,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g3_ru.bmp,maindata.grf,14,14,8,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g3_lm.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g3_rm.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g3_ld.bmp,maindata.grf,14,14,24,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g3_md.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g3_rd.bmp,maindata.grf,14,14,24,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade background,data/texture/유저인터페이스/basic_interface/collection_bg_g3.bmp,maindata.grf,280,120,24,2196,3,0x8B42DF
+grade icon / connected title surfaces,data/texture/유저인터페이스/grade_enchant/grade_icon3.bmp,maindata.grf,12,12,24,48,4,profiled native format 0x101FB6C
+grade frame,data/texture/유저인터페이스/sysbox_g4_lu.bmp,maindata.grf,14,14,8,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g4_mu.bmp,maindata.grf,14,14,8,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g4_ru.bmp,maindata.grf,14,14,8,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g4_lm.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g4_rm.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g4_ld.bmp,maindata.grf,14,14,24,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g4_md.bmp,maindata.grf,14,14,24,14,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade frame,data/texture/유저인터페이스/sysbox_g4_rd.bmp,maindata.grf,14,14,24,32,3,0x8B4277..0x8B42B9 -> 0x871EA0
+grade background,data/texture/유저인터페이스/basic_interface/collection_bg_g4.bmp,maindata.grf,280,120,24,2196,3,0x8B42DF
+grade icon / connected title surfaces,data/texture/유저인터페이스/grade_enchant/grade_icon4.bmp,maindata.grf,12,12,24,48,4,profiled native format 0x101FB6C
+comparison frame,data/texture/유저인터페이스/basic_interface/sysbox_comparison_bg.bmp,maindata.grf,14,14,24,0,5,0x8B4356 -> 0x871EA0
+comparison frame,data/texture/유저인터페이스/basic_interface/sysbox_comparison_lu.bmp,maindata.grf,14,14,24,32,5,0x8B4356 -> 0x871EA0
+comparison frame,data/texture/유저인터페이스/basic_interface/sysbox_comparison_mu.bmp,maindata.grf,14,14,24,14,5,0x8B4356 -> 0x871EA0
+comparison frame,data/texture/유저인터페이스/basic_interface/sysbox_comparison_ru.bmp,maindata.grf,14,14,24,32,5,0x8B4356 -> 0x871EA0
+comparison frame,data/texture/유저인터페이스/basic_interface/sysbox_comparison_lm.bmp,maindata.grf,14,14,24,14,5,0x8B4356 -> 0x871EA0
+comparison frame,data/texture/유저인터페이스/basic_interface/sysbox_comparison_rm.bmp,maindata.grf,14,14,24,14,5,0x8B4356 -> 0x871EA0
+comparison frame,data/texture/유저인터페이스/basic_interface/sysbox_comparison_ld.bmp,maindata.grf,14,14,24,32,5,0x8B4356 -> 0x871EA0
+comparison frame,data/texture/유저인터페이스/basic_interface/sysbox_comparison_md.bmp,maindata.grf,14,14,24,14,5,0x8B4356 -> 0x871EA0
+comparison frame,data/texture/유저인터페이스/basic_interface/sysbox_comparison_rd.bmp,maindata.grf,14,14,24,32,5,0x8B4356 -> 0x871EA0
+description illustration backing,data/texture/유저인터페이스/basic_interface/collection_bg.bmp,maindata.grf,280,120,8,2196,4,0x8B4345 / 0x8B4365
+description illustration backing,data/texture/유저인터페이스/basic_interface/collection_comparison_bg.bmp,maindata.grf,280,120,24,2196,4,0x8B4345 / 0x8B4365
+normal card sockets,data/texture/유저인터페이스/empty_card_slot.bmp,maindata.grf,24,24,8,542,4,0x8B4612 / 0x8B4681
+normal card sockets,data/texture/유저인터페이스/disable_card_slot.bmp,maindata.grf,24,24,8,451,3,0x8B4612 / 0x8B4681
+comparison card sockets,data/texture/유저인터페이스/basic_interface/comparison_empty_card_slot.bmp,maindata.grf,24,24,24,542,2,0x8B4642 / 0x8B4647
+comparison card sockets,data/texture/유저인터페이스/basic_interface/comparison_disable_card_slot.bmp,maindata.grf,24,24,24,451,2,0x8B4642 / 0x8B4647
+description buttons,data/texture/유저인터페이스/btn_resize.bmp,maindata.grf,13,13,8,68,5,0x8A7770 dynamic button construction
+description buttons,data/texture/유저인터페이스/btn_view.bmp,maindata.grf,42,20,24,12,5,0x8A7770 dynamic button construction
+description buttons,data/texture/유저인터페이스/btn_view_a.bmp,maindata.grf,42,20,24,12,5,0x8A7770 dynamic button construction
+description buttons,data/texture/유저인터페이스/btn_view_b.bmp,maindata.grf,42,20,24,12,5,0x8A7770 dynamic button construction
+comparison resize,data/texture/유저인터페이스/basic_interface/btn_comparison_resize.bmp,maindata.grf,13,13,24,68,3,0x8A80C7
+help button,data/texture/유저인터페이스/basic_interface/btn_help_normal.bmp,spritedata.grf,20,20,24,108,1,0x8A8233..0x8A8275
+help button,data/texture/유저인터페이스/basic_interface/btn_help_over.bmp,spritedata.grf,20,20,24,108,2,0x8A8233..0x8A8275
+help button,data/texture/유저인터페이스/basic_interface/btn_help_pressed.bmp,spritedata.grf,19,19,24,68,2,0x8A8233..0x8A8275
+help button,data/texture/유저인터페이스/basic_interface/btn_help_disabled.bmp,spritedata.grf,20,20,24,108,1,0x8A8233..0x8A8275
+shared window chrome,data/texture/유저인터페이스/basic_interface/titlebar_left.bmp,maindata.grf,12,17,8,3,5,0x898BC0 / 0x894FA0
+shared window chrome,data/texture/유저인터페이스/basic_interface/titlebar_mid.bmp,maindata.grf,12,17,8,0,5,0x898BC0 / 0x894FA0
+shared window chrome,data/texture/유저인터페이스/basic_interface/titlebar_right.bmp,maindata.grf,12,17,8,3,5,0x898BC0 / 0x894FA0
+shared window chrome,data/texture/유저인터페이스/basic_interface/sys_base_off.bmp,maindata.grf,11,11,8,52,5,0x898BC0 / 0x894FA0
+shared window chrome,data/texture/유저인터페이스/basic_interface/sys_close_off.bmp,maindata.grf,11,11,8,51,5,0x898BC0 / 0x894FA0
+shared window chrome,data/texture/유저인터페이스/basic_interface/sys_close_on.bmp,maindata.grf,11,11,8,51,5,0x898BC0 / 0x894FA0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_out_left.bmp,maindata.grf,6,20,24,6,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_out_mid.bmp,maindata.grf,6,20,24,0,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_out_right.bmp,maindata.grf,6,20,24,6,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_over_left.bmp,maindata.grf,6,20,24,6,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_over_mid.bmp,maindata.grf,6,20,24,0,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_over_right.bmp,maindata.grf,6,20,24,6,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_press_left.bmp,maindata.grf,6,20,24,6,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_press_mid.bmp,maindata.grf,6,20,24,0,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_press_right.bmp,maindata.grf,6,20,24,6,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_disable_left.bmp,maindata.grf,6,20,24,6,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_disable_mid.bmp,maindata.grf,6,20,24,0,4,UIBasicButton::Draw 0x8235B0
+generic text buttons / preview,data/texture/유저인터페이스/basic_interface/btn_disable_right.bmp,maindata.grf,6,20,24,6,4,UIBasicButton::Draw 0x8235B0
+alternative scrollbar family (not current UITextViewer),data/texture/유저인터페이스/basic_interface/dialscr_up.bmp,maindata.grf,10,10,8,0,3,UIScrollBar2/3 native Draw; separate connected variant
+alternative scrollbar family (not current UITextViewer),data/texture/유저인터페이스/basic_interface/dialscr_down.bmp,maindata.grf,10,10,8,0,3,UIScrollBar2/3 native Draw; separate connected variant
+alternative scrollbar family (not current UITextViewer),data/texture/유저인터페이스/basic_interface/dialscr_up1.bmp,maindata.grf,9,9,8,0,2,UIScrollBar2/3 native Draw; separate connected variant
+alternative scrollbar family (not current UITextViewer),data/texture/유저인터페이스/basic_interface/dialscr_down1.bmp,maindata.grf,9,9,8,0,2,UIScrollBar2/3 native Draw; separate connected variant
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll0up.bmp,maindata.grf,13,13,8,81,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll0mid.bmp,maindata.grf,13,13,8,52,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll0down.bmp,maindata.grf,13,13,8,81,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll0bar_up.bmp,maindata.grf,13,4,8,22,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll0bar_mid.bmp,maindata.grf,13,4,8,16,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll0bar_down.bmp,maindata.grf,13,4,8,22,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll1left.bmp,maindata.grf,13,13,8,81,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll1mid.bmp,maindata.grf,13,13,8,52,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll1right.bmp,maindata.grf,13,13,8,81,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll1bar_left.bmp,maindata.grf,4,13,8,22,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll1bar_mid.bmp,maindata.grf,4,13,8,16,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560
+UITextViewer stock scrollbars,data/texture/유저인터페이스/scroll1bar_right.bmp,maindata.grf,4,13,8,22,5,UITextViewer OnCreate 0x84F4F0 -> 0x84EA90 -> UIScrollBar::Draw 0x856560

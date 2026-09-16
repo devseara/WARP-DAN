@@ -74,6 +74,11 @@ CustomUI:
             author : Louis T Steinhil
             desc : Adds the native-looking Classic UI / New UI switch to the Game Settings Basic tab using uirenewal/basicinfo/btn_tema_0.bmp and btn_tema_1.bmp. Its persisted state is shared by the RO Global Zero Basic Information, Experience Bar, Inventory, Status Icons V2, and Menu patches; switching themes refreshes open dependent windows immediately. QJS-only.
 
+        - ItemDescriptionUI:
+            title : Server-backed Item Description
+            recommend : no
+            author : Louis T Steinhil
+            desc : Replaces the 2025-07-16 item-description body after a validated Banquet IDUI snapshot. Uses a clean chibi header while preserving native artwork, decorated title rendering, ownership and stock fallback. Structured server data supplies stats, refine, grade, enchantments, random options, cards, requirements and restrictions. Includes scrolling, component inspection and explicitly labeled base-value comparison. QJS embeds a freestanding native payload at patch time; no runtime DLL or recv hook. Requires the matching Banquet server module.
         - ItemCollectionUI:
             title : Enable Item Collection UI 
             recommend : no

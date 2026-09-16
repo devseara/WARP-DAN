@@ -34,3 +34,7 @@ __pycache__/
 # Clan artwork, accepted binary releases and authoring recovery bundles are local.
 # Tracked acceptance manifests and reproducible tooling live under docs/tools.
 /Assets/ClanBodySkins/
+
+# Local item-description audit/concept output; durable evidence lives in docs/tools.
+/output/item-description-audit/
+/output/item-inspection-concept/

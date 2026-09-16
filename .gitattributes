@@ -51,3 +51,10 @@ Scripts/Patches/NativeActJobPreviews.qjs text eol=crlf
 tools/native/native_act_job_ui.cpp text eol=crlf
 tools/native/native_act_job_ui.qjs.in text eol=crlf
 Inputs/ClanBodySkins/records/*.json text eol=lf
+
+# Item Description: preserve WARP syntax and the embedded payload source hashes.
+Scripts/Patches/ItemDescriptionUI.qjs text eol=crlf linguist-generated=true
+tools/native/item_description.cpp text eol=crlf
+tools/native/item_description_wire.hpp text eol=lf
+tools/fixtures/item_description/baseline.json text eol=lf
+tools/fixtures/item_description/assets/** binary

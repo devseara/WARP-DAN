@@ -21,7 +21,7 @@ BestiaryBuildProbe = function(_) {
 	LIFECYCLE
 	const file = new TextFile(MARKER, "w");
 	if (!file.Valid) throw Error("Cannot write Bestiary build manifest");
-	file.WriteLine(JSON.stringify({token: TOKEN, bestiary: CACHE.get("BestiaryUI.Native.v1"), previousToggle: previous.toggle.vir, previousReceiver: previous.receiver ? previous.receiver.vir : 0, sharedRoute: CACHE.get("SharedPacket0BEF.Router.v4"), commands: CACHE.get("CustomSlashCommand.RegistryByOwner")}));
+	file.WriteLine(JSON.stringify({token: TOKEN, bestiary: CACHE.get("BestiaryUI.Native.v1"), previousToggle: previous.toggle.vir, previousReceiver: previous.receiver ? previous.receiver.vir : 0, sharedRoute: CACHE.get("SharedPacket0BEF.Router.v4"), extensions: CACHE.get("SharedPacket0BEF.Extensions.v1"), commands: CACHE.get("CustomSlashCommand.RegistryByOwner")}));
 	file.Close(); return true;
 };
 BestiaryBuildProbe.validate = function() { return true; };

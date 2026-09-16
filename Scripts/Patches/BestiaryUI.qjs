@@ -1006,7 +1006,7 @@ BestiaryUI = function(_) {
 	m.fallback=m.route.fallbackVir;
 	if(!Number.isInteger(m.fallback)||Exe.Vir2Phy(m.fallback,CODE)<0)throw Error("Bestiary: invalid shared fallback metadata");
 	m.receiver=b.code(b.buildReceiver(m));
-	c.beginSharedPacketRoute(_);Exe.SetUint32(m.route.fallbackCellPhy,m.receiver.vir);c.endSharedPacketRoute(_);
+	m.extension=c.registerSharedPacketExtension(_,b.Magic,m.receiver.vir);
 	m.search=b.code(c.buildSearchNativeInput(m.state.vir,m.query.vir,m.sender.vir,m.timeGetTimeIat));
 	m.rewardSearchSubmit=b.code(b.buildRewardSearchSubmit(m));m.rewardSearchNative=b.code(c.buildSearchNativeInput(m.rewardSearchState.vir,m.rewardQuery.vir,m.rewardSearchSubmit.vir,m.timeGetTimeIat));m.rewardSearchTick=b.code(b.buildRewardSearchTick(m));
 	m.numberText=b.code(b.buildNumberText());m.numberBuffer=b.alloc(new Array(64).fill(0));
@@ -1061,9 +1061,7 @@ BestiaryUI.deployMenuAssets=function(){
 BestiaryUI.cleanup=function(_){
 	const c=BestiaryNative.ui(),m=CACHE.get("BestiaryUI.Native.v1");
 	if(m&&m.route){
-		c.beginSharedPacketRoute(_||"BestiaryUI");
-		Exe.SetUint32(m.route.fallbackCellPhy,m.fallback);
-		c.endSharedPacketRoute(_||"BestiaryUI");
+		c.registerSharedPacketExtension(_||"BestiaryUI",BestiaryNative.Magic,0);
 	}
 	const key="CustomSlashCommand.RegistryByOwner",owners=CACHE.get(key)??{};delete owners.BestiaryUI;CACHE.put(key,owners);
 	CustomSlashCommand.refresh(_||"BestiaryUI");CACHE.put("BestiaryUI.Native.v1",null);

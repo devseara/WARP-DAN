@@ -92,7 +92,10 @@ def verify(directory):
         route=full.get('sharedRoute')
         if route:
             target=struct.unpack('<I',pe.get_data(route['fallbackCellVir']-pe.OPTIONAL_HEADER.ImageBase,4))[0]
-            assert target==route['fallbackVir'] and target!=full['previousReceiver']
+            extensions=full.get('extensions') or {}
+            expected=extensions.get('router',{}).get('vir') if extensions.get('selected') else route['fallbackVir']
+            assert target==expected and target!=full['previousReceiver']
+            assert 'BestiaryUI' not in extensions.get('entries',{})
             checks.append('Removal restores the shared packet fallback before freeing the BSUI receiver')
         return {'passed':True,'checks':checks+['Removal: slash no longer reaches freed code'],'live_accepted':False}
     version=m.get("protocolVersion",2);size=m["payload"]["size"];request_size=m["pendingRequest"]["size"]
@@ -198,7 +201,17 @@ def verify(directory):
     v=JournalVM(pe,m);v.ready();v.calls=[]
     raw=bytearray(make());struct.pack_into('<I',raw,4,0x49554F43);v.receive(bytes(raw))
     assert any(call[0]==m['fallback'] for call in v.calls)
-    assert pe.get_data(m['route']['fallbackCellVir']-pe.OPTIONAL_HEADER.ImageBase,4)==struct.pack('<I',m['receiver']['vir'])
+    extensions = full.get('extensions')
+    extension_router = extensions.get('router', {}).get('vir') if extensions else m.get('extension', {}).get('routerVir')
+    if extension_router:
+        assert pe.get_data(m['route']['fallbackCellVir']-pe.OPTIONAL_HEADER.ImageBase,4)==struct.pack('<I',extension_router)
+        if extensions:
+            assert extensions['entries']['BestiaryUI']=={'magic':0x49555342,'handlerVir':m['receiver']['vir']}
+        routed=JournalVM(pe,m);routed.stub(m['receiver']['vir'],0)
+        routed.u.mem_write(0x15e8198,bytes(make()));routed.run(m['route']['routerVir'])
+        assert any(call[0]==m['receiver']['vir'] for call in routed.calls)
+    else:
+        assert pe.get_data(m['route']['fallbackCellVir']-pe.OPTIONAL_HEADER.ImageBase,4)==struct.pack('<I',m['receiver']['vir'])
     checks.append('BSUI fallback wrapper preserves the shared 0x0BEF router and unrelated packet path')
     # Exercise the actual shared router entry, not only BSUI's wrapper.
     for magic,cell in [(0x49554841,'ahui'),(0x49555341,'asui'),(0x49554f43,'coui'),(0x434e4950,'pincode')]:

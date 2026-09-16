@@ -596,6 +596,63 @@ ItemCollectionUIStatic.ensureSharedPacketRoute = function(_, handlerVir)
 	return route;
 };
 
+// Selected independent UI modules share the fallback slot through a magic
+// registry. Modules never read queued Exe.SetUint32 values as current state.
+ItemCollectionUIStatic.registerSharedPacketExtension = function(_, magic, handlerVir)
+{
+	const c = ItemCollectionUIStatic;
+	const route = CACHE.get(c.SharedPacketRouteCanonicalKey) || c.ensureSharedPacketRoute(_, 0);
+	const key = "SharedPacket0BEF.Extensions.v1";
+	const previous = CACHE.get(key);
+	const registry = previous && previous.routeVir === route.routerVir ? previous : {routeVir: route.routerVir, entries: {}};
+	if (handlerVir)
+	{
+		if (!Number.isInteger(magic) || !Number.isInteger(handlerVir) || Exe.Vir2Phy(handlerVir) < 0)
+			throw Error("Invalid shared UI extension");
+		registry.entries[_] = {magic: magic >>> 0, handlerVir};
+	}
+	else
+		delete registry.entries[_];
+	const selected = Object.keys(registry.entries).filter(name => name === _ && handlerVir || Warp.GetPatchState(name)).sort();
+	const used = {};
+	for (const name of Object.keys(registry.entries))
+	{
+		if (selected.indexOf(name) < 0) { delete registry.entries[name]; continue; }
+		const entry = registry.entries[name];
+		if (used[entry.magic] || Exe.Vir2Phy(entry.handlerVir) < 0)
+			throw Error("Ambiguous or stale shared UI extension");
+		used[entry.magic] = true;
+	}
+	if (!Number.isInteger(route.fallbackVir) || Exe.Vir2Phy(route.fallbackVir, CODE) < 0)
+		throw Error("Invalid base UI fallback");
+	c.beginSharedPacketRoute(_);
+	let routerVir = route.fallbackVir;
+	if (selected.length)
+	{
+		const a = c.asm();
+		a.emit(0x9C, 0x60, 0xBE); a.dword(c.PacketBuffer);
+		a.emit(0x66, 0x81, 0x3E); a.word(c.ServerPacketId); a.jcc(0x85, "fallback");
+		a.emit(0x66, 0x83, 0x7E, 2, 8); a.jcc(0x82, "fallback");
+		for (let i = 0; i < selected.length; ++i)
+		{
+			a.emit(0x81, 0x7E, 4); a.dword(registry.entries[selected[i]].magic);
+			a.jcc(0x84, "extension_" + i);
+		}
+		a.label("fallback"); a.emit(0x61, 0x9D); a.jmp(route.fallbackVir);
+		for (let i = 0; i < selected.length; ++i)
+		{
+			a.label("extension_" + i); a.emit(0x61, 0x9D); a.jmp(registry.entries[selected[i]].handlerVir);
+		}
+		const router = c.allocateCode(a); routerVir = router.vir;
+		registry.router = router;
+	}
+	Exe.SetUint32(route.fallbackCellPhy, routerVir);
+	c.endSharedPacketRoute(_);
+	registry.selected = selected;
+	CACHE.put(key, registry);
+	return {route, routerVir, selected};
+};
+
 ItemCollectionUIStatic.resolvePacketRefs = function()
 {
 	const cacheKey = "ItemCollectionUI.PacketRefs.v1";
@@ -3437,7 +3494,7 @@ ItemCollectionUI.validate = function()
 // allocations, transport, assets or mutable ColorKeyBlitVir draw context.
 ItemCollectionUI.nativeFrameV1 = {};
 for (const key of [
-	"resolvePacketRefs", "sharedPacketRouteCellValue", "ensureSharedPacketRoute", "beginSharedPacketRoute", "endSharedPacketRoute", "PacketBuffer", "PacketMainLoopReturn", "buildItemResourceResolver", "ConvPath", "buildColorKeyBlit",
+	"registerSharedPacketExtension", "resolvePacketRefs", "sharedPacketRouteCellValue", "ensureSharedPacketRoute", "beginSharedPacketRoute", "endSharedPacketRoute", "PacketBuffer", "PacketMainLoopReturn", "buildItemResourceResolver", "ConvPath", "buildColorKeyBlit",
 	"asm", "bytesToHex", "asciiBytes", "pushImm", "emitText", "emitFillRect",
 	"emitPanel", "emitDrawFull", "emitMarkDirty", "emitRectGate",
 	"buildFillRect", "buildSearchNativeInput", "buildDestructor",
