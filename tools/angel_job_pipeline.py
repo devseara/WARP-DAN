@@ -96,12 +96,15 @@ def package(job, work, revision='v1'):
             result['accepted']=user_review['status']=='accepted'
             result['visual_acceptance_date']=user_review.get('date')
     installation = work / 'installation.json'
-    if result['accepted'] and installation.exists():
+    if installation.exists():
         installed = json.loads(installation.read_text(encoding='utf8'))
         pinned = {row['path']: row['sha256'] for row in installed.get('files', [])}
-        if installed.get('status') == 'installed' and pinned == {row['path']: row['sha256'] for row in files}:
+        if installed.get('status') in ('installed', 'installed_correction') and pinned == {row['path']: row['sha256'] for row in files}:
             result['installed'] = True
             result['installation_record'] = installation.name
+            result['live_visual_review_pending'] = not result['accepted']
+            if not result['accepted']:
+                result['status'] = 'complete_correction_installed'
     (work / 'verification.json').write_text(json.dumps(result, indent=2), encoding='utf8')
     sources = source_closure([ROOT / 'tools/angel_job_pipeline.py', ROOT / 'tools/import_angel_job_art.py'])
     sources.update((ROOT / 'tools/dual_weapon_formats').glob('*.py'))

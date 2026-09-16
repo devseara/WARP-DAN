@@ -1,103 +1,133 @@
 {
-  "release_id": "swordman-mage-acolyte-v5",
+  "release_id": "swordman-mage-acolyte-archer-v7",
   "status": "accepted",
-  "date": "2026-09-14",
+  "date": "2026-09-17",
   "versions": {
     "swordman": "V9 both sexes",
     "mage_male": "V3",
     "mage_female": "V10",
-    "acolyte": "V2 both sexes"
+    "acolyte": "V2 both sexes",
+    "archer": "V5 complete, both sexes; corrected bow animation"
   },
   "visual_acceptance": {
     "swordman": "accepted",
     "mage_male": "accepted",
     "mage_female": "V10 accepted by user 2026-09-13",
-    "acolyte": "V2 accepted by user 2026-09-14"
+    "acolyte": "V2 accepted by user 2026-09-14",
+    "archer": "V5 accepted by user 2026-09-17"
   },
   "resources": [
     {
       "job": "swordman",
       "sex": "male",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/검사_남.spr",
       "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/male-angel-complete-v9.spr",
       "sha256": "8384dd725be556d8557c856c0f141cfa58ae009859338689d4220bda3b45ade8"
     },
     {
       "job": "swordman",
       "sex": "male",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/검사_남.act",
       "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/male-angel-complete-v9.act",
       "sha256": "bbe4823abba1471f716e8044fffec9b7fc6b4a7cde766ad6f8298f92d6a7cc71"
     },
     {
       "job": "swordman",
       "sex": "female",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/검사_여.spr",
       "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/female-angel-complete-v9.spr",
       "sha256": "f00d5661844bf8e7e5f0009f02316900a497f2bf5a9a848f8fb38458c7c45533"
     },
     {
       "job": "swordman",
       "sex": "female",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/검사_여.act",
       "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/female-angel-complete-v9.act",
       "sha256": "579c32d3b5d7d12bef0f5c2262f2b0dd4f638ececa6f96ab61ec201ce936e28c"
     },
     {
       "job": "mage",
       "sex": "male",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/마법사_남.spr",
       "source": "Assets/ClanBodySkins/Mage/male-gait-v3/assets/male-angel-mage-v3.spr",
       "sha256": "fd3e767caea1cf50adf0670e2f02d83a9e51cfb8ac4c39d857804820c02fa80d"
     },
     {
       "job": "mage",
       "sex": "male",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/마법사_남.act",
       "source": "Assets/ClanBodySkins/Mage/male-gait-v3/assets/male-angel-mage-v3.act",
       "sha256": "570065adce83db21e461cbcd5971e2195aa52c23a06ca5e511124f1854cf2780"
     },
     {
       "job": "mage",
       "sex": "female",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/마법사_여.spr",
       "source": "Assets/ClanBodySkins/Mage/female-gait-v10/assets/female-angel-mage-v10.spr",
       "sha256": "c2b95522379e7177b2eb5ee048cd197a8341623db5aa351170f1298ce3451187"
     },
     {
       "job": "mage",
       "sex": "female",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/마법사_여.act",
       "source": "Assets/ClanBodySkins/Mage/female-gait-v10/assets/female-angel-mage-v10.act",
       "sha256": "c0f57499f23f501230b24268f025c2c5da192b6b58b2587c44805fabbfe4dec6"
     },
     {
       "job": "acolyte",
       "sex": "male",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc131\uc9c1\uc790_\ub0a8.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/성직자_남.spr",
       "source": "Assets/ClanBodySkins/Acolyte/registration-v2/assets/male-angel-acolyte-v2.spr",
       "sha256": "df078b653080cc3236ddad8fce0d852717ff001d037007eaf5dcf54c0a8b98a8"
     },
     {
       "job": "acolyte",
       "sex": "male",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc131\uc9c1\uc790_\ub0a8.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/성직자_남.act",
       "source": "Assets/ClanBodySkins/Acolyte/registration-v2/assets/male-angel-acolyte-v2.act",
       "sha256": "69588c067fe42b333ff6e86c02134121a77c715de38711b8e4601fd09beff23c"
     },
     {
       "job": "acolyte",
       "sex": "female",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc131\uc9c1\uc790_\uc5ec.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/성직자_여.spr",
       "source": "Assets/ClanBodySkins/Acolyte/registration-v2/assets/female-angel-acolyte-v2.spr",
       "sha256": "964415c069f78b3bb5bfc218656a52400aa38f95d861d04989dca683bbdc0bc2"
     },
     {
       "job": "acolyte",
       "sex": "female",
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc131\uc9c1\uc790_\uc5ec.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/성직자_여.act",
       "source": "Assets/ClanBodySkins/Acolyte/registration-v2/assets/female-angel-acolyte-v2.act",
       "sha256": "55a9046d0aa51ac06316b70abff77b66911313e2770b9fea5174cee2eb3e0e61"
+    },
+    {
+      "job": "archer",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/궁수_남.spr",
+      "source": "Assets/ClanBodySkins/Archer/complete-v5/assets/male-angel-archer-v5.spr",
+      "sha256": "3ec153a1de2779b548cc7aacf351d35de818ecbf3ff1657516e5e02a49984772"
+    },
+    {
+      "job": "archer",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/궁수_남.act",
+      "source": "Assets/ClanBodySkins/Archer/complete-v5/assets/male-angel-archer-v5.act",
+      "sha256": "b49bc51352226dcd2f089eb93fd3927dd8a7e6db42a3bc408029fc57f9028ff7"
+    },
+    {
+      "job": "archer",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/궁수_여.spr",
+      "source": "Assets/ClanBodySkins/Archer/complete-v5/assets/female-angel-archer-v5.spr",
+      "sha256": "c65fba00936644f1e976bc81c98ffe8c3555d085228e6f269fdda28761022a7c"
+    },
+    {
+      "job": "archer",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/궁수_여.act",
+      "source": "Assets/ClanBodySkins/Archer/complete-v5/assets/female-angel-archer-v5.act",
+      "sha256": "4828b0ca9ccce6b0a9aab64e901881424c18f8168d9f4bfb995eab5818e80674"
     }
   ],
   "preview_renderer": "NativeActJobPreviews",
@@ -114,72 +144,75 @@
     "acolyte_neck_registration.py",
     "angel_job_pipeline.py",
     "import_angel_job_art.py",
-    "prepare_angel_job_sources.py"
+    "prepare_angel_job_sources.py",
+    "build_full_archer_set.py",
+    "fix_archer_bow_animation.py",
+    "review_angel_job_design.py"
   ],
   "source_distribution": "Sprite artwork and authoring dependencies are restored from the saved work bundles; binary artwork is not stored in Git.",
   "legacy_update_resources": [
     {
-      "entry": "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.act",
+      "entry": "data/sprite/clan_skins/1/preview/인간족/몸통/남/검사_남.act",
       "sha256": "78de4ce50a84f0d47188a9452b799b37032dba99830e2170609b02e87e8d93f8"
     },
     {
-      "entry": "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.spr",
+      "entry": "data/sprite/clan_skins/1/preview/인간족/몸통/남/검사_남.spr",
       "sha256": "ec8bdc0f761cc94caa1f8b393529cd33586a21eb521da4fe6ec18f54dc60ca90"
     },
     {
-      "entry": "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.act",
+      "entry": "data/sprite/clan_skins/1/preview/인간족/몸통/남/마법사_남.act",
       "sha256": "874307a48bcc330b20cd014626cbbd53a9979f7fe37159b33e7bd41bdc0081f9"
     },
     {
-      "entry": "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.spr",
+      "entry": "data/sprite/clan_skins/1/preview/인간족/몸통/남/마법사_남.spr",
       "sha256": "7f0cd884b3cfe93dac39da3d0a31f825d7427cf635580bb3b0229a76753269c2"
     },
     {
-      "entry": "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.act",
+      "entry": "data/sprite/clan_skins/1/preview/인간족/몸통/여/검사_여.act",
       "sha256": "37b0d47e5dba28c70980f3e43f38ffde738b7065c5dc4188ed60f3d36652e93e"
     },
     {
-      "entry": "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.spr",
+      "entry": "data/sprite/clan_skins/1/preview/인간족/몸통/여/검사_여.spr",
       "sha256": "b579998e9e23d3f1f46c35bbf76e970a9b11811ee88360ed45ea4796d17257c2"
     },
     {
-      "entry": "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.act",
+      "entry": "data/sprite/clan_skins/1/preview/인간족/몸통/여/마법사_여.act",
       "sha256": "52857350c5e3b8a8ace123e4466414ee44bf58caafccb617c673948372d55709"
     },
     {
-      "entry": "data/sprite/clan_skins/1/preview/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.spr",
+      "entry": "data/sprite/clan_skins/1/preview/인간족/몸통/여/마법사_여.spr",
       "sha256": "422037c7640e68e9ee7df8b08c9b93a2eb901ad94de45d14dc89e598e193f39d"
     },
     {
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/검사_남.act",
       "sha256": "bbe4823abba1471f716e8044fffec9b7fc6b4a7cde766ad6f8298f92d6a7cc71"
     },
     {
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/검사_남.spr",
       "sha256": "8384dd725be556d8557c856c0f141cfa58ae009859338689d4220bda3b45ade8"
     },
     {
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/마법사_남.act",
       "sha256": "570065adce83db21e461cbcd5971e2195aa52c23a06ca5e511124f1854cf2780"
     },
     {
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/마법사_남.spr",
       "sha256": "fd3e767caea1cf50adf0670e2f02d83a9e51cfb8ac4c39d857804820c02fa80d"
     },
     {
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/검사_여.act",
       "sha256": "579c32d3b5d7d12bef0f5c2262f2b0dd4f638ececa6f96ab61ec201ce936e28c"
     },
     {
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/검사_여.spr",
       "sha256": "f00d5661844bf8e7e5f0009f02316900a497f2bf5a9a848f8fb38458c7c45533"
     },
     {
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.act",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/마법사_여.act",
       "sha256": "aee6427a3fcdce437ba0d940c3d9c12de686091281f9c7c75fabdded0ef9245b"
     },
     {
-      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.spr",
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/마법사_여.spr",
       "sha256": "3c1c98f741bd6ce49f3417295b02bd64b443107d6f7deaf9386bfb1b6d9337b6"
     }
   ],
@@ -187,12 +220,52 @@
     {
       "job": "acolyte",
       "path": "Assets/ClanBodySkins/Acolyte/registration-v2/user-review.json"
+    },
+    {
+      "job": "archer",
+      "path": "Assets/ClanBodySkins/Archer/complete-v5/user-review.json"
     }
   ],
   "additional_source_roots": [
     "Assets/ClanBodySkins/Acolyte/complete-v1",
     "Assets/ClanBodySkins/Acolyte/registration-v2",
     "Assets/ClanBodySkins/Acolyte/native",
-    "Assets/ClanBodySkins/Acolyte/design"
+    "Assets/ClanBodySkins/Acolyte/design",
+    "Assets/ClanBodySkins/Archer/complete-v1",
+    "Assets/ClanBodySkins/Archer/complete-v4",
+    "Assets/ClanBodySkins/Archer/alignment-v3",
+    "Assets/ClanBodySkins/Archer/native",
+    "Assets/ClanBodySkins/Archer/design",
+    "Assets/ClanBodySkins/Archer/complete-v5"
+  ],
+  "coverage_reports": [
+    {
+      "job": "archer",
+      "sex": "male",
+      "path": "Assets/ClanBodySkins/Archer/complete-v5/male-verification.json"
+    },
+    {
+      "job": "archer",
+      "sex": "female",
+      "path": "Assets/ClanBodySkins/Archer/complete-v5/female-verification.json"
+    }
+  ],
+  "expected_replaced_resources": [
+    {
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/궁수_남.spr",
+      "sha256": "fe0abc3cd61b056a542d012114b745aed133ab5ad1dd2ec23a811996d2573a2c"
+    },
+    {
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/남/궁수_남.act",
+      "sha256": "20545f22043ef6c427230d3d83d0171f474deff4c83dd2bddde1b27f1ea7d5e1"
+    },
+    {
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/궁수_여.spr",
+      "sha256": "075703676cabbaacd914154c5757d16761f7cef8ac0994ec0fcbaa222f0f52d8"
+    },
+    {
+      "entry": "data/sprite/clan_skins/1/인간족/몸통/여/궁수_여.act",
+      "sha256": "975ad12412dfbd8840cbeec0e2224f2682b33c83b16442342ea79331927b2099"
+    }
   ]
 }

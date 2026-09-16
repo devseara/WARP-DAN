@@ -58,6 +58,15 @@ def main():
         source = (ROOT / name).resolve()
         if not source.is_relative_to(assets.resolve()) or not source.is_dir():
             raise ValueError('Missing or invalid source root: ' + name)
+        spec_path = source / 'build-spec.json'
+        if spec_path.is_file():
+            spec = json.loads(spec_path.read_text(encoding='utf8'))
+            for name in spec.get('inputs', []):
+                dependency = (ROOT / name).resolve()
+                if not dependency.is_relative_to(ROOT.resolve()) or not dependency.is_file():
+                    raise ValueError('Missing or invalid declared rebuild input: ' + name)
+                files.add(dependency)
+            files.update(source_closure([ROOT / name for name in spec.get('source_tools', [])]))
         for path in source.rglob('*'):
             if not path.is_file() or set(path.relative_to(source).parts) & {'review', 'diagnostics', 'rejected', '__pycache__'}:
                 continue

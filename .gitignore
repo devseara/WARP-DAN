@@ -32,7 +32,7 @@ __pycache__/
 /Assets/HDJobUI/
 
 # Clan artwork, accepted binary releases and authoring recovery bundles are local.
-# Tracked acceptance manifests and reproducible tooling live under docs/tools.
+# Tracked acceptance manifests live in Inputs/ClanBodySkins/records; tooling in tools.
 /Assets/ClanBodySkins/
 
 # Local item-description audit/concept output; durable evidence lives in docs/tools.

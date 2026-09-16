@@ -25,7 +25,7 @@ def build(sex,partial=False,job="mage",work=WORK):
         for override in json.loads(overrides.read_text(encoding='utf8')):
             if override['sex']!=sex:continue
             b=copy.deepcopy(next(b for b in plan['batches'] if b['sex']==sex and b['name']==override['base_batch']))
-            b['name']=override['art_batch'];drawings,rows=extract(b,work);selected=set(override['selected_sprites'])
+            b['name']=override['art_batch'];b['alpha_floor']=override.get('alpha_floor',0);drawings,rows=extract(b,work);selected=set(override['selected_sprites'])
             remap={int(k):v for k,v in override.get('sprite_remap',{}).items()}
             corrected=[]
             for index in selected:

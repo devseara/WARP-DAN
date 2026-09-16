@@ -96,12 +96,15 @@ function schedule(){clearTimeout(timer);if(playing)timer=setTimeout(async()=>{fr
 function step(n){playing=false;frame+=n;draw();schedule()}
 $('play').onclick=()=>{playing=!playing;draw();schedule()};$('prev').onclick=()=>step(-1);$('next').onclick=()=>step(1);$('slider').oninput=()=>{playing=false;frame=Number($('slider').value);draw();schedule()};for(const id of ['group','dir'])$(id).onchange=()=>{frame=0;draw();schedule()};for(const id of ['heads','zoom','bg'])$(id).onchange=draw;$('speed').onchange=schedule;draw();</script>'''
     html=html.replace('__DATA__',json.dumps(data,separators=(',',':'))).replace('__LABELS__',json.dumps(['Idle','Walk (accepted v8)','Sit','Pickup','Attack 1','Attack 2','Hit','Native action 7','Death','Standby','Attack 3','Attack 4','Cast']))
+    if job=='archer':
+        html=html.replace('"Attack 1"','"Combat ready"').replace('"Attack 2"','"Unarmed attack"').replace('"Attack 3"','"Bow attack"').replace('"Attack 4"','"Dagger attack"')
+        html=html.replace('four attack groups','combat-ready, unarmed, bow and dagger actions')
     if job!='swordman':
         html=html.replace('Swordman',job.title()).replace('accepted walking','walking').replace('Walking pixels and placement match accepted v8. ','').replace('Walk (accepted v8)','Walk').replace('Angel v9','Angel '+job.title()+' '+stem.rsplit('-',1)[-1])
         for sex in ('male','female'):html=html.replace(sex+'-angel-complete-v9',stem.format(sex=sex))
     html=html.replace('Complete Angel '+job.title(),'Angel '+job.title()+' '+stem.rsplit('-',1)[-1])
     if plan.get('head_attachment_policy')=='fit-to-painted-collar':
-        html=html.replace('Original frame counts, timing and head anchors are retained.', 'Original frame counts and timing are retained. Each pair uses its own ACT head attachment offsets; body artwork is unchanged.')
+        html=html.replace('Original frame counts, timing and head anchors are retained.', 'Original frame counts and timing are retained. Each pair uses its own ACT head attachment offsets.')
     (work/'full-action-review.html').write_text(html,encoding='utf8')
     (work/'review-coverage.json').write_text(json.dumps(dict(coverage=checks,rendered_from_reopened_exports=True,native_head_artwork=True,pair_specific_head_anchors=True,frame_image_references=456*2*4,unique_review_pngs=len(unique_images)),indent=2),encoding='utf8')
     print(json.dumps(checks))

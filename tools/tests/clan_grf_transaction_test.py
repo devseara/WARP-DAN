@@ -11,7 +11,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from package_clan_skin_assets import pack_payloads
 from clan_grf_transaction import replace_records, rollback, digest
 from grf_reader import GrfFile
-from release_accepted_clan_sprites import validate_active_release, validate_resource_pairs, validate_update_shadows
+from release_accepted_clan_sprites import validate_active_release, validate_resource_pairs, validate_update_shadows, validate_complete_artwork
 
 
 class TransactionTests(unittest.TestCase):
@@ -57,9 +57,24 @@ class TransactionTests(unittest.TestCase):
 
 
 class ReleaseManifestTests(unittest.TestCase):
+    def test_full_job_rejects_stock_fallback_even_with_complete_act_table(self):
+        record = dict(job='archer', sex='female', path='Assets/test/female-verification.json')
+        files = [dict(path='assets/female.spr', sha256='spr'), dict(path='assets/female.act', sha256='act')]
+        manifest = dict(resources=[dict(job='archer', sex='female', source='Assets/test/' + row['path'], sha256=row['sha256']) for row in files])
+        report = dict(actions=104, frame_uses=456, stock_fallback_frames=[], missing_sheets=[], detached_artwork_flags=[], files=files)
+        validate_complete_artwork(manifest, record, report)
+        pilot = copy.deepcopy(report)
+        pilot['stock_fallback_frames'] = [[9, 0]]
+        with self.assertRaisesRegex(ValueError, 'stock_fallback'):
+            validate_complete_artwork(manifest, record, pilot)
+        stale = copy.deepcopy(report)
+        stale['files'][0]['sha256'] = 'old-export'
+        with self.assertRaisesRegex(ValueError, 'does not match'):
+            validate_complete_artwork(manifest, record, stale)
+
     def test_release_requires_both_sexes_and_matching_spr_act(self):
         rows = json.loads((ROOT / 'Inputs/ClanBodySkins/records/clan-sprites-current.json').read_text(encoding='utf8'))['resources']
-        self.assertEqual({row['job'] for row in rows}, {'swordman', 'mage', 'acolyte'})
+        self.assertEqual({row['job'] for row in rows}, {'swordman', 'mage', 'acolyte', 'archer'})
         validate_resource_pairs(rows)
         with self.assertRaisesRegex(ValueError, 'Incomplete'):
             validate_resource_pairs(rows[:-1])

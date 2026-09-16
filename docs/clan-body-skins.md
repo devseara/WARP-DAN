@@ -1,6 +1,6 @@
 # Angel Clan sprites
 
-Updated 2026-09-15. This is the single maintained clan guide: accepted assets,
+Updated 2026-09-17. This is the single maintained clan guide: accepted assets,
 sprite production, runtime ownership, packaging and recovery.
 
 ## Current release
@@ -10,26 +10,87 @@ sprite production, runtime ownership, packaging and recovery.
 | Swordman | V9 | V9 | Swordman/complete-v9 |
 | Mage | V3 | V10 | Mage/male-gait-v3; Mage/female-gait-v10 |
 | Acolyte | V2 | V2 | Acolyte/registration-v2 |
+| Archer | V5 | V5 | Archer/complete-v5 |
 
-All six pairs are accepted, each with 104 actions and 456 frame uses. Acolyte V2
-was accepted in the SPR/ACT reviewer on 2026-09-14; its subsequent GRF installation
-was verified by payload hashes, without a new live client inspection.
+All eight pairs are complete and installed, each with 104 actions and 456 frame
+uses. Swordman, Mage, Acolyte and Archer are accepted. Archer V5, including its
+corrected bow animation, was accepted by the user on 2026-09-17; the four accepted
+SPR/ACT hashes match maindata.grf and the V7 distribution GRF.
 
 - Installed archive: `C:/Users/Administrator/Documents/Ragnarok/Banquet of Heroes/maindata.grf`.
-- Distribution: `Assets/ClanBodySkins/releases/swordman-mage-acolyte-v5/angel-swordman-mage-acolyte-v5.grf`.
+- Distribution: `Assets/ClanBodySkins/releases/swordman-mage-acolyte-archer-v7/angel-swordman-mage-acolyte-archer-v7.grf`.
 - Recovery bundle: the same release directory's `current-work.zip`, verified by `saved-work.json`.
-- Next jobs: Archer, then Merchant and Thief. Their approved designs and native references are saved.
+- Next jobs: Merchant and Thief. Their approved designs/native references are saved.
 
-V5 contains twelve world resources. Installation added only Acolyte's four files,
-preserving all 18,279 existing records and compressed bytes. `update.grf` has no
-entries overriding these twelve resources. The game executable and server were unchanged.
+V7 contains sixteen world resources. It replaced only Archer's four V4 files,
+preserving the other 18,283 records and their compressed bytes; maindata remains
+18,287 records. update.grf has no overrides for these resources. No executable or
+server change was needed.
 
 Machine-read records live under `Inputs/ClanBodySkins/records`, outside documentation.
 [clan-sprites-current.json](../Inputs/ClanBodySkins/records/clan-sprites-current.json)
-is the authoritative source/resource/hash manifest;
-[clan-sprites-v5-installation.json](../Inputs/ClanBodySkins/records/clan-sprites-v5-installation.json)
-contains installation and rollback evidence. Other records retain acceptance,
-rejection and test history. Tools consume these JSON files; do not delete them.
+pins the source files and resources;
+[clan-sprites-v7-installation.json](../Inputs/ClanBodySkins/records/clan-sprites-v7-installation.json)
+contains the installed hashes and latest rollback evidence. Keep active records
+referenced by manifests and build tools. Superseded Archer pilot reports were
+retired into the ignored V5 cleanup record after dependency checks.
+
+## Archer V5 bow correction
+
+Accepted and installed on 2026-09-17. `Archer/complete-v5/user-review.json` pins
+both approved SPR/ACT pairs; the release manifest enforces those hashes.
+
+V4 had complete action coverage but incorrect bow anatomy: the female draw arm
+hung down in several firing frames, a male raised pose pointed overhead, and rear
+arm/cape occlusion hid the draw and release. A populated ACT is not proof of motion.
+V5 redraws 24 unique bow poses for actions 80-87, covering all eight directions and
+72 frame uses per sex. Every other body/head render (384 per sex) is identical to
+V4. Timing and the native nine-frame order remain intact, including hold frames.
+
+For Archer, group 4 is combat-ready, group 5 is unarmed attack, group 10 is bow,
+and group 11 is dagger. Confirm this against the actual native body and weapon
+ACTs; the [weapon lookup](https://github.com/vthibault/roBrowser/blob/master/src/DB/Jobs/WeaponAction.js)
+and [character action mapping](https://github.com/vthibault/roBrowser/blob/master/src/Renderer/Entity/EntityAction.js)
+provide corroborating client-source references. Generic numbered attack labels
+previously concealed this distinction; the Archer reviewer now names these actions.
+
+`Archer/complete-v5` holds the selected sheets, native bow references, measured
+neck/grip coordinates, source pins, exported pairs and review. Use original complete
+poses as templates, preserve the approved costume, and inspect both hands with the
+actual bow overlay. Use one scale per canonical view; make only continuous fitting
+corrections with a positive Jacobian. Redraw an incorrect forearm instead of forcing
+a fit that folds pixels. Keep unchanged actions as exact baseline images.
+
+```powershell
+python tools/fix_archer_bow_animation.py rebuild
+python tools/fix_archer_bow_animation.py review
+python tools/angel_job_pipeline.py --job archer --stage review --revision v5 --work Assets/ClanBodySkins/Archer/complete-v5
+python tools/angel_job_pipeline.py --job archer --stage package --revision v5 --work Assets/ClanBodySkins/Archer/complete-v5
+```
+
+`bow-review.html` plays original/V4/V5 with native heads and an optional bow overlay.
+`full-action-review.html` includes all 104 actions. The 144 changed frames pass neck
+contact, clipping and connected-alpha checks; all 768 other renders are identical.
+Selected sheets use alpha floor 16 and explicitly inspected empty registration
+gutters to remove generated annotation residue. The importer refuses exclusions
+that touch the connected body; it never removes white armor by color.
+
+`Archer-v5-SPR-ACT-work.zip` reproduces all four export hashes in an isolated rebuild.
+The combined V7 recovery also includes dependencies declared by each build-spec,
+including native bow SPR/ACTs. Evidence is in `clan-archer-v5.json`, the V5 verification
+JSONs and `clan-sprites-v7-installation.json`. No executable/runtime changes are needed.
+
+## Required Archer baselines
+
+V5 replaces only bow actions in `Archer/complete-v4`. V4 was built from the full
+artwork in `Archer/complete-v1` and preserves the accepted V3 idle, sitting and
+front-walk frames in `Archer/alignment-v3`. These are rebuild inputs, not disposable
+version duplicates. Retain their SPR/ACT pairs, source art, landmarks and JSON pins.
+
+When reconstructing V4 itself, use `angel_job_pipeline.py --job archer --stage build`
+then `build_full_archer_set.py build`. If selected source artwork changes, run
+`build_full_archer_set.py audit` and inspect/update the collar landmarks first.
+Normal V5 rebuilds use the pinned V4 pair and the commands above.
 
 ## Sources and recovery
 
@@ -52,6 +113,22 @@ Required older inputs remain even when their appearance was superseded:
 Old experiments are recoverable from `releases/retired-work.zip` and its cleanup
 manifest. Remove duplicate output only after verifying retained copies. Version
 numbers and filenames alone do not prove a file is unused.
+
+Repository cleanup on 2026-09-17 removed six superseded Archer report files from
+`Inputs/ClanBodySkins/records` and 2,276 old generated review files (63.9 MiB).
+`Archer/complete-v5/cleanup.json` retains exact report contents/hashes and the
+cleanup inventory; it is included in the recovery bundle. Current V5 reviewers,
+accepted pairs, native references and all declared build inputs remain available.
+
+Commit the authoring tools, release guards/tests, current manifest, Archer V5
+record, V7 installation receipt and this guide. Keep artwork, GRFs, recovery ZIPs
+and generated previews under the ignored `Assets/ClanBodySkins` directory. Local
+WARP settings, unrelated profile edits and other feature investigations are not
+part of the sprite release. `Outputs/.gitkeep` preserves the empty output folder.
+
+For subsequent jobs, `review_angel_job_design.py` is the reusable partial-design
+reviewer. Review pilots separately; `angel_job_pipeline.py` and the release guard
+require all 104 native actions, 456 frame uses and zero stock fallback per sex.
 
 ## Producing a job sprite
 
@@ -189,7 +266,7 @@ The installation receipt stores the old header/length and hashes for exact rollb
 without another full GRF copy. Rollback refuses any archive changed afterward:
 
 ```powershell
-python tools/release_accepted_clan_sprites.py --rollback Assets/ClanBodySkins/releases/swordman-mage-acolyte-v5/maindata-transaction.json
+python tools/release_accepted_clan_sprites.py --rollback Assets/ClanBodySkins/releases/swordman-mage-acolyte-archer-v7/maindata-transaction.json
 ```
 
 Use `--finish RECEIPT` only to finish a verified pending replacement. Preserve older

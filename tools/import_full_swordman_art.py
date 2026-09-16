@@ -13,8 +13,11 @@ from bake_clan_body_frames import composite
 
 def extract(batch, work=WORK):
     path=work/'art'/batch['sex']/(batch['name']+'.png')
-    a=np.asarray(Image.open(path).convert('RGBA')).copy();rgb=a[:,:,:3].astype(int)
-    green=(rgb[:,:,1]>95)&(rgb[:,:,1]-rgb[:,:,0]>48)&(rgb[:,:,1]-rgb[:,:,2]>48)
+    a=np.asarray(Image.open(path).convert('RGBA')).copy()
+    alpha_floor=int(batch.get('alpha_floor',0));assert 0<=alpha_floor<=16
+    a[a[:,:,3]<=alpha_floor]=0
+    rgb=a[:,:,:3].astype(int)
+    green=((rgb[:,:,1]>95)&(rgb[:,:,1]-rgb[:,:,0]>48)&(rgb[:,:,1]-rgb[:,:,2]>48))|(a[:,:,3]==0)
     pink=(rgb[:,:,0]>160)&(rgb[:,:,2]>145)&(rgb[:,:,1]<120)
     marks=[p for p in components(pink) if len(p)>=12]
     if batch.get('allow_empty_cell_marks') and len(marks)>batch['cells']:
@@ -77,6 +80,14 @@ def extract(batch, work=WORK):
             l,r=boundaries
         cell_a=a[t:b,l:r].copy();key=green[t:b,l:r]|pink[t:b,l:r]
         cell_a[key]=0
+        clear_before=batch.get('clear_before_marker_plus')
+        if clear_before is not None:
+            # An explicitly inspected empty registration gutter may contain
+            # generated annotation residue. Never mask the connected body.
+            stop=max(0,min(cell_a.shape[0],round(marker[1]+clear_before*scale-t)))
+            main_body=max(components(cell_a[:,:,3]>0),key=len)
+            assert int(main_body[:,0].min())>=stop,(path,cell,'background exclusion touches body artwork')
+            cell_a[:stop]=0
         groups=sorted(components(cell_a[:,:,3]>0),key=len,reverse=True)
         assert groups and len(groups[0])>1000,(path,cell,'body missing')
         # Never silently erase disconnected fingers or body pieces.

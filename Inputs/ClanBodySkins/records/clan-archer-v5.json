@@ -1,0 +1,110 @@
+{
+  "date": "2026-09-17",
+  "job": "archer",
+  "revision": "complete-v5",
+  "status": "accepted_installed",
+  "installed": true,
+  "accepted": true,
+  "complete_animation_set": true,
+  "actions_per_sex": 104,
+  "frame_uses_per_sex": 456,
+  "changed_actions": [
+    80,
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87
+  ],
+  "changed_frame_uses_per_sex": 72,
+  "unchanged_frame_uses_per_sex": 384,
+  "stock_fallback_frame_uses": 0,
+  "files": [
+    {
+      "sex": "male",
+      "path": "assets/male-angel-archer-v5.spr",
+      "sha256": "3ec153a1de2779b548cc7aacf351d35de818ecbf3ff1657516e5e02a49984772"
+    },
+    {
+      "sex": "male",
+      "path": "assets/male-angel-archer-v5.act",
+      "sha256": "b49bc51352226dcd2f089eb93fd3927dd8a7e6db42a3bc408029fc57f9028ff7"
+    },
+    {
+      "sex": "female",
+      "path": "assets/female-angel-archer-v5.spr",
+      "sha256": "c65fba00936644f1e976bc81c98ffe8c3555d085228e6f269fdda28761022a7c"
+    },
+    {
+      "sex": "female",
+      "path": "assets/female-angel-archer-v5.act",
+      "sha256": "4828b0ca9ccce6b0a9aab64e901881424c18f8168d9f4bfb995eab5818e80674"
+    }
+  ],
+  "review": "Assets/ClanBodySkins/Archer/complete-v5/bow-review.html",
+  "build_tool": "tools/fix_archer_bow_animation.py",
+  "proofs": [
+    "fit-input-pins.json",
+    "registration-verification.json",
+    "head-contact-audit.json",
+    "recovery-verification.json"
+  ],
+  "release_id": "swordman-mage-acolyte-archer-v7",
+  "maindata_sha256": "c5acb244880a50dbdcadb1fb526bfa9d7e4e38ceec270e642a9eac1dc05987a0",
+  "visual_acceptance": "Complete V5 pair accepted by user: fantastic. save it to grf",
+  "recovery": {
+    "archive_sha256": "54af25a54b0d67f9dc5389f38ec519ab113155e77d6921e22bf774a8aa3f9911",
+    "isolated_rebuild": true,
+    "files": [
+      {
+        "file": "female-angel-archer-v5.act",
+        "sha256": "4828b0ca9ccce6b0a9aab64e901881424c18f8168d9f4bfb995eab5818e80674",
+        "reproduced": true
+      },
+      {
+        "file": "female-angel-archer-v5.spr",
+        "sha256": "c65fba00936644f1e976bc81c98ffe8c3555d085228e6f269fdda28761022a7c",
+        "reproduced": true
+      },
+      {
+        "file": "male-angel-archer-v5.act",
+        "sha256": "b49bc51352226dcd2f089eb93fd3927dd8a7e6db42a3bc408029fc57f9028ff7",
+        "reproduced": true
+      },
+      {
+        "file": "male-angel-archer-v5.spr",
+        "sha256": "3ec153a1de2779b548cc7aacf351d35de818ecbf3ff1657516e5e02a49984772",
+        "reproduced": true
+      }
+    ]
+  },
+  "validation": {
+    "grf_transaction_tests": 7,
+    "all_installed_resources_verified": 16,
+    "unrelated_grf_records_preserved": 18283,
+    "bow_head_contacts": 144,
+    "unchanged_body_head_renders": 768,
+    "browser_animation_verified": true,
+    "user_visual_acceptance": true,
+    "independent_live_client_capture_performed": false
+  },
+  "visual_acceptance_date": "2026-09-17",
+  "accepted_work_bundle": {
+    "path": "Archer-v5-SPR-ACT-work.zip",
+    "sha256": "bf7bf04b8c729d067172bae0311a8ebf2c57b1354dc8074a3084216e09e97a7d",
+    "bytes": 118636182,
+    "files": 655
+  },
+  "approval_save_changed_sprite_bytes": false,
+  "cleanup": {
+    "date": "2026-09-17",
+    "retired_reports": 6,
+    "removed_generated_files": 2276,
+    "removed_generated_bytes": 66955524,
+    "retained_sources_rebuild_accepted_exports": true,
+    "evidence": "Assets/ClanBodySkins/Archer/complete-v5/cleanup.json",
+    "verification": "Assets/ClanBodySkins/Archer/complete-v5/cleanup-verification.json"
+  }
+}

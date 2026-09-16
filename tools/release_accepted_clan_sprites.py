@@ -61,10 +61,28 @@ def validate_update_shadows(payloads, entries, legacy):
         raise ValueError('Unreviewed update.grf shadows: ' + ', '.join(sorted(unexpected)))
 
 
+def validate_complete_artwork(manifest, record, report):
+    """A full job release must not reuse stock frames from an unfinished pilot."""
+    if report.get('actions') != 104 or report.get('frame_uses') != 456:
+        raise ValueError('Incomplete native action coverage: ' + record['job'])
+    for key in ('stock_fallback_frames', 'missing_sheets', 'detached_artwork_flags'):
+        if report.get(key) != []:
+            raise ValueError('Incomplete artwork: ' + record['job'] + ' / ' + key)
+    parent = Path(record['path']).parent
+    pinned = {(parent / row['path']).as_posix(): row['sha256'] for row in report['files']}
+    selected = {row['source']: row['sha256'] for row in manifest['resources']
+                if (row['job'], row['sex']) == (record['job'], record['sex'])}
+    if not selected or pinned != selected:
+        raise ValueError('Coverage report does not match release files: ' + record['job'])
+
+
 def current_payloads():
     manifest = CONFIG
-    assert manifest['status'] in ('accepted', 'installed_correction')
+    assert manifest['status'] in ('accepted', 'installed_correction', 'complete_correction_prepared')
     validate_resource_pairs(manifest['resources'])
+    for record in manifest.get('coverage_reports', []):
+        report = json.loads((ROOT / record['path']).read_text(encoding='utf8'))
+        validate_complete_artwork(manifest, record, report)
     for record in manifest.get('acceptance_records', []):
         path = ROOT / record['path']
         review = json.loads(path.read_text(encoding='utf8'))
@@ -129,6 +147,11 @@ def install(payloads, game):
     a, b = GrfFile(main), GrfFile(update)
     try:
         validate_update_shadows(payloads, b.entries, legacy)
+        for previous in CONFIG.get('expected_replaced_resources', []):
+            name = previous['entry']
+            assert name in payloads and name in a.entries, ('Missing upgrade source', name)
+            allowed = {previous['sha256'], hashlib.sha256(payloads[name]).hexdigest()}
+            assert hashlib.sha256(a.read(name)).hexdigest() in allowed, ('Unexpected upgrade source', name)
         duplicates = {name for name in legacy if name in b.entries}
         # Remove only verified copies of the exact previous release. Every
         # removed name must already exist safely in the destination archive.
