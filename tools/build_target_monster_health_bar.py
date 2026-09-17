@@ -7,346 +7,348 @@ from keystone import Ks,KS_ARCH_X86,KS_MODE_32
 ROOT=Path(__file__).resolve().parents[1]
 BASE=0x2000000; STATE=BASE+0xe000; NAME=STATE+64; VT=BASE+0xe100
 UPDATE=BASE+0x100; DRAW=BASE+0x1000; LOAD=BASE+0x6000; BLIT=BASE+0x7000; DTOR=BASE+0xd000
-MANIFEST=json.loads((ROOT/'Assets/TargetMonsterHUD/assets.json').read_text(encoding='utf8'))
-from target_monster_hud_layout import make_layout
-W,H=MANIFEST['canvas']; layout=make_layout(W,H,BASE)
-BMP_SIZE=layout['bmp_size']; BUFFER_STRIDE=layout['buffer_stride']; BUFFERS=layout['buffers']
-INFO_DB=layout['info_db']; INFO_TEXT=layout['info_rows']; INFO_CURRENT=layout['current']
-HP_TEXT=layout['hp_text']; NUMBERS=layout['number_buffers']; ICON_STATE=layout['icon_state']
-OPTIONS=layout['options']; ICON_PATH=layout['icon_path']; ELEMENT_ROW=layout['element_row']
-INFO_CONST=layout['constants']; TOTAL=layout['allocation_size']
-PATHS=BASE+0xe200; STATUS=BASE+0xf000; PERCENT=HP_TEXT
-HOVERSTATE=BASE+0xe0e0; TARGETSTATE=BASE+0xe0d0
-TIERLABELS=BASE+0xf280; RINGMETA=BASE+0xe0c0; HPCACHE=BASE+0xb000; HP_WORLD=BASE+0xe0cc
-FILENAMES=[t[k] for t in MANIFEST['tiers'] for k in ('empty','full')]
-ks=Ks(KS_ARCH_X86,KS_MODE_32); cs=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32);cs.detail=True
-chunks=[]; relocs=[]
-def assemble(at,source):
- code=bytes(ks.asm(source,at)[0])
- for i in cs.disasm(code,at):
-  if i.imm_size and any(o.type==X86_OP_IMM for o in i.operands):
-   value=next(o.imm for o in i.operands if o.type==X86_OP_IMM)&0xffffffff
-   if i.mnemonic in ('call','jmp') or i.mnemonic.startswith('j'):
-    if not BASE<=value<BASE+TOTAL:relocs.append([i.address-BASE+i.imm_offset,-1])
-   elif BASE<=value<BASE+TOTAL:relocs.append([i.address-BASE+i.imm_offset,1])
-  if i.disp_size and BASE<=i.disp<BASE+TOTAL:relocs.append([i.address-BASE+i.disp_offset,1])
- chunks.append((at-BASE,code))
-# The displaced call is executed exactly once; preserve its return registers/flags.
-# Observe native A797B0's hit-test descriptor in EDI after the UI blocker lookup.
-# Replay A47B90 exactly once with its original argument/ECX, preserve its result,
-# all registers/flags, and the original thiscall ret-4 stack cleanup.
-assemble(BASE,f"""
-push dword ptr [esp+4]; call 0xa47b90
-pushfd; pushad
-mov dword ptr [{HOVERSTATE}],esi
-mov dword ptr [{HOVERSTATE+4}],0
-cmp dword ptr [esi],0x10904b8; jne observe_done
-test eax,eax; jnz observe_done
-test ebx,ebx; jnz observe_done
-test edi,edi; jz observe_done
-mov eax,[edi+0x18]; mov dword ptr [{HOVERSTATE+4}],eax
-observe_done: mov ecx,esi; call {UPDATE}
-popad; popfd; ret 4
-""")
-assemble(DTOR,f'''cmp dword ptr [{STATE}],ecx; jne stock; mov dword ptr [{STATE}],0; stock: jmp 0x83bd30''')
-from target_monster_hud_showmobinfo import emit as emit_info
-from target_monster_hud_text import emit as emit_text
-from target_monster_hud_metadata import emit as emit_metadata
-from target_monster_hud_presentation import emit as emit_presentation
-PRESENT=emit_presentation(assemble,BASE,ICON_STATE,ICON_PATH,ELEMENT_ROW,OPTIONS,INFO_TEXT,STATE+12,RINGMETA+8,HOVERSTATE,W,H)
-METADATA=emit_metadata(assemble,BASE,INFO_DB,INFO_TEXT,INFO_CURRENT,INFO_CONST,STATE+12,RINGMETA+8,PRESENT['comma'],NUMBERS)
-from target_monster_hud_native_hp import emit as emit_native_hp
-NATIVE_HP=emit_native_hp(assemble,BASE,HPCACHE,HP_WORLD)
-DRAIN=emit_info(assemble,BASE,RINGMETA,INFO_DB,METADATA['parse'])
-TEXT=emit_text(assemble,BASE,W,H,ICON_STATE+12)
-# Publish visibility only after target validation. A name refresh may reuse the
-# previous title only for the exact same world, actor instance, and GID.
-# Genuine target loss invalidates that identity immediately, without a timer.
-# Player death disables stale attack fallback, but never blocks a valid hover.
-assemble(UPDATE,f"""
-push ebp; mov ebp,esp; sub esp,24; push ebx; push esi; push edi
-mov esi,ecx
-mov dword ptr [{STATE+12}],0
+def build_payload(MANIFEST):
+ from target_monster_hud_layout import make_layout
+ W,H=MANIFEST['canvas']; layout=make_layout(W,H,BASE)
+ BMP_SIZE=layout['bmp_size']; BUFFER_STRIDE=layout['buffer_stride']; BUFFERS=layout['buffers']
+ INFO_DB=layout['info_db']; INFO_TEXT=layout['info_rows']; INFO_CURRENT=layout['current']
+ HP_TEXT=layout['hp_text']; NUMBERS=layout['number_buffers']; ICON_STATE=layout['icon_state']
+ OPTIONS=layout['options']; ICON_PATH=layout['icon_path']; ELEMENT_ROW=layout['element_row']
+ INFO_CONST=layout['constants']; TOTAL=layout['allocation_size']
+ PATHS=BASE+0xe200; STATUS=BASE+0xf000; PERCENT=HP_TEXT
+ HOVERSTATE=BASE+0xe0e0; TARGETSTATE=BASE+0xe0d0
+ TIERLABELS=BASE+0xf280; RINGMETA=BASE+0xe0c0; HPCACHE=BASE+0xb000; HP_WORLD=BASE+0xe0cc
+ FILENAMES=[t[k] for t in MANIFEST['tiers'] for k in ('empty','full')]
+ ks=Ks(KS_ARCH_X86,KS_MODE_32); cs=capstone.Cs(capstone.CS_ARCH_X86,capstone.CS_MODE_32);cs.detail=True
+ chunks=[]; relocs=[]
+ def assemble(at,source):
+  code=bytes(ks.asm(source,at)[0])
+  for i in cs.disasm(code,at):
+   if i.imm_size and any(o.type==X86_OP_IMM for o in i.operands):
+    value=next(o.imm for o in i.operands if o.type==X86_OP_IMM)&0xffffffff
+    if i.mnemonic in ('call','jmp') or i.mnemonic.startswith('j'):
+     if not BASE<=value<BASE+TOTAL:relocs.append([i.address-BASE+i.imm_offset,-1])
+    elif BASE<=value<BASE+TOTAL:relocs.append([i.address-BASE+i.imm_offset,1])
+   if i.disp_size and BASE<=i.disp<BASE+TOTAL:relocs.append([i.address-BASE+i.disp_offset,1])
+  chunks.append((at-BASE,code))
+ # The displaced call is executed exactly once; preserve its return registers/flags.
+ # Observe native A797B0's hit-test descriptor in EDI after the UI blocker lookup.
+ # Replay A47B90 exactly once with its original argument/ECX, preserve its result,
+ # all registers/flags, and the original thiscall ret-4 stack cleanup.
+ assemble(BASE,f"""
+ push dword ptr [esp+4]; call 0xa47b90
+ pushfd; pushad
+ mov dword ptr [{HOVERSTATE}],esi
+ mov dword ptr [{HOVERSTATE+4}],0
+ cmp dword ptr [esi],0x10904b8; jne observe_done
+ test eax,eax; jnz observe_done
+ test ebx,ebx; jnz observe_done
+ test edi,edi; jz observe_done
+ mov eax,[edi+0x18]; mov dword ptr [{HOVERSTATE+4}],eax
+ observe_done: mov ecx,esi; call {UPDATE}
+ popad; popfd; ret 4
+ """)
+ assemble(DTOR,f'''cmp dword ptr [{STATE}],ecx; jne stock; mov dword ptr [{STATE}],0; stock: jmp 0x83bd30''')
+ from target_monster_hud_showmobinfo import emit as emit_info
+ from target_monster_hud_text import emit as emit_text
+ from target_monster_hud_metadata import emit as emit_metadata
+ from target_monster_hud_presentation import emit as emit_presentation
+ PRESENT=emit_presentation(assemble,BASE,ICON_STATE,ICON_PATH,ELEMENT_ROW,OPTIONS,INFO_TEXT,STATE+12,RINGMETA+8,HOVERSTATE,W,H)
+ METADATA=emit_metadata(assemble,BASE,INFO_DB,INFO_TEXT,INFO_CURRENT,INFO_CONST,STATE+12,RINGMETA+8,PRESENT['comma'],NUMBERS)
+ from target_monster_hud_native_hp import emit as emit_native_hp
+ NATIVE_HP=emit_native_hp(assemble,BASE,HPCACHE,HP_WORLD)
+ DRAIN=emit_info(assemble,BASE,RINGMETA,INFO_DB,METADATA['parse'])
+ TEXT=emit_text(assemble,BASE,W,H,ICON_STATE+12)
+ # Publish visibility only after target validation. A name refresh may reuse the
+ # previous title only for the exact same world, actor instance, and GID.
+ # Genuine target loss invalidates that identity immediately, without a timer.
+ # Player death disables stale attack fallback, but never blocks a valid hover.
+ assemble(UPDATE,f"""
+ push ebp; mov ebp,esp; sub esp,24; push ebx; push esi; push edi
+ mov esi,ecx
+ mov dword ptr [{STATE+12}],0
 
-mov dword ptr [ebp-20],0; mov dword ptr [ebp-24],0
-cmp dword ptr [esi],0x10904b8; jne done
+ mov dword ptr [ebp-20],0; mov dword ptr [ebp-24],0
+ cmp dword ptr [esi],0x10904b8; jne done
 
-mov ecx,[esi+0xcc]; test ecx,ecx; jz done
-push ecx; call {NATIVE_HP['ensure']}; call {DRAIN}; pop ecx
+ mov ecx,[esi+0xcc]; test ecx,ecx; jz done
+ push ecx; call {NATIVE_HP['ensure']}; call {DRAIN}; pop ecx
 
-mov edx,[ecx+0x2c]; test edx,edx; jz done
-mov [ebp-12],edx
-push 0xd5; call 0x68ea70; add esp,4; mov ecx,esi; call {PRESENT['option_refresh']}
-test eax,eax; jz done
+ mov edx,[ecx+0x2c]; test edx,edx; jz done
+ mov [ebp-12],edx
+ push 0xd5; call 0x68ea70; add esp,4; mov ecx,esi; call {PRESENT['option_refresh']}
+ test eax,eax; jz done
 
-mov edx,[ebp-12]
+ mov edx,[ebp-12]
 
-mov dword ptr [ebp-16],0
-mov eax,[edx+0x500];
-cmp dword ptr [edx+0x70],3; je check_hover
-cmp eax,1; je save_attack
-cmp eax,5; je save_attack
-cmp eax,3; jne check_hover
-save_attack: mov eax,[edx+0x514]; mov [ebp-16],eax
-check_hover:
+ mov dword ptr [ebp-16],0
+ mov eax,[edx+0x500];
+ cmp dword ptr [edx+0x70],3; je check_hover
+ cmp eax,1; je save_attack
+ cmp eax,5; je save_attack
+ cmp eax,3; jne check_hover
+ save_attack: mov eax,[edx+0x514]; mov [ebp-16],eax
+ check_hover:
 
-cmp dword ptr [{HOVERSTATE}],esi; jne attack_fallback
-mov eax,dword ptr [{HOVERSTATE+4}]; test eax,eax; jz attack_fallback
+ cmp dword ptr [{HOVERSTATE}],esi; jne attack_fallback
+ mov eax,dword ptr [{HOVERSTATE+4}]; test eax,eax; jz attack_fallback
 
-push eax; mov ecx,[esi+0xcc]; call 0xa69eb0; test eax,eax; jz attack_fallback
-cmp byte ptr [eax+0x314],5; jne attack_fallback
-mov edi,eax; jmp selected
-attack_fallback:
-mov eax,[ebp-16]; test eax,eax; jz done
+ push eax; mov ecx,[esi+0xcc]; call 0xa69eb0; test eax,eax; jz attack_fallback
+ cmp byte ptr [eax+0x314],5; jne attack_fallback
+ mov edi,eax; jmp selected
+ attack_fallback:
+ mov eax,[ebp-16]; test eax,eax; jz done
 
-push eax; mov ecx,[esi+0xcc]; call 0xa69eb0; test eax,eax; jz done
-cmp byte ptr [eax+0x314],5; jne done
-mov edi,eax
-selected:
-mov [ebp-20],edi; mov eax,[edi+0x110]; mov [ebp-24],eax
+ push eax; mov ecx,[esi+0xcc]; call 0xa69eb0; test eax,eax; jz done
+ cmp byte ptr [eax+0x314],5; jne done
+ mov edi,eax
+ selected:
+ mov [ebp-20],edi; mov eax,[edi+0x110]; mov [ebp-24],eax
 
-cmp dword ptr [edi+0x70],3; je done
-mov dword ptr [ebp-4],0; mov dword ptr [ebp-8],0
-mov eax,[edi+0x110]; call {NATIVE_HP['lookup']}; test edx,edx; jz native_gauge
-mov [ebp-4],eax; mov [ebp-8],edx; test eax,eax; jz done; jmp info_ready
-native_gauge:
-mov ebx,[edi+0x300]; test ebx,ebx; jz info_ready
-cmp dword ptr [ebx],0x102be50; jne info_ready
-cmp dword ptr [ebx+0xa4],0; je info_ready
-cmp dword ptr [ebx+0xa4],-1; je info_ready
-cmp dword ptr [ebx+0xa0],0; je done
-cmp dword ptr [ebx+0xa0],-1; je info_ready
-mov eax,[ebx+0xa0]; mov [ebp-4],eax
-mov eax,[ebx+0xa4]; mov [ebp-8],eax
-info_ready:
-movzx eax,byte ptr [edi+0x304]; cmp eax,2; jbe tier_ok
-xor eax,eax
-tier_ok: mov dword ptr [{STATE+4}],eax
+ cmp dword ptr [edi+0x70],3; je done
+ mov dword ptr [ebp-4],0; mov dword ptr [ebp-8],0
+ mov eax,[edi+0x110]; call {NATIVE_HP['lookup']}; test edx,edx; jz native_gauge
+ mov [ebp-4],eax; mov [ebp-8],edx; test eax,eax; jz done; jmp info_ready
+ native_gauge:
+ mov ebx,[edi+0x300]; test ebx,ebx; jz info_ready
+ cmp dword ptr [ebx],0x102be50; jne info_ready
+ cmp dword ptr [ebx+0xa4],0; je info_ready
+ cmp dword ptr [ebx+0xa4],-1; je info_ready
+ cmp dword ptr [ebx+0xa0],0; je done
+ cmp dword ptr [ebx+0xa0],-1; je info_ready
+ mov eax,[ebx+0xa0]; mov [ebp-4],eax
+ mov eax,[ebx+0xa4]; mov [ebp-8],eax
+ info_ready:
+ movzx eax,byte ptr [edi+0x304]; cmp eax,2; jbe tier_ok
+ xor eax,eax
+ tier_ok: mov dword ptr [{STATE+4}],eax
 
-mov eax,[edi+0x110]; call {METADATA["prepare"]}; push edx
-push dword ptr [edi+0x110]; lea ecx,[esi+0x160]; call 0x5a1460
-push eax; call {PRESENT['icon_prepare']}; pop eax; pop edx
-test edx,edx; jnz inline_name
-test eax,eax; jz name_unavailable
-cmp byte ptr [eax+0x98],1; jne name_unavailable
-lea edx,[eax+4]; cmp dword ptr [eax+0x18],16; jb inline_name
-mov edx,[eax+4]
-inline_name: test edx,edx; jz name_unavailable
-cmp byte ptr [edx],0; je name_unavailable
-mov edi,{NAME}; xor ecx,ecx; jmp copy_name
-name_unavailable:
-mov eax,[esi+0xcc]; cmp eax,dword ptr [{TARGETSTATE}]; jne done
-mov eax,[ebp-20]; cmp eax,dword ptr [{TARGETSTATE+4}]; jne done
-mov eax,[ebp-24]; cmp eax,dword ptr [{TARGETSTATE+8}]; jne done
-cmp byte ptr [{NAME}],0; je done
+ mov eax,[edi+0x110]; call {METADATA["prepare"]}; push edx
+ push dword ptr [edi+0x110]; lea ecx,[esi+0x160]; call 0x5a1460
+ push eax; call {PRESENT['icon_prepare']}; pop eax; pop edx
+ test edx,edx; jnz inline_name
+ test eax,eax; jz name_unavailable
+ cmp byte ptr [eax+0x98],1; jne name_unavailable
+ lea edx,[eax+4]; cmp dword ptr [eax+0x18],16; jb inline_name
+ mov edx,[eax+4]
+ inline_name: test edx,edx; jz name_unavailable
+ cmp byte ptr [edx],0; je name_unavailable
+ mov edi,{NAME}; xor ecx,ecx; jmp copy_name
+ name_unavailable:
+ mov eax,[esi+0xcc]; cmp eax,dword ptr [{TARGETSTATE}]; jne done
+ mov eax,[ebp-20]; cmp eax,dword ptr [{TARGETSTATE+4}]; jne done
+ mov eax,[ebp-24]; cmp eax,dword ptr [{TARGETSTATE+8}]; jne done
+ cmp byte ptr [{NAME}],0; je done
 
-jmp copied
-copy_name: mov al,[edx+ecx]; cmp al,97; jb copy_upper; cmp al,122; ja copy_upper; sub al,32
-copy_upper: cmp [edi+ecx],al; je copy_same
-mov dword ptr [{STATE+12}],1
-copy_same: mov [edi+ecx],al; test al,al; jz copied
-inc ecx; cmp ecx,127; jb copy_name
-mov byte ptr [edi+127],0
-copied:
+ jmp copied
+ copy_name: mov al,[edx+ecx]; cmp al,97; jb copy_upper; cmp al,122; ja copy_upper; sub al,32
+ copy_upper: cmp [edi+ecx],al; je copy_same
+ mov dword ptr [{STATE+12}],1
+ copy_same: mov [edi+ecx],al; test al,al; jz copied
+ inc ecx; cmp ecx,127; jb copy_name
+ mov byte ptr [edi+127],0
+ copied:
 
-mov eax,dword ptr [{STATE+4}]; shl eax,1; push eax; call {LOAD}; pop ecx
-test eax,eax; jz done
-lea eax,[ecx+1]; call {LOAD}; test eax,eax; jz done
+ mov eax,dword ptr [{STATE+4}]; shl eax,1; push eax; call {LOAD}; pop ecx
+ test eax,eax; jz done
+ lea eax,[ecx+1]; call {LOAD}; test eax,eax; jz done
 
-mov ebx,dword ptr [{STATE}]; test ebx,ebx; jnz have_window
-push 0xb4; call 0xdbbc4f; add esp,4; test eax,eax; jz done
-mov ecx,eax; call 0x8361b0; mov ebx,eax
-mov dword ptr [ebx],{VT}; mov dword ptr [{STATE}],ebx
-push {H}; push {W}; mov ecx,ebx; call 0xa1cb70
-push ebx; mov ecx,0x131f4e8; call 0xa2d240
-have_window:
-mov eax,dword ptr [0x12515f8]; test eax,eax; jz done
-mov eax,[eax+0x28]; sub eax,{W}; sar eax,1
-push 24; push eax; mov ecx,ebx; call 0xa23450
-mov eax,[ebp-4]; cmp [ebx+0xa0],eax; jne refresh
-mov eax,[ebp-8]; cmp [ebx+0xa4],eax; jne refresh
-cmp dword ptr [{STATE+12}],0; jne refresh
-mov eax,dword ptr [{STATE+4}]; cmp dword ptr [{STATE+24}],eax; je show_hud
-refresh:
-push dword ptr [ebp-8]; push dword ptr [ebp-4]; mov ecx,ebx; call 0x863f10
-mov eax,dword ptr [{STATE+4}]; mov dword ptr [{STATE+24}],eax
-mov dword ptr [ebx+0x58],1
-show_hud:
-mov eax,[esi+0xcc]; mov dword ptr [{TARGETSTATE}],eax
-mov eax,[ebp-20]; mov dword ptr [{TARGETSTATE+4}],eax
-mov eax,[ebp-24]; mov dword ptr [{TARGETSTATE+8}],eax
-mov dword ptr [ebx+0x28],1
+ mov ebx,dword ptr [{STATE}]; test ebx,ebx; jnz have_window
+ push 0xb4; call 0xdbbc4f; add esp,4; test eax,eax; jz done
+ mov ecx,eax; call 0x8361b0; mov ebx,eax
+ mov dword ptr [ebx],{VT}; mov dword ptr [{STATE}],ebx
+ push {H}; push {W}; mov ecx,ebx; call 0xa1cb70
+ push ebx; mov ecx,0x131f4e8; call 0xa2d240
+ have_window:
+ mov eax,dword ptr [0x12515f8]; test eax,eax; jz done
+ mov eax,[eax+0x28]; sub eax,{W}; sar eax,1
+ push 24; push eax; mov ecx,ebx; call 0xa23450
+ mov eax,[ebp-4]; cmp [ebx+0xa0],eax; jne refresh
+ mov eax,[ebp-8]; cmp [ebx+0xa4],eax; jne refresh
+ cmp dword ptr [{STATE+12}],0; jne refresh
+ mov eax,dword ptr [{STATE+4}]; cmp dword ptr [{STATE+24}],eax; je show_hud
+ refresh:
+ push dword ptr [ebp-8]; push dword ptr [ebp-4]; mov ecx,ebx; call 0x863f10
+ mov eax,dword ptr [{STATE+4}]; mov dword ptr [{STATE+24}],eax
+ mov dword ptr [ebx+0x58],1
+ show_hud:
+ mov eax,[esi+0xcc]; mov dword ptr [{TARGETSTATE}],eax
+ mov eax,[ebp-20]; mov dword ptr [{TARGETSTATE+4}],eax
+ mov eax,[ebp-24]; mov dword ptr [{TARGETSTATE+8}],eax
+ mov dword ptr [ebx+0x28],1
 
-jmp update_done
-done:
-mov dword ptr [{TARGETSTATE}],0
-mov dword ptr [{TARGETSTATE+4}],0
-mov dword ptr [{TARGETSTATE+8}],0
-mov eax,dword ptr [{STATE}]; test eax,eax; jz update_done
-mov dword ptr [eax+0x28],0
-update_done:
-pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret
-""")
-# Native CFile uses the same CFileMgr as stock assets. Open(path,0,1,0)
-# prepends the configured data root and obeys existing folder/GRF priority.
-# The initialized 44-byte stack object is destroyed on every opened path.
-assemble(LOAD,f"""
-push ebp; mov ebp,esp; sub esp,48; push ebx; push esi; push edi
-mov ebx,eax; cmp ebx,5; ja failure
-cmp dword ptr [{STATUS}+ebx*4],1; je success
-cmp dword ptr [{STATUS}+ebx*4],2; je failure
-mov dword ptr [{STATUS}+ebx*4],2
-lea edi,[ebp-48]; xor eax,eax; mov ecx,11; cld; rep stosd
-mov dword ptr [ebp-48],0xfd3074
-mov dword ptr [ebp-44],-1
-mov dword ptr [ebp-8],15
-mov eax,ebx; shl eax,8; add eax,{PATHS}
-push 0; push 1; push 0; push eax; lea ecx,[ebp-48]; call 0x573750
-test al,al; jz close_fail
-cmp dword ptr [ebp-32],{BMP_SIZE}; jne close_fail
-imul esi,ebx,{BUFFER_STRIDE}; add esi,{BUFFERS}
-push {BMP_SIZE}; push esi; lea ecx,[ebp-48]; call 0x573980
-test al,al; jz close_fail
-cmp word ptr [esi],0x4d42; jne close_fail
-cmp dword ptr [esi+10],122; jne close_fail
-cmp dword ptr [esi+14],108; jne close_fail
-cmp dword ptr [esi+18],{W}; jne close_fail
-cmp dword ptr [esi+22],{H}; jne close_fail
-cmp dword ptr [esi+26],0x00200001; jne close_fail
-cmp dword ptr [esi+30],3; jne close_fail
-cmp dword ptr [esi+54],0x00ff0000; jne close_fail
-cmp dword ptr [esi+58],0x0000ff00; jne close_fail
-cmp dword ptr [esi+62],0x000000ff; jne close_fail
-cmp dword ptr [esi+66],0xff000000; jne close_fail
-push 0; lea ecx,[ebp-48]; call 0x519200
-mov dword ptr [{STATUS}+ebx*4],1
-success: mov eax,1; jmp load_done
-close_fail: push 0; lea ecx,[ebp-48]; call 0x519200
-failure: xor eax,eax
-load_done: pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret
-""")
-# stdcall(window, BMP, left, right, top, bottom), V4 BGRA32 bottom-up -> native ARGB, preserving the source alpha.
-assemble(BLIT,f"""
-push ebp; mov ebp,esp; sub esp,24; push ebx; push esi; push edi
-mov eax,[ebp+8]; test eax,eax; jz blit_done
-mov eax,[eax+0x24]; test eax,eax; jz blit_done
-cmp dword ptr [eax+4],{W}; jne blit_done
-mov edi,[eax+0x18]; test edi,edi; jz blit_done
-mov byte ptr [eax+0x28],1
-mov eax,[ebp+16]; test eax,eax; js blit_done
-mov ecx,[ebp+20]; cmp ecx,{W}; ja blit_done
-sub ecx,eax; jle blit_done; mov [ebp-4],ecx
-mov ecx,[ebp+24]; test ecx,ecx; js blit_done
-mov edx,[ebp+28]; cmp edx,{H}; ja blit_done
-sub edx,ecx; jle blit_done; mov [ebp-8],edx
-imul edx,ecx,{W}; add edx,eax; lea edi,[edi+edx*4]; mov [ebp-12],edi
-mov edx,{H-1}; sub edx,ecx; imul edx,edx,{W*4}
-shl eax,2; add edx,eax
-mov esi,[ebp+12]; add esi,122; add esi,edx; mov [ebp-16],esi
-blit_row: mov edi,[ebp-12]; mov esi,[ebp-16]; mov ecx,[ebp-4]
-blit_pixel: mov eax,[esi]; test eax,0xff000000; jz blit_skip
-mov [edi],eax
-blit_skip: add esi,4; add edi,4; dec ecx; jnz blit_pixel
-add dword ptr [ebp-12],{W*4}; sub dword ptr [ebp-16],{W*4}; dec dword ptr [ebp-8]; jnz blit_row
-blit_done: pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret 24
-""")
-s=['push ebp; mov ebp,esp; push ebx; push esi; push edi; mov esi,ecx',
-   'push 0; call 0xa1cb30',f'mov eax,dword ptr [{STATE+4}]; cmp eax,2; je mvp; cmp eax,1; je mini; jmp normal']
-for index,tier in enumerate(MANIFEST['tiers']):
- label=tier['name'];l,t,r,b=tier['fill'];empty=BUFFERS+index*2*BUFFER_STRIDE;full=empty+BUFFER_STRIDE
- s.append(f"""{label}:
-push {H}; push 0; push {W}; push 0; push {empty}; push esi; call {BLIT}
-cmp dword ptr [esi+0xa4],0; je text
-mov eax,[esi+0xa0]; cmp eax,[esi+0xa4]; jbe {label}_clamp; mov eax,[esi+0xa4]
-{label}_clamp: mov ecx,{r-l}; mul ecx; div dword ptr [esi+0xa4]; add eax,{l}
-push {b}; push {t}; push eax; push {l}; push {full}; push esi; call {BLIT}
-jmp text""")
-s.append(f"""text:
-mov eax,dword ptr [{STATE+4}]; imul eax,eax,16; add eax,{TIERLABELS}
-mov edx,{MANIFEST['tiers'][0]['label_top']}
-cmp dword ptr [{STATE+4}],0; je label_ready
-mov edx,{MANIFEST['tiers'][1]['label_top']}
-cmp dword ptr [{STATE+4}],1; je label_ready
-mov edx,{MANIFEST['tiers'][2]['label_top']}
-label_ready: push 2; push edx; push eax; push esi; call {TEXT}
-push 0; push {MANIFEST['name_top']}; push {NAME}; push esi; call {TEXT}
-mov byte ptr [{PERCENT}],0
-mov ebx,dword ptr [{INFO_CURRENT+12}]; and ebx,48; jz details
-cmp dword ptr [esi+0xa4],0; je pct_unknown
-mov eax,[esi+0xa0]; cmp eax,[esi+0xa4]; jbe pct_clamp; mov eax,[esi+0xa4]
-pct_clamp: mov ecx,100; mul ecx; div dword ptr [esi+0xa4]
-cmp ebx,32; je pct_only
-push eax
-mov eax,[esi+0xa0]; mov edx,{NUMBERS}; call {PRESENT['comma']}
-mov eax,[esi+0xa4]; mov edx,{NUMBERS+16}; call {PRESENT['comma']}
-pop eax
-cmp ebx,16; je hp_only
-push eax; push {NUMBERS+16}; push {NUMBERS}; push {METADATA['hp_format']}; push {PERCENT}; call 0x529850; add esp,20; jmp pct_draw
-hp_only: push {NUMBERS+16}; push {NUMBERS}; push {METADATA['hp_only_format']}; push {PERCENT}; call 0x529850; add esp,16; jmp pct_draw
-pct_only: push eax; push {METADATA['percent_only_format']}; push {PERCENT}; call 0x529850; add esp,12; jmp pct_draw
-pct_unknown:
-mov dword ptr [{PERCENT}],0x75205048
-mov dword ptr [{PERCENT+4}],0x6f6e6b6e
-mov dword ptr [{PERCENT+8}],0x00006e77
-pct_draw:
-mov eax,dword ptr [{STATE+4}]
-mov edx,{MANIFEST['tiers'][0]['percent_top']}; test eax,eax; jz pct_ready
-mov edx,{MANIFEST['tiers'][1]['percent_top']}; cmp eax,1; je pct_ready
-mov edx,{MANIFEST['tiers'][2]['percent_top']}
-pct_ready: push 1; push edx; push {PERCENT}; push esi; call {TEXT}
-details: mov eax,dword ptr [{STATE+4}]; mov ebx,108; test eax,eax; jz details_ready
-mov ebx,124; cmp eax,1; je details_ready; mov ebx,153
-details_ready:
-cmp byte ptr [{INFO_TEXT}],0; je second_detail
-push 3; push ebx; push {INFO_TEXT}; push esi; call {TEXT}
-second_detail: add ebx,24
-cmp byte ptr [{INFO_TEXT+128}],0; je third_detail
-push ebx; push esi; call {PRESENT['icon_draw']}
-third_detail: add ebx,24
-cmp byte ptr [{INFO_TEXT+256}],0; je details_done
-push 3; push ebx; push {INFO_TEXT+256}; push esi; call {TEXT}
-details_done: pop edi; pop esi; pop ebx; pop ebp; ret""")
-assemble(DRAW,'\n'.join(s))
-assemble(METADATA['strip'],f"""
-push dword ptr [esp+4]; call 0xd8e9d0
-pushfd; pushad
-cmp byte ptr [edi+0x314],5; jne leave_name
-push 0xd5; call 0x68ea70; add esp,4; test al,al; jz leave_name
-movzx eax,byte ptr [edi+0x304]; cmp eax,2; jbe strip_tier; xor eax,eax
-strip_tier: shl eax,1; push eax; call {LOAD}; pop ecx; test eax,eax; jz leave_name
-lea eax,[ecx+1]; call {LOAD}; test eax,eax; jz leave_name
-push 0; push {METADATA['empty']}; lea ecx,[ebp-0x1d8]; call 0x4f1940
-push 0; push {METADATA['empty']}; lea ecx,[ebp-0x160]; call 0x4f1940
-mov dword ptr [ebp-0x148],0
-leave_name: popad; popfd; ret 4
-""")
-# With no group ID, native balloons would otherwise fall back to a boss badge.
-# Clear only this producer's tier argument while relocation is enabled.
-assemble(PRESENT['tier_gate'],f"""
-push dword ptr [esp+4]; call 0xc43230
-pushfd; pushad
-cmp byte ptr [edi+0x314],5; jne leave_tier
-push 0xd5; call 0x68ea70; add esp,4; test al,al; jz leave_tier
-movzx eax,byte ptr [edi+0x304]; cmp eax,2; jbe tier_index; xor eax,eax
-tier_index: shl eax,3; cmp dword ptr [{STATUS}+eax],1; jne leave_tier
-cmp dword ptr [{STATUS+4}+eax],1; jne leave_tier
-mov byte ptr [ebp-0x1e4],0
-leave_tier: popad; popfd; ret 4
-""")
-assert max(off+len(b) for off,b in chunks)<0xe000
-chunks.extend(METADATA["chunks"])
-chunks.append((ELEMENT_ROW+128-BASE,"%s ♦ \0".encode("utf8")))
-for index,tier in enumerate(MANIFEST['tiers']):chunks.append((TIERLABELS-BASE+index*16,(tier['label']+'\0').encode('ascii')))
-for index,name in enumerate(FILENAMES):
- relative=MANIFEST['resource_root'].removeprefix('data/').replace('/',chr(92))+chr(92)+name
- encoded=(relative+'\0').encode('latin1');assert len(encoded)<256
- chunks.append((PATHS-BASE+index*256,encoded))
-# Fail generation if a helper outgrows its reserved cave or initialized data.
-ordered=sorted((off,off+len(data)) for off,data in chunks)
-for prior,nxt in zip(ordered,ordered[1:]):
- assert prior[1]<=nxt[0],('overlapping HUD chunks',prior,nxt)
-blob=bytearray(TOTAL)
-for off,b in chunks:blob[off:off+len(b)]=b
+ jmp update_done
+ done:
+ mov dword ptr [{TARGETSTATE}],0
+ mov dword ptr [{TARGETSTATE+4}],0
+ mov dword ptr [{TARGETSTATE+8}],0
+ mov eax,dword ptr [{STATE}]; test eax,eax; jz update_done
+ mov dword ptr [eax+0x28],0
+ update_done:
+ pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret
+ """)
+ # Native CFile uses the same CFileMgr as stock assets. Open(path,0,1,0)
+ # prepends the configured data root and obeys existing folder/GRF priority.
+ # The initialized 44-byte stack object is destroyed on every opened path.
+ assemble(LOAD,f"""
+ push ebp; mov ebp,esp; sub esp,48; push ebx; push esi; push edi
+ mov ebx,eax; cmp ebx,5; ja failure
+ cmp dword ptr [{STATUS}+ebx*4],1; je success
+ cmp dword ptr [{STATUS}+ebx*4],2; je failure
+ mov dword ptr [{STATUS}+ebx*4],2
+ lea edi,[ebp-48]; xor eax,eax; mov ecx,11; cld; rep stosd
+ mov dword ptr [ebp-48],0xfd3074
+ mov dword ptr [ebp-44],-1
+ mov dword ptr [ebp-8],15
+ mov eax,ebx; shl eax,8; add eax,{PATHS}
+ push 0; push 1; push 0; push eax; lea ecx,[ebp-48]; call 0x573750
+ test al,al; jz close_fail
+ cmp dword ptr [ebp-32],{BMP_SIZE}; jne close_fail
+ imul esi,ebx,{BUFFER_STRIDE}; add esi,{BUFFERS}
+ push {BMP_SIZE}; push esi; lea ecx,[ebp-48]; call 0x573980
+ test al,al; jz close_fail
+ cmp word ptr [esi],0x4d42; jne close_fail
+ cmp dword ptr [esi+10],122; jne close_fail
+ cmp dword ptr [esi+14],108; jne close_fail
+ cmp dword ptr [esi+18],{W}; jne close_fail
+ cmp dword ptr [esi+22],{H}; jne close_fail
+ cmp dword ptr [esi+26],0x00200001; jne close_fail
+ cmp dword ptr [esi+30],3; jne close_fail
+ cmp dword ptr [esi+54],0x00ff0000; jne close_fail
+ cmp dword ptr [esi+58],0x0000ff00; jne close_fail
+ cmp dword ptr [esi+62],0x000000ff; jne close_fail
+ cmp dword ptr [esi+66],0xff000000; jne close_fail
+ push 0; lea ecx,[ebp-48]; call 0x519200
+ mov dword ptr [{STATUS}+ebx*4],1
+ success: mov eax,1; jmp load_done
+ close_fail: push 0; lea ecx,[ebp-48]; call 0x519200
+ failure: xor eax,eax
+ load_done: pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret
+ """)
+ # stdcall(window, BMP, left, right, top, bottom), V4 BGRA32 bottom-up -> native ARGB, preserving the source alpha.
+ assemble(BLIT,f"""
+ push ebp; mov ebp,esp; sub esp,24; push ebx; push esi; push edi
+ mov eax,[ebp+8]; test eax,eax; jz blit_done
+ mov eax,[eax+0x24]; test eax,eax; jz blit_done
+ cmp dword ptr [eax+4],{W}; jne blit_done
+ mov edi,[eax+0x18]; test edi,edi; jz blit_done
+ mov byte ptr [eax+0x28],1
+ mov eax,[ebp+16]; test eax,eax; js blit_done
+ mov ecx,[ebp+20]; cmp ecx,{W}; ja blit_done
+ sub ecx,eax; jle blit_done; mov [ebp-4],ecx
+ mov ecx,[ebp+24]; test ecx,ecx; js blit_done
+ mov edx,[ebp+28]; cmp edx,{H}; ja blit_done
+ sub edx,ecx; jle blit_done; mov [ebp-8],edx
+ imul edx,ecx,{W}; add edx,eax; lea edi,[edi+edx*4]; mov [ebp-12],edi
+ mov edx,{H-1}; sub edx,ecx; imul edx,edx,{W*4}
+ shl eax,2; add edx,eax
+ mov esi,[ebp+12]; add esi,122; add esi,edx; mov [ebp-16],esi
+ blit_row: mov edi,[ebp-12]; mov esi,[ebp-16]; mov ecx,[ebp-4]
+ blit_pixel: mov eax,[esi]; test eax,0xff000000; jz blit_skip
+ mov [edi],eax
+ blit_skip: add esi,4; add edi,4; dec ecx; jnz blit_pixel
+ add dword ptr [ebp-12],{W*4}; sub dword ptr [ebp-16],{W*4}; dec dword ptr [ebp-8]; jnz blit_row
+ blit_done: pop edi; pop esi; pop ebx; mov esp,ebp; pop ebp; ret 24
+ """)
+ s=['push ebp; mov ebp,esp; push ebx; push esi; push edi; mov esi,ecx',
+    'push 0; call 0xa1cb30',f'mov eax,dword ptr [{STATE+4}]; cmp eax,2; je mvp; cmp eax,1; je mini; jmp normal']
+ for index,tier in enumerate(MANIFEST['tiers']):
+  label=tier['name'];l,t,r,b=tier['fill'];empty=BUFFERS+index*2*BUFFER_STRIDE;full=empty+BUFFER_STRIDE
+  s.append(f"""{label}:
+ push {H}; push 0; push {W}; push 0; push {empty}; push esi; call {BLIT}
+ cmp dword ptr [esi+0xa4],0; je text
+ mov eax,[esi+0xa0]; cmp eax,[esi+0xa4]; jbe {label}_clamp; mov eax,[esi+0xa4]
+ {label}_clamp: mov ecx,{r-l}; mul ecx; div dword ptr [esi+0xa4]; add eax,{l}
+ push {b}; push {t}; push eax; push {l}; push {full}; push esi; call {BLIT}
+ jmp text""")
+ s.append(f"""text:
+ mov eax,dword ptr [{STATE+4}]; imul eax,eax,16; add eax,{TIERLABELS}
+ mov edx,{MANIFEST['tiers'][0]['label_top']}
+ cmp dword ptr [{STATE+4}],0; je label_ready
+ mov edx,{MANIFEST['tiers'][1]['label_top']}
+ cmp dword ptr [{STATE+4}],1; je label_ready
+ mov edx,{MANIFEST['tiers'][2]['label_top']}
+ label_ready: push 2; push edx; push eax; push esi; call {TEXT}
+ push 0; push {MANIFEST['name_top']}; push {NAME}; push esi; call {TEXT}
+ mov byte ptr [{PERCENT}],0
+ mov ebx,dword ptr [{INFO_CURRENT+12}]; and ebx,48; jz details
+ cmp dword ptr [esi+0xa4],0; je pct_unknown
+ mov eax,[esi+0xa0]; cmp eax,[esi+0xa4]; jbe pct_clamp; mov eax,[esi+0xa4]
+ pct_clamp: mov ecx,100; mul ecx; div dword ptr [esi+0xa4]
+ cmp ebx,32; je pct_only
+ push eax
+ mov eax,[esi+0xa0]; mov edx,{NUMBERS}; call {PRESENT['comma']}
+ mov eax,[esi+0xa4]; mov edx,{NUMBERS+16}; call {PRESENT['comma']}
+ pop eax
+ cmp ebx,16; je hp_only
+ push eax; push {NUMBERS+16}; push {NUMBERS}; push {METADATA['hp_format']}; push {PERCENT}; call 0x529850; add esp,20; jmp pct_draw
+ hp_only: push {NUMBERS+16}; push {NUMBERS}; push {METADATA['hp_only_format']}; push {PERCENT}; call 0x529850; add esp,16; jmp pct_draw
+ pct_only: push eax; push {METADATA['percent_only_format']}; push {PERCENT}; call 0x529850; add esp,12; jmp pct_draw
+ pct_unknown:
+ mov dword ptr [{PERCENT}],0x75205048
+ mov dword ptr [{PERCENT+4}],0x6f6e6b6e
+ mov dword ptr [{PERCENT+8}],0x00006e77
+ pct_draw:
+ mov eax,dword ptr [{STATE+4}]
+ mov edx,{MANIFEST['tiers'][0]['percent_top']}; test eax,eax; jz pct_ready
+ mov edx,{MANIFEST['tiers'][1]['percent_top']}; cmp eax,1; je pct_ready
+ mov edx,{MANIFEST['tiers'][2]['percent_top']}
+ pct_ready: push 1; push edx; push {PERCENT}; push esi; call {TEXT}
+ details: mov eax,dword ptr [{STATE+4}]; mov ebx,108; test eax,eax; jz details_ready
+ mov ebx,124; cmp eax,1; je details_ready; mov ebx,153
+ details_ready:
+ cmp byte ptr [{INFO_TEXT}],0; je second_detail
+ push 3; push ebx; push {INFO_TEXT}; push esi; call {TEXT}
+ second_detail: add ebx,24
+ cmp byte ptr [{INFO_TEXT+128}],0; je third_detail
+ push ebx; push esi; call {PRESENT['icon_draw']}
+ third_detail: add ebx,24
+ cmp byte ptr [{INFO_TEXT+256}],0; je details_done
+ push 3; push ebx; push {INFO_TEXT+256}; push esi; call {TEXT}
+ details_done: pop edi; pop esi; pop ebx; pop ebp; ret""")
+ assemble(DRAW,'\n'.join(s))
+ assemble(METADATA['strip'],f"""
+ push dword ptr [esp+4]; call 0xd8e9d0
+ pushfd; pushad
+ cmp byte ptr [edi+0x314],5; jne leave_name
+ push 0xd5; call 0x68ea70; add esp,4; test al,al; jz leave_name
+ movzx eax,byte ptr [edi+0x304]; cmp eax,2; jbe strip_tier; xor eax,eax
+ strip_tier: shl eax,1; push eax; call {LOAD}; pop ecx; test eax,eax; jz leave_name
+ lea eax,[ecx+1]; call {LOAD}; test eax,eax; jz leave_name
+ push 0; push {METADATA['empty']}; lea ecx,[ebp-0x1d8]; call 0x4f1940
+ push 0; push {METADATA['empty']}; lea ecx,[ebp-0x160]; call 0x4f1940
+ mov dword ptr [ebp-0x148],0
+ leave_name: popad; popfd; ret 4
+ """)
+ # With no group ID, native balloons would otherwise fall back to a boss badge.
+ # Clear only this producer's tier argument while relocation is enabled.
+ assemble(PRESENT['tier_gate'],f"""
+ push dword ptr [esp+4]; call 0xc43230
+ pushfd; pushad
+ cmp byte ptr [edi+0x314],5; jne leave_tier
+ push 0xd5; call 0x68ea70; add esp,4; test al,al; jz leave_tier
+ movzx eax,byte ptr [edi+0x304]; cmp eax,2; jbe tier_index; xor eax,eax
+ tier_index: shl eax,3; cmp dword ptr [{STATUS}+eax],1; jne leave_tier
+ cmp dword ptr [{STATUS+4}+eax],1; jne leave_tier
+ mov byte ptr [ebp-0x1e4],0
+ leave_tier: popad; popfd; ret 4
+ """)
+ assert max(off+len(b) for off,b in chunks)<0xe000
+ chunks.extend(METADATA["chunks"])
+ chunks.append((ELEMENT_ROW+128-BASE,"%s ♦ \0".encode("utf8")))
+ for index,tier in enumerate(MANIFEST['tiers']):chunks.append((TIERLABELS-BASE+index*16,(tier['label']+'\0').encode('ascii')))
+ for index,name in enumerate(FILENAMES):
+  relative=MANIFEST['resource_root'].removeprefix('data/').replace('/',chr(92))+chr(92)+name
+  encoded=(relative+'\0').encode('latin1');assert len(encoded)<256
+  chunks.append((PATHS-BASE+index*256,encoded))
+ # Fail generation if a helper outgrows its reserved cave or initialized data.
+ ordered=sorted((off,off+len(data)) for off,data in chunks)
+ for prior,nxt in zip(ordered,ordered[1:]):
+  assert prior[1]<=nxt[0],('overlapping HUD chunks',prior,nxt)
+ blob=bytearray(TOTAL)
+ for off,b in chunks:blob[off:off+len(b)]=b
+ return TOTAL, chunks, [(offset, sign, struct.unpack_from('<I',blob,offset)[0]) for offset,sign in relocs]
+
 # copy native vtable at patch time, then substitute only draw/destructor.
 # Stable, bounded lines keep generated diffs local; the emitted bytes stay exact.
 def format_chunks(entries):
@@ -362,13 +364,32 @@ def format_chunks(entries):
 
 def format_relocations(entries):
  lines=['[']
- for offset,sign in entries:
-  original=struct.unpack_from('<I',blob,offset)[0]
+ for offset,sign,original in entries:
   lines.append(f'\t\t[0x{offset:06X}, {sign:2d}, 0x{original:08X}],')
  return '\n'.join(lines+['\t]'])
 
+from target_monster_hud_designs import load_designs
+DESIGNS=load_designs()
+MANIFEST=DESIGNS['Classic']
+TOTAL,chunks,relocs=build_payload(MANIFEST)
 chunks_source=format_chunks(chunks)
 relocations_source=format_relocations(relocs)
+# Emit the accepted classic payload once, then only each variant's changed chunks.
+# Relocations are still assembled per design; never assume equal instruction sizes.
+design_sources=[]
+for name,manifest in DESIGNS.items():
+ total,variant_chunks,variant_relocs=build_payload(manifest)
+ assert total==TOTAL, 'All selectable designs must share the HUD allocation layout'
+ original=dict(chunks);variant=dict(variant_chunks)
+ overrides=[]
+ for offset in sorted(original.keys() | variant.keys()):
+  before=original.get(offset,b'');after=variant.get(offset,b'')
+  if before!=after:overrides.append((offset,after.ljust(max(len(before),len(after)),b'\0')))
+ design_sources.append('\t'+json.dumps(name)+': {\n'
+  +'\t\trelative: '+json.dumps(manifest['resource_root'])+',\n'
+  +'\t\tfiles: '+json.dumps([t[k] for t in manifest['tiers'] for k in ('empty','full')])+',\n'
+  +'\t\tchunks: '+format_chunks(overrides)+',\n'
+  +'\t\trelocations: '+('null' if variant_relocs==relocs else format_relocations(variant_relocs))+'\n\t}')
 qjs=r'''/**************************************************************************\
 *                                                                          *
 *   Copyright (C) 2026 Louis T Steinhil                                    *
@@ -389,9 +410,9 @@ qjs=r'''/***********************************************************************
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-09-05                                             *
-*   Last Modified : 2026-09-07                                             *
+*   Last Modified : 2026-09-17                                             *
 *                                                                          *
-*   Description   : Replace monster nameplates with a native target HUD    *
+*   Description   : Choose Classic or Wings and Stars for the native HUD   *
 *					while hovering or attacking. /monsterhp restores the   *
 *					stock presentation when off.                           *
 *   Target        : 2025-07-16 Ragexe; guarded static hooks, no runtime    *
@@ -402,6 +423,15 @@ qjs=r'''/***********************************************************************
 \**************************************************************************/''' + '''
 TargetMonsterHealthBar = function(_) {
 \tif (Exe.BuildDate !== 20250716) throw Error("TargetMonsterHealthBar: requires 2025-07-16");
+\tconst selection = Warp.TestMode ? "Classic" : Exe.GetUserInput(
+\t\t'$targetMonsterHUDDesign', D_Choice, "Monster HP Bar Design",
+\t\t"Choose the design for Normal, Mini Boss and MVP health bars.",
+\t\t"Classic", {choices: Object.keys(TargetMonsterHealthBar.designs), saveDefault: true}
+\t);
+\tif (selection === false) return false;
+\tif (!Object.prototype.hasOwnProperty.call(TargetMonsterHealthBar.designs, selection))
+\t\tthrow Error("TargetMonsterHealthBar: unknown design " + selection);
+\tconst design = TargetMonsterHealthBar.designs[selection];
 \tconst check = (va, hex) => {
 \t\tconst phy = Exe.Vir2Phy(va);
 \t\tif (Exe.GetHex(phy, hex.replace(/ /g, '').length / 2).replace(/ /g, '').toUpperCase() !== hex.replace(/ /g, '').toUpperCase())
@@ -426,8 +456,9 @@ TargetMonsterHealthBar = function(_) {
 \tconst [phy, vir] = Exe.Allocate(ALLOCSIZE, 0x10);
 \tExe.SetHex(phy, "00 ".repeat(ALLOCSIZE).trim());
 \tfor (const [off, hex] of CHUNKS) Exe.SetHex(phy + off, hex);
+\tfor (const [off, hex] of design.chunks) Exe.SetHex(phy + off, hex);
 \tconst delta = vir - 0x02000000;
-\tfor (const [off, sign, original] of RELOCS)
+\tfor (const [off, sign, original] of (design.relocations || RELOCS))
 \t\tExe.SetUint32(phy + off, (original + sign * delta) >>> 0);
 \tExe.SetUint32(phy + 0xE0C0, ring.blockVir);
 \tExe.SetHex(phy + 0xE0FC, Exe.GetHex(Exe.Vir2Phy(0x102BE4C), 4));
@@ -442,14 +473,24 @@ TargetMonsterHealthBar = function(_) {
 };
 TargetMonsterHealthBar.validate = () => Exe.BuildDate === 20250716;
 '''.replace('ALLOCSIZE',str(TOTAL)).replace('CHUNKS',chunks_source).replace('RELOCS',relocations_source)
-asset_dir=MANIFEST['resource_root']
-qjs += "\nTargetMonsterHealthBar.onApplied = function() {\n\tif (Warp.TestMode) return;\n"
-qjs += "\tconst relative = " + json.dumps(asset_dir) + ";\n"
-qjs += "\tconst source = Warp.Path + '/' + relative;\n\tconst target = System.DirPath(Warp.TgtExe) + '/' + relative;\n"
-qjs += "\tif (source.toLowerCase() === target.toLowerCase()) return;\n"
-qjs += "\tif (!System.MkDir(target)) throw Error('TargetMonsterHealthBar: cannot create ' + target);\n"
-qjs += "\tfor (const file of " + json.dumps(FILENAMES) + ") {\n"
-qjs += "\t\tif (!System.Copy(source + '/' + file, target + '/' + file, true))\n\t\t\tthrow Error('TargetMonsterHealthBar: cannot copy ' + file);\n\t}\n};\n"
+qjs += "\nTargetMonsterHealthBar.designs = {\n" + ",\n".join(design_sources) + "\n};\n"
+qjs += r"""
+TargetMonsterHealthBar.onApplied = function() {
+	if (Warp.TestMode) return;
+	const selection = Exe.GetSavedInput('$targetMonsterHUDDesign') || "Classic";
+	if (!Object.prototype.hasOwnProperty.call(TargetMonsterHealthBar.designs, selection))
+		throw Error("TargetMonsterHealthBar: unknown saved design " + selection);
+	const design = TargetMonsterHealthBar.designs[selection];
+	const source = Warp.Path + '/' + design.relative;
+	const target = System.DirPath(Warp.TgtExe) + '/' + design.relative;
+	if (source.toLowerCase() === target.toLowerCase()) return;
+	if (!System.MkDir(target)) throw Error('TargetMonsterHealthBar: cannot create ' + target);
+	for (const file of design.files) {
+		if (!System.Copy(source + '/' + file, target + '/' + file, true))
+			throw Error('TargetMonsterHealthBar: cannot copy ' + file);
+	}
+};
+"""
 import argparse
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--check',action='store_true',help='Fail if the checked-in QJS differs from its generated source; do not write files')

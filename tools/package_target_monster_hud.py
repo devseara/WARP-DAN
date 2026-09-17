@@ -7,6 +7,7 @@ import struct
 import zipfile
 
 import pefile
+from target_monster_hud_designs import identify_design
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / '2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe'
@@ -24,15 +25,19 @@ def main():
     parser.add_argument('--profile', default='profiles/2025-07-16 PROFILE MAIN.yml', help='Build profile or supplied-client provenance')
     parser.add_argument('--output', type=Path, default=ROOT / 'Outputs/TargetMonsterHUD.zip')
     args = parser.parse_args()
-    asset_manifest = json.loads((ROOT / 'Assets/TargetMonsterHUD/assets.json').read_text(encoding='utf8'))
+    final = pefile.PE(str(args.exe))
+    design, asset_manifest = identify_design(final)
     verification = json.loads(args.verification.read_text(encoding='utf8'))
     digest = sha256(args.exe)
     if verification['exe_sha256'] != digest:
         raise ValueError('Verification receipt does not match this executable')
     files = [ROOT / asset_manifest['resource_root'] / tier[kind]
              for tier in asset_manifest['tiers'] for kind in ('empty', 'full')]
+    if verification.get('design') != design:
+        raise ValueError('Verification receipt does not match the selected HUD design')
+    if verification.get('asset_sha256') != {path.name: sha256(path) for path in files}:
+        raise ValueError('HUD assets changed since verification; verify again')
     source = pefile.PE(str(args.source))
-    final = pefile.PE(str(args.exe))
     if final.FILE_HEADER.Machine != 0x14c or final.OPTIONAL_HEADER.Magic != 0x10b:
         raise ValueError('The HUD profile requires a 32-bit PE executable')
     anchors = {'CFile_Open': (0x573750, 0x230), 'CFile_Read': (0x573980, 0x70),
@@ -52,7 +57,7 @@ def main():
         if path.read_bytes() != deployed.read_bytes():
             raise ValueError(f'Asset copy beside the executable is stale: {path.name}')
     report = {'patch': 'TargetMonsterHealthBar', 'client_build': 20250716,
-              'profile': args.profile, 'exe': args.exe.name,
+              'profile': args.profile, 'exe': args.exe.name, 'design': design,
               'sha256': digest, 'canvas': asset_manifest['canvas'],
               'resource_root': asset_manifest['resource_root'],
               'native_resource_functions_unchanged': list(anchors),

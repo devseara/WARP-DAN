@@ -597,7 +597,7 @@ TargetMonsterHUD:
             title : Tiered Monster Target Health Bar
             recommend : no
             author : Codex
-            desc : Shows the selected monster HP at the top center while hovering or attacking, with Normal, Mini Boss and MVP artwork. Respects /monsterhp; enable Show Mob Info HP or percentage for untouched monsters. 2025-07-16 only.
+            desc : Choose Classic or Wings and Stars artwork for the top-center monster HP bar, with Normal, Mini Boss and MVP tiers. Shows native HP while hovering or attacking. Respects /monsterhp and optional Show Mob Info text. 2025-07-16 only.
 
 Bestiary:
     title : BESTIARY

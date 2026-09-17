@@ -2,6 +2,26 @@
 
 `TargetMonsterHealthBar` (patch ID 382) supports **2025-07-16 Ragexe** and is selected in `profiles/2025-07-16 PROFILE MAIN.yml`.
 
+## Design selection
+
+When applying **Tiered Monster Target Health Bar**, WARP asks for **Monster HP Bar Design**:
+
+- **Classic** (default): the existing red ornamental bars.
+- **Wings and Stars**: the supplied second design, with green Normal, gold Mini Boss and red MVP bars.
+
+The choice covers all three monster tiers and is saved as `$targetMonsterHUDDesign`. Existing profiles without this input default to Classic. To select the second design in a console profile, add this entry under `inputs:`:
+
+```yaml
+    $targetMonsterHUDDesign:
+        data: '57696e677320616e6420537461727300'
+        display: 'Wings and Stars'
+        type: 10
+```
+
+WARP embeds the selected skin's resource keys and fill/text coordinates, then copies its six BMPs beside the output EXE. Classic retains its existing resource keys; Wings and Stars uses the `mobhpbar/wings-and-stars/` subfolder. Both skins can coexist in the same client data folder or GRF. Changing designs requires repatching the client.
+
+When moving the patched EXE to another game folder, also copy the generated skin directory under `data/texture/.../uirenewal/mobhpbar/`, preserving its subfolder structure. Moving only the EXE leaves Wings and Stars without its six resources and the HUD stays hidden. After adding missing assets, fully restart the client: failed loads are cached for the process lifetime.
+
 ## Behavior
 
 `/monsterhp` controls the complete presentation:
@@ -24,11 +44,11 @@ Mob Race: name
 
 HP quantities use commas through billions, including `3,000,000,000/4,000,000,000 ♦ 75%`. **Mob IDs never use commas.** Show Mob Info controls all optional text: bit 1 enables current/max HP, bit 2 enables HP%, and the remaining bits select detail rows. With `@showmobinfo 0`, the tier, monster name and live bar remain, with no numeric HP, percentage or detail rows. HP comes from the native monster-HP channel regardless of these text preferences.
 
-Names use the native 14px font; other text uses the native 12px font. The accepted artwork stays at 50% source scale. The 768x232 transparent window is top-centered at Y=24; extra height provides 24px detail-row spacing beneath the MVP crest. The native group icon retains its own dimensions. Divider ends use true alpha fading.
+Names use the native 14px font; other text uses the native 12px font. Classic artwork stays at its accepted 50% source scale; Wings and Stars uses the supplied 768x232 canvases without resizing. The 768x232 transparent window is top-centered at Y=24; extra height provides 24px detail-row spacing beneath the MVP crest. The native group icon retains its own dimensions. Divider ends use true alpha fading.
 
 ## Assets and resource loading
 
-The six unversioned assets are:
+Classic uses these six assets:
 
 ```text
 data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/uirenewal/mobhpbar/
@@ -40,13 +60,15 @@ data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/uirenewal/mobhpbar/
     target_mob_mvp_full.bmp
 ```
 
-The WARP copy hook places these files beside the output EXE. Resource keys, copying, tests and packaging all use `Assets/TargetMonsterHUD/assets.json`.
+Wings and Stars uses the same six filenames under `mobhpbar/wings-and-stars/`. `Assets/TargetMonsterHUD/designs.json` lists both manifests: `assets.json` and `assets-wings-and-stars.json`. Resource keys, copy hooks, code generation, tests and packaging derive from those manifests. The verifier and packager identify the selected design from all six resource keys embedded in the EXE.
 
 HUD reads use native **CFile → CFileMgr**. They follow the selected DATA.INI loader or embedded GRF list and normal loose-folder/GRF priority. Profile Main uses `GRFsEmbedded` with `Inputs/Sample_DATA.INI`; embedded mode does not additionally parse external DATA.INI. For GRF distribution, store the BMPs under the exact same `data/texture/...` keys in a configured archive. Existing group-icon resources are reused without replacement. Restart the client after changing cached BMPs.
 
 BMP format: 32-bit `BITMAPV4HEADER`, one plane, `BI_BITFIELDS=3`, 122-byte pixel offset, bottom-up straight BGRA. Masks are `00FF0000`, `0000FF00`, `000000FF`, `FF000000`. Loading validates file size, dimensions, format and masks. Alpha-zero pixels are skipped; partial alpha survives bitmap and native text/icon drawing.
 
-`Assets/TargetMonsterHUD/three-tier-concept.png` is the accepted extraction source. Its SHA-256 is recorded in the asset manifest. The generator preserves the original texture scale, repairs baked percentage text, and separates the divider opacity from the reference background.
+`Assets/TargetMonsterHUD/three-tier-concept.png` is the accepted extraction source. Its SHA-256 is recorded in the Classic manifest. The generator preserves the original texture scale, repairs baked percentage text, and separates the divider opacity from the reference background.
+
+The second skin was supplied as six V5 BMPs in `33232`. Its checked-in resources have V4 headers for the existing strict loader. Only the headers changed: every BGRA pixel byte remains identical to the supplied files. Source and normalized-file SHA-256 hashes are recorded in `assets-wings-and-stars.json`. Its wider fill bounds and HP-text positions are independent of Classic. The existing artwork extractor regenerates Classic only.
 
 ## Build, verify and package
 
@@ -76,9 +98,9 @@ New-Item -ItemType Directory -Force Outputs/TargetMonsterHUD | Out-Null
 .\.venv-target-hud\Scripts\python.exe tools/package_target_monster_hud.py "Outputs/TargetMonsterHUD/2025-07-16_Ragexe_monster_hud.exe" --verification Outputs/TargetMonsterHUD/verification.json
 ```
 
-The package is `Outputs/TargetMonsterHUD.zip`; it contains the EXE, six BMPs, this guide and a hash manifest. Extract into the existing game folder and use the normal launcher/login arguments.
+The package is `Outputs/TargetMonsterHUD.zip`; it contains the EXE, the selected design's six BMPs, this guide and a hash manifest. The verifier receipt records the design and all six asset hashes; packaging rejects mismatched or subsequently changed assets. Extract into the existing game folder and use the normal launcher/login arguments.
 
-For a faster isolated check, build `profiles/target_monster_health_bar_test.yml` and run the verifier without an EXE argument. It uses `Outputs/TargetMonsterHUD-test.exe`. Only regenerate the BMPs after changing their extraction logic:
+For a faster isolated check, create a profile with the source `from:` path above, your own `to:` output path, the desired design input, and just `TargetMonsterHealthBar` under `patches:`. Build it with `WARP_console.exe -using <profile.yml>` and pass its EXE explicitly to the verifier. Repeat for both choices. Only regenerate the BMPs after changing their extraction logic:
 
 ```powershell
 .\.venv-target-hud\Scripts\python.exe tools/build_target_monster_hud_assets.py
@@ -102,6 +124,7 @@ The selectable QJS is self-contained at patch time. Python is needed only for ge
 | --- | --- |
 | `tools/build_target_monster_health_bar.py` | Static x86 hooks and generated QJS |
 | `tools/target_monster_hud_layout.py` | Shared fixed data layout |
+| `tools/target_monster_hud_designs.py` | Design catalog and embedded resource-key identification |
 | `tools/target_monster_hud_showmobinfo.py` | Independent EXTN reader for optional names/details |
 | `tools/target_monster_hud_native_hp.py` | Native 0x0977 HP mirror and independent cache |
 | `tools/target_monster_hud_metadata.py` | Typed fields, names and row formatting |
@@ -135,7 +158,9 @@ Global name records and packets are never edited. Native string assignment opera
 
 Regression checks execute emitted x86 with native-call fixtures, actual HUD BMPs and packet inputs. They cover target selection, stale attack rejection after death, hover while dead, both `/monsterhp` states, private-string ownership, group/badge restoration, optional fields, large HP, ungrouped IDs, missing resources, alpha preservation and calling conventions.
 
-The accepted interactive baseline is v12. Earlier live captures confirmed all tiers, original icons, changing HP, divider alpha and both presentation modes. The dead-player failure was isolated with a valid native monster hit while player state was 3, then corrected and covered by emitted-code tests. Cleanup removes the diagnostic preview, file logger and frame snapshots; the three rendered verification surfaces and all six BMPs match the accepted baseline exactly.
+Classic's accepted interactive baseline is v12. The design chooser preserves Classic's emitted code/data payload and relocation positions exactly. Both selectable designs pass isolated WARP builds and emitted-x86 checks, including empty/partial/full/clamped fill bounds and exact asset copying. Wings and Stars still requires live in-game visual acceptance; emulated rendering is not that acceptance.
+
+For Classic, earlier live captures confirmed all tiers, original icons, changing HP, divider alpha and both presentation modes. The dead-player failure was isolated with a valid native monster hit while player state was 3, then corrected and covered by emitted-code tests. Cleanup removes the diagnostic preview, file logger and frame snapshots; the three rendered verification surfaces and all six BMPs match the accepted baseline exactly.
 
 This feature has no runtime trace file or diagnostic slash command. When changing rendering or native hooks later, repeat the emitted-code checks and live acceptance for Normal, Mini Boss and MVP, both toggle states, target switching, player death/revival, map change and clean exit.
 

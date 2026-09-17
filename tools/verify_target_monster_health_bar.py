@@ -7,13 +7,14 @@ from unicorn import Uc, UC_ARCH_X86, UC_MODE_32, UC_HOOK_CODE
 from unicorn.x86_const import *
 ROOT=Path(__file__).resolve().parents[1]
 from target_monster_hud_layout import make_layout
+from target_monster_hud_designs import identify_design
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('exe',nargs='?',type=Path,default=ROOT/'Outputs/TargetMonsterHUD-test.exe')
 parser.add_argument('--report',type=Path,help='Write the verification results as JSON')
 args=parser.parse_args()
-MANIFEST=json.loads((ROOT/'Assets/TargetMonsterHUD/assets.json').read_text(encoding='utf8'));W,H=MANIFEST['canvas']
 PE=args.exe
 p=pefile.PE(str(PE)); ib=p.OPTIONAL_HEADER.ImageBase
+DESIGN,MANIFEST=identify_design(p);W,H=MANIFEST['canvas']
 r=lambda a,n:p.get_data(a-ib,n)
 def target(a):return a+5+struct.unpack('<i',r(a+1,4))[0]
 base=target(target(0xc76591)); state=base+0xe000
@@ -292,12 +293,32 @@ for tier in range(3):
  from io import BytesIO
  fixture=Image.open(BytesIO(h.files[MANIFEST['tiers'][tier]['empty']])).convert('RGBA')
  actual=Image.frombytes('RGBA',(W,H),rendered_surfaces[-1],'raw','BGRA')
- bounds=tuple(MANIFEST['tiers'][tier]['divider_bounds'])
- assert actual.crop(bounds).tobytes()==fixture.crop(bounds).tobytes()
- alphas=list(fixture.crop(bounds).getchannel('A').tobytes())
- assert len(set(a for a in alphas if 0<a<255))>=15
+ if 'divider_bounds' in MANIFEST['tiers'][tier]:
+  bounds=tuple(MANIFEST['tiers'][tier]['divider_bounds'])
+  assert actual.crop(bounds).tobytes()==fixture.crop(bounds).tobytes()
+  alphas=list(fixture.crop(bounds).getchannel('A').tobytes())
+  assert len(set(a for a in alphas if 0<a<255))>=15
  for hp,mx in [(1,1000),(1000,1000),(1200,1000),(2_000_000_000,2_100_000_000)]:
   h.put(GAUGE+0xa0,hp);h.put(GAUGE+0xa4,mx);h.update();h.run(base+0x1000,HUD)
+# Exact fill clipping for each selectable design: empty, partial, full and clamped.
+from io import BytesIO
+for tier_index,tier in enumerate(MANIFEST['tiers']):
+ bar=Harness();bar.u.mem_write(MOB+0x304,bytes([tier_index]));bar.update()
+ empty=Image.open(BytesIO(bar.files[tier['empty']])).convert('RGBA')
+ full=Image.open(BytesIO(bar.files[tier['full']])).convert('RGBA')
+ left,top,right,bottom=tier['fill']
+ for hp,maximum in [(0,1000),(1,1000),(500,1000),(1000,1000),(1200,1000),(2_000_000_000,2_100_000_000)]:
+  bar.put(HUD+0xa0,hp);bar.put(HUD+0xa4,maximum);bar.run(base+0x1000,HUD)
+  expected=Image.new('RGBA',(W,H))
+  expected.paste(empty,(0,0),empty.getchannel('A').point(lambda a:255 if a else 0))
+  edge=left+(right-left)*min(hp,maximum)//maximum
+  if edge>left:
+   crop=full.crop((left,top,edge,bottom))
+   expected.paste(crop,(left,top),crop.getchannel('A').point(lambda a:255 if a else 0))
+  actual=Image.frombytes('RGBA',(W,H),bytes(bar.u.mem_read(MODE+0x10000,W*H*4)),'raw','BGRA')
+  # Name/tier text is above this band; decorations beside and below it must survive.
+  bounds=(0,top,W,H)
+  assert actual.crop(bounds).tobytes()==expected.crop(bounds).tobytes(),(DESIGN,tier['name'],hp)
 h.run(base+0xd000,HUD,1);assert h.get(state)==0
 h.update();assert h.allocs==2
 assert len(h.opens)==len(h.closes)==6 # No file reopening during frames or window recreation.
@@ -360,10 +381,12 @@ assert bytes(h.u.mem_read(MODE+0x8028,1))==b'\1'
 # Keep a deterministic rendering receipt without writing build images by default.
 report={
  'exe_sha256':hashlib.sha256(PE.read_bytes()).hexdigest(),
+ 'design':DESIGN,
+ 'asset_sha256':{name:hashlib.sha256(data).hexdigest() for name,data in h.files.items()},
  'rendered_surface_sha256':[hashlib.sha256(data).hexdigest() for data in rendered_surfaces],
  'checks':'independent native HP, per-field HP text visibility, label-only metadata, resource/alpha/formatting, icons, option restoration and dead-player hover',
 }
 if args.report:
  args.report.parent.mkdir(parents=True,exist_ok=True)
  args.report.write_text(json.dumps(report,indent=2)+'\n',encoding='utf8')
-print('PASS: target HUD behavior, rendering, protocol, resources and calling conventions')
+print('PASS:',DESIGN,'target HUD behavior, fill clipping, rendering, protocol, resources and calling conventions')

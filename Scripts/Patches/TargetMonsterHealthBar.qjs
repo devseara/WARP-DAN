@@ -18,9 +18,9 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-09-05                                             *
-*   Last Modified : 2026-09-07                                             *
+*   Last Modified : 2026-09-17                                             *
 *                                                                          *
-*   Description   : Replace monster nameplates with a native target HUD    *
+*   Description   : Choose Classic or Wings and Stars for the native HUD   *
 *					while hovering or attacking. /monsterhp restores the   *
 *					stock presentation when off.                           *
 *   Target        : 2025-07-16 Ragexe; guarded static hooks, no runtime    *
@@ -31,6 +31,15 @@
 \**************************************************************************/
 TargetMonsterHealthBar = function(_) {
 	if (Exe.BuildDate !== 20250716) throw Error("TargetMonsterHealthBar: requires 2025-07-16");
+	const selection = Warp.TestMode ? "Classic" : Exe.GetUserInput(
+		'$targetMonsterHUDDesign', D_Choice, "Monster HP Bar Design",
+		"Choose the design for Normal, Mini Boss and MVP health bars.",
+		"Classic", {choices: Object.keys(TargetMonsterHealthBar.designs), saveDefault: true}
+	);
+	if (selection === false) return false;
+	if (!Object.prototype.hasOwnProperty.call(TargetMonsterHealthBar.designs, selection))
+		throw Error("TargetMonsterHealthBar: unknown design " + selection);
+	const design = TargetMonsterHealthBar.designs[selection];
 	const check = (va, hex) => {
 		const phy = Exe.Vir2Phy(va);
 		if (Exe.GetHex(phy, hex.replace(/ /g, '').length / 2).replace(/ /g, '').toUpperCase() !== hex.replace(/ /g, '').toUpperCase())
@@ -410,8 +419,9 @@ TargetMonsterHealthBar = function(_) {
 			"70 00"
 		],
 	]) Exe.SetHex(phy + off, hex);
+	for (const [off, hex] of design.chunks) Exe.SetHex(phy + off, hex);
 	const delta = vir - 0x02000000;
-	for (const [off, sign, original] of [
+	for (const [off, sign, original] of (design.relocations || [
 		[0x000005, -1, 0xFEA47B87],
 		[0x00000D,  1, 0x0200E0E0],
 		[0x000013,  1, 0x0200E0E4],
@@ -626,7 +636,7 @@ TargetMonsterHealthBar = function(_) {
 		[0x009E1A, -1, 0xFE684C52],
 		[0x009E38,  1, 0x0200F000],
 		[0x009E41,  1, 0x0200F004],
-	])
+	]))
 		Exe.SetUint32(phy + off, (original + sign * delta) >>> 0);
 	Exe.SetUint32(phy + 0xE0C0, ring.blockVir);
 	Exe.SetHex(phy + 0xE0FC, Exe.GetHex(Exe.Vir2Phy(0x102BE4C), 4));
@@ -641,14 +651,90 @@ TargetMonsterHealthBar = function(_) {
 };
 TargetMonsterHealthBar.validate = () => Exe.BuildDate === 20250716;
 
+TargetMonsterHealthBar.designs = {
+	"Classic": {
+		relative: "data/texture/\u00c0\u00af\u00c0\u00fa\u00c0\u00ce\u00c5\u00cd\u00c6\u00e4\u00c0\u00cc\u00bd\u00ba/uirenewal/mobhpbar",
+		files: ["target_mob_normal_empty.bmp", "target_mob_normal_full.bmp", "target_mob_mini_empty.bmp", "target_mob_mini_full.bmp", "target_mob_mvp_empty.bmp", "target_mob_mvp_full.bmp"],
+		chunks: [
+	],
+		relocations: null
+	},
+	"Wings and Stars": {
+		relative: "data/texture/\u00c0\u00af\u00c0\u00fa\u00c0\u00ce\u00c5\u00cd\u00c6\u00e4\u00c0\u00cc\u00bd\u00ba/uirenewal/mobhpbar/wings-and-stars",
+		files: ["target_mob_normal_empty.bmp", "target_mob_normal_full.bmp", "target_mob_mini_empty.bmp", "target_mob_mini_full.bmp", "target_mob_mvp_empty.bmp", "target_mob_mvp_full.bmp"],
+		chunks: [
+		[0x001000,
+			"55 89 E5 53 56 57 89 CE 6A 00 E8 21 BB A1 FE A1 04 E0 00 02 83 F8 02 0F 84 D0 00 00 00 83 F8 01 " +
+			"74 68 EB 00 68 E8 00 00 00 6A 00 68 00 03 00 00 6A 00 68 00 10 01 02 56 E8 C3 5F 00 00 83 BE A4 " +
+			"00 00 00 00 0F 84 FD 00 00 00 8B 86 A0 00 00 00 3B 86 A4 00 00 00 76 06 8B 86 A4 00 00 00 B9 38 " +
+			"01 00 00 F7 E1 F7 B6 A4 00 00 00 05 E4 00 00 00 6A 5E 6A 46 50 68 E4 00 00 00 68 80 F0 0B 02 56 " +
+			"E8 7B 5F 00 00 E9 BD 00 00 00 68 E8 00 00 00 6A 00 68 00 03 00 00 6A 00 68 00 D1 16 02 56 E8 5D " +
+			"5F 00 00 83 BE A4 00 00 00 00 0F 84 97 00 00 00 8B 86 A0 00 00 00 3B 86 A4 00 00 00 76 06 8B 86 " +
+			"A4 00 00 00 B9 CE 01 00 00 F7 E1 F7 B6 A4 00 00 00 05 99 00 00 00 6A 70 6A 49 50 68 99 00 00 00 " +
+			"68 80 B1 21 02 56 E8 15 5F 00 00 EB 5A 68 E8 00 00 00 6A 00 68 00 03 00 00 6A 00 68 00 92 2C 02 " +
+			"56 E8 FA 5E 00 00 83 BE A4 00 00 00 00 74 38 8B 86 A0 00 00 00 3B 86 A4 00 00 00 76 06 8B 86 A4 " +
+			"00 00 00 B9 52 02 00 00 F7 E1 F7 B6 A4 00 00 00 83 C0 57 6A 72 6A 49 50 6A 57 68 80 72 37 02 56 " +
+			"E8 BB 5E 00 00 EB 00 A1 04 E0 00 02 6B C0 10 05 80 F2 00 02 BA 02 00 00 00 83 3D 04 E0 00 02 00 " +
+			"74 13 BA 03 00 00 00 83 3D 04 E0 00 02 01 74 05 BA 05 00 00 00 6A 02 52 50 56 E8 81 2E 00 00 6A " +
+			"00 6A 1C 68 40 E0 00 02 56 E8 72 2E 00 00 C6 05 A0 54 44 02 00 8B 1D 8C 54 44 02 83 E3 30 0F 84 " +
+			"F5 00 00 00 83 BE A4 00 00 00 00 0F 84 9F 00 00 00 8B 86 A0 00 00 00 3B 86 A4 00 00 00 76 06 8B " +
+			"86 A4 00 00 00 B9 64 00 00 00 F7 E1 F7 B6 A4 00 00 00 83 FB 20 74 64 50 8B 86 A0 00 00 00 BA E0 " +
+			"54 44 02 E8 18 80 00 00 8B 86 A4 00 00 00 BA F0 54 44 02 E8 08 80 00 00 58 83 FB 10 74 1F 50 68 " +
+			"F0 54 44 02 68 E0 54 44 02 68 4E 57 44 02 68 A0 54 44 02 E8 38 86 52 FE 83 C4 14 EB 51 68 F0 54 " +
+			"44 02 68 E0 54 44 02 68 5D 57 44 02 68 A0 54 44 02 E8 1A 86 52 FE 83 C4 10 EB 33 50 68 63 57 44 " +
+			"02 68 A0 54 44 02 E8 05 86 52 FE 83 C4 0C EB 1E C7 05 A0 54 44 02 48 50 20 75 C7 05 A4 54 44 02 " +
+			"6E 6B 6E 6F C7 05 A8 54 44 02 77 6E 00 00 A1 04 E0 00 02 BA 4B 00 00 00 85 C0 74 0F BA 55 00 00 " +
+			"00 83 F8 01 74 05 BA 56 00 00 00 6A 01 52 68 A0 54 44 02 56 E8 67 2D 00 00 A1 04 E0 00 02 BB 6C " +
+			"00 00 00 85 C0 74 0F BB 7C 00 00 00 83 F8 01 74 05 BB 99 00 00 00 80 3D 00 53 44 02 00 74 0E 6A " +
+			"03 53 68 00 53 44 02 56 E8 33 2D 00 00 83 C3 18 80 3D 80 53 44 02 00 74 07 53 56 E8 20 83 00 00 " +
+			"83 C3 18 80 3D 00 54 44 02 00 74 0E 6A 03 53 68 00 54 44 02 56 E8 06 2D 00 00 5F 5E 5B 5D C3"
+		],
+		[0x00E200,
+			"74 65 78 74 75 72 65 5C C0 AF C0 FA C0 CE C5 CD C6 E4 C0 CC BD BA 5C 75 69 72 65 6E 65 77 61 6C " +
+			"5C 6D 6F 62 68 70 62 61 72 5C 77 69 6E 67 73 2D 61 6E 64 2D 73 74 61 72 73 5C 74 61 72 67 65 74 " +
+			"5F 6D 6F 62 5F 6E 6F 72 6D 61 6C 5F 65 6D 70 74 79 2E 62 6D 70 00"
+		],
+		[0x00E300,
+			"74 65 78 74 75 72 65 5C C0 AF C0 FA C0 CE C5 CD C6 E4 C0 CC BD BA 5C 75 69 72 65 6E 65 77 61 6C " +
+			"5C 6D 6F 62 68 70 62 61 72 5C 77 69 6E 67 73 2D 61 6E 64 2D 73 74 61 72 73 5C 74 61 72 67 65 74 " +
+			"5F 6D 6F 62 5F 6E 6F 72 6D 61 6C 5F 66 75 6C 6C 2E 62 6D 70 00"
+		],
+		[0x00E400,
+			"74 65 78 74 75 72 65 5C C0 AF C0 FA C0 CE C5 CD C6 E4 C0 CC BD BA 5C 75 69 72 65 6E 65 77 61 6C " +
+			"5C 6D 6F 62 68 70 62 61 72 5C 77 69 6E 67 73 2D 61 6E 64 2D 73 74 61 72 73 5C 74 61 72 67 65 74 " +
+			"5F 6D 6F 62 5F 6D 69 6E 69 5F 65 6D 70 74 79 2E 62 6D 70 00"
+		],
+		[0x00E500,
+			"74 65 78 74 75 72 65 5C C0 AF C0 FA C0 CE C5 CD C6 E4 C0 CC BD BA 5C 75 69 72 65 6E 65 77 61 6C " +
+			"5C 6D 6F 62 68 70 62 61 72 5C 77 69 6E 67 73 2D 61 6E 64 2D 73 74 61 72 73 5C 74 61 72 67 65 74 " +
+			"5F 6D 6F 62 5F 6D 69 6E 69 5F 66 75 6C 6C 2E 62 6D 70 00"
+		],
+		[0x00E600,
+			"74 65 78 74 75 72 65 5C C0 AF C0 FA C0 CE C5 CD C6 E4 C0 CC BD BA 5C 75 69 72 65 6E 65 77 61 6C " +
+			"5C 6D 6F 62 68 70 62 61 72 5C 77 69 6E 67 73 2D 61 6E 64 2D 73 74 61 72 73 5C 74 61 72 67 65 74 " +
+			"5F 6D 6F 62 5F 6D 76 70 5F 65 6D 70 74 79 2E 62 6D 70 00"
+		],
+		[0x00E700,
+			"74 65 78 74 75 72 65 5C C0 AF C0 FA C0 CE C5 CD C6 E4 C0 CC BD BA 5C 75 69 72 65 6E 65 77 61 6C " +
+			"5C 6D 6F 62 68 70 62 61 72 5C 77 69 6E 67 73 2D 61 6E 64 2D 73 74 61 72 73 5C 74 61 72 67 65 74 " +
+			"5F 6D 6F 62 5F 6D 76 70 5F 66 75 6C 6C 2E 62 6D 70 00"
+		],
+	],
+		relocations: null
+	}
+};
+
 TargetMonsterHealthBar.onApplied = function() {
 	if (Warp.TestMode) return;
-	const relative = "data/texture/\u00c0\u00af\u00c0\u00fa\u00c0\u00ce\u00c5\u00cd\u00c6\u00e4\u00c0\u00cc\u00bd\u00ba/uirenewal/mobhpbar";
-	const source = Warp.Path + '/' + relative;
-	const target = System.DirPath(Warp.TgtExe) + '/' + relative;
+	const selection = Exe.GetSavedInput('$targetMonsterHUDDesign') || "Classic";
+	if (!Object.prototype.hasOwnProperty.call(TargetMonsterHealthBar.designs, selection))
+		throw Error("TargetMonsterHealthBar: unknown saved design " + selection);
+	const design = TargetMonsterHealthBar.designs[selection];
+	const source = Warp.Path + '/' + design.relative;
+	const target = System.DirPath(Warp.TgtExe) + '/' + design.relative;
 	if (source.toLowerCase() === target.toLowerCase()) return;
 	if (!System.MkDir(target)) throw Error('TargetMonsterHealthBar: cannot create ' + target);
-	for (const file of ["target_mob_normal_empty.bmp", "target_mob_normal_full.bmp", "target_mob_mini_empty.bmp", "target_mob_mini_full.bmp", "target_mob_mvp_empty.bmp", "target_mob_mvp_full.bmp"]) {
+	for (const file of design.files) {
 		if (!System.Copy(source + '/' + file, target + '/' + file, true))
 			throw Error('TargetMonsterHealthBar: cannot copy ' + file);
 	}
