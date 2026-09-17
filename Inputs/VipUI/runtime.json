@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "client": 20250716,
+  "size": 14964,
+  "api_size": 88,
+  "exports": {
+    "@VipCursor@16": 2512,
+    "@VipDestroy@12": 2640,
+    "@VipDown@16": 2784,
+    "@VipDrag@16": 2976,
+    "@VipDraw@8": 3072,
+    "@VipMove@16": 6256,
+    "@VipUp@16": 6320,
+    "VipApi": 12288,
+    "VipQuestState": 14944,
+    "VipState": 12376,
+    "_VipHit@8": 6640,
+    "_VipOpen@0": 6768,
+    "_VipQuestOpen@4": 7072,
+    "_VipReceive@4": 7328,
+    "_VipTick@16": 7776
+  },
+  "source_sha256": "e35c39cc8fd11fb88a48db88b1ef478ff841eb46107fcaeadf2ba3fe2ac16d57",
+  "payload_sha256": "71fccf95b980c227eaeee76aecd03326fa33326ea2d2e526878e7f4950e8f461",
+  "runtime_imports": []
+}

@@ -1,0 +1,125 @@
+/*
+ * Author: DevSeara.
+ * Description: Native VIP membership card using supplied vipui PNGs for
+ * 2025-07-16 Ragexe. VIPU/0A1C snapshots and independent 0BFA requests.
+ * No DLL, global text, BPUI/GCHA router, roulette art or saved-profile edits.
+ * Buttons dispatch fixed server script events; prices never come from client.
+ */
+const VipUIStatic = {
+	assets:["background.png","bar_mood.png","item_main_bg.png","star_on.png",
+		"openstore_out.png","openstore_over.png","openstore_press.png",
+		"upgrade_out.png","upgrade_over.png","upgrade_press.png","upgrade_off.png","sell_status_bg.png"]
+};
+// Bounded private text helpers. Never use actor-title substitution for names.
+VipUIStatic.fit = function()
+{
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x57,0x8B,0x75,8,0x8B,0x7D,12,0x33,0xDB);
+	a.label("length");a.emit(0x83,0xFB,127);a.jcc(0x83,"measure");a.emit(0x80,0x3C,0x1F,0);a.jcc(0x84,"measure");a.emit(0x43);a.jmp("length");
+	a.label("measure");a.emit(0x85,0xDB);a.jcc(0x84,"done");
+	for(const v of [0,0,12,0])n.pushImm(a,v);a.emit(0x53,0x57,0x8B,0xCE);a.call(n.TextWidth);
+	a.emit(0x3B,0x45,24);a.jcc(0x86,"draw");a.emit(0x4B);a.jmp("measure");
+	a.label("draw");for(const v of [0,0])n.pushImm(a,v);a.emit(0xFF,0x75,28);for(const v of [12,0])n.pushImm(a,v);
+	a.emit(0x53,0x57,0xFF,0x75,20,0xFF,0x75,16,0x8B,0xCE);a.call(n.TextDraw);
+	a.label("done");a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC2,24,0);return a;
+};
+VipUIStatic.plain = function()
+{
+	const n=AutoCombatUI.nativeHelpers,a=n.asm(),iat=v=>{a.emit(0xFF,0x15);a.dword(v);};
+	a.emit(0x55,0x8B,0xEC,0x81,0xEC);a.dword(320);a.emit(0x53,0x56,0x57,0x8B,0x75,8,0x8B,0x7D,12,0x33,0xDB);
+	a.label("length");a.emit(0x83,0xFB,127);a.jcc(0x83,"convert");a.emit(0x80,0x3C,0x1F,0);a.jcc(0x84,"convert");a.emit(0x43);a.jmp("length");
+	a.label("convert");a.emit(0x85,0xDB);a.jcc(0x84,"done");
+	n.pushImm(a,128);a.emit(0x8D,0x85);a.dword(-320);a.emit(0x50,0x53,0x57);n.pushImm(a,0);n.pushImm(a,65001);iat(0xFC1200);
+	a.emit(0x8B,0xD8,0x85,0xDB);a.jcc(0x84,"done");a.emit(0xFF,0x76,0x24,0x8D,0x4D,0xE0);a.call(0x5443C0);
+	a.emit(0x83,0x7D,0xE0,0);a.jcc(0x84,"destroy");
+	for(const v of [0,0,12,0])n.pushImm(a,v);a.emit(0x8D,0x4D,0xE0);a.call(0x546F60);
+	a.emit(0x0F,0xB6,0x45,0xFE,0x50,0x0F,0xB6,0x45,0xFD,0x50,0x6A,0,0xFF,0x75,0xF0,0xFF,0x75,0xEC,0xB9);a.dword(0x124F3CC);a.call(0x546270);
+	a.emit(0x50,0xFF,0x75,0xE0);iat(0xFC1120);a.emit(0xFF,0x75,28,0xFF,0x75,0xE0);iat(0xFC10E0);a.emit(0x89,0x45,0xD4);
+	a.label("measure");a.emit(0x8D,0x45,0xD8,0x50,0x53,0x8D,0x85);a.dword(-320);a.emit(0x50,0xFF,0x75,0xE0);iat(0xFC112C);
+	a.emit(0x85,0xC0);a.jcc(0x84,"restore");a.emit(0x8B,0x45,0xD8,0x3B,0x45,24);a.jcc(0x86,"draw");a.emit(0x4B);a.jcc(0x84,"restore");a.jmp("measure");
+	a.label("draw");a.emit(0x53,0x8D,0x85);a.dword(-320);a.emit(0x50,0xFF,0x75,20,0xFF,0x75,16,0xFF,0x75,0xE0);iat(0xFC10DC);
+	a.label("restore");a.emit(0xFF,0x75,0xD4,0xFF,0x75,0xE0);iat(0xFC10E0);
+	a.label("destroy");a.emit(0x8D,0x4D,0xE0);a.call(0x5446F0);
+	a.label("done");a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC2,24,0);return a;
+};
+VipUIStatic.png = function(png)
+{
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x8B,0x71,0x24,0x85,0xF6);a.jcc(0x84,"done");
+	a.emit(0x0F,0xB6,0x5E,0x28);for(const off of [20,16,12,8])a.emit(0xFF,0x75,off);
+	a.call(png);a.emit(0x88,0x5E,0x28);
+	a.label("done");a.emit(0x5E,0x5B,0x5D,0xC2,16,0);return a;
+};
+VipUIStatic.item = function(art)
+{
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x8B,0x75,8,0x8B,0x45,12,0x85,0xC0);a.jcc(0x84,"done");
+	a.emit(0x50);a.call(art.resolver);a.emit(0x85,0xC0);a.jcc(0x84,"done");a.emit(0x33,0xC9);
+	a.label("key");a.emit(0x80,0x3C,0x08,0);a.jcc(0x84,"path");a.emit(0x41,0x81,0xF9);a.dword(180);a.jcc(0x82,"key");a.jmp("done");
+	a.label("path");a.emit(0x50);n.pushImm(a,art.format);n.pushImm(a,art.path);a.call(n.StringFormat);a.emit(0x83,0xC4,12);
+	n.emitLoadSurface(a,art.path,"done");
+	for(const dim of [n.TextureWidthOffset,n.TextureHeightOffset]){a.emit(0x8B,0x88);a.dword(dim);a.emit(0x49,0x83,0xF9,31);a.jcc(0x87,"done");}
+	a.emit(0xFF,0x75,20,0xFF,0x75,16,0x50,0x56);a.call(art.blit);
+	a.label("done");a.emit(0x5E,0x5B,0x5D,0xC2,16,0);return a;
+};
+VipUI = function(_)
+{
+	if(!VipUI.validate()) throw Error("VipUI requires 2025-07-16 Ragexe");
+	const n=AutoCombatUI.nativeHelpers;
+	const read=path=>{const f=new BinFile(path,"r");if(!f.Valid)throw Error("VipUI: missing "+path);const h=f.ReadHex();f.Close();return(h.match(/[0-9a-fA-F]{2}/g)||[]).map(v=>parseInt(v,16));};
+	const u32=(b,o)=>(b[o]|b[o+1]<<8|b[o+2]<<16|b[o+3]<<24)>>>0;
+	const put=(b,o,v)=>{for(let i=0;i<4;++i)b[o+i]=v>>>(i*8)&255;};
+	const bytes=read(Warp.Path+"/Inputs/VipUI/runtime.bin"),meta=JSON.parse(String.fromCharCode(...read(Warp.Path+"/Inputs/VipUI/runtime.json")));
+	const size=u32(bytes,8),count=u32(bytes,12),api=u32(bytes,16),start=32+count*4;
+	let crc=0xFFFFFFFF;for(let i=32;i<bytes.length;++i){crc^=bytes[i];for(let j=0;j<8;++j)crc=(crc>>>1)^((crc&1)?0xEDB88320:0);}
+	if(bytes.length<32 || u32(bytes,0)!==0x32504956 || u32(bytes,4)!==2 || meta.version!==2 || meta.client!==20250716 ||
+		start+size!==bytes.length || size!==meta.size || api!==meta.exports.VipApi || api+88>size || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))
+		throw Error("VipUI: invalid native payload");
+	const names=["VipApi","VipState","_VipOpen@0","_VipReceive@4","_VipHit@8","@VipDraw@8","@VipDown@16","@VipUp@16","@VipMove@16","@VipDrag@16","@VipCursor@16","@VipDestroy@12","_VipTick@16","VipQuestState","_VipQuestOpen@4"];
+	for(const name of names)if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("VipUI: missing "+name);
+	for(const [name,va,hex] of [["frame ctor",n.FrameConstructor,"55 8B EC 6A FF 68 F9 45 EA 00"],
+		["frame drag",0x880E00,"55 8B EC 83 EC 1C 53 8B D9"],["text metrics",n.TextWidth,"55 8B EC 6A FF 68 5D B6 EE 00"]]) n.assertCode("VIP "+name,va,hex);
+	for(const [slot,expected] of [[0,n.FrameDeletingDestructor],[20,n.FrameVtableDraw],[25,n.FrameMouseDown],[27,0x880E00],[31,n.FrameMouseUp]])n.assertVtableSlot("VIP frame",slot,expected);
+	const entry=n.packetTableEntryVir(0xA1C),entryPhy=Exe.Vir2Phy(entry,CODE),fallback=Exe.GetUint32(entryPhy);
+	if(entryPhy<0 || Exe.Vir2Phy(fallback,CODE)<0)throw Error("VipUI: roulette packet handler profile changed");
+	const code=bytes.slice(start),[phy,vir]=Exe.Allocate(size,16);
+	for(let i=0;i<count;++i){const off=u32(bytes,32+i*4);if(off+4>size || u32(code,off)>=size)throw Error("VipUI: invalid relocation");put(code,off,u32(code,off)+vir);}
+	const e=name=>vir+meta.exports[name];
+	const source=Exe.Vir2Phy(n.FrameVtable-4),table=n.allocateBytes(new Array(4+n.FrameVtableEntries*4).fill(0),4);
+	Exe.SetHex(table.phy,Exe.GetHex(source,table.size));
+	for(const [slot,name] of [[0,"@VipDestroy@12"],[20,"@VipDraw@8"],[25,"@VipDown@16"],[27,"@VipDrag@16"],[28,"@VipMove@16"],[30,"@VipCursor@16"],[31,"@VipUp@16"]])Exe.SetUint32(table.phy+4+slot*4,e(name));
+	const refs=n.resolvePacketRefs();
+	const fit=n.allocateCode(VipUIStatic.fit()),plain=n.allocateCode(VipUIStatic.plain());
+	const blend=n.allocateCode(ModernChatUI.nativeHelpers.buildBlendPixel());
+	const png=n.allocateCode(VipUIStatic.png(n.allocateCode(ModernChatUI.nativeHelpers.buildPngDraw(blend.vir)).vir));
+	const moduleIat=Exe.FindFunc("GetModuleHandleA","KERNEL32.dll"),procIat=Exe.FindFunc("GetProcAddress","KERNEL32.dll");
+	if(moduleIat<0 || procIat<0)throw Error("VipUI: timer imports unavailable");
+	const art={resolver:n.allocateCode(n.buildItemIconResolver()).vir,blit:n.allocateCode(n.buildColorKeyBlit()).vir,
+		format:n.buildResourcePath("item\\%s.bmp").vir,path:n.allocateBytes(new Array(512).fill(0),4).vir};
+	const item=n.allocateCode(VipUIStatic.item(art));
+	const values=[2,table.vir+4,refs.packetCtorA,refs.packetSend,fit.vir,plain.vir,png.vir,
+		...VipUIStatic.assets.map(file=>n.buildResourcePath("vipui\\"+file).vir),moduleIat,procIat,item.vir];
+	values.forEach((v,i)=>put(code,api+i*4,v));
+	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
+	const a=n.asm();a.emit(0x9C,0x60,0xBE);a.dword(n.PacketBuffer);
+	a.emit(0x66,0x83,0x7E,2,8);a.jcc(0x82,"stock");
+	a.emit(0x81,0x7E,4);a.dword(0x55504956);a.jcc(0x85,"stock");
+	a.emit(0x66,0x81,0x7E,2);a.word(2524);a.jcc(0x85,"done");
+	a.emit(0x56);a.call(e("_VipReceive@4"));
+	a.label("done");a.emit(0x61,0x9D);a.jmp(n.PacketMainLoopReturn);
+	a.label("stock");a.emit(0x61,0x9D);a.jmp(fallback);
+	const receiver=n.allocateCode(a);Exe.SetUint32(entryPhy,receiver.vir);
+	const marker=n.allocateString("VipUI.v2"),record=[];
+	for(const v of [marker.vir,...names.map(e),receiver.vir,fit.vir,plain.vir,png.vir,refs.packetCtorA,refs.packetSend,fallback])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);
+	n.allocateBytes(record,4);
+	VipUI.onApplied();return true;
+};
+VipUI.validate=()=>Exe.BuildDate===20250716;
+VipUI.onApplied=function()
+{
+	if(Warp.TestMode)return;
+	let target=System.DirPath(Warp.TgtExe);
+	for(const folder of ["data","texture",ModernChatUI.nativeHelpers.uiPrefix(),"vipui"]){target+="/"+folder;if(!System.MkDir(target))throw Error("VipUI: cannot create "+target);}
+	for(const file of VipUIStatic.assets){const f=new BinFile(target+"/"+file,"r"),exists=f.Valid;f.Close();if(exists)continue;
+		if(!System.Copy(Warp.Path+"/Assets/VipUI/"+file,target+"/"+file,false))throw Error("VipUI: cannot copy "+file);}
+};
