@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "client": 20250716,
+  "api_size": 12,
+  "size": 8204,
+  "exports": {
+    "@NoticeDraw@44": 1408,
+    "@NoticeHeight@32": 1904,
+    "@NoticeMeasure@36": 2080,
+    "NoticeApi": 8192,
+    "NoticeSplit": 2256
+  },
+  "source_sha256": "1232cf088632343226172e2e556baae70a6cd46df770f409ddf3b65ba111c912",
+  "payload_sha256": "4d127dfcb4e1ae58188b8225eeaeeda8833fe05cfd589e62ef28b6e0ae8062aa",
+  "runtime_imports": []
+}

@@ -11,6 +11,11 @@ before developing another feature.
 
 ## Included patches
 
+- **Original Announcements with Item Icons** (`NoticeMarquee`, ID 10007):
+  keeps the original stationary top-screen announcement and adds the item image
+  directly before its name. No marquee or Notice label. Install the separate
+  add-on from [the announcement guide](docs/announcement-item-icons.md) after
+  the baseline package below. Automatic identification-aware names are pending.
 - **Project Rebirth Battle Pass Window [QJS]** (`BattlepassUI`, ID 10003):
   native Battle Pass window and its 25 runtime BMP images. My Stats and Hunter
   show only the canonical character name, without actor-title decorations.
