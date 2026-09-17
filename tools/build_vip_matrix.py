@@ -31,7 +31,7 @@ def main():
         assert not run.returncode and b'-E-' not in log and target.is_file(),(name,log.decode(errors='replace'))
         skipped=fixture/'SkippedPatches.log'
         assert not skipped.is_file() or not skipped.read_text(encoding='utf-8-sig').strip()
-        data=target.read_bytes();assert b'VipUI.v2\0' in data
+        data=target.read_bytes();assert b'VipUI.v4\0' in data
         for patch,marker in [('BattlepassUI',b'BattlepassUI.'),('GachaUI',b'GachaUI.v20\0')]:
             if patch in remove:assert marker not in data,(name,'unexpected',patch)
             else:assert marker in data,(name,'missing',patch)

@@ -7,7 +7,8 @@ const config = source.slice(source.indexOf('const VipUIStatic = {'), source.inde
 const start = source.indexOf('VipUI.onApplied=function()');
 assert(start > 0);
 const installer = source.slice(start, source.indexOf('\n};', start) + 3);
-const create = new Function('Warp', 'System', 'BinFile', 'ModernChatUI', config + '\nconst VipUI={};\n' + installer + '\nreturn {assets:VipUIStatic.assets,install:VipUI.onApplied};');
+assert(!source.includes('.flat('),'Target WARP runtime does not implement Array.flat');
+const create = new Function('Warp', 'System', 'BinFile', 'ModernChatUI', config + '\nconst VipUI={};\n' + installer + '\nreturn {assets:[...new Set([...VipUIStatic.assets,...[].concat(...VipUIStatic.buttons),...VipUIStatic.purchase,...VipUIStatic.cardAssets])],install:VipUI.onApplied};');
 const parent = p => p.slice(0, p.lastIndexOf('/'));
 function fixture() {
     const root = 'F:/Custom target/game folder', target = root + '/data/texture/UI-prefix/vipui';
@@ -24,7 +25,7 @@ function fixture() {
         }
     }, function(p,mode) {assert.equal(mode,'r');state.opened++;this.Valid=files.has(p);this.Close=()=>state.closed++;},
     {nativeHelpers:{uiPrefix:()=> 'UI-prefix'}});
-    assert.equal(api.assets.length,12);
+    assert.equal(api.assets.length,58);
     for(const name of api.assets) {
         assert(fs.existsSync(path.join(__dirname,'../Assets/VipUI',name)),name);
         files.set(env.Path+'/Assets/VipUI/'+name,'bundled:'+name);
@@ -32,7 +33,7 @@ function fixture() {
     return {...api,env,files,dirs,calls,state,root,target};
 }
 let f=fixture();f.install();assert.equal(f.calls.filter(c=>c[0]==='mkdir').length,4);
-assert.equal(f.calls.filter(c=>c[0]==='copy').length,12);
+assert.equal(f.calls.filter(c=>c[0]==='copy').length,58);
 for(const name of f.assets)assert.equal(f.files.get(f.target+'/'+name),'bundled:'+name);
 assert.equal(f.state.opened,f.state.closed);
 f.files.set(f.target+'/background.png','custom artwork');f.calls.length=0;f.install();
@@ -43,4 +44,6 @@ f=fixture();f.env.TestMode=true;f.install();assert.equal(f.calls.length,0);asser
 f=fixture();f.state.failDir=f.root+'/data/texture';assert.throws(f.install,/cannot create/);assert(!f.calls.some(c=>c[0]==='copy'));
 f=fixture();f.state.failCopy=f.target+'/upgrade_out.png';assert.throws(f.install,/cannot copy upgrade_out.png/);
 f=fixture();f.files.delete(f.env.Path+'/Assets/VipUI/openstore_out.png');assert.throws(f.install,/cannot copy openstore_out.png/);
-console.log('PASS: 12 VIP PNGs only, dedicated Vip folder creation, no-overwrite repeat/repair, test-mode isolation and explicit failure handling');
+f=fixture();f.files.set(f.target+'/applyvip_out.png','custom complete button');f.install();assert.equal(f.files.get(f.target+'/applyvip_out.png'),'custom complete button');
+f=fixture();f.files.set(f.target+'/membership_crown.png','custom crown');f.install();assert.equal(f.files.get(f.target+'/membership_crown.png'),'custom crown');
+console.log('PASS: 58 VIP PNGs / 52 complete button states and crown, dedicated Vip folder creation, no-overwrite repeat/repair including custom buttons/crown, test-mode isolation and explicit failure handling');

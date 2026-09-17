@@ -7,8 +7,8 @@ from pathlib import Path
 from PIL import Image
 from test_vip_ui import VipMachine,snapshot
 
-def quest(token=101,ready=False,opened=True):
-    p=snapshot(flags=1|4|8|32|(128 if ready else 0)|(2 if opened else 0),token=token)
+def quest(token=101,ready=False,opened=True,show=True):
+    p=snapshot(flags=1|4|8|32|(128 if ready else 0)|(2 if opened else 0)|(64 if opened and show else 0),token=token)
     struct.pack_into('<II',p,2272,3000000,2)
     note=b'Requirements complete. Submit to upgrade.' if ready else b'Collect the listed items and required Zeny.'
     p[2280:2344]=note.ljust(64,b'\0')
@@ -16,13 +16,13 @@ def quest(token=101,ready=False,opened=True):
         struct.pack_into('<III48s',p,2344+i*60,item,amount,amount if ready else i*10,name.encode())
     return p
 
-def artwork(m,game):
+def artwork(m,game,items=(909,914,606)):
     from dual_weapon_formats.grf_reader import GrfFile
     data=(game/'System/itemInfo.lua').read_bytes()
     archives=[GrfFile(game/name) for name in ('pdata.grf','mdata.grf','maindata.grf','data.grf') if (game/name).is_file()]
     nodes={};images={};prefix=bytes.fromhex('c0afc0fac0cec5cdc6e4c0ccbdba')
     try:
-        for item in (909,914,606):
+        for item in items:
             block=re.search(rb'\n\t\['+str(item).encode()+rb'\] = \{(.*?)(?=\n\t\[\d+\] = |\Z)',data,re.S)
             assert block,item
             key=re.search(rb'identifiedResourceName = "([^"]+)"',block[1])[1]
@@ -65,34 +65,52 @@ def main():
     looks=artwork(m,args.game) if args.game else None
     if looks is None:m.w(0x159C088,0) # Explicitly missing client item DB; safe no-image path.
     obj=m.ready(snapshot(flags=1|2|4));before=len(m.sent)
-    m.click(obj,260,303);assert not m.r(qs+16) and len(m.sent)==before,'incomplete EXP opened Upgrade'
-    obj=m.ready(snapshot());m.click(obj,260,303);q=m.r(qs)
+    m.click(obj,315,303);assert not m.r(qs+16) and len(m.sent)==before,'incomplete EXP opened Upgrade'
+    obj=m.ready(snapshot());m.click(obj,315,303);q=m.r(qs)
     assert q and m.r(qs+16)==1 and len(m.sent)==before
+    assert m.window_order()[-1]==q,'Confirmation must be last in native draw order'
+    # Simulate the manager raising the parent on mouse-down. A modal VIP popup
+    # must reclaim the front without letting the main window drag or activate.
+    m.invoke(0xA39130,0x131F4E8,(obj,));assert m.window_order()[-1]==obj
+    m.invoke(c['down'],obj,(50,8));assert m.window_order()[-1]==q and not m.r(c['state']+12)
+    m.invoke(c['up'],obj,(50,8));assert len(m.sent)==before
     assert (m.r(q+0x14),m.r(q+0x18))==(360,118)
     m.preview(q,args.output/'vip-upgrade-confirm.png')
     assert any('Do you want to upgrade your VIP?' in row[0] for row in m.texts)
+    for x,y in [(149,86),(178,86),(185,86),(209,86),(164,77),(164,96)]:
+        m.click(q,x,y);assert m.r(qs+16)==1 and len(m.sent)==before,'Invisible old Yes/No area remained clickable'
     m.click(q,193,86);assert not m.r(qs+16) and len(m.sent)==before,'No changed server state'
-    m.click(obj,260,303);m.click(q,134,86)
+    m.click(obj,315,303);m.click(q,164,86)
     assert struct.unpack_from('<H',m.sent[-1],10)[0]==4 and not m.r(q+0x28)
-    count=len(m.sent);m.click(q,134,86);assert len(m.sent)==count,'duplicate Yes'
-    obj=m.ready(quest());q=m.r(qs);assert m.r(qs+16)==2
+    count=len(m.sent);m.click(q,164,86);assert len(m.sent)==count,'duplicate Yes'
+    obj=m.ready(quest(show=False));assert not m.r(qs+16),'VIP icon must not open a saved quest'
+    m.receive(quest(opened=False));assert not m.r(qs+16),'refresh must not open a saved quest'
+    m.click(obj,315,303);q=m.r(qs);assert m.r(qs+16)==2 and len(m.sent)==count
+    assert m.window_order()[-1]==q,'Requirements must be above the main VIP window'
     assert (m.r(q+0x14),m.r(q+0x18))==(360,270)
     m.preview(q,args.output/'vip-upgrade-quest.png')
-    for name in ('Jellopy','Fluff','Aloe Vera','3,000,000'):assert any(name in row[0] for row in m.texts),name
+    for x,y in [(127,248),(181,248),(188,248),(232,248),(205,239),(205,258),(340,9),(356,9)]:
+        m.click(q,x,y);assert m.r(qs+16)==2 and len(m.sent)==count,'Invisible old action/close area remained clickable'
+    for name in ('Jellopy','Fluff','Aloe Vera','3,000,000z','Inventory:','VIP Upgrade Quest'):assert any(name==row[0] for row in m.texts),name
+    assert not any(row[0] in ('In bag:','VIP UPGRADE QUEST') for row in m.texts)
     if looks is not None:assert looks[-3:]==[909,914,606],'wrong/missing required item images'
     m.click(q,132,248);assert len(m.sent)==count,'incomplete quest submitted'
     m.click(q,205,248);assert not m.r(q+0x28) and len(m.sent)==count
-    m.click(obj,260,303);assert m.r(qs+16)==2 and len(m.sent)==count,'saved quest rerolled or reconfirmed'
+    m.click(obj,315,303);assert m.r(qs+16)==2 and len(m.sent)==count,'saved quest rerolled or reconfirmed'
+    assert m.window_order()[-1]==q,'Reused requirements window stayed behind main'
+    assert m.window_order().count(q)==1,'Reopen duplicated the native window node'
     m.receive(quest(ready=True,opened=False));assert m.r(qs+16)==2
     m.preview(q,args.output/'vip-upgrade-ready.png')
     m.invoke(c['down'],q,(50,8));assert m.r(qs+12)==1
     m.invoke(c['drag'],q,(60,8));m.invoke(c['up'],q,(60,8));assert not m.r(qs+12)
-    m.click(q,132,248);assert struct.unpack_from('<H',m.sent[-1],10)[0]==7
+    m.click(q,132,248);assert m.r(qs+16)==5 and len(m.sent)==count
+    m.preview(q,args.output/'vip-submit-confirm.png')
+    m.click(q,164,86);assert struct.unpack_from('<H',m.sent[-1],10)[0]==7
     count=len(m.sent);m.click(q,132,248);assert len(m.sent)==count and not m.r(obj+0x28)
     obj=m.ready(quest(token=115));q=m.r(qs)
     m.invoke(c['destroy'],q,(1,));assert not m.r(qs) and m.r(obj+0x28) and m.r(c['state'])==obj
-    m.click(obj,260,303);assert m.r(qs) and m.r(qs)!=q
+    m.click(obj,315,303);assert m.r(qs) and m.r(qs)!=q
     m.invoke(c['destroy'],obj,(1,));assert not m.r(m.r(qs)+0x28) and not m.r(qs+16)
-    print('PASS: EXP-gated Upgrade, native Yes/No, no action on No, saved quest popup/reopen/no reroll, exact 3 item IDs/images, Zeny/counts, incomplete/ready submission, replay guard, independent drag/capture/close/destroy; no live mutation.')
+    print('PASS: EXP-gated Upgrade, fitted native Yes/No/action/close bounds, real native front-of-draw-list on open/reopen and blocked main click, no action on No, saved quest popup/reopen/no reroll, exact 3 item IDs/images, Zeny/counts, incomplete/ready submission, replay guard, independent drag/capture/close/destroy; no live mutation.')
 
 if __name__=='__main__':main()

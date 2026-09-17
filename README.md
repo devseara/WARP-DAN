@@ -11,9 +11,11 @@ before developing another feature.
 
 ## Included patches
 
-- **Native VIP UI v2** (`VipUI`, ID 10008): membership, ten VIP levels, full-EXP
-  confirmation and saved random item upgrade quests with item images. Independent
-  add-on with matching server required; see [VIP setup](docs/vip-ui.md).
+- **Native VIP UI** (`VipUI`, ID 10008): five membership durations, ten levels,
+  crowns, character/equipment preview, hourly buffs, saved item/ticket quests,
+  final submission confirmation, editable centered benefit cards and complete
+  button PNGs. Keep `.NativeUIVersion = 1`; matching VIPU v4 server required.
+  See [VIP setup and upgrade instructions](docs/vip-ui.md).
 - **Original Announcements with Item Icons** (`NoticeMarquee`, ID 10007):
   keeps the original stationary top-screen announcement and adds the item image
   directly before its name. No marquee or Notice label. Install the separate
