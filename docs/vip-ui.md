@@ -109,7 +109,7 @@ No global effect/input/render hook is modified.
 
 Current automation schedule: non-VIP and VIP 1-5 -75%; level 6 -70%, 7 -65%,
 8 -60%, 9 -55%, 10 -50%. These are the automation component, before other drop
-bonuses. Matching 5440-5449 TGA files and stateicon additions are in the server
+bonuses. Matching 5440-5451 (-75% through -20%) TGA files and stateicon additions are in the server
 repository's client folder. Those client data files must be merged separately;
 WARP's VIP art installer does not overwrite stateicon Lua or custom effect art.
 
