@@ -11,11 +11,11 @@ m=VipMachine(args.exe);c=m.c;qs=c['quest_state'];manager=0x131F4E8
 offers=((1,500000),(3,1200000),(7,2500000),(15,5000000),(30,9000000))
 def purchase_art(kind):
     art=Image.open(ROOT/'Assets/VipUI'/f'purchase_{kind}.png').convert('RGBA')
-    return Image.alpha_composite(Image.new('RGBA',art.size,'white'),art).convert('RGB')
+    return Image.alpha_composite(Image.new('RGBA',art.size,(244,252,255,255)),art).convert('RGB')
 def open_picker(token=701):
     obj=m.ready(snapshot(flags=2|4,level=0,token=token));before=len(m.sent)
     assert not m.r(qs+16)
-    m.click(obj,130,173);q=m.r(qs)
+    m.click(obj,217,127);q=m.r(qs)
     assert m.r(qs+16)==3 and len(m.sent)==before and m.window_order()[-1]==q
     assert (m.r(q+0x14),m.r(q+0x18))==(360,320)
     assert m.r(qs+44)==0xFFFFFFFF
@@ -58,7 +58,7 @@ for offset,value in ((2524+4,750000),(2524,2880),(2524+4,0)):
 for flag in (1,256):
     obj,q=open_picker();m.click(q,180,45);before=len(m.sent)
     m.receive(snapshot(flags=4|flag,token=701));assert not m.r(qs+16)
-    m.click(q,150,302);m.click(obj,130,173);assert not m.r(qs+16) and len(m.sent)==before
+    m.click(q,150,302);m.click(obj,217,127);assert not m.r(qs+16) and len(m.sent)==before
 
 # Missing/mis-sized Purchase art is never an invisible clickable payment.
 obj,q=open_picker();m.click(q,180,45);before=len(m.sent)

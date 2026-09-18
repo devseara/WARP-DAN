@@ -32,7 +32,7 @@ assert m.window_order()[-1]==q and not m.r(c['state']+12),'Final confirmation be
 m.receive(quest(ready=True,opened=False));assert m.r(qs+16)==5,'Routine refresh dismissed unchanged confirmation'
 m.click(q,164,86)
 assert len(m.sent)==count+1 and struct.unpack_from('<H',m.sent[-1],10)[0]==7
-assert not m.r(q+0x28) and not m.r(obj+0x28)
+assert not m.r(q+0x28) and m.r(obj+0x28),'Parent stays visible until the authoritative server result'
 m.click(q,164,86);assert len(m.sent)==count+1,'Double Yes submitted twice'
 
 for offset,fmt,value in ((10,'H',1|4|8|32),(10,'H',4|32|128),(2272,'I',4000000),

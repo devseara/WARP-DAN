@@ -1,5 +1,5 @@
 """Execute emitted VIP x86, with explicit native/OS boundaries. Offline, not live acceptance."""
-import argparse
+import argparse,json
 from pathlib import Path
 import struct
 from PIL import Image, ImageFont
@@ -7,12 +7,13 @@ from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import *
 from test_modern_chat_ui import Machine,pack
 from test_gacha_ui import GachaMachine
+from vip_design_contract import X,Y
 
 FIELDS=('api state open receive hit draw down up move drag cursor destroy timer quest_state quest_open receiver fit plain png ctor send fallback').split()
 ROOT=Path(__file__).resolve().parents[1]
 
 def benefit_draws(machine):
-    return [row for row in machine.texts if 413<=row[1]<755 and row[2] in (127,175,223,271,319)]
+    return [row for row in machine.texts if X(735)<=row[1]<X(1344) and Y(838)<=row[2]<Y(1043)]
 def contract(m):
     data=m.pe.get_memory_mapped_image();marker=data.find(b'VipUI.v4\0');assert marker>=0
     pointer=pack(m.base+marker);positions=[];offset=0
@@ -58,9 +59,17 @@ class VipMachine(Machine):
     def __init__(self,exe):
         self.boundaries={};self.text_colors=[]
         super().__init__(exe,ROOT/'Assets/VipUI');self.c=contract(self)
+        meta=json.loads((ROOT/'Inputs/VipUI/runtime.json').read_text())
+        self.c['interaction']=self.c['api']-meta['exports']['VipApi']+meta['exports']['VipInteraction']
         self.now=1000;self.sent=[];self.timer_calls=[];self.stock=[]
         self.font=ImageFont.truetype('C:/Windows/Fonts/tahoma.ttf',12)
         self.plain_boundaries()
+        # Model the private name helper's compact 10px font selection.
+        def select_plain_font():
+            _,height,_,_=self.args(4)
+            self.font=ImageFont.truetype('C:/Windows/Fonts/tahoma.ttf',height)
+            self.ret(16)
+        self.stub(0x546F60,select_plain_font)
         self.stub(0xA21C90,self.measure)
         self.stub(0xDBBC4F,lambda:self.ret(0,self.alloc(self.args(1)[0])))
         self.stub(0x86B950,lambda:self.ret(4))
@@ -93,7 +102,7 @@ class VipMachine(Machine):
         tick=self.alloc(16);self.stub(tick,lambda:self.ret(0,self.now));self.w(0xFC17B0,tick)
         timer_set=self.alloc(16);timer_kill=self.alloc(16)
         def start():
-            args=self.args(4);assert args==[0,0,3000,self.c['timer']]
+            args=self.args(4);assert args==[0,0,100,self.c['timer']]
             self.timer_calls.append('start');self.ret(16,567)
         def stop():
             assert self.args(2)==[0,567];self.timer_calls.append('stop');self.ret(8,1)
@@ -126,10 +135,19 @@ class VipMachine(Machine):
     def ready(self,p=None):
         self.receive(p if p is not None else snapshot())
         obj=self.r(self.c['state']);assert obj and self.r(obj+0x28)==1
-        assert (self.r(obj+0x14),self.r(obj+0x18))==(800,420)
+        assert (self.r(obj+0x14),self.r(obj+0x18))==(460,362)
+        self.now=(self.now+350)&0xFFFFFFFF # Ordinary fixtures start after the server gate.
         return obj
     def click(self,obj,x,y):
         self.invoke(self.c['down'],obj,(x,y));self.invoke(self.c['up'],obj,(x,y))
+        # Ordinary behavior suites allow the short safe-send queue to settle.
+        # Race-specific tests use raw down/up and control every clock/response.
+        if self.r(self.c['interaction'])==1 and not self.r(self.c['interaction']+216):
+            self.advance(350)
+    def advance(self,ms):
+        self.now=(self.now+ms)&0xFFFFFFFF
+        timer=self.r(self.c['state']+2696)
+        if timer:self.invoke(self.c['timer'],0,(0,0,timer,self.now))
     def preview(self,obj,path):
         self.texts=[];self.invoke(self.c['draw'],obj)
         pix,w,h=self.pixels(obj)
@@ -142,27 +160,27 @@ def main():
     m=VipMachine(args.exe);c=m.c;s=c['state'];obj=m.ready()
     assert m.timer_calls==['start']
     m.preview(obj,args.output/'vip-active.png')
-    assert m.plain_calls==['Name: DevSeara'] and m.gdi_color==0x123456
+    assert m.plain_calls==['DevSeara'] and m.gdi_color==0x123456
     assert [row[0] for row in benefit_draws(m)]==['EXP +15%','Drop +15%','Max weight +600','Auto drop -75%']
-    assert any(row[0]=='VIP Start Date: 09-17-2026 Thursday' for row in m.texts)
-    assert any(row[0]=='VIP Expiry Date: 09-18-2026 Friday' for row in m.texts)
+    assert any(row[0]=='09-17-2026 Thursday' for row in m.texts)
+    assert any(row[0]=='09-18-2026 Friday' for row in m.texts)
     assert m.r(m.r(obj)+20*4)==c['draw'] and m.r(m.r(obj)+31*4)==c['up']
-    before=len(m.sent);m.click(obj,213,173);assert len(m.sent)==before,'disabled shop sent a request'
-    for i in range(7):m.click(obj,782,354)
+    before=len(m.sent);m.click(obj,353,127);assert len(m.sent)==before,'disabled shop sent a request'
+    for i in range(7):m.click(obj,443,333)
     assert m.r(s+20)==0 and len(m.sent)==before,'No inactive tier scrolling'
     m.ready(snapshot(level=10))
     m.preview(obj,args.output/'vip-high-tiers.png')
-    assert [row[0] for row in benefit_draws(m)]==['EXP +100%','Drop +30%','ATK/MATK +25','HP +150','SP +100']
+    assert [row[0] for row in benefit_draws(m)]==['EXP +100%','Drop +30%','ATK/MATK +25','HP +150']
     m.ready(snapshot())
-    for i in range(7):m.click(obj,782,119)
+    for i in range(7):m.click(obj,443,270)
     assert m.r(s+20)==0
-    m.invoke(c['timer'],0,(0,0,567,m.now));assert len(m.sent)==before+1 and struct.unpack_from('<H',m.sent[-1],10)[0]==0
-    m.invoke(c['down'],obj,(130,172));m.invoke(c['up'],obj,(290,50));assert len(m.sent)==before+1
+    m.now+=3000;m.invoke(c['timer'],0,(0,0,567,m.now));assert len(m.sent)==before+1 and struct.unpack_from('<H',m.sent[-1],10)[0]==0
+    m.invoke(c['down'],obj,(217,127));m.invoke(c['up'],obj,(290,50));assert len(m.sent)==before+1
     assert m.r(0x131F4E8+0x19C)==0,'outside release stranded capture'
-    m.click(obj,135,172);assert len(m.sent)==before+1,'Active VIP applied membership again'
+    m.click(obj,217,127);assert len(m.sent)==before+1,'Active VIP applied membership again'
     m.ready(snapshot(flags=2|4,level=0))
-    count=len(m.sent);m.click(obj,135,172);assert len(m.sent)==count and m.r(c['quest_state']+16)==3
-    q=m.r(c['quest_state']);m.click(q,200,300);m.click(obj,787,8)
+    count=len(m.sent);m.click(obj,217,127);assert len(m.sent)==count and m.r(c['quest_state']+16)==3
+    q=m.r(c['quest_state']);m.click(q,200,300);m.click(obj,447,10)
     assert struct.unpack_from('<HHIHHIII',m.sent[-1])==(0xBFA,24,0x55504956,4,6,77,0,0)
     assert m.r(s+16)==1 and m.r(obj+0x28)==0 and m.timer_calls[-1]=='stop'
     before=len(m.sent);m.invoke(c['timer'],0,(0,0,567,m.now));assert len(m.sent)==before
@@ -171,17 +189,17 @@ def main():
         bad=snapshot();struct.pack_into('<H' if field<12 else '<I',bad,field,value);m.receive(bad);assert m.r(obj+0x28)==0
     foreign=snapshot();foreign[4:8]=b'NOPE';m.receive(foreign);assert len(m.stock)==1
     m.ready(snapshot(flags=2|4,level=0));m.preview(obj,args.output/'vip-inactive.png')
-    before=len(m.sent);m.click(obj,315,303);m.click(obj,240,202);assert len(m.sent)==before,'inactive upgrade/buff request'
+    before=len(m.sent);m.click(obj,196,259);m.click(obj,353,152);assert len(m.sent)==before,'inactive upgrade/buff request'
     # Drag release and close do not steal capture owned by another window.
     m.invoke(c['down'],obj,(50,8));assert m.r(s+12)==1
     m.invoke(c['drag'],obj,(70,8));m.invoke(c['up'],obj,(70,8));assert m.r(s+12)==0
     m.w(0x131F4E8+0x19C,0x20101010);m.invoke(c['destroy'],obj,(1,));assert m.r(0x131F4E8+0x19C)==0x20101010
     assert not m.r(s) and not m.r(s+24) and m.timer_calls[-1]=='stop'
     m.w(0x131F4E8+0x19C,0);obj=m.ready(snapshot(token=91,flags=1|2|4|8|16))
-    m.click(obj,205,172);assert struct.unpack_from('<HI',m.sent[-1],10)==(2,91)
-    obj=m.ready(snapshot(token=93));m.click(obj,787,8);assert struct.unpack_from('<H',m.sent[-1],10)[0]==6
+    m.click(obj,353,127);assert struct.unpack_from('<HI',m.sent[-1],10)==(2,91)
+    obj=m.ready(snapshot(token=93));m.click(obj,447,10);assert struct.unpack_from('<H',m.sent[-1],10)[0]==6
     assert not m.r(obj+0x28)
-    # Read back real emitted pixels: green until full EXP, gold only when the
+    # Read back real emitted pixels: approved blue until full EXP, gold only when the
     # server allows upgrading. A refresh must remove gold after upgrading.
     def exp_bar(percent,flags=1|2|4|8,level=2,filename=None):
         p=snapshot(flags=flags,level=level);struct.pack_into('<I',p,20,percent)
@@ -190,13 +208,14 @@ def main():
         if filename:m.preview(obj,args.output/filename)
         else:m.invoke(c['draw'],obj)
         pix,w,h=m.pixels(obj)
-        return tuple(m.r(pix+((272+y)*w+24+x)*4) for y in range(4) for x in range(322))
+        return tuple(m.r(pix+((Y(653)+y)*w+X(180)+x)*4) for y in range(Y(681)-Y(653)) for x in range(X(1050)))
     track=exp_bar(0)
-    green=exp_bar(99,filename='vip-exp-green.png')
+    green=exp_bar(99,filename='vip-exp-blue.png')
     gold=exp_bar(100,filename='vip-exp-gold.png')
-    assert green[318:322]==track[318:322] and green[:318]!=track[:318]
-    for ordinary,ready in zip(green[:318],gold[:318]):
-        assert (ordinary>>8)&255 > (ordinary>>16)&255,'Below full EXP must remain green'
+    filled=X(1050)*99//100
+    assert green[filled:X(1050)]==track[filled:X(1050)] and green[:filled]!=track[:filled]
+    for ordinary,ready in zip(green[:filled],gold[:filled]):
+        assert ordinary&255 >= (ordinary>>16)&255,'Below full EXP must remain blue'
         assert (ready>>16)&255 > (ready>>8)&255 > ready&255,'Full authorized EXP must be gold'
     assert gold!=exp_bar(100,flags=1|2|4),'No upgrade permission must not look ready'
     assert gold==exp_bar(100,flags=1|2|4|8|32),'Saved upgrade quest keeps the EXP ready state'

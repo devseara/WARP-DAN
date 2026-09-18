@@ -70,6 +70,15 @@ render([0,0,0,0])
 pixels=struct.unpack('<'+'I'*(w*h),m.u.mem_read(pix,w*h*4))
 changed=[(i%w,i//w) for i,p in enumerate(pixels) if p!=0xFFAABBCC]
 assert changed and all(20<=x<112 and 48<=y<214 for x,y in changed)
+# The approved large portrait scales small native sprites up to 75% height,
+# preserving aspect ratio and keeping large robes inside the new frame.
+for width,height in ((80,130),(300,350)):
+    size[:]=[width,height];m.u.mem_write(pix,struct.pack('<I',0xFFAABBCC)*(w*h))
+    m.invoke(portrait,0,(obj,13,35,104,137))
+    pixels=struct.unpack('<'+'I'*(w*h),m.u.mem_read(pix,w*h*4))
+    changed=[(i%w,i//w) for i,p in enumerate(pixels) if p!=0xFFAABBCC]
+    assert changed and all(13<=x<117 and 35<=y<172 for x,y in changed)
+    assert max(y for x,y in changed)-min(y for x,y in changed)+1==102
 assert len(set(canvases))==1,'Reopening/drawing leaked preview frames'
 before=len(calls);m.w(world+0x2C,0);m.invoke(portrait,0,(obj,20,48,92,166))
 assert len(calls)==before,'Missing actor must not render stale character'

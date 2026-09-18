@@ -3,6 +3,7 @@ import argparse
 import struct
 from pathlib import Path
 from test_vip_ui import VipMachine, snapshot
+from vip_design_contract import X,Y,crop,read
 
 ap=argparse.ArgumentParser();ap.add_argument('exe');ap.add_argument('--output',type=Path,required=True)
 args=ap.parse_args();args.output.mkdir(parents=True,exist_ok=True)
@@ -20,14 +21,17 @@ for current in range(5):
     obj=m.ready(packet(current));before=len(m.sent)
     m.preview(obj,args.output/f'vip-{current}-ready.png')
     assert not m.r(qs+16),'Opening the main card must never open a quest popup'
-    assert any(row[0]==f'Vip Level : {current}' for row in m.texts)
+    assert any(row[0]==f'VIP Level : {current}' for row in m.texts)
     if not current:
         assert any(row[0]=='VIP 1 quest available with active membership' for row in m.texts)
         assert not any('0 / 0' in row[0] or row[0]=='VIP LEVEL 1 (ACTIVE)' for row in m.texts)
         pix,w,h=m.pixels(obj)
-        assert all(m.r(pix+((326+y)*w+25+i*32+x)*4)==0xFFF4F8FF for i in range(10) for y in range(24) for x in range(24)),'No unearned crowns at active level zero'
-        assert m.r(pix+(272*w+24)*4)==0xFFD6AB35,'First authorized quest uses the gold ready bar'
-    m.click(obj,315,303);q=m.r(qs)
+        empty=crop(349,851,59,74,X(59),Y(74))
+        for i in range(10):
+            assert read(m,obj,X(35+i*63),Y(851),X(59),Y(74)).tobytes()==empty.tobytes(),'No unearned crowns at active level zero'
+        pixel=m.r(pix+(Y(653)*w+X(180))*4)
+        assert (pixel>>16&255)>(pixel>>8&255)>(pixel&255),'First authorized quest uses the gold ready bar'
+    m.click(obj,196,259);q=m.r(qs)
     assert m.r(qs+16)==1 and len(m.sent)==before and m.window_order()[-1]==q
     m.click(q,164,86);assert struct.unpack_from('<H',m.sent[-1],10)[0]==4
     p=packet(current,1|2|4|8|32|64)
@@ -48,7 +52,7 @@ for current in range(5):
 
 # Server flags alone enable the next action: expiry and Cash Shop tiers stay locked.
 for level,flags in ((0,2|4),(5,1|2|4),(6,1|2|4),(10,1|2|4)):
-    obj=m.ready(packet(level,flags));before=len(m.sent);m.click(obj,315,303)
+    obj=m.ready(packet(level,flags));before=len(m.sent);m.click(obj,196,259)
     assert not m.r(qs+16) and len(m.sent)==before
 for label in ('0/0 EXP','0 / 0 EXP'):
     p=packet(0);p[112:176]=label.encode().ljust(64,b'\0');obj=m.ready(p);m.texts=[];m.invoke(c['draw'],obj)

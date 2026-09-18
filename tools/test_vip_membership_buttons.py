@@ -7,7 +7,7 @@ parser=argparse.ArgumentParser();parser.add_argument('exe');args=parser.parse_ar
 m=VipMachine(args.exe);c=m.c
 def hit(x,y):
     m.invoke(c['hit'],0,(x,y));return m.u.reg_read(UC_X86_REG_EAX)
-buttons=[(2,130,173,1),(3,205,173,2),(4,150,200,3)]
+buttons=[(2,217,127,1),(3,353,127,2),(4,217,152,3)]
 for level in (0,1,6,10):
     for active in (False,True):
         for shop in (False,True):

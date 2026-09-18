@@ -13,8 +13,9 @@ before developing another feature.
 
 - **Native VIP UI** (`VipUI`, ID 10008): five membership durations, ten levels,
   crowns, character/equipment preview, hourly buffs, saved item/ticket quests,
-  final submission confirmation, editable centered benefit cards and complete
-  button PNGs. Keep `.NativeUIVersion = 1`; matching VIPU v4 server required.
+  final submission confirmation, a compact 460x362 frame, regular-weight text,
+  60 centered button PNG states and full hover text for clipped benefit rows.
+  Keep `.NativeUIVersion = 1`; matching VIPU v4 server required.
   See [VIP setup and upgrade instructions](docs/vip-ui.md).
 - **Original Announcements with Item Icons** (`NoticeMarquee`, ID 10007):
   keeps the original stationary top-screen announcement and adds the item image

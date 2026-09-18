@@ -13,8 +13,8 @@ assert hashlib.sha256(source).hexdigest()==meta['source_sha256']
 assert hashlib.sha256(payload).hexdigest()==meta['payload_sha256']
 magic,version,size,count,api,_,_,crc=struct.unpack_from('<8I',payload)
 assert magic==0x32504956 and version==meta['version']==2 and meta['client']==20250716
-assert 32+count*4+size==len(payload) and size==meta['size'] and meta['api_size']==320
-assert zlib.crc32(payload[32:])==crc and api==meta['exports']['VipApi'] and api+320<=size
+assert 32+count*4+size==len(payload) and size==meta['size'] and meta['api_size']==372
+assert zlib.crc32(payload[32:])==crc and api==meta['exports']['VipApi'] and api+372<=size
 assert not meta['runtime_imports']
 offsets=struct.unpack_from('<'+'I'*count,payload,32)
 assert len(set(offsets))==count

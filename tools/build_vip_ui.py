@@ -49,7 +49,7 @@ def main():
     out=ROOT/'Inputs/VipUI/runtime.bin'
     out.parent.mkdir(parents=True,exist_ok=True)
     out.write_bytes(header+body)
-    meta={'version':2,'client':20250716,'size':len(code),'api_size':320,'exports':exports,
+    meta={'version':2,'client':20250716,'size':len(code),'api_size':372,'exports':exports,
           'source_sha256':hashlib.sha256(source.read_bytes().replace(b'\r\n',b'\n')).hexdigest(),
           'payload_sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'runtime_imports':[]}
     out.with_suffix('.json').write_text(json.dumps(meta,indent=2)+'\n',encoding='utf8')

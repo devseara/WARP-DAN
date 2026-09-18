@@ -1,18 +1,20 @@
 # Shared VIP crown artwork
 
-`membership_crown.png` is the crown used on all five Apply VIP cards and in earned
-VIP level boxes. Level zero is empty; level N shows N crowns (maximum ten).
-The old `star_on.png` is preserved but is not rendered by the current client.
+`membership_crown.png` is the crown used on all five Apply VIP cards. The compact
+main-window level boxes use crown regions from `vip_design.png`. Level zero is
+empty; level N shows N crowns (maximum ten). The unused legacy `star_on.png`
+is no longer bundled.
 
 Edit the crown in your client's `data/texture/<UI prefix>/vipui` folder. Keep PNG
 alpha transparency; do not replace it with a black/checkerboard background. The
-client fits the entire image into 28px card icons and 24px level icons, and bounds
+client fits the entire image into 28px card icons, and bounds
 source dimensions to 4096 pixels. Restart Ragnarok after artwork edits. No WARP
 or server rebuild is needed for crown artwork-only changes.
 
 Source: built-in image-generation tool, September 17, 2026. Original transparent
 1254x1254 output copied without pixel changes into `Assets/VipUI/membership_crown.png`.
 SHA-256: `620fd774907589457aef433639ce99ba7ac0e086f90a393d9bcd1e2471b05a10`.
+Private original: `C:/Users/Vysache/.codex/generated_images/01a09e80-12ab-76e1-abed-6087de798997/exec-4594696a-c473-402a-ade9-e1bea505e20b.png`.
 
 ## Final generation prompt
 

@@ -20,7 +20,8 @@ with tempfile.TemporaryDirectory(prefix='vip-package-index-') as scratch:
     git('read-tree','9a10e8b')
     for name in ('DevSeara-BattlePass-ChatUI-NPC-Gacha.diff',
                  'DevSeara-Announcement-Item-Icons.diff',
-                 'DevSeara-VIP-UI.diff','DevSeara-VIP-UI-v2-upgrade.diff'):
+                 'DevSeara-VIP-UI.diff','DevSeara-VIP-UI-v2-upgrade.diff',
+                 'DevSeara-VIP-UI-compact-regular-upgrade.diff'):
         patch=str(package/'install'/name)
         git('apply','--cached','--check',patch)
         git('apply','--cached','--whitespace=nowarn',patch)
@@ -28,7 +29,8 @@ with tempfile.TemporaryDirectory(prefix='vip-package-index-') as scratch:
     candidates=list((package/'Assets/VipUI').glob('*.png'))
     candidates+=list((package/'Inputs/VipUI').glob('runtime.*'))
     candidates+=[package/'Scripts/Patches/VipUI.qjs',package/'Scripts/Runtime/VipUI/runtime.cpp']
-    for pattern in ('test_vip_*','build_vip_*','verify_vip_payload.py','render_vip_*'):
+    for pattern in ('test_vip_*','build_vip_*','verify_vip_payload.py','render_vip_*',
+                    'vip_design_contract.py','run_vip_redesign_checks.py'):
         candidates+=list((package/'tools').glob(pattern))
     for file in candidates:
         relative=file.relative_to(package).as_posix()
@@ -37,4 +39,6 @@ with tempfile.TemporaryDirectory(prefix='vip-package-index-') as scratch:
         if file.suffix in ('.py','.js','.qjs','.cpp','.json'):
             actual=actual.replace(b'\r\n',b'\n');expected=expected.replace(b'\r\n',b'\n')
         assert actual==expected,relative
-    print('PASS:',len(candidates),'installed VIP assets/source/test payloads match the published package')
+    installed_art=git('ls-files','Assets/VipUI').decode().splitlines()
+    assert len(installed_art)==63 and not any('readable_' in name for name in installed_art)
+    print('PASS:',len(candidates),'installed VIP assets/source/test payloads match the published package; exactly 63 canonical images')

@@ -34,8 +34,14 @@ struct Api {
     void (__stdcall *offerText)(void*,const char*,int,int,int,u32);
     const char* crown;
     void (__stdcall *priceText)(void*,const char*,int,int,int,u32);
+    const char* design;
+    void (__stdcall *infoText)(void*,const char*,int,int,int,u32);
+    void (__stdcall *infoPlain)(void*,const char*,int,int,int,u32);
+    void (__stdcall *statusText)(void*,const char*,int,int,int,u32);
+    void (__stdcall *bodyText)(void*,const char*,int,int,int,u32);
+    const char* mainButtons[2][4]; // Readable main Upgrade and X; popup sizes unchanged.
 };
-static_assert(sizeof(Api)==320,"VIP private API with crown membership cards");
+static_assert(sizeof(Api)==372,"Append-only readable VIP API");
 EXPORT Api VipApi = {2};
 struct State { void* window; int pressed,hover,dragging,hidden,scroll,ready; u32 refresh; Snapshot p;
     u32 timer; u32 (__stdcall *setTimer)(void*,u32,u32,void*); int (__stdcall *killTimer)(void*,u32);
@@ -47,7 +53,17 @@ struct QuestState { void* window;int pressed,hover,dragging,mode;
 };
 EXPORT QuestState VipQuestState = {};
 EXPORT void* VipPortraitCanvas = 0;
+// Private request sequencing; no wire/schema or server cooldown changes.
+// phase: 0 idle, 1 queued behind refresh, 2 sent once, 3 delayed reply.
+struct Interaction {
+    int phase,action;u32 token,level,questLevel,questCost;
+    QuestItem items[3];
+    u32 pollSent,lastReply,sentAt;int pollPending,notice;
+    char benefit[80];
+};
+EXPORT Interaction VipInteraction = {};
 static void questHide();
+static void pumpUpgrade();
 template<typename T> T& at(void* p,int off) { return *reinterpret_cast<T*>(static_cast<u8*>(p)+off); }
 static u32 tick() { return (*reinterpret_cast<u32 (__stdcall **)()>(0xFC17B0))(); }
 static void dirty(void* w) { if(w) at<int>(w,0x58)=1; }
@@ -62,17 +78,25 @@ static void release(void* w) {
         reinterpret_cast<void (__thiscall *)(void*)>(0xA482E0)((void*)0x131F4E8);
     (w==VipQuestState.window?VipQuestState.pressed:VipState.pressed)=0;
 }
-static void send(int action,u32 minutes=0,u32 cost=0) {
-    if(!VipState.ready || !VipState.p.token) return;
+static bool send(int action,u32 minutes=0,u32 cost=0) {
+    if(!VipState.ready || !VipState.p.token) return false;
     Request r={0x0BFA,24,0x55504956,4,static_cast<u16>(action),VipState.p.token,minutes,cost};
     void* transport=reinterpret_cast<void* (__cdecl *)()>(VipApi.ctor)();
-    if(transport) reinterpret_cast<void (__thiscall *)(void*,int,const void*)>(VipApi.send)(transport,sizeof(r),&r);
+    if(!transport)return false;
+    if(!action) {
+        if(VipInteraction.pollPending || tick()-VipInteraction.lastReply<350)return false;
+        VipInteraction.pollPending=1;VipInteraction.pollSent=tick();
+        VipState.refresh=VipInteraction.pollSent;
+    }
+    reinterpret_cast<void (__thiscall *)(void*,int,const void*)>(VipApi.send)(transport,sizeof(r),&r);
+    return true;
 }
 static void hide(bool notify) {
     if(notify) send(6);
     questHide();
     if(VipState.window) { release(VipState.window); at<int>(VipState.window,0x28)=0; }
     VipState.hidden=1; VipState.ready=0; VipState.hover=0;
+    VipInteraction.phase=VipInteraction.pollPending=VipInteraction.notice=0;
     if(VipState.timer && VipState.killTimer) VipState.killTimer(0,VipState.timer);
     VipState.timer=0;
 }
@@ -80,7 +104,15 @@ EXPORT void __stdcall VipTick(void*,u32,u32 id,u32) {
     if(!*reinterpret_cast<int*>(0x11E40E8))VipQuestState.rightPressed=0;
     if(id!=VipState.timer || !VipState.window || VipState.hidden || !VipState.ready) return;
     if(!at<int>(VipState.window,0x28)) return;
-    send(0);
+    pumpUpgrade();
+    if(VipInteraction.phase)return;
+    if(VipInteraction.pollPending && tick()-VipInteraction.pollSent>=10000) {
+        VipInteraction.pollPending=0; // Only a read-only refresh can be retried.
+    }
+    // Keep 3-second polling even while a confirmation is open: this renews
+    // the server's 120-second token and keeps eligibility current. Once Yes
+    // queues an action, the phase guard above suppresses every further poll.
+    if(tick()-VipState.refresh>=3000)send(0);
 }
 static void startTimer() {
     if(VipState.timer) return;
@@ -91,23 +123,31 @@ static void startTimer() {
         VipState.setTimer=reinterpret_cast<u32 (__stdcall *)(void*,u32,u32,void*)>(resolve(module,"SetTimer"));
         VipState.killTimer=reinterpret_cast<int (__stdcall *)(void*,u32)>(resolve(module,"KillTimer"));
     }
-    if(VipState.setTimer && VipState.killTimer) VipState.timer=VipState.setTimer(0,0,3000,reinterpret_cast<void*>(VipTick));
+    if(VipState.setTimer && VipState.killTimer) VipState.timer=VipState.setTimer(0,0,100,reinterpret_cast<void*>(VipTick));
 }
 struct Control { int id,x,y,w,h,action,flag,art; };
+static const int mainWidth=460,mainHeight=362;
+static const int mainInfoFont=11,mainBodyFont=11;
+static constexpr int X(int x){return x*mainWidth/1412;}
+static constexpr int Y(int y){return y*mainHeight/1114;}
 static const Control controls[]={
-    {1,781,1,15,18,6,0,0},
-    {2,122,166,60,18,1,0,1},
-    {3,188,166,68,18,2,16,2},
-    {4,122,192,81,18,3,0,3},
-    {5,209,192,57,18,5,512,4},
-    {6,293,296,53,18,4,8,5},
-    {7,775,111,13,13,-1,0,10},
-    {8,775,346,13,13,-2,0,11},
-    {9,288,375,58,18,0,0,6}
+    {1,439,3,18,18,6,0,14},
+    {2,153,120,128,22,1,0,1}, {3,289,120,128,22,2,16,2},
+    {4,153,145,128,22,3,0,3}, {5,289,145,128,22,5,512,4},
+    {6,164,252,60,20,4,8,13},
+    {7,439,268,10,10,-1,0,10}, {8,439,328,10,10,-2,0,11},
+    {9,164,320,60,20,0,0,6}
 };
+static void* designTexture() {
+    if(!VipApi.design)return 0;
+    void* mgr=reinterpret_cast<void* (__cdecl *)()>(0xA90350)();if(!mgr)return 0;
+    const char* path=reinterpret_cast<const char* (__cdecl *)(const char*)>(0xA9F030)(VipApi.design);if(!path)return 0;
+    void* tex=reinterpret_cast<void* (__thiscall *)(void*,const char*)>(0xA8D4A0)(mgr,path);
+    return tex && at<int>(tex,0x114)==1412 && at<int>(tex,0x118)==1114 && at<void*>(tex,0x11C)?tex:0;
+}
 static void* buttonTexture(const Control& c,int state) {
-    if(c.art<0 || c.art>12 || state<0 || state>=4)return 0;
-    const char* file=c.art==12?VipApi.purchaseButtons[state]:VipApi.buttons[c.art][state];if(!file)return 0;
+    if(c.art<0 || c.art>14 || state<0 || state>=4)return 0;
+    const char* file=c.art>=13?VipApi.mainButtons[c.art-13][state]:c.art==12?VipApi.purchaseButtons[state]:VipApi.buttons[c.art][state];if(!file)return 0;
     void* mgr=reinterpret_cast<void* (__cdecl *)()>(0xA90350)();if(!mgr)return 0;
     const char* path=reinterpret_cast<const char* (__cdecl *)(const char*)>(0xA9F030)(file);if(!path)return 0;
     void* tex=reinterpret_cast<void* (__thiscall *)(void*,const char*)>(0xA8D4A0)(mgr,path);
@@ -115,7 +155,7 @@ static void* buttonTexture(const Control& c,int state) {
     return tex;
 }
 static bool activeBenefits() { return (VipState.p.flags&5)==5 && VipState.p.level>0 && VipState.p.level<=10; }
-static const int visibleBenefits=5;
+static const int visibleBenefits=4;
 // The existing server labels use | between effects. Split only the current
 // tier, keeping its configured wording and the unchanged VIPU v4 snapshot.
 static int benefitRows(int selected=-1,char* out=0) {
@@ -165,9 +205,10 @@ static void clampBenefitScroll() {
 static bool buffsReady() { return VipState.ready && !VipState.hidden &&
     (VipState.p.flags&513)==513 && !VipState.p.buffRemaining; }
 static bool enabled(const Control& c) {
-    if(!buttonTexture(c,0))return false; // Missing/mis-sized artwork cannot leave an invisible action.
+    if(!designTexture() || !buttonTexture(c,0))return false; // No invisible actions without valid artwork.
     if(c.id==1) return true;
     if(!VipState.ready || VipState.hidden) return false;
+    if(VipInteraction.phase)return false;
     if(c.id==2 && (VipState.p.flags&257))return false; // No active VIP or pending payment.
     if((c.id==3 || c.id==4) && !(VipState.p.flags&1))return false; // Store/storage require VIP.
     if(c.id==5 && !buffsReady())return false;
@@ -191,18 +232,42 @@ static void rect(void* w,int x,int y,int width,int height,u32 color) {
     for(int row=y;row<y+height;++row) for(int col=x;col<x+width;++col) pixels[row*sw+col]=color;
     at<u8>(s,0x1C)=1;
 }
-static void text(void* w,const char* s,int x,int y,int width,u32 color=0x5A5A5A) { VipApi.fit(w,s,x,y,width,color); }
-static void centeredText(void* w,char* value,int x,int y,int width,u32 color=0x5A5A5A) {
-    int count=0;while(count<79 && value[count])++count;
-    int measured=0;
-    do {
-        value[count]=0;
-        measured=reinterpret_cast<int (__thiscall *)(void*,const char*,int,int,int,int,int)>(0xA21C90)(w,value,count,0,12,0,0);
-        if(measured<=width)break;
-    } while(--count>0);
-    if(count>0 && measured>=0 && measured<=width)text(w,value,x+(width-measured)/2,y,width,color);
+// Private VIP chrome. All coordinates, capture bounds and packet actions stay
+// with their existing controls; colors here affect only this window's surface.
+static u32 shade(u32 first,u32 last,int pos,int extent) {
+    u32 value=0xFF000000;
+    for(int shift=0;shift<24;shift+=8) {
+        const int a=(first>>shift)&255,b=(last>>shift)&255;
+        value|=static_cast<u32>(a+(b-a)*pos/extent)<<shift;
+    }
+    return value;
 }
-static const char* assetPath(int asset) { return asset==14?VipApi.crown:asset<12?VipApi.paths[asset]:VipApi.scrollPaths[asset-12]; }
+static void gradient(void* w,int x,int y,int width,int height,u32 top,u32 bottom) {
+    if(height<2){rect(w,x,y,width,height,top);return;}
+    for(int row=0;row<height;++row)rect(w,x,y+row,width,1,shade(top,bottom,row,height-1));
+}
+static void panel(void* w,int x,int y,int width,int height,u32 fill=0xFFF7FAFF,u32 edge=0xFFAFBED5) {
+    rect(w,x,y,width,height,edge);
+    rect(w,x+1,y+1,width-2,height-2,0xFFFFFFFF);
+    rect(w,x+2,y+2,width-4,height-4,fill);
+    rect(w,x+2,y+height-2,width-3,1,0xFFDCE5F1);
+}
+static void picture(void*,int,int,int,int,int,int,int,int,int,int=255,bool=false);
+static void chrome(void* w,int width,int height) {
+    // Nine-slice the approved outer frame; never stretch baked demo content.
+    rect(w,0,0,width,height,0xFFF4FCFF);
+    picture(w,15,0,0,8,20,0,0,14,77);
+    picture(w,15,8,0,width-16,20,500,0,800,77);
+    picture(w,15,width-8,0,8,20,1398,0,14,77);
+    picture(w,15,0,20,5,height-28,0,100,9,940);
+    picture(w,15,width-5,20,5,height-28,1403,100,9,940);
+    picture(w,15,0,height-8,8,8,0,1106,14,8);
+    picture(w,15,8,height-8,width-16,8,20,1106,1370,8);
+    picture(w,15,width-8,height-8,8,8,1398,1106,14,8);
+    picture(w,15,6,2,27,16,13,7,106,65);
+}
+static void text(void* w,const char* s,int x,int y,int width,u32 color=0x5A5A5A) { VipApi.fit(w,s,x,y,width,color); }
+static const char* assetPath(int asset) { return asset==15?VipApi.design:asset==14?VipApi.crown:asset<12?VipApi.paths[asset]:VipApi.scrollPaths[asset-12]; }
 static void image(void* w,int asset,int x,int y) {
     void* mgr=reinterpret_cast<void* (__cdecl *)()>(0xA90350)(); if(!mgr) return;
     const char* path=reinterpret_cast<const char* (__cdecl *)(const char*)>(0xA9F030)(assetPath(asset)); if(!path) return;
@@ -212,7 +277,7 @@ static void image(void* w,int asset,int x,int y) {
 // Source-region UI composition, not a mutation of shared textures. Used for
 // live EXP fill and the supplied requirement item box. Buttons use whole PNGs.
 static void picture(void* w,int asset,int x,int y,int width,int height,
-    int sx,int sy,int sw,int sh,int opacity=255,bool gold=false) {
+    int sx,int sy,int sw,int sh,int opacity,bool gold) {
     void* surface=at<void*>(w,0x24);if(!surface || !at<void*>(surface,0x18))return;
     if(width<=0 || height<=0 || sw<0 || sh<0 || x<0 || y<0 || sx<0 || sy<0 ||
         x+width>at<int>(surface,4) || y+height>at<int>(surface,8))return;
@@ -237,6 +302,9 @@ static void picture(void* w,int asset,int x,int y,int width,int height,
     }
     at<u8>(surface,0x1C)=1;
 }
+static void designPatch(void* w,int x,int y,int width,int height,int sx,int sy,int sw,int sh) {
+    picture(w,15,X(x),Y(y),X(x+width)-X(x),Y(y+height)-Y(y),sx,sy,sw,sh);
+}
 static void paintButton(void* w,const Control& c,int state) {
     void* surface=at<void*>(w,0x24);if(!surface || !at<void*>(surface,0x18))return;
     if(c.x<0 || c.y<0 || c.x+c.w>at<int>(surface,4) || c.y+c.h>at<int>(surface,8))return;
@@ -256,10 +324,71 @@ static bool showExperience() {
     }
     return false;
 }
-static void field(void* w,const char* label,const char* value,int y,bool plain=false) {
-    char line[80];int n=0;while(*label && n<79)line[n++]=*label++;
-    while(*value && n<79)line[n++]=*value++;line[n]=0;
-    if(plain)VipApi.plain(w,line,128,y,224,0x342A26);else text(w,line,128,y,224,0x342A26);
+static void field(void* w,const char* label,const char* value,int y,u32 color,bool plain=false) {
+    const int x=X(545),width=X(1345)-x;
+    const int measured=reinterpret_cast<int (__thiscall *)(void*,const char*,int,int,int,int,int)>(0xA21C90)(w,label,0,0,mainInfoFont,0,0);
+    VipApi.infoText(w,label,x,y,width,0x30170C);
+    if(measured<0 || measured>=width)return;
+    (plain?VipApi.infoPlain:VipApi.infoText)(w,value,x+measured,y,width-measured,color);
+}
+static bool queuedUpgradeValid() {
+    const auto& q=VipInteraction;const auto& p=VipState.p;
+    if(!VipState.ready || VipState.hidden || q.token!=p.token || q.level!=p.level ||
+        q.questLevel!=p.questLevel || q.questCost!=p.questCost)return false;
+    if(q.action==4) {if((p.flags&13)!=13 || p.level>=10)return false;}
+    else if(q.action==7) {if((p.flags&165)!=165)return false;}
+    else return false;
+    for(int i=0;i<3;++i)if(q.items[i].id!=p.questItems[i].id || q.items[i].amount!=p.questItems[i].amount)return false;
+    return true;
+}
+static void pumpUpgrade() {
+    auto& q=VipInteraction;if(!q.phase)return;
+    const u32 now=tick();
+    if(q.phase==1) {
+        if(!queuedUpgradeValid()) {q.phase=0;q.notice=1;dirty(VipState.window);return;}
+        // The server starts its 300ms gate when it receives Refresh. Waiting
+        // 350ms AFTER its reply remains safe even with network latency/jitter.
+        if(q.pollPending) {
+            if(now-q.pollSent>=10000){q.phase=3;dirty(VipState.window);}
+            return;
+        }
+        if(now-q.lastReply<350)return;
+        if(!send(q.action)){q.phase=3;dirty(VipState.window);return;}
+        q.phase=2;q.sentAt=now;questHide();dirty(VipState.window);
+    } else if(q.phase==2 && now-q.sentAt>=10000) {
+        q.phase=3;dirty(VipState.window); // Never resend a state-changing request.
+    }
+}
+static void queueUpgrade(int action) {
+    if(VipInteraction.phase)return;
+    auto& q=VipInteraction;const auto& p=VipState.p;
+    q.action=action;q.token=p.token;q.level=p.level;q.questLevel=p.questLevel;q.questCost=p.questCost;
+    for(int i=0;i<3;++i)q.items[i]=p.questItems[i];
+    q.phase=1;q.notice=0;
+    // Release the confirmation immediately, but keep the parent visible and
+    // disabled until the server opens its authoritative result. Close cancels
+    // an unsent queue; it does not undo an already-sent server operation.
+    questHide();pumpUpgrade();dirty(VipState.window);
+}
+static void benefitTooltip(void* w,int x,int y) {
+    if(w!=VipState.window || !w || !VipState.ready || VipState.hidden ||
+        !at<int>(w,0x28) || VipQuestState.mode || VipState.dragging || VipState.pressed ||
+        VipInteraction.phase || at<void*>((void*)0x131F4E8,0x19C))return;
+    for(int row=0;row<visibleBenefits;++row) {
+        const int top=Y(838+row*51);
+        if(x<X(735) || x>=X(735)+X(586) || y<top || y>=top+Y(44))continue;
+        char* value=VipInteraction.benefit;const int count=benefitRows(VipState.scroll+row,value);
+        if(VipState.scroll+row>=count || !value[0])return;
+        const int width=reinterpret_cast<int (__thiscall *)(void*,const char*,int,int,int,int,int)>(0xA21C90)(w,value,0,0,mainBodyFont,0,0);
+        if(width<=X(1310)-X(821))return; // No redundant tooltip for a fitted row.
+        void* manager=*reinterpret_cast<void**>(0x121333C);if(!manager)return;
+        int tx=x+10,ty=y-24;
+        reinterpret_cast<void (__thiscall *)(void*,int*,int*)>(0xA1EF70)(w,&tx,&ty);
+        // Existing native tooltip window copies/wraps the complete bounded text.
+        // Last flag 0 bypasses character-name substitution; no global hook.
+        reinterpret_cast<void (__thiscall *)(void*,const char*,int,int,int,int,int)>(0xA753D0)(manager,value,tx,ty,-1,0,0);
+        return;
+    }
 }
 // CSession equipment providers D59B90/D800B0: ten inline CItem entries,
 // stride F8; +4 identity and +70 view ID. Exact Alt+Q slots: upper 8,
@@ -310,6 +439,7 @@ EXPORT int __stdcall VipPortrait(void* w,int x,int y,int width,int height) {
         }
     if(right<left || bottom<top || width<8 || height<8)return 0;
     const int sw=right-left+1,sh=bottom-top+1;int dw=sw,dh=sh;
+    if(width==X(322) && height==Y(423)){dh=height*3/4;dw=sw*dh/sh;}
     if(dw>width-8){dh=dh*(width-8)/dw;dw=width-8;}
     if(dh>height-8){dw=dw*(height-8)/dh;dh=height-8;}
     if(dw<1 || dh<1)return 0;
@@ -366,7 +496,7 @@ static bool purchaseReady() {
     return VipQuestState.chosen.minutes==offer.minutes && VipQuestState.chosen.cost==offer.cost;
 }
 static bool questEnabled(const Control& c) {
-    return buttonTexture(c,0) && (!c.flag || (VipState.p.flags&c.flag)) &&
+    return !VipInteraction.phase && buttonTexture(c,0) && (!c.flag || (VipState.p.flags&c.flag)) &&
         (c.id!=25 || purchaseReady()) && (c.id!=27 || buffsReady()) &&
         ((c.id!=23 && c.id!=29) || (VipState.p.flags&165)==165);
 }
@@ -399,31 +529,18 @@ static void number(char* out,u32 value) {
     int p=0;for(int i=n-1;i>=0;--i) {out[p++]=reverse[i];if(i && i%3==0)out[p++]=',';}out[p]=0;
 }
 static void membershipCard(void* w,int y,bool selected,bool hover,bool on) {
-    void* surface=at<void*>(w,0x24);if(!surface || !at<void*>(surface,0x18) ||
-        at<int>(surface,4)<354 || y<0 || y+44>at<int>(surface,8))return;
-    const int stride=at<int>(surface,4);u32* pixels=at<u32*>(surface,0x18);
-    for(int row=0;row<44;++row)for(int col=0;col<348;++col) {
-        const int dx=col<7?7-col:col>340?col-340:0;
-        const int dy=row<7?7-row:row>36?row-36:0;
-        if(dx && dy && dx*dx+dy*dy>49)continue;
-        u32 color=on?(hover?0xFF7B7B78:0xFF6D6D6B):0xFF50504F;
-        if(selected) {
-            const u32 r=255-col*17/347,g=250-col*66/347,b=237-col*106/347;
-            color=0xFF000000|(r<<16)|(g<<8)|b;
-            // Pale diagonal sheen at the crown, matching the supplied reference.
-            if(col+row/2<43 || (col+row/2>=48 && col+row/2<52))color=0xFFFEFCF4;
-        }
-        pixels[(y+row)*stride+6+col]=color;
-    }
-    at<u8>(surface,0x1C)=1;
+    panel(w,6,y,348,44,0xFFF4FAFF,selected?0xFFD4AC48:0xFFACBFE3);
+    gradient(w,9,y+3,342,38,selected?0xFFFFF9DF:on?0xFFF4FBFF:0xFFF4F5F7,
+        selected?0xFFF2D994:on?(hover?0xFFD8E9FF:0xFFE4EFFC):0xFFE6E9ED);
+    if(selected)rect(w,8,y+4,2,36,0xFFDCA935);
 }
 static void questDraw(void* w) {
     if(!w || !VipQuestState.mode || !at<int>(w,0x28)) return;
     const int height=questHeight(VipQuestState.mode);
     if(at<int>(w,0x18)!=height)reinterpret_cast<void (__thiscall *)(void*,int,int)>(0xA245C0)(w,360,height);
     reinterpret_cast<void (__thiscall *)(void*,int)>(0xA1CB30)(w,0);
-    rect(w,0,0,360,height,0xFFBACDE8);rect(w,1,19,358,height-20,0xFFFFFFFF);
-    rect(w,1,1,358,17,0xFFDCE9FA);text(w,VipQuestState.mode==4?"VIP Buffs":VipQuestState.mode==3?"Purchase VIP":"VIP Upgrade Quest",8,3,320,0x634529);
+    chrome(w,360,height);
+    text(w,VipQuestState.mode==4?"VIP Buffs":VipQuestState.mode==3?"Purchase VIP":"VIP Upgrade Quest",38,3,296,0x30170C);
     if(VipQuestState.mode==1) text(w,"Do you want to upgrade your VIP?",34,40,304,0x342A26);
     else if(VipQuestState.mode==5) {
         text(w,"Submit these requirements and upgrade your VIP?",22,32,316,0x342A26);
@@ -435,7 +552,7 @@ static void questDraw(void* w) {
     }
     else if(VipQuestState.mode==3) {
         // Keep the rounded card corners and gaps blended into the white popup.
-        rect(w,1,19,358,250,0xFFFFFFFF);
+        rect(w,5,20,350,250,0xFFF4FCFF);
         for(int i=0;i<5;++i) {
             const int y=25+i*48;const bool selected=VipQuestState.selected==i,on=offerAllowed(i);
             membershipCard(w,y,selected,VipQuestState.hover==40+i,on);
@@ -443,9 +560,9 @@ static void questDraw(void* w) {
             const auto& offer=VipState.p.offers[i];char caption[48],days[24];number(days,offer.minutes/1440);
             int n=0;for(int j=0;days[j];++j)caption[n++]=days[j];
             const char* tail=offer.minutes==1440?" DAY VIP":" DAYS VIP";while(*tail)caption[n++]=*tail++;caption[n]=0;
-            VipApi.offerText(w,caption,54,y+15,135,!on?0xA0A0A0:selected?0x355378:0xFFFFFF);
+            VipApi.offerText(w,caption,54,y+15,135,!on?0x929292:selected?0x355378:0x634529);
             char price[32];number(price,offer.cost);n=0;while(price[n])++n;price[n++]='z';price[n]=0;
-            VipApi.priceText(w,on?price:"Unavailable",193,y+11,148,!on?0xAAAAAA:selected?0x355378:0xFFFFFF);
+            VipApi.priceText(w,on?price:"Unavailable",193,y+11,148,!on?0x929292:selected?0x355378:0x634529);
         }
         text(w,purchaseReady()?"Click Purchase to buy the selected membership.":"Select a VIP duration to purchase.",12,275,338,0x7A6555);
     }
@@ -453,7 +570,8 @@ static void questDraw(void* w) {
         for(int i=0;i<3;++i) {
             const auto& item=VipState.p.questItems[i];if(!item.id)continue;
             const int y=25+i*48;
-            rect(w,6,y,348,44,0xFFC3D4EC);rect(w,7,y+1,346,42,0xFFF3F7FF);
+            panel(w,6,y,348,44,0xFFF3F7FF);
+            rect(w,7,y+4,2,36,0xFFDFB355);
             image(w,2,13,y+6);
             VipApi.item(w,item.id,13,y+6);
             char amount[24],owned[24];number(amount,item.amount);number(owned,item.owned);
@@ -484,7 +602,7 @@ static void questFront() {
         reinterpret_cast<void (__thiscall *)(void*,void*)>(0xA39130)((void*)0x131F4E8,VipQuestState.window);
 }
 EXPORT void __stdcall VipQuestOpen(int mode) {
-    if(!VipState.ready || VipState.hidden || mode<1 || mode>5 || (mode==2 && !(VipState.p.flags&32)) ||
+    if(!VipState.ready || VipState.hidden || VipInteraction.phase || mode<1 || mode>5 || (mode==2 && !(VipState.p.flags&32)) ||
         (mode==3 && (VipState.p.flags&257)) || (mode==4 && !buffsReady()) ||
         (mode==5 && ((VipState.p.flags&165)!=165 || VipQuestState.mode!=2))) return;
     void* w=VipQuestState.window;
@@ -496,74 +614,94 @@ EXPORT void __stdcall VipQuestOpen(int mode) {
     }
     release(w);VipQuestState.mode=mode;VipQuestState.hover=0;VipQuestState.selected=-1;
     reinterpret_cast<void (__thiscall *)(void*,int,int)>(0xA245C0)(w,360,questHeight(mode));
-    at<int>(w,0x1C)=at<int>(VipState.window,0x1C)+188;at<int>(w,0x20)=at<int>(VipState.window,0x20)+72;
+    at<int>(w,0x1C)=at<int>(VipState.window,0x1C)+(mainWidth-360)/2;
+    at<int>(w,0x20)=at<int>(VipState.window,0x20)+(mainHeight-questHeight(mode))/2;
     at<int>(w,0x28)=1;dirty(w);questFront();
 }
 EXPORT void __fastcall VipDraw(void* w,void*) {
     if(w==VipQuestState.window) {questDraw(w);return;}
-    if(!w || !at<int>(w,0x28) || at<int>(w,0x14)<800 || at<int>(w,0x18)<420) return;
+    if(!w || !at<int>(w,0x28) || at<int>(w,0x14)<mainWidth || at<int>(w,0x18)<mainHeight) return;
     reinterpret_cast<void (__thiscall *)(void*,int)>(0xA1CB30)(w,0);
-    rect(w,0,0,800,420,0xFFFFFFFF);
-    picture(w,0,0,0,800,420,0,0,736,420);
-    text(w,"VIP MEMBERSHIP",20,3,740,0x634529);
-    rect(w,12,28,350,367,0xFFF7FAFF);image(w,11,371,28);
-    // Cover only the template's marketplace wording, retaining its artwork.
-    rect(w,397,47,366,12,0xFFFCF5E8);text(w,"Benefits require active VIP membership.",451,46,312,0x886341);
-    rect(w,396,79,370,25,0xFFF2F8FF);text(w,"VIP BENEFITS",544,86,190,0x886341);
-    rect(w,20,48,92,166,0xFFE8EFF9);
-    VipPortrait(w,20,48,92,166);
-    for(int y=54;y<=122;y+=34)rect(w,122,y,234,28,0xFFF1DADB);
-    field(w,"Name: ",VipState.p.player,62,true);
-    field(w,"VIP Start Date: ",VipState.p.issued,96);
-    field(w,"VIP Expiry Date: ",VipState.p.expires,130);
-    if((VipState.p.flags&1) && VipState.p.buffRemaining) {
-        const u32 secs=VipState.p.buffRemaining>359999?359999:VipState.p.buffRemaining;
-        char wait[9];const u32 hrs=secs/3600,mins=secs/60%60,seconds=secs%60;
-        wait[0]=static_cast<char>('0'+hrs/10);wait[1]=static_cast<char>('0'+hrs%10);wait[2]=':';
-        wait[3]=static_cast<char>('0'+mins/10);wait[4]=static_cast<char>('0'+mins%10);wait[5]=':';
-        wait[6]=static_cast<char>('0'+seconds/10);wait[7]=static_cast<char>('0'+seconds%10);wait[8]=0;
-        text(w,wait,273,195,80,0x7A6555); // Server snapshot owns readiness; no client-clock unlock.
-    }
-    text(w,"VIP EXP",160,235,95,0x282828);
-    if(showExperience())text(w,VipState.p.experience,24,252,322);
-    // The supplied strip includes both fill and empty colors. Preserve its
-    // exact green/track pixels while sizing the fill from the server's percent.
-    // Gold means full EXP AND a server-authorized upgrade, not level 10's full bar.
-    // Stretch opaque interior columns, never the transparent end cap. Both the
-    // empty track and colored fill stay exactly four pixels high to their ends.
-    picture(w,1,24,272,322,4,104,0,7,4);
+    rect(w,0,0,mainWidth,mainHeight,0xFFF4FCFF);
+    if(!designTexture())return;
+    picture(w,15,0,0,mainWidth,mainHeight,0,0,1412,1114);
+    // Erase EVERY example-data region with blank slices from the same artwork.
+    // The approved file is a skin atlas, never the source of character/account state.
+    designPatch(w,40,110,322,423,45,110,6,423);
+    VipPortrait(w,X(40),Y(110),X(322),Y(423));
+    designPatch(w,532,118,815,46,1320,118,6,46);
+    designPatch(w,532,204,815,47,1320,204,6,47);
+    designPatch(w,532,293,815,48,1320,293,6,48);
+    field(w,"Name: ",VipState.p.player,Y(124),0x30170C,true);
+    field(w,"VIP Start Date: ",VipState.p.issued,Y(211),0x358B23);
+    field(w,"VIP Expiry Date: ",VipState.p.expires,Y(300),0x3636C9);
+    // Whole native-size PNG buttons replace the mockup's illustrative faces.
+    designPatch(w,440,360,895,172,1340,360,6,172);
+    designPatch(w,1340,7,69,63,1250,7,6,63);
+    designPatch(w,498,772,195,68,460,772,6,68);
+    designPatch(w,498,980,195,68,450,980,6,68);
+    designPatch(w,390,550,982,47,20,600,6,47);
+    const char* status=VipInteraction.phase==1?"Preparing upgrade request...":
+        VipInteraction.phase==2?"Upgrade sent. Waiting for server...":
+        VipInteraction.phase==3?"Reply delayed. Close and reopen VIP.":
+        VipInteraction.notice?"Requirements changed. Review Upgrade again.":VipState.p.status;
+    VipApi.infoText(w,status,X(395),Y(565),X(978),0x30170C);
+    designPatch(w,180,653,1050,28,1160,653,40,28);
     const u32 pct=VipState.p.percent>100?100:VipState.p.percent;
     const bool upgradeReady=pct==100 && (VipState.p.flags&8) && VipState.p.level<10;
-    if(pct && showExperience())picture(w,1,24,272,static_cast<int>(pct*322/100),4,2,0,62,4,255,upgradeReady);
+    if(pct && showExperience())picture(w,15,X(180),Y(653),static_cast<int>(pct*X(1050)/100),Y(681)-Y(653),210,653,670,28,255,upgradeReady);
+    designPatch(w,400,691,800,40,30,691,6,40);
+    if(showExperience())VipApi.statusText(w,VipState.p.experience,X(80),Y(696),X(1255),0x30170C);
     char level[24],caption[40];number(level,VipState.p.level);int n=0;
-    const char* prefix="Vip Level : ";while(*prefix)caption[n++]=*prefix++;
+    const char* prefix="VIP Level : ";while(*prefix)caption[n++]=*prefix++;
     for(int i=0;level[i];++i)caption[n++]=level[i];caption[n]=0;
-    text(w,caption,22,299,220,0x282828);
+    designPatch(w,30,784,447,56,490,784,6,56);
+    VipApi.infoText(w,caption,X(35),Y(800),X(425),0x30170C);
+    designPatch(w,30,847,645,80,25,847,5,80);
     for(u32 i=0;i<10;++i) {
-        const int x=23+static_cast<int>(i)*32;
-        rect(w,x,324,28,28,i<VipState.p.level?0xFFDFB355:0xFFD4DFEF);
-        rect(w,x+1,325,26,26,0xFFF4F8FF);if(i<VipState.p.level)picture(w,14,x+2,326,24,24,0,0,0,0);
+        const int x=X(35+static_cast<int>(i)*63);
+        picture(w,15,x,Y(851),X(59),Y(74),i<VipState.p.level?33:349,851,59,74);
     }
-    text(w,VipState.p.upgrade,22,356,328);
-    text(w,VipState.p.membership,14,400,345,0x7A6555);
-    text(w,VipState.p.status,22,219,330,0x88725A);
-    // Remove the template's inactive placeholder cards, including after expiry.
-    rect(w,396,109,372,257,0xFFF2F8FF);clampBenefitScroll();
+    designPatch(w,28,938,641,42,25,938,5,42);
+    VipApi.bodyText(w,VipState.p.upgrade,X(35),Y(952),X(635),0x30170C);
+    designPatch(w,20,1069,1370,36,1300,1069,6,36);
+    VipApi.bodyText(w,VipState.p.membership,X(25),Y(1076),X(1330),0x30170C);
+    // Remove every sample benefit, including when membership expires.
+    designPatch(w,733,835,603,204,725,835,6,204);clampBenefitScroll();
     const int count=benefitRows();
     for(int row=0;row<visibleBenefits && VipState.scroll+row<count;++row) {
         char effect[80];benefitRows(VipState.scroll+row,effect);
-        const int y=112+row*48;
-        picture(w,11,402,y,364,44,31,84,340,44);
-        rect(w,402,y+4,3,35,0xFFDFB355);
-        centeredText(w,effect,413,y+15,342,0x5D4C3B);
+        const int y=Y(838+row*51),height=Y(44),x=X(735),width=X(586);
+        picture(w,15,x,y,width,height,735,838,586,44);
+        picture(w,15,x+X(72),y+1,width-X(80),height-2,1220,844,4,30);
+        // Fit live labels to the compact cards without overlapping adjacent rows.
+        int length=0;while(length<79 && effect[length])++length;
+        int cut=length,measured=0;
+        const int textX=X(821),textWidth=X(1310)-textX;
+        do {measured=reinterpret_cast<int (__thiscall *)(void*,const char*,int,int,int,int,int)>(0xA21C90)(w,effect,cut,0,mainBodyFont,0,0);if(measured<=textWidth)break;}while(--cut>0);
+        if(cut>0 && measured>=0 && measured<=textWidth) {
+            effect[cut]=0;
+            VipApi.bodyText(w,effect,textX,y+(height-mainBodyFont)/2,textWidth,0x30170C);
+        }
     }
-    rect(w,779,133,5,207,0xFFDDE5F2);
+    rect(w,X(1359),Y(864),2,Y(143),0xFFDDE5F2);
     if(count>visibleBenefits) {
-        const int thumb=207*visibleBenefits/count<16?16:207*visibleBenefits/count;
-        const int y=133+(207-thumb)*VipState.scroll/(count-visibleBenefits);
-        rect(w,779,y,5,thumb,0xFF9DADC8);
+        const int track=Y(143),thumb=track*visibleBenefits/count<6?6:track*visibleBenefits/count;
+        const int y=Y(864)+(track-thumb)*VipState.scroll/(count-visibleBenefits);
+        rect(w,X(1359),y,2,thumb,0xFF9DADC8);
     }
     for(const auto& c:controls)paintButton(w,c,!enabled(c)?3:VipState.pressed==c.id?2:VipState.hover==c.id?1:0);
+    // Paint AFTER every atlas patch. The membership-background patch starts
+    // at y178 and used to erase the lower pixels of this y169 countdown.
+    if((VipState.p.flags&1) && VipState.p.buffRemaining) {
+        const u32 secs=VipState.p.buffRemaining>359999?359999:VipState.p.buffRemaining;
+        char wait[16]="Buffs: ";const u32 hrs=secs/3600,mins=secs/60%60,seconds=secs%60;
+        wait[7]=static_cast<char>('0'+hrs/10);wait[8]=static_cast<char>('0'+hrs%10);wait[9]=':';
+        wait[10]=static_cast<char>('0'+mins/10);wait[11]=static_cast<char>('0'+mins%10);wait[12]=':';
+        wait[13]=static_cast<char>('0'+seconds/10);wait[14]=static_cast<char>('0'+seconds%10);wait[15]=0;
+        rect(w,289,168,128,14,0xFFF4FCFF);
+        VipApi.statusText(w,wait,289,168,128,0x30170C);
+    }
 }
 EXPORT void __stdcall VipOpen() {
     void* w=VipState.window;
@@ -571,13 +709,14 @@ EXPORT void __stdcall VipOpen() {
         w=reinterpret_cast<void* (__cdecl *)(u32)>(0xDBBC4F)(0xB4); if(!w) return;
         reinterpret_cast<void (__thiscall *)(void*,int)>(0x86B950)(w,0);
         at<u32>(w,0)=VipApi.vtable;
-        reinterpret_cast<void (__thiscall *)(void*,int,int)>(0xA245C0)(w,800,420);
+        reinterpret_cast<void (__thiscall *)(void*,int,int)>(0xA245C0)(w,mainWidth,mainHeight);
         at<int>(w,0x2C)=0x3FC;
-        at<int>(w,0x1C)=80; at<int>(w,0x20)=80;
+        at<int>(w,0x1C)=20; at<int>(w,0x20)=20;
         VipState.window=w;
         reinterpret_cast<void (__thiscall *)(void*,void*)>(0xA2D240)((void*)0x131F4E8,w);
     }
     release(w); VipState.hidden=0; VipState.hover=0; VipState.scroll=0;
+    VipInteraction.phase=VipInteraction.pollPending=VipInteraction.notice=0;
     at<int>(w,0x28)=1; VipState.refresh=tick(); startTimer(); dirty(w);
     // Registration inserts behind existing HUD roots. Raise on every explicit
     // open/reopen so covered Inventory/Equipment menu buttons cannot win clicks.
@@ -587,6 +726,7 @@ EXPORT int __stdcall VipReceive(const Snapshot* p) {
     if(!p || p->id!=0xA1C || p->length!=sizeof(Snapshot) || p->magic!=0x55504956 || p->version!=4 ||
         !p->token || p->level>10 || p->percent>100 || (p->flags&~2047) || p->questLevel>10) return 0;
     if(!(p->flags&2) && (!VipState.ready || VipState.hidden || p->token!=VipState.p.token)) return 0;
+    VipInteraction.pollPending=0;VipInteraction.lastReply=tick();
     bool changedQuest=VipState.p.token!=p->token || VipState.p.level!=p->level ||
         VipState.p.questLevel!=p->questLevel || VipState.p.questCost!=p->questCost;
     for(int i=0;i<3;++i)if(VipState.p.questItems[i].id!=p->questItems[i].id ||
@@ -601,6 +741,9 @@ EXPORT int __stdcall VipReceive(const Snapshot* p) {
     VipState.p.questStatus[63]=0;for(auto& item:VipState.p.questItems)item.name[47]=0;
     VipState.p.buffPrompt[95]=0;
     VipState.ready=1;
+    if(!(p->flags&2) && VipInteraction.phase==1 && !queuedUpgradeValid()) {
+        VipInteraction.phase=0;VipInteraction.notice=1;
+    }
     // QuestActive describes saved data; only QuestOpen (response to Upgrade)
     // asks for the popup. Ordinary roulette/VIP opens show the main card alone.
     if(p->flags&2) {questHide();VipOpen();if(p->flags&64)VipQuestOpen(2);}
@@ -635,7 +778,7 @@ EXPORT void __fastcall VipDown(void* w,void*,int x,int y) {
     }
     release(w); VipState.pressed=VipHit(x,y);
     if(VipState.pressed) reinterpret_cast<void (__thiscall *)(void*,void*)>(0xA4B750)((void*)0x131F4E8,w);
-    else if(y>=0 && y<18) {
+    else if(y>=0 && y<Y(67)) {
         VipState.dragging=1;
         reinterpret_cast<void (__thiscall *)(void*,int,int)>(0x880AD0)(w,x,y);
     }
@@ -655,6 +798,7 @@ EXPORT void __fastcall VipUp(void* w,void*,int x,int y) {
             else if(c.action==-5 || (c.action==-3 && VipQuestState.mode==5))VipQuestOpen(2);
             else if(c.action==-3)questHide();
             else if(c.action==-4) {if(purchaseReady()){send(8+VipQuestState.selected,VipQuestState.chosen.minutes,VipQuestState.chosen.cost);hide(false);}}
+            else if(c.action==4 || c.action==7)queueUpgrade(c.action);
             else {send(c.action);hide(false);}break;
         }
         dirty(w);return;
@@ -669,7 +813,7 @@ EXPORT void __fastcall VipUp(void* w,void*,int x,int y) {
         else if(c.id==5) VipQuestOpen(4);
         else if(c.id==6) {
             if(VipState.p.level>=5 && VipState.p.level<10 && !(VipState.p.flags&32)) {
-                send(4);VipState.refresh=tick();hide(false); // Server prepares the one-ticket popup.
+                queueUpgrade(4); // Server prepares the one-ticket popup.
             } else VipQuestOpen((VipState.p.flags&32)?2:1);
         }
         else { send(c.action); VipState.refresh=tick(); if(c.action) hide(false); }
@@ -704,6 +848,9 @@ EXPORT void __fastcall VipCursor(void* w,void*,int x,int y) {
     VipMove(w,0,x,y);
     void* cursor=*reinterpret_cast<void**>(0x121333C);
     if(cursor) reinterpret_cast<void (__thiscall *)(void*,int)>(0xA764A0)(cursor,((w==VipQuestState.window?VipQuestState.hover:VipState.hover) || questItemHit(w,x,y))?2:0);
+    // Slot 30 runs the stock tooltip reset above, then updates our hint. Moving
+    // away, changing rows, closing, or opening a modal cannot retain stale text.
+    benefitTooltip(w,x,y);
 }
 EXPORT void* __fastcall VipDestroy(void* w,void*,int flags) {
     if(w==VipQuestState.window) {questHide();VipQuestState.window=0;return reinterpret_cast<void* (__thiscall *)(void*,int)>(0x86E240)(w,flags);}

@@ -1,39 +1,45 @@
 # Native VIP UI v4
 
+The September 18 Ragnarok skin updates the complete native VIP window and its
+popups. See [skin, assets and preview deployment](vip-ragnarok-skin.md).
+
 Independent optional patch VipUI (10008), for 2025-07-16 Ragexe. Requires the
 matching VIPManager.txt / VIPSystem.txt and VIPU v4 server from devseara/Ragnarok.
 
 Install the current base BattlePass-ChatUI-NPC-Gacha package first (it already
 contains the accepted Gacha v20 and Battle Pass name fixes). Then apply the
-separate `install/DevSeara-VIP-UI.diff` after `git apply --check` succeeds.
-That preserved bootstrap installs the original VIP package. Next apply
-`install/DevSeara-VIP-UI-v2-upgrade.diff` to install this updated source, runtime
-and artwork. Existing original-v2 installations need only the upgrade diff.
-Do not reapply either diff to an already updated working copy; check first.
+preserved installation chain below, checking each diff before applying it:
+
+1. `install/DevSeara-Announcement-Item-Icons.diff` (bootstrap registry context).
+2. `install/DevSeara-VIP-UI.diff` (original VIP bootstrap).
+3. `install/DevSeara-VIP-UI-v2-upgrade.diff` (previous published VIP update).
+4. `install/DevSeara-VIP-UI-compact-regular-upgrade.diff` (this compact update).
+
+Existing package `367c67c`/`9aee418` installations need only step 4. Do not
+reapply old diffs or force a failed check. The announcement feature need not be
+selected in WARP. Do not replay historical Gacha upgrades over the full base.
 
 ```powershell
-git apply --check -- "$patchPackage/install/DevSeara-VIP-UI-v2-upgrade.diff"
-git apply --whitespace=nowarn -- "$patchPackage/install/DevSeara-VIP-UI-v2-upgrade.diff"
+git apply --check -- "$patchPackage/install/DevSeara-VIP-UI-compact-regular-upgrade.diff"
+git apply --whitespace=nowarn -- "$patchPackage/install/DevSeara-VIP-UI-compact-regular-upgrade.diff"
 ```
 
-Back up existing client VIP artwork before the original-v2 migration. Replace
-the old complete button PNGs with the matching files from `Assets/VipUI` and
-preserve/reapply custom artwork at the documented dimensions. The automatic
-missing-file installer intentionally never overwrites an existing image.
-Install matching client and map-server together; no player-data reset is needed.
-The announcement add-on is independent. The preserved VIP bootstrap's registry
-context expects it installed first. Do not replay historical
-Gacha upgrade diffs over the current full base package.
+Back up the existing game `vipui` folder, then replace its old VIP PNGs with the
+63 files from this package and rebuild the client. This explicit migration is
+needed because the normal missing-file installer preserves existing custom art.
+Do not use old EXEs with the renamed/re-sized images. Preserve other UI folders.
 
 Select Native VIP UI in WARP and rebuild from the original source client using
-your existing patch selections. Its 58 bundled PNGs (52 complete button states,
-the crown and retained legacy artwork) are copied to
-data/texture/<client UI prefix>/vipui only when missing. Existing art is preserved.
+your existing patch selections. Applying the patch automatically creates
+`data/texture/<client UI prefix>/vipui` beside the output EXE and copies its 63
+required PNGs (60 complete button states, approved design atlas, crown and
+item-box background) only when missing. Existing art is preserved; a later
+build repairs missing files. Selecting the checkbox alone does not install art.
 No profile is silently changed; no client EXEs are distributed in this package.
 
 Roulette opens VIP (its icon artwork remains yours to replace). The native card
 shows canonical name, membership dates, VIP EXP, earned crowns, active benefits,
-membership/store/storage/buffs and Upgrade. The 800x420 card renders the current
+membership/store/storage/buffs and Upgrade. The 460x362 compact card renders the current
 character using the native Alt+Q compositor on a private offscreen frame. It
 includes body, hair/palettes, upper/middle/lower headgear and garment views, with
 costumes taking priority in all four slots. Multi-slot headgear is drawn once;
@@ -46,21 +52,28 @@ Single-line fields read `Name: <character>`, `VIP Start Date: <date>` and
 `VIP Expiry Date: <date>`. Matching server dates use `09-17-2026 Thursday` format,
 server-local calendar dates and English weekdays; missing history is not invented.
 
-Every button loads a complete PNG including its caption: no code-drawn caption,
-border, tint, cropping or scaling. Open Store, Apply VIP, Open Storage and VIP
-Buffs have separate `openstore`, `applyvip`, `openstorage` and `vipbuffs` files.
-Their fitted widths and click bounds are preserved. Main and quest Upgrade share
-`upgrade` images. Refresh, Yes, No, Cancel and Close have their own images too.
-Purchase has its own fitted 56x18 images. Each has `_out`, `_over`, `_press` and `_off` variants. Arrows keep `scroll_top.png`
-and `scroll_bot.png` for normal, plus `_over`, `_press` and `_off` variants.
-Keep exact dimensions when editing; missing/mis-sized normal artwork disables
-the corresponding action. A missing/mis-sized optional state falls back to normal
-artwork, not a regenerated caption. See [button filenames and sizes](vip-ui-buttons.md).
-Existing legacy openstore images are only skin strips (66x18), not the new
-complete 68x18 buttons. Back them up and explicitly replace them during migration;
-the ordinary WARP installer deliberately does not overwrite existing artwork.
-Benefits use vip_status_bg.png with one centered-text 44px card per effect,
-five visible at a time. `VIPSystem.txt` supplies the current tier's descriptions
+Main and popup buttons use complete native-size PNGs, including
+centered captions and normal/hover/press/disabled states. The four main actions
+are 128x22 in a centered two-column grid; Upgrade/Refresh are 60x20.
+Hit bounds exactly match the PNGs. Missing/mis-sized normal artwork disables
+actions; missing optional states fall back to the normal PNG. The private
+`vip_design.png` atlas must be 1412x1114. Filenames no longer use `readable_`;
+unused legacy art is not bundled. Rebuild old clients when migrating filenames.
+See [button filenames and sizes](vip-ui-buttons.md). WARP's ordinary installer
+does not overwrite existing custom art. Start-date values are green, expiry-date
+values red, and labels navy. Dates and all other account data remain server-owned.
+Benefits use approved blue/gold crown cards with four visible rows at a time and
+bounded, left-aligned text. Main labels, dates, EXP, cooldown and body text use
+11px regular fonts, including the canonical character name. All button captions
+and all popup text also use normal weight. See [font/security notes](vip-regular-security.md).
+Hovering a clipped benefit card displays its complete server-supplied text in
+the existing native Ragnarok tooltip (up to the protocol's 79-byte limit).
+Short fitted labels need no tooltip. The hint follows the current scroll row
+and is suppressed for modal dialogs, hidden/expired UI and foreign capture.
+The client uses stock cursor tooltip reset and positioning, without a shared
+tooltip hook or character-name substitution.
+Popups retain their existing readable sizes and are centered over the parent.
+`VIPSystem.txt` supplies the current tier's descriptions
 through its `S_Level1`..`S_Level10` / `S_Rows` text configuration (1-20 rows,
 up to 79 bytes each). Actual bonus commands stay exclusively in `vip_db.yml`.
 The complete `Auto drop -N%` message is another editable row in that script;
@@ -71,28 +84,39 @@ rows without changing packet size or version. The client still reads old
 per-tier pipe-separated snapshots when that flag is absent.
 Previous/future tiers are not added together. Non-VIP users, VIP level zero and
 disabled VIP levels have no benefit cards; expired benefits clear on the next
-snapshot. scroll_top.png and scroll_bot.png move one card at a time, disable at
+snapshot. The PNG arrows move one card at a time, disable at
 the limits, and update the position indicator. Refresh preserves position;
 reopening resets it and fewer effects clamp it. No new packet or version is
-needed. `membership_crown.png` appears in earned level boxes:
+needed. The approved atlas crown appears in earned level boxes:
 level zero has no crowns; levels one through ten have one through ten crowns.
-The old `star_on.png` is kept for recovery but no longer rendered. The same crown
-appears on each membership-duration card. Keep its original transparent alpha.
-The main level caption is `Vip Level : N`, with no maximum-level denominator.
+The old `star_on.png` is retired and is not bundled.
+`membership_crown.png` appears on each membership-duration card; keep its alpha.
+The main level caption is `VIP Level : N`, with no maximum-level denominator.
 Requirement item icons sit inside item_main_bg.png.
 
-vip_exp.png stays green below full EXP. It is tinted gold only at 100% when the
+The approved full-width EXP bar stays blue below full EXP. It is tinted gold only at 100% when the
 server permits upgrading, including saved quests with full EXP. Maximum level 10
 does not imply another upgrade. This is a private draw tint, preserving the
 supplied pixels' shading/alpha and leaving the image file/shared texture intact.
-The next level's EXP refresh restores green automatically.
-Opaque interior columns of vip_exp.png are stretched so all four rows reach the
-end; its transparent edge is not stretched into a narrowed tail. Level zero and
+The next level's EXP refresh restores blue automatically.
+The scaled approved track and fill retain their reference shading.
+Level zero without active membership and
 zero-denominator EXP counters (including 0/0 EXP) are hidden.
 
 Full EXP enables Upgrade. Confirmation and requirement windows use native
 bring-to-front on every open/reopen. Clicking the blocked main VIP window while
 a popup is open raises the popup instead of dragging/activating the main card.
+Upgrade/Submit Yes now waits for an outstanding Refresh reply and then at least
+350ms after that reply before sending once. This avoids the server's existing
+shared 300ms Refresh/action cooldown. The parent remains visible with a waiting
+message and blocked actions until the authoritative Open response arrives.
+No mutation is automatically retried. Changed requirements cancel an unsent
+request; Close cancels its local queue. A missing reply after ten seconds shows
+a close/reopen instruction. Closing cannot undo an already-sent operation.
+The UI timer wakes at 100ms only to service this queue; background refreshes
+remain three seconds apart, including while a confirmation sits open, to renew
+the server token. Polling pauses only after Yes queues an upgrade. Server packet
+formats, cooldowns, costs and validation are unchanged.
 Yes/No confirmation starts a server-owned random
 item quest; a separate popup shows item images, quantities, inventory counts,
 Zeny cost, Upgrade and Cancel. Accepted quests reopen without rerolling; Cancel
@@ -114,8 +138,8 @@ repository's client folder. Those client data files must be merged separately;
 WARP's VIP art installer does not overwrite stateicon Lua or custom effect art.
 
 Apply VIP opens five selectable membership durations: 1, 3, 7, 15 and 30 days.
-Cards match the provided reference: rounded gray rows, crown and bold duration
-on the left, bold right-aligned Zeny prices, and a cream/gold selected gradient.
+Cards use pale-blue beveled rows, crown and regular-weight duration
+on the left, regular right-aligned Zeny prices, and a cream/gold selected gradient.
 Text and the card backgrounds remain native and dynamic; prices are not baked
 into images. The crown is a separate editable PNG in `vipui`.
 Selecting a row does not buy anything. Purchase submits the selected duration
@@ -136,7 +160,8 @@ The server reserves a persistent account-wide `#VIPBuffNext` deadline before
 applying the six original cash-food effects. Claims are limited to one per rolling
 3600 seconds, including after relog/character changes. VIP renewal, death or buff
 removal does not reset the wait. The main button is disabled during cooldown and
-shows `HH:MM:SS` alongside it; only a server refresh can re-enable it. Refreshes
+shows `Buffs: HH:MM:SS` below the action grid's right column; only a server
+refresh can re-enable it. Refreshes
 occur every three seconds while the card is open. A stale open confirmation is
 closed when membership/cooldown eligibility changes. The legacy NPC buff entry
 redirects to the native card and cannot grant independently. Account saves use
@@ -153,9 +178,9 @@ Install matching client/map-server binaries together; old/new mismatches fail cl
 Stock roulette-info fallback remains; BPUI/GCHA/0BF6 are unchanged.
 The runtime has no imported DLL dependencies, private text/item rendering,
 window-owned capture, bounded fields and a UI-thread refresh timer. Its private
-API is 320 bytes: the previous 292-byte API remains unchanged, followed by four
-Purchase PNG pointers, a private bold 14px label adapter, the crown path and a
-private right-aligned bold 18px price adapter. The runtime
+API is 372 bytes, including complete button-state paths, the approved atlas,
+compact regular text adapters and regular 14px duration/18px price adapters.
+Retired image slots are zeroed without shifting the API. The runtime
 container format remains version 2; that is separate from the VIPU wire version.
 
 The main window raises itself on explicit open/reopen, just like the quest
@@ -172,10 +197,10 @@ items, hidden windows, changed snapshots and foreign capture fail closed.
 
 tools/build_vip_ui.py builds runtime.bin/json in a full WARP checkout with Visual
 Studio C++ and pefile. Tests: test_vip_ui.py (including real EXP color pixels),
-test_vip_button_pngs.py (all 48 real state PNGs, no caption overlays, editable
+test_vip_button_pngs.py (all 60 real state PNGs, no caption overlays, editable
 pixel ownership, missing/mis-sized art, input states and bounds),
 test_vip_visibility.py (earned crown pixels, active/expired benefits, fitted controls,
-zero EXP and four-pixel bar through its final column),
+zero EXP, cleared mockup data and the EXP bar through its final column),
 test_vip_portrait.py (native ABI/equipment selection/bounded composition),
 test_vip_quest_ui.py (optional --game
 for actual item BMPs), test_vip_quest_items.py (centering, both mouse buttons,
@@ -186,11 +211,16 @@ test_vip_asset_install.js, plus all preserved suites and
 standalone/reversed-order builds. Offline tests do not certify live gameplay.
 `test_vip_buffs.py` covers the native confirmation, fixed claim packet, no-action
 cancellation, server-only cooldown/expiry, stale presses, prompt bounds and PNGs.
-`test_vip_benefit_boxes.py` verifies centered text, 20 script-defined rows and
+`test_vip_benefit_boxes.py` verifies left-aligned regular text, 20 script-defined rows and
 scrolling. `test_vip_submit_confirmation.py` covers final Yes/No, no premature
 submission, foreground/capture and changed-snapshot invalidation.
 `test_vip_upgrade_effect.py` executes the actual client handlers and actor
 lookups to verify EF_ANGEL resolves both self and other characters.
+`test_vip_upgrade_race.py` covers delayed refreshes, single-send ownership,
+duplicate clicks, stale requirements, lost replies, transport failure and tick
+wrap. `test_vip_benefit_hover.py` covers the complete native tooltip ABI and all
+20 scroll rows. `test_vip_timer_visibility.py` verifies that no later background
+draw erases the lower countdown glyph rows.
 
 Keep stable-battlepass-gacha-2026-09-15 immutable. Back up installed binaries and
 data, stop affected processes, verify matching client/server versions, then test
