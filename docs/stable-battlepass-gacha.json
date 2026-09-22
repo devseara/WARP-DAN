@@ -1,0 +1,248 @@
+{
+  "baseline": "stable-battlepass-gacha-2026-09-15",
+  "component": "client",
+  "accepted": "2026-09-15: user confirmed Battle Pass and Gacha working perfectly",
+  "runtime_source_server_commit": "7b3e48a2dd4c2bcd618e0661389c59e2757c129e",
+  "accepted_binaries_sha256": {
+    "Ragnarok.exe": "c6602d9b314d5ee98d2c31f8e0d23696e6ee2627c4510e60d0538101a2ddc1b3",
+    "map-server.exe": "f603e0fd18c3aa0686c6b49637a4b5b44bce86303162f57e3af1a7589772b2b3",
+    "map-server-generator.exe": "aa23a5d4f8a0c1e1ce4280fd9fcc008cd294501f67554c795237987dd5af5afc",
+    "char-server.exe": "368a456ca6ad0e38af8e8848db0958a4b3e671d12815c50db3566dfd446f3e18"
+  },
+  "files": {
+    "Assets/BattlepassUI/Abandon_Dialog_Background.bgra": {
+      "sha256": "7c03044d7f2bb6e037efca01a425a7a6cf5878555a4ed16521e5ba7b05409c4d",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Button_Disabled_Off.bgra": {
+      "sha256": "538fa19af36421236753b0007aa5bde95c7258aedb0f57aadf6d2be4c9abb600",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Button_Hover_Over.bgra": {
+      "sha256": "8594b22ec8e88ca778c081d2cffedc77cfadd07488fe54003fa168306e8effc9",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Button_Mouse_Press.bgra": {
+      "sha256": "74336340b15011e5869085a3a6f55a6d07c8766e62545c1dd9c22e394c6b7121",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Button_Normal_Out.bgra": {
+      "sha256": "476fdc49a70e6c87f143aea72e84015699f47abf9b54544631f94a18826c3eb4",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Abandon_Dialog_Background.bmp": {
+      "sha256": "31e0e2fd224346e33cee52c5f74e9fa76fb8cb022f57aa594c7a8f70263a74fa",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Button_Disabled_Off.bmp": {
+      "sha256": "a127efa3eb30f3a7ebb61012ba45eb5853b5508462b7cd49f0187a4c10c2ee24",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Button_Hover_Over.bmp": {
+      "sha256": "bdc089d6ae9984c6ec3e95b8be94de2408c3bccd8cef513c3c179435c4b9e28f",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Button_Mouse_Press.bmp": {
+      "sha256": "f44cc5e7756b192d1d487b51311e7b754441d5c8f90c22668cf54586bdef1f49",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Button_Normal_Out.bmp": {
+      "sha256": "c2eee69bec74947ea06a320fc6656a8454b965b24f3bbda5b9712be17e9d1c4d",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Cursor_Hover.bmp": {
+      "sha256": "acf727e7a429768caebdef017d4f38cb2d4d8f823984336fb769358b3fef38cb",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Cursor_Mouse_Press.bmp": {
+      "sha256": "67ae60892bc7ee86fe5d7d471f89223c2879d730e045cc7f74d7c02d07ce8cf0",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Difficulty_Easy_Background.bmp": {
+      "sha256": "2468a100a6861708c54f1b05a50fb00ca69f2639e94df8ba76c38bc9c6df6f22",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Difficulty_Hard_Background.bmp": {
+      "sha256": "6d81769cb43d668b5fed80dcf4baf5d1ab638a9e26029a4cac34d12f19276d90",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Difficulty_Hardcore_Background.bmp": {
+      "sha256": "415b59d65826f2982b23c5e5bd4e0a2012c7e84eea32b277442757a0650686db",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Difficulty_Normal_Background.bmp": {
+      "sha256": "9df95e1f47dd6254b97c96f0515a90fc7cd2c3cfc85032900ea3826ae426cf53",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Difficulty_Reward_Row_Border.bmp": {
+      "sha256": "29da247a4b0e57e8fc6b9dc3af447e07f234f70da360ea9f595ec2f705ef8ba3",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Menu_Tab_Disabled.bmp": {
+      "sha256": "43507f8674916de1e3b96f62f055659986e7aca3644cc8871a1556dbc447416b",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Menu_Tab_Hover.bmp": {
+      "sha256": "1eacf284f59b64a892c8670fcaebf66194df1875bb9cf29b8a5ef8ab3a0800f7",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Menu_Tab_Normal.bmp": {
+      "sha256": "d3e9e3a2940f035ea5f5b313ac211634b1d48c6dfb4994499b2afbeb4d086ed6",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Menu_Tab_Selected.bmp": {
+      "sha256": "36ea9a44e34af135c3c23b1becff9a28db7414bf6006ee26246aeeb5bc284174",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Progress_Background.bmp": {
+      "sha256": "70b795eedd0536a8674f2dd6d4982189f3afe1e15895483e1bbdee876e5d68d8",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Progress_Border.bmp": {
+      "sha256": "8bb3cee4be79f7e27abfd915d1b906495f9252e405d7478cbb563074e28d17e2",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Progress_Fill.bmp": {
+      "sha256": "16e633ac267985463cad9db46eeffa4ffc111674989233f009cdcb68c4cbcb0f",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Quest_Type_Border.bmp": {
+      "sha256": "6f66ff147124f6ff80e75e13aae0b12eef638099578505822858f1cf79ad04c8",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Quest_Type_Border_Disabled.bmp": {
+      "sha256": "5445406486d0b6b1c59daefdf335f87bd079bf435bb3166e585925eb418d8af4",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Reward_Row_Background.bmp": {
+      "sha256": "0971360591b41bce156617bca944e5ba74345b5a4cc8a450a8444822e049c81b",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Section_Divider.bmp": {
+      "sha256": "31da92df2a7cfc7d891b9ef11c83eba30913cf184a4d9bbe3a250e5c10962ede",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Selection_Border.bmp": {
+      "sha256": "4cb8705274ff849ecd2b48d3c0fb5a669f491c93b5369f432b24c62c526a8e78",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/client/Window_Background.bmp": {
+      "sha256": "d1b551384f849a7d19c1298814b0f793cb889395541574317adc28a784417eac",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Cursor_Hover.bgra": {
+      "sha256": "ac95204ea5dcc79c91999de4d022870b36889b551e4ecc0452ace6734fe03d14",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Cursor_Mouse_Press.bgra": {
+      "sha256": "592ae482c0da8c0fdc85b0d9f2715801310cbd9f7443043689d3f1e10726b029",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Difficulty_Easy_Background.bgra": {
+      "sha256": "d1a5c38d312c7de8617453396fba93f09d12c2cecdd136cb9f7bcb80fdb0fb2f",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Difficulty_Hard_Background.bgra": {
+      "sha256": "b9640bc7efa0e733b273a176f076b2e2226f334e2215a47093c7814a6bf41a0b",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Difficulty_Hardcore_Background.bgra": {
+      "sha256": "3235eb3ffc2f4ee6ca7b056c86a9cf1fafdfd92dee515db609cc0b90c3e0201c",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Difficulty_Normal_Background.bgra": {
+      "sha256": "8e99f4d2102df35240aaf3f225f520417ec29138bfb3977562368a8440d8cebe",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Difficulty_Reward_Row_Border.bgra": {
+      "sha256": "017e4505f6e03848e174d575ee482f16dcc0f375c9dcf9a2802c1cd435f9f9ed",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Menu_Tab_Disabled.bgra": {
+      "sha256": "ef298837243595349665077f505f5299b9e40ce28cb7848397fe6d60bdaabf3e",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Menu_Tab_Hover.bgra": {
+      "sha256": "700cc3217a54329058264584e10125aac8f66b4913b177d969b739ed8bd565a9",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Menu_Tab_Normal.bgra": {
+      "sha256": "5ae32655d1e05f4074f59112219f90d65671fd11e55c8056faff9c81d45d6b62",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Menu_Tab_Selected.bgra": {
+      "sha256": "64d8c80b608586ed2a432999a683bc65e647a44910269ebc93019835e34bcfe2",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Progress_Background.bgra": {
+      "sha256": "216cdac02d66fc024131ae2a2c0a341f53c5101d096b9594fd5d0cf4841651f2",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Progress_Border.bgra": {
+      "sha256": "38eb2af401708fa4609a923355cdb635e48c679a7e96d0307479dfd953d3b081",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Progress_Fill.bgra": {
+      "sha256": "dac89a618aca4d2c10f15ba13cbe9df8fe12364f79fab74ea1d5854ddd72bfa0",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Quest_Type_Border.bgra": {
+      "sha256": "2cece0f3b8b6d96cde7a0beca77da71966ada22af95579de6d3771f2d4b5573b",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Quest_Type_Border_Disabled.bgra": {
+      "sha256": "f2dda0effd08ea3580b151c16bec47003d3f0a52f5bd168c705194414f0e554b",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Reward_Row_Background.bgra": {
+      "sha256": "f9d008fc586fcadc5052f3a6c63b9c37ff3b1664f4b61e64de5982bd1bf3b63e",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Section_Divider.bgra": {
+      "sha256": "25aa01761e16cb9c9c7c3f36ded94826d45c85d4d3436742be115a13176baec7",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Selection_Border.bgra": {
+      "sha256": "2032e564166edd4efc96cf10e34df823cc646b1d0ac3b55c7a461b9207acf6cb",
+      "mode": "binary"
+    },
+    "Assets/BattlepassUI/Skin_Names.json": {
+      "sha256": "b8da3c62dfe067354f653a40d012d47e1c1ef7a0782f4aec9681834ce0e93d6c",
+      "mode": "text-lf"
+    },
+    "Assets/BattlepassUI/Window_Background.bgra": {
+      "sha256": "44e71136aab93ae905fe2c19af528f58c819576e75331eeab7fcdaa5cc4bc8e4",
+      "mode": "binary"
+    },
+    "Assets/GachaUI/arrow_off_left.png": {
+      "sha256": "cd87684e2314dde9834e01104cd6a61635d6f027dd00c40ee65e2178797077db",
+      "mode": "binary"
+    },
+    "Assets/GachaUI/arrow_off_right.png": {
+      "sha256": "c8abbc59b165de1d4cb7c92626a5429669177f21a5dac8a22fe3e1490ed1f913",
+      "mode": "binary"
+    },
+    "Assets/GachaUI/arrow_on_left.png": {
+      "sha256": "a2969e228253549475560f3279215d62d2082d2571112aa89ccfeeab80553818",
+      "mode": "binary"
+    },
+    "Assets/GachaUI/arrow_on_right.png": {
+      "sha256": "5cc92318a39bfa04d89638561f8b7dc747e3832c55624ee1829cc8a78a1841d9",
+      "mode": "binary"
+    },
+    "Scripts/Patches/BattlepassUI.qjs": {
+      "sha256": "c27913173acbdcf11f94eddc7cb2f2888f8904be87638ac2c5a777cd9e670ba9",
+      "mode": "text-lf"
+    },
+    "Scripts/Patches/GachaUI.qjs": {
+      "sha256": "9849a114cca3f6be407f8832ddf92f9a8f678ae9f7fb55dbb29fedc83422aab0",
+      "mode": "text-lf"
+    }
+  },
+  "installed_files": {
+    "Scripts/Patches/AutoCombatUI.qjs": {
+      "mode": "text-lf",
+      "sha256": "f8fc6786297351b18f1b3602a217fa23be338fa1474f87fb4156d1973088c7e7"
+    }
+  }
+}

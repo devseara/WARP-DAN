@@ -739,6 +739,55 @@ AutoCombatUIStatic.packetTableEntryVir = function(packetId)
 	return AutoCombatUIStatic.PacketSwitchTable + (packetId - 0x73) * 4;
 };
 
+// BPUI and GCHA share one native receive opcode. Per-patch writes to that
+// dispatch slot do not compose: WARP can serialize the independent patch
+// records in a different order, and ordinary reads see the original handler.
+// Own the slot/cells in one shared global tag, as the 0x0BEF route already does.
+AutoCombatUIStatic.registerPacket0BF6 = function(patchName, protocol, handlerVir)
+{
+	const n=AutoCombatUIStatic;
+	if(protocol!=="bpui" && protocol!=="gcha") throw Error("Unknown shared 0x0BF6 protocol");
+	if(!Number.isInteger(handlerVir) || handlerVir<=0) throw Error("Missing shared 0x0BF6 handler");
+	const key="SharedPacket0BF6.Router.Global.v1", cacheKey="SharedPacket0BF6.Router.v1";
+	CACHE.addUser(key,patchName); Exe.ActivateGlobal(); Exe.BeginTag(CACHE.getTag(key));
+	try {
+		const entryVir=n.packetTableEntryVir(0x0BF6),entryPhy=Exe.Vir2Phy(entryVir,CODE);
+		if(entryPhy<0) throw Error("Shared 0x0BF6 dispatch entry is not executable");
+		let route=CACHE.get(cacheKey);
+		if(!route) {
+			const stock=Exe.GetUint32(entryPhy);
+			if(Exe.Vir2Phy(stock,CODE)<0) throw Error("Shared 0x0BF6 stock fallback is not executable");
+			const cells=n.allocateBytes(new Array(12).fill(0),4);
+			route={entryVir,entryPhy,bpuiCellPhy:cells.phy,bpuiCellVir:cells.vir,
+				gchaCellPhy:cells.phy+4,gchaCellVir:cells.vir+4,fallbackCellVir:cells.vir+8,
+				fallbackVir:stock===n.PacketDefaultHandler?n.PacketMainLoopReturn:stock};
+			Exe.SetUint32(cells.phy+8,route.fallbackVir);
+			const a=n.asm(); a.emit(0x9C,0x60,0xBE); a.dword(n.PacketBuffer);
+			a.emit(0x66,0x81,0x3E); a.word(0x0BF6); a.jcc(0x85,"stock");
+			a.emit(0x66,0x83,0x7E,2,8); a.jcc(0x82,"stock");
+			for(const [name,magic] of [["bpui",0x49555042],["gcha",0x41484347]]) {
+				a.emit(0x81,0x7E,4); a.dword(magic); a.jcc(0x84,name);
+			}
+			a.jmp("stock");
+			for(const name of ["bpui","gcha"]) {
+				a.label(name); a.emit(0x83,0x3D); a.dword(route[name+"CellVir"]); a.emit(0); a.jcc(0x84,"unselected");
+				a.emit(0x61,0x9D,0xFF,0x25); a.dword(route[name+"CellVir"]);
+			}
+			a.label("unselected"); a.emit(0x61,0x9D); a.jmp(n.PacketMainLoopReturn);
+			a.label("stock"); a.emit(0x61,0x9D,0xFF,0x25); a.dword(route.fallbackCellVir);
+			const code=n.allocateCode(a); route.routerVir=code.vir;
+			const marker=n.allocateString("SharedPacket0BF6.v1"),record=[];
+			for(const value of [marker.vir,entryVir,route.routerVir,route.bpuiCellVir,route.gchaCellVir,route.fallbackCellVir])
+				record.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
+			n.allocateBytes(record,4); CACHE.put(cacheKey,route);
+		}
+		if(route.entryVir!==entryVir) throw Error("Shared 0x0BF6 route belongs to a different dispatcher");
+		Exe.SetUint32(route[protocol+"CellPhy"],handlerVir);
+		Exe.SetUint32(entryPhy,route.routerVir);
+		return route;
+	} finally { Exe.EndTag(); Exe.ActivePatch=patchName; }
+};
+
 AutoCombatUIStatic.buildSharedPacketRouter = function(route)
 {
 	const a = AutoCombatUIStatic.asm();
@@ -7002,3 +7051,6 @@ AutoCombatUI.validate = function()
 		return false;
 	}
 };
+
+// Shared native canvas/ABI helpers. Exporting these does not enable AutoCombatUI.
+AutoCombatUI.nativeHelpers = AutoCombatUIStatic;

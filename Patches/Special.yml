@@ -32,6 +32,12 @@ CustomSpecials:
     color : deeppink
     
     patches:
+        - BattlepassUI:
+            title : Battle Pass
+            recommend : no
+            author : DevSeara
+            desc : Adds the native Battle Pass window opened with @battlepassui, with server-backed progress, missions, reward previews and claims. Requires the matching BPUI server implementation and installs its supplied Battle Pass artwork beside the patched client.
+
         - PatchDiagnostics:
             title : Write patch diagnostics log
             recommend : no

@@ -78,7 +78,8 @@ const GlobalUIThemeStatic = {
 	StateThemeLabel: 28,
 	StateClassicLabel: 32,
 	StateNewLabel: 36,
-	StateSize: 40,
+	StateChatRefresh: 40,
+	StateSize: 44,
 	RowShift: 27,
 	RowX: 20,
 	RowY: 7,
@@ -303,6 +304,11 @@ GlobalUIThemeStatic.buildToggle = function(stateVir, pathVir, loadVir)
 	a.emit(0x53, 0xFF, 0x15); a.dword(GlobalUIThemeStatic.WriteFileIat);
 	a.emit(0x53, 0xFF, 0x15); a.dword(GlobalUIThemeStatic.CloseHandleIat);
 	a.label("apply");
+	// Optional chat subscriber updates existing windows without destroying logs,
+	// recipient history, tab/filter identity or a partially typed message.
+	a.emit(0xA1); a.dword(stateVir + GlobalUIThemeStatic.StateChatRefresh);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "chat_done");
+	a.emit(0xFF, 0xD0); a.label("chat_done");
 	// Inventory is optional: rebuild it only when it is currently open.
 	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.InventoryWindowId);
 	a.emit(0xB9); a.dword(GlobalUIThemeStatic.WindowManager);
@@ -713,7 +719,8 @@ ROGlobalZeroUITheme = function(_)
 		toggleVir: toggle.vir,
 		persistPathVir: persistPath.vir,
 		jobChildOffset: GlobalUIThemeStatic.StateJobChild,
-		basicInfoOffset: GlobalUIThemeStatic.StateBasicInfo
+		basicInfoOffset: GlobalUIThemeStatic.StateBasicInfo,
+		chatRefreshOffset: GlobalUIThemeStatic.StateChatRefresh
 	});
 
 	$$(_, 3, "Build the native Basic-page theme row and supplied toggle textures");

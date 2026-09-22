@@ -258,3 +258,12 @@
 385 : NativeActJobPreviews
 386 : ClanBodySkins
 387 : ItemDescriptionUI
+
+# Personal UI extensions: stable IDs preserve saved profile compatibility.
+10001 : ModernChatUI
+10003 : BattlepassUI
+10004 : ChatItemIcons
+10005 : ModernNpcDialog
+10006 : GachaUI
+10007 : NoticeMarquee
+10008 : VipUI

@@ -1,0 +1,23 @@
+-- Plain Lua source, loaded by the native Lua 5.1 resource loader.
+-- First-use defaults only. SaveData/ChatWndInfo_U.lua takes precedence.
+-- Tab names/order can be changed here; native Options edits each filter.
+CanDragWnd = 0
+
+local function tab(name, enabled)
+	local result = {
+		XPos = 0, YPos = 0, Width = 0, Height = 0,
+		TabState = "On", TabName = name
+	}
+	for i = 1, 25 do result["option" .. i] = 0 end
+	for _, i in ipairs(enabled) do result["option" .. i] = 1 end
+	return result
+end
+
+-- Remove stale partial records only when the native saved-layout load failed.
+for i = 1, 12 do _G["ChatSubWnd_" .. i] = nil end
+ChatSubWnd_1 = tab("Main", {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18,20,21,23,24})
+ChatSubWnd_2 = tab("Battle", {4,5,6,7,8,9,10,11,12,13,14,15,17,18,19,20,21,22,23})
+ChatSubWnd_3 = tab("Guild", {5})
+ChatSubWnd_4 = tab("Party", {4})
+-- Market is a normal/public-chat view, not a new server-side channel.
+ChatSubWnd_5 = tab("Market", {1})
