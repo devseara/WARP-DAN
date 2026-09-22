@@ -50,6 +50,12 @@ CustomUI:
             author : DevSeara
             desc : Keeps the original announcement presentation and adds inline item icons using ^i[ItemID] markup. No scrolling marquee or external runtime DLL is added. The internal NoticeMarquee ID is retained for saved profiles.
 
+        - ModernNpcDialog:
+            title : Renewal NPC Dialog UI
+            recommend : no
+            author : DevSeara
+            desc : Uses the supplied renewal-style NPC dialog frames and buttons while retaining native choices, scrolling and supported preview windows. Installs the supplied dialog artwork beside the patched client.
+
         - LoadGRFOnSlashCmd:
             title : Load GRF via Slash Command
             recommend : no
