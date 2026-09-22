@@ -56,6 +56,18 @@ CustomUI:
             author : DevSeara
             desc : Uses the supplied renewal-style NPC dialog frames and buttons while retaining native choices, scrolling and supported preview windows. Installs the supplied dialog artwork beside the patched client.
 
+        - ROGlobalZeroUITheme:
+            title : RO Global Zero UI Theme Toggle
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds the native-looking Classic UI / New UI switch to the Game Settings Basic tab using uirenewal/basicinfo/btn_tema_0.bmp and btn_tema_1.bmp. Its persisted state is shared by Renewal Chat, Basic Information, Experience Bar, Inventory, Status Icons V2, and Menu; switching themes refreshes open dependent windows immediately. QJS-only.
+
+        - ModernChatUI:
+            title : Supplied Renewal Chat UI
+            recommend : no
+            author : DevSeara
+            desc : Applies the supplied renewal-style chat frame, lock-aware tab menus, PM history, toggling emoticons, and All/Party/Guild/Allies/Clan channel selection. With RO Global Zero UI Theme Toggle selected, New UI shows this layout and Classic UI restores stock chat without losing tabs or drafts. Fresh layouts default to Main, Battle, Guild, Party and Market. Installs its artwork and default-tab resource beside the patched client.
+
         - LoadGRFOnSlashCmd:
             title : Load GRF via Slash Command
             recommend : no
@@ -91,12 +103,6 @@ CustomUI:
             recommend : no
             author : Louis T Steinhil
             desc : Adds a QJS-only, client-native AutoSupport settings UI with dedicated autosupport assets and Global/Classic menu icon states. It reuses the proven seven-tab AutoHunt frame as Basic, Player, Skill, Potion, Looting, Move, and Item; Player is a server-authoritative single-master selector populated from the current party. ASUI requests share 0x0BF8 and snapshots share 0x0BEF through distinct magic, with Banquet owning validation, persistence, and AutoSupport execution. Choose English (default), Traditional Chinese, Thai, Brazilian Portuguese, Indonesian, Filipino, Korean, or Japanese for fixed UI text. Each UI follows the existing UTF-8 or matching legacy code page without changing Windows language settings. Required assets copy automatically beside the output EXE.
-
-        - ROGlobalZeroUITheme:
-            title : RO Global Zero UI Theme Toggle
-            recommend : no
-            author : Louis T Steinhil
-            desc : Adds the native-looking Classic UI / New UI switch to the Game Settings Basic tab using uirenewal/basicinfo/btn_tema_0.bmp and btn_tema_1.bmp. Its persisted state is shared by the RO Global Zero Basic Information, Experience Bar, Inventory, Status Icons V2, and Menu patches; switching themes refreshes open dependent windows immediately. QJS-only.
 
         - ItemDescriptionUI:
             title : Server-backed Item Description
