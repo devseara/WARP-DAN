@@ -1,0 +1,82 @@
+/*
+ * Author: DevSeara.
+ * Description: Stock 2025-07-16 announcements with inline item images.
+ * Keeps stock balloon insertion, background, colors, lifetime and position.
+ * Legacy name/ID preserves saved profiles; no marquee or custom window.
+ * Scoped balloon measure/draw and tagged-only wrapping. No shared text hook.
+ */
+const NoticeMarqueeStatic = {};
+NoticeMarqueeStatic.read = function(path)
+{
+	const f = new BinFile(path, "r");
+	if (!f.Valid) throw Error("NoticeMarquee: missing " + path);
+	const h = f.ReadHex(); f.Close();
+	return (h.match(/[0-9a-fA-F]{2}/g) || []).map(x => parseInt(x, 16));
+};
+NoticeMarqueeStatic.u32 = (b,o) => (b[o] | b[o+1]<<8 | b[o+2]<<16 | b[o+3]<<24) >>> 0;
+NoticeMarqueeStatic.put = function(b,o,v) { for(let i=0;i<4;++i) b[o+i] = v >>> (8*i) & 255; };
+NoticeMarqueeStatic.crc = function(b)
+{
+	let c=0xFFFFFFFF;
+	for(let i=32;i<b.length;++i) { c^=b[i]; for(let j=0;j<8;++j) c=(c>>>1)^((c&1)?0xEDB88320:0); }
+	return (c^0xFFFFFFFF)>>>0;
+};
+NoticeMarqueeStatic.resolver = function()
+{
+	// Private stdcall resolver; no changes to chat/BPUI/GCHA helpers.
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x56,0x8B,0x35);a.dword(n.ItemInfoManager);
+	a.emit(0x85,0xF6);a.jcc(0x84,"missing");
+	a.emit(0x8D,0x45,8,0x50,0x8D,0x4E,8);a.call(n.ItemInfoLookup);
+	a.emit(0x85,0xC0);a.jcc(0x84,"missing");
+	a.emit(0x83,0x7D,12,1);a.jcc(0x85,"unidentified");
+	a.emit(0x83,0xC0,0x58);a.jmp("resource");
+	a.label("unidentified");a.emit(0x83,0xC0,0x1C);
+	a.label("resource");a.emit(0x83,0x78,0x14,16);a.jcc(0x82,"done");a.emit(0x8B,0x00);a.jmp("done");
+	a.label("missing");a.emit(0x33,0xC0);
+	a.label("done");a.emit(0x5E,0x5D,0xC2,8,0);return a;
+};
+NoticeMarquee = function(_)
+{
+	if(!NoticeMarquee.validate()) throw Error("NoticeMarquee requires 2025-07-16 Ragexe");
+	const c=NoticeMarqueeStatic,n=AutoCombatUI.nativeHelpers;
+	const bytes=c.read(Warp.Path+"/Inputs/NoticeMarquee/runtime.bin");
+	const meta=JSON.parse(String.fromCharCode(...c.read(Warp.Path+"/Inputs/NoticeMarquee/runtime.json")));
+	if(bytes.length<32 || c.u32(bytes,0)!==0x31544F4E || c.u32(bytes,4)!==2 || meta.client!==20250716 || meta.version!==2)
+		throw Error("NoticeMarquee: payload version mismatch");
+	const size=c.u32(bytes,8),count=c.u32(bytes,12),api=c.u32(bytes,16),start=32+count*4;
+	if(size!==meta.size || start+size!==bytes.length || api+12>size || api!==meta.exports.NoticeApi ||
+		c.crc(bytes)!==c.u32(bytes,28)) throw Error("NoticeMarquee: payload integrity failed");
+	const names=["@NoticeMeasure@36","@NoticeHeight@32","@NoticeDraw@44","NoticeSplit"];
+	for(const name of names) if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)
+		throw Error("NoticeMarquee: invalid export " + name);
+	const sites=[[0x7890DE,0xA21A50,names[0]],[0x78922E,0xA21A50,names[0]],
+		[0x7894E2,0xA27C20,names[2]],[0x789500,0xA21880,names[1]],[0xCB84ED,0x979F10,names[3]]];
+	for(const [site,target] of [...sites,[0xCB8621,0x788ED0],[0xCB7943,0x788ED0]]) {
+		const p=Exe.Vir2Phy(site,CODE);
+		if(p<0 || Exe.GetUint8(p)!==0xE8 || ((site+5+Exe.GetUint32(p+1))>>>0)!==target)
+			throw Error("NoticeMarquee: broadcast call profile changed");
+	}
+	n.assertCode("Stock announcement draw",0x789430,"55 8B EC 83 EC 18");
+	n.assertCode("Stock announcement measure",0xA21A50,"55 8B EC 6A FF");
+	const reloc=[];
+	for(let i=0;i<count;++i) {
+		const off=c.u32(bytes,32+4*i);
+		if(off+4>size || c.u32(bytes,start+off)>=size) throw Error("NoticeMarquee: invalid relocation");
+		reloc.push(off);
+	}
+	$$(_,1,"Keep original announcements; add item images before item names");
+	const [phy,vir]=Exe.Allocate(size,16),code=bytes.slice(start);
+	for(const off of reloc) c.put(code,off,c.u32(code,off)+vir);
+	const resolver=n.allocateCode(c.resolver());
+	const prefix=n.buildResourcePath("item\\");
+	c.put(code,api+4,prefix.vir);c.put(code,api+8,resolver.vir);
+	for(let at=0;at<code.length;at+=4096) Exe.SetHex(phy+at,n.bytesToHex(code.slice(at,at+4096)));
+	for(const [site,target,name] of sites) Exe.SetCALL(Exe.Vir2Phy(site,CODE),vir+meta.exports[name],0);
+	const marker=n.allocateString("AnnouncementItemIcons.v1");
+	const values=[marker.vir,vir,vir+api,...names.map(x=>vir+meta.exports[x])];
+	const record=new Array(values.length*4).fill(0);values.forEach((v,i)=>c.put(record,i*4,v));
+	n.allocateBytes(record,4);
+	return true;
+};
+NoticeMarquee.validate = () => Exe.BuildDate===20250716;

@@ -44,6 +44,12 @@ CustomUI:
             author : DevSeara
             desc : Adds the native server-backed VIP window with membership cards, quests, tickets, benefits, purchase confirmation and timer updates. Requires the matching VIP server implementation. Installs its supplied VIP artwork beside the patched client.
 
+        - NoticeMarquee:
+            title : Original Announcements with Item Icons
+            recommend : no
+            author : DevSeara
+            desc : Keeps the original announcement presentation and adds inline item icons using ^i[ItemID] markup. No scrolling marquee or external runtime DLL is added. The internal NoticeMarquee ID is retained for saved profiles.
+
         - LoadGRFOnSlashCmd:
             title : Load GRF via Slash Command
             recommend : no
