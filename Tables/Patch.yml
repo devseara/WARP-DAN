@@ -258,3 +258,6 @@
 385 : NativeActJobPreviews
 386 : ClanBodySkins
 387 : ItemDescriptionUI
+
+# Personal UI extensions: stable IDs preserve saved profile compatibility.
+10004 : ChatItemIcons

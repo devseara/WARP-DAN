@@ -32,6 +32,12 @@ CustomUI:
     color : orangered
     
     patches:
+        - ChatItemIcons:
+            title : Inline Chat Item Icons
+            recommend : no
+            author : DevSeara
+            desc : Adds native inline item icons to linked chat items while preserving item inspection and the original item name renderer. Target client is 2025-07-16 Ragexe.
+
         - LoadGRFOnSlashCmd:
             title : Load GRF via Slash Command
             recommend : no

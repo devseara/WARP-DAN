@@ -58,3 +58,7 @@ tools/native/item_description.cpp text eol=crlf
 tools/native/item_description_wire.hpp text eol=lf
 tools/fixtures/item_description/baseline.json text eol=lf
 tools/fixtures/item_description/assets/** binary
+
+# Personal UI patches: preserve WARP CRLF and hashed runtime source bytes.
+Scripts/Patches/AutoCombatUI.qjs text eol=crlf
+Scripts/Patches/ChatItemIcons.qjs text eol=crlf
