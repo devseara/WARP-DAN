@@ -38,6 +38,12 @@ CustomUI:
             author : DevSeara
             desc : Adds native inline item icons to linked chat items while preserving item inspection and the original item name renderer. Target client is 2025-07-16 Ragexe.
 
+        - VipUI:
+            title : Native VIP UI
+            recommend : no
+            author : DevSeara
+            desc : Adds the native server-backed VIP window with membership cards, quests, tickets, benefits, purchase confirmation and timer updates. Requires the matching VIP server implementation. Installs its supplied VIP artwork beside the patched client.
+
         - LoadGRFOnSlashCmd:
             title : Load GRF via Slash Command
             recommend : no

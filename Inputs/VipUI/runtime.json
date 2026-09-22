@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "client": 20250716,
+  "size": 28028,
+  "api_size": 372,
+  "exports": {
+    "@VipCursor@16": 7984,
+    "@VipDestroy@12": 8512,
+    "@VipDown@16": 8688,
+    "@VipDrag@16": 9056,
+    "@VipDraw@8": 9216,
+    "@VipMove@16": 11664,
+    "@VipRightDown@16": 11776,
+    "@VipRightUp@16": 11872,
+    "@VipUp@16": 11984,
+    "VipApi": 24576,
+    "VipInteraction": 27720,
+    "VipPortraitCanvas": 27716,
+    "VipQuestState": 27660,
+    "VipState": 24952,
+    "_VipHit@8": 12720,
+    "_VipOpen@0": 12848,
+    "_VipPaintButton@12": 13200,
+    "_VipPortrait@20": 13408,
+    "_VipQuestOpen@4": 15344,
+    "_VipReceive@4": 15712,
+    "_VipTick@16": 16512
+  },
+  "source_sha256": "a7d55b80b7fa2de728532780d1e660b954e25d5112352bfef2f06e7c75d14bb5",
+  "payload_sha256": "a430fd3ccd45a191c02d4b83cf99c93ef3f5189bfbf076cfdddad17dfe135943",
+  "runtime_imports": []
+}

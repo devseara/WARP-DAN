@@ -62,3 +62,7 @@ tools/fixtures/item_description/assets/** binary
 # Personal UI patches: preserve WARP CRLF and hashed runtime source bytes.
 Scripts/Patches/AutoCombatUI.qjs text eol=crlf
 Scripts/Patches/ChatItemIcons.qjs text eol=crlf
+Scripts/Patches/VipUI.qjs text eol=crlf
+Scripts/Runtime/VipUI/*.cpp -text
+Inputs/VipUI/*.bin binary
+Assets/VipUI/** binary
