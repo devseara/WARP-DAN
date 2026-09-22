@@ -14,13 +14,23 @@ Gacha upgrade diffs over the current full base package.
 
 Select Native VIP UI in WARP and rebuild from the original source client using
 your existing patch selections. Applying the patch automatically creates
-`data/texture/<client UI prefix>/vipui` beside the output EXE and copies its 63
-required PNGs (60 complete button states, approved design atlas, crown and
+`data/texture/<client UI prefix>/vipui` beside the output EXE and copies its 7
+required PNGs (four Gacha-style button backgrounds, design atlas, crown,
 item-box background) only when missing. Existing art is preserved; a later
 build repairs missing files. Selecting the checkbox alone does not install art.
 No profile is silently changed; no client EXEs are distributed in this package.
 
-Roulette opens VIP (its icon artwork remains yours to replace). The native card
+The Roulette/VIP icon toggles VIP (its artwork remains yours to replace).
+When open it closes immediately, sends the existing Close action, and clears
+the popup, capture and polling timer. When closed it retains the native 0A19
+request and waits for a fresh server-authorized snapshot. Snapshot delivery
+itself does not toggle, so upgrade responses cannot accidentally close VIP.
+Esc closes the foreground VIP popup first, then the main card on the next
+press. Held-key repeats are consumed without dismissing another window.
+Native modals, Alt+Esc, foreign capture and visible foreground roots retain
+their existing keyboard handling. The profiled WM dispatch call sites wrap
+the existing manager entry; the Battle Pass key hook remains intact.
+The native card
 shows canonical name, membership dates, VIP EXP, earned crowns, active benefits,
 membership/store/storage/buffs and Upgrade. The 460x362 compact card renders the current
 character using the native Alt+Q compositor on a private offscreen frame. It
@@ -34,26 +44,40 @@ Open Storage require active membership; Shop also stays disabled until configure
 Single-line fields read `Name: <character>`, `VIP Start Date: <date>` and
 `VIP Expiry Date: <date>`. Matching server dates use `09-17-2026 Thursday` format,
 server-local calendar dates and English weekdays; missing history is not invented.
+When the active-membership flag is absent, both dates display `Not Active`,
+even if the server retains historical dates or a previously earned VIP level.
 
-Main and popup buttons use complete native-size PNGs, including
-centered captions and normal/hover/press/disabled states. The four main actions
+Main and popup buttons use shared Gacha-style PNG backgrounds with
+native centered captions and normal/hover/press/disabled states. The four main actions
 are 128x22 in a centered two-column grid; Upgrade/Refresh are 60x20.
-Hit bounds exactly match the PNGs. Missing/mis-sized normal artwork disables
+Hit bounds exactly match the painted controls. Missing/mis-sized normal artwork disables
 actions; missing optional states fall back to the normal PNG. The private
-`vip_design.png` atlas must be 1412x1114. Filenames no longer use `readable_`;
-unused legacy art is not bundled. Rebuild old clients when migrating filenames.
+`vip_design.png` atlas must be 1412x1114. The bundle contains only the seven
+currently used images. Legacy per-control skins are no longer bundled; retain
+their backup when rolling back to an older executable.
 See [button filenames and sizes](vip-ui-buttons.md). WARP's ordinary installer
 does not overwrite existing custom art. Start-date values are green, expiry-date
 values red, and labels navy. Dates and all other account data remain server-owned.
 Benefits use approved blue/gold crown cards with four visible rows at a time and
 bounded, left-aligned text. Main labels, dates, EXP, cooldown and body text use
-11px bold fonts; the canonical character name is 11px regular.
+the same 11px regular native font as Membership active, including every
+button, heading and popup price. Canonical names retain their private text helper.
 Hovering a clipped benefit card displays its complete server-supplied text in
 the existing native Ragnarok tooltip (up to the protocol's 79-byte limit).
 Short fitted labels need no tooltip. The hint follows the current scroll row
 and is suppressed for modal dialogs, hidden/expired UI and foreign capture.
 The client uses stock cursor tooltip reset and positioning, without a shared
 tooltip hook or character-name substitution.
+The benefits scrollbar has working arrow buttons, a 10px-wide track, and a
+proportional draggable thumb. Clicking above/below the thumb pages by four
+rows; the native wheel handler (frame slot 35) moves one row per signed wheel
+event while the pointer is over the VIP window. Scrolling is local and sends
+no packets. Thumb dragging owns only this window's native left capture,
+updates through both move routes, and clamps even when released outside.
+Same-content refreshes preserve dragging; changed extent/token, expiry, popup,
+close/Esc or lost capture cancels it without releasing another window's capture.
+Popups, pending requests, invisible artwork and lists of four or fewer rows
+cannot start scrolling. Existing arrow and benefit-tooltip behavior is retained.
 Popups retain their existing readable sizes and are centered over the parent.
 `VIPSystem.txt` supplies the current tier's descriptions
 through its `S_Level1`..`S_Level10` / `S_Rows` text configuration (1-20 rows,
@@ -76,12 +100,11 @@ The old `star_on.png` is kept for recovery but no longer rendered.
 The main level caption is `VIP Level : N`, with no maximum-level denominator.
 Requirement item icons sit inside item_main_bg.png.
 
-The approved full-width EXP bar stays blue below full EXP. It is tinted gold only at 100% when the
-server permits upgrading, including saved quests with full EXP. Maximum level 10
-does not imply another upgrade. This is a private draw tint, preserving the
-supplied pixels' shading/alpha and leaving the image file/shared texture intact.
-The next level's EXP refresh restores blue automatically.
-The scaled approved track and fill retain their reference shading.
+The EXP bar uses a gold outline and gold gradient fill at every percentage.
+Only its fill length changes with the authoritative percentage. Gold is styling,
+not readiness: server permission still controls Upgrade, and level 10 does not
+imply another upgrade. The next level's refresh clears the old fill. No image
+file or shared texture is recolored.
 Level zero without active membership and
 zero-denominator EXP counters (including 0/0 EXP) are hidden.
 
@@ -111,7 +134,14 @@ confirmation. Only Yes sends SubmitQuest; No/X returns to the saved requirements
 Changed quest/level/cost/items or lost readiness cancels an open confirmation.
 The server uses the regular `0x01F3` EF_ANGEL (371) effect so the upgrading
 client resolves its own actor; the profiled `0x019B` handler omits that actor.
-No global effect/input/render hook is modified.
+No global effect or text renderer is modified. VIP keyboard interception is
+limited to its guarded WM key-call wrappers, with stock/Battle Pass fallback.
+
+Hovering an upgrade-quest item displays its bounded name, required quantity
+and inventory count in the native tooltip. Empty slots, hidden/closed popups,
+dragging, presses, foreign capture and pending requests suppress the hint.
+Hovering does not inspect, capture input, send packets or consume anything;
+the existing left/right-click item description remains available.
 
 Current automation schedule: non-VIP and VIP 1-5 -75%; level 6 -70%, 7 -65%,
 8 -60%, 9 -55%, 10 -50%. These are the automation component, before other drop
@@ -120,8 +150,8 @@ repository's client folder. Those client data files must be merged separately;
 WARP's VIP art installer does not overwrite stateicon Lua or custom effect art.
 
 Apply VIP opens five selectable membership durations: 1, 3, 7, 15 and 30 days.
-Cards use pale-blue beveled rows, crown and bold duration
-on the left, bold right-aligned Zeny prices, and a cream/gold selected gradient.
+Cards use pale-blue beveled rows, crown and regular duration
+on the left, regular right-aligned Zeny prices, and a cream/gold selected gradient.
 Text and the card backgrounds remain native and dynamic; prices are not baked
 into images. The crown is a separate editable PNG in `vipui`.
 Selecting a row does not buy anything. Purchase submits the selected duration
@@ -160,16 +190,17 @@ Install matching client/map-server binaries together; old/new mismatches fail cl
 Stock roulette-info fallback remains; BPUI/GCHA/0BF6 are unchanged.
 The runtime has no imported DLL dependencies, private text/item rendering,
 window-owned capture, bounded fields and a UI-thread refresh timer. Its private
-API is 340 bytes: the previous 292-byte API remains unchanged, followed by four
-Purchase PNG pointers, a private bold 14px label adapter, the crown path and a
-private right-aligned bold 18px price adapter. The final five pointers are the
-approved atlas, compact info/name text, centered status and body adapters. The runtime
+API is 372 bytes: existing offsets are unchanged, including the four Purchase
+background pointers, regular 11px label/price adapters, crown path, atlas,
+compact info/name text, centered status/body adapters and eight main-button
+background pointers. The runtime
 container format remains version 2; that is separate from the VIPU wire version.
 
 The main window raises itself on explicit open/reopen, just like the quest
 popup: registering a root alone inserts it behind existing HUD windows and
 can leave covered Inventory/Equipment menu buttons receiving clicks. Refreshes
-do not continuously steal the front. No global hotkeys or stock menus change.
+do not continuously steal the front. Esc handling is scoped to foreground VIP;
+all unhandled keyboard input retains the native/Battle Pass path.
 `VIP Upgrade Quest` centers each actual BMP inside its 32px box, labels owned
 counts `Inventory:`, and formats required Zeny as `3,000,000z`. Left or right
 click a populated item box to inspect the native identified item description.
@@ -180,7 +211,7 @@ items, hidden windows, changed snapshots and foreign capture fail closed.
 
 tools/build_vip_ui.py builds runtime.bin/json in a full WARP checkout with Visual
 Studio C++ and pefile. Tests: test_vip_ui.py (including real EXP color pixels),
-test_vip_button_pngs.py (all 60 real state PNGs, no caption overlays, editable
+test_vip_button_pngs.py (all 60 Gacha-style control states, native captions, editable
 pixel ownership, missing/mis-sized art, input states and bounds),
 test_vip_visibility.py (earned crown pixels, active/expired benefits, fitted controls,
 zero EXP, cleared mockup data and the EXP bar through its final column),
@@ -194,7 +225,7 @@ test_vip_asset_install.js, plus all preserved suites and
 standalone/reversed-order builds. Offline tests do not certify live gameplay.
 `test_vip_buffs.py` covers the native confirmation, fixed claim packet, no-action
 cancellation, server-only cooldown/expiry, stale presses, prompt bounds and PNGs.
-`test_vip_benefit_boxes.py` verifies left-aligned bold text, 20 script-defined rows and
+`test_vip_benefit_boxes.py` verifies left-aligned regular text, 20 script-defined rows and
 scrolling. `test_vip_submit_confirmation.py` covers final Yes/No, no premature
 submission, foreground/capture and changed-snapshot invalidation.
 `test_vip_upgrade_effect.py` executes the actual client handlers and actor
@@ -204,6 +235,12 @@ duplicate clicks, stale requirements, lost replies, transport failure and tick
 wrap. `test_vip_benefit_hover.py` covers the complete native tooltip ABI and all
 20 scroll rows. `test_vip_timer_visibility.py` verifies that no later background
 draw erases the lower countdown glyph rows.
+`test_vip_hover_toggle.py` executes the real icon command, keyboard call wrappers,
+server-request reopening, popup/main Esc cleanup, repeat/modal/foreground guards,
+stock/Battle Pass forwarding and three bounded item-hover hints without packets.
+`test_vip_scrollbar.py` covers native wheel ABI, track paging, thumb geometry,
+continuous captured movement, bounds/release-outside, content refresh and
+all cancellation/capture guards without sending scrolling requests.
 
 Keep stable-battlepass-gacha-2026-09-15 immutable. Back up installed binaries and
 data, stop affected processes, verify matching client/server versions, then test

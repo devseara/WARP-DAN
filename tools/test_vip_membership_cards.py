@@ -14,10 +14,10 @@ def open_cards(p=None):
 q=open_cards();m.preview(q,args.output/'vip-membership-cards.png')
 assert Path(m.cstr(m.r(c['api']+312)).replace('\\','/')).name=='membership_crown.png'
 assert Image.open(ROOT/'Assets/VipUI/membership_crown.png').getchannel('A').getextrema()==(0,255)
-font=ImageFont.truetype('C:/Windows/Fonts/tahoma.ttf',18)
+font=ImageFont.truetype('C:/Windows/Fonts/tahoma.ttf',11)
 for i,cost in enumerate((500000,1200000,2500000,5000000,9000000)):
     rows=[r for r in m.texts if r[0]==f'{cost:,}z'];assert len(rows)==1
-    value,x,y=rows[0][:3];assert x+int(font.getlength(value))==341 and y==36+i*48
+    value,x,y=rows[0][:3];assert x+int(font.getlength(value))==341 and y==40+i*48
     label=[r for r in m.texts if r[0].endswith(' VIP') and r[2]==40+i*48]
     assert len(label)==1 and label[0][1]==54
     pix,w,h=m.pixels(q)

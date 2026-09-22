@@ -68,18 +68,18 @@ p=packet();p[2568:2664]=b'A'*96;obj=m.ready(p);m.click(obj,353,152);q=m.r(qs)
 m.preview(q,args.output/'vip-buffs-long-prompt.png')
 assert m.cstr(c['state']+32+2568)=='A'*95
 assert any(t[0].startswith('AAA') and len(t[0])<=95 for t in m.texts),'Bounded prompt must also fit its row'
-# Yes/No use the same editable whole PNGs, no caption overlays.
+# Yes/No use the same Gacha backgrounds and uniform native captions.
+from vip_design_contract import button
 obj,q=open_popup()
 for kind,action in (('out',None),('over','move'),('press','down')):
     if action:m.invoke(c[action],q,(160,86))
     m.preview(q,args.output/f'vip-buffs-yes-{kind}.png')
-    assert not any(t[0] in ('Yes','No') for t in m.texts)
+    assert all(any(t[0]==caption for t in m.texts) for caption in ('Yes','No'))
     actual=Image.open(args.output/f'vip-buffs-yes-{kind}.png').crop((150,78,178,96)).convert('RGB')
-    art=Image.open(ROOT/'Assets/VipUI'/f'yes_{kind}.png').convert('RGBA')
-    want=Image.alpha_composite(Image.new('RGBA',art.size,(244,252,255,255)),art).convert('RGB')
+    want=button(21,('out','over','press','off').index(kind))
     assert actual.tobytes()==want.tobytes(),kind
 m.invoke(c['up'],q,(310,100))
 # A missing normal Yes image cannot leave an invisible claim target.
-tex=m.load_texture('yes_out.png');old=m.r(tex+0x114);m.w(tex+0x114,0);before=len(m.sent)
+tex=m.load_texture('button_out.png');old=m.r(tex+0x114);m.w(tex+0x114,0);before=len(m.sent)
 m.click(q,160,86);assert len(m.sent)==before;m.w(tex+0x114,old)
 print('PASS: VIP Buffs native frontmost Yes/No popup; no claim on open/No/X, exact action 5, duplicate/stale expiry/capture guards, server-only hourly readiness/countdown, bounded prompt and complete editable button PNGs; no live claims.')

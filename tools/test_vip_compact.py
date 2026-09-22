@@ -58,6 +58,5 @@ for mode,height in ((1,118),(2,270),(3,320),(4,118),(5,118)):
     assert m.r(q+0x1C)==m.r(obj+0x1C)+50
     assert m.r(q+0x20)==m.r(obj+0x20)+(362-height)//2
     m.preview(q,a.output/f'compact-popup-{mode}.png')
-    assert 12 in m.sizes[q],'Popup text was shrunk with main'
-assert {14,18}<=m.sizes[q],'Membership labels/prices changed font sizes'
-print('PASS: 460x362 surface, 800x600 fit, compact text metrics, bounded long server fields, pending-payment gate, five centered popups with unchanged readable fonts and dimensions.')
+    assert m.sizes[q]=={11},'Every popup must match the membership-status font'
+print('PASS: 460x362 surface, 800x600 fit, uniform 11px regular text, bounded long server fields, pending-payment gate and five centered popups with unchanged dimensions.')

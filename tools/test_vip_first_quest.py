@@ -3,7 +3,7 @@ import argparse
 import struct
 from pathlib import Path
 from test_vip_ui import VipMachine, snapshot
-from vip_design_contract import X,Y,crop,read
+from vip_design_contract import X,Y,crop,read,level_box
 
 ap=argparse.ArgumentParser();ap.add_argument('exe');ap.add_argument('--output',type=Path,required=True)
 args=ap.parse_args();args.output.mkdir(parents=True,exist_ok=True)
@@ -26,9 +26,9 @@ for current in range(5):
         assert any(row[0]=='VIP 1 quest available with active membership' for row in m.texts)
         assert not any('0 / 0' in row[0] or row[0]=='VIP LEVEL 1 (ACTIVE)' for row in m.texts)
         pix,w,h=m.pixels(obj)
-        empty=crop(349,851,59,74,X(59),Y(74))
+        empty=level_box(False)
         for i in range(10):
-            assert read(m,obj,X(35+i*63),Y(851),X(59),Y(74)).tobytes()==empty.tobytes(),'No unearned crowns at active level zero'
+            assert read(m,obj,X(35+i*63),Y(851),19,19).tobytes()==empty.tobytes(),'No unearned crowns at active level zero'
         pixel=m.r(pix+(Y(653)*w+X(180))*4)
         assert (pixel>>16&255)>(pixel>>8&255)>(pixel&255),'First authorized quest uses the gold ready bar'
     m.click(obj,196,259);q=m.r(qs)

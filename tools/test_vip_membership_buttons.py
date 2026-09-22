@@ -29,11 +29,11 @@ for control,x,y,action in buttons:
     before=len(m.sent);m.receive(snapshot(flags=finish));m.invoke(c['up'],obj,(x,y))
     assert len(m.sent)==before,'Stale membership click sent an action'
 
-# Returning to VIP/expired state also redraws with the proper file, no caption.
+# Returning to VIP/expired state redraws native captions over the Gacha skin.
 for active in (False,True):
     obj=m.ready(snapshot(flags=2|4|16|(1 if active else 0)))
     m.invoke(c['draw'],obj)
     for label in ('Apply VIP','Open Store','Open Storage'):
-        assert not any(t[0]==label for t in m.texts),'Caption overlay returned'
+        assert any(t[0]==label for t in m.texts),'Missing native button caption'
 print('PASS: active/expired/nonmember and levels 0/1/6/10: Apply only without VIP; '
       'Store only active/configured, Storage only active; stale down/up membership changes rejected.')

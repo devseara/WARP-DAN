@@ -8,29 +8,29 @@
 const VipUIStatic = {
 	// Keep private API slots stable; retired legacy artwork is no longer loaded or installed.
 	assets:[null,null,"item_main_bg.png",null,null,null,null,null,null,null,null,null,null,null],
-	purchase:["purchase_out.png","purchase_over.png","purchase_press.png","purchase_off.png"],
+	purchase:["button_out.png","button_over.png","button_press.png","button_off.png"],
 	cardAssets:["membership_crown.png","vip_design.png"],
 	mainButtons:[
-		["main_upgrade_out.png","main_upgrade_over.png","main_upgrade_press.png","main_upgrade_off.png"],
-		["main_close_out.png","main_close_over.png","main_close_press.png","main_close_off.png"]
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"]
 	],
 	buttons:[
-		["close_out.png","close_over.png","close_press.png","close_off.png"],
-		["applyvip_out.png","applyvip_over.png","applyvip_press.png","applyvip_off.png"],
-		["openstore_out.png","openstore_over.png","openstore_press.png","openstore_off.png"],
-		["openstorage_out.png","openstorage_over.png","openstorage_press.png","openstorage_off.png"],
-		["vipbuffs_out.png","vipbuffs_over.png","vipbuffs_press.png","vipbuffs_off.png"],
-		["upgrade_out.png","upgrade_over.png","upgrade_press.png","upgrade_off.png"],
-		["refresh_out.png","refresh_over.png","refresh_press.png","refresh_off.png"],
-		["yes_out.png","yes_over.png","yes_press.png","yes_off.png"],
-		["no_out.png","no_over.png","no_press.png","no_off.png"],
-		["cancel_out.png","cancel_over.png","cancel_press.png","cancel_off.png"],
-		["scroll_top_out.png","scroll_top_over.png","scroll_top_press.png","scroll_top_off.png"],
-		["scroll_bot_out.png","scroll_bot_over.png","scroll_bot_press.png","scroll_bot_off.png"]
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"]
 	]
 };
 // Bounded private text helpers. Never use actor-title substitution for names.
-VipUIStatic.fit = function(fontSize=12,center=false,bold=false,right=false)
+VipUIStatic.fit = function(fontSize=11,center=false,bold=false,right=false)
 {
 	const n=AutoCombatUI.nativeHelpers,a=n.asm();
 	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x57,0x8B,0x75,8,0x8B,0x7D,12,0x33,0xDB);
@@ -103,6 +103,27 @@ VipUIStatic.describe = function(resolver)
 	a.label("destroy");a.emit(0x8B,0xCB);a.call(0x5A4300);
 	a.label("done");a.emit(0x5F,0x5B,0x8B,0xE5,0x5D,0xC2,4,0);return a;
 };
+// Hook only the native icon command and WM key-dispatch call sites. The
+// UIWindowMgr entry remains owned by stock/Battle Pass regardless of order.
+VipUIStatic.iconToggle = function(close)
+{
+	const a=AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x9C,0x60);a.call(close);a.emit(0x85,0xC0);a.jcc(0x84,"open");
+	a.emit(0x61,0x9D);a.jmp(0x916A45);
+	a.label("open");a.emit(0x61,0x9D,0xB8);a.dword(0xA19);a.jmp(0x916A1B);
+	return a;
+};
+VipUIStatic.escapeKey = function(handler)
+{
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	a.emit(0x9C,0x60,0x81,0xF9);a.dword(n.WindowManager);a.jcc(0x85,"stock");
+	// pushad/pushfd leave vk/lParam/firstPress at +40/+44/+48.
+	for(let i=0;i<3;++i)a.emit(0xFF,0x74,0x24,48);
+	a.call(handler);a.emit(0x85,0xC0);a.jcc(0x84,"stock");
+	a.emit(0x61,0x9D,0xB8);a.dword(1);a.emit(0xC2,12,0);
+	a.label("stock");a.emit(0x61,0x9D);a.jmp(0xA471E0);
+	return a;
+};
 VipUI = function(_)
 {
 	if(!VipUI.validate()) throw Error("VipUI requires 2025-07-16 Ragexe");
@@ -117,14 +138,20 @@ VipUI = function(_)
 		start+size!==bytes.length || size!==meta.size || api!==meta.exports.VipApi || meta.api_size!==372 || api+372>size || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))
 		throw Error("VipUI: invalid native payload");
 	const names=["VipApi","VipState","_VipOpen@0","_VipReceive@4","_VipHit@8","@VipDraw@8","@VipDown@16","@VipUp@16","@VipMove@16","@VipDrag@16","@VipCursor@16","@VipDestroy@12","_VipTick@16","VipQuestState","_VipQuestOpen@4"];
-	for(const name of [...names,"@VipRightDown@16","@VipRightUp@16"])if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("VipUI: missing "+name);
+	for(const name of [...names,"@VipRightDown@16","@VipRightUp@16","@VipWheel@12","_VipToggleClose@0","_VipEscape@12"])if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("VipUI: missing "+name);
+	n.assertCode("VIP icon open command",0x916A16,"B8 19 0A 00 00 56 66 89 45 10");
+	for(const site of [0xDB86B3,0xDB87AE]) {
+		const rel=(0xA471E0-site-5)>>>0;
+		n.assertCode("VIP keyboard call",site,"E8 "+n.bytesToHex([rel&255,rel>>>8&255,rel>>>16&255,rel>>>24])+" 84 C0");
+	}
 	for(const [name,va,hex] of [["frame ctor",n.FrameConstructor,"55 8B EC 6A FF 68 F9 45 EA 00"],
 		["benefit tooltip",0xA753D0,"55 8B EC 6A FF 68 4A 3B EF 00"],
 		["tooltip coordinates",0xA1EF70,"55 8B EC 8B 55 08 8B 41 1C 56 8B 75 0C 01"],
 		["frame drag",0x880E00,"55 8B EC 83 EC 1C 53 8B D9"],["text metrics",n.TextWidth,"55 8B EC 6A FF 68 5D B6 EE 00"],
 		["bring to front",0xA39130,"55 8B EC 51 56 57 8B 7D 08 8B F1 85 FF"],
 		["front list tail",0xA39246,"8D 45 08 50 FF B6 7C 01 00 00 8D 8E 7C 01 00 00"]]) n.assertCode("VIP "+name,va,hex);
-	for(const [slot,expected] of [[0,n.FrameDeletingDestructor],[20,n.FrameVtableDraw],[25,n.FrameMouseDown],[27,0x880E00],[31,n.FrameMouseUp],[32,0x5A8A50],[33,0x5A8A60]])n.assertVtableSlot("VIP frame",slot,expected);
+	for(const [slot,expected] of [[0,n.FrameDeletingDestructor],[20,n.FrameVtableDraw],[25,n.FrameMouseDown],[27,0x880E00],[31,n.FrameMouseUp],[32,0x5A8A50],[33,0x5A8A60],[35,0x5A8AF0]])n.assertVtableSlot("VIP frame",slot,expected);
+	n.assertCode("VIP native wheel ABI",0x5A8AF0,"C2 04 00");
 	for(const [name,va,hex] of [
 		["CItem constructor",0x6A1B20,"55 8B EC 6A FF 68 8B 54 E5 00"],
 		["CItem destructor",0x5A4300,"55 8B EC 6A FF 68 8B 33 E2 00"],
@@ -147,10 +174,10 @@ VipUI = function(_)
 	const e=name=>vir+meta.exports[name];
 	const source=Exe.Vir2Phy(n.FrameVtable-4),table=n.allocateBytes(new Array(4+n.FrameVtableEntries*4).fill(0),4);
 	Exe.SetHex(table.phy,Exe.GetHex(source,table.size));
-	for(const [slot,name] of [[0,"@VipDestroy@12"],[20,"@VipDraw@8"],[25,"@VipDown@16"],[27,"@VipDrag@16"],[28,"@VipMove@16"],[30,"@VipCursor@16"],[31,"@VipUp@16"],[32,"@VipRightDown@16"],[33,"@VipRightUp@16"]])Exe.SetUint32(table.phy+4+slot*4,e(name));
+	for(const [slot,name] of [[0,"@VipDestroy@12"],[20,"@VipDraw@8"],[25,"@VipDown@16"],[27,"@VipDrag@16"],[28,"@VipMove@16"],[30,"@VipCursor@16"],[31,"@VipUp@16"],[32,"@VipRightDown@16"],[33,"@VipRightUp@16"],[35,"@VipWheel@12"]])Exe.SetUint32(table.phy+4+slot*4,e(name));
 	const refs=n.resolvePacketRefs();
-	const fit=n.allocateCode(VipUIStatic.fit()),plain=n.allocateCode(VipUIStatic.plain()),offerText=n.allocateCode(VipUIStatic.fit(14,false,false));
-	const priceText=n.allocateCode(VipUIStatic.fit(18,false,false,true));
+	const fit=n.allocateCode(VipUIStatic.fit()),plain=n.allocateCode(VipUIStatic.plain(11)),offerText=n.allocateCode(VipUIStatic.fit(11,false,false));
+	const priceText=n.allocateCode(VipUIStatic.fit(11,false,false,true));
 	const infoText=n.allocateCode(VipUIStatic.fit(11,false,false)),infoPlain=n.allocateCode(VipUIStatic.plain(11));
 	const statusText=n.allocateCode(VipUIStatic.fit(11,true,false)),bodyText=n.allocateCode(VipUIStatic.fit(11,false,false));
 	const blend=n.allocateCode(ModernChatUI.nativeHelpers.buildBlendPixel());
@@ -170,6 +197,10 @@ VipUI = function(_)
 		...[].concat(...VipUIStatic.mainButtons).map(file=>n.buildResourcePath("vipui\\"+file).vir)];
 	values.forEach((v,i)=>put(code,api+i*4,v));
 	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
+	const icon=n.allocateCode(VipUIStatic.iconToggle(e("_VipToggleClose@0")));
+	Exe.SetJMP(Exe.Vir2Phy(0x916A16,CODE),icon.vir);
+	const key=n.allocateCode(VipUIStatic.escapeKey(e("_VipEscape@12")));
+	for(const site of [0xDB86B3,0xDB87AE])Exe.SetCALL(Exe.Vir2Phy(site,CODE),key.vir);
 	const a=n.asm();a.emit(0x9C,0x60,0xBE);a.dword(n.PacketBuffer);
 	a.emit(0x66,0x83,0x7E,2,8);a.jcc(0x82,"stock");
 	a.emit(0x81,0x7E,4);a.dword(0x55504956);a.jcc(0x85,"stock");

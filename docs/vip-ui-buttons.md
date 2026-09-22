@@ -1,8 +1,11 @@
 # Readable VIP artwork and buttons
 
 The native main window is 460x362. Its frame/icons use the unchanged approved
-`vip_design.png` (1412x1114); all interactive controls use full native-size
-PNG files with centered captions. No button is scaled or labeled at runtime.
+`vip_design.png` (1412x1114). As of September 22, all controls use the same
+four blank Gacha-style backgrounds, nine-sliced with two-pixel borders.
+Captions, headings, prices and status text use the native 11px regular font
+used by Membership active. The control bounds below remain unchanged; the
+prefixes are control names, not current resource filenames.
 
 | Main filename prefix | Native x,y | Width,height |
 | --- | --- | --- |
@@ -25,10 +28,13 @@ PNG files with centered captions. No button is scaled or labeled at runtime.
 | cancel | 43x18 | Close popup |
 | purchase | 56x18 | Buy selected duration |
 
-Every prefix has `_out.png`, `_over.png`, `_press.png`, and `_off.png` files:
-60 complete PNGs. `tools/render_vip_readable_buttons.py` deterministically draws
-these controls with centered Tahoma bold captions: 12px main, 11px popup.
-Disabled captions stay readable charcoal. Keep exact dimensions when editing.
+The four shared files are `button_out.png`, `button_over.png`,
+`button_press.png`, and `button_off.png` (51x20), copied unchanged from Gacha's
+pull-button skins. Normal captions use Gacha's blue-gray COLORREF 0x7D6045;
+disabled captions use 0xA0A0A0. Keep the source dimensions when editing.
+Only the seven currently referenced images are bundled. The old per-control
+caption PNGs and unused notice board have been removed from the asset folder;
+the historical exporter remains available for restoring older clients.
 Missing/mis-sized normal artwork disables its action; invalid optional states
 fall back to normal. Alpha and the native magenta color key remain supported.
 All five popup modes use the matching blue/silver frame and gold VIP emblem.
@@ -46,16 +52,33 @@ the server reply. Other actions are disabled while pending; Close stays usable.
 See [request sequencing and tooltip behavior](vip-ui.md).
 
 When Native VIP UI is applied during a WARP build, its installer creates
-`data/texture/<client UI prefix>/vipui` beside the output EXE. It copies all 63
+`data/texture/<client UI prefix>/vipui` beside the output EXE. It copies all 7
 required images only if missing, preserving customized existing artwork and
 repairing partial folders. Keep this resource folder with the output EXE if
-moving it. Fully restart the client after editing images. Filenames have no
-`readable_` prefix: for example `applyvip_out.png` and `main_upgrade_over.png`.
-The other three required PNGs are `vip_design.png`, `membership_crown.png`, and
-`item_main_bg.png`. Retired artwork is no longer bundled. Old private API slots
-are null rather than removed, preserving all runtime offsets.
+moving it. Fully restart the client after editing images.
+Select **Native VIP UI** and build the client to install all four button-state
+PNGs automatically; no separate button patch or manual image generation is
+needed. Selecting the checkbox without building does not write any images.
+The other three required PNGs are `vip_design.png`, `membership_crown.png`,
+and the user's supplied 19x19 `item_main_bg.png`, unchanged.
+Quest item boxes scale the same box to 32x32. Main-window earned crowns are
+drawn over each level slot separately. The renderer trims transparent padding
+(alpha below 32), caches those bounds, and aspect-fits the actual crown into
+the 17x17 inner box using 4x4 premultiplied-alpha sampling. It never edits the
+original PNG. Purchase-card crowns use the same fitting rule.
+The notice is native text only; `board_txt.png` is no longer loaded or installed.
+The blue frame behind the level/slots/quest text is removed. The EXP track and
+fill are gold at every percentage; this does not grant upgrade permission.
+Retired API slots, including slot 0, stay null. All offsets
+and the 372-byte API / 2664-byte VIPU v4 snapshot remain unchanged.
 
 The filename cleanup requires rebuilding the client; an older EXE still refers
 to the old names/layout. Back up existing images before a one-time migration,
 including older files whose names collide with the newly renamed buttons.
 Ordinary WARP builds preserve custom files and never prune arbitrary images.
+The September 22 local cleanup moved 61 unused PNGs from each of the WARP and
+installed-game VIP folders into `Outputs/vip-assets-cleanup-20260922`, outside
+both active asset folders. Older client rollback may require restoring those
+images along with its executable. Asset inventory/installer tests now reject
+unused images in the WARP bundle; the installer still preserves custom files
+already present in other users' game directories.

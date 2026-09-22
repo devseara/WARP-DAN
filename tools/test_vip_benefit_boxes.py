@@ -79,13 +79,13 @@ for level in range(11):
 p=snapshot(level=7);obj=m.ready(p);want=effects(p)
 m.click(obj,443,333);m.click(obj,443,333)
 pix,w,h=draw(obj,want,2,name='vip-benefits-level-7-bottom.png')
-thumb=Y(143)*4//len(want);thumb_y=Y(864)+(Y(143)-thumb)*2//(len(want)-4)
-assert m.r(pix+(thumb_y*w+X(1359))*4)==0xFF9DADC8,'Thumb position is wrong'
+thumb=max(8,50*4//len(want));thumb_y=278+(50-thumb)*2//(len(want)-4)
+assert m.r(pix+(thumb_y*w+440)*4)==0xFF9DADC8,'Thumb position is wrong'
 refresh=snapshot(flags=1|4|8,level=7);m.receive(refresh)
 draw(obj,want,2,name='vip-benefits-level-7-refresh.png')
-assert m.r(pix+(Y(864)*w+X(1359))*4)==0xFFDDE5F2
+assert m.r(pix+(278*w+440)*4)==0xFFF4F8FD
 m.receive(snapshot(level=7));draw(obj,want,0)
-assert m.r(pix+(Y(864)*w+X(1359))*4)==0xFF9DADC8,'Explicit reopen did not reset thumb'
+assert m.r(pix+(278*w+440)*4)==0xFF9DADC8,'Explicit reopen did not reset thumb'
 
 # Release outside never scrolls. Another popup blocks the benefit arrows.
 m.invoke(c['down'],obj,(443,333));m.invoke(c['up'],obj,(780,330))

@@ -199,8 +199,8 @@ def main():
     m.click(obj,353,127);assert struct.unpack_from('<HI',m.sent[-1],10)==(2,91)
     obj=m.ready(snapshot(token=93));m.click(obj,447,10);assert struct.unpack_from('<H',m.sent[-1],10)[0]==6
     assert not m.r(obj+0x28)
-    # Read back real emitted pixels: approved blue until full EXP, gold only when the
-    # server allows upgrading. A refresh must remove gold after upgrading.
+    # Gold is presentation, never upgrade authority. Fill length follows the
+    # server percentage and clears after upgrading without changing the palette.
     def exp_bar(percent,flags=1|2|4|8,level=2,filename=None):
         p=snapshot(flags=flags,level=level);struct.pack_into('<I',p,20,percent)
         p[112:176]=f'{percent*5000:,} / 500,000 EXP'.encode().ljust(64,b'\0')
@@ -210,17 +210,17 @@ def main():
         pix,w,h=m.pixels(obj)
         return tuple(m.r(pix+((Y(653)+y)*w+X(180)+x)*4) for y in range(Y(681)-Y(653)) for x in range(X(1050)))
     track=exp_bar(0)
-    green=exp_bar(99,filename='vip-exp-blue.png')
+    green=exp_bar(99,filename='vip-exp-partial-gold.png')
     gold=exp_bar(100,filename='vip-exp-gold.png')
     filled=X(1050)*99//100
     assert green[filled:X(1050)]==track[filled:X(1050)] and green[:filled]!=track[:filled]
     for ordinary,ready in zip(green[:filled],gold[:filled]):
-        assert ordinary&255 >= (ordinary>>16)&255,'Below full EXP must remain blue'
-        assert (ready>>16)&255 > (ready>>8)&255 > ready&255,'Full authorized EXP must be gold'
-    assert gold!=exp_bar(100,flags=1|2|4),'No upgrade permission must not look ready'
+        assert (ordinary>>16)&255 > (ordinary>>8)&255 > ordinary&255,'Partial EXP must be gold'
+        assert ordinary==ready,'Fill color must not change at 100%'
+    assert gold==exp_bar(100,flags=1|2|4),'Gold styling does not grant upgrade permission'
     assert gold==exp_bar(100,flags=1|2|4|8|32),'Saved upgrade quest keeps the EXP ready state'
-    assert gold!=exp_bar(100,flags=1|2|4,level=10),'Maximum level is not another upgrade'
-    assert exp_bar(0,level=3)==track and exp_bar(99,level=3)==green,'Gold leaked into the next level'
+    assert gold==exp_bar(100,flags=1|2|4,level=10),'Maximum level retains the gold palette'
+    assert exp_bar(0,level=3)==track and exp_bar(99,level=3)==green,'Old fill leaked into the next level'
     print('PASS: VIP native x86 ABI, real PNGs/private name text, separate current-tier effects, bounded scroll arrows, independent dispatcher/stock fallback, malformed envelopes, session tokens, disabled actions, safe capture/drag, late replies, timer lifecycle, close/destroy/reopen. Offline previews saved; live acceptance pending.')
 
 if __name__=='__main__':main()

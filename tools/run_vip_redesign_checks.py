@@ -18,7 +18,7 @@ def main():
     names=('ui','visibility','quest_ui','tickets','first_quest','quest_items','buffs',
            'purchase','membership_cards','button_pngs','membership_buttons',
            'open_order','portrait','upgrade_effect','benefit_boxes','submit_confirmation','compact',
-           'upgrade_race','benefit_hover','timer_visibility')
+           'upgrade_race','benefit_hover','timer_visibility','hover_toggle','scrollbar')
     if args.only:
         assert set(args.only)<=set(names)
         names=tuple(args.only)
