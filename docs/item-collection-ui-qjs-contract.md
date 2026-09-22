@@ -1,131 +1,177 @@
-# Item Collection QJS contract
+# Item Collection UI contract and maintenance guide
 
-## Checkpoint — 2026-09-02
+Last updated: 2026-09-23. This is the single documentation source for the
+Collection client, artwork, layout, protocol, build, verification, and deployment.
+Runtime resource lists and coordinates are defined in `Scripts/Patches/ItemCollectionUI.qjs`;
+menu integration is in `Scripts/Patches/ROGlobalZeroMenu.qjs`.
 
-- Client and server source contracts are implemented; live acceptance remains
-  required after rebuilding map-server and repatching the client.
-- Search is a native `UIEditCtrl` child. No `GetAsyncKeyState`,
-  `DispatchMessageA`, recv hook, or DLL input bridge remains.
-- Combo-member deposits resolve the owning Combos storage (Storage 11);
-  Items-tab deposits continue to resolve the individual Items storage
-  (Storage 10).
-- The first tab is now a general Items catalog. Its dropdown selects All, Card,
-  Weapon, Armor, Shield, Headgear, Garment, Shoes, Accessory, Consumable, Etc,
-  Ammo, Pet, Shadow, and Cash without changing the 5x3 browser geometry.
-- Schema-changing navigation hides stale payloads. Same-page item/combo SELECT
-  keeps the current rows visible and updates local focus immediately, removing
-  the brief selection flicker. Mutations remain single-flight.
-- Empty filter results exit selection resolution before its decrementing loop.
-  This fixes the Combo Collections -> Ready access violation at `0x01C6F8E7`
-  when `rowCount=0` and a prior combo ID was still cached.
-- Snapshot-pending pages draw the supplied 166x124 `chrome/loading.bmp`
-  NOW LOADING frame instead of request text. The supplied ACT/SPR pair is
-  staged and deployed as the authoritative animation source.
-- A native Item Collection menu child occupies control-row column two beside
-  Auto Hunt in both RO Global New UI and Classic UI. Six active BMP states,
-  hit testing, tooltip, reopen, visibility, and either patch order are gated.
-- The scrollbar supports wheel paging, arrow clicks, track page-up/down, and
-  pointer-local thumb dragging. Its 24-pixel thumb is clamped to Y=128..456 and
-  cannot overlap the down arrow beginning at Y=480.
-- The isolated and AHUI/PINC coexistence builds below pass source, router,
-  allocator, native-edit construction, and PE integration gates.
+## Current behavior and ownership
 
-## Ownership and opener
-
-- Client patch: `Scripts/Patches/ItemCollectionUI.qjs`.
-- Target: 2025-07-16 Ragexe, 32-bit.
-- Native host: 760x540 `UIFrameWnd`, opened with `/itemcollection`.
+- Target: 2025-07-16 Ragexe, 32-bit; 760x540 native `UIFrameWnd`, ID `0x3F3`.
+- The real native menu child uses ID `0x3F4`; Auto Hunt retains `0x3F2`.
+  `NewButtonVis.customRoute("Item Collection")` and `publishCustomButton`
+  publish the request/visibility cells. The supported opener is the menu button.
 - The map server owns validation, storage mutation, Zeny, persistence,
-  collection progress, combo activation, revisioning, and all snapshots.
-- The QJS client renders snapshots and forwards explicit actions. It contains
-  no collection rules and installs no DLL, recv hook, or API detour.
+  collection progress, combo activation, revisioning, and snapshots.
+- QJS renders snapshots and forwards explicit actions. No DLL, recv hook,
+  message-loop detour, or collection-rule duplication is introduced.
+- Search is a native `UIEditCtrl`; the tabs are Items, Combo Collections,
+  and Total Bonuses. Existing item art and collection behavior are retained.
+- Shared `ItemCollectionUI.nativeFrameV1` primitives retain their original
+  implementation. Collection-only panel and text helpers own this skin,
+  so Bestiary and other consumers are not restyled through shared callbacks.
 
-## Asset paths
+The old diagnostics still name `/itemcollection`, but the current source has no
+corresponding command-registration token. The legacy source verifier's slash-opener
+assertion already fails on the pre-redesign baseline; this work does not add or
+claim to repair that opener.
 
-- Fixed chrome and controls:
-  `data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\item_collection\`.
-- Dynamic art:
-  `data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\collection\<identified-resource>.bmp`.
-- Stock icon fallback:
-  `data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\item\<identified-resource>.bmp`.
-- Resolution is `ItemId -> CItemInfoMgr -> identified-resource std::string
-  at node+0x58 -> collection\%s.bmp`.
-- Dynamic 75x100 art is opaque. If it is absent, the renderer centers the
-  item's stock icon; only then does it use `fallback_question_mark.bmp`.
-  Irregular controls use exact `#FF00FF` color-key drawing.
-- The WARP asset-copy choice defaults to enabled and is persisted. The patch
-  creates the `item_collection` icon directory and copies all 15 category
-  BMPs, the loading BMP, and its ACT/SPR source pair. It also copies six Item
-  Collection menu states into
-  `uirenewal\menuicon`; source verification requires every deployed file.
+## Bestiary visual theme
 
-### Generated live client data (outside Git)
+Collection uses Bestiary's cool blue-white palette with the chibi Poring collector.
+The original blue native title strip and readable stock font are retained.
 
-The 2026-09-01 checkpoint also has generated files in the live Banquet client
-tree. They are intentionally not proposed for the WARP or server commits:
+| Surface | Color |
+|---|---|
+| Window body | `#F8FBFE` |
+| Panels / borders | `#FFFFFF` / `#C5D1DC` |
+| Normal button / selected button | `#F4F7FB` / `#DDEBFC` |
+| Selected button highlight / selection outline | `#CCE1FB` / `#829ECA` |
+| Main text / secondary text | `#254267` / `#243648` |
+| Headings / muted text | `#426A9A` / `#75849B` |
+| Progress / track | `#93B8E4` / `#EAF1F9` |
+| Alternate row / hovered dropdown row | `#F3F7FD` / `#DDEBFC` |
 
-- 1,852 `collection\*.bmp` files, all verified as 75x100, 24-bpp BI_RGB;
-- 399 canonical `item\<identified-resource>.bmp` card icons, byte-identical
-  to the stock unnamed-card icon (SHA-256
-  `729E6E133BDB62FE36DBD30C831CCF93F0B76183739ED0AEC45ED9205624E64F`);
-- 67 fixed runtime files under `item_collection\`, including 15 native
-  category icons plus `loading.bmp`, `nowloading.act`, and
-  `nowloading.spr`; and
-- ten user-approved New/Classic Item Collection menu-button BMPs under
-  `uirenewal\menuicon` (six active states plus four compatibility aliases); and
-- the CP949-authoritative `SystemEN\itemInfo_prerenewal.lua`, SHA-256
-  `C37DF7C36BC31D0135C303DEA4CF7056803671FEE66382F4BCBC7813F5F4F52E`.
+`FillRect` writes ARGB pixels. Native `TextDraw` consumes BGR COLORREF;
+`emitCollectionText` and `emitCollectionCenteredText` perform the same conversion
+as Bestiary without changing the exported `emitText` ABI. Runtime labels are never
+baked into button images. The earlier warm ivory/rose prototype is superseded.
 
-Recovery manifests/backups remain under
-`_codex_backup\iteminfo-cardbmp-20260831-144358\` and
-`_codex_backup\item-card-icons-20260831-153206\`.
+## Native menu and hover label
 
-## Native menu button
+The native `UIButton` retains stock drawing, hit testing, ownership, destruction,
+visibility, theme refresh, menu recreation, and map-change layout repair. New UI
+is 45x41; Classic is 32x34. Native active states are normal, mouse-on, and pressed.
+The control occupies the next available menu slot after Auto Hunt when visible.
 
-Item Collection publishes a menu bridge containing its toggle request and a
-shared visibility cell. `ROGlobalZeroMenu` creates a real native `UIButton`
-child in the second permanent control-row column, immediately beside Auto
-Hunt. New UI uses 45x41 normal/mouse-on/pressed states; Classic uses 32x34
-states. Both retain stock draw, tooltip, child ownership, hit testing,
-destruction, theme refresh, menu close/reopen, and map-change layout repair.
+The active names are:
 
-The button child uses ID `0x3F4`; Auto Hunt retains `0x3F2`, and the Item
-Collection top-level frame moved to `0x3F3`. An indirect request cell permits
-Item Collection and RO Global Menu to be selected in either order. The two
-order profiles produce byte-identical PEs. Show/Hide New Buttons recognizes
-the same shared visibility cell when its bridge is available.
+```text
+bt_itemcollection_poring_{normal,mouseon,pressed}.bmp
+bt_itemcollection_poring_old_{normal,mouseon,pressed}.bmp
+```
 
-The ten user-approved button files are staged verbatim under
-`Images/CollectionUI/source/menuicon`. The build script validates dimensions,
-24-bpp BI_RGB format, and copies them byte-for-byte; it does not redraw or
-transform the supplied art. The native child selects normal, mouse-on, and
-pressed for each theme.
+Ten older `bt_itemcollection*.bmp` names remain compatibility assets. The installed
+`update.grf` contains the old `bt_itemcollection_normal.bmp`, SHA-256
+`F1237E65831FE93588EEF6DE114AB8C4D3218A17BA185358DB1CCE4FE54E5CBE`.
+Replacing only the loose image at that name did not update the user's menu.
+The six distinct Poring filenames avoid that packed-resource collision without
+changing global loose-file/GRF priority. They were checked against every archive
+in the installed DATA.INI priority list.
 
-If WARP is applied to an already-patched full client, the build-time CACHE
-handshake may no longer exist even though the native optional button and Item
-Collection toggle still do. ItemCollectionUI therefore has a unique-signature
-fallback that reconnects the request/visibility cells. Ambiguous matches are a
-hard error. For an existing binary, `tools/fix_item_collection_menu_route.py`
-creates a separate repaired EXE and never overwrites its input.
+The existing `Item Collection` text uses native `ClientToScreen(0x00A1EF70)` and
+`ShowTooltip(0x00A753D0)`, anchored at child-local `(0,-20)` above the icon.
+The former right-side `width+16` placement is removed. Native tooltip styling,
+visibility guards, receiver, nonvolatile registers, and `RET 8` are preserved.
 
-The 2026-09-02 supplied EXE had request cell `0x01C60F8C=0` and a valid
-toggle at `0x01C83060`. The repaired copy changes only that route, the
-visibility byte, and PE checksum. `verify_item_collection_menu_button.py`
-confirms the repaired indirect target begins with `PUSHFD/PUSHAD`.
+## Native small close X
 
-## Empty-filter crash gate and loading state
+The close control loads the client's original resources, at native 11x11 size:
 
-The selection resolver used a decrementing `ECX` loop after clamping the
-maximum row count, but did not reject zero. A Ready filter with no matching
-combos retained a local parent combo ID, entered the loop with `ECX=0`,
-underflowed to `0xFFFFFFFF`, and scanned 400-byte rows beyond the payload.
-The injected sequence now performs `TEST ECX,ECX / JE selection_done`
-before either the 100-byte Item or 400-byte Combo loop.
+```text
+basic_interface\sys_close_off.bmp  # normal
+basic_interface\sys_close_on.bmp   # hover and pressed
+```
 
-The loading UI uses the opaque 166x124 BMP safety frame at logical
-`(179,234)`. Native ACT/SPR construction is intentionally not introduced into
-the QJS-owned frame lifecycle; the supplied sources are retained and deployed
-without mutation.
+Draw, hover, mouse-down, and mouse-up share `[744,3,755,14)` bounds. A release
+outside the X cancels closing; adjacent title-bar pixels retain native dragging.
+Close clears native edit focus and popup state, then hides the existing frame.
+The prior 16x16 Quest UI close images are retained only as source references.
+`Images/CollectionUI/source/native_close/sys_close_{off,on}.png` are lossless
+preview decodes of the 11x11 indexed BMPs from installed `maindata.grf`; runtime
+loads the original native names. No custom X is generated or scaled.
+
+## Runtime resources
+
+Fixed pack root:
+`data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\item_collection\`.
+Menu states deploy to:
+`data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\uirenewal\menuicon\`.
+The byte prefix `C0 AF C0 FA C0 CE C5 CD C6 E4 C0 CC BD BA` represents
+`유저인터페이스` in CP949 and is surfaced as the Latin-1 directory above locally.
+
+There are **65 Collection runtime files and 16 menu files**. The patch creates
+needed subdirectories and copies the explicit `Assets`/`MenuAssets` lists.
+The asset-copy choice defaults enabled and is persisted. Native close resources
+come from the installed client skin and are not duplicated into the runtime pack.
+
+All pack BMPs are 24-bpp uncompressed Windows `BI_RGB`. Irregular icons and
+controls use exact `#FF00FF`; body, title, loading frame, and collection art are
+opaque. The generated source PNG retains real alpha until final compilation.
+
+| Asset family under `Images/CollectionUI` | Size / role |
+|---|---|
+| `chrome/title_bar_760.bmp` | 760x17; source `title_bar_470.bmp`, preserve x=0..59 and x=385..469, repeat x=60..384 |
+| `chrome/bg_collection.bmp` | 760x523; `#F8FBFE` interior with blue-gray borders |
+| `chrome/poring_small.bmp`, `poring_large.bmp` | 28x30 header / 108x116 Total Bonuses mascot |
+| `chrome/buttons/btn_{out,over,press,disable}_{left,mid,right}.bmp` | 12 slices, each 6x20; runtime text |
+| `chrome/loading.bmp` | Opaque 166x124 NOW LOADING safety frame |
+| `chrome/nowloading.act`, `nowloading.spr` | Preserved animation sources; not instantiated by the runtime frame |
+| `icons/icon_collection.bmp`, `badge_locked.bmp`, `badge_complete.bmp` | 16x16 title and semantic icons |
+| `icons/category_*.bmp` | 15 families, 16x16 All / 24x24 item types; retained, not drawn by the text-only dropdown |
+| `menuicon/bt_itemcollection*.bmp` | Six active Poring states and ten compatibility files, 45x41 / 32x34 |
+| `reused/` | Stock source controls and missing-art fallback; provenance below |
+
+Dynamic art resolves without a manual ItemId table:
+
+```text
+ItemId -> CItemInfoMgr -> identified-resource std::string at node+0x58
+       -> collection\<identified-resource>.bmp
+       -> item\<identified-resource>.bmp
+       -> reused\artwork\fallback_question_mark.bmp
+```
+
+Collection art is drawn opaque at native 75x100. The stock item icon is centered
+when collection art is absent. Dynamic art is never renamed or copied by the
+fixed-skin builder, and render hooks do not parse itemInfo.lua.
+
+## Layout
+
+All coordinates are window-local pixels. The frame fits an 800x600 client with
+20-pixel horizontal and 30-pixel vertical clearance. Scale is 1.
+
+| Region | X, Y | Width x height |
+|---|---|---|
+| Title / body | 0,0 / 0,17 | 760x17 / 760x523 |
+| Summary / footer | 8,24 / 8,508 | 744x32 / 744x24 |
+| Browser / detail | 8,89 / 538,89 | 522x414 / 214x414 |
+| Summary label / progress | 18,31 / 160,35 | 132x18 / 360x9 |
+| Search edit / button | 548,31 / 718,31 | 170x18 / 26x18 |
+| Items / Combos / Totals tabs | 8,62 / 116,62 / 248,62 | 108x23 / 132x23 / 108x23 |
+| Category dropdown | 360,62 | 170x23; 15 popup rows, 18 pixels each |
+| Header mascot / heading / caption | 539,56 / 574,59 / 574,73 | Mascot 28x30 |
+| Totals mascot / caption | 591,192 / 548,324 | 108x116 / caption width 194 |
+| Selected name / art | 548,99 / 607,126 | 194x18 / 75x100 |
+| Metadata / bonus / fee | 548,236 / 548,292 / 548,365 | 194x42 / 194x64 / 194x18 |
+| Deposit / Deposit All / Withdraw | 553,422 / 553,446 / 553,470 | 184x20 each |
+| Native close X | 744,3 | 11x11 |
+
+Items use a 5x3 grid: first art `(18,132)`, column pitch 96, row pitch 131.
+Each shell starts five pixels before art X at `Y=114+row*131`, size 85x130;
+selection outline is 87x132. Progress/count band is immediately below art.
+Filters begin at `(13,92)`, width 96, pitch 101, height 20.
+Combos use two groups at `Y=119+index*181`, each 177 pixels high; up to five
+full-size member artworks are visible with a `+1 more` indicator for the sixth.
+The detail pane lists all six. Quantity controls preserve the original hitboxes.
+The scrollbar track is Y=128..480; the 24-pixel thumb travels to Y=456.
+Panel corners use two-pixel steps through the existing clipped fill helper.
+
+## Empty results and loading
+
+The selection resolver tests row count before its decrementing loops. Zero-row
+Ready results cannot underflow ECX and scan beyond the bounded payload.
+Pending navigation draws `chrome/loading.bmp` at `(179,234)`; retained ACT/SPR
+sources are not instantiated into the QJS-owned frame lifecycle.
 
 ## Category dropdown
 
@@ -151,25 +197,6 @@ slot 20 at `0x005EB730`, plus `UIComboBoxEx` (`0x0102C810`) and
 `UIComboBoxV2Wnd` (`0x0102CFF8`). The patch does not instantiate those child
 classes without a complete constructor, message, and destructor profile; the
 QJS-owned popup keeps the existing frame lifecycle and static bridge boundary.
-
-### Shared text callback crash gate
-
-The reported access violation did not execute Item Collection code. The native
-Game Settings combo measured text through the shared extent bridge, whose
-`findWide` helper called cached lookup address `0x019DA6D0`; that allocation
-was all zero because its owner patch had been deselected in a later WARP GUI
-apply. The proven-bad live EXE has SHA-256
-`4CFC925D4F245E91243628BAFF26578DF502B1F620C1C010A56C91D1FA3516CE`.
-
-Shared ExtName, Fluent Emoji, ItemColor, grade-config, static-refresh, and
-cross-layer reapply state is now reusable only while its recorded owner patch
-is selected. The emoji-only minimal state also publishes the missing lookup
-stub through `lookupVir`, the field consumed by `buildFindWide`.
-
-`tools/verify_shared_text_bridge_callbacks.py` follows the final PE from the
-native extent call to `findWide` and rejects an empty or invalid lookup target.
-The focused regression profile is
-`profiles/item_collection_ui_renderer_coexistence_test.yml`.
 
 ## COUI v1 request
 
@@ -314,7 +341,7 @@ most one navigation request. Track clicks page toward the pointer, arrows keep
 their existing one-page behavior, and wheel paging is unchanged. Thumb and
 arrow hitboxes are disjoint.
 
-The source verifier audits every injected helper's save/restore or
+The legacy source verifier contains audits of helper save/restore and
 `PUSHAD`/`POPAD` contract. Its paint oracle requires zero writes for `0/10`
 and `0/3` progress and verifies right/bottom edge clipping, including
 `x=759,width=10` and `y=539,height=10` in the 760x540 surface.
@@ -332,44 +359,128 @@ must not regress the last accepted request or revision. A regressing snapshot
 for the current request may update only a nonzero mutation error; it cannot
 replace tab, page, selection, counts, or payload.
 
-## Verification
+## Asset provenance and authoring
+
+`reused/` contains 44 byte-identical stock-source BMPs copied on 2026-08-31.
+The extraction used `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\maindata.grf`,
+then SHA-256 `43E4237A7426F0CE4F93C666E650F6E03D46652743E4728375E29610F8B77BF8`.
+This hash is historical provenance, not a claim about the current mutable GRF.
+
+| Staged family | Files | Original source | Native format | State and text notes |
+|---|---:|---|---|---|
+| `buttons/generic/` | 12 | `maindata.grf::data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\basic_interface\btn_{out,over,press,disable}_{left,mid,right}.bmp` | Each tile is 6x20, 24-bpp RGB BMP | Original stock reference only; current runtime uses Collection-owned chrome/buttons. |
+| `close/` | 4 | `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\uirenewal\questui\btn_close_{normal,mouseon,pressed,disabled}.bmp` | 16x16, 24-bpp RGB BMP | Quest UI reference only; current runtime uses the native 11x11 basic_interface close X. |
+| `search/` | 5 | `C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes\data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\uirenewal\questui\searchbar_bg.bmp` and `btn_searchbar_{normal,_mouseon,pressed,disabled}.bmp` | Field 121x18; buttons 26x18; 24-bpp RGB BMP | Blank search field plus complete magnifier-button family. The source hover filename intentionally contains the double underscore: `btn_searchbar__mouseon.bmp`. |
+| `scrollbar/` | 14 | Track/thumb: `maindata.grf::data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\lapine\scrollbar_*.bmp`; arrows: loose `uirenewal\questui\btn_scroll_arrow_{up,down}.bmp` | Track caps 9x9, track middle 9x3; all thumb slices 9x3; arrows 9x12; 24-bpp RGB BMP | Tileable track plus complete out/over/press thumb states. Arrow bitmaps are icon-only and have one visual state each. |
+| `steppers/` | 6 | `maindata.grf::data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\cashshop\btn_{plus,minus}_{normal,over,press}.bmp` | 19x8, 24-bpp RGB BMP | Complete three-state plus/minus family; no disabled state. |
+| `currency/icon_zeny.bmp` | 1 | `maindata.grf::data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\basic_interface\rodexsystem\renewal\icon_zeny.bmp` | 28x25, 24-bpp RGB BMP | Icon-only Zeny bag/coin; no embedded label. |
+| `status/badge_complete.bmp` | 1 | `maindata.grf::data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\achievement_re\badge_complete.bmp` | 20x30, 24-bpp RGB BMP | Completion ribbon icon with no embedded text. |
+| `artwork/fallback_question_mark.bmp` | 1 | `maindata.grf::data\texture\유저인터페이스\collection\사과.bmp` (local path display: `...\collection\»ç°ú.bmp`) | 75x100, 24-bpp RGB BMP | Native question-mark collection artwork. Only the staged filename was normalized; pixel bytes are unchanged. Do not confuse it with `collection\apple_.bmp`, which is the real Apple artwork. |
+
+
+The 15 category icons use native representative resources: Poring Card, Knife,
+Cotton Shirt, Guard, Poring Hat, Muffler, Sandals, Rosary, Red Potion, Jellopy,
+Arrow, Poring Egg, Beginner's Shadow Armor, and Battle Manual Box, plus the
+original All icon. Card, Headgear, Ammo, Shadow, and Cash were losslessly converted
+from palette BMP to 24-bpp BI_RGB. They define no membership or rewards.
+The All source icon predates the new Poring title icon.
+
+The previous supplied menu set came from `Downloads\New folder` on 2026-09-01.
+Its filenames are retained for compatibility, but current pixels are generated
+from `Images/CollectionUI/source/poring_collector.png`. `source/menuicon/` stages
+the ten compatibility states; `menuicon/` also contains six distinct active names.
+
+The master was generated with the built-in imagegen tool on 2026-09-23; no
+fallback API/CLI was used. The compiler bounds alpha, resamples the original,
+and converts the exterior to exact magenta only at final BMP output. Hover is
+brighter, pressed is darker and shifts down one pixel, and disabled is grayscale.
+The 16x16 title icon and two window mascots share the same source.
+
+### Exact artwork prompt
+
+Use case: stylized-concept. Asset type: a single production game-menu icon for Ragnarok Online's Item Collection, also reused as a tiny window mascot. Create one super-cute chibi pink Poring collector cuddling a compact deep dusty-blue collection album with cream pages, gold book-corner protectors, and a small golden diamond clasp. The Poring has a plump teardrop blob silhouette, two dark dot eyes, tiny happy mouth, rosy cheeks, and a soft white highlight. A single ivory collection card peeks out of the album. The album and Poring form one compact coherent shape. Style: authentic early-2000s Ragnarok Online inventory/menu sprite, hand-pixeled feel, crisp dark brown outer contour, small stepped shading clusters, warm cream highlights, pink/blue/gold colors. Friendly, cute, modest detail and readable even at 32 pixels. Composition: one centered isolated icon filling most of a square canvas with clear empty margins; all parts visible. Transparent background with real alpha, absolutely no checkerboard, no ground plane, no cast shadow outside the silhouette, no glow. No text, no letters, no UI panel, no border frame, no additional icons. This is for 45x41 and 32x34 game buttons, so prioritize chunky clean silhouette and very simple features.
+
+## Build, preview, and verification
+
+Run from the repository root. Python examples use the available local PE-analysis
+venv; another environment with `pefile` and `unicorn` can run the same verifiers.
 
 ```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\tools\verify_item_collection_ui.ps1
-powershell.exe -ExecutionPolicy Bypass -File .\tools\build_item_collection_menu_buttons.ps1
-.\win32\WARP_console.exe -using .\profiles\item_collection_ui_test.yml
-.\win32\WARP_console.exe -using .\profiles\item_collection_ui_coexistence_test.yml
-.\win32\WARP_console.exe -using .\profiles\item_collection_ui_renderer_coexistence_test.yml
-.\win32\WARP_console.exe -using .\profiles\item_collection_ui_menu_order_test.yml
-.\win32\WARP_console.exe -using .\profiles\item_collection_ui_menu_reverse_order_test.yml
-python .\tools\verify_shared_text_bridge_callbacks.py .\tmp\item_collection_ui_renderer_coexistence_test.exe
-python .\tools\verify_item_collection_menu_button.py .\tmp\item_collection_ui_menu_order_test.exe
-python .\tools\verify_item_collection_menu_button.py .\tmp\item_collection_ui_menu_reverse_order_test.exe
-python .\tools\fix_item_collection_menu_route.py <patched.exe> --output <fixed.exe>
+powershell.exe -ExecutionPolicy Bypass -File .\tools\build_collection_ui_assets.ps1
+powershell.exe -ExecutionPolicy Bypass -File .\tools\verify_collection_ui_assets.ps1
+powershell.exe -ExecutionPolicy Bypass -File .\tools\preview_collection_chibi.ps1
+.\win32\WARP_console.exe -using "profiles\2025-07-16 PROFILE MAIN.yml"
+.\.venv-target-hud\Scripts\python.exe tools\verify_item_collection_menu_button.py <built.exe> --check-hover
+.\.venv-target-hud\Scripts\python.exe tools\verify_item_collection_close.py <built.exe>
 ```
 
-The all-item dropdown, asset-deployment, stock-icon-fallback, FillRect-safe,
-unified-font, smooth-search, combo-member-action rebuild produced:
+The main asset builder calls `build_collection_chibi_assets.ps1` before rendering
+its contact sheet. That compiler creates the mascot, Collection-owned controls,
+compatibility states, and six uniquely named active menu states.
+`build_item_collection_menu_buttons.ps1` alone validates/copies only the ten staged
+compatibility states. Use the main or chibi builder for a complete rebuild.
 
-- isolated COUI: 16,166,221 bytes, SHA-256
-  `1A1FB6B4E6C2492DE7580A8CA19D4291F35F8CBDF126DF44E9C2D1DC62D92F25`;
-- combined PINC/AHUI/COUI: 17,640,269 bytes, SHA-256
-  `349FA086DE50CEDB86D87936AEA6D2DE9F54B40CD28F49AF09C387607755F3A2`;
-- renderer/PINC/AHUI/COUI: 21,507,917 bytes, SHA-256
-  `D2F0F3D6F8F510D75E5CEC9BFA94DEECB2615B612AF496F43C95DD8305E2BBD0`;
-- either menu selection order: 17,659,725 bytes, identical SHA-256
-  `872AC821F45FE09F6C8D6B16FB7DF7135B2CD8DC355B5A5C7B4352DB26BE5B72`.
+`preview/chibi-items.png` and `preview/chibi-bonuses.png` are offline production-asset
+layout previews with illustrative names/counts/bonuses, not live screenshots.
+`preview/contact-sheet.png` is also generated. The source and compiler are retained;
+local previews, executables, packages, and recovery backups need not be committed.
 
-These prove source, allocator, router, and PE integration only. Live Ragexe
-acceptance still requires 800x600 and larger layout, all 15 Item count bands,
-two full-height Combo groups per page, six-member detail, drag/close/reopen,
-all three tabs, all 15 item categories, collection-art and stock-item-icon
-fallbacks, wheel/page bounds, Items and Combo-member
-deposit/withdraw, combo activate/deactivate, selected-member highlighting,
-`0/10` and `0/3` progress, grouped Zeny/fees, Zeny refresh, native-UIEditCtrl
-typing/debounce, chat-to-search focus transfer, focus cleanup, pending mutation
-lockout, rapid tab switching, and coexistence with Auto Hunt and PIN.
-Live menu acceptance must cover New/Classic switching, both custom buttons,
-hover/press/click, close/reopen, map change, and Show/Hide. Scrollbar acceptance
-must cover thumb drag, both track directions, arrows, wheel, first/last page,
-and no item-selection flicker.
+Available focused build profiles:
+
+- `profiles/item_collection_ui_coexistence_test.yml`: Collection, Auto Hunt, PINC.
+- `profiles/item_collection_ui_menu_order_test.yml`: Collection before menu.
+- `profiles/item_collection_ui_menu_reverse_order_test.yml`: reversed requested order.
+
+Menu profiles include AutoSupport and RO Global theme dependencies. WARP console
+can exit successfully despite a patch error; require no `Patch Error` or `Tool Error`
+in the build log, then verify the emitted PE. Earlier forward/reverse builds were
+byte-identical; the final cool-theme full profile was rebuilt and checked separately.
+
+### Verified final revision
+
+- Full current main-profile build completed without patch errors.
+- 106 BMPs validated: dimensions, 24-bpp BI_RGB, native title preservation,
+  blue-white body, exact color keys, 44 reused sources, and all menu states.
+- All 65 Collection and 16 menu runtime files matched source bytes after deployment.
+- Six active Poring names were absent from all installed DATA.INI archives.
+- Native tooltip execution passed 16 cases across both menu sizes, two positions,
+  visible/hidden buttons, and valid/null tooltip managers, preserving its ABI.
+- Native close execution passed 13 cases covering exact bounds, hover, click,
+  outside-release cancellation, title dragging, nonvolatile registers, and `RET 8`.
+- QJS syntax, CRLF-only UTF-8 without BOM, and scoped diff checks passed.
+
+The legacy `tools/verify_item_collection_ui.ps1 -SourceOnly` remains a known failing
+gate: its slash-opener assertion already fails on the pre-redesign source.
+Documentation references in that verifier now point here; its unrelated stale
+assertions were not bypassed. Do not describe the entire legacy suite as passing.
+
+Live visual acceptance remains pending. Check New/Classic menu switching, hover,
+press/click, close/reopen, map changes, the native small X, all three Collection
+tabs, search/category/filter behavior, scrolling, selection, and quantity/actions.
+Static PE checks and offline previews do not establish live rendering acceptance.
+
+## Installed build and recovery
+
+Final EXE SHA-256:
+`0A05D46EA8A3E17B4AF7DD85E7B796408A01A5C43B2F60CE7821469F45D5811C`.
+
+The verified previous `ItemCollectionChibi.exe` in
+`C:\Users\Administrator\Documents\Ragnarok\Banquet of Heroes` was updated in place,
+along with the 81 listed runtime assets. The prior EXE hash was
+`09D9AC6A9270D5E56401E7307E763BF629B88413902FFAF563655667E1C30A01`.
+Every replaced file was backed up before installation; no server or GRF was modified.
+
+Local-only artifacts under `Outputs/ItemCollectionCool/`:
+
+- `client/ItemCollectionCool.exe` and `ItemCollectionCool-review.zip`.
+- `install-manifest.json`, `installed-manifest.json`, and build/asset logs.
+- `installed-backup/`: previous installed EXE and replaced files.
+
+Restart the installed client to use the revised code and resource names. Recovery
+uses the exact relative paths and prior hashes in `installed-manifest.json`; restore
+those backed-up files while the client is closed. Keep unrelated client data intact.
+
+Historical 2026-09-01 dynamic-art work generated 1,852 75x100 collection BMPs and
+399 stock card-icon fallbacks outside Git. The matching itemInfo source hash was
+`C37DF7C36BC31D0135C303DEA4CF7056803671FEE66382F4BCBC7813F5F4F52E`;
+those resources are independent of this skin and are not included in the commit.

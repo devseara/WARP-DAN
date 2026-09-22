@@ -2161,14 +2161,14 @@ ROGlobalZeroMenu = function(_)
 	}
 	const itemButtonPathSpecs = {
 		renewal: [
-			"uirenewal\\menuicon\\bt_itemcollection_normal.bmp",
-			"uirenewal\\menuicon\\bt_itemcollection_mouseon.bmp",
-			"uirenewal\\menuicon\\bt_itemcollection_pressed.bmp"
+			"uirenewal\\menuicon\\bt_itemcollection_poring_normal.bmp",
+			"uirenewal\\menuicon\\bt_itemcollection_poring_mouseon.bmp",
+			"uirenewal\\menuicon\\bt_itemcollection_poring_pressed.bmp"
 		],
 		classic: [
-			"uirenewal\\menuicon\\bt_itemcollection_old_normal.bmp",
-			"uirenewal\\menuicon\\bt_itemcollection_old_mouseon.bmp",
-			"uirenewal\\menuicon\\bt_itemcollection_old_pressed.bmp"
+			"uirenewal\\menuicon\\bt_itemcollection_poring_old_normal.bmp",
+			"uirenewal\\menuicon\\bt_itemcollection_poring_old_mouseon.bmp",
+			"uirenewal\\menuicon\\bt_itemcollection_poring_old_pressed.bmp"
 		]
 	};
 	const itemButtonImagePaths = {renewal: [], classic: []};
@@ -2306,7 +2306,8 @@ ROGlobalZeroMenu = function(_)
 		MenuZeroStatic.buildOptionalButtonMouseUp(itemCollectionRoute.vir)
 	);
 	const itemButtonHover = MenuZeroStatic.allocateCode(
-		MenuZeroStatic.buildButtonHover(itemCollectionHover.vir)
+		// Match native menu labels: anchor above the child, not beside it.
+		MenuZeroStatic.buildButtonHover(itemCollectionHover.vir, 0, -20)
 	);
 	const itemButtonVtable = MenuZeroStatic.cloneButtonVtable(
 		itemButtonMouseUp.vir, itemButtonHover.vir,

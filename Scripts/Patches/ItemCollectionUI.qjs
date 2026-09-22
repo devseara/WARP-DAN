@@ -175,6 +175,7 @@ const ItemCollectionUIStatic = {
 	SearchMaximumChars: 27,
 	SearchDebounceMs: 250,
 	ControlClose: 1,
+	CloseX: 744, CloseY: 3, CloseWidth: 11, CloseHeight: 11,
 	ControlSearchField: 2,
 	ControlSearchButton: 3,
 	ControlTabBase: 10,
@@ -200,6 +201,16 @@ const ItemCollectionUIStatic = {
 	ScrollbarThumbTravel: 328,
 	AssetPath: "Images/CollectionUI",
 	TargetLeaf: "item_collection"
+};
+
+// Collection-only skin; exported nativeFrameV1 primitives retain their stock look.
+ItemCollectionUIStatic.Palette = {
+	Text: 0xFF254267, Secondary: 0xFF243648, Heading: 0xFF426A9A,
+	Muted: 0xFF75849B, Border: 0xFFC5D1DC, Panel: 0xFFFFFFFF,
+	Highlight: 0xFFFFFFFF, Selection: 0xFF829ECA, Line: 0xFFC5D1DC,
+	Progress: 0xFF93B8E4, Track: 0xFFEAF1F9, TrackEdge: 0xFFC5D1DC,
+	ScrollTrack: 0xFFF1F5FA, SelectedRow: 0xFFDDEBFC,
+	AlternateRow: 0xFFF3F7FD, DropdownHover: 0xFFDDEBFC
 };
 
 ItemCollectionUIStatic.bytesToHex = function(bytes)
@@ -1152,6 +1163,17 @@ ItemCollectionUIStatic.emitPanel = function(a, fillRectVir, x, y, width, height)
 	c.emitFillRect(a, fillRectVir, x + 1, y + 1, width - 2, height - 2, 0xFFFFFFFF);
 };
 
+ItemCollectionUIStatic.emitCollectionPanel = function(a, fillRectVir, x, y, width, height)
+{
+	const c = ItemCollectionUIStatic;
+	// Two-pixel stepped corners, using the existing clipped native fill helper.
+	c.emitFillRect(a, fillRectVir, x + 2, y, width - 4, height, c.Palette.Border);
+	c.emitFillRect(a, fillRectVir, x, y + 2, width, height - 4, c.Palette.Border);
+	c.emitFillRect(a, fillRectVir, x + 2, y + 1, width - 4, height - 2, c.Palette.Panel);
+	c.emitFillRect(a, fillRectVir, x + 1, y + 2, width - 2, height - 4, c.Palette.Panel);
+	c.emitFillRect(a, fillRectVir, x + 3, y + 2, width - 6, 1, c.Palette.Highlight);
+};
+
 ItemCollectionUIStatic.emitText = function(
 	a, textVir, x, y, color, bold = 0, count = 0
 )
@@ -1173,6 +1195,25 @@ ItemCollectionUIStatic.emitText = function(
 	c.pushImm(a, x);
 	a.emit(0x8B, 0xCE);
 	a.call(c.TextDraw);
+};
+
+// Match Bestiary's RGB-to-COLORREF conversion at the native text boundary.
+// FillRect writes ARGB pixels directly; TextDraw consumes BGR COLORREF instead.
+ItemCollectionUIStatic.textColorRef = function(rgb)
+{
+	return ((rgb & 255) << 16) | (rgb & 0xFF00) | ((rgb >>> 16) & 255);
+};
+
+ItemCollectionUIStatic.emitCollectionText = function(a, textVir, x, y, rgb, bold = 0, count = 0)
+{
+	const c = ItemCollectionUIStatic;
+	c.emitText(a, textVir, x, y, c.textColorRef(rgb), bold, count);
+};
+
+ItemCollectionUIStatic.emitCollectionCenteredText = function(a, textVir, left, y, width, rgb, bold = 0)
+{
+	const c = ItemCollectionUIStatic;
+	c.emitCenteredText(a, textVir, left, y, width, c.textColorRef(rgb), bold);
 };
 
 ItemCollectionUIStatic.emitCenteredText = function(
@@ -1435,9 +1476,9 @@ ItemCollectionUIStatic.emitButton = function(
 		c.emitNineSlice(a, nineSliceVir, paths.buttons.out, x, y, width);
 		a.label(draw);
 	}
-	c.emitCenteredText(
+	c.emitCollectionCenteredText(
 		a, textVir, x, y + 2, width,
-		disabled ? 0xFF838383 : 0xFF172237, 0
+		disabled ? 0xFF838383 : c.Palette.Text, 0
 	);
 };
 
@@ -1508,12 +1549,12 @@ ItemCollectionUIStatic.emitFormatU32Commas = function(
 
 ItemCollectionUIStatic.emitProgress = function(
 	a, fillRectVir, currentVir, totalVir, x, y, width, label,
-	fillColor = 0xFF70BF55
+	fillColor = ItemCollectionUIStatic.Palette.Progress
 )
 {
 	const c = ItemCollectionUIStatic;
-	c.emitFillRect(a, fillRectVir, x, y, width, 9, 0xFFD7DCE2);
-	c.emitFillRect(a, fillRectVir, x, y, width, 1, 0xFF9EA8B4);
+	c.emitFillRect(a, fillRectVir, x, y, width, 9, c.Palette.Track);
+	c.emitFillRect(a, fillRectVir, x, y, width, 1, c.Palette.TrackEdge);
 	a.emit(0x0F, 0xB7, 0x05); a.dword(totalVir);
 	a.emit(0x85, 0xC0); a.jcc(0x84, `${label}_done`);
 	a.emit(0x8B, 0xC8);
@@ -1539,8 +1580,8 @@ ItemCollectionUIStatic.emitSummaryProgress = function(
 )
 {
 	const c = ItemCollectionUIStatic;
-	c.emitFillRect(a, fillRectVir, 160, 35, 360, 9, 0xFFD7DCE2);
-	c.emitFillRect(a, fillRectVir, 160, 35, 360, 1, 0xFF9EA8B4);
+	c.emitFillRect(a, fillRectVir, 160, 35, 360, 9, c.Palette.Track);
+	c.emitFillRect(a, fillRectVir, 160, 35, 360, 1, c.Palette.TrackEdge);
 	a.emit(0xA1); a.dword(stateVir + c.StateTotalCount);
 	a.emit(0x85, 0xC0); a.jcc(0x84, `${label}_done`);
 	a.emit(0x8B, 0xC8);
@@ -1551,7 +1592,7 @@ ItemCollectionUIStatic.emitSummaryProgress = function(
 	a.emit(0xB8); a.dword(358);
 	a.label(`${label}_width_ok`);
 	a.emit(0x85, 0xC0); a.jcc(0x84, `${label}_done`);
-	c.pushImm(a, 0xFF70BF55);
+	c.pushImm(a, c.Palette.Progress);
 	c.pushImm(a, 7);
 	a.emit(0x50);
 	c.pushImm(a, 36);
@@ -1566,7 +1607,7 @@ ItemCollectionUIStatic.emitScrollbar = function(a, stateVir, paths, fillRectVir)
 	const c = ItemCollectionUIStatic;
 	c.emitFillRect(
 		a, fillRectVir, 516, c.ScrollbarTrackTop, 9,
-		c.ScrollbarTrackBottom - c.ScrollbarTrackTop, 0xFFE7EBF0
+		c.ScrollbarTrackBottom - c.ScrollbarTrackTop, c.Palette.ScrollTrack
 	);
 	c.emitDrawColorKey(a, paths.scroll.up.vir, 516, 116, "collection_scroll_up");
 	c.emitDrawColorKey(a, paths.scroll.down.vir, 516, 480, "collection_scroll_down");
@@ -1595,13 +1636,13 @@ ItemCollectionUIStatic.emitClose = function(a, stateVir, paths)
 	a.emit(c.ControlClose); a.jcc(0x84, "close_pressed");
 	a.emit(0x83, 0x3D); a.dword(stateVir + c.StateHoverControl);
 	a.emit(c.ControlClose); a.jcc(0x84, "close_over");
-	c.emitDrawColorKey(a, paths.close.normal.vir, 742, 0, "close_normal");
+	c.emitDrawColorKey(a, paths.close.normal.vir, c.CloseX, c.CloseY, "close_normal");
 	a.jmp("close_done");
 	a.label("close_over");
-	c.emitDrawColorKey(a, paths.close.over.vir, 742, 0, "close_over_draw");
+	c.emitDrawColorKey(a, paths.close.over.vir, c.CloseX, c.CloseY, "close_over_draw");
 	a.jmp("close_done");
 	a.label("close_pressed");
-	c.emitDrawColorKey(a, paths.close.press.vir, 742, 0, "close_press_draw");
+	c.emitDrawColorKey(a, paths.close.press.vir, c.CloseX, c.CloseY, "close_press_draw");
 	a.label("close_done");
 };
 
@@ -1623,10 +1664,10 @@ ItemCollectionUIStatic.emitCardTiles = function(
 		const next = `card_shell_${index}_next`;
 		a.emit(0x83, 0x3D); a.dword(stateVir + c.StateRowCount);
 		a.emit(index); a.jcc(0x86, next);
-		c.emitPanel(a, fillRectVir, artX - 5, tileY, 85, 130);
+		c.emitCollectionPanel(a, fillRectVir, artX - 5, tileY, 85, 130);
 		a.emit(0x83, 0x3D); a.dword(stateVir + c.StateSelectedIndex);
 		a.emit(index); a.jcc(0x85, `card_shell_${index}_not_selected`);
-		c.emitOutline(a, fillRectVir, artX - 6, tileY - 1, 87, 132, 0xFF1670EA);
+		c.emitOutline(a, fillRectVir, artX - 6, tileY - 1, 87, 132, c.Palette.Selection);
 		a.label(`card_shell_${index}_not_selected`);
 		a.label(next);
 	}
@@ -1640,7 +1681,7 @@ ItemCollectionUIStatic.emitCardTiles = function(
 		const next = `card_content_${index}_next`;
 		a.emit(0x83, 0x3D); a.dword(stateVir + c.StateRowCount);
 		a.emit(index); a.jcc(0x86, next);
-		c.emitText(a, rowVir + 20, artX, artY - 16, 0xFF172237, 0, 13);
+		c.emitCollectionText(a, rowVir + 20, artX, artY - 16, c.Palette.Text, 0, 13);
 		c.emitDrawCollectionArt(
 			a, rowVir, 0, itemResolverVir, paths.artFormat.vir,
 			paths.itemArtFormat.vir, artPathVir,
@@ -1665,14 +1706,14 @@ ItemCollectionUIStatic.emitCardTiles = function(
 		c.emitProgress(
 			a, fillRectVir, rowVir + 4, rowVir + 6,
 			artX + 1, artY + 102, 73, `card_progress_${index}`,
-			0xFF70BF55
+			c.Palette.Progress
 		);
 		c.emitFormatPairU16(
 			a, rowVir + 4, rowVir + 6,
 			strings.countFormat.vir, countTextVir
 		);
-		c.emitCenteredText(
-			a, countTextVir, artX, artY + 101, 75, 0xFF172237, 0
+		c.emitCollectionCenteredText(
+			a, countTextVir, artX, artY + 101, 75, c.Palette.Text, 0
 		);
 		a.label(next);
 	}
@@ -1693,7 +1734,7 @@ ItemCollectionUIStatic.emitCardDetail = function(
 		a.emit(index); a.jcc(0x85, next);
 		a.emit(0x83, 0x3D); a.dword(stateVir + c.StateRowCount);
 		a.emit(index); a.jcc(0x86, next);
-		c.emitCenteredText(a, rowVir + 20, 548, 99, 194, 0xFF171717, 1);
+		c.emitCollectionCenteredText(a, rowVir + 20, 548, 99, 194, c.Palette.Text, 1);
 		c.emitDrawCollectionArt(
 			a, rowVir, 0, itemResolverVir, paths.artFormat.vir,
 			paths.itemArtFormat.vir, artPathVir,
@@ -1705,15 +1746,15 @@ ItemCollectionUIStatic.emitCardDetail = function(
 		c.pushImm(a, detailTextVir);
 		a.call(c.StringFormat);
 		a.emit(0x83, 0xC4, 0x0C);
-		c.emitText(a, detailTextVir, 548, 236, 0xFF25314A);
+		c.emitCollectionText(a, detailTextVir, 548, 236, c.Palette.Secondary);
 		c.emitFormatPairU16(
 			a, rowVir + 4, rowVir + 6,
 			strings.depositedFormat.vir, detailTextVir
 		);
-		c.emitText(a, detailTextVir, 548, 254, 0xFF25314A);
-		c.emitText(a, strings.collectionBonus.vir, 548, 292, 0xFF0757D7, 1);
-		c.emitFillRect(a, fillRectVir, 548, 311, 194, 1, 0xFF2D7CFF);
-		c.emitText(a, rowVir + 52, 554, 320, 0xFF172237, 0, 46);
+		c.emitCollectionText(a, detailTextVir, 548, 254, c.Palette.Secondary);
+		c.emitCollectionText(a, strings.collectionBonus.vir, 548, 292, c.Palette.Heading, 1);
+		c.emitFillRect(a, fillRectVir, 548, 311, 194, 1, c.Palette.Line);
+		c.emitCollectionText(a, rowVir + 52, 554, 320, c.Palette.Text, 0, 46);
 		c.emitFormatU32Commas(
 			a, commaFormatterVir, rowVir + 12, moneyText1Vir
 		);
@@ -1726,14 +1767,14 @@ ItemCollectionUIStatic.emitCardDetail = function(
 		c.pushImm(a, detailTextVir);
 		a.call(c.StringFormat);
 		a.emit(0x83, 0xC4, 0x10);
-		c.emitText(a, detailTextVir, 548, 365, 0xFF172237);
+		c.emitCollectionText(a, detailTextVir, 548, 365, c.Palette.Text);
 		c.emitDrawColorKey(a, paths.minus.normal.vir, 580, 398, `minus_${index}`);
-		c.emitPanel(a, fillRectVir, 603, 390, 86, 24);
+		c.emitCollectionPanel(a, fillRectVir, 603, 390, 86, 24);
 		c.emitFormatU32(
 			a, stateVir + c.StateQuantity,
 			strings.uintFormat.vir, detailTextVir
 		);
-		c.emitCenteredText(a, detailTextVir, 603, 393, 86, 0xFF171717, 0);
+		c.emitCollectionCenteredText(a, detailTextVir, 603, 393, 86, c.Palette.Text, 0);
 		c.emitDrawColorKey(a, paths.plus.normal.vir, 694, 398, `plus_${index}`);
 		a.emit(0xF7, 0x05); a.dword(stateVir + c.StateSnapshotFlags);
 		a.dword(c.CapabilityStorageReady);
@@ -1787,12 +1828,12 @@ ItemCollectionUIStatic.emitComboRows = function(
 		const next = `combo_row_${index}_next`;
 		a.emit(0x83, 0x3D); a.dword(stateVir + c.StateRowCount);
 		a.emit(index); a.jcc(0x86, next);
-		c.emitPanel(a, fillRectVir, 13, y, 497, 177);
+		c.emitCollectionPanel(a, fillRectVir, 13, y, 497, 177);
 		a.emit(0x83, 0x3D); a.dword(stateVir + c.StateSelectedIndex);
 		a.emit(index); a.jcc(0x85, `combo_row_${index}_not_selected`);
-		c.emitOutline(a, fillRectVir, 12, y - 1, 499, 179, 0xFF1670EA);
+		c.emitOutline(a, fillRectVir, 12, y - 1, 499, 179, c.Palette.Selection);
 		a.label(`combo_row_${index}_not_selected`);
-		c.emitText(a, comboVir + 12, 23, y + 5, 0xFF172237, 1, 29);
+		c.emitCollectionText(a, comboVir + 12, 23, y + 5, c.Palette.Text, 1, 29);
 		for (let member = 0; member < 5; ++member)
 		{
 			const memberVir = comboVir + c.ComboMemberOffset +
@@ -1801,8 +1842,8 @@ ItemCollectionUIStatic.emitComboRows = function(
 			const memberNext = `combo_${index}_member_${member}_next`;
 			a.emit(0x66, 0x83, 0x3D); a.dword(comboVir + 8); a.emit(member);
 			a.jcc(0x86, memberNext);
-			c.emitPanel(a, fillRectVir, x - 3, y + 25, 81, 140);
-			c.emitText(a, memberVir + 12, x, y + 26, 0xFF25314A, 0, 12);
+			c.emitCollectionPanel(a, fillRectVir, x - 3, y + 25, 81, 140);
+			c.emitCollectionText(a, memberVir + 12, x, y + 26, c.Palette.Secondary, 0, 12);
 			c.emitDrawCollectionArt(
 				a, memberVir, 0, itemResolverVir, paths.artFormat.vir,
 				paths.itemArtFormat.vir, artPathVir,
@@ -1812,32 +1853,32 @@ ItemCollectionUIStatic.emitComboRows = function(
 			c.emitProgress(
 				a, fillRectVir, memberVir + 4, memberVir + 6,
 				x + 1, y + 142, 73,
-				`combo_progress_${index}_${member}`, 0xFF70BF55
+				`combo_progress_${index}_${member}`, c.Palette.Progress
 			);
 			c.emitFormatPairU16(
 				a, memberVir + 4, memberVir + 6,
 				strings.countFormat.vir, countTextVir
 			);
-			c.emitCenteredText(
-				a, countTextVir, x, y + 141, 75, 0xFF172237, 0
+			c.emitCollectionCenteredText(
+				a, countTextVir, x, y + 141, 75, c.Palette.Text, 0
 			);
 			a.label(memberNext);
 		}
 		a.emit(0x66, 0x83, 0x3D); a.dword(comboVir + 8); a.emit(6);
 		a.jcc(0x85, `combo_${index}_more_done`);
-		c.emitText(a, strings.plusOneMore.vir, 364, y + 7, 0xFF0757D7, 0);
+		c.emitCollectionText(a, strings.plusOneMore.vir, 364, y + 7, c.Palette.Heading, 0);
 		a.label(`combo_${index}_more_done`);
 		a.emit(0xF7, 0x05); a.dword(comboVir + 4); a.dword(c.ComboActive);
 		a.jcc(0x84, `combo_${index}_ready_test`);
-		c.emitText(a, strings.active.vir, 424, y + 6, 0xFF247B25, 0);
+		c.emitCollectionText(a, strings.active.vir, 424, y + 6, 0xFF247B25, 0);
 		a.jmp(`combo_${index}_status_done`);
 		a.label(`combo_${index}_ready_test`);
 		a.emit(0xF7, 0x05); a.dword(comboVir + 4); a.dword(c.ComboReady);
 		a.jcc(0x84, `combo_${index}_incomplete`);
-		c.emitText(a, strings.ready.vir, 424, y + 6, 0xFF9C5700, 0);
+		c.emitCollectionText(a, strings.ready.vir, 424, y + 6, 0xFF9C5700, 0);
 		a.jmp(`combo_${index}_status_done`);
 		a.label(`combo_${index}_incomplete`);
-		c.emitText(a, strings.incomplete.vir, 408, y + 6, 0xFF8B3232, 0);
+		c.emitCollectionText(a, strings.incomplete.vir, 408, y + 6, 0xFF8B3232, 0);
 		a.label(`combo_${index}_status_done`);
 		a.label(next);
 	}
@@ -1857,9 +1898,9 @@ ItemCollectionUIStatic.emitComboDetail = function(
 		a.emit(index); a.jcc(0x85, next);
 		a.emit(0x83, 0x3D); a.dword(stateVir + c.StateRowCount);
 		a.emit(index); a.jcc(0x86, next);
-		c.emitCenteredText(a, comboVir + 12, 548, 103, 194, 0xFF171717, 1);
-		c.emitText(a, strings.requiredCards.vir, 548, 140, 0xFF0757D7, 1);
-		c.emitFillRect(a, fillRectVir, 548, 159, 194, 1, 0xFF2D7CFF);
+		c.emitCollectionCenteredText(a, comboVir + 12, 548, 103, 194, c.Palette.Text, 1);
+		c.emitCollectionText(a, strings.requiredCards.vir, 548, 140, c.Palette.Heading, 1);
+		c.emitFillRect(a, fillRectVir, 548, 159, 194, 1, c.Palette.Line);
 		for (let member = 0; member < c.ComboMembers; ++member)
 		{
 			const memberVir = comboVir + c.ComboMemberOffset +
@@ -1870,36 +1911,36 @@ ItemCollectionUIStatic.emitComboDetail = function(
 			a.emit(0x83, 0x3D); a.dword(stateVir + c.StateComboMemberIndex);
 			a.emit(member); a.jcc(0x85, `combo_detail_${index}_member_${member}_plain`);
 			c.emitFillRect(
-				a, fillRectVir, 548, 165 + member * 23, 194, 20, 0xFFE8F1FF
+				a, fillRectVir, 548, 165 + member * 23, 194, 20, c.Palette.SelectedRow
 			);
 			c.emitOutline(
-				a, fillRectVir, 548, 165 + member * 23, 194, 20, 0xFF1670EA
+				a, fillRectVir, 548, 165 + member * 23, 194, 20, c.Palette.Selection
 			);
 			a.label(`combo_detail_${index}_member_${member}_plain`);
-			c.emitText(
+			c.emitCollectionText(
 				a, memberVir + 12, 552, 169 + member * 23,
-				0xFF25314A, 0, 20
+				c.Palette.Secondary, 0, 20
 			);
 			c.emitFormatPairU16(
 				a, memberVir + 4, memberVir + 6,
 				strings.countFormat.vir, countTextVir
 			);
-			c.emitText(
+			c.emitCollectionText(
 				a, countTextVir, 697, 169 + member * 23,
-				0xFF25314A
+				c.Palette.Secondary
 			);
 			a.label(memberNext);
 		}
-		c.emitText(a, strings.comboBonus.vir, 548, 309, 0xFF0757D7, 1);
-		c.emitFillRect(a, fillRectVir, 548, 328, 194, 1, 0xFF2D7CFF);
-		c.emitText(a, comboVir + 44, 552, 337, 0xFF172237, 0, 62);
+		c.emitCollectionText(a, strings.comboBonus.vir, 548, 309, c.Palette.Heading, 1);
+		c.emitFillRect(a, fillRectVir, 548, 328, 194, 1, c.Palette.Line);
+		c.emitCollectionText(a, comboVir + 44, 552, 337, c.Palette.Text, 0, 62);
 		c.emitDrawColorKey(a, paths.minus.normal.vir, 580, 369, `combo_minus_${index}`);
-		c.emitPanel(a, fillRectVir, 603, 361, 86, 24);
+		c.emitCollectionPanel(a, fillRectVir, 603, 361, 86, 24);
 		c.emitFormatU32(
 			a, stateVir + c.StateQuantity,
 			strings.uintFormat.vir, detailTextVir
 		);
-		c.emitCenteredText(a, detailTextVir, 603, 364, 86, 0xFF171717, 0);
+		c.emitCollectionCenteredText(a, detailTextVir, 603, 364, 86, c.Palette.Text, 0);
 		c.emitDrawColorKey(a, paths.plus.normal.vir, 694, 369, `combo_plus_${index}`);
 		a.emit(0xF7, 0x05); a.dword(stateVir + c.StateSnapshotFlags);
 		a.dword(c.CapabilityStorageReady);
@@ -1969,7 +2010,7 @@ ItemCollectionUIStatic.emitTotalRows = function(
 )
 {
 	const c = ItemCollectionUIStatic;
-	c.emitText(a, strings.totalBonusHeading.vir, 23, 105, 0xFF172237, 1);
+	c.emitCollectionText(a, strings.totalBonusHeading.vir, 23, 105, c.Palette.Text, 1);
 	for (let index = 0; index < c.TotalRows; ++index)
 	{
 		const rowVir = payloadVir + index * c.TotalRowSize;
@@ -1978,13 +2019,13 @@ ItemCollectionUIStatic.emitTotalRows = function(
 		a.emit(0x83, 0x3D); a.dword(stateVir + c.StateRowCount);
 		a.emit(index); a.jcc(0x86, next);
 		if ((index & 1) !== 0)
-			c.emitFillRect(a, fillRectVir, 18, y - 1, 492, 17, 0xFFF5F7FA);
-		c.emitText(a, rowVir + 4, 24, y, 0xFF25314A, 0, 30);
-		c.emitText(a, rowVir + 36, 430, y, 0xFF0757D7, 0, 22);
+			c.emitFillRect(a, fillRectVir, 18, y - 1, 492, 17, c.Palette.AlternateRow);
+		c.emitCollectionText(a, rowVir + 4, 24, y, c.Palette.Secondary, 0, 30);
+		c.emitCollectionText(a, rowVir + 36, 430, y, c.Palette.Heading, 0, 22);
 		a.label(next);
 	}
-	c.emitText(a, strings.totalBonusInfo.vir, 552, 128, 0xFF566278);
-	c.emitText(a, strings.totalBonusInfo2.vir, 552, 150, 0xFF566278);
+	c.emitCollectionText(a, strings.totalBonusInfo.vir, 552, 128, c.Palette.Muted);
+	c.emitCollectionText(a, strings.totalBonusInfo2.vir, 552, 150, c.Palette.Muted);
 };
 
 ItemCollectionUIStatic.emitCategoryDropdown = function(
@@ -1994,9 +2035,9 @@ ItemCollectionUIStatic.emitCategoryDropdown = function(
 	const c = ItemCollectionUIStatic;
 	a.emit(0x83, 0x3D); a.dword(stateVir + c.StateTab); a.emit(0);
 	a.jcc(0x85, "category_dropdown_done");
-	c.emitPanel(a, fillRectVir, 360, 62, 170, 23);
-	c.emitOutline(a, fillRectVir, 360, 62, 170, 23, 0xFFB8C4D8);
-	c.emitFillRect(a, fillRectVir, 511, 63, 1, 21, 0xFFB8C4D8);
+	c.emitCollectionPanel(a, fillRectVir, 360, 62, 170, 23);
+	c.emitOutline(a, fillRectVir, 360, 62, 170, 23, c.Palette.Border);
+	c.emitFillRect(a, fillRectVir, 511, 63, 1, 21, c.Palette.Border);
 	c.emitDrawColorKey(a, paths.scroll.down.vir, 516, 67, "category_dropdown_arrow");
 	for (let category = 0; category < c.CategoryCount; ++category)
 	{
@@ -2005,9 +2046,9 @@ ItemCollectionUIStatic.emitCategoryDropdown = function(
 		a.emit(category); a.jcc(0x85, next);
 		// Static labels use NUL-terminated mode. A fixed native TextDraw count
 		// crosses into the next EXE-resident category string.
-		c.emitText(
+		c.emitCollectionText(
 			a, strings.categories[category].vir, 366, 68,
-			0xFF172237, 0
+			c.Palette.Text, 0
 		);
 		a.jmp("category_dropdown_done");
 		a.label(next);
@@ -2024,10 +2065,10 @@ ItemCollectionUIStatic.emitCategoryDropdownPopup = function(
 	a.jcc(0x85, "category_dropdown_popup_done");
 	a.emit(0x83, 0x3D); a.dword(stateVir + c.StateCategoryDropdown); a.emit(1);
 	a.jcc(0x85, "category_dropdown_popup_done");
-	c.emitPanel(a, fillRectVir, 360, 86, 170, c.CategoryCount * 18 + 2);
+	c.emitCollectionPanel(a, fillRectVir, 360, 86, 170, c.CategoryCount * 18 + 2);
 	c.emitOutline(
 		a, fillRectVir, 360, 86, 170, c.CategoryCount * 18 + 2,
-		0xFF8EA7C8
+		c.Palette.Border
 	);
 	for (let category = 0; category < c.CategoryCount; ++category)
 	{
@@ -2041,11 +2082,11 @@ ItemCollectionUIStatic.emitCategoryDropdownPopup = function(
 		c.emitFillRect(a, fillRectVir, 361, y, 168, 18, 0xFFFFFFFF);
 		a.jmp(backgroundDone);
 		a.label(selected);
-		c.emitFillRect(a, fillRectVir, 361, y, 168, 18, 0xFFD8E7FA);
+		c.emitFillRect(a, fillRectVir, 361, y, 168, 18, c.Palette.DropdownHover);
 		a.label(backgroundDone);
-		c.emitText(
+		c.emitCollectionText(
 			a, strings.categories[category].vir, 367, y + 3,
-			0xFF172237, 0
+			c.Palette.Text, 0
 		);
 	}
 	a.label("category_dropdown_popup_done");
@@ -2098,26 +2139,29 @@ ItemCollectionUIStatic.buildDraw = function(
 	c.emitDrawFull(a, paths.body.vir, 0, 17, "collection_body");
 	c.emitDrawFull(a, paths.title.vir, 0, 0, "collection_title");
 	c.emitDrawColorKey(a, paths.icon.vir, 5, 0, "collection_icon");
-	c.emitText(a, strings.title.vir, 27, 1, 0xFFFFFFFF, 1);
+	c.emitCollectionText(a, strings.title.vir, 27, 1, 0xFFFFFFFF, 1);
 	c.emitClose(a, stateVir, paths);
 
-	c.emitPanel(a, fillRectVir, 8, 24, 744, 32);
-	c.emitPanel(a, fillRectVir, 8, 89, 522, 414);
-	c.emitPanel(a, fillRectVir, 538, 89, 214, 414);
-	c.emitPanel(a, fillRectVir, 8, 508, 744, 24);
+	c.emitCollectionPanel(a, fillRectVir, 8, 24, 744, 32);
+	c.emitCollectionPanel(a, fillRectVir, 8, 89, 522, 414);
+	c.emitCollectionPanel(a, fillRectVir, 538, 89, 214, 414);
+	c.emitCollectionPanel(a, fillRectVir, 8, 508, 744, 24);
+	c.emitDrawColorKey(a, paths.mascotSmall.vir, 539, 56, "collection_mascot_header");
+	c.emitCollectionText(a, strings.journalHeading.vir, 574, 59, c.Palette.Text, 1);
+	c.emitCollectionText(a, strings.journalCaption.vir, 574, 73, c.Palette.Muted);
 	a.emit(0xFF, 0x35); a.dword(stateVir + c.StateTotalCount);
 	a.emit(0xFF, 0x35); a.dword(stateVir + c.StateCurrentCount);
 	c.pushImm(a, strings.summaryFormat.vir);
 	c.pushImm(a, detailTextVir);
 	a.call(c.StringFormat);
 	a.emit(0x83, 0xC4, 0x10);
-	c.emitText(a, detailTextVir, 18, 31, 0xFF172237);
+	c.emitCollectionText(a, detailTextVir, 18, 31, c.Palette.Text);
 	c.emitSummaryProgress(a, stateVir, fillRectVir, "summary_progress");
-	c.emitPanel(a, fillRectVir, 548, 31, 170, 18);
+	c.emitCollectionPanel(a, fillRectVir, 548, 31, 170, 18);
 	c.emitDrawFull(a, paths.searchField.vir, 548, 31, "search_field");
 	a.emit(0x83, 0x3D); a.dword(stateVir + c.StateSearchFocused); a.emit(1);
 	a.jcc(0x85, "search_focus_outline_done");
-	c.emitOutline(a, fillRectVir, 547, 30, 172, 20, 0xFF1670EA);
+	c.emitOutline(a, fillRectVir, 547, 30, 172, 20, c.Palette.Selection);
 	a.label("search_focus_outline_done");
 	a.emit(0x83, 0x3D); a.dword(stateVir + c.StatePressedControl);
 	a.emit(c.ControlSearchButton); a.jcc(0x84, "search_button_pressed");
@@ -2181,18 +2225,20 @@ ItemCollectionUIStatic.buildDraw = function(
 	a.jmp("draw_pages_done");
 	a.label("draw_totals");
 	c.emitTotalRows(a, stateVir, payloadVir, fillRectVir, strings);
+	c.emitDrawColorKey(a, paths.mascotLarge.vir, 591, 192, "collection_mascot_totals");
+	c.emitCollectionCenteredText(a, strings.journalMotto.vir, 548, 324, 194, c.Palette.Muted);
 	a.label("draw_pages_done");
 
-	c.emitText(a, strings.accountWide.vir, 18, 514, 0xFF25314A);
-	c.emitText(a, strings.zeny.vir, 590, 514, 0xFF25314A);
+	c.emitCollectionText(a, strings.accountWide.vir, 18, 514, c.Palette.Secondary);
+	c.emitCollectionText(a, strings.zeny.vir, 590, 514, c.Palette.Secondary);
 	c.emitDrawColorKey(a, paths.zeny.vir, 628, 507, "zeny_icon");
 	c.emitFormatU32Commas(
 		a, commaFormatterVir, stateVir + c.StateZeny, moneyText1Vir
 	);
-	c.emitText(a, moneyText1Vir, 663, 514, 0xFF172237, 0);
+	c.emitCollectionText(a, moneyText1Vir, 663, 514, c.Palette.Text, 0);
 	a.emit(0x83, 0x3D); a.dword(stateVir + c.StateMutationPending); a.emit(1);
 	a.jcc(0x85, "mutation_result_test");
-	c.emitText(a, strings.saving.vir, 548, 493, 0xFF0757D7);
+	c.emitCollectionText(a, strings.saving.vir, 548, 493, c.Palette.Heading);
 	a.jmp("mutation_result_done");
 	a.label("mutation_result_test");
 	a.emit(0x83, 0x3D); a.dword(stateVir + c.StateMutationResult); a.emit(2);
@@ -2202,7 +2248,7 @@ ItemCollectionUIStatic.buildDraw = function(
 		const next = `mutation_result_${result}_next`;
 		a.emit(0x83, 0x3D); a.dword(stateVir + c.StateMutationResult);
 		a.emit(result); a.jcc(0x85, next);
-		c.emitText(
+		c.emitCollectionText(
 			a, strings.mutationResults[result].vir, 548, 493, 0xFFB00020,
 			0, 34
 		);
@@ -2213,7 +2259,7 @@ ItemCollectionUIStatic.buildDraw = function(
 	a.emit(0xF7, 0x05); a.dword(stateVir + c.StateSnapshotFlags);
 	a.dword(c.SnapshotFlagTruncated);
 	a.jcc(0x84, "truncated_done");
-	c.emitText(a, strings.truncated.vir, 18, 490, 0xFFB00020);
+	c.emitCollectionText(a, strings.truncated.vir, 18, 490, 0xFFB00020);
 	a.label("truncated_done");
 	c.emitCategoryDropdownPopup(a, stateVir, fillRectVir, strings);
 	// Keep repainting only while a debounce deadline is pending.
@@ -2288,7 +2334,8 @@ ItemCollectionUIStatic.buildMouseDown = function(stateVir, payloadVir, senderVir
 	a.jmp("consume");
 	a.label("category_popup_check_done");
 	a.emit(0x83, 0xFA, c.TitleHeight); a.jcc(0x8D, "tabs");
-	a.emit(0x81, 0xFB); a.dword(742); a.jcc(0x8C, "drag_title");
+	c.emitRectGate(a, c.CloseX, c.CloseY,
+		c.CloseX + c.CloseWidth, c.CloseY + c.CloseHeight, "drag_title");
 	a.emit(0xC7, 0x05); a.dword(stateVir + c.StatePressedControl);
 	a.dword(c.ControlClose);
 	c.emitMarkDirty(a);
@@ -2523,7 +2570,8 @@ ItemCollectionUIStatic.buildMouseMove = function(stateVir)
 		a.jmp("hover_store");
 		a.label(next);
 	};
-	hoverRect(742, 0, 758, 17, c.ControlClose, "close");
+	hoverRect(c.CloseX, c.CloseY, c.CloseX + c.CloseWidth,
+		c.CloseY + c.CloseHeight, c.ControlClose, "close");
 	hoverRect(548, 31, 718, 49, c.ControlSearchField, "search_field");
 	hoverRect(718, 31, 744, 49, c.ControlSearchButton, "search_button");
 	for (let index = 0; index < 3; ++index)
@@ -2608,7 +2656,8 @@ ItemCollectionUIStatic.buildMouseUp = function(
 	a.emit(0x85, 0xFF); a.jcc(0x84, "base_mouse_up");
 	c.emitMarkDirty(a);
 	a.emit(0x83, 0xFF, c.ControlClose); a.jcc(0x85, "search_field");
-	c.emitRectGate(a, 742, 0, 758, 17, "consume");
+	c.emitRectGate(a, c.CloseX, c.CloseY,
+		c.CloseX + c.CloseWidth, c.CloseY + c.CloseHeight, "consume");
 	c.pushImm(a, 0);
 	a.emit(0xB9); a.dword(c.WindowManager);
 	a.call(c.WindowManagerSetFocusEdit);
@@ -3128,11 +3177,11 @@ ItemCollectionUIStatic.uiPrefix = function()
 
 ItemCollectionUIStatic.AssetDirectories = [
 	"chrome",
+	"chrome/buttons",
 	"icons",
 	"reused/artwork",
 	"reused/buttons",
 	"reused/buttons/generic",
-	"reused/close",
 	"reused/currency",
 	"reused/scrollbar",
 	"reused/search",
@@ -3143,6 +3192,8 @@ ItemCollectionUIStatic.AssetDirectories = [
 ItemCollectionUIStatic.Assets = [
 	"chrome/title_bar_760.bmp",
 	"chrome/bg_collection.bmp",
+	"chrome/poring_small.bmp",
+	"chrome/poring_large.bmp",
 	"chrome/loading.bmp",
 	"chrome/nowloading.act",
 	"chrome/nowloading.spr",
@@ -3165,22 +3216,18 @@ ItemCollectionUIStatic.Assets = [
 	"icons/category_shadow.bmp",
 	"icons/category_cash.bmp",
 	"reused/artwork/fallback_question_mark.bmp",
-	"reused/buttons/generic/btn_out_left.bmp",
-	"reused/buttons/generic/btn_out_mid.bmp",
-	"reused/buttons/generic/btn_out_right.bmp",
-	"reused/buttons/generic/btn_over_left.bmp",
-	"reused/buttons/generic/btn_over_mid.bmp",
-	"reused/buttons/generic/btn_over_right.bmp",
-	"reused/buttons/generic/btn_press_left.bmp",
-	"reused/buttons/generic/btn_press_mid.bmp",
-	"reused/buttons/generic/btn_press_right.bmp",
-	"reused/buttons/generic/btn_disable_left.bmp",
-	"reused/buttons/generic/btn_disable_mid.bmp",
-	"reused/buttons/generic/btn_disable_right.bmp",
-	"reused/close/btn_close_normal.bmp",
-	"reused/close/btn_close_mouseon.bmp",
-	"reused/close/btn_close_pressed.bmp",
-	"reused/close/btn_close_disabled.bmp",
+	"chrome/buttons/btn_out_left.bmp",
+	"chrome/buttons/btn_out_mid.bmp",
+	"chrome/buttons/btn_out_right.bmp",
+	"chrome/buttons/btn_over_left.bmp",
+	"chrome/buttons/btn_over_mid.bmp",
+	"chrome/buttons/btn_over_right.bmp",
+	"chrome/buttons/btn_press_left.bmp",
+	"chrome/buttons/btn_press_mid.bmp",
+	"chrome/buttons/btn_press_right.bmp",
+	"chrome/buttons/btn_disable_left.bmp",
+	"chrome/buttons/btn_disable_mid.bmp",
+	"chrome/buttons/btn_disable_right.bmp",
 	"reused/search/searchbar_bg.bmp",
 	"reused/search/btn_searchbar_normal.bmp",
 	"reused/search/btn_searchbar__mouseon.bmp",
@@ -3220,7 +3267,13 @@ ItemCollectionUIStatic.MenuAssets = [
 	"bt_itemcollection_old_disabled.bmp",
 	"bt_itemcollection_old_normal.bmp",
 	"bt_itemcollection_old_mouseon.bmp",
-	"bt_itemcollection_old_pressed.bmp"
+	"bt_itemcollection_old_pressed.bmp",
+	"bt_itemcollection_poring_normal.bmp",
+	"bt_itemcollection_poring_mouseon.bmp",
+	"bt_itemcollection_poring_pressed.bmp",
+	"bt_itemcollection_poring_old_normal.bmp",
+	"bt_itemcollection_poring_old_mouseon.bmp",
+	"bt_itemcollection_poring_old_pressed.bmp"
 ];
 
 ItemCollectionUIStatic.onApplied = function()
@@ -3278,6 +3331,8 @@ ItemCollectionUI = function(_)
 		title: resource("chrome\\title_bar_760.bmp"),
 		body: resource("chrome\\bg_collection.bmp"),
 		loading: resource("chrome\\loading.bmp"),
+		mascotSmall: resource("chrome\\poring_small.bmp"),
+		mascotLarge: resource("chrome\\poring_large.bmp"),
 		icon: resource("icons\\icon_collection.bmp"),
 		badgeLocked: resource("icons\\badge_locked.bmp"),
 		badgeComplete: resource("icons\\badge_complete.bmp"),
@@ -3288,9 +3343,9 @@ ItemCollectionUI = function(_)
 		searchPress: resource("reused\\search\\btn_searchbar_pressed.bmp"),
 		zeny: resource("reused\\currency\\icon_zeny.bmp"),
 		close: {
-			normal: resource("reused\\close\\btn_close_normal.bmp"),
-			over: resource("reused\\close\\btn_close_mouseon.bmp"),
-			press: resource("reused\\close\\btn_close_pressed.bmp")
+			normal: c.buildResourcePath("basic_interface\\sys_close_off.bmp"),
+			over: c.buildResourcePath("basic_interface\\sys_close_on.bmp"),
+			press: c.buildResourcePath("basic_interface\\sys_close_on.bmp")
 		},
 		minus: {
 			normal: resource("reused\\steppers\\btn_minus_normal.bmp"),
@@ -3316,13 +3371,16 @@ ItemCollectionUI = function(_)
 	for (const state of ["out", "over", "press", "disable"])
 	{
 		paths.buttons[state] = ["left", "mid", "right"].map(part =>
-			resource(`reused\\buttons\\generic\\btn_${state}_${part}.bmp`)
+			resource(`chrome\\buttons\\btn_${state}_${part}.bmp`)
 		);
 	}
 
 	const text = value => c.allocateString(value);
 	const strings = {
 		title: text("ITEM COLLECTION"),
+		journalHeading: text("Poring's Collection"),
+		journalCaption: text("A little treasure, every day."),
+		journalMotto: text("Little treasures, lasting bonuses."),
 		collected: text("Collected"),
 		summaryFormat: text("Collected %u / %u"),
 		searchPlaceholder: text("Search item name or ID"),
@@ -3344,8 +3402,8 @@ ItemCollectionUI = function(_)
 		requiredCards: text("Required Cards"),
 		comboBonus: text("Combo Bonus"),
 		totalBonusHeading: text("Active Collection Bonuses"),
-		totalBonusInfo: text("All values are authoritative"),
-		totalBonusInfo2: text("and account-wide."),
+		totalBonusInfo: text("Your collected treasures grant"),
+		totalBonusInfo2: text("bonuses to your whole account."),
 		deposit: text("Deposit"),
 		depositAll: text("Deposit All"),
 		withdraw: text("Withdraw"),

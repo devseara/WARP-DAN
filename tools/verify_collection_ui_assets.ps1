@@ -102,9 +102,17 @@ $ownedAssets = [ordered]@{
 	'chrome\title_bar_760.bmp' = @(760, 17)
 	'chrome\bg_collection.bmp' = @(760, 523)
 	'chrome\loading.bmp' = @(166, 124)
+	'chrome\poring_small.bmp' = @(28, 30)
+	'chrome\poring_large.bmp' = @(108, 116)
 	'icons\icon_collection.bmp' = @(16, 16)
 	'icons\badge_locked.bmp' = @(16, 16)
 	'icons\badge_complete.bmp' = @(16, 16)
+}
+
+foreach ($state in @('out','over','press','disable')) {
+	foreach ($part in @('left','mid','right')) {
+		$ownedAssets["chrome\buttons\btn_$($state)_$part.bmp"] = @(6,20)
+	}
 }
 
 $categoryAssets = [ordered]@{
@@ -136,6 +144,12 @@ $menuAssets = [ordered]@{
 	'menuicon\bt_itemcollection_old_normal.bmp' = @(32, 34)
 	'menuicon\bt_itemcollection_old_mouseon.bmp' = @(32, 34)
 	'menuicon\bt_itemcollection_old_pressed.bmp' = @(32, 34)
+}
+
+foreach ($theme in @('', 'old_')) {
+	foreach ($state in @('normal', 'mouseon', 'pressed')) {
+		$menuAssets["menuicon\bt_itemcollection_poring_$theme$state.bmp"] = $(if ($theme) { @(32,34) } else { @(45,41) })
+	}
 }
 
 $menuSourceAssets = [ordered]@{
@@ -279,7 +293,7 @@ $bodyPath = Join-Path $resolvedPackRoot 'chrome\bg_collection.bmp'
 if ($ownedDimensionsValid['chrome\bg_collection.bmp']) {
 	$body = [System.Drawing.Bitmap]::new($bodyPath)
 	try {
-		$whiteArgb = [System.Drawing.Color]::FromArgb(255, 255, 255).ToArgb()
+		$whiteArgb = [System.Drawing.Color]::FromArgb(248, 251, 254).ToArgb()
 		$bodyMismatch = $null
 		:BodyPixels for ($pixelY = 2; $pixelY -le 520; $pixelY++) {
 			for ($pixelX = 2; $pixelX -le 757; $pixelX++) {
@@ -290,7 +304,7 @@ if ($ownedDimensionsValid['chrome\bg_collection.bmp']) {
 			}
 		}
 		if ($null -ne $bodyMismatch) {
-			Add-ValidationFailure "Collection body interior x=2..757, y=2..520 is not exact white; first mismatch at $bodyMismatch"
+			Add-ValidationFailure "Collection body interior x=2..757, y=2..520 is not the exact Bestiary blue-white skin color; first mismatch at $bodyMismatch"
 		}
 	}
 	finally {
@@ -299,6 +313,8 @@ if ($ownedDimensionsValid['chrome\bg_collection.bmp']) {
 }
 
 foreach ($keyedIconRelativePath in @(
+	'chrome\poring_small.bmp',
+	'chrome\poring_large.bmp',
 	'icons\icon_collection.bmp',
 	'icons\badge_locked.bmp',
 	'icons\badge_complete.bmp'
@@ -365,6 +381,6 @@ if ($script:validationFailures.Count -gt 0) {
 
 Write-Host ''
 Write-Host (
-	'Collection UI asset verification passed: {0} BMPs checked, 44 reused controls, 15 category icons, 10 supplied menu buttons, 6 owned assets, ACT/SPR sources valid.' -f
+	'Collection UI asset verification passed: {0} BMPs checked, 44 reused controls, 15 category icons, 16 chibi menu buttons, 20 owned assets, ACT/SPR sources valid.' -f
 	$allBitmaps.Count
 )

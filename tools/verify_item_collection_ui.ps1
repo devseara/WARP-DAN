@@ -429,18 +429,16 @@ foreach ($token in $forbidden) {
 
 $patchTable = [System.IO.File]::ReadAllText((Join-Path $repo 'Tables\Patch.yml'))
 $uiPatches = [System.IO.File]::ReadAllText((Join-Path $repo 'Patches\UI.yml'))
-$manifest = [System.IO.File]::ReadAllText((Join-Path $repo 'Images\CollectionUI\asset-manifest.yml'))
-$readme = [System.IO.File]::ReadAllText((Join-Path $repo 'Images\CollectionUI\README.md'))
+$contract = [System.IO.File]::ReadAllText((Join-Path $repo 'docs\item-collection-ui-qjs-contract.md'))
 $coexistenceProfile = [System.IO.File]::ReadAllText((Join-Path $repo 'profiles\item_collection_ui_coexistence_test.yml'))
 $menuOrderProfile = [System.IO.File]::ReadAllText((Join-Path $repo 'profiles\item_collection_ui_menu_order_test.yml'))
 $menuReverseProfile = [System.IO.File]::ReadAllText((Join-Path $repo 'profiles\item_collection_ui_menu_reverse_order_test.yml'))
 Assert-Contains $patchTable '381 : ItemCollectionUI' 'Tables/Patch.yml registration missing'
 Assert-Contains $uiPatches '- ItemCollectionUI:' 'UI patch entry missing'
 Assert-True ($uiPatches.IndexOf('- ItemCollectionUI:') -lt $uiPatches.IndexOf('- ROGlobalZeroMenu:')) 'Item Collection must execute before RO Global Menu in normal GUI builds'
-Assert-Contains $manifest "RuntimeRoot: 'data\texture\" 'asset manifest runtime root prefix missing'
-Assert-Contains $manifest "\item_collection'" 'asset manifest runtime root mismatch'
-Assert-Contains $readme '\item_collection\' 'asset README runtime root missing'
-Assert-Contains $readme 'collection\<identified-resource>.bmp' 'asset README dynamic-art contract missing'
+Assert-Contains $contract 'data\texture\' 'collection contract runtime root prefix missing'
+Assert-Contains $contract '\item_collection\' 'collection contract fixed resource root missing'
+Assert-Contains $contract 'collection\<identified-resource>.bmp' 'collection contract dynamic-art path missing'
 Assert-Contains $coexistenceProfile '- InGamePincodeUI' 'coexistence profile lacks PINC'
 Assert-Contains $coexistenceProfile '- AutoCombatUI' 'coexistence profile lacks AHUI'
 Assert-Contains $coexistenceProfile '- ItemCollectionUI' 'coexistence profile lacks COUI'

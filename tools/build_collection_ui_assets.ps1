@@ -126,9 +126,9 @@ function New-CollectionTitle {
 }
 
 function New-CollectionBody {
-	$outerBorder = [System.Drawing.Color]::FromArgb(137, 166, 201)
-	$innerBorder = [System.Drawing.Color]::FromArgb(216, 226, 238)
-	$white = [System.Drawing.Color]::FromArgb(255, 255, 255)
+	$outerBorder = [System.Drawing.Color]::FromArgb(197, 209, 220)
+	$innerBorder = [System.Drawing.Color]::FromArgb(226, 236, 247)
+	$white = [System.Drawing.Color]::FromArgb(248, 251, 254)
 	$body = New-Bitmap24 -Width 760 -Height 523 -Color $white
 
 	for ($pixelX = 0; $pixelX -lt $body.Width; $pixelX++) {
@@ -365,6 +365,9 @@ finally {
 	$completeBadge.Dispose()
 }
 
+# Compile the mascot and owned controls before rendering the contact sheet.
+& (Join-Path $PSScriptRoot "build_collection_chibi_assets.ps1") -PackRoot $resolvedPackRoot
+
 $sheet = New-Bitmap24 -Width 1200 -Height 980 -Color ([System.Drawing.Color]::FromArgb(244, 246, 249))
 $sheetGraphics = [System.Drawing.Graphics]::FromImage($sheet)
 $sheetGraphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
@@ -389,7 +392,7 @@ try {
 		Draw-MagentaKeyedPreview $sheetGraphics $iconPreview 430 112 128 128
 		Draw-MagentaKeyedPreview $sheetGraphics $lockPreview 580 112 128 128
 		Draw-MagentaKeyedPreview $sheetGraphics $completePreview 730 112 128 128
-		Draw-PreviewLabel $sheetGraphics $labelFont 'white body 760x523 (shown 50%)' 20 380
+		Draw-PreviewLabel $sheetGraphics $labelFont 'cool blue-white body 760x523 (shown 50%)' 20 380
 		Draw-PreviewLabel $sheetGraphics $labelFont 'collection icon' 442 246
 		Draw-PreviewLabel $sheetGraphics $labelFont 'locked badge' 592 246
 		Draw-PreviewLabel $sheetGraphics $labelFont 'complete badge' 738 246
@@ -432,7 +435,7 @@ try {
 	}
 
 	Draw-PreviewLabel $sheetGraphics $labelFont 'Generic 6x20 nine-slice actions assembled at 160x20 with runtime labels' 20 690
-	$buttonRoot = Join-Path $resolvedPackRoot 'reused\buttons\generic'
+	$buttonRoot = Join-Path $resolvedPackRoot 'chrome\buttons'
 	$buttonPreviews = @(
 		@('out', 'Deposit 1', 'Normal', 20, 725),
 		@('over', 'Deposit All', 'Hover', 220, 725),
