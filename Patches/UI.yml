@@ -68,6 +68,12 @@ CustomUI:
             author : DevSeara
             desc : Applies the supplied renewal-style chat frame, lock-aware tab menus, PM history, toggling emoticons, and All/Party/Guild/Allies/Clan channel selection. With RO Global Zero UI Theme Toggle selected, New UI shows this layout and Classic UI restores stock chat without losing tabs or drafts. Fresh layouts default to Main, Battle, Guild, Party and Market. Installs its artwork and default-tab resource beside the patched client.
 
+        - GachaUI:
+            title : Zeny Gacha UI With Pity
+            recommend : no
+            author : DevSeara
+            desc : Adds the native server-backed Gacha window with configurable banners, Zeny or ticket payments, separate pity, event countdowns and reward reveal controls. Requires the matching Gacha server implementation. UI artwork uses gachaui; item and ticket icons continue to use their configured item IDs.
+
         - LoadGRFOnSlashCmd:
             title : Load GRF via Slash Command
             recommend : no
