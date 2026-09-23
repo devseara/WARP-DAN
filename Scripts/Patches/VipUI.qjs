@@ -215,6 +215,8 @@ VipUI = function(_)
 	VipUI.onApplied();return true;
 };
 VipUI.validate=()=>Exe.BuildDate===20250716;
+// Patch-time emitters only; reuse never opens VIP or installs its hooks.
+VipUI.nativeDrawing={fit:VipUIStatic.fit,item:VipUIStatic.item,describe:VipUIStatic.describe};
 VipUI.onApplied=function()
 {
 	if(Warp.TestMode)return;

@@ -1,0 +1,24 @@
+{
+  "version": 4,
+  "client": 20250716,
+  "size": 29000,
+  "api_size": 80,
+  "board_size": 7728,
+  "exports": {
+    "BpApi": 28864,
+    "BpPortraitCanvas": 28988,
+    "_BestiaryPreview@32": 22944,
+    "_BpCleanup@0": 7472,
+    "_BpCursor@12": 7536,
+    "_BpDraw@4": 7680,
+    "_BpMouse@16": 17968,
+    "_BpMove@12": 20192,
+    "_BpNotify@0": 20384,
+    "_BpPortrait@20": 20960
+  },
+  "source_sha256": "3cd6f6c1fdbc5c2e6268445cfb7b779872033a5ed692b640d99276776084b1a1",
+  "vip_portrait_sha256": "67ec7fa5f10791483410fef5e5a6e28ab2c3e381e066df49fc393babd432968a",
+  "bestiary_sha256": "29e6a7f6695c9b07fa39dfd759d1d6e157b2e0bc08ce41171ce5ba7d262ac1ea",
+  "payload_sha256": "f813cff1e608f6d4de2521bb3996fdf4f23b26ecbdfadc71f53882f567064562",
+  "runtime_imports": []
+}

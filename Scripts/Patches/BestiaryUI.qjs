@@ -1043,6 +1043,8 @@ BestiaryUI = function(_) {
 	BestiaryUI.onApplied();return true;
 };
 BestiaryUI.validate=function(){return Exe.BuildDate===20250716;};
+// Patch-time drawing adapters; calling these does not install the journal.
+BestiaryUI.nativeDrawing={monster:BestiaryNative.buildNativeSprite,itemName:BestiaryNative.buildRewardItemName};
 BestiaryUI.onApplied=function(){
 	if(Warp.TestMode)return;
 	const target=System.DirPath(Warp.TgtExe)+"/data/texture/"+BestiaryNative.assetRoot().replace(/\\/g,"/")+"/journal";

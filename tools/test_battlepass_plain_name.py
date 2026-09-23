@@ -153,10 +153,23 @@ def verify(exe):
             values = [int(p.op_str, 0) for p in pushed[:-1]]
             assert values[0] == 0x965B35 and values[4] == c['state'] + c['offset']
             sites.append(tuple(values[1:4]))
-    assert sorted(sites) == [(141, 52, 643), (526, 57, 92)], sites
-    assert code.count(pack(c['state'] + c['offset'])) >= 2
+    modern=b'BattlepassUI.Board.v5\0' in m.pe.get_memory_mapped_image()
+    if modern:
+        # v5 calls through the private API from compiled C++. Execute both
+        # actual draw paths and observe the real helper's arguments instead.
+        from test_battlepass_board import BoardMachine
+        b=BoardMachine(exe);observed=[]
+        b.u.hook_add(UC_HOOK_CODE,lambda u,a,n,d:observed.append(b.args(6)),begin=c['plain'],end=c['plain'])
+        b.draw();b.w(b.c['state']+4,3);b.draw()
+        assert [(a[2],a[3],a[4]) for a in observed]==[(718,39,178),(718,39,178),(138,170,576)]
+        assert all(a[1]==c['state']+c['offset'] and a[5]==0x7D6045 for a in observed)
+        assert b.plain_calls==['DevSeara','DevSeara']
+        sites=[(178,39,718),(576,170,138)]
+    else:
+        assert sorted(sites) == [(141, 52, 643), (526, 57, 92)], sites
+        assert code.count(pack(c['state'] + c['offset'])) >= 2
 
-    obj = m.window(796, 510)
+    obj = m.window(920, 560) if modern else m.window(796, 510)
     for width, y, x in sites:
         assert m.name(obj, b'DevSeara', x, y, width) == [('DevSeara', x, y, 0x965B35)]
     for value in ('Alice', 'Admin', 'test', 'GuildMaster', 'Admin test', 'Jos\u00e9', '\u30bd\u30e9', 'Dev\U0001f600Seara'):

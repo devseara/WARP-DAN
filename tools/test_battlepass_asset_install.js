@@ -50,7 +50,7 @@ function verifyBattlepassAssetInstall(source) {
 	};
 	let f = fixture(); f.onApplied();
 	check(f.operations.filter(x => x[0] === "mkdir").length === 4, "Create all four folder levels");
-	check(f.operations.filter(x => x[0] === "copy").length === 25, "Install all 25 BMPs");
+	check(f.operations.filter(x => x[0] === "copy").length === 29, "Install 25 legacy BMPs and four Gacha-style button PNGs");
 	for (const file of f.ClientAssets) check(f.files.get(f.targetDir + "/" + file) === "bundled:" + file, "Wrong output image: " + file);
 	check(f.state.opened === f.state.closed, "Close all handles");
 	f.files.set(f.targetDir + "/Window_Background.bmp", "custom skin");
@@ -69,7 +69,7 @@ function verifyBattlepassAssetInstall(source) {
 	check(!f.operations.some(x => x[0] === "copy"), "Stop on directory failure");
 	f = fixture(); f.state.failCopy = f.targetDir + "/Abandon_Dialog_Background.bmp";
 	expectError(f, " to " + f.state.failCopy);
-	return "PASS: fresh Battle Pass data tree, all 25 BMPs, repeat/repair preserves skins, lifecycle wiring, test mode, missing bundle and filesystem errors";
+	return "PASS: fresh Battle Pass data tree, 25 legacy BMPs + four button PNGs, repeat/repair preserves skins, lifecycle wiring, test mode, missing bundle and filesystem errors";
 }
 
 if (typeof module !== "undefined" && typeof require !== "undefined" && require.main === module) {
