@@ -74,7 +74,7 @@ class ReleaseManifestTests(unittest.TestCase):
 
     def test_release_requires_both_sexes_and_matching_spr_act(self):
         rows = json.loads((ROOT / 'Inputs/ClanBodySkins/records/clan-sprites-current.json').read_text(encoding='utf8'))['resources']
-        self.assertEqual({row['job'] for row in rows}, {'swordman', 'mage', 'acolyte', 'archer'})
+        self.assertEqual({row['job'] for row in rows}, {'swordman', 'mage', 'acolyte', 'archer', 'merchant', 'thief'})
         validate_resource_pairs(rows)
         with self.assertRaisesRegex(ValueError, 'Incomplete'):
             validate_resource_pairs(rows[:-1])
