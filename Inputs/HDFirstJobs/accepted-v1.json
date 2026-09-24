@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "status": "user_accepted",
+  "version": "first-jobs-v1",
+  "accepted_date": "2026-09-25",
+  "acceptance_basis": "User: greatwork! document the accepted versions of first jobs. and commit. remove the unnecessary tools and inputs. plan the next 2-1 jobs and 2-2 jobs",
+  "user_acceptance": true,
+  "agent_observed_live_client": false,
+  "work": "Assets/HDFirstJobs/accepted-v1",
+  "source_plan": "source-plan.json",
+  "source_plan_sha256": "ebb4822b12e0067f5e19f438ee19be07922ad6cc829f2a95a8166ccec8445f21",
+  "first_job_pairs": 11,
+  "first_job_actions": 1144,
+  "first_job_frame_uses": 5016,
+  "first_job_unique_poses": 1279,
+  "preserved_novice_pairs": 2,
+  "native_heads_replaced": false,
+  "resources": [
+    {
+      "job": "swordman",
+      "sex": "male",
+      "version": "complete-v1+local-collar",
+      "entry": "data/sprite/인간족/몸통/남/검사_남.spr",
+      "path": "resources/swordman/male/body.spr",
+      "sha256": "6749e27b70b3bd29ebd350a9ed2ea2d61f806adffa0e43ef592b35e83b495d18",
+      "bytes": 9803048
+    },
+    {
+      "job": "swordman",
+      "sex": "male",
+      "version": "complete-v1+local-collar",
+      "entry": "data/sprite/인간족/몸통/남/검사_남.act",
+      "path": "resources/swordman/male/body.act",
+      "sha256": "d7fbd703b0bd07322767260ef265ea8a6911ea93e9f98b7be304dbe8a0f7881f",
+      "bytes": 44748
+    },
+    {
+      "job": "swordman",
+      "sex": "female",
+      "version": "complete-v1+native-grip",
+      "entry": "data/sprite/인간족/몸통/여/검사_여.spr",
+      "path": "resources/swordman/female/body.spr",
+      "sha256": "9f689b7e3473ef4e7dc281f4e58b12ff1ea47ffc82967cb80c8141c5858dbb34",
+      "bytes": 9585992
+    },
+    {
+      "job": "swordman",
+      "sex": "female",
+      "version": "complete-v1+native-grip",
+      "entry": "data/sprite/인간족/몸통/여/검사_여.act",
+      "path": "resources/swordman/female/body.act",
+      "sha256": "98a63d42aaf9a8243590b1977743b95e6551ab81f435bddb12772b63ea266039",
+      "bytes": 44748
+    },
+    {
+      "job": "mage",
+      "sex": "male",
+      "version": "mage-casting-v3",
+      "entry": "data/sprite/인간족/몸통/남/마법사_남.spr",
+      "path": "resources/mage/male/body.spr",
+      "sha256": "c48750c44ba17f5cf4eb598b2adab6bb01f4f82c3ad9e464a8134e0b6bdac1bd",
+      "bytes": 10783944
+    },
+    {
+      "job": "mage",
+      "sex": "male",
+      "version": "mage-casting-v3",
+      "entry": "data/sprite/인간족/몸통/남/마법사_남.act",
+      "path": "resources/mage/male/body.act",
+      "sha256": "084ddbae78de9ec0b4dcb701e0c60084ea93e543752cae63c6460960d8638a3d",
+      "bytes": 44748
+    },
+    {
+      "job": "archer",
+      "sex": "male",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/남/궁수_남.spr",
+      "path": "resources/archer/male/body.spr",
+      "sha256": "8a6b9450174176d0481e44fbc31f5994f29da2f23f297258df34c443ba639acd",
+      "bytes": 9208216
+    },
+    {
+      "job": "archer",
+      "sex": "male",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/남/궁수_남.act",
+      "path": "resources/archer/male/body.act",
+      "sha256": "8599dce2f859d076e1c36deedf6220180d230fd941b810cfa58c24cd2f9e73de",
+      "bytes": 44748
+    },
+    {
+      "job": "archer",
+      "sex": "female",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/여/궁수_여.spr",
+      "path": "resources/archer/female/body.spr",
+      "sha256": "32ca0706c9510790aae2589374980636939d1424b3afcb2f6117155e47f2e442",
+      "bytes": 9209592
+    },
+    {
+      "job": "archer",
+      "sex": "female",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/여/궁수_여.act",
+      "path": "resources/archer/female/body.act",
+      "sha256": "01ae29226c0c45e450588aab4f66034019527bf723f30d0ba758166d82ed991f",
+      "bytes": 44748
+    },
+    {
+      "job": "acolyte",
+      "sex": "male",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/남/성직자_남.spr",
+      "path": "resources/acolyte/male/body.spr",
+      "sha256": "47795f18bb9f8825042608bac2ae55d75f4d3f8e46e4fbe4245b4c2b66104f50",
+      "bytes": 8276392
+    },
+    {
+      "job": "acolyte",
+      "sex": "male",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/남/성직자_남.act",
+      "path": "resources/acolyte/male/body.act",
+      "sha256": "e6fc454c7d130605fc1dc00950cf3b0d41d52dd11c667cfff01158935e11fb92",
+      "bytes": 44748
+    },
+    {
+      "job": "acolyte",
+      "sex": "female",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/여/성직자_여.spr",
+      "path": "resources/acolyte/female/body.spr",
+      "sha256": "aff456d91ced27d5e5853e5a0ac0954722876a763172015e7957ecae637956d7",
+      "bytes": 7396904
+    },
+    {
+      "job": "acolyte",
+      "sex": "female",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/여/성직자_여.act",
+      "path": "resources/acolyte/female/body.act",
+      "sha256": "bebffc72c3b6a9eaa889c9f2305b0ca1ff0513b9431fb004831919c9750c025f",
+      "bytes": 44708
+    },
+    {
+      "job": "merchant",
+      "sex": "male",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/남/상인_남.spr",
+      "path": "resources/merchant/male/body.spr",
+      "sha256": "4f465b64b1bc868dbefabe20fc0155286be7a77c55bccf3908f7f19ec11bb968",
+      "bytes": 9424064
+    },
+    {
+      "job": "merchant",
+      "sex": "male",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/남/상인_남.act",
+      "path": "resources/merchant/male/body.act",
+      "sha256": "d21500ff0627913eb094d8380630dd01f8822225082568a5337b2d80d4d979ea",
+      "bytes": 44748
+    },
+    {
+      "job": "merchant",
+      "sex": "female",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/여/상인_여.spr",
+      "path": "resources/merchant/female/body.spr",
+      "sha256": "24fc4a4a0c32f5493ede80aad05f45ac5b41264db9cc91170efbebd2a336a8aa",
+      "bytes": 8597976
+    },
+    {
+      "job": "merchant",
+      "sex": "female",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/여/상인_여.act",
+      "path": "resources/merchant/female/body.act",
+      "sha256": "1c77bba1f21deae091ee60cdd2992b22a048061dcb50707f0f4a27a9bf109f52",
+      "bytes": 44748
+    },
+    {
+      "job": "thief",
+      "sex": "male",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/남/도둑_남.spr",
+      "path": "resources/thief/male/body.spr",
+      "sha256": "b916a69c3bea1177466ec4c3087f872f5c9b0be81f092387b3fede3e35f4363b",
+      "bytes": 9333080
+    },
+    {
+      "job": "thief",
+      "sex": "male",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/남/도둑_남.act",
+      "path": "resources/thief/male/body.act",
+      "sha256": "9c41929cd2072f28011caa67f3296cb20cbb71d6f3098e01a1424e1af96222d4",
+      "bytes": 44748
+    },
+    {
+      "job": "thief",
+      "sex": "female",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/여/도둑_여.spr",
+      "path": "resources/thief/female/body.spr",
+      "sha256": "c1ff4f3f335268c11919c5490364a8a541d870ff202dd5c93cef113c04cbfe28",
+      "bytes": 9579928
+    },
+    {
+      "job": "thief",
+      "sex": "female",
+      "version": "complete-v1",
+      "entry": "data/sprite/인간족/몸통/여/도둑_여.act",
+      "path": "resources/thief/female/body.act",
+      "sha256": "98d713711a5e7a766121d2cce29d216259dbd21f868e5a6fd07008770c53842e",
+      "bytes": 44748
+    },
+    {
+      "job": "novice",
+      "sex": "male",
+      "version": "novice-v5",
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.spr",
+      "path": "resources/novice/male/body.spr",
+      "sha256": "15672384e1d9ec6ea2f721efc199c7cb5121e9a13c4c56094e9d0662ed9e8cba",
+      "bytes": 9845632
+    },
+    {
+      "job": "novice",
+      "sex": "male",
+      "version": "novice-v5",
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.act",
+      "path": "resources/novice/male/body.act",
+      "sha256": "61e2f34da22f4aead664f4ce538c1e73e3e188a43e84cdef7ceb81b4f3cb7ca1",
+      "bytes": 44748
+    },
+    {
+      "job": "novice",
+      "sex": "female",
+      "version": "novice-v5",
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.spr",
+      "path": "resources/novice/female/body.spr",
+      "sha256": "0afd828df56e71697b0f409d44fff38f41f23fbfe889f1160ed313b9f5e95035",
+      "bytes": 7501464
+    },
+    {
+      "job": "novice",
+      "sex": "female",
+      "version": "novice-v5",
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.act",
+      "path": "resources/novice/female/body.act",
+      "sha256": "088a89ead5b6d1c43f1c50bc2c56efe363291b77296a4b012570c7520543286a",
+      "bytes": 44628
+    }
+  ],
+  "pending": [
+    {
+      "job": "mage",
+      "sex": "female",
+      "hd_poses": 88,
+      "total_poses": 112,
+      "missing_poses": 24,
+      "game_state": "native_until_hd_complete",
+      "user_choice": "Keep female Mage pending until complete",
+      "design": "Original costume in the selected redrawn HD style",
+      "source_work": "Assets/HDFirstJobs/complete-v1/mage"
+    }
+  ],
+  "installed_archive": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+  "installed_archive_sha256": "8e182c06538ade5d9ec7028548939d7b89786604b16701df8fb69d0e050e1dc9",
+  "distribution": {
+    "path": "release/first-jobs-accepted-v1.grf",
+    "sha256": "bc2106442ef690ce325f33567fa9dbabcbbad95194c017e34925db9501019a47"
+  },
+  "recovery": {
+    "original_resources": "recovery/before-first-jobs-v1.grf",
+    "original_resources_sha256": "c5e4027e80a2ca6e4b973efb1fc2482849edc4f1d3afffc6f22716ed90719e47",
+    "transaction": "recovery/installation-receipt.json",
+    "transaction_sha256": "629fb52571b7e065d724b6f50d32bcc97d5562b4680ba18cad1fa1cc8ba38b49",
+    "workflow_history": "Assets/HDFirstJobs/history/pre-acceptance-workflow.zip",
+    "workflow_history_sha256": "38596ed796c751bb692dc29c24f8378a951f1451c4e3d36bfb5840ef2d816fdb",
+    "portable_bundle": "recovery/first-jobs-accepted-v1-recovery.zip",
+    "portable_bundle_receipt": "recovery-package.json"
+  },
+  "next_jobs_inventory": {
+    "path": "second-jobs-native-inventory.json",
+    "sha256": "ad31e831ec7dbdae5d34dea57cc70c63bf29c96bfa3228aa532b1673412da79a"
+  },
+  "maintenance_tools": [
+    "tools/first_job_hd_sprites.py",
+    "tools/first_job_hd_review.html",
+    "tools/verify_first_job_hd_sprites.cjs"
+  ]
+}

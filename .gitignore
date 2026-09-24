@@ -41,3 +41,6 @@ __pycache__/
 
 # Generated Novice HD artwork, review renders and recovery bundles.
 /Assets/HDNovice/
+
+# First-job HD artwork, accepted binaries, authoring history and recovery bundles.
+/Assets/HDFirstJobs/

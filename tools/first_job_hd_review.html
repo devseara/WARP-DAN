@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>Accepted first-job HD sprites</title>
+<style>
+:root{color-scheme:dark}body{background:#101922;color:#deebf3;font:15px/1.5 Segoe UI,sans-serif;margin:24px auto;max-width:1280px;padding:0 20px}h1{font-size:26px;margin-bottom:5px}p{color:#b8cbd7}select,button{font:inherit;color:inherit;background:#263b4a;border:1px solid #546d80;padding:6px 10px;border-radius:5px}.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0}label{display:flex;align-items:center;gap:6px}.views{display:grid;grid-template-columns:1fr 1fr;gap:20px}h2{font-size:17px}canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background:#273442;border:1px solid #4a6174}.detail{margin-top:10px}.status{background:#1b342f;border-left:3px solid #8cd3ae;padding:10px 14px}.pending{background:#353123;border-color:#ddbf79}.small{font-size:12px}a{color:#9ce1d7}.black canvas{background:#000}.magenta canvas{background:#a00080}.checker canvas{background-color:#263340;background-image:linear-gradient(45deg,#405361 25%,transparent 25%),linear-gradient(-45deg,#405361 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#405361 75%),linear-gradient(-45deg,transparent 75%,#405361 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}@media(max-width:720px){.views{grid-template-columns:1fr}}
+</style>
+<h1>Accepted first-job HD sprites · V1</h1>
+<p>The eleven accepted first-job sets, rendered from their frozen SPR/ACT files. Female Mage remains pending until her HD animation set is complete.</p>
+<div class="controls"><label>Job <select id="job"></select></label><label>Sex <select id="sex"><option>male</option><option>female</option></select></label><label>Action <select id="group"></select></label><label>Direction <select id="direction"></select></label></div>
+<div class="controls"><button id="play">Play</button><button id="previous">Previous</button><button id="next">Next</button><input id="frame" type="range" min="0" value="0"><span id="position"></span><label><input id="heads" type="checkbox" checked>Native head</label><label><input id="grid" type="checkbox">Detail pixel grid</label><label>Background <select id="background"><option value="">Slate</option><option value="checker">Checker</option><option value="black">Black</option><option value="magenta">Magenta</option></select></label><label>Speed <select id="speed"><option value="1">1x</option><option value="0.5">0.5x</option><option value="0.25">0.25x</option></select></label></div>
+<div class="status" id="status"></div>
+<div class="views"><section><h2>Native original</h2><canvas id="native" width="640" height="640"></canvas><canvas id="nativeDetail" class="detail" width="640" height="320"></canvas></section><section><h2 id="hdTitle">Accepted HD V1</h2><canvas id="hd" width="640" height="640"></canvas><canvas id="hdDetail" class="detail" width="640" height="320"></canvas></section></div>
+<p class="small" id="coordinates"></p><p class="small">Panels share the original world origin and head track. Each detail grid cell represents one 2x output pixel. Native action/frame order and playback timing are retained.</p>
+<p class="small"><a href="acceptance.json">Acceptance and resource hashes</a> · <a href="verification/current.json">Verification</a></p>
+<script>
+const data=__DATA__, $=id=>document.getElementById(id),images=new Map();
+let frameIndex=0,playing=false,last=0,revision=0,drawError=null;
+const groups=['Idle','Walking','Sitting','Pickup','Combat 1','Combat 2','Hit','Pose 7','Death','Standby','Combat 3','Combat 4','Casting'],directions=['Front','Front-left','Left','Rear-left','Rear','Rear-right','Right','Front-right'];
+data.filter(p=>p.sex==='male').forEach(p=>$('job').add(new Option(p.title,p.job)));groups.forEach((s,i)=>$('group').add(new Option(s,i)));directions.forEach((s,i)=>$('direction').add(new Option(s,i)));
+function pair(){return data.find(p=>p.job===$('job').value&&p.sex===$('sex').value)}
+function action(){return pair().actions[+$('group').value*8+ +$('direction').value]}
+function getImage(path){if(!images.has(path)){if(images.size>=384)images.delete(images.keys().next().value);images.set(path,new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(Error('Missing image '+path));im.src=path}));}return images.get(path)}
+function playback(v){playing=v;last=performance.now();$('play').textContent=v?'Pause':'Play'}
+async function draw(){const token=++revision,p=pair(),a=action();frameIndex%=a.frames.length;const f=a.frames[frameIndex];$('frame').max=a.frames.length-1;$('frame').value=frameIndex;$('position').textContent='Frame '+(frameIndex+1)+'/'+a.frames.length+' · SPR '+f.sprite;
+ $('hdTitle').textContent=p.pending?'Native reference — HD pending':'Accepted HD V1';$('status').className='status'+(p.pending?' pending':'');$('status').textContent=p.pending?'Female Mage: 88/112 HD poses authored. Original sprites remain active until the HD set is complete.':p.title+' '+p.sex+': user-accepted first-jobs-v1. All '+p.actions.length+' actions use the accepted resource files.';
+ try{const [n,h,head]=await Promise.all([getImage(f.native),getImage(f.hd),getImage(f.head)]);if(token!==revision)return;drawError=null;
+  for(const [name,body]of [['native',n],['hd',h]]){const off=document.createElement('canvas');off.width=off.height=320;const ctx=off.getContext('2d');ctx.drawImage(body,0,0);if($('heads').checked)ctx.drawImage(head,0,0);
+   for(const detail of [false,true]){const c=$(name+(detail?'Detail':'')),g=c.getContext('2d'),box=detail?[f.neck_focus[0]-40,f.neck_focus[1]-24,80,40]:[0,0,320,320];g.imageSmoothingEnabled=false;g.clearRect(0,0,c.width,c.height);g.drawImage(off,...box,0,0,c.width,c.height);
+    if(detail&&$('grid').checked){g.strokeStyle='#8ea0af66';for(let x=0;x<=640;x+=8){g.beginPath();g.moveTo(x+.5,0);g.lineTo(x+.5,320);g.stroke()}for(let y=0;y<=320;y+=8){g.beginPath();g.moveTo(0,y+.5);g.lineTo(640,y+.5);g.stroke()}}
+   }
+  }
+  $('coordinates').textContent='Neck detail output origin: ('+(f.neck_focus[0]-40)+', '+(f.neck_focus[1]-24)+') · native frame interval '+a.ms+' ms.';
+ }catch(e){drawError=String(e);$('status').textContent=drawError;console.error(e)}
+}
+function choose(){frameIndex=0;last=performance.now();draw()}
+for(const id of ['job','sex','group','direction'])$(id).onchange=choose;$('heads').onchange=draw;$('grid').onchange=draw;$('background').onchange=()=>document.body.className=$('background').value;
+$('play').onclick=()=>playback(!playing);$('frame').oninput=()=>{playback(false);frameIndex=+$('frame').value;draw()};for(const [id,delta]of [['previous',-1],['next',1]])$(id).onclick=()=>{playback(false);frameIndex=(frameIndex+delta+action().frames.length)%action().frames.length;draw()};
+function tick(t){const step=action().ms/+$('speed').value;if(playing&&t-last>=step){const count=Math.floor((t-last)/step);frameIndex=(frameIndex+count)%action().frames.length;last+=count*step;draw()}requestAnimationFrame(tick)}
+draw();requestAnimationFrame(tick);
+</script></html>
