@@ -1,0 +1,51 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Native sprite tracing</title>
+<style>
+*{box-sizing:border-box}body{margin:24px;background:#172330;color:#e9eff5;font:15px system-ui}h1{font-size:25px}p{max-width:1000px;line-height:1.6;color:#bdccda}.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:15px 0}label{display:flex;gap:6px;align-items:center}select,button{padding:8px;border:1px solid #72869a;border-radius:5px;background:#293d51;color:inherit;font:inherit}button{cursor:pointer}input[type=range]{width:145px}#stage{display:flex;gap:16px;overflow:auto}figure{margin:0}figcaption{padding-bottom:8px}canvas{background:#283746;image-rendering:pixelated;display:block}.checker canvas{background:repeating-conic-gradient(#555 0% 25%,#333 0% 50%) 0/16px 16px}a{color:#afd2fc}#readout{min-height:24px;font:13px monospace}#state{color:#ffce8b}#error{color:#ff9b9b;white-space:pre-wrap}
+</style>
+<h1>__JOB__ · trace over the original job</h1>
+<p>The original body is the fixed drawing guide. The new outfit is a separate paint layer on the same canvas. Frame order, timing, mirrors and native heads come from the original ACT. Use the overlay and onion skins to inspect shoulders, hands, hips, knees and feet through each action.</p>
+<p id="state">Corrected paint layers · review candidate · not installed</p>
+<div class="controls">
+<label>Sex <select id="sex"><option value="male">Male</option><option value="female">Female</option></select></label>
+<label>Action <select id="group"></select></label><label>Direction <select id="dir"></select></label>
+<button id="play">Play</button><button id="prev">Previous</button><button id="next">Next</button><input aria-label="Frame" id="frame" type="range" min="0" value="0"><output id="status"></output>
+</div>
+<div class="controls">
+<label>Outfit opacity <input id="opacity" type="range" min="0" max="100" value="50"></label>
+<label><input id="heads" type="checkbox" checked>Native head</label>
+<label><input id="onion" type="checkbox">Previous and next poses</label>
+<label><input id="grid" type="checkbox">Native pixel grid</label>
+<label>Zoom <select id="zoom"><option value=".25">Game size</option><option value=".5" selected>2× game size</option><option value="1">4× game size</option><option value="2">8× game size</option></select></label>
+<label>Speed <select id="speed"><option value="1">Native</option><option value=".5">Half</option><option value=".25">Quarter</option></select></label>
+<label>Background <select id="bg"><option value="slate">Slate</option><option value="checker">Checker</option></select></label>
+</div>
+<div id="stage"><figure><figcaption>Original · locked canvas</figcaption><canvas id="native" width="640" height="640"></canvas></figure><figure><figcaption>New outfit · paint layer</figcaption><canvas id="paint" width="640" height="640"></canvas></figure><figure><figcaption>Original under the new outfit</figcaption><canvas id="overlay" width="640" height="640"></canvas></figure></div>
+<p id="readout"></p><p id="paths"></p><p id="error" role="alert"></p>
+<script>
+const DATA=__DATA__, $=id=>document.getElementById(id), cache=new Map();
+let fi=0, playing=false, timer=0, revision=0;
+const params=new URLSearchParams(location.search);if(['male','female'].includes(params.get('sex'))) $('sex').value=params.get('sex');
+for(let i=0;i<13;i++) $('group').add(new Option(DATA.male.actions[i*8].group,String(i)));
+for(let i=0;i<8;i++) $('dir').add(new Option(String(i),String(i)));
+if(params.has('action')){const a=Math.max(0,Math.min(103,Number(params.get('action'))||0));$('group').value=String(Math.floor(a/8));$('dir').value=String(a%8)}
+function action(){return DATA[$('sex').value].actions[Number($('group').value)*8+Number($('dir').value)]}
+function getImage(path){if(!cache.has(path)) cache.set(path,new Promise((resolve,reject)=>{const im=new Image();im.onload=()=>resolve(im);im.onerror=()=>reject(new Error('Cannot load '+path));im.src=path}));return cache.get(path)}
+function drawPaint(ctx,im,f,alpha=1){ctx.save();ctx.globalAlpha=alpha;ctx.translate(f.dx+(f.mirror?640:0),f.dy);ctx.scale(f.mirror?-1:1,1);ctx.drawImage(im,0,0);ctx.restore()}
+async function render(){clearTimeout(timer);const token=++revision,a=action();fi=(fi+a.frames.length)%a.frames.length;const f=a.frames[fi], prev=a.frames[(fi+a.frames.length-1)%a.frames.length],next=a.frames[(fi+1)%a.frames.length];
+try{const [base,paint,head,...ghosts]=await Promise.all([getImage(f.native),getImage(f.paint),getImage(f.head),...($('onion').checked?[getImage(prev.native),getImage(prev.paint),getImage(next.native),getImage(next.paint)]:[])]);if(token!==revision)return;
+for(const id of ['native','paint','overlay']){const canvas=$(id),ctx=canvas.getContext('2d');ctx.clearRect(0,0,640,640);ctx.imageSmoothingEnabled=false;canvas.style.width=640*Number($('zoom').value)+'px';canvas.style.height=640*Number($('zoom').value)+'px';
+if(ghosts.length){if(id!=='paint'){ctx.globalAlpha=.17;ctx.drawImage(ghosts[0],0,0);ctx.drawImage(ghosts[2],0,0);ctx.globalAlpha=1}if(id!=='native'){drawPaint(ctx,ghosts[1],prev,.17);drawPaint(ctx,ghosts[3],next,.17)}}
+if(id!=='paint')ctx.drawImage(base,0,0);if(id!=='native')drawPaint(ctx,paint,f,id==='overlay'?Number($('opacity').value)/100:1);if($('heads').checked)ctx.drawImage(head,0,0);
+ctx.strokeStyle='#7893a655';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(320.5,0);ctx.lineTo(320.5,640);ctx.moveTo(0,460.5);ctx.lineTo(640,460.5);ctx.stroke();
+if($('grid').checked){ctx.strokeStyle='#bcd1e02c';ctx.beginPath();for(let x=0;x<=640;x+=4){ctx.moveTo(x+.5,0);ctx.lineTo(x+.5,640)}for(let y=0;y<=640;y+=4){ctx.moveTo(0,y+.5);ctx.lineTo(640,y+.5)}ctx.stroke()}}
+$('frame').max=a.frames.length-1;$('frame').value=fi;$('status').textContent=`A${a.action} · F${fi}/${a.frames.length-1} · ${a.ms} ms · native SPR ${f.sprite}`;$('state').textContent=f.reviewed?'Pose traced and reviewed; exported animation acceptance is separate.':'Corrected paint layers · review candidate · not installed';
+$('paths').replaceChildren();for(const [title,path] of [['Original body canvas',f.canonical_native],['Editable outfit layer',f.paint]]){const link=document.createElement('a');link.textContent=title;link.href=path;$('paths').append(link,document.createTextNode(' · '))}
+document.body.className=$('bg').value;document.body.dataset.ready='true';document.body.dataset.frame=String(fi);$('error').textContent='';if(playing)timer=setTimeout(()=>{fi++;render()},a.ms/Number($('speed').value));
+}catch(e){playing=false;$('play').textContent='Play';$('error').textContent=e.message;document.body.dataset.ready='error'}}
+for(const id of ['sex','group','dir'])$(id).onchange=()=>{fi=0;render()};for(const id of ['opacity','heads','onion','grid','zoom','speed','bg'])$(id).oninput=render;
+$('play').onclick=()=>{playing=!playing;$('play').textContent=playing?'Pause':'Play';render()};$('prev').onclick=()=>{fi--;render()};$('next').onclick=()=>{fi++;render()};$('frame').oninput=()=>{fi=Number($('frame').value);render()};
+for(const id of ['native','paint','overlay'])$(id).onmousemove=e=>{const rect=e.target.getBoundingClientRect(),x=Math.floor((e.clientX-rect.left)*640/rect.width),y=Math.floor((e.clientY-rect.top)*640/rect.height);$('readout').textContent=`${id} · native world (${((x-320)/4).toFixed(2)}, ${((y-460)/4).toFixed(2)}) · canvas (${x}, ${y})`};render();
+</script>

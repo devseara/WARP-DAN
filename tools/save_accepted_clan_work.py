@@ -7,6 +7,17 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 
 
+RETIREMENT_RECORD = ROOT / 'Inputs/ClanBodySkins/records/clan-retired-work-20260924.json'
+
+
+def active_authoring_tools(names):
+    """Exclude only explicitly archived tools, including in older manifests."""
+    retired = set()
+    if RETIREMENT_RECORD.is_file():
+        retired = {row['path'] for row in json.loads(RETIREMENT_RECORD.read_text(encoding='utf8'))['files']}
+    return [name for name in dict.fromkeys(names) if 'tools/' + name not in retired]
+
+
 def source_closure(seeds):
     found, queue = set(), list(seeds)
     while queue:
@@ -29,7 +40,7 @@ def source_closure(seeds):
 def main():
     from release_accepted_clan_sprites import RELEASE, CONFIG, current_payloads
     current_payloads()  # Verify pinned current sources before saving.
-    seeds = CONFIG['authoring_tools'] + ['release_accepted_clan_sprites.py', 'save_accepted_clan_work.py']
+    seeds = active_authoring_tools(CONFIG['authoring_tools']) + ['release_accepted_clan_sprites.py', 'save_accepted_clan_work.py']
     missing = [name for name in seeds if not (ROOT / 'tools' / name).is_file()]
     if missing:
         raise FileNotFoundError('Restore the authoring source bundle before archiving: ' + ', '.join(missing))

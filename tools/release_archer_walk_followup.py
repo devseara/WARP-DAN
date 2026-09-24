@@ -6,7 +6,7 @@ from audit_clan_motion import ROOT, GAME, load, save, sha
 from clan_grf_transaction import digest
 from package_clan_skin_assets import pack_payloads, GrfFile
 from save_clan_neck_correction import write_zip
-from save_accepted_clan_work import source_closure
+from save_accepted_clan_work import source_closure, active_authoring_tools, RETIREMENT_RECORD
 import release_clan_neck_shoulders as parent
 
 WORK=ROOT/'Assets/ClanBodySkins/archer-shoulder-v3'
@@ -37,7 +37,8 @@ def prepare():
         expected_replaced_resources=[dict(entry=r['entry'],sha256=r['sha256']) for r in previous['resources']])
     manifest['versions']['archer']='Neck V1 plus shoulder V3; all eight walking views'
     manifest['visual_acceptance']['archer']='Follow-up correction; live visual acceptance pending'
-    manifest['authoring_tools']=list(dict.fromkeys(manifest['authoring_tools']+['release_archer_walk_followup.py']))
+    manifest['authoring_tools']=active_authoring_tools(manifest['authoring_tools']+['release_archer_walk_followup.py'])
+    if RETIREMENT_RECORD.exists():manifest['retired_work_record']=RETIREMENT_RECORD.relative_to(ROOT).as_posix()
     manifest['coverage_reports']=[r for r in manifest['coverage_reports'] if r['job']!='archer']
     for sex in ('male','female'):
         chosen=[r for r in rows if r['job']=='archer' and r['sex']==sex]
@@ -85,6 +86,7 @@ def archive():
     for row in load(WORK/'release-files.json')['files']:
         if row['job']=='archer':members[row['source']]=ROOT/row['source']
     for p in source_closure([Path(__file__),ROOT/'tools/fix_clan_shoulders.py',ROOT/'tools/review_clan_neck_correction.py']):members[p.relative_to(ROOT).as_posix()]=p
+    if RETIREMENT_RECORD.exists():members[RETIREMENT_RECORD.relative_to(ROOT).as_posix()]=RETIREMENT_RECORD
     for folder in (WORK,RELEASE):
         for p in folder.rglob('*.json'):
             if p.name!='saved-work.json':members[p.relative_to(ROOT).as_posix()]=p

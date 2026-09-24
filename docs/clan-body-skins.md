@@ -99,6 +99,30 @@ consumes those neck-correction pairs; Archer V3 consumes the installed V11 pairs
 pinned in `archer-shoulder-v3/source-pins.json`. The old artwork remains a build
 input. Review PNGs can be regenerated instead of copied into every ZIP.
 
+## Which clan files are required
+
+Keep `Inputs/ClanBodySkins/runtime.cskb`, `runtime.json`, `perspective.bin` and
+`perspective.json`: `ClanBodySkins.qjs` reads and validates them when patching the
+client. Removing them prevents the patch from loading its runtime/bridge payloads.
+
+Keep the current release, source-pin, installation and runtime records. These JSON
+files are machine-readable build/verification data, not separate documentation.
+Keep the correction, GRF transaction, review and validation tools used above.
+The reusable `build_registered_angel_job.py`, `native_sprite_tracing.py`,
+`native_sprite_trace_review.html` and `select_angel_pose_correction.py` are also
+retained for painting new outfits over locked native poses. `angel_job_pipeline.py`
+uses the registered exporter for Merchant/Thief and retains its full-action checks.
+
+Fifteen superseded one-off scripts/templates and nine older experiment/release
+reports were removed from the active folders on 2026-09-24. Exact copies are in
+`Assets/ClanBodySkins/releases/retired-tools-20260924/clan-retired-authoring.zip`;
+[the retirement record](../Inputs/ClanBodySkins/records/clan-retired-work-20260924.json)
+contains every path and hash. Restore selected files only when reproducing those
+historical authoring steps. Current correction builds consume the pinned SPR/ACT
+baselines and do not require the retired scripts. Active manifests and packagers
+exclude the retired authoring entries; missing non-retired tools still fail checks.
+The installed sprites, runtime inputs and the V11/V12 recovery bundles are intact.
+
 ## Rebuild and review
 
 Use a separate restored workspace when reproducing a release. Dependencies for

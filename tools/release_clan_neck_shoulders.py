@@ -12,7 +12,7 @@ from audit_clan_motion import ROOT, GAME, load, save, sha
 from package_clan_skin_assets import pack_payloads, GrfFile
 from clan_grf_transaction import digest
 from save_clan_neck_correction import write_zip
-from save_accepted_clan_work import source_closure
+from save_accepted_clan_work import source_closure, active_authoring_tools, RETIREMENT_RECORD
 from sprite_formats import read_spr, read_act
 from review_original_job_directions import native_context
 
@@ -62,7 +62,8 @@ def prepare():
         previous_release=previous['release_id'],acceptance_records=[],coverage_reports=[],
         expected_replaced_resources=[dict(entry=r['entry'],sha256=r['sha256']) for r in previous['resources']])
     manifest['versions']={j:('Neck correction V1 plus diagonal shoulder V2' if j in ('acolyte','archer') else 'Neck/motion correction V1') for j in sorted({r['job'] for r in rows})}
-    manifest['authoring_tools']=list(dict.fromkeys(previous.get('authoring_tools',[])+['correct_clan_neck_registration.py','fix_clan_shoulders.py','review_clan_neck_correction.py','release_clan_neck_shoulders.py']))
+    manifest['authoring_tools']=active_authoring_tools(previous.get('authoring_tools',[])+['correct_clan_neck_registration.py','fix_clan_shoulders.py','review_clan_neck_correction.py','release_clan_neck_shoulders.py'])
+    if RETIREMENT_RECORD.exists():manifest['retired_work_record']=RETIREMENT_RECORD.relative_to(ROOT).as_posix()
     for job,sex in sorted({(r['job'],r['sex']) for r in rows}):
         chosen=[r for r in rows if (r['job'],r['sex'])==(job,sex)]
         report=ROOT/Path(chosen[0]['source']).parent.parent/f'{sex}-release-coverage.json'
@@ -131,6 +132,7 @@ def archive():
     for row in load(CURRENT)['coverage_reports']:
         p=ROOT/row['path'];assert p.is_file();members[row['path']]=p
     for p in source_closure([Path(__file__),ROOT/'tools/fix_clan_shoulders.py',ROOT/'tools/review_clan_neck_correction.py']):members[p.relative_to(ROOT).as_posix()]=p
+    if RETIREMENT_RECORD.exists():members[RETIREMENT_RECORD.relative_to(ROOT).as_posix()]=RETIREMENT_RECORD
     for folder in (RELEASE,WORK):
         for p in folder.rglob('*.json'):
             if p.name!='saved-work.json':members[p.relative_to(ROOT).as_posix()]=p

@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / 'tools'))
 from package_clan_skin_assets import pack_payloads
 from clan_grf_transaction import replace_records, rollback, digest
 from grf_reader import GrfFile
+from save_accepted_clan_work import active_authoring_tools, RETIREMENT_RECORD
 from release_accepted_clan_sprites import validate_active_release, validate_resource_pairs, validate_update_shadows, validate_complete_artwork
 
 
@@ -102,6 +103,16 @@ class ReleaseManifestTests(unittest.TestCase):
         validate_active_release(current, state)
         with self.assertRaisesRegex(ValueError, 'downgrade'):
             validate_active_release(historical, state)
+
+    def test_retired_authoring_tools_cannot_return_through_old_manifests(self):
+        current = json.loads((ROOT / 'Inputs/ClanBodySkins/records/clan-sprites-current.json').read_text(encoding='utf8'))
+        record = json.loads(RETIREMENT_RECORD.read_text(encoding='utf8'))
+        retired = [Path(row['path']).name for row in record['files'] if row['path'].startswith('tools/')]
+        restored_old_names = current['authoring_tools'] + retired
+        self.assertEqual(active_authoring_tools(restored_old_names), current['authoring_tools'])
+        self.assertTrue(all((ROOT / 'tools' / name).is_file() for name in current['authoring_tools']))
+        self.assertIn('native_sprite_tracing.py', current['authoring_tools'])
+        self.assertIn('build_registered_angel_job.py', current['authoring_tools'])
 
     def test_unpinned_pending_correction_refuses_release(self):
         current = json.loads((ROOT / 'Inputs/ClanBodySkins/records/clan-sprites-current.json').read_text(encoding='utf8'))

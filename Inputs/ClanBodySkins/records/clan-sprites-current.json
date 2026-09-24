@@ -206,16 +206,9 @@
     "build_full_archer_set.py",
     "fix_archer_bow_animation.py",
     "review_angel_job_design.py",
-    "fix_clan_walk_size.py",
-    "audit_clan_body_scale.py",
     "fix_acolyte_motion.py",
-    "audit_acolyte_motion.py",
     "build_registered_angel_job.py",
     "native_sprite_tracing.py",
-    "merchant_sprite_workflow.py",
-    "import_merchant_trace_redraw.py",
-    "fit_merchant_trace_registration.py",
-    "review_merchant_trace.py",
     "select_angel_pose_correction.py",
     "correct_clan_neck_registration.py",
     "fix_clan_shoulders.py",
@@ -472,5 +465,6 @@
   ],
   "deployment_authorization": "User requested remaining Archer shoulder correction, all views checked, within the active fix-and-save-to-GRF task.",
   "previous_release": "first-jobs-neck-shoulders-v11",
-  "installation_record": "Inputs/ClanBodySkins/records/clan-sprites-v12-installation.json"
+  "installation_record": "Inputs/ClanBodySkins/records/clan-sprites-v12-installation.json",
+  "retired_work_record": "Inputs/ClanBodySkins/records/clan-retired-work-20260924.json"
 }

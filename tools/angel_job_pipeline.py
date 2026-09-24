@@ -27,6 +27,10 @@ def package(job, work, revision='v1'):
     files, checks, payloads = [], [], {}
     for sex, key in [('male', '남'), ('female', '여')]:
         report = json.loads((work / (sex + '-verification.json')).read_text(encoding='utf8'))
+        if report.get('status') == 'review_only':
+            approval = json.loads((work / 'user-review.json').read_text(encoding='utf8')) if (work / 'user-review.json').exists() else {}
+            approved = {r['path']: r['sha256'] for r in approval.get('files', [])}
+            assert approval.get('status') == 'accepted' and all(approved.get(r['path']) == r['sha256'] for r in report['files']), 'Review-only SPR/ACT requires exact-file visual acceptance before GRF packaging'
         assert not report['missing_sheets'] and not report['stock_fallback_frames']
         assert not report['detached_artwork_flags']
         paths = [work / row['path'] for row in report['files']]
@@ -107,6 +111,9 @@ def package(job, work, revision='v1'):
                 result['status'] = 'complete_correction_installed'
     (work / 'verification.json').write_text(json.dumps(result, indent=2), encoding='utf8')
     sources = source_closure([ROOT / 'tools/angel_job_pipeline.py', ROOT / 'tools/import_angel_job_art.py'])
+    if job in ('merchant', 'thief'):
+        sources.update(source_closure([ROOT / 'tools/build_registered_angel_job.py', ROOT / 'tools/native_sprite_tracing.py']))
+        sources.add(ROOT / 'tools/native_sprite_trace_review.html')
     sources.update((ROOT / 'tools/dual_weapon_formats').glob('*.py'))
     selected = sources | {p for p in work.rglob('*') if p.is_file() and p.suffix not in ('.grf', '.zip')
                           and 'review' not in p.relative_to(work).parts and p.name != 'delivery.json'}
@@ -157,8 +164,12 @@ if __name__ == '__main__':
     if args.revision!='v1' and args.stage in ('build','all'):
         parser.error('Use the revision build-spec command before review/package')
     if args.stage in ('build', 'all'):
-        for sex in ('male', 'female'):
-            build(sex, False, args.job, work)
+        if args.job in ('merchant', 'thief'):
+            from build_registered_angel_job import build as build_traced_job
+            build_traced_job(args.job, work, args.revision)
+        else:
+            for sex in ('male', 'female'):
+                build(sex, False, args.job, work)
     if args.stage in ('review', 'all'):
         review(False, work, args.job, '{sex}-angel-' + args.job + '-' + args.revision)
     if args.stage in ('package', 'all'):
