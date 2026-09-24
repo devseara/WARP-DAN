@@ -179,3 +179,8 @@ Monk aliases require a client restart but no EXE rebuild or DATA.INI change. Ear
 **Male Monk live case confirmed.** The user supplied a [working screenshot](evidence/native-act-ui-male-monk-confirmed.png) showing HD world rendering, standing Alt+Q and seated Alt+S. Wider live acceptance remains pending; drag Alt+Q, move both windows, verify Alt+S standing /
 seated registration and head alignment, then test closing/reopening, relevant
 directions/frames, both sexes, palettes, special job scales and relog.
+
+## Novice HD artwork
+
+The accepted Novice release, complete revision history, rebuild/deployment steps,
+verification and Git scope are maintained in [Novice HD sprites](novice-hd-sprites.md).

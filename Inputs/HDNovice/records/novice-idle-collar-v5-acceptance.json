@@ -1,0 +1,36 @@
+{
+  "status": "user_accepted_and_saved_to_grf",
+  "accepted_at": "2026-09-23T22:47:50.518060+00:00",
+  "user_statement": "accepted. updaet documentation into 1 file. save into grf. are there files needed to be commited?",
+  "user_visual_acceptance": true,
+  "resources": [
+    {
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.act",
+      "sha256": "61e2f34da22f4aead664f4ce538c1e73e3e188a43e84cdef7ceb81b4f3cb7ca1",
+      "bytes": 44748
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.spr",
+      "sha256": "15672384e1d9ec6ea2f721efc199c7cb5121e9a13c4c56094e9d0662ed9e8cba",
+      "bytes": 9845632
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.act",
+      "sha256": "088a89ead5b6d1c43f1c50bc2c56efe363291b77296a4b012570c7520543286a",
+      "bytes": 44628
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.spr",
+      "sha256": "0afd828df56e71697b0f409d44fff38f41f23fbfe889f1160ed313b9f5e95035",
+      "bytes": 7501464
+    }
+  ],
+  "installed_archive": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+  "installed_sha256": "90856626e362acaeae93207aa11f46a1b8a9420b11a1d7561d9c68c2ee5a339a",
+  "all_four_installed_resources_verified": true,
+  "standalone_grf": "Assets/HDNovice/idle-collar-v5/release/novice-hd-idle-collar-v5.grf",
+  "standalone_grf_sha256": "a64127e413a1bdeca3baac22e6dcf06fe77403fc6af271bc929e17dd0f4991b7",
+  "standalone_grf_entries": 4,
+  "documentation": "docs/novice-hd-sprites.md",
+  "live_client_test_claimed": false
+}

@@ -1,0 +1,93 @@
+{
+  "status": "deployed_idle_collar_correction_accepted",
+  "version": "v5",
+  "work": "Assets/HDNovice/idle-collar-v5",
+  "reason": "Male idle collar was covered by the chin compared with walking; locally lower its registration while retaining the native head and accepted body width.",
+  "authorization": "User-reported defect correction under ongoing authorized sprite implementation/deployment.",
+  "resources": [
+    {
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.act",
+      "sha256": "61e2f34da22f4aead664f4ce538c1e73e3e188a43e84cdef7ceb81b4f3cb7ca1",
+      "bytes": 44748
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.spr",
+      "sha256": "15672384e1d9ec6ea2f721efc199c7cb5121e9a13c4c56094e9d0662ed9e8cba",
+      "bytes": 9845632
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.act",
+      "sha256": "088a89ead5b6d1c43f1c50bc2c56efe363291b77296a4b012570c7520543286a",
+      "bytes": 44628
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.spr",
+      "sha256": "0afd828df56e71697b0f409d44fff38f41f23fbfe889f1160ed313b9f5e95035",
+      "bytes": 7501464
+    }
+  ],
+  "files": [
+    {
+      "sex": "male",
+      "path": "assets/novice-male-hd-2x-v5.spr",
+      "sha256": "15672384e1d9ec6ea2f721efc199c7cb5121e9a13c4c56094e9d0662ed9e8cba",
+      "bytes": 9845632
+    },
+    {
+      "sex": "male",
+      "path": "assets/novice-male-hd-2x-v5.act",
+      "sha256": "61e2f34da22f4aead664f4ce538c1e73e3e188a43e84cdef7ceb81b4f3cb7ca1",
+      "bytes": 44748
+    },
+    {
+      "sex": "female",
+      "path": "assets/novice-female-hd-2x-v5.spr",
+      "sha256": "0afd828df56e71697b0f409d44fff38f41f23fbfe889f1160ed313b9f5e95035",
+      "bytes": 7501464
+    },
+    {
+      "sex": "female",
+      "path": "assets/novice-female-hd-2x-v5.act",
+      "sha256": "088a89ead5b6d1c43f1c50bc2c56efe363291b77296a4b012570c7520543286a",
+      "bytes": 44628
+    }
+  ],
+  "changed_resources": 2,
+  "changed_male_frame_uses": 15,
+  "unchanged_frame_uses": 897,
+  "affected_idle_directions": [
+    0,
+    1,
+    2,
+    6,
+    7
+  ],
+  "native_head_anchors_identical": 912,
+  "full_native_timing_preserved": true,
+  "walking_and_combat_pixel_identical": true,
+  "female_files_byte_identical_to_v4": true,
+  "review": "Assets/HDNovice/idle-collar-v5/idle-walk-review.html",
+  "all_action_review": "Assets/HDNovice/idle-collar-v5/full-action-review.html",
+  "pixel_review": "Assets/HDNovice/idle-collar-v5/pixel-review.html",
+  "distribution": "Assets/HDNovice/idle-collar-v5/release/novice-hd-idle-collar-v5.grf",
+  "distribution_sha256": "a64127e413a1bdeca3baac22e6dcf06fe77403fc6af271bc929e17dd0f4991b7",
+  "user_visual_acceptance": true,
+  "live_client_acceptance": false,
+  "installed_archive": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+  "installed_sha256": "90856626e362acaeae93207aa11f46a1b8a9420b11a1d7561d9c68c2ee5a339a",
+  "installation_receipt": "Inputs/HDNovice/records/novice-idle-collar-v5-installation.json",
+  "unrelated_records_preserved": 18297,
+  "client": {
+    "path": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+    "sha256": "963e91dc0f0906f32a9ed222f5f803e1d06a04fe0d745537e7c4131ceb8246ca",
+    "native_preview_payload_verified": true
+  },
+  "executable_unchanged": true,
+  "data_ini_unchanged": true,
+  "work_bundle": "Assets/HDNovice/idle-collar-v5/release/novice-v5-idle-collar-work.zip",
+  "work_bundle_sha256": "a55a16c05b0b8aa3c080f1d4232e3218292cbc38241342a5f13e6d0b16a8e6c5",
+  "recovery_verification": "Inputs/HDNovice/records/novice-idle-collar-v5-recovery.json",
+  "documentation": "docs/novice-hd-sprites.md",
+  "acceptance_record": "Inputs/HDNovice/records/novice-idle-collar-v5-acceptance.json",
+  "baseline_acceptance_record": "Inputs/HDNovice/records/novice-proportions-v4-acceptance.json"
+}

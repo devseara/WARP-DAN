@@ -38,3 +38,6 @@ __pycache__/
 # Local item-description audit/concept output; durable evidence lives in docs/tools.
 /output/item-description-audit/
 /output/item-inspection-concept/
+
+# Generated Novice HD artwork, review renders and recovery bundles.
+/Assets/HDNovice/

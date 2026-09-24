@@ -1,0 +1,19 @@
+{
+  "status": "installed",
+  "target": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+  "pending": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf.clan-release.pending",
+  "before_sha256": "a7e37c85409ea5be09264489233458901b5201c78b0640b11691e8ab6050b675",
+  "after_sha256": "90856626e362acaeae93207aa11f46a1b8a9420b11a1d7561d9c68c2ee5a339a",
+  "original_length": 996953325,
+  "original_header_hex": "4d6173746572206f66204d61676963000102030405060708090a0b0c0d0e7e65683b000000008247000000020000",
+  "added": [],
+  "replaced": [
+    "data/sprite/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ucd08\ubcf4\uc790_\ub0a8.act",
+    "data/sprite/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ucd08\ubcf4\uc790_\ub0a8.spr"
+  ],
+  "removed": [],
+  "entries": 18299,
+  "unrelated_records_preserved": 18297,
+  "original_compressed_bytes_preserved": true,
+  "rollback_reconstruction_sha256": "a7e37c85409ea5be09264489233458901b5201c78b0640b11691e8ab6050b675"
+}
