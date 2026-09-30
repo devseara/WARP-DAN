@@ -39,3 +39,25 @@ for value in (b'Short',b'N'*127,('é'*63+'x').encode(),b'Percent%name',b'X'*128)
   assert n.z(OBJECT+0x27c)==value and n.events==[(0,6,77,0,0,0)]
  else:assert not n.events and bytes(u.mem_read(OBJECT+0x27c,128))==before
 print('PASS modern creation Enter key: full canonical names, raw-byte bound, event arguments and stack guards')
+# UpdatePreviewSprites passes the window sex to seven sprite/palette resolvers. The
+# former +0x2be is now inside the 128-byte name; the sex name table read by
+# 0xd815f0 has two entries, so any stale read (0xe3 in the field crash) faults.
+PREVIEW={0xd5b8e0:(5,2),0xd5bc30:(5,2),0xd5a1f0:(4,2),0xd5a480:(4,2),0xd596d0:(7,2),0xd5a390:(5,3),0xd5a630:(5,2)}
+class Preview(Creation):
+ def __init__(self,sex):
+  super().__init__(b'Preview');self.calls=[];u=self.u
+  u.mem_write(OBJECT+0x2be,b'\xe3');u.mem_write(OBJECT+0x326,bytes([sex]))
+  u.mem_write(OBJECT+0x278,struct.pack('<hh',5,6))
+ def hook(self,u,pc,size,unused):
+  sp=u.reg_read(UC_X86_REG_ESP)
+  if pc in PREVIEW:
+   n,at=PREVIEW[pc];args=ints(u,sp+4,n);self.calls.append((pc,args[at]))
+   u.mem_write(args[0],b'x'+bytes(15)+struct.pack('<II',1,15));self.ret(n,args[0]);return
+  if pc==0x4f1940:self.ret(2,u.reg_read(UC_X86_REG_ECX));return
+  if pc==0x4f08f0:self.ret();return
+  super().hook(u,pc,size,unused)
+for sex in (0,1):
+ n=Preview(sex);n.run(0x7a1e10)
+ assert sorted(pc for pc,_ in n.calls)==sorted(PREVIEW),[hex(pc) for pc,_ in n.calls]
+ assert all(v==sex for _,v in n.calls),[(hex(pc),hex(v)) for pc,v in n.calls]
+print('PASS modern creation preview: all seven sprite resolvers receive the relocated sex byte')
