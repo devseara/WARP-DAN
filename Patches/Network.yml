@@ -32,6 +32,12 @@ CustomNW:
     color : peru	
     
     patches:
+        - RiftlockTransport:
+            title : Enable Riftlock authenticated transport
+            recommend : no
+            author : Louis T Steinhil
+            desc : Enables Riftlock v1 for the 2025-07-16 client. Imports riftlock.dll, verifies signed server handshakes, wraps every native client packet after stock packet obfuscation, and answers authenticated heartbeats. Requires a configured Ed25519 public key and 32-bit libsodium.dll beside the client. Do not ship this together with Gepard.
+
         - SendMD5Hash:
             title : Send MD5 hash packet
             recommend : no
