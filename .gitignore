@@ -14,6 +14,8 @@ SkippedPatches.log
 /CustomDLL/src/*.exp
 /CustomDLL/src/*.lib
 /CustomDLL/src/*.obj
+/CustomDLL/src/*.exe
+/CustomDLL/src/riftlock_stage/
 
 # Ignore files copied by local console profile smoke tests
 /SystemEN/

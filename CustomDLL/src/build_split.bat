@@ -30,7 +30,8 @@ del /q split_*.obj boh_text.dll boh_text.exp boh_text.lib ^
     boh_fps.dll boh_fps.exp boh_fps.lib ^
     boh_inventory_tabs.dll boh_inventory_tabs.exp boh_inventory_tabs.lib ^
     boh_weapon_sprite.dll boh_weapon_sprite.exp boh_weapon_sprite.lib ^
-    boh_pincode_ui.dll boh_pincode_ui.exp boh_pincode_ui.lib >nul 2>&1
+    boh_pincode_ui.dll boh_pincode_ui.exp boh_pincode_ui.lib ^
+    riftlock.dll riftlock.exp riftlock.lib >nul 2>&1
 
 set "BOH_ITEM_COLORS=0"
 set "BOH_EXTENDED_NAMES=0"
@@ -181,6 +182,13 @@ if "%BOH_PINCODE_UI%"=="1" (
 ) else (
     echo [skip] pincode UI disabled
 )
+
+echo [security] Build standalone Riftlock transport DLL...
+cl.exe /nologo /LD /O2 /GL /Gw /Gy /GS /guard:cf /W4 /WX /MT /EHsc /I"./" ^
+	riftlock\riftlock.cpp ^
+	/Fe:riftlock.dll /Fo:split_riftlock.obj ^
+	/link /LTCG /OPT:REF /OPT:ICF /DYNAMICBASE /NXCOMPAT /GUARD:CF kernel32.lib advapi32.lib
+if errorlevel 1 (echo FAILED & exit /b 1)
 
 echo.
 echo ============================================================

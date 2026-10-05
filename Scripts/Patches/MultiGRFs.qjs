@@ -254,6 +254,7 @@ MultiGRFs.useINI = (callAddr, AddPak) =>
 		Cancel("No File name specified");
 
 	parts.push(" 2E 5C" + iniFile.toHex()); // .\<INI Filename>
+	parts.push(("RIFTLOCK_GRFS_V1|ini|" + iniFile + "\x00").toHex());
 
 	$$(_, 2.2, `Prepare the arguments for auto-hook`)
 	const [, _loopOuter, _loopInner, _next, _codeOver, dataStrAddr, iniFileAddr, allocSize] = MapAddrs(parts);
@@ -339,6 +340,7 @@ MultiGRFs.embedList = (callAddr, AddPak) =>
 	}
 
 	parts.push(RETN());
+	parts.push(("RIFTLOCK_GRFS_V1|embedded|" + grfNames.join("|") + "\x00").toHex());
 
 	$$(_, 2.2, `Prepare the arguments for auto-hook`)
 	const args = {
