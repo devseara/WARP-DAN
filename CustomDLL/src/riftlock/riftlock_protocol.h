@@ -5,7 +5,7 @@
 
 namespace riftlock {
 
-static const std::uint16_t kProtocolVersion = 7;
+static const std::uint16_t kProtocolVersion = 8;
 static const std::uint32_t kProbeMagic = 0x54464952u;
 static const std::size_t kNonceSize = 32;
 static const std::size_t kKeySize = 32;
@@ -14,8 +14,13 @@ static const std::size_t kSignatureSize = 64;
 static const std::size_t kMacSize = 16;
 static const std::size_t kModuleNameSize = 64;
 
+// Signed release statement verified by the server:
+// kReleaseDomain (with its NUL) || build_id u32 || release_number u32 || integrity_digest[32].
+static const char kReleaseDomain[] = "riftlock/release/v1";
+
 enum ClientFlags : std::uint16_t {
 	kModuleInventoryPresent = 0x0001,
+	kReleaseSigned = 0x0002,
 };
 
 enum PacketId : std::uint16_t {
@@ -133,6 +138,8 @@ struct ClientHello {
 	std::uint16_t hook_reserved;
 	std::uint8_t first_hook_live[16];
 	std::uint8_t first_hook_disk[16];
+	std::uint32_t release_number;
+	std::uint8_t release_signature[kSignatureSize];
 	std::uint8_t tag[kMacSize];
 };
 
@@ -225,7 +232,7 @@ struct EnvelopePrefix {
 
 static_assert(sizeof(ClientProbe) == 8, "Riftlock ClientProbe ABI mismatch");
 static_assert(sizeof(ServerHello) == 140, "Riftlock ServerHello ABI mismatch");
-static_assert(sizeof(ClientHello) == 532, "Riftlock ClientHello ABI mismatch");
+static_assert(sizeof(ClientHello) == 600, "Riftlock ClientHello ABI mismatch");
 static_assert(sizeof(ServerReady) == 32, "Riftlock ServerReady ABI mismatch");
 static_assert(sizeof(ServerChallenge) == 60, "Riftlock ServerChallenge ABI mismatch");
 static_assert(sizeof(ClientChallenge) == 484, "Riftlock ClientChallenge ABI mismatch");

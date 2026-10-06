@@ -84,6 +84,9 @@ riftlock_modules::Snapshot g_module_snapshot = {};
 riftlock_debug::Snapshot g_debug_snapshot = {};
 riftlock_hooks::Evidence g_hook_snapshot = {};
 std::uint64_t g_last_thread_skip_signature = 0;
+bool g_release_signed = false;
+std::uint32_t g_release_number = 0;
+std::uint8_t g_release_signature[riftlock::kSignatureSize] = {};
 
 void handle_server_packet(const BYTE* packet, DWORD length);
 
@@ -321,6 +324,131 @@ bool compute_integrity_digest() {
 	return ok;
 }
 
+bool parse_hex(const std::string& text, std::uint8_t* output, std::size_t length) {
+	if (text.size() != length * 2)
+		return false;
+	for (std::size_t index = 0; index < text.size(); ++index) {
+		const char character = text[index];
+		int nibble = -1;
+		if (character >= '0' && character <= '9')
+			nibble = character - '0';
+		else if (character >= 'a' && character <= 'f')
+			nibble = character - 'a' + 10;
+		else if (character >= 'A' && character <= 'F')
+			nibble = character - 'A' + 10;
+		if (nibble < 0)
+			return false;
+		if ((index & 1) == 0)
+			output[index / 2] = static_cast<std::uint8_t>(nibble << 4);
+		else
+			output[index / 2] = static_cast<std::uint8_t>(output[index / 2] | nibble);
+	}
+	return true;
+}
+
+bool parse_u32(const std::string& text, std::uint32_t& output) {
+	if (text.empty() || text.size() > 10)
+		return false;
+	std::uint64_t value = 0;
+	for (char character : text) {
+		if (character < '0' || character > '9')
+			return false;
+		value = value * 10 + static_cast<std::uint64_t>(character - '0');
+	}
+	if (value > 0xFFFFFFFFull)
+		return false;
+	output = static_cast<std::uint32_t>(value);
+	return true;
+}
+
+// Loads riftlock-release.sig written by tools/riftlock_release.py. A missing
+// or stale file is not fatal: the server may still pin this release digest.
+void load_release_signature() {
+	g_release_signed = false;
+	const std::wstring directory = executable_directory();
+	if (directory.empty())
+		return;
+	const std::wstring path = directory + L"\\riftlock-release.sig";
+	HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
+		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (file == INVALID_HANDLE_VALUE) {
+		write_log("riftlock-release.sig not found; the server must pin this release digest");
+		return;
+	}
+	char buffer[4096] = {};
+	DWORD read = 0;
+	const BOOL read_ok = ReadFile(file, buffer, sizeof(buffer) - 1, &read, nullptr);
+	CloseHandle(file);
+	if (!read_ok) {
+		write_log("could not read riftlock-release.sig");
+		return;
+	}
+
+	std::string format, build, release, digest_hex, signature_hex;
+	const std::string contents(buffer, read);
+	std::size_t start = 0;
+	while (start < contents.size()) {
+		std::size_t end = contents.find('\n', start);
+		if (end == std::string::npos)
+			end = contents.size();
+		std::string line = contents.substr(start, end - start);
+		if (!line.empty() && line.back() == '\r')
+			line.pop_back();
+		const std::size_t separator = line.find('=');
+		if (separator != std::string::npos) {
+			const std::string key = line.substr(0, separator);
+			const std::string value = line.substr(separator + 1);
+			if (key == "format")
+				format = value;
+			else if (key == "build")
+				build = value;
+			else if (key == "release")
+				release = value;
+			else if (key == "digest")
+				digest_hex = value;
+			else if (key == "signature")
+				signature_hex = value;
+		}
+		start = end + 1;
+	}
+
+	std::uint32_t build_id = 0;
+	std::uint32_t release_number = 0;
+	std::uint8_t digest[riftlock::kDigestSize] = {};
+	std::uint8_t signature[riftlock::kSignatureSize] = {};
+	if (format != "riftlock-release-signature-v1" || !parse_u32(build, build_id) ||
+		!parse_u32(release, release_number) ||
+		!parse_hex(digest_hex, digest, sizeof(digest)) ||
+		!parse_hex(signature_hex, signature, sizeof(signature))) {
+		write_log("riftlock-release.sig is malformed");
+		return;
+	}
+	if (build_id != RIFTLOCK_BUILD_ID) {
+		write_log("riftlock-release.sig was signed for another build ID");
+		return;
+	}
+	if (g_sodium.memcmp_constant(digest, g_integrity_digest, sizeof(digest)) != 0) {
+		write_log("riftlock-release.sig does not match this client; run tools/riftlock_release.py again");
+		return;
+	}
+	std::vector<std::uint8_t> statement;
+	append_bytes(statement, riftlock::kReleaseDomain, sizeof(riftlock::kReleaseDomain));
+	append_u32(statement, build_id);
+	append_u32(statement, release_number);
+	append_bytes(statement, digest, sizeof(digest));
+	if (g_sodium.verify_ed25519(signature, statement.data(), statement.size(),
+		kRiftlockServerPublicKey) != 0) {
+		write_log("riftlock-release.sig is not signed by this server key");
+		return;
+	}
+	g_release_number = release_number;
+	memcpy(g_release_signature, signature, sizeof(g_release_signature));
+	g_release_signed = true;
+	char message[96] = {};
+	_snprintf_s(message, sizeof(message), _TRUNCATE, "signed release %u loaded", release_number);
+	write_log(message);
+}
+
 BOOL CALLBACK initialize_once(PINIT_ONCE, PVOID, PVOID*) {
 	const ULONGLONG started_at = GetTickCount64();
 	bool public_key_nonzero = false;
@@ -387,6 +515,7 @@ BOOL CALLBACK initialize_once(PINIT_ONCE, PVOID, PVOID*) {
 		write_log("could not hash the client release files");
 		return TRUE;
 	}
+	load_release_signature();
 	secure_zero(g_asset_manifest_digest, sizeof(g_asset_manifest_digest));
 	g_initialized = true;
 	char message[128] = {};
@@ -629,6 +758,11 @@ bool handle_server_hello_locked(const std::uint8_t* packet, std::size_t length) 
 		sizeof(client.first_hook_live));
 	memcpy(client.first_hook_disk, g_hook_snapshot.first_disk,
 		sizeof(client.first_hook_disk));
+	if (g_release_signed) {
+		client.flags = static_cast<std::uint16_t>(client.flags | riftlock::kReleaseSigned);
+		client.release_number = g_release_number;
+		memcpy(client.release_signature, g_release_signature, sizeof(client.release_signature));
+	}
 	secure_zero(client_nonce, sizeof(client_nonce));
 	if (!hmac_tag(client.tag, g_session.client_to_server, &client,
 		offsetof(riftlock::ClientHello, tag)) || !queue_control_locked(&client, sizeof(client)))
