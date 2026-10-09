@@ -106,11 +106,20 @@ Run the verifier from the game directory:
 riftlock_stage\riftlock_v7_hooks_verify.exe "<game-directory>" <client-exe>
 ```
 
-A healthy result reports `hook_checked=13 unresolved=0 mismatches=0`, then
+A healthy result reports
+`image_probe_system_trusted image_probe_app_local_trusted image_probe_foreign_detected`,
+`hook_checked=13 unresolved=0 mismatches=0`, then
 `hook_prologue_probe_detected ... first_target=4`,
 `hook_eat_probe_detected ... first_target=6`, and a clean
 `hook_probe_restored` line. The probes patch only exports the verifier never
 calls and restore them before exiting.
+
+The image probes map files as unlinked `SEC_IMAGE` views, the way overlays and
+codecs appear to the memory scan. The scan trusts an unlinked image only when
+it is a valid PE mapping of a file directly in `System32` or `SysWOW64`, or of
+an allowlisted app-local DLL whose on-disk content still matches the signed
+module allowlist. `SysWOW64\WinTypes.dll` and `libcurl.dll` must stay trusted;
+a copy of `WinTypes.dll` in `%TEMP%` must be counted.
 
 ## Repeatable static verification
 

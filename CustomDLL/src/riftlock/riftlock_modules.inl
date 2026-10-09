@@ -92,10 +92,11 @@ static SRWLOCK g_snapshot_lock = SRWLOCK_INIT;
 static std::wstring g_directory;
 static std::wstring g_client_path;
 static std::wstring g_windows_directory;
-static std::string g_wow64cpu_system32_path;
-static std::string g_wow64cpu_syswow64_path;
-static std::string g_avrt_syswow64_path;
-static std::string g_windows_ui_syswow64_path;
+// Kernel device forms ("\Device\HarddiskVolumeN\...") of the directories whose
+// unlinked image mappings are trusted, as returned by GetMappedFileName.
+static std::string g_system32_device_directory;
+static std::string g_syswow64_device_directory;
+static std::string g_client_device_directory;
 static std::vector<riftlock_assets::AllowedModule> g_allowed_modules;
 static riftlock_assets::Sha256Fn g_sha256 = nullptr;
 static Snapshot g_snapshot = {};
@@ -250,17 +251,52 @@ void describe_runtime_region(const MEMORY_BASIC_INFORMATION& memory,
 		g_sha256(output.header_digest, header, static_cast<unsigned long long>(bytes_read));
 }
 
-bool trusted_unlinked_system_image(const RuntimeRegionDiagnostic& region) {
-	return region.type == MEM_IMAGE && region.pe_valid != 0 &&
-		region.pe_image_size != 0 &&
-		((!g_wow64cpu_system32_path.empty() &&
-			_stricmp(region.mapped_path, g_wow64cpu_system32_path.c_str()) == 0) ||
-			(!g_wow64cpu_syswow64_path.empty() &&
-				_stricmp(region.mapped_path, g_wow64cpu_syswow64_path.c_str()) == 0) ||
-			(!g_avrt_syswow64_path.empty() &&
-				_stricmp(region.mapped_path, g_avrt_syswow64_path.c_str()) == 0) ||
-			(!g_windows_ui_syswow64_path.empty() &&
-				_stricmp(region.mapped_path, g_windows_ui_syswow64_path.c_str()) == 0));
+// Converts "C:\dir" into the kernel device form used by GetMappedFileName.
+bool device_form(const std::wstring& dos_path, std::string& output) {
+	output.clear();
+	if (dos_path.size() < 3 || dos_path[1] != L':')
+		return false;
+	wchar_t drive[3] = {dos_path[0], L':', L'\0'};
+	wchar_t device_path[1024] = {};
+	if (QueryDosDeviceW(drive, device_path,
+		static_cast<DWORD>(sizeof(device_path) / sizeof(device_path[0]))) == 0)
+		return false;
+	return riftlock_assets::wide_to_utf8(std::wstring(device_path) + dos_path.substr(2), output);
+}
+
+// Returns the file name when path is a direct child of directory, else nullptr.
+const char* direct_child_name(const char* path, const std::string& directory) {
+	const std::size_t length = directory.size();
+	if (length == 0 || _strnicmp(path, directory.c_str(), length) != 0 || path[length] != '\\')
+		return nullptr;
+	const char* name = path + length + 1;
+	return *name != '\0' && strchr(name, '\\') == nullptr ? name : nullptr;
+}
+
+// Unlinked executable images are trusted when they are valid PE mappings of
+// a file directly in System32 or SysWOW64, or of an app-local DLL whose on-disk
+// content still matches the signed module allowlist.
+bool trusted_unlinked_image(const RuntimeRegionDiagnostic& region) {
+	if (region.type != MEM_IMAGE || region.pe_valid == 0 || region.pe_image_size == 0)
+		return false;
+	if (direct_child_name(region.mapped_path, g_system32_device_directory) != nullptr ||
+		direct_child_name(region.mapped_path, g_syswow64_device_directory) != nullptr)
+		return true;
+	const char* name = direct_child_name(region.mapped_path, g_client_device_directory);
+	if (name == nullptr)
+		return false;
+	const int wide_length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name, -1, nullptr, 0);
+	if (wide_length <= 1)
+		return false;
+	std::wstring wide_name(static_cast<std::size_t>(wide_length - 1), L'\0');
+	if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, name, -1, &wide_name[0], wide_length) != wide_length)
+		return false;
+	wide_name = lowercase(wide_name);
+	const riftlock_assets::AllowedModule* allowed = find_allowed(wide_name);
+	std::uint8_t digest[32] = {};
+	std::uint64_t size = 0;
+	return allowed != nullptr && hash_full_file(g_directory + L"\\" + wide_name, digest, size) &&
+		size == allowed->size && riftlock_assets::equal_digest(digest, allowed->digest);
 }
 
 bool trusted_runtime_address(const std::vector<RuntimeRegionDiagnostic>& regions,
@@ -311,7 +347,7 @@ bool scan_runtime(Snapshot& output, const std::vector<ModuleRecord>& module_reco
 			if (unlinked_candidate) {
 				describe_runtime_region(memory, diagnostic);
 				diagnostic.trusted_system_image =
-					trusted_unlinked_system_image(diagnostic) ? 1 : 0;
+					trusted_unlinked_image(diagnostic) ? 1 : 0;
 				diagnostics.push_back(diagnostic);
 			}
 			const bool unlinked_exec = unlinked_candidate &&
@@ -588,27 +624,10 @@ bool initialize(const std::wstring& directory, const std::wstring& client_path,
 		return false;
 	}
 	g_windows_directory = lowercase(windows_path);
-	g_wow64cpu_system32_path.clear();
-	g_wow64cpu_syswow64_path.clear();
-	g_avrt_syswow64_path.clear();
-	g_windows_ui_syswow64_path.clear();
-	if (windows_length > 2 && windows_path[1] == L':') {
-		wchar_t drive[3] = {windows_path[0], L':', L'\0'};
-		wchar_t device_path[1024] = {};
-		if (QueryDosDeviceW(drive, device_path,
-			static_cast<DWORD>(sizeof(device_path) / sizeof(device_path[0]))) != 0) {
-			const std::wstring mapped_root = std::wstring(device_path) +
-				std::wstring(windows_path + 2);
-			riftlock_assets::wide_to_utf8(mapped_root +
-				L"\\System32\\wow64cpu.dll", g_wow64cpu_system32_path);
-			riftlock_assets::wide_to_utf8(mapped_root +
-				L"\\SysWOW64\\wow64cpu.dll", g_wow64cpu_syswow64_path);
-			riftlock_assets::wide_to_utf8(mapped_root +
-				L"\\SysWOW64\\avrt.dll", g_avrt_syswow64_path);
-			riftlock_assets::wide_to_utf8(mapped_root +
-				L"\\SysWOW64\\Windows.UI.dll", g_windows_ui_syswow64_path);
-		}
-	}
+	const std::wstring windows_directory(windows_path, windows_length);
+	device_form(windows_directory + L"\\System32", g_system32_device_directory);
+	device_form(windows_directory + L"\\SysWOW64", g_syswow64_device_directory);
+	device_form(directory, g_client_device_directory);
 	HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
 	auto register_notification = ntdll == nullptr ? nullptr :
 		reinterpret_cast<LdrRegisterDllNotificationFn>(
