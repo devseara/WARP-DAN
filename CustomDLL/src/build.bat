@@ -55,6 +55,12 @@ if "%BOH_ITEM_COLORS%"=="1" (
     exit /b 1
 )
 
+if "%BOH_RUNE_VISUAL%"=="1" (
+    echo [ERROR] BOH_RUNE_VISUAL is retired and cannot be compiled.
+    echo [ERROR] CustomRuneSystem is a QJS-only patch; no rune DLL module exists.
+    exit /b 1
+)
+
 set "BOH_TEXT_VISUAL=0"
 if "%BOH_EXTENDED_NAMES%"=="1" set "BOH_TEXT_VISUAL=1"
 if "%BOH_PLAYER_NAME_COLORS%"=="1" set "BOH_TEXT_VISUAL=1"
@@ -98,17 +104,6 @@ if "%BOH_TEXT_VISUAL%"=="1" (
     set "LINK_OBJECTS=!LINK_OBJECTS! extended_name.obj player_name_color.obj !TEXT_BRIDGE_OBJ!"
 ) else (
     echo [skip] text visual modules disabled
-)
-
-if "%BOH_RUNE_VISUAL%"=="1" (
-    echo [feature] rune_visual - Rune system rendering...
-    cl.exe /nologo /c /O2 /MT /EHsc /I"./" ^
-        /DDllMain=RuneVisualDllMain ^
-        rune_visual\boh_rune_visual.cpp /Fo:rune_visual.obj
-    if errorlevel 1 (echo FAILED & exit /b 1)
-    set "LINK_OBJECTS=!LINK_OBJECTS! rune_visual.obj"
-) else (
-    echo [skip] rune_visual disabled
 )
 
 if "%BOH_FPS_PING%"=="1" (

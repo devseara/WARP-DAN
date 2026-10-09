@@ -566,7 +566,7 @@ RuneSystem:
             title : Custom Rune System
             recommend : no
             author : Louis T Steinhil
-            desc : One-click Rune System client support for the 2025-07-16 Ragexe. Skips the stock equipped Rune Set guard, imports the selected Rune visual DLL exports, and installs refresh/draw/click/surface bridges at WARP patch time so the dedicated boh_rune.dll does not patch calls/JMPs/vtables at runtime.
+            desc : QJS-only multiple equipped Rune Sets for the 2025-07-16 Ragexe and the BanquetOfHeroes map-server (rune_tablet_max_equipped). Skips the stock equipped Rune Set guard, caches up to 255 server-refreshed sets by set ID, shows a prompted number of equipped-pane rows (1-4) that scroll with the mouse wheel or a scroll column shown while sets are hidden, on the Rune Tablet tab (the set list below shrinks to fit), makes hover, tooltips and preview row-aware, shows Equip/Unequip for the set in the detail panel, and unequips one set (0x0bd6 category|0x8000, set id). All logic is emitted into static EXE caves; no DLL, DLL import or runtime hook is required.
 
 IgnoreErrors:
     title : IGNORE ERRORS

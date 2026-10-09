@@ -49,11 +49,12 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
   - No D3D proxy, custom DLL, ICMP worker, Winsock import, or recv hook.
 - `CustomRuneSystem.qjs`
   - Keeps the static equipped-set guard patch.
-  - Loads `boh_rune.dll` by normal startup import.
-  - WARP-time call/prologue/surface bridges cover refresh, selected getter,
-    draw/image/text/click/tooltip, and surface overlay entry `0x00FD5D24`.
-  - Dedicated `boh_rune.dll` imports only basic loader/logging WinAPI and does
-    not carry patch/trampoline/recv primitives.
+  - QJS-only: adds no DLL import; `boh_rune.dll` is retired (source removed).
+  - EXE caves cover the set-keyed refresh cache, the preview, button and
+    unequip getters, the unequip set ID, and the `UIEquipRuneSetWnd`
+    draw/hover/wheel plus tag-list click vtable entries.
+  - Row Y shifts are applied only at `UIEquipRuneSetWnd::OnDraw` call sites;
+    the global DrawBitmap/TextOut entries and CDCBitmap vtable stay stock.
 
 ## Excluded From Strict Gepard Profiles
 
@@ -67,9 +68,8 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
 ## Build Checklist
 
 - [x] Use `profiles/2025-07-16 GEPARD SAFE.yml` as the starting profile.
-- [x] QJS-only name, item-color, overlay, PIN, and inventory patches require
-      no custom DLL. Deploy `boh_rune.dll` only when explicitly selecting
-      `CustomRuneSystem`.
+- [x] QJS-only name, item-color, overlay, PIN, inventory, and Rune System
+      patches require no custom DLL. Do not deploy `boh_rune.dll`.
 - [x] The retired combined BOH runtime DLL is neither selected nor imported;
       the main-profile build no longer runs its obsolete bridge-IAT repair.
 - [x] Keep the dual-wield / weapon sprite patch out of strict profiles.
@@ -101,8 +101,11 @@ Scope: strict no-runtime-hook client builds. This means no DLL may modify EXE co
 - Telemetry post-Present bridge: `0x00543441`; application RTT capture:
   request tick `0x00C82D32`, response subtraction `0x00C9E8F2`, capture
   `0x00C9E8F8`.
-- Rune call sites: `0x00CF953F`, `0x00CF9591`, `0x007E69D6`, `0x007E5C12`,
-  `0x007E5E47`, `0x007E5E56`.
-- Rune prologues: `0x007E1610`, `0x00A1D260`, `0x00A25A70`, `0x007E4B70`,
-  `0x007E4CC0`.
-- Rune surface vtable entry: `0x00FD5D24`.
+- Rune call sites: refresh `0x00CF953F`, `0x00CF9591`; selected getter
+  `0x007E69D6`, `0x007E5C12`, `0x007E5E47`, `0x007E5E56`, `0x007E67EA`;
+  OnDraw draws `0x007E1673`, `0x007E169B`, `0x007E1723`, `0x007E18E8`,
+  `0x007E17D5`, `0x007E17FA`, `0x007E1878`, `0x007E189D`, `0x007E1757`;
+  unequip set ID `0x007E685F`; hover tooltip positions `0x007E4D17`, `0x007E4E00`.
+- Rune vtable entries: `0x0102317C`, `0x0102319C`, `0x010231B8`, `0x01023190`,
+  `0x01023194`, `0x01023268`.
+- Rune equip guard: `0x007E68AC`.

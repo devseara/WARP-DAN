@@ -36,6 +36,7 @@ foreach ($patch in $bannedPatches) {
 
 $bannedDllNames = @(
     "boh.dll",
+    "boh_rune.dll",
     "boh_weapon_sprite.dll"
 )
 
@@ -75,9 +76,8 @@ foreach ($source in $safeSources) {
     }
 }
 
-$allowedDlls = @(
-    "boh_rune.dll"
-)
+# CustomRuneSystem is QJS-only; no strict-profile patch imports a custom DLL.
+$allowedDlls = @()
 
 $bannedBinaryTokens = @(
     "VirtualAlloc",

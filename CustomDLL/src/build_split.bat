@@ -63,6 +63,12 @@ if "%BOH_ITEM_COLORS%"=="1" (
     exit /b 1
 )
 
+if "%BOH_RUNE_VISUAL%"=="1" (
+    echo [ERROR] BOH_RUNE_VISUAL is retired and cannot be compiled.
+    echo [ERROR] CustomRuneSystem is a QJS-only patch; no rune DLL module exists.
+    exit /b 1
+)
+
 set "BOH_TEXT_VISUAL=0"
 if "%BOH_EXTENDED_NAMES%"=="1" set "BOH_TEXT_VISUAL=1"
 if "%BOH_PLAYER_NAME_COLORS%"=="1" set "BOH_TEXT_VISUAL=1"
@@ -115,18 +121,6 @@ if "%BOH_NPC_NAME_OVERLAY%"=="1" (
     if errorlevel 1 (echo FAILED & exit /b 1)
 ) else (
     echo [skip] NPC name overlay disabled
-)
-
-if "%BOH_RUNE_VISUAL%"=="1" (
-    echo [feature] Build boh_rune.dll...
-    cl.exe /nologo /c /O2 /GS- /GR- /I"./" ^
-        rune_visual\boh_rune_visual.cpp /Fo:split_rune_visual.obj
-    if errorlevel 1 (echo FAILED & exit /b 1)
-    link.exe /nologo /DLL /ENTRY:DllMain /NODEFAULTLIB /OUT:boh_rune.dll ^
-        split_rune_visual.obj kernel32.lib user32.lib
-    if errorlevel 1 (echo FAILED & exit /b 1)
-) else (
-    echo [skip] rune visual disabled
 )
 
 if "%BOH_FPS_PING%"=="1" (

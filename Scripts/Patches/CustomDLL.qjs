@@ -32,8 +32,8 @@
 *                   directory entry via SetDirAddr/SetDirSize.              *
 *                   RISK: Full import table replacement; any error in the   *
 *                   new table makes the EXE unlaunchable. The dedicated    *
-*                   caller is CustomRuneSystem; QJS-only custom patches do *
-*                   not request or import custom DLLs.                     *
+*                   caller is RiftlockTransport; QJS-only custom patches   *
+*                   do not request or import custom DLLs.                  *
 *                   Target: Ragexe clients 2014-2025 (excluding 2014-2017   *
 *                   import-table bugs).                                     *
 *                                                                          *

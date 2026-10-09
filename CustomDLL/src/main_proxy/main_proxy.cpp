@@ -10,7 +10,6 @@
 //   extended_name.cpp    - EXTN transport + name substitution state
 //   player_name_text_bridge.cpp - EXTN/player-name GDI bridge
 //   colored_itemname.cpp - DEPRECATED historical renderer; never built
-//   rune_visual.cpp       — Rune set rendering (RuneVisualDLL/)
 //   fps_ping.cpp          — FPS/Ping overlay (FpsPingOverlay/)
 //   npc_name_overlay.cpp  — NPC name overlay (npc_name_overlay/)
 
@@ -42,11 +41,6 @@ FARPROC g_pDirectDrawEnumerateExA = nullptr;
 // ============================================================================
 //  Feature module forward declarations
 // ============================================================================
-
-#if BOH_RUNE_VISUAL
-// rune_visual.cpp (RuneVisualDLL/boh_rune_visual.cpp)
-BOOL APIENTRY RuneVisualDllMain(HMODULE module, DWORD reason, LPVOID reserved);
-#endif
 
 #if BOH_FPS_OVERLAY || BOH_PING_OVERLAY
 // fps_ping.cpp (FpsPingOverlay/fps_ping_overlay.cpp + ping.cpp)
@@ -108,10 +102,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID lpReserved)
     // Chain only to compiled-in feature modules that are enabled for this build.
     // This keeps a Gepard-safe combined DLL from running disabled modules that
     // would otherwise patch EXE code, IAT entries, or vtables at runtime.
-#if BOH_RUNE_VISUAL
-    if (BohLicense::IsEnabled(FEATURE_RUNE_VISUAL))
-        RuneVisualDllMain(hModule, reason, lpReserved);
-#endif
 #if BOH_FPS_OVERLAY || BOH_PING_OVERLAY
     if (fpsFeaturesEnabled)
         FpsOverlayDllMain(hModule, reason, lpReserved);
@@ -209,5 +199,5 @@ extern "C" __declspec(dllexport) void PlayerNameColorVisualInit(void) {}
 extern "C" __declspec(dllexport) void WeaponSpriteInit(void) {}
 #endif
 // Other WARP-facing exports are provided only by enabled feature objects:
-// RuneVisualInit, FpsPingOverlayInit, NpcNameOverlayInit, InventoryTabsInit,
+// FpsPingOverlayInit, NpcNameOverlayInit, InventoryTabsInit,
 // and PincodeUIInit/PincodeUIShow.

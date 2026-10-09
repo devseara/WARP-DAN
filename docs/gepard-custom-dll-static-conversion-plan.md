@@ -24,7 +24,7 @@ Rule of thumb for every conversion:
 | CustomColoredItemName | None | Former passive GDI wrappers | Converted: QJS-only bounded ICOL legacy-name table plus ICL2 ItemId table, anchored slotless/slotted Inventory grammar, conditional native post-grade endpoint gates, and one EXE-resident title bridge. Producer hooks prefer ItemId where CItem is available. Grade color wins a complete decorated title, grade-matched Inventory quantities are omitted, and matched dark draws are suppressed. See the normative renderer contract. |
 | FpsOverlay / PingOverlay | None | Former D3D proxy, layered window and ICMP worker | Converted again: QJS-only post-Present renderer plus stock application-packet RTT capture |
 | ROGlobalZeroInventory | None | Former DLL-owned draw/input handlers | Converted again: pure-QJS native caves, renewal tooltips, and Zeny underlay |
-| CustomRuneSystem visuals | `boh_rune.dll` | Runtime call/JMP patches and dynamic surface vtable swap | Converted: WARP-time call/prologue/surface bridges |
+| CustomRuneSystem visuals | None | Former DLL handlers behind WARP-time call/prologue/surface bridges | Converted again: QJS-only native caves; OnDraw call-site row shifts replace the global DrawBitmap/TextOut prologues and CDCBitmap vtable slot |
 
 ### Final extended-name findings (2026-07-13)
 
@@ -228,7 +228,7 @@ Implementation checklist:
 
 ## Rune Visual DLL
 
-Current problem:
+Original DLL problem (historical):
 
 - Runtime direct call patches:
   - `0x00CF953F`, `0x00CF9591` -> `rune_refresh_hook`.
@@ -248,42 +248,62 @@ Capstone sanity:
 - Selected-equipped getter sites are direct `E8` calls to `0x0072F140`.
 - Prologue hook byte counts match the existing DLL comments/code.
 
-Fix design:
+Superseded design (2026-06): WARP-time call/prologue/surface bridges into
+passive `boh_rune.dll` exports through its IAT.
 
-- WARP owns all call/JMP patching and builds static trampolines/caves in the EXE.
-- DLL exports passive handlers:
-  - `RuneRefreshHook`
-  - `RuneSelectedEquippedGetter`
-  - `RuneEquipPaneDrawBridge`
-  - `RuneImageDrawBridge`
-  - `RuneTextDrawBridge`
-  - `RuneEquipPaneClickBridge`
-  - `RuneEquipPaneTooltipBridge`
-  - `RuneSurfaceOverlayDraw`
-- For call replacements, the EXE cave can call the DLL export directly. The DLL
-  may call the original helper by rebased VA.
-- For prologue hooks, the WARP cave must provide the original-byte trampoline
-  equivalent statically, then call the DLL export with enough context to choose
-  before/original/after behavior.
+Current QJS-only design (2026-10-09, `CustomRuneSystem.qjs`; the DLL source
+was removed and `BOH_RUNE_VISUAL` is retired):
 
-Surface overlay resolution:
-
-- `CreateSurfaceObject` calls constructor `0x0053C6A0`.
-- The constructor assigns the final surface vtable `0x00FD5CE4`.
-- The overlay draw slot is `0x00FD5D24`, with original target `0x0053F560`.
-- WARP writes a static `FF 25 [RuneSurfaceOverlayDraw IAT]` cave VA into that
-  vtable entry on disk. The DLL no longer mutates surface vtables at runtime.
+- No DLL import, IAT bridge, or `StaticPatchRefresh` hook. All handlers are
+  EXE caves with a state block (0x60 header + 255 x 12-byte cache entries) in
+  the WARP diff section (`.xdiff`, RWX).
+- The cache follows the BanquetOfHeroes map-server multi-set sync
+  (`doc/rune_tablet.txt` 6.): `0x0bd7 <0> <cat> <0>` drops every cached set of
+  a tag and compacts, `0x0bd7 <0> <cat> <id>` appends or updates by set
+  object. Set objects are built from the lubs and updated in place by the list
+  packets (`0x00730CF0`), so the pointers stay valid.
+- `$runeVisibleRows` (1-4, default 3) rows are drawn from a scroll position;
+  OnWheel (`+0x8C`, entry `0x010231B8`, stock stub `0x005A8AF0`) moves it one
+  row, clamped, and invalidates the pane. UIWindowMgr sends hover and wheel to
+  the same window (`0x00A46B41`, `0x00A46B66`).
+- Unequip: `0x007E67EA` returns the hovered row when the pane sent message
+  `0x158`, otherwise the set of a `UIRuneSet_Info` sender (vtable `0x010239AC`,
+  `+0x7C`; it owns the Equip/Unequip buttons and forwards their clicks); `0x007E685F` (10 bytes,
+  `E8 rel32` + 5 NOPs) stores the set ID and ORs `0x8000` into the category, so
+  the server removes only that set.
+- Button state: `0x007E5C12/5E47/5E56` (ESI = `UIRuneSet_Info`) return its set while it is
+  cached, else 0, so the button shows Unequip exactly for an equipped selection.
+- RTTI ownership: `0x007E1610`/`0x007E4CC0` are `UIEquipRuneSetWnd` OnDraw
+  (`+0x50`) and OnMouseHover (`+0x70`) in vtable `0x0102312C`. `0x007E4B70`
+  is `UIRuneSystem_tagListWnd +0x64` (vtable `0x01023204`), not an equip-pane
+  click. `0x00FD5CE4` is the shared `CDCBitmap` vtable. Each hooked handler
+  has exactly one reference, its vtable entry, so the caves patch
+  `0x0102317C`, `0x0102319C`, and `0x01023268` instead of stealing prologues.
+- All row geometry OnDraw emits goes through nine direct sites: DrawBitmap
+  `0x007E1673/169B/1723/18E8`, TextOut `0x007E17D5/17FA/1878/189D`, and the
+  locked-rune `CDCBitmap +0x40` call at `0x007E1757` (rewritten
+  `56 E8 rel32`). Row Y shifts happen there, so the global `0x00A1D260` and
+  `0x00A25A70` prologues and `0x00FD5D24` stay stock for every other UI.
+  The hover gets a row-local Y, so its two tooltip placements
+  (`0x00A1EF70` LocalToScreen at `0x007E4D17`/`0x007E4E00`) add the hovered
+  row's offset back for the stacked pane.
+- Layout capture is reset per pane instance; children are re-read from
+  `UIRuneSystemWnd +0xC8..+0xD4` and moved only when they match the captured
+  pointer and have drifted from stock Y + extra.
 
 Implementation checklist:
 
-- [x] Implement WARP static call bridges for refresh and selected getter sites.
-- [x] Implement static prologue trampoline builder for the five prologue hooks.
-- [x] Refactor DLL hook functions to consume explicit original/trampoline entry
-      points from EXE caves.
-- [x] Resolve and remove the dynamic surface vtable mutation.
 - [x] Keep the existing equip guard patch; it is already WARP-time static.
-- [ ] Live-test rune equip, multiple active sets, draw stacking, click routing,
-      tooltip routing, refresh, and exit.
+- [x] Port refresh cache, getter, draw stacking, layout, and hover/tag-list
+      routing to native caves; verify every original byte before writing.
+- [x] WARP_console build: only the intended `.text`/`.rdata` sites change and
+      no import is added, standalone and with the main profile.
+- [x] Unicorn emulation of every cave through the patched EXE's own call sites
+      and vtable entries (`tools/test_custom_rune_system.py`, 11 tests; 1, 3 and
+      4 rows, standalone and with the main profile).
+- [ ] Live-test rune equip, multiple active sets, draw stacking, wheel
+      scrolling, hover/click routing, Equip/Unequip button, pane and button
+      unequip, relog, and exit.
 
 ## Generic CustomDLL / Plugin Loading
 
@@ -298,8 +318,8 @@ with fixed export lists.
 1. Text DLL static GDI wrappers. Done and file-verified.
 2. Inventory tabs static vtable caves. Done and file-verified.
 3. FPS/Ping D3D COM proxy. Done and file-verified; live D3D reset smoke remains.
-4. Rune static bridges. Done and file-verified, including the static surface
-   overlay vtable entry.
+4. Rune visuals. Converted to QJS-only native caves and file/emulation
+   verified; live multi-set acceptance remains.
 
 The strict profile is `profiles/2025-07-16 GEPARD SAFE.yml`. It intentionally
 does not include the dual-wield / weapon sprite patch.
