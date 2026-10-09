@@ -1,0 +1,346 @@
+{
+  "base_repository": "https://github.com/YlenXWalker/WARP20250716-main",
+  "base_commit": "e401705bb68aad058ab934745c9b845cbd2193a9",
+  "files": {
+    "Assets/BattlepassUI/menuicon/bt_battlepass.bmp": {
+      "sha256": "6f45b9750fcf6eec3915b868878d523929a56d9271cd760d38b5d31150fcc31e",
+      "git_blob": "10f82a5d6a139c9984ba0f5c5e56b465b682d397"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_disabled.bmp": {
+      "sha256": "6f45b9750fcf6eec3915b868878d523929a56d9271cd760d38b5d31150fcc31e",
+      "git_blob": "10f82a5d6a139c9984ba0f5c5e56b465b682d397"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_mouseon.bmp": {
+      "sha256": "4bfd9702ee16907fd395da05225b8e0d779624145ccd76ff1f2484e3a9253fdb",
+      "git_blob": "faa98ae2f6c449f31c3c3c3b29c4d899de5cc823"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_new.bmp": {
+      "sha256": "9e8d28b0530be8e3dcc6730a8ce4f2e86142e6d1f0cd70779f4b7c0439f11b95",
+      "git_blob": "5679342c2deabcc5b6f140b2f21285faae93b6d4"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_new_press.bmp": {
+      "sha256": "aa9b5ca5c2260947dbadf230002c714e2d4009d3319a25378f5f096f0f8f0a2d",
+      "git_blob": "62892dddebcbee068bd2f50700decc63c6bdabca"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_normal.bmp": {
+      "sha256": "6f45b9750fcf6eec3915b868878d523929a56d9271cd760d38b5d31150fcc31e",
+      "git_blob": "10f82a5d6a139c9984ba0f5c5e56b465b682d397"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_old_disabled.bmp": {
+      "sha256": "4629efc65e3da697cebb5418b2ea0397875687a3ffe6aed6f671b185cfd8a6f6",
+      "git_blob": "2518bfc73dd67c0766d7c7f53c469adced8d0c3b"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_old_mouseon.bmp": {
+      "sha256": "792eba8fb7fe16a7b48a2f63fdb274587b10ae2f18f329a6222307613d794e2a",
+      "git_blob": "11e000001eb8195f72ed279baf62ad794a1e37e2"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_old_normal.bmp": {
+      "sha256": "4629efc65e3da697cebb5418b2ea0397875687a3ffe6aed6f671b185cfd8a6f6",
+      "git_blob": "2518bfc73dd67c0766d7c7f53c469adced8d0c3b"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_old_pressed.bmp": {
+      "sha256": "048f370cc526713aef71cbd7fefa58694a60ed8909dd7de9a447a8f4482f61b4",
+      "git_blob": "b5aca9a4bf5d51a66337ed1bee2a7659a96b6fa4"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_press.bmp": {
+      "sha256": "2d6be6ea4e274314234466952e89f2f53cea5eef7a5811f8a0b8b4981ea5e4ce",
+      "git_blob": "343b9008bd63e226c3bcbf7e499074dcc495e4db"
+    },
+    "Assets/BattlepassUI/menuicon/bt_battlepass_pressed.bmp": {
+      "sha256": "2d6be6ea4e274314234466952e89f2f53cea5eef7a5811f8a0b8b4981ea5e4ce",
+      "git_blob": "343b9008bd63e226c3bcbf7e499074dcc495e4db"
+    },
+    "Assets/BattlepassUI/menuicon/manifest.json": {
+      "sha256": "6ad15a3b09119412bf19cd67e67a1577e08346f3c450badbdaae4e774dbd8950",
+      "git_blob": "d46d64eb019add1fdefb46f5a4615460bfb770f7"
+    },
+    "Assets/BattlepassUI/menuicon/source/battlepass-emblem.png": {
+      "sha256": "81c3175110c6bcbd4be9693426f49231604f4eb49c5d507199e41f693f65659a",
+      "git_blob": "20d55cb535c042c44964f5e19d91aad35cdd1be5"
+    },
+    "Assets/BattlepassUI/menuicon/source/battlepass-new-states.png": {
+      "sha256": "a04421326ed3bd9a6f9131f154189ebcf47134756f0710bf3c1f15a8a2c37f65",
+      "git_blob": "b0039f77974c045e29c2b000605b1b5407744446"
+    },
+    "Assets/BattlepassUI/menuicon/source/new-states-prompt.txt": {
+      "sha256": "411f32713756e9cc85c980e8f56e350385f8d16b21814ff06ce69a91d8233ac9",
+      "git_blob": "70c5d9fa57e20058c4031aaac8187af373b1d9e8"
+    },
+    "Assets/BattlepassUI/menuicon/source/prompt.txt": {
+      "sha256": "48c43aa8f8b0fbe1145c20dd3dcf7f7108cf5371f26f1fe0af9ef928d0678738",
+      "git_blob": "1b86e2f790ab7972e3bfa4fd601147f32639089b"
+    },
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking.bmp": {
+      "sha256": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+      "git_blob": "4eab8ab6c850baf8b5140d5edcce72a5d19f05e3"
+    },
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_disabled.bmp": {
+      "sha256": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+      "git_blob": "4eab8ab6c850baf8b5140d5edcce72a5d19f05e3"
+    },
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_mouseon.bmp": {
+      "sha256": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+      "git_blob": "4eab8ab6c850baf8b5140d5edcce72a5d19f05e3"
+    },
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_new.bmp": {
+      "sha256": "8cfcb317996d96c1ded334df0df2941d905fe80c796440acef1e5736f5d09e69",
+      "git_blob": "11c5a6e8a445cea9fad3d1dc12ef747b1aba4a07"
+    },
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_new_press.bmp": {
+      "sha256": "0b20cd60c179b215c5d8b4faa5bf43faf5c463251ecdc6c636fe9fd87fc22579",
+      "git_blob": "94ca7ad6779d77c95cf796cc6dd3c55aa15ffcab"
+    },
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_normal.bmp": {
+      "sha256": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+      "git_blob": "4eab8ab6c850baf8b5140d5edcce72a5d19f05e3"
+    },
+    "Assets/ROGlobalZeroMenu/README.md": {
+      "sha256": "adad88a9d54cab8cae7d0429d2c8c61bb290b4e06ee2084ada592ade134324b6",
+      "git_blob": "aa6c050763d60da8ab988271a8d84572073e753d"
+    },
+    "Assets/ROGlobalZeroMenu/menuicon/bg_m7.tga": {
+      "sha256": "578e5c52cf106c5088633c232b86964666c180cca72a6f29c4cd3f3861a50eaf",
+      "git_blob": "7b1dc9ed754f70b075ceb006505ecf2df260d793"
+    },
+    "Assets/ROGlobalZeroMenu/menuicon/bg_o7.tga": {
+      "sha256": "49a1c3826172950791493057be0b685030ccb4accbd6a2afe6ea5f1d87c58759",
+      "git_blob": "fadabbeaf9c3e25d0047dae9785bc41ef2bc8602"
+    },
+    "Assets/VipUI/menuicon/bt_vip.bmp": {
+      "sha256": "9d217516ae64ef0f336535a86bdbc55f5dccf76288e8053cf516c9e9923f6c67",
+      "git_blob": "534494aae845674f0afecd74a2049ed273ae4b53"
+    },
+    "Assets/VipUI/menuicon/bt_vip_disabled.bmp": {
+      "sha256": "9d217516ae64ef0f336535a86bdbc55f5dccf76288e8053cf516c9e9923f6c67",
+      "git_blob": "534494aae845674f0afecd74a2049ed273ae4b53"
+    },
+    "Assets/VipUI/menuicon/bt_vip_mouseon.bmp": {
+      "sha256": "53a247dbaf695c70c307acf28ad037675dfe856e648b02079a0a8564889e29a9",
+      "git_blob": "2e766d3ed09e7e59dacd0fd4d1e62364af8f6b5c"
+    },
+    "Assets/VipUI/menuicon/bt_vip_new.bmp": {
+      "sha256": "1c32cf5f98068f215a8ec4c7a43daaa89cdd0c0c2eb1a95b2b1ff009a9f903b8",
+      "git_blob": "86061e82fc8828ef4eb4757718bac586383ad9aa"
+    },
+    "Assets/VipUI/menuicon/bt_vip_new_press.bmp": {
+      "sha256": "8f8e71f60db7c0483dc0f209767a829d1170b9f3bf5212daf90983c969acb8a3",
+      "git_blob": "8f125e0bd3a6232ab3915e85eeab205214e7568f"
+    },
+    "Assets/VipUI/menuicon/bt_vip_normal.bmp": {
+      "sha256": "9d217516ae64ef0f336535a86bdbc55f5dccf76288e8053cf516c9e9923f6c67",
+      "git_blob": "534494aae845674f0afecd74a2049ed273ae4b53"
+    },
+    "Assets/VipUI/menuicon/bt_vip_old_disabled.bmp": {
+      "sha256": "15c5d6099ab05424324502bd8e7bae1a59a7a0e926fc29d3dc831a5ae90c9045",
+      "git_blob": "d679c000fff7f0714e474a231c740a26ea22353a"
+    },
+    "Assets/VipUI/menuicon/bt_vip_old_mouseon.bmp": {
+      "sha256": "d5dbf243b66f86f0f15bacc6b88f9efaaa9af25dfc43334a5b1b7d44df01ef21",
+      "git_blob": "05189a72f5346ea73c9d7725348dbfa00c47f7bc"
+    },
+    "Assets/VipUI/menuicon/bt_vip_old_normal.bmp": {
+      "sha256": "15c5d6099ab05424324502bd8e7bae1a59a7a0e926fc29d3dc831a5ae90c9045",
+      "git_blob": "d679c000fff7f0714e474a231c740a26ea22353a"
+    },
+    "Assets/VipUI/menuicon/bt_vip_old_pressed.bmp": {
+      "sha256": "6157645f646d2b1c724e8d5f087a755ca3f22e7b6c2dac651eade13664b92f61",
+      "git_blob": "39ddabb76eb24a38dc84f5affa448f7424b58867"
+    },
+    "Assets/VipUI/menuicon/bt_vip_press.bmp": {
+      "sha256": "eddf3ba65a2902cf2d52efc59ac0309c62be86ca672c83f67b32b364d9cc2b90",
+      "git_blob": "fecedf8d3916234158784ed090dd61a636493b37"
+    },
+    "Assets/VipUI/menuicon/bt_vip_pressed.bmp": {
+      "sha256": "eddf3ba65a2902cf2d52efc59ac0309c62be86ca672c83f67b32b364d9cc2b90",
+      "git_blob": "fecedf8d3916234158784ed090dd61a636493b37"
+    },
+    "Assets/VipUI/menuicon/manifest.json": {
+      "sha256": "66c23bdea406f5b7acecdb516362c689575203d60d4a9ecb0e2b7be304de7ead",
+      "git_blob": "b26a44daf1406f6a02b8e223336e2600f42c2380"
+    },
+    "Assets/VipUI/menuicon/source/new-states-prompt.txt": {
+      "sha256": "87bf995888437370716a306be9c03b29d596a0e2db462163ad450ac902e21360",
+      "git_blob": "cad5680afa5058b8ac6a08aeeac31ba7f56bbb02"
+    },
+    "Assets/VipUI/menuicon/source/prompt.txt": {
+      "sha256": "b03c655a24d37be9be03fd0d67a3afc155517c561bb781b753e3bcd5bf83cac9",
+      "git_blob": "f9b71144506dda33c3b58bd6b2c78a37ff1f3c37"
+    },
+    "Assets/VipUI/menuicon/source/samples/bt_booking.bmp": {
+      "sha256": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+      "git_blob": "4eab8ab6c850baf8b5140d5edcce72a5d19f05e3"
+    },
+    "Assets/VipUI/menuicon/source/samples/bt_booking_disabled.bmp": {
+      "sha256": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+      "git_blob": "4eab8ab6c850baf8b5140d5edcce72a5d19f05e3"
+    },
+    "Assets/VipUI/menuicon/source/samples/bt_booking_mouseon.bmp": {
+      "sha256": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+      "git_blob": "4eab8ab6c850baf8b5140d5edcce72a5d19f05e3"
+    },
+    "Assets/VipUI/menuicon/source/samples/bt_booking_new.bmp": {
+      "sha256": "8cfcb317996d96c1ded334df0df2941d905fe80c796440acef1e5736f5d09e69",
+      "git_blob": "11c5a6e8a445cea9fad3d1dc12ef747b1aba4a07"
+    },
+    "Assets/VipUI/menuicon/source/samples/bt_booking_new_press.bmp": {
+      "sha256": "0b20cd60c179b215c5d8b4faa5bf43faf5c463251ecdc6c636fe9fd87fc22579",
+      "git_blob": "94ca7ad6779d77c95cf796cc6dd3c55aa15ffcab"
+    },
+    "Assets/VipUI/menuicon/source/samples/bt_booking_normal.bmp": {
+      "sha256": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+      "git_blob": "4eab8ab6c850baf8b5140d5edcce72a5d19f05e3"
+    },
+    "Assets/VipUI/menuicon/source/vip-crown.png": {
+      "sha256": "7961ede86c0ffcb6dab7d5c2336413a21ef8e261f8046ac97e9ce2fa7758ef4f",
+      "git_blob": "bfa9d4096621c6ef7f68ff81b2abd76450b9009c"
+    },
+    "Assets/VipUI/menuicon/source/vip-new-states.png": {
+      "sha256": "afc8193775303c527f82687468e12910b0ba368645eb6b94ecd6ed1397254058",
+      "git_blob": "c4de0e6b192ffd6d40825b4c7c1f340b53522383"
+    },
+    "Patches/Special.yml": {
+      "sha256": "bc5f1baca6661ebfd9e8d5acfc5203fbdc047bd6b3ebea59e3fc0c46bbefbb1d",
+      "git_blob": "3d9b54ab0bd3cf14f9f75c60e793b66e314c4bf7"
+    },
+    "Patches/UI.yml": {
+      "sha256": "8473b19cba5832e765b3397e614cbf94310bf50977971dab55b80fd7c03234c5",
+      "git_blob": "7717307c7679f0b04af865301cf188ca61051d29"
+    },
+    "Scripts/Patches/BattlepassUI.qjs": {
+      "sha256": "2944695776288aec357fd37acf1864822befe968d37f9d68dc05de4770c17142",
+      "git_blob": "5865a8d4afae25a8aaf6d32afc983f7551f94372"
+    },
+    "Scripts/Patches/NewButtonVisibility.qjs": {
+      "sha256": "4793c81609187a79cd893c3a4f058452923df0bfb00be8b1d719047771171c74",
+      "git_blob": "0bed7c5e22cc7d3591e74331e8eaf863e162b95b"
+    },
+    "Scripts/Patches/ROGlobalZeroMenu.qjs": {
+      "sha256": "1da06d671c31e6ee511a82faf4050dfea9854f9a037bbaede1ecc4df21860428",
+      "git_blob": "19f135bbd203e4577c34602a48a0839dbd52bc4a"
+    },
+    "Scripts/Patches/VipUI.qjs": {
+      "sha256": "a2fc61c54cd87e11af470535a413680ab56c5c1542d443e0ee67b06efa8673af",
+      "git_blob": "ca4ec6a382c8682c92005bd9be5912e2f589fd59"
+    },
+    "docs/battlepass-ui-asset-install.md": {
+      "sha256": "2669b231d0119972d61583b6ff68ca511cb6fe782b8c28ffaeb1f6df3235efad",
+      "git_blob": "3c2959502c52ec6facd55d8b3c1792ce3417a0aa"
+    },
+    "docs/vip-menu-button.md": {
+      "sha256": "6c77f729d6b1f7ce5cdfa320444afd6d811da2b6817172554a763bbd21194ed0",
+      "git_blob": "62c1e2e2d3f206f2b1b9d36faf393566198ac207"
+    },
+    "tools/build_battlepass_menu_buttons.py": {
+      "sha256": "78ba298c46bfcd7c2b22b2a43df151c1d33f9a17986df5eb8a7e20670d1653c6",
+      "git_blob": "4e271a0aa64c7f5dddc6776fea0255bb966f4624"
+    },
+    "tools/build_vip_menu_buttons.py": {
+      "sha256": "2bfd8441bd9afaeb54d7e5c2ed44af59a04e9cfad2cf6e8cdf6a4f21dd76cfac",
+      "git_blob": "72d36d5f33259c6c6f61fa4c50c8e0b50c6f717a"
+    },
+    "tools/render_roglobalzero_menu_backgrounds.py": {
+      "sha256": "45c20fb6c84333df40b8bd5cb6a79f845597bea93ad8e7e18235919177f0d232",
+      "git_blob": "6670394bbbbb38d15952b34c8a7fbecccdd89c37"
+    },
+    "tools/test_battlepass_asset_install.js": {
+      "sha256": "77ad04d9bf1ab93c65861f27aef57186e615b20acece695754c37df23cd398a0",
+      "git_blob": "6306417aca435b5a26891a96542fce26808c97ec"
+    },
+    "tools/test_battlepass_menu.py": {
+      "sha256": "20ed2b3a7fce46f57ee08f10e0e8b6f8aa824fee7f7bca233fa4aa4943cc2d54",
+      "git_blob": "59d44e9e6913562d3ffdcfcfe7fcbc45e1cffcae"
+    },
+    "tools/test_vip_asset_install.js": {
+      "sha256": "f5ac61102c1e50405da3f146a0c040cfc8395b4d6f7b081b6a709768ef801c02",
+      "git_blob": "82ec56072f7747a998d833285448d310ad3bb7e4"
+    },
+    "tools/test_vip_hover_toggle.py": {
+      "sha256": "6fb06d018537e6575cc6d0612ab5e9e692a1a3f239947bcc9631ab1a273f3943",
+      "git_blob": "c8fe0eda052765948f7672e7dd01f2f55d1e42f5"
+    },
+    "tools/test_vip_menu.py": {
+      "sha256": "a02d785193e2ef92e478df61cc36e6cc2fcafe716bf8cc26cd2cb800b2f86d3c",
+      "git_blob": "64d6333109eaa7a6d1e235a7e828c38072274c3f"
+    },
+    "tools/tests/vip_menu_emit.cjs": {
+      "sha256": "28a112ee2d9ec0fc775e23b9821a8a99adb398be6d6494ec10b93df9e9cf4fde",
+      "git_blob": "ba0c8e9b0cd580ef4cb291cefcc030d39277813d"
+    },
+    "tools/verify_menu_patch_lifecycle.py": {
+      "sha256": "1f575071bf72eca955757569248115a463d1a9083c9067936e95017fc2c2547f",
+      "git_blob": "2d71c0841e365c0df1d0ae9f00366c65a228f7e5"
+    }
+  },
+  "patch": "install/DevSeara-VIP-BattlePass-menu.diff",
+  "patch_sha256": "04157740cc88e75b3f1742e835e1f1024946f33ef8c027540926c3d322254219",
+  "result_tree": "d332a85dd1c70df72c978699cfc26590a6610690",
+  "changed_paths": [
+    "Assets/BattlepassUI/menuicon/bt_battlepass.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_disabled.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_mouseon.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_new.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_new_press.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_normal.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_old_disabled.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_old_mouseon.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_old_normal.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_old_pressed.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_press.bmp",
+    "Assets/BattlepassUI/menuicon/bt_battlepass_pressed.bmp",
+    "Assets/BattlepassUI/menuicon/manifest.json",
+    "Assets/BattlepassUI/menuicon/source/battlepass-emblem.png",
+    "Assets/BattlepassUI/menuicon/source/battlepass-new-states.png",
+    "Assets/BattlepassUI/menuicon/source/new-states-prompt.txt",
+    "Assets/BattlepassUI/menuicon/source/prompt.txt",
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking.bmp",
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_disabled.bmp",
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_mouseon.bmp",
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_new.bmp",
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_new_press.bmp",
+    "Assets/BattlepassUI/menuicon/source/samples/bt_booking_normal.bmp",
+    "Assets/ROGlobalZeroMenu/README.md",
+    "Assets/ROGlobalZeroMenu/menuicon/bg_m7.tga",
+    "Assets/ROGlobalZeroMenu/menuicon/bg_o7.tga",
+    "Assets/VipUI/menuicon/bt_vip.bmp",
+    "Assets/VipUI/menuicon/bt_vip_disabled.bmp",
+    "Assets/VipUI/menuicon/bt_vip_mouseon.bmp",
+    "Assets/VipUI/menuicon/bt_vip_new.bmp",
+    "Assets/VipUI/menuicon/bt_vip_new_press.bmp",
+    "Assets/VipUI/menuicon/bt_vip_normal.bmp",
+    "Assets/VipUI/menuicon/bt_vip_old_disabled.bmp",
+    "Assets/VipUI/menuicon/bt_vip_old_mouseon.bmp",
+    "Assets/VipUI/menuicon/bt_vip_old_normal.bmp",
+    "Assets/VipUI/menuicon/bt_vip_old_pressed.bmp",
+    "Assets/VipUI/menuicon/bt_vip_press.bmp",
+    "Assets/VipUI/menuicon/bt_vip_pressed.bmp",
+    "Assets/VipUI/menuicon/manifest.json",
+    "Assets/VipUI/menuicon/source/new-states-prompt.txt",
+    "Assets/VipUI/menuicon/source/prompt.txt",
+    "Assets/VipUI/menuicon/source/samples/bt_booking.bmp",
+    "Assets/VipUI/menuicon/source/samples/bt_booking_disabled.bmp",
+    "Assets/VipUI/menuicon/source/samples/bt_booking_mouseon.bmp",
+    "Assets/VipUI/menuicon/source/samples/bt_booking_new.bmp",
+    "Assets/VipUI/menuicon/source/samples/bt_booking_new_press.bmp",
+    "Assets/VipUI/menuicon/source/samples/bt_booking_normal.bmp",
+    "Assets/VipUI/menuicon/source/vip-crown.png",
+    "Assets/VipUI/menuicon/source/vip-new-states.png",
+    "Patches/Special.yml",
+    "Patches/UI.yml",
+    "Scripts/Patches/BattlepassUI.qjs",
+    "Scripts/Patches/NewButtonVisibility.qjs",
+    "Scripts/Patches/ROGlobalZeroMenu.qjs",
+    "Scripts/Patches/VipUI.qjs",
+    "docs/battlepass-ui-asset-install.md",
+    "docs/vip-menu-button.md",
+    "tools/build_battlepass_menu_buttons.py",
+    "tools/build_vip_menu_buttons.py",
+    "tools/render_roglobalzero_menu_backgrounds.py",
+    "tools/test_battlepass_asset_install.js",
+    "tools/test_battlepass_menu.py",
+    "tools/test_vip_asset_install.js",
+    "tools/test_vip_hover_toggle.py",
+    "tools/test_vip_menu.py",
+    "tools/tests/vip_menu_emit.cjs",
+    "tools/verify_menu_patch_lifecycle.py"
+  ]
+}

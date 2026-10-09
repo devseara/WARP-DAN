@@ -8,3 +8,5 @@
 *.png binary
 # Keep the generated Git binary diff and its original context whitespace intact.
 install/*.diff -text -whitespace
+# Release snapshots preserve the exact checked and hashed source bytes.
+updates/vip-battlepass-menu/files/** -text -whitespace

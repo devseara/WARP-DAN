@@ -1,5 +1,10 @@
 # WARP-DAN: Battle Pass, Chat UI, NPC Dialog and Universal Gacha
 
+**Latest update (2026-10-08): [VIP and Battle Pass menu icons](docs/menu-icons-update.md).**
+Includes both complete 12-icon sets, native menu buttons, and automatic Battle
+Pass artwork installation when the patch is selected. The current-WARP update
+is published separately from the preserved September package described below.
+
 WARP patch package by **DevSeara** for the **2025-07-16 Ragexe** client.
 This is a focused add-on, not a full WARP distribution. It contains no game
 executable, server source, credentials, or personal installation profiles.

@@ -1,0 +1,645 @@
+############################################################################
+#                                                                          #
+#   Copyright (C) ?-2023 *Various authors*                                 #
+#                                                                          #
+#   This file is a part of WARP project (specific to RO clients)           #
+#                                                                          #
+#   WARP is free software: you can redistribute it and/or modify           #
+#   it under the terms of the GNU General Public License as published by   #
+#   the Free Software Foundation, either version 3 of the License, or      #
+#   (at your option) any later version.                                    #
+#                                                                          #
+#   This program is distributed in the hope that it will be useful,        #
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of         #
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          #
+#   GNU General Public License for more details.                           #
+#                                                                          #
+#   You should have received a copy of the GNU General Public License      #
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.  #
+#                                                                          #
+#                                                                          #
+############################################################################
+#                                                                          #
+#   Author(s)     : Neo-Mind, CrazyBebop                                   #
+#   Created Date  : 2020-08-26                                             #
+#   Last Modified : 2026-03-29                                             #
+#                                                                          #
+############################################################################
+
+CustomUI:
+    title : UI CUSTOMIZATION
+    mutex : false
+    color : orangered
+    
+    patches:
+        - ChatItemIcons:
+            title : Inline Chat Item Icons
+            recommend : no
+            author : DevSeara
+            desc : Adds native inline item icons to linked chat items while preserving item inspection and the original item name renderer. Target client is 2025-07-16 Ragexe.
+
+        - VipUI:
+            title : Native VIP UI
+            recommend : no
+            author : DevSeara
+            desc : Adds a dedicated VIP crown button after Bestiary in the ROGlobalZeroMenu main icon menu, plus the native server-backed VIP window with membership cards, quests, tickets, benefits, purchase confirmation and timer updates. Keeps the Settings/roulette button independent. Requires the matching VIP server implementation. Installs its supplied VIP artwork beside the patched client.
+
+        - NoticeMarquee:
+            title : Original Announcements with Item Icons
+            recommend : no
+            author : DevSeara
+            desc : Keeps the original announcement presentation and adds inline item icons using ^i[ItemID] markup. No scrolling marquee or external runtime DLL is added. The internal NoticeMarquee ID is retained for saved profiles.
+
+        - ModernNpcDialog:
+            title : Renewal NPC Dialog UI
+            recommend : no
+            author : DevSeara
+            desc : Uses the supplied renewal-style NPC dialog frames and buttons while retaining native choices, scrolling and supported preview windows. Installs the supplied dialog artwork beside the patched client.
+
+        - ROGlobalZeroUITheme:
+            title : RO Global Zero UI Theme Toggle
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds the native-looking Classic UI / New UI switch to the Game Settings Basic tab using uirenewal/basicinfo/btn_tema_0.bmp and btn_tema_1.bmp. Its persisted state is shared by Renewal Chat, Basic Information, Experience Bar, Inventory, Status Icons V2, and Menu; switching themes refreshes open dependent windows immediately. QJS-only.
+
+        - ModernChatUI:
+            title : Supplied Renewal Chat UI
+            recommend : no
+            author : DevSeara
+            desc : Applies the supplied renewal-style chat frame, lock-aware tab menus, PM history, toggling emoticons, and All/Party/Guild/Allies/Clan channel selection. With RO Global Zero UI Theme Toggle selected, New UI shows this layout and Classic UI restores stock chat without losing tabs or drafts. Fresh layouts default to Main, Battle, Guild, Party and Market. Installs its artwork and default-tab resource beside the patched client.
+
+        - GachaUI:
+            title : Zeny Gacha UI With Pity
+            recommend : no
+            author : DevSeara
+            desc : Adds the native server-backed Gacha window with configurable banners, Zeny or ticket payments, separate pity, event countdowns and reward reveal controls. Requires the matching Gacha server implementation. UI artwork uses gachaui; item and ticket icons continue to use their configured item IDs.
+
+        - LoadGRFOnSlashCmd:
+            title : Load GRF via Slash Command
+            recommend : no
+            author : Demonbytes (NoxaraRO)
+            desc : Adds a configurable slash command (default /greyworld) that loads a specified GRF archive at runtime via CFileMgr::AddPak. Typing the command toggles the GRF on/off with chat feedback. The state persists across sessions via the registry. Assets become available on the next map change.
+
+        - NoLookalikeNameWarning:
+            title : No bogus "not your guildsman" whisper warning
+            recommend : yes
+            author : Stingor empowered by Claude
+            desc : Stops the "This character is not your guildsman" and "This name is not registered in your Friend List" lines the client prints on incoming whispers. They are meant to flag impostors who swap a capital I for a lowercase l, but the comparison is far too loose -- it calls two names alike as soon as min(lenA,lenB)-2 characters match by position. A guild with a member named "Test" therefore warns on every whisper from "Gettar". Firing constantly, the warning only teaches players to ignore the one line that would matter. Verified scope -- the comparison helper is used by nothing else in the client, so only those two messages disappear.
+
+        - FpsOverlay:
+            title : Native FPS Overlay (/fps)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds a QJS-only FPS counter at a customer-selected X/Y position. Negative coordinates are relative to the client right/bottom edge. A static post-Present EXE cave draws the overlay and /fps toggles the client option; no custom DLL, D3D proxy or runtime vtable patch is used.
+
+        - PingOverlay:
+            title : Native Ping Overlay (/ping)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds a QJS-only ping counter at a customer-selected X/Y position. It captures the client's stock CZ_REQUEST_TIME2/ZC_NOTIFY_TIME application RTT after packet dispatch and uses the shared static renderer; no ICMP worker, recv hook or custom DLL is used.
+
+        - AutoCombatUI:
+            title : AutoCombat UI
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds a QJS-only client-native AutoCombat settings UI modeled after the supplied RO Global AutoHunt interface. Persistent draggable AutoCombat and AutoSupport controls are created by the normal in-game render pass. RO Global Zero Renewal Menu adds a native Auto Hunt child button that opens or closes the 470x346 UIFrameWnd with Basic, Monster, Skill (3 pages), Potion (2 pages), Looting (2 pages), Move, and Item tabs. Active controls play 30 baked frames reconstructed from every native blue-loop STR layer, while inactive controls use the native red composition. Skill delay boxes request the stock numeric input dialog; the map server validates and persists the entered seconds. The patch calls no DLL and keeps automation behavior server-authoritative. Choose English (default), Traditional Chinese, Thai, Brazilian Portuguese, Indonesian, Filipino, Korean, or Japanese for fixed UI text. Each UI follows the existing UTF-8 or matching legacy code page without changing Windows language settings.
+
+        - AutoSupportUI:
+            title : AutoSupport UI
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds a QJS-only, client-native AutoSupport settings UI with dedicated autosupport assets and Global/Classic menu icon states. It reuses the proven seven-tab AutoHunt frame as Basic, Player, Skill, Potion, Looting, Move, and Item; Player is a server-authoritative single-master selector populated from the current party. ASUI requests share 0x0BF8 and snapshots share 0x0BEF through distinct magic, with Banquet owning validation, persistence, and AutoSupport execution. Choose English (default), Traditional Chinese, Thai, Brazilian Portuguese, Indonesian, Filipino, Korean, or Japanese for fixed UI text. Each UI follows the existing UTF-8 or matching legacy code page without changing Windows language settings. Required assets copy automatically beside the output EXE.
+
+        - ItemDescriptionUI:
+            title : Server-backed Item Description
+            recommend : no
+            author : Louis T Steinhil
+            desc : Replaces the 2025-07-16 item-description body after a validated Banquet IDUI snapshot. Uses a clean chibi header while preserving native artwork, decorated title rendering, ownership and stock fallback. Structured server data supplies stats, refine, grade, enchantments, random options, cards, requirements and restrictions. Includes scrolling, component inspection and explicitly labeled base-value comparison. QJS embeds a freestanding native payload at patch time; no runtime DLL or recv hook. Requires the matching Banquet server module.
+        - ItemCollectionUI:
+            title : Enable Item Collection UI 
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Creates the approved 760x540 white Ragnarok-style Item Collection as a native UIFrameWnd with a 15-family category dropdown, pointer-draggable scrollbar, flicker-free same-page selection, and a two-theme native RO Global/Classic menu button. Item art resolves dynamically from ItemId through the client identified-resource stem, collection\\<stem>.bmp, and stock item icons. Server-authoritative 0x0BF8/COUI requests and shared 0x0BEF snapshots provide Items, Combo Collections, Total Bonuses, deposits, withdrawals, and activation. Fixed BMP assets copy automatically beside the output EXE under item_collection and uirenewal/menuicon. No DLL, recv hook, API detour, or client-side collection authority is used. Target: 2025-07-16."
+
+        - ROGlobalZeroInventory:
+            title : RO Global Zero Inventory
+            recommend : no
+            author : Louis T Steinhil
+            desc : Uses the shared RO Global Zero theme state to select between the stock inventory and renewal tab_pri_%02d.bmp tabs, a native reserved footer row, expanded Zeny/weight panel, and vertical-tab balloons. Item drawing, hit targets, scrolling, paging, and resize calculations all honor the footer reservation. Open inventory windows are recreated when the setting changes. No inventory DLL import is added.
+
+        - ROGlobalZeroBasicInfo:
+            title : RO Global Zero Basic Information HUD
+            recommend : no
+            author : Louis T Steinhil
+            desc : Replaces both compact Basic Information render paths with the 252x74 RO Global Zero HP/SP/AP HUD. It reads HP/SP from stock globals and AP/MAXAP from Allow AP Bar for all Jobs, preserving current AP and using the server overlay BaseAp 200 fallback only when MAXAP is absent. The 66x66 native UIJobIconButton loads uirenewal/jobicon/big2 first and maps mounted, third, fourth, baby, and costume IDs to existing original framed class-lineage art; no generated replacement icon pack is required. HP/SP/AP and Job-name tooltips use native parent/child hit handling. Classic UI restores stock HUD rendering and keeps both native minimize/close controls visible; New UI hides only those two title controls. QJS-only.
+
+        - ROGlobalZeroStatusIcons:
+            title : RO Global Zero Status Icons V2
+            recommend : no
+            author : Louis T Steinhil
+            desc : Version 2 uses the persisted RO Global Zero Classic UI / New UI setting as its only controller; the legacy independent command and separate saved-state file are removed. New UI moves the 2025-07-16 status-effect icons into a resolution-aware 34x35px block beside the minimap, fills right-to-left toward HP/SP, and wraps only after the available first-row width is exhausted. Hover covers each full rendered 32x32 tile with 2px horizontal and 3px vertical gutters. Classic UI replays the pristine native renderer, hit-test, and tooltip paths. Native rendering and icon scale remain untouched. QJS-only.
+
+        - ROGlobalZeroExpBar:
+            title : RO Global Zero Experience Bar
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds an independent 1004x15 top-level UIWindow to the normal in-game UI pass, outside UIBasicInfoWnd and its Alt+V state. Its native canvas loads the supplied uirenewal/expbar textures through the client resource manager, draws the two 502x15 halves, a right-to-left 422x7 Base fill, a left-to-right Job fill, and live Base/Job levels from the client's 64-bit EXP state. The window is non-interactive and inserted behind stock UI windows, so chat/menu layering is preserved. ROGlobalZeroUITheme clears the canvas and disables hover while Classic UI is selected. Requires bg_exp_base2.tga, bg_exp_job2.tga, gze_exp_base.bmp, and gze_exp_job.bmp. QJS-only.
+
+        - ROGlobalZeroMenu:
+            title : RO Global Zero Renewal Menu
+            recommend : no
+            author : Louis T Steinhil
+            desc : Uses the shared RO Global Zero theme state to select stock UIMenuIconWnd behavior for Classic UI or the uirenewal/menuicon panel for New UI. Twenty-five native commands compact into five columns; Auto Hunt, Item Collection, AutoSupport, and optional Bestiary, VIP and Battle Pass then fill the remaining native-grid slots automatically before creating another row. These real native UIButton children use 45x41 New or 32x34 Classic normal, hover, and pressed images, while the native MENU toggle retains the final reserved slot. Row sizing counts native commands, visible custom buttons, and MENU so close, hidden warp/teleport, and reopen retain stable geometry. Complete 1-7-row New backgrounds are selected from the live count. Classic draws no custom full-panel background. Available Cash Shop, Gold PC Cafe, Roulette, and RO DEX notification launchers stack below the minimap without being force-created. QJS-only.
+
+        - AllowShortcutsInWine:
+            title : Allow shortcuts in WINE [Experimental]
+            recommend : no
+            author : Andrei Karas (4144)
+            desc : Fixes keyboard shortcut handling when running the client under Wine (Linux/macOS). Experimental -- may not work on all Wine versions or configurations.
+        
+        - CustomMissingLauncherMsg:
+            title : Customize missing launcher message
+            recommend : no
+            author : Neo-Mind
+            desc : Customizes the error message shown when the client is launched without a patcher. By default the message is blank -- use this to show a helpful message like "Please use the patcher to start the game."
+
+        - TildeForMatk:
+            title : Use Tilde for Matk
+            recommend : no
+            author : Neo-Mind
+            desc : Displays Matk as a range using the tilde <b>(~)</b> symbol (e.g., 100~150) instead of using the plus <b>(+)</b> sign (e.g., 100+50) in the Stats Window. Matches the display style many players are familiar with.
+        
+        - NoSwearFilter:
+            title : Disable Swear Filter
+            recommend : no
+            author : Shinryo
+            desc : Disables the client-side chat filter that censors words listed in <b>manner.txt</b>. Filtered words will display normally in chat instead of being replaced with asterisks.
+        
+        - SkipServiceSelect:
+            title : Skip service selection screen
+            recommend : no
+            author : Shinryo, Skylove
+            desc : Skips the service selection screen and goes straight to the login window. Ideal for servers that only have one service and do not need the selection step.
+        
+        - OpenToServiceSelect:
+            title : Use 'Opening' for service selection
+            recommend : yes
+            author : CH.C (jchcc)
+            desc : Makes the 'Opening' button on the new-style login screen return to the service selection screen. Useful if players need to switch between multiple services listed in clientinfo.xml.
+        
+        - GuildBrackets:
+            title : Use normal guild brackets
+            recommend : yes
+            author : Shinryo
+            desc : Replaces the Japanese-style guild name brackets used on langtype 0 with standard square brackets [ ]. Prevents display issues with guild names on English clients.
+        
+        - FixChatAt:
+            title : '@ Bug fix'
+            recommend : yes
+            author : Shinryo
+            desc : Fixes a client bug that prevents typing the @ symbol in the chat window. Essential for servers that use @ as the prefix for GM commands (e.g., @warp, @item).
+        
+        - PetTalkMarker:
+            title : Mark pet chatter in chat
+            recommend : no
+            author : Stingor empowered by Claude
+            desc : Tags every automated pet line with a marker, so players can tell it apart from something a person typed. Pet chatter carries no sender and the ordinary message type, so a pet named after a player currently reads exactly like that player talking. You choose the text (default <b>pet</b>), the brackets (round, square, angled or none) and whether it goes before or after the pet name -- e.g. <b>Poring (pet) -- I am hungry!</b>. The marker also appears in the speech bubble above the pet.
+
+        - AlwaysOfficialBG:
+            title : Use official login BG
+            recommend : no
+            author : Shinryo
+            desc : Forces the official Gravity login background images to display on all langtypes. Without this, some langtypes show a blank or different background.
+        
+        - NoHourly:
+            title : Remove Hourly announcement
+            recommend : yes
+            author : Ai4rei/AN ,Skylove
+            desc : Removes the hourly popup announcements about game rating and play time reminders. These are Korean regulatory requirements that are irrelevant on servers.
+
+        - EnableFlagEmotes:
+            title : Enable flag emoticons
+            recommend : no
+            author : Neo-Mind
+            desc : Unlocks country flag emoticons for all langtypes. Requires a text file mapping flag constants to numbers 1-9 to define which flags are available.
+
+        - AllowSpaceInGName:
+            title : Allow blank space in guild name
+            recommend : no
+            author : Shakto
+            desc : Allows spaces in guild names when creating a guild with <b>/guild "Spaced Name"</b>. By default, the client blocks space characters in guild names.
+
+        - CustomInventoryLimit:
+            title : Custom inventory limit
+            recommend : no
+            author : CH.C (jchcc) , Neo-Mind
+            desc : Changes the maximum number of items that can be displayed in the inventory window. Must match the server-side inventory limit (MAX_INVENTORY in rAthena) or items beyond the limit will not appear.
+
+        - CustomInventoryExpandingLimit:
+            title : Change limit for cash inventory expanding value
+            recommend : no
+            author : 4144,Skylove
+            desc : Raises the maximum number of items that can be added through cash inventory expansion from the default 100 up to 999,999. Server-side adjustment may be required to match.
+
+        - BiggerInventoryWindow:
+            title : Bigger inventory window
+            recommend : no
+            author : Stingor
+            desc : Raises the maximum size the inventory window can be resized to. The stock client clamps the drag-resize to 320x240; this lets you set a larger maximum (default 1280x1024) so you can drag the inventory much bigger and see many more item slots at once. The window background is tiled, so it renders correctly at any size. This changes only the window SIZE, not the item CAPACITY (use 'Custom inventory limit' for that).
+
+        - DeleteCharWithEmail:
+            title : Always use email for Char Deletion
+            recommend : no
+            author : Neo-Mind
+            desc : Requires the account's email address as the confirmation password when deleting a character, on all langtypes. Adds an extra layer of protection against accidental or unauthorized character deletion.
+        
+        - CustomVendingLimit:
+            title : Customize vending limit
+            recommend : no
+            author : Neo-Mind
+            desc : Changes the maximum zeny price a player can set per item in a vending shop. Default is 1 billion zeny. Adjust to match your server's economy or zeny cap.
+        
+        - NoHelpMsg:
+            title : No Help Message on Login
+            recommend : yes
+            author : Neo-Mind
+            desc : Suppresses the help/tutorial popup that appears after logging in on certain langtypes. Reduces clutter for returning players who do not need the tutorial.
+        
+        - HideWorldView:
+            title : Hide World View Interface
+            recommend: no
+            author : Neo-Mind
+            desc : Hides the World View (full map overview) button normally shown at the top-right of the screen. Useful for servers that do not support the world map feature or want a cleaner UI.
+        
+        - CloseCutinOnEsc:
+            title : Close cutin on Esc key
+            recommend : no
+            author : Andrei Karas (4144) , Neo-Mind
+            desc : Allows players to dismiss NPC cutin (portrait) images by pressing the ESC key. Without this, cutins can only be closed by the NPC script itself.
+            
+        - EnableNoticeMails:
+            title: Enable "Notice" email section
+            recommend : no
+            author : Neo-Mind
+            desc : Enables the "Notice" tab in the Renewal mail window, allowing server administrators to send bulletin-style announcements that appear in players' mailboxes as special notices.
+
+        - EnableNpcDialogueScrolling:
+            title     : NPC Dialog Scroll
+            recommend : no
+            author    : Skylove
+            desc      : Allows scrolling through NPC dialog text even when a selection menu is displayed. Without this, the dialog locks when choices appear and players cannot review previous text.
+
+        - MoveUpItemCount:
+            title : Move Item Count Upwards
+            recommend : no
+            author : Neo-Mind
+            desc : Moves the item quantity number upwards in the Shortcut Window so it visually aligns with skill level numbers. A cosmetic fix for cleaner-looking shortcut bars.
+        
+        - CustomFadeDelay:
+            title : Customize fade in/out delay
+            recommend : no
+            author : Andrei Karas (4144) , Neo-Mind
+            desc : Changes the duration of the screen fade-in/fade-out effect when warping within the same map. Set to 0 for instant transitions, or increase for a smoother visual effect.
+        
+        - RemoveBookingJobs:
+            title : Remove Jobs from Booking Window
+            recommend : no
+            author : Neo-Mind
+            desc : Removes specific job classes from the Party Booking (recruitment) window's job filter list. Useful for hiding disabled or unreleased classes from the party finder UI.
+            
+        - RelativeDelay4CharDel:
+            title : Change Deletion time to relative 
+            recommend : no
+            author : Functor , Neo-Mind
+            desc : Shows character deletion wait time as a countdown (e.g., "23h 45m remaining") instead of an absolute date/time. More intuitive for players waiting to confirm a deletion.
+        
+        - RestoreChatFocus:
+            title : Restore chat focus
+            recommend : no
+            author : Andrei Karas (4144)
+            desc : Restores keyboard input focus to the chat box after clicking with the left mouse button. Fixes the issue where clicking in the game world causes the chat input to lose focus.
+
+        - ChatBgMainPanel:
+            title : Customize main chat panel background color and opacity
+            recommend : no
+            author : Stingor
+            desc : Sets the color and opacity of the MAIN chat panel - its background and its active tab. Opens an RGB color picker and an opacity value (0 = transparent, 255 = opaque). Default is black at 40% opacity (0x66).
+
+        - ChatBgDetached:
+            title : Customize detached chat windows background color and opacity
+            recommend : no
+            author : Stingor
+            desc : Sets the color and opacity of the DETACHED chat windows - their outer border/frame and background. Opens an RGB color picker and an opacity value (0 = transparent, 255 = opaque). Default is black at 40% opacity (0x66).
+
+        - ChatBgWhisper:
+            title : Customize whisper (1:1) chat window background color and opacity
+            recommend : no
+            author : Stingor
+            desc : "Sets the color and opacity of the 1:1 whisper (private message) chat window background. Opens an RGB color picker and an opacity value (0 = transparent, 255 = opaque). Leave a field unchanged to keep its default. Default is black at 40% opacity (0x66)."
+
+        - NoEquipPreview:
+            title : Disable equipment preview
+            recommend : no
+            author : X-EcutiOnner
+            desc : Removes the equipment preview button from item description windows. Use if the preview feature causes issues or is not desired on your server.
+
+        - CustomEnchantGradeLabels:
+            title : Custom enchant grade labels
+            recommend : no
+            author : Louis T Steinhil
+            desc : Replaces client grade labels by numeric grade and publishes the identical map to Custom Item Name Colors. This patch alone enables the custom words from Inputs/enchant_grade.yml; when disabled, grades 1-4 always resolve to [D], [C], [B], and [A]. The textual suffix in a server _GRADE_<n>_<label> sentinel is ignored.
+
+        - ReduceExpensiveUIRender:
+            title : Reduce expensive UI rendering
+            recommend : no
+            author : Louis T Steinhil , Stingor , CrazyBebop
+            desc : Skips the ALT+S Skill Tree repaint when nothing changed, instead of rebuilding the grid every frame. Prompts for a minimum idle repaint interval so the character preview keeps animating.
+
+        - RestoreSkillInfoCheckbox:
+            title : Restore the "View Skill Info." checkbox in the Skill Tree
+            recommend : no
+            author : Stingor
+            desc : Brings back the checkbox old Ragexe builds had in the top right corner of the ALT+S Skill Tree, and the behaviour it controlled -- while it is ticked, simply hovering a skill pops the skill detail window next to the cursor instead of having to right-click it. The client still owns the option (Show_SkillDescript, saved in OptionInfo.lua), its command handler and the whole display code, which was merely rebound to the right-click gesture -- this patch re-creates the missing checkbox control and the missing hover branch. Unticked, the client behaves exactly as before, right-click included.
+
+        - HideZeroDateInGuildWin:
+            title : Hide Zero Date in Guild Window
+            recommend : no
+            author : Andrei Karas (4144)
+            desc : Hides the placeholder date "1969-01-01" shown for guild members whose join date is unknown or unset. Prevents confusing epoch dates from appearing in the guild member list.
+        
+        - ShortcutForAll:
+            title : Allow all items in Shortcut
+            recommend : no
+            author : CH.C (jchcc)
+            desc : Allows any item type to be placed on the shortcut bar, not just consumables and equipment. Makes it easy to quick-access items for trading, crafting, or other purposes.
+        
+        - HideGameWindows:
+            title : Hide in-game windows
+            recommend : no
+            author : CH.C (jchcc)
+            desc : Hides specific in-game UI windows by their internal Window IDs, defined in a YAML configuration file. Useful for removing unused or unwanted UI elements like the navigation window or tip box.
+        
+        - EnableFlagAnimation:
+            title : Enable WoE Flag Animation
+            recommend : no
+            author : Sapito Sucio
+            desc : Restores the animated WoE (War of Emperium) guild flags that Gravity disabled in later client updates. Brings back the waving flag visuals on castle maps.
+
+        - RestoreBattlegroundUI:
+            title : Restore Battleground UI
+            recommend : no
+            author : Skylove, Sprite Smith
+            desc : Restores the Battleground navigation button and Entry Queue UI that were hidden in newer clients. Required for servers that use the Battleground system.
+
+        - HideItemba:
+            title : Hide Item bar
+            recommend : no
+            author : Skylove
+            desc : Hides the Shortcut Item Bar toggle buttons (Open/Close) from the game interface. Use for a cleaner UI if the shortcut bar controls are not needed.
+
+        - DisableDoram:
+            title: Disable Doram
+            recommend: no
+            author: Skylove
+            desc: Removes the Doram race option from the character creation screen. Use on servers that do not support the Doram race to avoid confusion.
+
+        - HideProbabilityUI:
+            title : Hide Probability UI
+            recommend : no
+            author : Skylove
+            desc: Hides the item probability/drop rate window from the UI. Use on servers that do not implement the official probability display system or prefer to keep drop rates hidden.
+
+        - FixSelectMenuReset:
+            title : Fix NPC dialogue Select Menu Reset
+            recommend : no
+            author : Victor Hugo
+            desc: "Fixes a bug where the NPC dialogue select menu resets its scroll position unexpectedly. Keeps the menu at the player's current selection when the dialog updates."
+
+        - FixSelectMenuWidthExpansion:
+            title : Fix NPC dialogue Select Menu Width Expansion
+            recommend : no
+            author : Victor Hugo
+            desc: "Fixes the NPC select menu becoming excessively wide when options contain color codes (^RRGGBB). Corrects the width calculation to ignore color tag characters."
+
+        - FixSelectMenuHeightExpansion:
+            title : Restore Old NPC Select Menu Behavior
+            recommend : no
+            author : Victor Hugo
+            desc: "Restores the classic NPC select menu behavior where a scrollbar appears when options exceed the visible area, instead of the newer behavior that expands the dialog window height to fit all options."
+
+        - FixSkillbarReset:
+            title : Fix loading shortcuts / skill bar state
+            recommend : yes
+            author : Victor Hugo
+            desc : Fixes a bug where shortcut bar items and skill bar positions reset every time you log in or change maps. Ensures your hotkey layout is properly saved and restored.
+
+        - ChangeGoldPCMaxPoints:
+            title : Change GoldPC Maximum Points Limit
+            recommend : no
+            author : Skylove
+            desc: "Changes the maximum Gold PC point cap from the hardcoded limit of 300 to a custom value (up to 99,999). Must be paired with a matching server-side change in rAthena's battle.cpp."
+
+        - CustomBarterZenySep:
+            title : Format Barter Zeny with Commas
+            recommend : no
+            author : Victor Hugo
+            desc : Formats zeny amounts in the Barter shop window with thousand separators (e.g., 1,000,000 z instead of 1000000 z). Makes large prices much easier to read at a glance.
+
+        - TighterClickArea:
+            title : Tighter Entity Click Area
+            recommend : no
+            author : Stingor
+            desc : The client widens every entity's clickable rectangle (hitbox) up to a minimum computed from the window width -- <b>width / 640 x 40</b> pixels for actors, <b>x 34</b> for map NPCs and skill units, so 100 and 85 px at 1600x900. A small sprite therefore defends a box far larger than itself, so neighbouring entities overlap and fight over the same click, and the frontmost rectangle wins whoever owns it. This patch divides all three minimums by 2, 4, 8 or 16 while keeping the scaling with the window width. It cannot shrink a big sprite's rectangle, which comes from its artwork.
+
+CaseInsensitiveSearch:
+    title: CASE INSENSITIVE SEARCH
+    mutex: false
+    
+    patches:
+        - InsensitiveStorageSearch:
+            title : Case-Insensitive storage search
+            recommend : no
+            author : CH.C (jchcc), Neo-Mind
+            desc : Makes the storage window search ignore uppercase/lowercase differences, so searching "blue gem" also finds "Blue Gem". Much more convenient for finding items.
+        
+        - InsensitiveShopSearch:
+            title : Case-Insensitive cash shop search
+            recommend : no
+            author : Neo-Mind
+            desc : Makes the Cash Shop search ignore uppercase/lowercase differences, so items can be found regardless of how you capitalize the search term.
+        
+NoGravityImages:
+    title : GRAVITY IMAGE REMOVAL
+    mutex : false
+    
+    patches:
+        - NoGravityAds:
+            title : Remove gravity ads
+            recommend : yes
+            author : Shinryo
+            desc : Removes Gravity's promotional advertisement images from the login screen background. Keeps the login screen clean for your server.
+        
+        - NoGravityLogo:
+            title : Remove gravity logo
+            recommend : yes
+            author : Shinryo
+            desc : Removes the Gravity company logo from the login screen background. Useful for servers that want a custom-branded login experience.
+
+CustomFont:
+    title : FONT CUSTOMIZATION
+    mutex : false
+    
+    patches:
+        - CustomFontName:
+            title : Customize Font name
+            recommend : no
+            author : Ai4rei/AN
+            desc : Changes the game font to a custom font of your choice for all langtypes. If the chosen font does not support the required character set, Windows will fall back to a compatible font automatically.
+        
+        - CustomFontHeight:
+            title : Customize Font height (Character)
+            recommend : no
+            author : Yommy , Neo-Mind
+            desc : Sets the height of all in-game fonts to a custom value measured in character height units. Use to make text larger or smaller across the entire UI.
+
+        - CustomFontCellHeight:
+            title : Customize Font Height (Cell)
+            recommend : no
+            author : Neo-Mind
+            desc : Sets the height of all in-game fonts to a custom value measured in cell height units. An alternative sizing method to Character Height for finer control.
+          
+        - CustomFontHgtOffset:
+            title : Customize Font Height (Offset)
+            recommend : no
+            author : Neo-Mind
+            desc : Adds a fixed offset to all font heights, making every font in the UI uniformly larger (positive values) or smaller (negative values) without overriding individual sizes.
+        
+        - CustomFontHgtLimits:
+            title : Enable Font Height Limits
+            recommend : no
+            author : Neo-Mind
+            desc : Clamps all font heights to minimum and maximum values you specify. Prevents fonts from becoming too small to read or too large for the UI layout.
+        
+        - CustomFontWeight:
+            title : Customize Font Weight (All)
+            recommend : no
+            author : Neo-Mind
+            desc : Changes the boldness (weight) of all fonts -- both normal and bold -- to a single custom value. Values range from 100 (thin) to 900 (heavy), with 400 being normal and 700 being bold.
+        
+        - CustomNormalFontWeight:
+            title : Customize Font Weight (Normal)
+            recommend : no
+            author : Neo-Mind
+            desc : Changes the boldness (weight) of normal-weight fonts only. Does not affect fonts already marked as bold. Use to make regular UI text thinner or thicker.
+        
+        - CustomBoldFontWeight:
+            title : Customize Font Weight (Bold)
+            recommend : no
+            author : Neo-Mind
+            desc : Changes the boldness (weight) of bold-weight fonts only. Does not affect normal-weight fonts. Use to make bold UI text heavier or lighter.
+        
+        - CustomFontWgtOffset:
+            title : Customize Font Weight (Offset)
+            recommend : no
+            author : Neo-Mind
+            desc : Adds a fixed offset to all font weights, making every font uniformly bolder (positive values) or thinner (negative values) without overriding individual weight settings.
+        
+        - CustomFontCharset:
+            title : Customize Font charset
+            recommend : no
+            author : Neo-Mind
+            desc : Overrides the character set (charset) used for all fonts to a custom value. Use to force a specific encoding like ANSI (0), Baltic (186), or UTF-8 when the default charset causes display issues.
+
+        - CustomCodePage:
+            title : Override client codepage
+            recommend : no
+            author : Louis T Steinhil
+            desc : Forces the 2025-07-16 client's multibyte codepage with a QJS-only static patch. Use 65001 for UTF-8; this patch does not add DLL imports or runtime hooks.
+
+RuneSystem:
+    title : RUNE SYSTEM
+    mutex : false
+    color : mediumseagreen
+
+    patches:
+        - CustomRuneSystem:
+            title : Custom Rune System
+            recommend : no
+            author : Louis T Steinhil
+            desc : One-click Rune System client support for the 2025-07-16 Ragexe. Skips the stock equipped Rune Set guard, imports the selected Rune visual DLL exports, and installs refresh/draw/click/surface bridges at WARP patch time so the dedicated boh_rune.dll does not patch calls/JMPs/vtables at runtime.
+
+IgnoreErrors:
+    title : IGNORE ERRORS
+    mutex : false
+    
+    patches:
+        - IgnoreRsrcErr:
+            title : Ignore Resource errors
+            recommend : no
+            author : Shinryo, Andrei Karas (4144) , Ai4rei/AN
+            desc : Suppresses most error popups for missing resources (sprites, textures, models, etc.) and redirects them to the debug output instead. The client will try to continue running, but missing files may still cause visual glitches or crashes.
+        
+        - IgnorePalErr:
+            title : Ignore Palette errors
+            recommend : no
+            author : Shinryo , Ai4rei/AN
+            desc : Suppresses error popups for missing palette (.pal) files and redirects them to debug output. Useful when using custom jobs or hairstyles where not all palette combinations exist yet.
+        
+        - IgnoreLuaErr:
+            title : Ignore Lua errors
+            recommend : no
+            author : Andrei Karas (4144), X-EcutiOnner
+            desc : Suppresses lua runtime error popups (e.g., "attempt to call nil value") and redirects them to debug output. Prevents the client from halting on non-critical lua errors in custom scripts.
+        
+        - IgnoreQuestErr:
+            title : Ignore Quest errors
+            recommend : no
+            author : Andrei Karas (4144), X-EcutiOnner
+            desc : Suppresses quest-related error popups (e.g., "Not found Quest Info = XXXX") and redirects them to debug output. Useful when the server has quests that are not yet defined in the client's quest lua files.
+        
+        - IgnoreEntryQueueErr:
+            title : Ignore Entry Queue errors
+            recommend : no
+            author : X-EcutiOnner , Skylove
+            desc : Suppresses Entry Queue error popups and redirects them to debug output. Useful if the Battleground or instance queue system triggers errors on your server configuration.
+
+MessageBox:
+    title : MSGBOX CUSTOMIZATIONS
+    mutex : true
+    
+    patches:
+        - MsgBox2Beep:
+            title : Change MessageBox to Beep
+            recommend : no
+            author : Andrei Karas (4144)
+            desc : Replaces all error/warning message popups with a system beep sound instead. The client will not pause for user input -- it plays a sound and continues running.
+        
+        - ShowMsgIcon:
+            title : Show icon in MessageBox
+            recommend : no
+            author : Andrei Karas (4144)
+            desc : Adds an icon (error, warning, info, etc.) to message box popups that normally show only plain text. Makes it easier to distinguish between different types of client messages.
+        
+        - NoMsgBox:
+            title : Disable MessageBoxes
+            recommend : no
+            author : Andrei Karas (4144)
+            desc : Completely disables all message box popups in the client. No error, warning, or info dialogs will appear. Use with caution -- errors will be silently ignored and may cause unexpected behavior.
+
+TargetMonsterHUD:
+    title : MONSTER TARGET HUD
+    patches:
+        - TargetMonsterHealthBar:
+            title : Tiered Monster Target Health Bar
+            recommend : no
+            author : Codex
+            desc : Choose Classic or Wings and Stars artwork for the top-center monster HP bar, with Normal, Mini Boss and MVP tiers. Shows native HP while hovering or attacking. Respects /monsterhp and optional Show Mob Info text. 2025-07-16 only.
+
+Bestiary:
+    title : BESTIARY
+    patches:
+        - BestiaryUI:
+            title : Bestiary (native journal)
+            recommend : no
+            author : Codex
+            desc : Native 760x500 Bestiary for 2025-07-16. BSUI v3 supplies resolved stats, server rates, native sprites, minimaps and Navigation. Includes account-wide research, groups, tracking, cabinet, Claim All and cosmetic/utility rewards. Requires matching map/char backends and SQL migration. Open with /bestiary or the dedicated New/Classic RO Global menu button. Hide/Show New Buttons includes Bestiary.
