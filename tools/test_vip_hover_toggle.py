@@ -73,21 +73,18 @@ assert not m.r(c['state']+2696) and not m.r(manager+0x19C)
 assert press(flags=0x40000000)==(1,0)
 assert press(flags=0x80000000)==(1,0) and press()==(0,1)
 
-# Run the actual icon command and its original closed-state packet sender.
-raw=[]
-def wire_send():
-    size,ptr=m.args(2);data=bytes(m.u.mem_read(ptr,size))
-    if size==2:raw.append(data);m.ret(8)
-    else:m.send()
-m.stub(c['send'],wire_send)
-m.stub(0xC14460,lambda:m.ret(4,2))
-m.w(manager+0x464,0)
-def icon():m.invoke(0x9169F0,obj,(0,6,0xC0,0,0,0))
-icon();assert raw==[b'\x19\x0a'] and not m.r(obj+0x28),'Opening must await server'
+# The dedicated main-menu sender replaces the former roulette hook.
+data=m.pe.get_memory_mapped_image();marker=data.find(b'VipMenu.v1\0');assert marker>=0
+needle=struct.pack('<I',m.base+marker);record=data.find(needle);assert record>=0
+menu=struct.unpack_from('<I',data,record+4)[0]
+def icon():m.invoke(menu,0,())
+before=len(m.sent);icon()
+expected=struct.pack('<HHIHHIII',0xBFA,24,0x55504956,4,13,0,0,0)
+assert m.sent[before:]==[expected] and not m.r(obj+0x28),'Opening must await server'
 m.receive(packet());before=len(m.sent);m.invoke(c['quest_open'],0,(2,));icon()
 assert not m.r(obj+0x28) and not m.r(c['quest_state']+16)
-assert len(m.sent)==before+1 and len(raw)==1,'Close sent a second open request'
-icon();assert len(raw)==2 and not m.r(obj+0x28)
+assert len(m.sent)==before+1 and struct.unpack_from('<H',m.sent[-1],10)[0]==6
+icon();assert m.sent[-1]==expected and len(m.sent)==before+2 and not m.r(obj+0x28)
 m.receive(packet());assert m.r(obj+0x28)
 assert bytes(m.u.mem_read(0xA471E0,7))==native_entry,'VIP overwrote the stock/BP keyboard entry'
 m.preview(obj,a.output/'vip-gold-trimmed-crowns.png')

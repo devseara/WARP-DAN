@@ -13,7 +13,7 @@ NEW_ROW_HEIGHT = 61
 NEW_BASE_HEIGHT = 17
 OLD_ROW_HEIGHT = 43
 OLD_BASE_HEIGHT = 12
-MAX_ROWS = 6
+MAX_ROWS = 7
 
 
 def resize_three_slice(source: Image.Image, height: int, cap: int) -> Image.Image:

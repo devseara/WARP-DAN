@@ -18,6 +18,31 @@ import pefile
 ROOT = Path(__file__).resolve().parents[1]
 CASES = {
     "baseline": "",
+    "battlepass-menu": "",
+    "battlepass-before-menu": "",
+    "battlepass-with-gacha": "",
+    "gacha-before-battlepass": "",
+    "hide-battlepass": 'apply("HideNewButtons");',
+    "unhide-battlepass": 'apply("HideNewButtons"); remove("HideNewButtons");',
+    "disable-battlepass": 'remove("BattlepassUI");',
+    "reapply-battlepass": 'remove("BattlepassUI"); apply("BattlepassUI");',
+    "hide-before-battlepass": 'remove("BattlepassUI"); apply("HideNewButtons"); apply("BattlepassUI");',
+    "show-battlepass": 'apply("HideNewButtons"); apply("ShowNewButtons");',
+    "remove-show-battlepass": 'apply("HideNewButtons"); apply("ShowNewButtons"); remove("ShowNewButtons");',
+    "remove-hide-battlepass": 'apply("ShowNewButtons"); apply("HideNewButtons"); remove("HideNewButtons");',
+    "reapply-menu-battlepass": 'remove("ROGlobalZeroMenu"); apply("ROGlobalZeroMenu");',
+    "vip-before-menu": "",
+    "without-vip": "",
+    "hide-vip": 'apply("HideNewButtons");',
+    "unhide-vip": 'apply("HideNewButtons"); remove("HideNewButtons");',
+    "disable-vip": 'remove("VipUI");',
+    "reapply-vip": 'remove("VipUI"); apply("VipUI");',
+    "hide-before-vip": 'remove("VipUI"); apply("HideNewButtons"); apply("VipUI");',
+    "overlap-show-vip": 'apply("HideNewButtons"); apply("ShowNewButtons");',
+    "overlap-hide-vip": 'apply("ShowNewButtons"); apply("HideNewButtons");',
+    "remove-show-vip": 'apply("HideNewButtons"); apply("ShowNewButtons"); remove("ShowNewButtons");',
+    "remove-hide-vip": 'apply("ShowNewButtons"); apply("HideNewButtons"); remove("HideNewButtons");',
+    "overlap-reapply-vip": 'apply("HideNewButtons"); apply("ShowNewButtons"); remove("VipUI"); apply("VipUI");',
     "hide-native": 'apply("HideNewButtons");',
     "unhide-native": 'apply("HideNewButtons"); remove("HideNewButtons");',
     "bestiary-before-menu": "",
@@ -42,10 +67,10 @@ CASES = {
     "disable-autohunt": 'remove("AutoCombatUI");',
     "disable-autosupport": 'remove("AutoSupportUI");',
     "disable-item": 'remove("ItemCollectionUI");',
-    "disable-all": 'remove("BestiaryUI"); remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI");',
-    "show-disabled": 'remove("BestiaryUI"); remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI"); apply("ShowNewButtons");',
+    "disable-all": 'remove("VipUI"); remove("BestiaryUI"); remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI");',
+    "show-disabled": 'remove("VipUI"); remove("BestiaryUI"); remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI"); apply("ShowNewButtons");',
     "reapply-item": 'remove("ItemCollectionUI"); apply("ItemCollectionUI");',
-    "reapply-all": 'remove("BestiaryUI"); remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI"); apply("ItemCollectionUI"); apply("AutoCombatUI"); apply("AutoSupportUI"); apply("BestiaryUI");',
+    "reapply-all": 'remove("VipUI"); remove("BestiaryUI"); remove("AutoSupportUI"); remove("AutoCombatUI"); remove("ItemCollectionUI"); apply("ItemCollectionUI"); apply("AutoCombatUI"); apply("AutoSupportUI"); apply("BestiaryUI"); apply("VipUI");',
     "reapply-both": 'remove("AutoSupportUI"); remove("AutoCombatUI"); apply("AutoCombatUI"); apply("AutoSupportUI");',
 }
 
@@ -55,7 +80,7 @@ PROBE = r'''/*
 TestMenuLifecycle = function(_) {
 	const probeOwner = Exe.ActivePatch;
 	const functions = {AutoCombatUI, AutoSupportUI, ROGlobalZeroUITheme,
-		ItemCollectionUI, BestiaryUI, ROGlobalZeroMenu, HideNewButtons, ShowNewButtons};
+		ItemCollectionUI, BestiaryUI, VipUI, BattlepassUI, ROGlobalZeroMenu, HideNewButtons, ShowNewButtons};
 	const trace = function(phase, name) {
 		const file = new TextFile(MARKER + ".trace", "w");
 		if (!file.Valid) throw Error("Cannot record lifecycle trace");
@@ -99,6 +124,8 @@ TestMenuLifecycle = function(_) {
 		support: CACHE.get("AutoSupportUI.MenuButton.v1"),
 		item: CACHE.get("ItemCollectionUI.MenuButton.v1"),
 		bestiary: CACHE.get("BestiaryUI.MenuButton.v1"),
+		vip: CACHE.get("VipUI.MenuButton.v1"),
+		battlepass: CACHE.get("BattlepassUI.MenuButton.v1"),
 		bestiaryNative: CACHE.get("BestiaryUI.Native.v1"),
 		visibility: CACHE.get("NewButtonVisibility.CustomVisibility.v1"),
 		nativeVisibility: CACHE.get("NBV_Refs"),
@@ -160,10 +187,11 @@ def check_pe(path, state, case):
         return True
 
     disabled = {
+        'disable-battlepass': {'battlepass'},
         'disable-autohunt': {'hunt'}, 'disable-autosupport': {'support'},
-        'disable-item': {'item'}, 'disable-bestiary': {'bestiary'},
-        'without-bestiary': {'bestiary'}, 'disable-all': {'hunt','support','item','bestiary'},
-        'show-disabled': {'hunt','support','item','bestiary'}
+        'disable-vip': {'vip'}, 'without-vip': {'vip'}, 'disable-item': {'item'}, 'disable-bestiary': {'bestiary'},
+        'without-bestiary': {'bestiary'}, 'disable-all': {'hunt','support','item','bestiary','vip'},
+        'show-disabled': {'hunt','support','item','bestiary','vip'}
     }.get(case, set())
     peer = state['peer']['scalarSenderVir']
     peer_target = u32(peer - 4)
@@ -172,7 +200,9 @@ def check_pe(path, state, case):
     if peer_target: assert read(peer_target, 8) != bytes(8), 'peer points to cleared code'
     execute_route(peer, peer_target, 12)
     rows = []
-    # Derive all four cloned child vtables from their emitted ensure checks.
+    if not state.get('battlepass'):
+        disabled = disabled | {'battlepass'}
+    # Derive all six cloned child vtables from their emitted ensure checks.
     import re
     raw = path.read_bytes()
     children = {}
@@ -181,17 +211,23 @@ def check_pe(path, state, case):
         if not menu["autoHunt"]["ensureVir"] <= va < menu["reflowVir"]:
             continue
         vt, child = struct.unpack("<I", match[1])[0], struct.unpack("<I", match[2])[0]
-        if child in (0x3F2, 0x3F4, 0x3F5, 0x3FB):
+        if child in (0x3F2, 0x3F4, 0x3F5, 0x3FB, 0x3FE, 0x3FF):
             if child in children:
                 raise RuntimeError(f"Ambiguous child {child:#x}")
             children[child] = vt
     for label, key, child in (("Auto Hunt", "hunt", 0x3F2),
                               ("AutoSupport", "support", 0x3F5),
                               ("Item Collection", "item", 0x3F4),
-                              ("Bestiary", "bestiary", 0x3FB)):
+                              ("Bestiary", "bestiary", 0x3FB),
+                              ("VIP", "vip", 0x3FE),
+                              ("Battle Pass", "battlepass", 0x3FF)):
         bridge = state.get(key)
+        if bridge is None and key == 'battlepass':
+            bridge = dict(menu['battlepass'], requestVir=0)
         if bridge is None and key == 'bestiary' and case == 'without-bestiary':
             bridge = dict(menu['bestiary'], requestVir=0)
+        if bridge is None and key == 'vip' and case == 'without-vip':
+            bridge = dict(menu['vip'], requestVir=0)
         mouse_up = u32(children[child] + 31 * 4)
         head = read(mouse_up, 24)
         if head.startswith(bytes.fromhex("55 8b ec e8")):
@@ -212,6 +248,10 @@ def check_pe(path, state, case):
                                 if e['vir'] == target)
                 valid_entry = (expected.startswith(bytes.fromhex("9c 60")) and
                                read(target, len(expected)) == expected)
+        elif child == 0x3FE:
+            valid_entry = target_head.startswith(bytes.fromhex("55 8b ec 83 ec 18 e8"))
+        elif child == 0x3FF:
+            valid_entry = target_head.startswith(bytes.fromhex("9c 60 8b 35"))
         elif child == 0x3F4:
             valid_entry = target_head.startswith(bytes.fromhex("9c 60 6a 00 6a 00 6a 00 6a 01 e8"))
         else:
@@ -222,6 +262,10 @@ def check_pe(path, state, case):
             valid_entry = target == 0
         expected_visible = 0 if case == "hide-before-menu" or (key in disabled) else 1
         if key == 'bestiary' and case in ('hide-bestiary', 'hide-before-bestiary', 'overlap-hide-bestiary', 'remove-show-bestiary'):
+            expected_visible = 0
+        if key == 'vip' and case in ('hide-vip','hide-before-vip','overlap-hide-vip','remove-show-vip'):
+            expected_visible = 0
+        if key == 'battlepass' and case in ('hide-battlepass', 'hide-before-battlepass', 'remove-show-battlepass'):
             expected_visible = 0
         execute_route(mouse_up, target, 8)
         actual_visible = u32(bridge["visibleVir"])
@@ -299,25 +343,42 @@ def main():
         (fixture / "Scripts/Patches/MenuLifecycleProbe.qjs").write_bytes(code.replace("\n", "\r\n").encode("utf-8"))
         hidden = ["Battleground", "Twitter (SNS)", "Booking"]
         if case == "hide-before-menu":
-            hidden += ["Auto Hunt", "AutoSupport", "Item Collection", "Bestiary"]
+            hidden += ["Auto Hunt", "AutoSupport", "Item Collection", "Bestiary", "VIP"]
         elif case in ("hide-bestiary", "hide-before-bestiary", "unhide-bestiary", "show-bestiary", "unhide-after-reapply",
                       "overlap-show-bestiary", "overlap-hide-bestiary", "remove-show-bestiary",
                       "remove-hide-bestiary", "overlap-reapply-bestiary"):
             hidden = ["Bestiary"]
+        if case in ("hide-vip","unhide-vip","hide-before-vip","overlap-show-vip","overlap-hide-vip",
+                    "remove-show-vip","remove-hide-vip","overlap-reapply-vip"):
+            hidden = ["VIP"]
+        if case in ("hide-battlepass", "unhide-battlepass", "hide-before-battlepass", "show-battlepass", "remove-show-battlepass", "remove-hide-battlepass"):
+            hidden = ["Battle Pass"]
         inputs = {
             "$copyAutoSupportAssets": {"data": "", "display": "false", "type": 10},
             "$copyItemCollectionAssets": {"data": "", "display": "false", "type": 10},
             "$newHiddenButtons": {"data": "", "display": [{"type": 10, "value": x} for x in hidden]},
-            "$newShownButtons": {"data": "", "display": [{"type": 10, "value": x} for x in ("Auto Hunt", "AutoSupport", "Item Collection", "Bestiary")]},
+            "$newShownButtons": {"data": "", "display": [{"type": 10, "value": x} for x in ("Auto Hunt", "AutoSupport", "Item Collection", "Bestiary", "VIP", "Battle Pass")]},
         }
         profile = output / f"{case}.yml"
         patches = ["AutoCombatUI", "AutoSupportUI", "ROGlobalZeroUITheme", "ItemCollectionUI"]
+        if case == "battlepass-before-menu":
+            patches += ["BattlepassUI"]
+        if case == "vip-before-menu":
+            patches += ["VipUI"]
         if case == "bestiary-before-menu":
             patches += ["BestiaryUI", "ROGlobalZeroMenu"]
         elif case == "without-bestiary":
             patches += ["ROGlobalZeroMenu"]
         else:
             patches += ["ROGlobalZeroMenu", "BestiaryUI"]
+        if case not in ("without-vip", "vip-before-menu"):
+            patches += ["VipUI"]
+        if case == "gacha-before-battlepass":
+            patches += ["GachaUI", "BattlepassUI"]
+        elif "battlepass" in case and case != "battlepass-before-menu":
+            patches += ["BattlepassUI"]
+        if case == "battlepass-with-gacha":
+            patches += ["GachaUI"]
         patches += ["TestMenuLifecycle"]
         profile.write_text("from: " + json.dumps(str(source)) + "\nto: " + json.dumps(str(target)) +
                            "\ninputs: " + json.dumps(inputs) + "\npatches:\n" +

@@ -611,7 +611,9 @@ NewButtonVis.CustomButtons = [
 	{label: "Auto Hunt", bridgeKey: "AutoCombatUI.MenuButton.v1"},
 	{label: "AutoSupport", bridgeKey: "AutoSupportUI.MenuButton.v1"},
 	{label: "Item Collection", bridgeKey: "ItemCollectionUI.MenuButton.v1"},
-	{label: "Bestiary", bridgeKey: "BestiaryUI.MenuButton.v1"}
+	{label: "Bestiary", bridgeKey: "BestiaryUI.MenuButton.v1"},
+	{label: "VIP", bridgeKey: "VipUI.MenuButton.v1"},
+	{label: "Battle Pass", bridgeKey: "BattlepassUI.MenuButton.v1"}
 ];
 
 NewButtonVis.customButton = function(label)

@@ -1,0 +1,98 @@
+{
+  "source_sha256": "81c3175110c6bcbd4be9693426f49231604f4eb49c5d507199e41f693f65659a",
+  "new_states_sha256": "a04421326ed3bd9a6f9131f154189ebcf47134756f0710bf3c1f15a8a2c37f65",
+  "samples": {
+    "bt_booking.bmp": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+    "bt_booking_disabled.bmp": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+    "bt_booking_mouseon.bmp": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+    "bt_booking_new.bmp": "8cfcb317996d96c1ded334df0df2941d905fe80c796440acef1e5736f5d09e69",
+    "bt_booking_new_press.bmp": "0b20cd60c179b215c5d8b4faa5bf43faf5c463251ecdc6c636fe9fd87fc22579",
+    "bt_booking_normal.bmp": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2"
+  },
+  "files": {
+    "bt_battlepass_normal.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "6f45b9750fcf6eec3915b868878d523929a56d9271cd760d38b5d31150fcc31e"
+    },
+    "bt_battlepass_mouseon.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "4bfd9702ee16907fd395da05225b8e0d779624145ccd76ff1f2484e3a9253fdb"
+    },
+    "bt_battlepass_pressed.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "2d6be6ea4e274314234466952e89f2f53cea5eef7a5811f8a0b8b4981ea5e4ce"
+    },
+    "bt_battlepass_old_normal.bmp": {
+      "size": [
+        32,
+        34
+      ],
+      "sha256": "4629efc65e3da697cebb5418b2ea0397875687a3ffe6aed6f671b185cfd8a6f6"
+    },
+    "bt_battlepass_old_mouseon.bmp": {
+      "size": [
+        32,
+        34
+      ],
+      "sha256": "792eba8fb7fe16a7b48a2f63fdb274587b10ae2f18f329a6222307613d794e2a"
+    },
+    "bt_battlepass_old_pressed.bmp": {
+      "size": [
+        32,
+        34
+      ],
+      "sha256": "048f370cc526713aef71cbd7fefa58694a60ed8909dd7de9a447a8f4482f61b4"
+    },
+    "bt_battlepass.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "6f45b9750fcf6eec3915b868878d523929a56d9271cd760d38b5d31150fcc31e"
+    },
+    "bt_battlepass_disabled.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "6f45b9750fcf6eec3915b868878d523929a56d9271cd760d38b5d31150fcc31e"
+    },
+    "bt_battlepass_new.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "9e8d28b0530be8e3dcc6730a8ce4f2e86142e6d1f0cd70779f4b7c0439f11b95"
+    },
+    "bt_battlepass_new_press.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "aa9b5ca5c2260947dbadf230002c714e2d4009d3319a25378f5f096f0f8f0a2d"
+    },
+    "bt_battlepass_press.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "2d6be6ea4e274314234466952e89f2f53cea5eef7a5811f8a0b8b4981ea5e4ce"
+    },
+    "bt_battlepass_old_disabled.bmp": {
+      "size": [
+        32,
+        34
+      ],
+      "sha256": "4629efc65e3da697cebb5418b2ea0397875687a3ffe6aed6f671b185cfd8a6f6"
+    }
+  }
+}

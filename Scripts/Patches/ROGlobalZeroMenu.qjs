@@ -22,7 +22,8 @@
 *                                                                          *
 *   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
 *                   Ragexe, appends Auto Hunt, Item Collection, and       *
-*                   AutoSupport and Bestiary into available grid slots.  *
+*                   AutoSupport, Bestiary, VIP and Battle Pass into free  *
+*                   grid slots. Keeps native menu                       *
 *                   geometry stable across close/reopen and map changes.  *
 *                   New UI uses complete row                              *
 *                   backgrounds; Classic keeps only the height required   *
@@ -124,7 +125,7 @@ const MenuZeroStatic = {
 	GridX: 13,
 	GridY: 12,
 	GridColumns: 5,
-	MaxRows: 6,
+	MaxRows: 7,
 	GridStrideX: 68,
 	GridStrideY: 61,
 	MinGridStrideY: 43,
@@ -137,6 +138,8 @@ const MenuZeroStatic = {
 	ItemCollectionButtonWindowId: 0x3F4,
 	AutoSupportButtonWindowId: 0x3F5,
 	BestiaryButtonWindowId: 0x3FB,
+	VipButtonWindowId: 0x3FE,
+	BattlepassButtonWindowId: 0x3FF,
 	NewButtonWidth: 45,
 	NewButtonHeight: 41,
 	OldButtonWidth: 32,
@@ -2073,6 +2076,10 @@ ROGlobalZeroMenu = function(_)
 
 	const bestiaryHover = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("Bestiary"));
 	const bestiaryRoute = NewButtonVis.customRoute("Bestiary");
+	const vipHover = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("VIP"));
+	const vipRoute = NewButtonVis.customRoute("VIP");
+	const battlepassHover = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("Battle Pass"));
+	const battlepassRoute = NewButtonVis.customRoute("Battle Pass");
 
 	const autoSupportHoverText = "AutoSupport";
 	const autoSupportHover = MenuZeroStatic.allocateBytes(
@@ -2219,6 +2226,34 @@ ROGlobalZeroMenu = function(_)
 		}
 	}
 	const bestiaryButtonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF], 4
+	);
+	const vipButtonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const state of ["normal", "mouseon", "pressed"])
+		{
+			const relative = "uirenewal\\menuicon\\bt_vip_" +
+				(key === "classic" ? "old_" : "") + state + ".bmp";
+			vipButtonImagePaths[key].push(MenuZeroStatic.allocateBytes(
+				MenuZeroStatic.buildResourceBytes(prefix, relative)).vir);
+		}
+	}
+	const vipButtonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF], 4
+	);
+	const battlepassButtonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const state of ["normal", "mouseon", "pressed"])
+		{
+			const relative = "uirenewal\\menuicon\\bt_battlepass_" +
+				(key === "classic" ? "old_" : "") + state + ".bmp";
+			battlepassButtonImagePaths[key].push(MenuZeroStatic.allocateBytes(
+				MenuZeroStatic.buildResourceBytes(prefix, relative)).vir);
+		}
+	}
+	const battlepassButtonState = MenuZeroStatic.allocateBytes(
 		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF], 4
 	);
 	const autoSupportButtonState = MenuZeroStatic.allocateBytes(
@@ -2390,6 +2425,60 @@ ROGlobalZeroMenu = function(_)
 			[autoHuntRoute.visibleVir, itemCollectionRoute.visibleVir, autoSupportVisibleVir]
 		)
 	);
+	const vipButtonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(vipButtonState.vir)
+	);
+	const vipButtonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildOptionalButtonMouseUp(vipRoute.requestCellVir)
+	);
+	const vipButtonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(vipHover.vir, 0, -20)
+	);
+	const vipButtonVtable = MenuZeroStatic.cloneButtonVtable(
+		vipButtonMouseUp.vir, vipButtonHover.vir,
+		vipButtonDestructor.vir, MenuZeroStatic.ButtonDraw, buttonMouseDown.vir
+	);
+	const ensureVip = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			vipButtonState.vir, vipButtonVtable.vir, vipButtonImagePaths,
+			MenuZeroStatic.VipButtonWindowId,
+			theme.stateVir, loadTheme.vir, vipRoute.requestCellVir
+		)
+	);
+	const syncVip = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			vipButtonState.vir, visibleMaskVir, vipRoute.visibleVir,
+			gridStrideYVir, theme.stateVir, loadTheme.vir,
+			[autoHuntRoute.visibleVir, itemCollectionRoute.visibleVir, autoSupportVisibleVir, bestiaryRoute.visibleVir]
+		)
+	);
+	const battlepassButtonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(battlepassButtonState.vir)
+	);
+	const battlepassButtonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildOptionalButtonMouseUp(battlepassRoute.requestCellVir)
+	);
+	const battlepassButtonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(battlepassHover.vir, 0, -20)
+	);
+	const battlepassButtonVtable = MenuZeroStatic.cloneButtonVtable(
+		battlepassButtonMouseUp.vir, battlepassButtonHover.vir,
+		battlepassButtonDestructor.vir, MenuZeroStatic.ButtonDraw, buttonMouseDown.vir
+	);
+	const ensureBattlepass = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			battlepassButtonState.vir, battlepassButtonVtable.vir, battlepassButtonImagePaths,
+			MenuZeroStatic.BattlepassButtonWindowId,
+			theme.stateVir, loadTheme.vir, battlepassRoute.requestCellVir
+		)
+	);
+	const syncBattlepass = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			battlepassButtonState.vir, visibleMaskVir, battlepassRoute.visibleVir,
+			gridStrideYVir, theme.stateVir, loadTheme.vir,
+			[autoHuntRoute.visibleVir, itemCollectionRoute.visibleVir, autoSupportVisibleVir, bestiaryRoute.visibleVir, vipRoute.visibleVir]
+		)
+	);
 	const syncLaunchers = MenuZeroStatic.allocateCode(
 		MenuZeroStatic.buildSyncLaunchers(
 			launcherState.vir,
@@ -2445,7 +2534,9 @@ ROGlobalZeroMenu = function(_)
 			autoHuntRoute.visibleVir,
 			itemCollectionRoute.vir + 4,
 			autoSupportVisibleVir,
-			bestiaryRoute.visibleVir
+			bestiaryRoute.visibleVir,
+			vipRoute.visibleVir,
+			battlepassRoute.visibleVir
 		],
 		theme.stateVir
 	);
@@ -2515,7 +2606,7 @@ ROGlobalZeroMenu = function(_)
 	);
 	Exe.SetHex(positionWrapperPhy, positionWrapper.finish(positionWrapperVir));
 	const hitTestWrapper = MenuZeroStatic.buildHitTestWrapper(
-		theme.stateVir, [buttonState.vir, itemButtonState.vir, autoSupportButtonState.vir, bestiaryButtonState.vir]
+		theme.stateVir, [buttonState.vir, itemButtonState.vir, autoSupportButtonState.vir, bestiaryButtonState.vir, vipButtonState.vir, battlepassButtonState.vir]
 	);
 	const [hitTestWrapperPhy, hitTestWrapperVir] = Exe.Allocate(
 		hitTestWrapper.bytes.length, 0x10
@@ -2529,8 +2620,8 @@ ROGlobalZeroMenu = function(_)
 		oldPanelHeightVir,
 		gridStrideYVir,
 		theme.stateVir,
-		[ensureAutoHunt.vir, ensureItemCollection.vir, ensureAutoSupport.vir, ensureBestiary.vir],
-		[syncAutoHunt.vir, syncItemCollection.vir, syncAutoSupport.vir, syncBestiary.vir],
+		[ensureAutoHunt.vir, ensureItemCollection.vir, ensureAutoSupport.vir, ensureBestiary.vir, ensureVip.vir, ensureBattlepass.vir],
+		[syncAutoHunt.vir, syncItemCollection.vir, syncAutoSupport.vir, syncBestiary.vir, syncVip.vir, syncBattlepass.vir],
 		syncLaunchers.vir
 	);
 	const [applyLayoutPhy, applyLayoutVir] = Exe.Allocate(
@@ -2782,6 +2873,42 @@ ROGlobalZeroMenu = function(_)
 				ensureVir: ensureBestiary.vir,
 				syncVir: syncBestiary.vir,
 				positionPolicy: "next available slot after visible custom buttons",
+				registrationPolicy: "optional producer in either patch selection order"
+			},
+			vip: {
+				windowId: MenuZeroStatic.VipButtonWindowId,
+				nativeChild: true,
+				hoverText: "VIP",
+				hoverTextVir: vipHover.vir,
+				requestCellVir: vipRoute.requestCellVir,
+				visibleVir: vipRoute.visibleVir,
+				buttonStateVir: vipButtonState.vir,
+				buttonVtableVir: vipButtonVtable.vir,
+				buttonDestructorVir: vipButtonDestructor.vir,
+				buttonMouseUpVir: vipButtonMouseUp.vir,
+				buttonHoverVir: vipButtonHover.vir,
+				imagePaths: vipButtonImagePaths,
+				ensureVir: ensureVip.vir,
+				syncVir: syncVip.vir,
+				positionPolicy: "next available slot after Bestiary",
+				registrationPolicy: "optional producer in either patch selection order"
+			},
+			battlepass: {
+				windowId: MenuZeroStatic.BattlepassButtonWindowId,
+				nativeChild: true,
+				hoverText: "Battle Pass",
+				hoverTextVir: battlepassHover.vir,
+				requestCellVir: battlepassRoute.requestCellVir,
+				visibleVir: battlepassRoute.visibleVir,
+				buttonStateVir: battlepassButtonState.vir,
+				buttonVtableVir: battlepassButtonVtable.vir,
+				buttonDestructorVir: battlepassButtonDestructor.vir,
+				buttonMouseUpVir: battlepassButtonMouseUp.vir,
+				buttonHoverVir: battlepassButtonHover.vir,
+				imagePaths: battlepassButtonImagePaths,
+				ensureVir: ensureBattlepass.vir,
+				syncVir: syncBattlepass.vir,
+				positionPolicy: "next available slot after VIP",
 				registrationPolicy: "optional producer in either patch selection order"
 			},
 			menuToggleImagePolicy:

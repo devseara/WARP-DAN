@@ -2,7 +2,7 @@
  * Author: DevSeara.
  * Description: Native VIP membership card using supplied vipui PNGs for
  * 2025-07-16 Ragexe. VIPU/0A1C snapshots and independent 0BFA requests.
- * No DLL, global text, BPUI/GCHA router, roulette art or saved-profile edits.
+ * Independent VIP menu button; no BPUI/GCHA router or Settings/roulette hook.
  * Prices come from NPC offers; purchases echo quotes for server revalidation.
  */
 const VipUIStatic = {
@@ -103,15 +103,19 @@ VipUIStatic.describe = function(resolver)
 	a.label("destroy");a.emit(0x8B,0xCB);a.call(0x5A4300);
 	a.label("done");a.emit(0x5F,0x5B,0x8B,0xE5,0x5D,0xC2,4,0);return a;
 };
-// Hook only the native icon command and WM key-dispatch call sites. The
-// UIWindowMgr entry remains owned by stock/Battle Pass regardless of order.
-VipUIStatic.iconToggle = function(close)
+// Dedicated main-menu launcher. The Settings/roulette command stays native.
+// This opens only the VIP card; purchases still require a server-issued token.
+VipUIStatic.menuToggle = function(close, refs)
 {
 	const a=AutoCombatUI.nativeHelpers.asm();
-	a.emit(0x9C,0x60);a.call(close);a.emit(0x85,0xC0);a.jcc(0x84,"open");
-	a.emit(0x61,0x9D);a.jmp(0x916A45);
-	a.label("open");a.emit(0x61,0x9D,0xB8);a.dword(0xA19);a.jmp(0x916A1B);
-	return a;
+	a.emit(0x55,0x8B,0xEC,0x83,0xEC,24);
+	a.call(close);a.emit(0x85,0xC0);a.jcc(0x85,"done");
+	for(const [off,value] of [[-24,0x00180BFA],[-20,0x55504956],[-16,0x000D0004],[-12,0],[-8,0],[-4,0]]) {
+		a.emit(0xC7,0x45,off&255);a.dword(value);
+	}
+	a.call(refs.packetCtorA);a.emit(0x85,0xC0);a.jcc(0x84,"done");
+	a.emit(0x8B,0xC8,0x8D,0x45,0xE8,0x50,0x6A,24);a.call(refs.packetSend);
+	a.label("done");a.emit(0x8B,0xE5,0x5D,0xC3);return a;
 };
 VipUIStatic.escapeKey = function(handler)
 {
@@ -139,7 +143,6 @@ VipUI = function(_)
 		throw Error("VipUI: invalid native payload");
 	const names=["VipApi","VipState","_VipOpen@0","_VipReceive@4","_VipHit@8","@VipDraw@8","@VipDown@16","@VipUp@16","@VipMove@16","@VipDrag@16","@VipCursor@16","@VipDestroy@12","_VipTick@16","VipQuestState","_VipQuestOpen@4"];
 	for(const name of [...names,"@VipRightDown@16","@VipRightUp@16","@VipWheel@12","_VipToggleClose@0","_VipEscape@12"])if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("VipUI: missing "+name);
-	n.assertCode("VIP icon open command",0x916A16,"B8 19 0A 00 00 56 66 89 45 10");
 	for(const site of [0xDB86B3,0xDB87AE]) {
 		const rel=(0xA471E0-site-5)>>>0;
 		n.assertCode("VIP keyboard call",site,"E8 "+n.bytesToHex([rel&255,rel>>>8&255,rel>>>16&255,rel>>>24])+" 84 C0");
@@ -197,8 +200,8 @@ VipUI = function(_)
 		...[].concat(...VipUIStatic.mainButtons).map(file=>n.buildResourcePath("vipui\\"+file).vir)];
 	values.forEach((v,i)=>put(code,api+i*4,v));
 	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
-	const icon=n.allocateCode(VipUIStatic.iconToggle(e("_VipToggleClose@0")));
-	Exe.SetJMP(Exe.Vir2Phy(0x916A16,CODE),icon.vir);
+	const menu=n.allocateCode(VipUIStatic.menuToggle(e("_VipToggleClose@0"),refs));
+	NewButtonVis.publishCustomButton("VIP",{requestVir:menu.vir,toggleVir:menu.vir});
 	const key=n.allocateCode(VipUIStatic.escapeKey(e("_VipEscape@12")));
 	for(const site of [0xDB86B3,0xDB87AE])Exe.SetCALL(Exe.Vir2Phy(site,CODE),key.vir);
 	const a=n.asm();a.emit(0x9C,0x60,0xBE);a.dword(n.PacketBuffer);
@@ -212,6 +215,9 @@ VipUI = function(_)
 	const marker=n.allocateString("VipUI.v4"),record=[];
 	for(const v of [marker.vir,...names.map(e),receiver.vir,fit.vir,plain.vir,png.vir,refs.packetCtorA,refs.packetSend,fallback])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);
 	n.allocateBytes(record,4);
+	const menuMarker=n.allocateString("VipMenu.v1"),menuRecord=[];
+	for(const v of [menuMarker.vir,menu.vir])menuRecord.push(v&255,v>>>8&255,v>>>16&255,v>>>24);
+	n.allocateBytes(menuRecord,4);
 	VipUI.onApplied();return true;
 };
 VipUI.validate=()=>Exe.BuildDate===20250716;
@@ -225,4 +231,20 @@ VipUI.onApplied=function()
 	const files=[...new Set([...VipUIStatic.assets,...[].concat(...VipUIStatic.buttons),...VipUIStatic.purchase,...VipUIStatic.cardAssets,...[].concat(...VipUIStatic.mainButtons)].filter(Boolean))];
 	for(const file of files){const f=new BinFile(target+"/"+file,"r"),exists=f.Valid;f.Close();if(exists)continue;
 		if(!System.Copy(Warp.Path+"/Assets/VipUI/"+file,target+"/"+file,false))throw Error("VipUI: cannot copy "+file);}
+	const menuRoot=System.DirPath(Warp.TgtExe)+"/data/texture/"+ModernChatUI.nativeHelpers.uiPrefix()+"/uirenewal";
+	const menuTarget=menuRoot+"/menuicon";
+	if(!System.MkDir(menuRoot) || !System.MkDir(menuTarget))throw Error("VipUI: cannot create "+menuTarget);
+	const menuFiles=["bt_vip.bmp","bt_vip_disabled.bmp","bt_vip_new.bmp","bt_vip_new_press.bmp",
+		"bt_vip_press.bmp","bt_vip_old_disabled.bmp"];
+	for(const theme of ["","old_"])for(const state of ["normal","mouseon","pressed"])
+		menuFiles.push("bt_vip_"+theme+state+".bmp");
+	for(const file of menuFiles) {
+		const path=menuTarget+"/"+file;
+		const f=new BinFile(path,"r"),exists=f.Valid;f.Close();if(exists)continue;
+		if(!System.Copy(Warp.Path+"/Assets/VipUI/menuicon/"+file,path,false))throw Error("VipUI: cannot copy "+file);
+	}
+	for(const file of ["bg_m7.tga","bg_o7.tga"]){
+		const f=new BinFile(menuTarget+"/"+file,"r"),exists=f.Valid;f.Close();if(exists)continue;
+		if(!System.Copy(Warp.Path+"/Assets/ROGlobalZeroMenu/menuicon/"+file,menuTarget+"/"+file,false))throw Error("VipUI: cannot copy "+file);
+	}
 };

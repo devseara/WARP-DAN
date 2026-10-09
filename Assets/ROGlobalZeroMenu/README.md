@@ -7,10 +7,10 @@ the custom full-panel background and sizes its parent to the icon grid.
 
 ## Runtime assets
 
-- menuicon/bg_m1.tga through bg_m6.tga: New UI backgrounds, width 357 and
+- menuicon/bg_m1.tga through bg_m7.tga: New UI backgrounds, width 357 and
   height rows * 61 + 17.
 - menuicon/bg_menu_357x322.tga: source art for the New UI row generator.
-- menuicon/bg_o1.tga through bg_o6.tga: Classic row backgrounds retained for
+- menuicon/bg_o1.tga through bg_o7.tga: Classic row backgrounds retained for
   stock resource selection; the custom Classic draw path is suppressed.
 - menuicon/bg_menu_old.tga: source Classic frame retained by the generator.
 - menuicon/bt_autohunt_normal.bmp, bt_autohunt_mouseon.bmp, and
@@ -31,13 +31,19 @@ The menu has 25 native command entries in five columns. Its height is:
 
     ceil((visible native commands + visible custom buttons + MENU) / 5)
 
-Auto Hunt, Item Collection, and AutoSupport are real native UIButton children
+Auto Hunt, Item Collection, AutoSupport, Bestiary, VIP and Battle Pass are real native UIButton children
 appended after the compact native-command count. They fill unused columns in
 the last native row before another row is allocated and compact again when an
 earlier custom button is hidden. MENU remains a counted bottom-right occupant,
 which preserves the close, hidden warp/teleport, and reopen surface invariant.
 All custom buttons use stock UIButton drawing, hit testing, hover, pressed
 states, and child-tree ownership.
+
+Battle Pass is an optional `BattlepassUI` producer after VIP. Its 12 shield-icon
+BMPs are supplied in `Assets/BattlepassUI/menuicon/` and automatically copied to
+the shared runtime menu directory. Both VIP and Battle Pass install the seventh
+row backgrounds, preserving any existing client-side images. The maximum is
+seven rows with all 25 native commands, six custom controls and MENU visible.
 
 On create, reopen, and post-MakeWindow paths, ROGlobalZeroMenu reapplies layout
 and refreshes the WindowManager rectangle without replaying native OnCreate.

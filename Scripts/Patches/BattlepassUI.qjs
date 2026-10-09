@@ -2,7 +2,8 @@
  * Project Rebirth - native Battle Pass window, GPL-3.0-or-later.
  * Author: DevSeara.
  * Description: Adds a 920x560 UIFrameWnd using the 2025-07-16 client's
- * own surface/text/input functions. @battlepassui opens it. BPUI snapshots
+ * own surface/text/input functions. @battlepassui or the optional native
+ * ROGlobalZeroMenu Battle Pass shield button opens it. BPUI snapshots
  * use a magic-gated 0x0BF6 route; other emotion packets retain stock handling.
  * No custom DLL, WebView, foreign UI thread, or runtime EXE/IAT patching.
  * Native canvas/assembler helpers are provided by AutoCombatUI.qjs.
@@ -62,6 +63,14 @@ BattlepassUIStatic.ClientAssets = [
 	"Progress_Fill.bmp", "Quest_Type_Border.bmp",
 	"Quest_Type_Border_Disabled.bmp", "Reward_Row_Background.bmp",
 	"Section_Divider.bmp", "Selection_Border.bmp", "Window_Background.bmp"
+];
+
+BattlepassUIStatic.MenuAssets = [
+	"bt_battlepass.bmp", "bt_battlepass_disabled.bmp", "bt_battlepass_mouseon.bmp",
+	"bt_battlepass_new.bmp", "bt_battlepass_new_press.bmp", "bt_battlepass_normal.bmp",
+	"bt_battlepass_press.bmp", "bt_battlepass_pressed.bmp",
+	"bt_battlepass_old_disabled.bmp", "bt_battlepass_old_mouseon.bmp",
+	"bt_battlepass_old_normal.bmp", "bt_battlepass_old_pressed.bmp"
 ];
 
 BattlepassUIStatic.uiPrefix = function()
@@ -1699,6 +1708,9 @@ BattlepassUI = function(_)
 	const hitTest = n.allocateCode(b.hitTest());
 	Exe.SetUint32(vtable.phy + 50 * 4, hitTest.vir);
 	const toggle = n.allocateCode(b.toggle(state.vir, vtable.vir, senders[0], start.vir, stop.vir));
+	// Reuse the existing native toggle and BPUI refresh protocol. A global
+	// indirect cell keeps menu selection order and producer removal safe.
+	NewButtonVis.publishCustomButton("Battle Pass", {requestVir: toggle.vir, toggleVir: toggle.vir});
 	const windowRecord=[];
 	for(const value of [n.allocateString("BattlepassUI.Window.v5").vir,vtable.vir,toggle.vir,draw.vir,down.vir,up.vir,right.vir,rightUp.vir,cursorPoll.vir,destroy.vir])
 		windowRecord.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
@@ -1777,35 +1789,56 @@ BattlepassUIStatic.onApplied = function()
 	if (Warp.TestMode)
 		return;
 	const b = BattlepassUIStatic;
-	const source = Warp.Path + "/Assets/BattlepassUI/client";
 	const root = System.DirPath(Warp.TgtExe);
-	const folders = ["data", "texture", b.uiPrefix(), "battlepassui"];
-	const target = root + "/" + folders.join("/");
+	const prefix = ["data", "texture", b.uiPrefix()];
+	const groups = [
+		{source: "/Assets/BattlepassUI/client", folders: [...prefix, "battlepassui"], files: b.ClientAssets},
+		{source: "/Assets/BattlepassUI/menuicon", folders: [...prefix, "uirenewal", "menuicon"], files: b.MenuAssets},
+		{source: "/Assets/ROGlobalZeroMenu/menuicon", folders: [...prefix, "uirenewal", "menuicon"], files: ["bg_m7.tga", "bg_o7.tga"]}
+	];
 	const missing = [];
-	for (const file of b.ClientAssets)
+	for (const group of groups)
 	{
-		// Preserve client-side skin edits; install only absent images.
-		const existing = new BinFile(target + "/" + file, 'r');
-		const present = existing.Valid;
-		existing.Close();
-		if (present) continue;
-		const asset = new BinFile(source + "/" + file, 'r');
-		const available = asset.Valid;
-		asset.Close();
-		if (!available) throw Error("BattlepassUI: missing bundled image " + source + "/" + file);
-		missing.push(file);
+		const source = Warp.Path + group.source, target = root + "/" + group.folders.join("/");
+		for (const file of group.files)
+		{
+			// Preflight every missing asset before writing; preserve custom skins.
+			const existing = new BinFile(target + "/" + file, 'r');
+			const present = existing.Valid;
+			existing.Close();
+			if (present) continue;
+			const asset = new BinFile(source + "/" + file, 'r');
+			const available = asset.Valid;
+			asset.Close();
+			if (!available) throw Error("BattlepassUI: missing bundled image " + source + "/" + file);
+			missing.push({source: source + "/" + file, target: target + "/" + file, folders: group.folders});
+		}
 	}
-	if (missing.length === 0) return;
 	// Create every parent beside the selected target EXE, even without data/.
-	let directory = root;
-	for (const folder of folders)
+	const created = new Set();
+	for (const asset of missing)
 	{
-		directory += "/" + folder;
-		if (!System.MkDir(directory)) throw Error("BattlepassUI: cannot create " + directory);
+		let directory = root;
+		for (const folder of asset.folders)
+		{
+			directory += "/" + folder;
+			if (created.has(directory)) continue;
+			if (!System.MkDir(directory)) throw Error("BattlepassUI: cannot create " + directory);
+			created.add(directory);
+		}
 	}
-	for (const file of missing)
-		if (!System.Copy(source + "/" + file, target + "/" + file, false))
-			throw Error("BattlepassUI: cannot copy " + source + "/" + file + " to " + target + "/" + file);
+	for (const asset of missing)
+		if (!System.Copy(asset.source, asset.target, false))
+			throw Error("BattlepassUI: cannot copy " + asset.source + " to " + asset.target);
 };
 
 BattlepassUI.onApplied = BattlepassUIStatic.onApplied;
+
+BattlepassUI.onSelected = function()
+{
+	// Selection may precede choosing an output EXE. The apply callback handles
+	// that case, and also a different output chosen after this selection.
+	if (Warp.TestMode || typeof Warp.TgtExe !== "string" || Warp.TgtExe.trim().length === 0)
+		return;
+	BattlepassUIStatic.onApplied();
+};

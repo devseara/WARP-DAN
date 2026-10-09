@@ -1,0 +1,98 @@
+{
+  "source_sha256": "7961ede86c0ffcb6dab7d5c2336413a21ef8e261f8046ac97e9ce2fa7758ef4f",
+  "new_states_sha256": "afc8193775303c527f82687468e12910b0ba368645eb6b94ecd6ed1397254058",
+  "samples": {
+    "bt_booking.bmp": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+    "bt_booking_disabled.bmp": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+    "bt_booking_mouseon.bmp": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2",
+    "bt_booking_new.bmp": "8cfcb317996d96c1ded334df0df2941d905fe80c796440acef1e5736f5d09e69",
+    "bt_booking_new_press.bmp": "0b20cd60c179b215c5d8b4faa5bf43faf5c463251ecdc6c636fe9fd87fc22579",
+    "bt_booking_normal.bmp": "9eb55f17bb2c716dd1d790b013a0b43ee028e8652734eb7254785f9b8d433ef2"
+  },
+  "files": {
+    "bt_vip_normal.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "9d217516ae64ef0f336535a86bdbc55f5dccf76288e8053cf516c9e9923f6c67"
+    },
+    "bt_vip_mouseon.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "53a247dbaf695c70c307acf28ad037675dfe856e648b02079a0a8564889e29a9"
+    },
+    "bt_vip_pressed.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "eddf3ba65a2902cf2d52efc59ac0309c62be86ca672c83f67b32b364d9cc2b90"
+    },
+    "bt_vip_old_normal.bmp": {
+      "size": [
+        32,
+        34
+      ],
+      "sha256": "15c5d6099ab05424324502bd8e7bae1a59a7a0e926fc29d3dc831a5ae90c9045"
+    },
+    "bt_vip_old_mouseon.bmp": {
+      "size": [
+        32,
+        34
+      ],
+      "sha256": "d5dbf243b66f86f0f15bacc6b88f9efaaa9af25dfc43334a5b1b7d44df01ef21"
+    },
+    "bt_vip_old_pressed.bmp": {
+      "size": [
+        32,
+        34
+      ],
+      "sha256": "6157645f646d2b1c724e8d5f087a755ca3f22e7b6c2dac651eade13664b92f61"
+    },
+    "bt_vip.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "9d217516ae64ef0f336535a86bdbc55f5dccf76288e8053cf516c9e9923f6c67"
+    },
+    "bt_vip_disabled.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "9d217516ae64ef0f336535a86bdbc55f5dccf76288e8053cf516c9e9923f6c67"
+    },
+    "bt_vip_new.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "1c32cf5f98068f215a8ec4c7a43daaa89cdd0c0c2eb1a95b2b1ff009a9f903b8"
+    },
+    "bt_vip_new_press.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "8f8e71f60db7c0483dc0f209767a829d1170b9f3bf5212daf90983c969acb8a3"
+    },
+    "bt_vip_press.bmp": {
+      "size": [
+        45,
+        41
+      ],
+      "sha256": "eddf3ba65a2902cf2d52efc59ac0309c62be86ca672c83f67b32b364d9cc2b90"
+    },
+    "bt_vip_old_disabled.bmp": {
+      "size": [
+        32,
+        34
+      ],
+      "sha256": "15c5d6099ab05424324502bd8e7bae1a59a7a0e926fc29d3dc831a5ae90c9045"
+    }
+  }
+}
