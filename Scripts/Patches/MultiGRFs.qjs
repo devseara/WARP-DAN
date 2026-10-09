@@ -253,11 +253,15 @@ MultiGRFs.useINI = (callAddr, AddPak) =>
 	if (iniFile === false || iniFile.trim().isEmpty())
 		Cancel("No File name specified");
 
-	parts.push(" 2E 5C" + iniFile.toHex()); // .\<INI Filename>
+	// The marker follows immediately: terminate the Win32 filename explicitly.
+	parts.push(" 2E 5C" + (iniFile + "\x00").toHex()); // .\<INI Filename>\0
 	parts.push(("RIFTLOCK_GRFS_V1|ini|" + iniFile + "\x00").toHex());
 
 	$$(_, 2.2, `Prepare the arguments for auto-hook`)
-	const [, _loopOuter, _loopInner, _next, _codeOver, dataStrAddr, iniFileAddr, allocSize] = MapAddrs(parts);
+	const offsets = MapAddrs(parts);
+	const [, _loopOuter, _loopInner, _next, _codeOver, dataStrAddr, iniFileAddr] = offsets;
+	// MapAddrs appends the total size after ALL parts, including the marker.
+	const allocSize = offsets[offsets.length - 1];
 	const args =
 	{
 		allocSize,

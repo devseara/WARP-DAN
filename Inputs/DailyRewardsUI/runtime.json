@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "client": 20250716,
+  "size": 31784,
+  "api_size": 44,
+  "snapshot_sizes": [
+    3308,
+    5268
+  ],
+  "exports": {
+    "@DailyCursor@16": 5424,
+    "@DailyDestroy@12": 5600,
+    "@DailyDown@16": 5648,
+    "@DailyDrag@16": 5776,
+    "@DailyDraw@8": 5888,
+    "@DailyMove@16": 12000,
+    "@DailyRightDown@16": 12096,
+    "@DailyRightUp@16": 12176,
+    "@DailyUp@16": 12272,
+    "@DailyWheel@12": 12672,
+    "DailyApi": 24576,
+    "DailyState": 24624,
+    "_BestiaryPreview@32": 15056,
+    "_DailyHit@8": 12688,
+    "_DailyReceive@4": 13568,
+    "_DailyTick@16": 14336,
+    "_DailyToggle@0": 14592
+  },
+  "source_sha256": "0b5609d561afc09906233d052900da36aae1ee56e3d641cd75963a47a8ca4530",
+  "bestiary_sha256": "29e6a7f6695c9b07fa39dfd759d1d6e157b2e0bc08ce41171ce5ba7d262ac1ea",
+  "payload_sha256": "dbf78652834bac34c7332fab42dcc830b7e509643064d65c10838945e4ae4216",
+  "runtime_imports": []
+}

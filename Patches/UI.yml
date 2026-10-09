@@ -643,3 +643,12 @@ Bestiary:
             recommend : no
             author : Codex
             desc : Native 760x500 Bestiary for 2025-07-16. BSUI v3 supplies resolved stats, server rates, native sprites, minimaps and Navigation. Includes account-wide research, groups, tracking, cabinet, Claim All and cosmetic/utility rewards. Requires matching map/char backends and SQL migration. Open with /bestiary or the dedicated New/Classic RO Global menu button. Hide/Show New Buttons includes Bestiary.
+
+DailyRewards:
+    title : DAILY REWARDS
+    patches:
+        - DailyRewardsUI:
+            title : Attendance, Daily Quest and Daily Roll
+            recommend : no
+            author : DevSeara
+            desc : Replaces the Attendance menu action with Battle Pass-style attendance and quest grids, Available/Claimed stamps, and Gacha-style Daily Roll cards with paginated possible rewards. Supports six items per attendance day and quest with the DRUI v2 server; older DRUI v1 single-item servers remain compatible. 2025-07-16 only; uses the existing Attendance menu icon.

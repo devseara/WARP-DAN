@@ -233,6 +233,39 @@ long PM-history scrolling, smiley open/close and selection, theme switching whil
 typing and with a detached tab, then relog in each saved theme. Offline results
 are not a claim of live visual acceptance.
 
+## Tab-name persistence fix (2026-10-09)
+
+The native TabCtrl emits event `0x74` when an in-game rename is committed.
+Chat panes also use `0x74` to request a backing clear. The modern event handler
+previously consumed both, leaving the visible tab label renamed but its saved
+filter-map record unchanged. Logout then wrote the old name to
+`savedata/ChatWndInfo_U.lua`.
+
+The handler now distinguishes the main window's TabCtrl sender (`this+0x138`)
+from pane clears and forwards a rename to the native parent dispatcher. A small
+wrapper around the final Classic/New dispatcher then invokes the native save
+routine (`0x8F9D00`) after a nonempty, indexed rename, updating the existing Lua
+file immediately. Native loading, tab order, filters, detached records and
+normal logout saving remain in use. Cancelled/empty edits, selection changes
+and redraws do not write the file. No additional save file is introduced.
+
+The patch verifies the rename producer, native saved-name branch, serializer
+and TabCtrl event vtable. It retains the selected dispatcher address explicitly:
+WARP's `Exe.GetUint32` reads the original image rather than pending vtable edits.
+
+Rebuild from the clean source with **Supplied Renewal Chat UI** selected after
+restarting WARP. Rename a tab again in the new client; previously discarded
+names cannot be recovered from the old saved file. No server rebuild is needed.
+WARP installation does not overwrite the player's saved Lua file.
+
+`tools/test_modern_chat_rename.py` executes the native edit producer, saved-map
+update and Lua writer, then loads the resulting text in a fresh Lua 5.1 VM. It
+checks all five tab records, short/long/UTF-8 names, repeated edits, immediate
+saves, identical subsequent logout saves, cancellation and filter preservation
+in Classic and New themes. File I/O and graphics are explicit test boundaries;
+live relog/restart acceptance remains separate. Build and regression evidence
+is staged under `Outputs/chat-rename-20261009/`.
+
 ## Channel / PM dropdown click-cycle fix (2026-09-22)
 
 The earlier channel/history acceptance above missed a native manager boundary:

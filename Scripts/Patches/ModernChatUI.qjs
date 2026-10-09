@@ -7,6 +7,7 @@
  * Restore the message backing before native incremental pane composition.
  * White chat-input foreground and message indicators; raise edit row by 2px.
  * Native right-click tab management and five-tab first-use defaults.
+ * Commit renamed tabs to native saved records and save ChatWndInfo_U.lua.
  */
 
 const ModernChatUIStatic = {
@@ -389,14 +390,39 @@ ModernChatUIStatic.buildEvent = function(restorePaneBacking)
 		a.emit(0x3B, 0x81); a.dword(offset); a.jcc(0x84, "ignore");
 	}
 	a.label("event");
-	// Keep native selection, detach (0x75), and re-dock (0x76) notifications.
-	// Replace the stock old-layout clear rectangle; do not discard pane clears.
-	a.emit(0x83, 0x7C, 0x24, 0x08, 0x74); a.jcc(0x84, "restore");
+	// 0x74 is shared by pane clears and TabCtrl rename commits (title, index).
+	// A rename must reach stock's saved filter-map update, not just the label.
+	a.emit(0x83, 0x7C, 0x24, 0x08, 0x74); a.jcc(0x85, "native");
+	a.emit(0x85, 0xC0); a.jcc(0x84, "restore");
+	a.emit(0x3B, 0x81); a.dword(0x138); a.jcc(0x85, "restore");
+	a.label("native");
 	a.jmp(ModernChatUIStatic.ParentEvent);
 	a.label("restore");
 	a.emit(0xFF, 0x74, 0x24, 4); a.call(restorePaneBacking);
 	a.label("ignore");
 	a.emit(0x33, 0xC0, 0xC2, 0x18, 0x00);
+	return a;
+};
+
+ModernChatUIStatic.buildRenameSave = function(dispatch)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	// Wrap the final Classic/New dispatcher. Only the native edit producer's
+	// nonempty, indexed TabCtrl rename may write savedata; pane redraws cannot.
+	a.emit(0x83, 0x7C, 0x24, 8, 0x74); a.jcc(0x85, "native");
+	a.emit(0x8B, 0x44, 0x24, 4, 0x85, 0xC0); a.jcc(0x84, "native");
+	a.emit(0x3B, 0x81); a.dword(0x138); a.jcc(0x85, "native");
+	a.emit(0x83, 0x7C, 0x24, 12, 0); a.jcc(0x84, "native");
+	a.emit(0x8B, 0x54, 0x24, 16, 0x3B, 0x15); a.dword(0x15FAAE0);
+	a.jcc(0x83, "native");
+	a.emit(0x56, 0x8B, 0xF1);
+	for (let i = 0; i < 6; ++i) a.emit(0xFF, 0x74, 0x24, 28);
+	a.call(dispatch);
+	// Stock has committed the title; serialize all native records and filters
+	// using the normal writer. Preserve the dispatch return and thiscall stack.
+	a.emit(0x50, 0x8B, 0xCE); a.call(0x8F9D00);
+	a.emit(0x58, 0x5E, 0xC2, 24, 0);
+	a.label("native"); a.jmp(dispatch);
 	return a;
 };
 
@@ -1259,6 +1285,9 @@ ModernChatUIStatic.verify = function()
 		[0x848E60, "55 8B EC 53 8B D9 56 57"],
 		[c.PopupEvent, "55 8B EC 8B D1 8B 8A B8 00 00 00"],
 		[0x858D10, "55 8B EC 56 FF 75 0C 8B F1 FF 75 08"],
+		[0x861DC6, "6A 74 57 FF D2"], // native rename producer
+		[0x8FCA11, "8B 85 D0 FD FF FF 3B 87 38 01 00 00"], // saved-name sender check
+		[0x8F9D00, "55 8B EC 6A FF 68 26 91 EB 00"], // native savedata serializer
 		[0xD649F1, "68 9C 4B 09 01"], // first-use fallback only; savedata stays native
 		[0x880AD0, "55 8B EC 83 EC 08 56 8B F1"],
 		[0x8F87C0, "55 8B EC 56 8B F1 B9 E8 F4 31 01"],
@@ -1306,6 +1335,7 @@ ModernChatUIStatic.verify = function()
 		[0x102D2D0, c.PaneDraw],
 		[0x102DD44 + 0x64, 0x858B90], [0x102DD44 + 0x6C, 0x85A620],
 		[0x102DD44 + 0x80, 0x5A8A50], [0x102DD44 + 0x84, 0x5A8A60],
+		[0x102DD44 + 0x94, 0x861C80],
 		[c.PopupVtable, c.PopupDestroy], [c.PopupVtable + 0x94, c.PopupEvent],
 		[c.PopupVtable + 0xB4, 0x5AA6B0], [c.PopupVtable + 0xC8, 0xA23220],
 		[c.PopupVtable + 0xCC, 0xA1DBB0], [c.PopupVtable + 0xD0, 0x5A9210],
@@ -1456,6 +1486,7 @@ ModernChatUI = function(_)
 		Exe.SetCALL(Exe.Vir2Phy(call, CODE), gear.vir, 0);
 	for (const call of [0x8F072A, 0x8F0769, 0x8F07A8]) Exe.SetCALL(Exe.Vir2Phy(call, CODE), returnTab.vir, 0);
 	Exe.SetCALL(Exe.Vir2Phy(0x8F0D25, CODE), resize.vir, 0);
+	let eventTarget = event.vir;
 	if (c.theme) {
 		const gate = (modern, classic, refresh = 0) => c.themeGate(modern, classic, refresh).vir;
 		const stockControls = c.nativeLayout(c.ControlsLayout, 0x15FAAEC);
@@ -1492,6 +1523,7 @@ ModernChatUI = function(_)
 		]) {
 			const target = gate(modern, classic, refresh || 0);
 			if (slot === c.MainVtable + 0x64) downTarget = target;
+			if (slot === c.MainVtable + 0x94) eventTarget = target;
 			Exe.SetUint32(Exe.Vir2Phy(slot), target);
 		}
 		for (const [offset, modern, classic] of [[0x50, tab.vir, c.TabDraw],
@@ -1521,6 +1553,9 @@ ModernChatUI = function(_)
 			record.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
 		n.allocateBytes(record, 4);
 	}
+	// Exe.GetUint32 reads the source image, not pending vtable writes.
+	const renameSave = n.allocateCode(c.buildRenameSave(eventTarget));
+	Exe.SetUint32(Exe.Vir2Phy(c.MainVtable + 0x94), renameSave.vir);
 	const contract = {version: 13, buildDate: c.BuildDate, paths, main, pane, tab,
 		layout, input, round, finalize, click, event, fill, messageEdit, recipientEdit, tabVtable,
 		blend, pngDraw, inputColor, tabDetachmentDisabled: false,
@@ -1533,7 +1568,7 @@ ModernChatUI = function(_)
 		toolbarFill: c.ToolbarFill, centeredNativeText: true, floatingBodyFill: c.PanelFill,
 		nativeNamesAndFiltersPreserved: true, postDrawAlpha: true,
 		restorePaneBacking, incrementalPaneBackingRestored: true,
-		obsoletePaintNotificationsSuppressed: true};
+		obsoletePaintNotificationsSuppressed: true, renameSave, renamedTabsSavedImmediately: true};
 	contract.whitePngDraw = whitePngDraw;
 	contract.inputTextColor = c.InputTextColor;
 	contract.inputBottom = c.InputBottom;
