@@ -201,3 +201,38 @@ server changes. To keep build evidence separate, the payload compiler accepts
 
 The tooltip update is staged in `Outputs/daily-rewards-tooltips-20261009/`.
 It retains both DRUI packet versions and needs no additional server update.
+
+## Daily Roll animation update (2026-10-09)
+
+Daily Roll uses the active Gacha timings: a 100 ms icon clock, a 1020 ms first
+reveal deadline, then 220 ms between reveals. The 100 ms timer rounds those
+deadlines to its next callback (normally 1100 ms and 300 ms). Network latency
+can extend Gacha's server-delivered steps; Daily Roll reveals its already
+authoritative results locally. Its cosmetic clock continues through delayed
+responses; the reveal clock starts only after the reply arrives.
+
+Each card has an independent cosmetic random stream drawn from the complete
+configured .RollId pool, regardless of the Possible Rewards page. Duplicate
+IDs are collapsed for animation only. Simultaneous spinning cards show
+different icons when at least five unique IDs exist; small pools necessarily
+reuse items. Icons stay centered, matching Gacha. Weighted prize selection,
+1-5 reward count, quantities and once-daily claims remain server-owned.
+Animation does not change odds or send extra requests.
+
+DRUI protocol 3 appends 1024 ItemIds to the complete v2 snapshot (9364 bytes
+total). The reward_total field gives the catalog length; unused entries are
+zero. Open/Refresh initially use protocol 1 with slot=0x32555244 (DRU2) and
+date=0x33555244 (DRU3). Read-only Open/Refresh did not otherwise use date.
+Existing v1/v2 servers ignore the additional capability and keep their
+existing replies. Claims carry the actual calendar date and use protocol 3
+only after a v3 reply. Old clients still receive exact v1/v2 replies.
+The two daily_rewards_wire.hpp copies must remain identical.
+
+To animate the entire pool, update and rebuild **map-server** (and
+map-server-generator if used), restart it, then repatch the client with
+DailyRewardsUI. Restart WARP before repatching. An older server remains
+compatible but supplies only the visible six-item page for animation.
+No SQL migration, NPC reward edits, char-server rebuild or player reset is
+required for this update. Battle Pass, VIP, ChatUI and Gacha source are
+unchanged. Client test EXEs and Windows server binaries are staged under
+Outputs/daily-roll-animation-20261009/ and are not installed automatically.

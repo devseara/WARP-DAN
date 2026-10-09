@@ -5,15 +5,16 @@ from PIL import Image, ImageFont, ImageDraw
 from test_modern_chat_ui import Machine, pack
 from test_gacha_ui import GachaMachine
 
-FIELDS='api state toggle receive hit draw down up move drag cursor destroy timer rightdown rightup wheel receiver menu fallback'.split()
+FIELDS='api state toggle receive hit draw down up move drag cursor destroy timer rightdown rightup wheel receiver menu fallback animation'.split()
 def contract(m):
-    data=m.pe.get_memory_mapped_image(); pos=data.find(b'DailyRewardsUI.v2\0'); assert pos>=0
+    data=m.pe.get_memory_mapped_image(); pos=data.find(b'DailyRewardsUI.v3\0'); assert pos>=0
     record=data.find(pack(m.base+pos));assert record>=0
     return {name:m.r(m.base+record+4+i*4) for i,name in enumerate(FIELDS)}
 
-def snapshot(seq=1,page=0,total=24,attpage=0,roll=0,legacy=False):
-    p=bytearray(3308 if legacy else 5268)
-    struct.pack_into('<HHIHH9I',p,0,0xbf4,len(p),0x49555244,1 if legacy else 2,1|(2 if roll else 0),seq,20261008,86400,attpage,page,(total+5)//6,total,2,roll)
+def snapshot(seq=1,page=0,total=24,attpage=0,roll=0,legacy=False,catalog=False,pool=None):
+    if pool is not None:total=len(pool)
+    p=bytearray(3308 if legacy else 9364 if catalog else 5268)
+    struct.pack_into('<HHIHH9I',p,0,0xbf4,len(p),0x49555244,1 if legacy else 3 if catalog else 2,1|(2 if roll else 0),seq,20261008,86400,attpage,page,(total+5)//6,total,2,roll)
     p[48:144]=b'Rewards are delivered by RODEX. Daily reset: midnight server time.'.ljust(96,b'\0')
     def item(off,id,qty=1):
         struct.pack_into('<II',p,off,id,qty);p[off+8:off+56]=('Reward '+str(id)).encode().ljust(48,b'\0')
@@ -25,7 +26,9 @@ def snapshot(seq=1,page=0,total=24,attpage=0,roll=0,legacy=False):
         off=592+i*420;struct.pack_into('<5I',p,off,i+1,1002,20,20 if i<2 else 15,1 if i==1 else 0);p[off+20:off+84]=name.encode().ljust(64,b'\0')
         for j in range(6):item(off+84+j*56,501+j,j+1)
     for i in range(roll):item(2692+i*56,501+i,5)
-    for i in range(min(6,max(0,total-page*6))):item(2972+i*56,501+page*6+i)
+    for i in range(min(6,max(0,total-page*6))):item(2972+i*56,pool[page*6+i] if pool is not None else 501+page*6+i)
+    if catalog:
+        for i in range(total):struct.pack_into('<I',p,5268+i*4,pool[i] if pool is not None else 501+i)
     return p
 
 class DailyMachine(Machine):
@@ -52,12 +55,14 @@ class DailyMachine(Machine):
         self.stub(self.r(api+40),self.monster)
         tick=self.alloc(16);self.stub(tick,lambda:self.ret(0,self.now));self.w(0xFC17B0,tick)
         setter=self.alloc(16);killer=self.alloc(16)
-        self.stub(setter,lambda:(self.timers.append('start'),self.ret(16,567)))
+        self.stub(setter,lambda:(self.timers.append('start'),self.timer_interval(self.args(4)[2]),self.ret(16,567)))
         self.stub(killer,lambda:(self.timers.append('stop'),self.ret(8,1)))
         module=self.alloc(16);proc=self.alloc(16)
         self.stub(module,lambda:self.ret(4,123))
         self.stub(proc,lambda:self.ret(8,setter if self.cstr(self.args(2)[1])=='SetTimer' else killer))
         self.w(self.r(api+28),module);self.w(self.r(api+32),proc)
+    def timer_interval(self,value):
+        assert value==100, "Gacha animation timer is 100 ms"
     def measure(self):
         ptr,length,_,height,bold,_=self.args(6);font=ImageFont.truetype('C:/Windows/Fonts/tahoma.ttf',height)
         self.ret(24,int(font.getlength(self.cstr(ptr)[:length])))
@@ -86,7 +91,7 @@ class DailyMachine(Machine):
         self.texts=[];self.text_colors=[];self.icons=[];obj=self.r(self.c['state']);self.invoke(self.c['draw'],obj);pix,w,h=self.pixels(obj)
         Image.frombytes('RGBA',(w,h),bytes(self.u.mem_read(pix,w*h*4)),'raw','BGRA').convert('RGB').save(path)
     def advance(self,ms):
-        self.now+=ms;self.invoke(self.c['timer'],0,(0,0,567,self.now))
+        self.now=(self.now+ms)&0xffffffff;self.invoke(self.c['timer'],0,(0,0,567,self.now))
 
 def tooltip_checks(m,output):
     c=m.c;obj=m.r(c['state'])
@@ -133,6 +138,88 @@ def tooltip_checks(m,output):
     hover(70,498,'Blue Potion','Required: 20','tooltip-legacy-server.png',(82,516))
     m.invoke(c['move'],obj,(480,40));m.click(815,43);m.reply()
 
+def animation_checks(exe,output):
+    m=DailyMachine(exe);c=m.c;s=c['state'];a=c['animation']
+    icons=lambda:tuple(m.r(a+28+i*4) for i in range(5))
+    def begin(pool,roll=None,page=0):
+        if m.r(s+28):m.click(906,11)
+        m.invoke(c['toggle'],0);request=m.sent[-1]
+        assert struct.unpack_from('<H',request,8)[0]==1
+        assert struct.unpack_from('<II',request,16)==(0x33555244,0x32555244)
+        m.reply(catalog=True,pool=pool,page=page);m.click(338,44);m.click(790,366)
+        assert struct.unpack_from('<HH',m.sent[-1],8)==(3,4)
+        assert struct.unpack_from('<I',m.sent[-1],16)[0]==20261008, 'claim must carry date, not capability'
+        if roll is not None:m.reply(catalog=True,pool=pool,roll=roll,page=page)
+    pool=list(range(501,541))
+    begin(pool,page=6)
+    assert m.r(a+48)==40, 'catalog truncated to visible page'
+    seen=set();previous=icons();seen.update(previous);sent=len(m.sent)
+    m.advance(99);assert icons()==previous, 'cycling faster than Gacha'
+    m.advance(1);assert all(x!=y for x,y in zip(icons(),previous)), 'repeated frame with adequate pool'
+    # Observe the real native timer/state without stubbing the cosmetic selector.
+    for frame in range(1,90):
+        m.advance(100);current=icons()
+        assert len(set(current))==5 and set(current)<=set(pool)
+        seen.update(current)
+    assert seen==set(pool), ('nonvisible prize IDs never appeared',set(pool)-seen)
+    assert len(m.sent)==sent, 'animation sent extra requests'
+    phase=icons();epoch=m.r(a)
+    m.reply(catalog=True,pool=pool,roll=5,page=6)
+    assert icons()==phase and m.r(a)==epoch, 'reply synchronized or restarted streams'
+    m.preview(output/'daily-roll-independent-spins.png')
+    rolling=[(item,x,y) for item,x,y in m.icons if y<350]
+    assert [item for item,x,y in rolling]==list(phase)
+    assert [(x,y) for _,x,y in rolling]==[(113+i%4*222,211+i//4*80) for i in range(5)]
+    assert not any(t[0]=='Received' for t in m.texts)
+    # Server Gacha's first deadline is 1020 ms; following deadlines are 220 ms.
+    m.advance(1019);assert m.r(a+4148)==0 and m.r(s+52)
+    m.advance(1);assert m.r(a+4148)==1
+    m.preview(output/'daily-roll-first-reveal.png')
+    assert sum(t[0]=='Received' for t in m.texts)==1
+    for expected in range(2,6):
+        m.advance(219);assert m.r(a+4148)==expected-1
+        m.advance(1);assert m.r(a+4148)==expected
+    assert not m.r(s+52)
+    m.preview(output/'daily-roll-five-revealed.png')
+    assert sum(t[0]=='Received' for t in m.texts)==5
+    # The real 100 ms timer quantizes the 1020/220 deadlines to 1100/300 ms.
+    for count in range(1,6):
+        begin(pool,roll=count)
+        for frame in range(1,12+3*(count-1)):
+            m.advance(100)
+            expected=0 if frame<11 else min(count,1+(frame-11)//3)
+            assert m.r(a+4148)==expected
+        assert not m.r(s+52)
+    # Small/duplicate pools cannot manufacture distinct unavailable items.
+    for small in ([505],[505,505,505],[501,502],[501,502,503,504,505]):
+        begin(small)
+        assert m.r(a+48)==len(set(small))
+        for _ in range(12):
+            m.advance(100);current=icons()
+            assert set(current)<=set(small)
+            assert len(set(current[:len(set(small))]))==len(set(small))
+    # Maximum catalog, last partial page and tick wrap are bounded.
+    maximum=list(range(10000,11024));m.now=0xffffffc0
+    begin(maximum,page=170)
+    assert m.r(a+48)==1024
+    m.advance(100);assert all(item in maximum for item in icons())
+    m.reply(catalog=True,pool=maximum,roll=1,page=170)
+    m.advance(1020);assert not m.r(s+52)
+    # Invalid catalogs/version-length combinations never replace accepted state.
+    for mutate in (
+        lambda p:struct.pack_into('<I',p,5268,0),
+        lambda p:struct.pack_into('<I',p,2972,999999),
+        lambda p:struct.pack_into('<I',p,36,1025),
+        lambda p:struct.pack_into('<H',p,8,2),
+        lambda p:struct.pack_into('<H',p,2,9363)):
+        m.click(815,43);p=snapshot(seq=m.r(s+4),catalog=True);mutate(p);m.receive(p)
+        assert m.r(s+8), 'malformed catalog accepted'
+        m.reply(catalog=True)
+    m.click(815,43);m.reply(catalog=True,total=0);m.click(338,44)
+    old=len(m.sent);m.click(790,366);assert len(m.sent)==old and m.r(a+48)==0
+    m.click(906,11)
+    print('PASS: independent full-pool cosmetic streams, no extra requests, 100 ms cadence, Gacha 1020/220 ms deadlines, centered icons, 1-5 reveals, delayed replies, no prize leaks, duplicate/small/1024-item pools, tick wrap, invalid catalogs and v1/v2 compatibility.')
+
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('exe');ap.add_argument('--output',type=Path,required=True);a=ap.parse_args();a.output.mkdir(parents=True,exist_ok=True)
     m=DailyMachine(a.exe);c=m.c;s=c['state']
@@ -172,8 +259,8 @@ def main():
     assert len(m.sent)==old,'pending roll allowed a duplicate roll or reward-page request'
     m.advance(6000);m.reply(roll=3);m.preview(a.output/'daily-roll-slow-reply.png')
     assert not any(t[0]=='Received' for t in m.texts),'slow server response skipped the reveal'
-    m.now+=3100;m.preview(a.output/'daily-roll-revealing.png')
-    assert sum(t[0]=='Received' for t in m.texts)==2 and sum(t[0]=='Rolling...' for t in m.texts)==2
+    m.advance(1020);m.advance(220);m.preview(a.output/'daily-roll-revealing.png')
+    assert sum(t[0]=='Received' for t in m.texts)==2 and m.r(c['animation']+4148)==2
     old=len(m.sent);m.click(160,370);assert len(m.sent)==old,'skip reveal sent another roll'
     m.preview(a.output/'daily-roll-result.png');assert sum(t[0]=='Received' for t in m.texts)==3 and sum(t[0]=='No reward' for t in m.texts)==2
     m.click(790,366);assert len(m.sent)==old,'claimed roll sent again'
@@ -192,6 +279,7 @@ def main():
     m.click(815,43);bad=snapshot(seq=m.r(s+4));struct.pack_into('<I',bad,44,6);m.receive(bad);assert m.r(s+8),'malformed reward count accepted';m.reply()
     m.invoke(c['down'],obj,(50,8));m.invoke(c['drag'],obj,(60,8));m.invoke(c['up'],obj,(60,8));assert not m.r(0x131F4E8+0x19c)
     m.invoke(c['destroy'],obj,(1,));assert not m.r(s) and m.timers[-1]=='stop'
-    print('PASS: native Attendance override, frame/input ABI, all tabs, 42 attendance slots, 30 quest rewards, objective sprite dispatch, Available/Claimed selection, v1 fallback/v2 bundles, pagination/clamps, partial page, sequential server roll/reveal including delayed replies, static Motion-off pending cards, motion/skip, duplicate guards, right-click, malformed/foreign packets, capture and close/reopen. Real font; item/monster artwork uses explicit test placeholders.')
+    animation_checks(a.exe,a.output)
+    print('PASS: native Attendance override, frame/input ABI, all tabs, 42 attendance slots, 30 quest rewards, objective sprite dispatch, Available/Claimed selection, v1 fallback/v2 bundles/v3 catalog, pagination/clamps, partial page, sequential server roll/reveal including delayed replies, static Motion-off pending cards, motion/skip, duplicate guards, right-click, malformed/foreign packets, capture and close/reopen. Real font; item/monster artwork uses explicit test placeholders.')
 
 if __name__=='__main__':main()

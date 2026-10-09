@@ -55,11 +55,11 @@ def main():
             relocs.append(offset)
     exports={s.name.decode():s.address-first for s in pe.DIRECTORY_ENTRY_EXPORT.symbols}
     body=struct.pack('<'+'I'*len(relocs),*relocs)+code
-    header=struct.pack('<8I',0x49555244,2,len(code),len(relocs),exports['DailyApi'],44,5268,zlib.crc32(body))
+    header=struct.pack('<8I',0x49555244,3,len(code),len(relocs),exports['DailyApi'],44,9364,zlib.crc32(body))
     out=ROOT/'Inputs/DailyRewardsUI/runtime.bin'
     out.parent.mkdir(parents=True,exist_ok=True)
     out.write_bytes(header+body)
-    meta={'version':2,'client':20250716,'size':len(code),'api_size':44,'snapshot_sizes':[3308,5268],'exports':exports,
+    meta={'version':3,'client':20250716,'size':len(code),'api_size':44,'snapshot_sizes':[3308,5268,9364],'exports':exports,
           'source_sha256':hashlib.sha256(source.read_bytes().replace(b'\r\n',b'\n')).hexdigest(),
           'bestiary_sha256':hashlib.sha256(monster.read_bytes().replace(b'\r\n',b'\n')).hexdigest(),
           'payload_sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'runtime_imports':[]}

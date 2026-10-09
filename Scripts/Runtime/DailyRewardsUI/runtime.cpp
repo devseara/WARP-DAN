@@ -25,6 +25,56 @@ struct State {
     int selectedDay, motionOff, mouseX, mouseY;
 };
 EXPORT State DailyState = {};
+// Cosmetic state never supplies an award, claim or outbound item ID.
+struct Animation {
+    u32 epoch, frame, random[5], icons[5], count, ids[max_roll_pool], revealed;
+};
+EXPORT Animation DailyAnimation = {};
+// Active GachaUI timing: gacha_ui.hpp first_reveal_ms/next_reveal_ms.
+constexpr u32 spin_ms=100, first_reveal_ms=1020, next_reveal_ms=220;
+static u32 randomIcon(u32& value) {
+    value^=value<<13;value^=value>>17;value^=value<<5;return value;
+}
+static void addRollIcon(u32 id) {
+    if(!id || DailyAnimation.count>=max_roll_pool)return;
+    for(u32 i=0;i<DailyAnimation.count;++i)if(DailyAnimation.ids[i]==id)return;
+    DailyAnimation.ids[DailyAnimation.count++]=id;
+}
+static void spinFrame(u32 now) {
+    auto& a=DailyAnimation;
+    const u32 frame=(now-a.epoch)/spin_ms;
+    if(a.frame==frame)return;
+    a.frame=frame;
+    if(!a.count)return;
+    for(u32 i=0;i<5;++i){
+        // Independent streams; distinct simultaneous icons when the pool allows.
+        // Duplicate configured ItemIds are collapsed for animation only.
+        const u32 first=i/a.count*a.count, previous=a.icons[i];
+        u32 index=randomIcon(a.random[i])%a.count;
+        for(u32 tries=0;tries<a.count;++tries){
+            const u32 id=a.ids[index];bool used=false;
+            for(u32 j=first;j<i;++j)if(a.icons[j]==id)used=true;
+            if(!used && (id!=previous || a.count==1)){a.icons[i]=id;break;}
+            index=(index+1)%a.count;
+            if(tries+1==a.count){
+                // A small pool can leave only this card's previous icon free.
+                for(u32 j=0;j<a.count;++j){
+                    bool taken=false;for(u32 k=first;k<i;++k)if(a.icons[k]==a.ids[j])taken=true;
+                    if(!taken){a.icons[i]=a.ids[j];break;}
+                }
+            }
+        }
+    }
+}
+static void startRoll(u32 now) {
+    auto& a=DailyAnimation;a.epoch=now;a.frame=0xFFFFFFFF;a.revealed=0;
+    for(u32 i=0;i<5;++i){
+        a.random[i]=(now^(DailyState.sequence*0x9E3779B9u))+(i+1)*0x85EBCA6Bu;
+        if(!a.random[i])a.random[i]=i+1;
+        a.icons[i]=0;
+    }
+    spinFrame(now);
+}
 struct Box { int x,y,w,h;u32 id;const char* name;u32 amount; };
 static Box items[64]; static int itemCount;
 template<typename T> T& at(void* p, int off) { return *reinterpret_cast<T*>(static_cast<u8*>(p)+off); }
@@ -109,9 +159,9 @@ static bool send(u16 action,u32 slot=0,u32 attendancePage=0xFFFFFFFF,u32 rewardP
     if(DailyState.pending)return false;
     void* transport=reinterpret_cast<void* (__cdecl *)()>(DailyApi.ctor)();if(!transport)return false;
     if(++DailyState.sequence==0)++DailyState.sequence;
-    const u16 protocol=DailyState.p.protocol==bundle_version?bundle_version:version;
+    const u16 protocol=DailyState.p.protocol==catalog_version?catalog_version:DailyState.p.protocol==bundle_version?bundle_version:version;
     if(action==Open || action==Refresh)slot=bundle_capability;
-    Request r={request_id,sizeof(Request),magic,protocol,action,DailyState.sequence,DailyState.p.date,slot,
+    Request r={request_id,sizeof(Request),magic,protocol,action,DailyState.sequence,(action==Open || action==Refresh)?catalog_capability:DailyState.p.date,slot,
         attendancePage==0xFFFFFFFF?DailyState.p.attendance_page:attendancePage,rewardPage==0xFFFFFFFF?DailyState.p.reward_page:rewardPage};
     DailyState.pending=1;DailyState.sent=tick();
     reinterpret_cast<void (__thiscall *)(void*,int,const void*)>(DailyApi.send)(transport,sizeof(r),&r);dirty();return true;
@@ -126,7 +176,14 @@ EXPORT void __stdcall DailyTick(void*,u32,u32 id,u32) {
     if(!at<int>(DailyState.window,0x28)){hide();return;}
     if(DailyState.dragging && at<void*>((void*)0x131F4E8,0x19C)!=DailyState.window)release();
     const u32 now=tick();
-    if(DailyState.rolling && DailyState.ready && !DailyState.pending && now-DailyState.rollStart>=5500)DailyState.rolling=0;
+    if(DailyState.rolling){
+        if(!DailyState.motionOff)spinFrame(now);
+        if(DailyState.ready && !DailyState.pending &&
+            now-DailyState.rollStart>=(DailyAnimation.revealed?next_reveal_ms:first_reveal_ms)){
+            ++DailyAnimation.revealed;DailyState.rollStart=now;
+            if(DailyAnimation.revealed>=DailyState.p.roll_count)DailyState.rolling=0;
+        }
+    }
     if(DailyState.pending && now-DailyState.sent>=10000){DailyState.pending=0;DailyState.rolling=0;send(Refresh);}
     else if(!DailyState.pending && !DailyState.rolling && now-DailyState.received>=3000)send(Refresh);
     dirty();
@@ -139,7 +196,7 @@ static void startTimer() {
         DailyState.setTimer=reinterpret_cast<u32 (__stdcall *)(void*,u32,u32,void*)>(resolve(module,"SetTimer"));
         DailyState.killTimer=reinterpret_cast<int (__stdcall *)(void*,u32)>(resolve(module,"KillTimer"));
     }
-    if(DailyState.setTimer && DailyState.killTimer)DailyState.timer=DailyState.setTimer(0,0,100,reinterpret_cast<void*>(DailyTick));
+    if(DailyState.setTimer && DailyState.killTimer)DailyState.timer=DailyState.setTimer(0,0,spin_ms,reinterpret_cast<void*>(DailyTick));
 }
 EXPORT void __stdcall DailyToggle() {
     if(DailyState.visible){hide();return;}
@@ -153,6 +210,7 @@ EXPORT void __stdcall DailyToggle() {
         reinterpret_cast<void (__thiscall *)(void*,void*)>(0xA2D240)((void*)0x131F4E8,w);
     }
     clear(&DailyState.p,sizeof(DailyState.p));clear(DailyState.attendanceExtra,sizeof(DailyState.attendanceExtra));
+    clear(&DailyAnimation,sizeof(DailyAnimation));
     DailyState.selectedDay=-1;DailyState.ready=DailyState.pending=DailyState.rolling=0;
     DailyState.tab=0;DailyState.visible=1;DailyState.received=tick();at<int>(w,0x28)=1;
     release();startTimer();dirty();reinterpret_cast<void (__thiscall *)(void*,void*)>(0xA39130)((void*)0x131F4E8,w);
@@ -160,16 +218,31 @@ EXPORT void __stdcall DailyToggle() {
 }
 EXPORT int __stdcall DailyReceive(const Snapshot* p) {
     if(!p || p->id!=snapshot_id || p->signature!=magic ||
-        !((p->protocol==version && p->length==sizeof(Snapshot)) || (p->protocol==bundle_version && p->length==sizeof(BundleSnapshot))) ||
+        !((p->protocol==version && p->length==sizeof(Snapshot)) || (p->protocol==bundle_version && p->length==sizeof(BundleSnapshot)) ||
+          (p->protocol==catalog_version && p->length==sizeof(CatalogSnapshot))) ||
         p->sequence!=DailyState.sequence || !DailyState.visible || !DailyState.pending || p->attendance_page>3 || p->roll_count>5 ||
-        p->attendance_day>28 || p->reward_total>1024 || p->reward_pages!=(p->reward_total+5)/6 ||
+        p->attendance_day>28 || p->reward_total>max_roll_pool || p->reward_pages!=(p->reward_total+5)/6 ||
         (p->reward_pages?p->reward_page>=p->reward_pages:p->reward_page!=0) || (p->flags&~7))return 0;
     for(int i=0;i<7;++i)if(p->attendance[i].status>2)return 0;
     for(int i=0;i<5;++i)if(p->quests[i].claimed>1 || p->quests[i].required>1000000 || p->quests[i].progress>p->quests[i].required)return 0;
+    if(p->protocol==catalog_version){
+        const auto* full=reinterpret_cast<const CatalogSnapshot*>(p);
+        for(u32 i=0;i<p->reward_total;++i)if(!full->roll_ids[i])return 0;
+        for(u32 i=0;i<6 && p->reward_page*6+i<p->reward_total;++i)
+            if(p->possible[i].id!=full->roll_ids[p->reward_page*6+i])return 0;
+    }
     const bool samePage=DailyState.ready && DailyState.p.attendance_page==p->attendance_page && DailyState.p.date==p->date;
     copy(&DailyState.p,p,sizeof(Snapshot));DailyState.p.status[95]=0;
     clear(DailyState.attendanceExtra,sizeof(DailyState.attendanceExtra));
-    if(p->protocol==bundle_version)copy(DailyState.attendanceExtra,reinterpret_cast<const BundleSnapshot*>(p)->attendance_extra,sizeof(DailyState.attendanceExtra));
+    if(p->protocol>=bundle_version)copy(DailyState.attendanceExtra,reinterpret_cast<const BundleSnapshot*>(p)->attendance_extra,sizeof(DailyState.attendanceExtra));
+    DailyAnimation.count=0;
+    if(p->protocol==catalog_version){
+        const auto* full=reinterpret_cast<const CatalogSnapshot*>(p);
+        for(u32 i=0;i<p->reward_total;++i)addRollIcon(full->roll_ids[i]);
+    }else{
+        // Old servers only supply their visible page; no invented prize icons.
+        for(const auto& r:p->possible)addRollIcon(r.id);
+    }
     for(auto& day:DailyState.attendanceExtra)for(auto& r:day)r.name[47]=0;
     if(!samePage)DailyState.selectedDay=-1;
     if(DailyState.selectedDay<0)for(int i=0;i<7;++i)if(p->attendance[i].status==1){DailyState.selectedDay=i;break;}
@@ -179,7 +252,7 @@ EXPORT int __stdcall DailyReceive(const Snapshot* p) {
     DailyState.pending=0;DailyState.ready=1;DailyState.received=tick();DailyState.pressed=DailyState.right=0;
     if(DailyState.rolling){
         if(!p->roll_count || (p->flags&Failed) || DailyState.motionOff)DailyState.rolling=0;
-        else DailyState.rollStart=DailyState.received; // Reveal starts when the server's awards arrive.
+        else {DailyState.rollStart=DailyState.received;DailyAnimation.revealed=0;} // Keep the cosmetic clock continuous.
     }
     dirty();return 1;
 }
@@ -285,14 +358,11 @@ static void rollCard(const Item& r,int x,int y,int width,int index,bool spin,boo
     rect(x+2,y+2,width-4,13,0xFFE9ECF6);
     char line[128];line[0]=0;number(line,static_cast<u32>(index+1));append(line,"   Reward");text(line,x+6,y+3,width-12,0x7D6045);
     if(spin){
-        const u32 count=DailyState.p.reward_total>DailyState.p.reward_page*6?
-            DailyState.p.reward_total-DailyState.p.reward_page*6:0;
-        const u32 visible=count<6?count:6;
-        if(visible && !DailyState.motionOff){const auto& sample=DailyState.p.possible[(tick()/90+static_cast<u32>(index))%visible];
-            // Bounded vertical motion stays inside this card; it never selects prizes.
-            DailyApi.item(DailyState.window,sample.id,x+6,y+19+static_cast<int>(tick()/35%9));}
-        else mysteryReward(x+6,y+21);
-        text("Rolling...",x+48,y+28,width-56);
+        // Centered cycling art, as in Gacha. Never read a real prize/name here.
+        const int iconX=x+(width-32)/2,iconY=y+(74-32)/2;
+        if(DailyAnimation.icons[index] && !DailyState.motionOff)
+            DailyApi.item(DailyState.window,DailyAnimation.icons[index],iconX,iconY);
+        else mysteryReward(iconX,iconY);
     }else if(r.id){
         panel(x+5,y+19,34,34,0xFFE7EDF8);DailyApi.item(DailyState.window,r.id,x+6,y+20);
         if(itemCount<64)items[itemCount++]={x+5,y+19,34,34,r.id,r.name,r.amount};
@@ -357,9 +427,8 @@ EXPORT void __fastcall DailyDraw(void* w,void*) {
         panel(674,82,218,34);
         text(DailyState.rolling?"Today's roll: Rolling...":DailyState.p.flags&RollClaimed?"Today's roll: Claimed":"Today's roll: Ready",682,94,202,0x438844);
         heading("Rolling Rewards",156);
-        const u32 elapsedRoll=tick()-DailyState.rollStart;
         for(int i=0;i<5;++i){const bool spin=DailyState.rolling && (DailyState.pending ||
-                (static_cast<u32>(i)<DailyState.p.roll_count && elapsedRoll<2500u+static_cast<u32>(i)*600u));
+                (static_cast<u32>(i)<DailyState.p.roll_count && static_cast<u32>(i)>=DailyAnimation.revealed));
             rollCard(DailyState.p.roll[i],24+i%4*222,190+i/4*80,210,i,spin,(DailyState.p.flags&RollClaimed)!=0);
         }
         button(43,DailyState.motionOff?"Motion: Off":"Motion: On",24,358,104,26);
@@ -389,7 +458,7 @@ EXPORT void __fastcall DailyUp(void*,void*,int x,int y) {
     else if(hit==10 || hit==11)send(Refresh,0,DailyState.p.attendance_page+(hit==10?-1:1));
     else if(hit>=20 && hit<27)send(AttendanceClaim,DailyState.p.attendance[hit-20].day-1);
     else if(hit>=30 && hit<35)send(QuestClaim,static_cast<u32>(hit-30));
-    else if(hit==40){if(send(Roll)){DailyState.rolling=1;DailyState.rollStart=tick();}}
+    else if(hit==40){if(send(Roll)){DailyState.rolling=1;DailyState.rollStart=tick();startRoll(DailyState.rollStart);}}
     else if(hit==43){DailyState.motionOff=!DailyState.motionOff;if(DailyState.motionOff && !DailyState.pending)DailyState.rolling=0;}
     else if(hit==44)DailyState.rolling=0;
     else if(hit>=50 && hit<57)DailyState.selectedDay=hit-50;
