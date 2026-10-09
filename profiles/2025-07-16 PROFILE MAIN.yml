@@ -283,7 +283,32 @@ inputs:
         data: '53797374656d454e5c746970626f785f454e2e6c756200'
         display: "SystemEN\\tipbox_EN.lub"
         type: 10
-    
+
+    $battlepassUIFontHeight:
+        data: '0b'
+        display: 11
+        type: 2
+
+    $modernChatTabFontName:
+        data: '5461686f6d6100'
+        display: "Tahoma"
+        type: 10
+
+    $modernChatTabFontSize:
+        data: '0a'
+        display: 10
+        type: 2
+
+    $modernChatTabFontStyle:
+        data: '4e6f726d616c00'
+        display: "Normal"
+        type: 10
+
+    $runeVisibleRows:
+        data: '03000000'
+        display: 3
+        type: 2
+
 patches:
     - AllowPL2Leave
     - AllowGuildInClan
@@ -417,3 +442,11 @@ patches:
     - SNSButtonURL
     - BookingButtonGuide
     - NativeActJobPreviews
+    - VipUI
+    - BattlepassUI
+    - GachaUI
+    - ChatItemIcons
+    - ModernChatUI
+    - ModernNpcDialog
+    - NoticeMarquee
+    - CustomRuneSystem
