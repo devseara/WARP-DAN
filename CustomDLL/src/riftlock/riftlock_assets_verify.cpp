@@ -57,6 +57,31 @@ std::uint32_t* riftlock_probe_eat_slot(HMODULE module, const char* name) {
 	return nullptr;
 }
 
+// Maps a file as an unlinked SEC_IMAGE view (an executable image that is not in
+// the loader list), rescans, and reports whether it was counted as untrusted.
+bool riftlock_image_probe(const std::wstring& path, bool& flagged) {
+	HANDLE file = CreateFileW(path.c_str(), GENERIC_READ | GENERIC_EXECUTE, FILE_SHARE_READ,
+		nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+	if (file == INVALID_HANDLE_VALUE)
+		return false;
+	HANDLE section = CreateFileMappingW(file, nullptr, PAGE_EXECUTE_READ | SEC_IMAGE, 0, 0, nullptr);
+	CloseHandle(file);
+	if (section == nullptr)
+		return false;
+	void* view = MapViewOfFile(section, FILE_MAP_READ | FILE_MAP_EXECUTE, 0, 0, 0);
+	CloseHandle(section);
+	if (view == nullptr)
+		return false;
+	riftlock_modules::Snapshot snapshot = {};
+	std::string error;
+	const bool scanned = riftlock_modules::scan(snapshot, error);
+	UnmapViewOfFile(view);
+	if (!scanned)
+		return false;
+	flagged = snapshot.unlinked_exec_region_count != 0;
+	return true;
+}
+
 // Applies one synthetic hook, rescans, and restores the original bytes.
 bool riftlock_hook_probe(const char* label, void* address, const void* bytes,
 	std::size_t length, std::uint16_t expected_target) {
@@ -190,6 +215,33 @@ int wmain(int argc, wchar_t** argv) {
 		FreeLibrary(sodium);
 		return 1;
 	}
+
+	// Unlinked image probes: a genuine system DLL and an allowlisted app-local
+	// DLL must stay trusted; the same system DLL copied elsewhere must not.
+	wchar_t temp_directory[MAX_PATH] = {};
+	const DWORD temp_length = GetTempPathW(MAX_PATH, temp_directory);
+	const std::wstring system_image = system_root + L"\\WinTypes.dll";
+	const std::wstring foreign_image = std::wstring(temp_directory, temp_length) +
+		L"riftlock_probe_WinTypes.dll";
+	const std::wstring app_local_image = directory + L"\\libcurl.dll";
+	bool system_flagged = true;
+	bool foreign_flagged = false;
+	bool app_local_flagged = true;
+	const bool images_probed = temp_length != 0 && temp_length < MAX_PATH &&
+		riftlock_image_probe(system_image, system_flagged) &&
+		CopyFileW(system_image.c_str(), foreign_image.c_str(), FALSE) &&
+		riftlock_image_probe(foreign_image, foreign_flagged) &&
+		riftlock_image_probe(app_local_image, app_local_flagged);
+	if (temp_length != 0 && temp_length < MAX_PATH)
+		DeleteFileW(foreign_image.c_str());
+	if (!images_probed || system_flagged || !foreign_flagged || app_local_flagged) {
+		fprintf(stderr, "unlinked image probes failed: probed=%u system=%u foreign=%u app_local=%u\n",
+			images_probed ? 1u : 0u, system_flagged ? 1u : 0u, foreign_flagged ? 1u : 0u,
+			app_local_flagged ? 1u : 0u);
+		FreeLibrary(sodium);
+		return 1;
+	}
+	printf("image_probe_system_trusted image_probe_app_local_trusted image_probe_foreign_detected\n");
 	riftlock_debug::Snapshot debug_evidence = {};
 	if (!riftlock_debug::initialize(sha256, debug_evidence, error)) {
 		fprintf(stderr, "debug evidence scan failed: %s\n", error.c_str());

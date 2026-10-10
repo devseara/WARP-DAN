@@ -112,7 +112,7 @@ view-entry bursts remain available until the QJS frame consumers run.
 | EXTN  | 0x0BB7    | 0x4558544E | Extended character names (1024-slot ring) |
 **Custom patch import behavior:**
 - `CustomDLL.qjs`: Generic DLL adder (user provides DLLSpec.yml)
-- `CustomRuneSystem.qjs`: Prompts for `boh.dll` or `boh_rune.dll`
+- `CustomRuneSystem.qjs`: QJS-only multiple equipped Rune Sets; no custom DLL import
 - `CustomExtName.qjs`: QJS-only bounded EXTN exact-text map; no custom DLL import
 - `CustomPlayerNameColor.qjs`: QJS-only exact player-name color scope; no custom DLL import
 - `CustomColoredItemName.qjs`: QJS-only bounded ICOL renderer; no custom DLL import. Producer hooks prefer `ICL2` ItemId records where `CItem*` is available, then fall back to exact legacy ItemName matching for old servers and text-only surfaces. Anchored matching covers stock slotless/slotted Inventory quantity forms. A matching grade color conditionally coalesces the native post-grade endpoint and owns the complete decorated title; Inventory quantity tails are omitted for grade matches, and matched dark draws are suppressed. The normative contract is `docs/item-grade-color-renderer-contract.md`.
@@ -268,17 +268,18 @@ This pattern is used by: CaseInsensitiveSearch, CustomSkills, CustomEncKeys, Res
 **Explicit DLL-backed features:**
 `boh.dll` and the split DLLs remain legacy build artifacts. QJS-only item
 colors, extended names, overlays, and inventory features no longer load them.
-Only patches explicitly documented as DLL-backed should add one; the current
-visual exception is `CustomRuneSystem` with `boh_rune.dll`.
+Only patches explicitly documented as DLL-backed should add one; no visual
+patch currently does (`CustomRuneSystem` became QJS-only on 2026-10-08; its
+DLL source was removed on 2026-10-09).
 
 | Dedicated DLL | Export Function | Used By |
 |---------------|-----------------|---------|
 | `boh_npc_names.dll` | `NpcNameOverlayInit`, `NpcNameOverlayFrame` | Legacy AlwaysShowNpcName implementation; no longer imported |
-| `boh_rune.dll` | `RuneVisualInit` | CustomRuneSystem |
+| `boh_rune.dll` | `RuneVisualInit` | Retired 2026-10-09: source removed, `BOH_RUNE_VISUAL` rejected; never deploy |
 | `boh_fps.dll` | `FpsPingOverlayInit` | Legacy FpsOverlay implementation; no longer imported |
 | `boh_inventory_tabs.dll` | `InventoryTabsInit` | ROGlobalZeroInventory (legacy; no longer imported) |
 
-QJS-only text, name, item-color, overlay, and inventory patches do not call
+QJS-only text, name, item-color, overlay, inventory, and rune patches do not call
 `CustomDLL`, prompt for a custom DLL filename, or add custom PE imports.
 
 ### 2.4 Safety & Backup Modules (2026-06-08)
@@ -675,7 +676,7 @@ and console. Convention: `<Section>.<Subsection>.<Step>` numbering.
 | Extended names and player colors | CustomExtName, CustomPlayerNameColor | No custom DLL; server 0x0BB7 EXTN support required |
 | Colored enchant-grade item titles | CustomColoredItemName, CustomColoredEnchantGradeName | Server numeric `_GRADE_<n>_*` ICOL entries; conditional native endpoint gate makes grade color override the complete decorated title without cross-call state |
 | Custom enchant-grade label words | CustomEnchantGradeLabels | `Inputs/enchant_grade.yml`; otherwise the renderer uses stock D/C/B/A |
-| Rune system | CustomRuneSystem | boh.dll required |
+| Rune system | CustomRuneSystem | No custom DLL; server sends one rune refresh per active set |
 | FPS/Ping overlay | FpsOverlay, PingOverlay | No custom DLL; QJS-only post-Present renderer |
 | Case-insensitive search | InsensitiveStorageSearch, InsensitiveShopSearch | CaseInsensitiveSearch shared module |
 | Camera improvements | MediumCamAngle, Zoom75Percent | None |

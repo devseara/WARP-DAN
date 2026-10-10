@@ -14,7 +14,7 @@
 // Item Name Colors (retired)| BOH_ITEM_COLORS       | QJS-only; value 1 rejected
 // Extended Names          | BOH_EXTENDED_NAMES      | CustomExtName
 // Player Name Colors      | BOH_PLAYER_NAME_COLORS  | CustomPlayerNameColor
-// Rune Visual             | BOH_RUNE_VISUAL         | CustomRuneSystem
+// Rune Visual (retired)   | BOH_RUNE_VISUAL         | QJS-only; value 1 rejected
 // FPS Overlay             | BOH_FPS_OVERLAY         | FpsOverlay
 // Ping Overlay            | BOH_PING_OVERLAY        | PingOverlay
 // NPC Name Overlay        | BOH_NPC_NAME_OVERLAY    | AlwaysShowNpcName
@@ -35,12 +35,18 @@
 #error BOH_ITEM_COLORS is retired; use the QJS item/enchant-grade patches
 #endif
 
+// boh_rune_visual.cpp was removed; CustomRuneSystem.qjs emits the whole
+// multi-set Rune System into EXE caves.
+#if defined(BOH_RUNE_VISUAL) && BOH_RUNE_VISUAL
+#error BOH_RUNE_VISUAL is retired; CustomRuneSystem is a QJS-only patch
+#endif
+
 // Feature enum — each feature gets one bit
 enum BohFeature : unsigned
 {
     FEATURE_ITEM_COLORS    = 1 << 0,  // 0x01 reserved (deprecated)
     FEATURE_EXTENDED_NAMES = 1 << 1,  // 0x02
-    FEATURE_RUNE_VISUAL    = 1 << 2,  // 0x04
+    FEATURE_RUNE_VISUAL    = 1 << 2,  // 0x04 reserved (retired)
     FEATURE_FPS_OVERLAY    = 1 << 3,  // 0x08
     FEATURE_PING_OVERLAY      = 1 << 4,  // 0x10
     FEATURE_NPC_NAME_OVERLAY  = 1 << 5,  // 0x20
@@ -62,11 +68,6 @@ namespace BohLicense
 #endif
 #ifdef BOH_PLAYER_NAME_COLORS
         (BOH_PLAYER_NAME_COLORS ? FEATURE_PLAYER_NAME_COLORS : 0) |
-#else
-        0 |
-#endif
-#ifdef BOH_RUNE_VISUAL
-        (BOH_RUNE_VISUAL ? FEATURE_RUNE_VISUAL : 0) |
 #else
         0 |
 #endif

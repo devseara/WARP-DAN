@@ -26,7 +26,9 @@ The checked-in `customer_features.h` may reflect a customer/runtime feature set;
 do not treat it as proof of strict Gepard compliance. Item and enchant-grade
 colors cannot be enabled in this DLL; they are implemented exclusively by the
 QJS patches documented in `../../docs/item-grade-color-renderer-contract.md`.
-Do not enable extended names, rune visuals, FPS/ping, inventory tabs, or other
+The rune visual module is retired the same way (`BOH_RUNE_VISUAL` must stay 0):
+`CustomRuneSystem` is QJS-only and `boh_rune.dll` is no longer built.
+Do not enable extended names, FPS/ping, inventory tabs, or other
 runtime-hook modules unless the anti-cheat owner has approved that specific
 runtime memory behavior.
 
@@ -38,7 +40,6 @@ Run `build_split.bat` to produce:
 |-----|----------|-------------|
 | `boh_text.dll` | Extended names and player-name colors | `ExtNameVisualInit`, `PlayerNameColorVisualInit` |
 | `boh_npc_names.dll` | Always-show NPC names | `NpcNameOverlayInit`, `NpcNameOverlayFrame` |
-| `boh_rune.dll` | Rune visuals | `RuneVisualInit` |
 | `boh_fps.dll` | FPS and ping overlays | `FpsPingOverlayInit` |
 | `boh_inventory_tabs.dll` | Image inventory tabs | `InventoryTabsInit` |
 | `boh_weapon_sprite.dll` | Dual-wield custom renderer host | `WeaponSpriteInit` |

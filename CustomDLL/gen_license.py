@@ -16,7 +16,6 @@ from datetime import datetime
 ALL_FEATURES = {
     "ExtendedNames":    ("BOH_EXTENDED_NAMES",    "Extended character names"),
     "PlayerNameColors": ("BOH_PLAYER_NAME_COLORS", "Custom player nameplate colors"),
-    "RuneVisual":       ("BOH_RUNE_VISUAL",       "Rune set rendering"),
     "FpsOverlay":       ("BOH_FPS_OVERLAY",       "/fps slash command"),
     "PingOverlay":      ("BOH_PING_OVERLAY",      "/ping slash command"),
     "NpcNameOverlay":   ("BOH_NPC_NAME_OVERLAY",  "Always-show NPC names"),
@@ -29,6 +28,10 @@ DEPRECATED_FEATURES = {
     "ItemColors": (
         "BOH_ITEM_COLORS is retired; item/enchant-grade colors are "
         "implemented exclusively by the QJS patches"
+    ),
+    "RuneVisual": (
+        "BOH_RUNE_VISUAL is retired; CustomRuneSystem is implemented "
+        "exclusively by the QJS patch"
     ),
 }
 
@@ -66,13 +69,16 @@ def main():
     lines.append("// 1 = enabled (paid), 0 = disabled (not paid)")
     lines.append("// This is COMPILED INTO boh.dll — no runtime file to tamper with.")
     lines.append("// BOH_ITEM_COLORS is retired; item/enchant-grade colors are QJS-only.")
+    lines.append("// BOH_RUNE_VISUAL is retired; CustomRuneSystem is QJS-only.")
     lines.append("")
 
     max_define_len = max(
         len("BOH_ITEM_COLORS"),
+        len("BOH_RUNE_VISUAL"),
         max(len(info[0]) for info in ALL_FEATURES.values()),
     )
     lines.append(f"#define {'BOH_ITEM_COLORS':<{max_define_len}} 0")
+    lines.append(f"#define {'BOH_RUNE_VISUAL':<{max_define_len}} 0")
     for name, (define, desc) in ALL_FEATURES.items():
         value = "1" if name in enabled else "0"
         lines.append(f"#define {define:<{max_define_len}} {value}")

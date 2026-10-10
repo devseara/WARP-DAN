@@ -61,6 +61,23 @@ Deploy the following beside the patched game executable:
 Select `RiftlockTransport` in WARP and rebuild from the offline/no-Gepard
 client. Do not deploy Gepard and Riftlock in the same cutover build.
 
+## Signed releases (protocol v8)
+
+After `RiftlockInit` hashes the EXE, `riftlock.dll`, `libsodium.dll` and the
+asset policy, it loads `riftlock-release.sig` from the EXE folder. The file is
+used only when its build, release identity and Ed25519 signature match the
+running client and the embedded server public key; the DLL then sends the
+release number and signature in the 600-byte client hello. A missing or stale
+file is logged (`riftlock-release.sig not found` / `does not match this
+client`) but is not fatal, because the server may still pin the digest.
+
+Sign every new client build from the server repository; no server change is
+needed:
+
+```text
+python tools/riftlock_release.py --game-root "<game folder>" --client-exe <client>.exe
+```
+
 ## Hook evidence (protocol v7)
 
 `riftlock_hooks.inl` compares 13 Winsock and time-source exports (`send`,
@@ -74,7 +91,7 @@ match the on-disk export RVA. Unloaded modules and forwarded exports count as
 unresolved. The first scan runs during initialization; handshakes and
 heartbeats send the latest snapshot and queue a background rescan. The server
 side and wire format are documented in the server repository's
-`docs/riftlock-transport-v1.md`.
+`doc/riftlock.txt`.
 
 Build only the Riftlock DLL and the standalone verifier into
 `CustomDLL\src\riftlock_stage\` with the same hardened flags:
@@ -89,11 +106,20 @@ Run the verifier from the game directory:
 riftlock_stage\riftlock_v7_hooks_verify.exe "<game-directory>" <client-exe>
 ```
 
-A healthy result reports `hook_checked=13 unresolved=0 mismatches=0`, then
+A healthy result reports
+`image_probe_system_trusted image_probe_app_local_trusted image_probe_foreign_detected`,
+`hook_checked=13 unresolved=0 mismatches=0`, then
 `hook_prologue_probe_detected ... first_target=4`,
 `hook_eat_probe_detected ... first_target=6`, and a clean
 `hook_probe_restored` line. The probes patch only exports the verifier never
 calls and restore them before exiting.
+
+The image probes map files as unlinked `SEC_IMAGE` views, the way overlays and
+codecs appear to the memory scan. The scan trusts an unlinked image only when
+it is a valid PE mapping of a file directly in `System32` or `SysWOW64`, or of
+an allowlisted app-local DLL whose on-disk content still matches the signed
+module allowlist. `SysWOW64\WinTypes.dll` and `libcurl.dll` must stay trusted;
+a copy of `WinTypes.dll` in `%TEMP%` must be counted.
 
 ## Repeatable static verification
 

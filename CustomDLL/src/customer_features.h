@@ -9,10 +9,11 @@
 // sprites are self-contained QJS patches, not DLL modules.
 // BOH_ITEM_COLORS is a deprecated compatibility define and must remain 0;
 // build.bat/build_split.bat reject 1 and boh_features.h rejects direct builds.
+// BOH_RUNE_VISUAL is retired the same way: CustomRuneSystem is QJS-only.
 #define BOH_ITEM_COLORS      0
 #define BOH_EXTENDED_NAMES   0
 #define BOH_PLAYER_NAME_COLORS 0
-#define BOH_RUNE_VISUAL      1
+#define BOH_RUNE_VISUAL      0
 #define BOH_FPS_OVERLAY      0
 #define BOH_PING_OVERLAY     0
 #define BOH_NPC_NAME_OVERLAY 0
