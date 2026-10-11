@@ -13,7 +13,7 @@ def main():
     fixture=out/'warp-fixture';fixture.mkdir();(fixture/'Outputs').mkdir()
     for name in ['win32','Scripts','Tables','Patches','Inputs','Languages','Images','Styles']:
         if (ROOT/name).exists():shutil.copytree(ROOT/name,fixture/name)
-    for leaf in ['AutoCombatUI','AutoSupportUI','ROGlobalZeroMenu']:
+    for leaf in ['AutoCombatUI','AutoSupportUI','ROGlobalZeroMenu','BattlepassUI','GachaUI','VipUI','ModernChatUI','ModernNpcDialog']:
         if (ROOT/'Assets'/leaf).exists():shutil.copytree(ROOT/'Assets'/leaf,fixture/'Assets'/leaf)
     shutil.copy2(ROOT/'Patches.yml',fixture/'Patches.yml')
     marker=out/'native-manifest.json';token=uuid.uuid4().hex;target=out/'item-description.exe'

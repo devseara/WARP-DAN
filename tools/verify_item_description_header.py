@@ -1,4 +1,4 @@
-"""Check the native header underlay boundary, pastel badges and restored blue bars."""
+"""Check the native header underlay boundary and the grade-tinted card header."""
 from pathlib import Path
 import argparse,json,struct
 import pefile
@@ -17,7 +17,7 @@ def verify(directory):
     assert pe.get_data(baseline['title_address']-0x400000,len(title))==title,'native title producer/draw path changed'
     def fresh():
         v=VM(pe,m);v.open();assert v.receive(v.response())==1;return v
-    def pixel(v,x,y,pixels=PIXELS,w=520):return v.read32(pixels+(y*w+x)*4)&0xffffff
+    def pixel(v,x,y,pixels=PIXELS,w=None):return v.read32(pixels+(y*(w or v.read32(WIN+0x14))+x)*4)&0xffffff
     v=fresh();registers=[UC_X86_REG_EAX,UC_X86_REG_EBX,UC_X86_REG_ECX,UC_X86_REG_EDX,UC_X86_REG_ESI,UC_X86_REG_EDI,UC_X86_REG_EBP,UC_X86_REG_ESP]
     captured={};passes=[]
     def observe(u,pc,size,_):
@@ -29,33 +29,34 @@ def verify(directory):
             passes.append(True)
     v.u.hook_add(UC_HOOK_CODE,observe)
     v.run('Draw');v.write32(WIN+0x1d4,8);v.run('Draw');assert len(passes)==2
-    assert pixel(v,200,128)==0xdce5ef,'blue section bars not restored'
-    assert pixel(v,250,55)!=0xffffff and pixel(v,300,106)!=0xffffff
-    assert pixel(v,104,91)==0xeaf6ef,'Unbound badge is not mint'
-    assert any(x==113 and y==75 and text=='Unbound' for x,y,text,*_ in v.draws)
-    assert pixel(v,471,89)==0x8495b4,'Poring accent missing'
+    assert pixel(v,0,0)==0xff00ff and pixel(v,200,2) not in (0xffffff,0xff00ff),'tinted header with keyed corners'
+    assert pixel(v,40,60)==0xffffff,'white backing under the native 75x100 art'
+    assert all(((pixel(v,150,20)>>s)&255)>=0xe0 for s in (0,8,16)),'frosted bar under the native title'
+    assert any(x==113 and y==98 and text=='Unbound' for x,y,text,*_ in v.draws) and any(text=='Weapon' for _,_,text,*_ in v.draws)
+    assert pixel(v,100,104)==0xffffff and pixel(v,101,101)!=0xffffff,'open lock for an unbound item'
     bound=fresh();data=bound.response();data[64:96]=b'Character bound\0'.ljust(32,b'\0')
     bound.s('pending',1);assert bound.receive(data)==1;bound.run('Draw')
-    assert pixel(bound,104,91)==0xf7ecf5
-    # Unowned windows, unavailable snapshots, Original and stale item identities
-    # retain stock backing. Nothing is painted using another window's title/color.
+    assert pixel(bound,101,101)==0xffffff and any(text=='Character bound' for _,_,text,*_ in bound.draws),'closed lock for a bound item'
+    # Unowned windows, forced-stock and stale item identities retain stock
+    # backing. Nothing is painted using another window's title/color.
     other=0x50103000;v.u.mem_write(other,bytes(0x300));v.write32(other+0x1f8,12)
     before=bytes(v.u.mem_read(PIXELS,v.surface_size));v.run('Header',[other],ecx=0);assert bytes(v.u.mem_read(PIXELS,v.surface_size))==before
-    for mode in ['pending','original','stale']:
+    for mode in ['loading','forced','stale']:
         t=VM(pe,m);t.open()
-        if mode!='pending':assert t.receive(t.response())==1
-        if mode=='original':t.s('force',1)
+        if mode!='loading':assert t.receive(t.response())==1
+        if mode=='forced':t.s('force',1)
         if mode=='stale':t.write32(WIN+0xb8+0x60,9)
         before=bytes(t.u.mem_read(PIXELS,t.surface_size));t.run('Header',[WIN],ecx=0)
-        assert bytes(t.u.mem_read(PIXELS,t.surface_size))==before,mode
+        changed=bytes(t.u.mem_read(PIXELS,t.surface_size))!=before
+        assert changed==(mode=='loading'),mode
     t=fresh();t.write32(t.renderer+0x28,320);t.write32(t.renderer+0x2c,300);t.s('origin',1);t.run('Message',[0,24,ITEM,0,0,0]);t.s('origin',0);t.receive(t.response());t.run('Draw')
     assert t.read32(WIN+0x14)==288 and bytes(t.u.mem_read(PIXELS+t.surface_size,64))==b'\xcd'*64
     d=DualVM(pe,m);right,left=d.open_pair();d.receive(right);d.receive(left);d.run('Draw',ecx=COMP)
-    w=d.read32(COMP+0x14);assert pixel(d,250,55,COMP_PIXELS,w)!=0xffffff
+    w=d.read32(COMP+0x14);assert pixel(d,200,2,COMP_PIXELS,w) not in (0xffffff,0xff00ff)
     assert d.read32(COMP+0x1f8)==0xea and any(text=='Equipped' for _,_,text,*_ in d.draws)
     report={'passed':True,'checks':['actual pre-title detour preserves registers/stack and replays the displaced CMP',
-        'native title instructions match the accepted baseline byte-for-byte','pastel header, mint/bound badges, Poring accent and blue section bars',
-        'pending, Original, unrelated and stale views keep stock backing','comparison underlay resolves its exact owner; small-window writes stay bounded'],
+        'native title instructions match the accepted baseline byte-for-byte','grade-tinted header, white art backing, frosted title bar, open/closed binding lock',
+        'the opening skeleton paints the header; forced-stock, unrelated and stale views keep stock backing','comparison underlay resolves its exact owner; small-window writes stay bounded'],
         'engine_boundaries_mocked':True,'live_accepted':False}
     (directory/'header-verification.json').write_text(json.dumps(report,indent=2)+'\n');return report
 if __name__=='__main__':

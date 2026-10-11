@@ -10,7 +10,10 @@ STOP=0x50000000;STACK=0x50010000;WIN=0x50100000;ITEM=0x50101000
 SURFACE=0x50200000;PIXELS=0x50300000;PACKET=0x50600000
 OFF={'owner':0,'seq':4,'pending':8,'ready':12,'force':16,'origin':20,'sent':24,'w':28,'h':32,
      'scroll':36,'content':40,'layout':44,'pressed':48,'hover':52,
-     'children':68,'lines':72,'hits':76,'request':80,'snapshot':176}
+     'children':68,'lines':72,'hits':76,'request':80,'snapshot':176,
+     'loading':119528,'deferred':119532,'last_send':119536,'headline_kind':119540,'headline':119544,'bonus':119548,
+     'info_level':119552,'info_weapon':119556,'info_weight':119560,'shapes':119564}
+HITS=118064;LINES=13616;SHAPES=119568
 class VM:
     def __init__(self,pe,m):
         self.m=m;self.u=Uc(UC_ARCH_X86,UC_MODE_32);self.now=1000;self.sent=[];self.draws=[];self.observed_scope=[]
@@ -52,8 +55,8 @@ class VM:
         self.stub(0xa7e780,4,lambda ecx,args:0)
         self.write32(0x159c088,0)
         for i,addr in enumerate(m['original']):
-            if i in [4,20,25,28,31,32,35,37,0]:
-                self.stub(addr,{0:4,4:8,20:0,25:8,28:8,31:8,32:8,35:4,37:24}[i],self.original(i))
+            if i in [4,19,20,25,28,31,32,35,37,0]:
+                self.stub(addr,{0:4,4:8,19:0,20:0,25:8,28:8,31:8,32:8,35:4,37:24}[i],self.original(i))
         self.stub(m['config'][57],8,self.scope_event);self.stub(m['config'][58],8,self.scope_event)
         self.stub(0xa39340,4,lambda ecx,args:0)
         self.stub(0x6a1b20,0,lambda ecx,args:0)
@@ -158,7 +161,13 @@ class VM:
         assert self.u.reg_read(UC_X86_REG_ESP)==sp+4+(len(args)*4 if pop is None else pop),(name,'stack mismatch',hex(self.u.reg_read(UC_X86_REG_ESP)))
         assert all(self.u.reg_read(reg)==value for reg,value in saved),(name,'callee-saved register')
         return self.u.reg_read(UC_X86_REG_EAX)
+    def add_child(self,parent=WIN,address=0x50106800):
+        # Append a child the stock code creates after the card was activated.
+        head=self.read32(parent+0x50);last=self.read32(head+4);node=address+0x100
+        self.u.mem_write(node,struct.pack('<III',head,last,address));self.write32(last,node);self.write32(head+4,node)
+        self.write32(address+0x10,parent);self.u.mem_write(address+0x28,b'\1');return address
     def open(self,itemid=1201,index=7,refine=7,scope=1,identified=1):
+        self.now+=200 # Real opens are user-paced; the server spaces requests 150 ms apart.
         data=bytearray(0xb8);struct.pack_into('<I',data,4,index);struct.pack_into('<I',data,0x60,refine)
         data[0x5c]=identified;data[0x2c:0x2c+len(str(itemid))+1]=str(itemid).encode()+b'\0';struct.pack_into('<I',data,0x40,15)
         struct.pack_into('<I',data,0x98,5);struct.pack_into('<I',data,0x1c,4001)
@@ -195,30 +204,56 @@ def verify(directory):
     checks.append('Inventory/equipment event wrappers preserve arguments, registers and enclosing scope')
     v=VM(pe,m);v.open();assert len(v.sent)==1 and len(v.sent[0])==96
     assert struct.unpack_from('<IIHHH',v.sent[0],16)==(1201,7,1,7,0)
-    assert v.s('ready')==0 and v.u.mem_read(v.child+0x28,1)==b'\1'
-    response=v.response();assert v.receive(response)==1 and v.s('ready')==1
+    assert v.s('ready')==1 and v.s('loading')==1 and v.s('pending')==1
+    assert (v.read32(WIN+0x14),v.read32(WIN+0x18))==(360,560),'final geometry must be taken at open'
     assert v.u.mem_read(v.child+0x28,1)==b'\0' and v.u.mem_read(v.close+0x28,1)==b'\1'
-    checks.append('Owned item requests serialize index, refine and identity; native body remains until a valid response')
+    checks.append('Owned item requests serialize index, refine and identity; the pane takes its final geometry and hides the stock body in the opening frame')
+    v.draws=[];v.run('Draw');assert not v.draws and v.s('lines')==0,'loading skeleton must not paint stock or stale text'
+    response=v.response();assert v.receive(response)==1 and v.s('ready')==1 and v.s('loading')==0 and not v.s('pending')
+    checks.append('Loading skeleton is replaced in place by the validated snapshot')
     v.render(directory/'native-body-preview.png');assert v.s('lines')>6
     assert bytes(v.u.mem_read(PIXELS+v.surface_size,64))==b'\xCD'*64
-    checks.append('Real payload layout/draw executes with bounded writes and wraps long server effect text')
+    assert v.s('headline_kind')==1 and v.s('headline')==17 and v.s('bonus')==14
+    assert any(t=='17' for _,_,t,*_ in v.draws) and any(t=='+14' for _,_,t,*_ in v.draws),'headline ATK and refine bonus'
+    checks.append('Real payload layout/draw executes with bounded writes, wraps long server text and derives the ATK headline')
     fresh=lambda:VM(pe,m)
     for off,fmt,value in [(8,'H',2),(12,'I',999),(24,'I',999),(28,'I',999),(38,'H',65),(44,'H',6),(128,'H',99),(130,'H',99)]:
-        t=fresh();t.open();data=t.response();struct.pack_into('<'+fmt,data,off,value);assert t.receive(data)==0 and not t.s('ready'),(off,'malformed accepted')
+        t=fresh();t.open();data=t.response();struct.pack_into('<'+fmt,data,off,value);assert t.receive(data)==0 and t.s('loading'),(off,'malformed accepted')
     t=fresh();t.open();data=t.response();data[128+64:128+192]=b'X'*128;assert t.receive(data)==0
     t=fresh();t.open();assert t.receive(t.response()[:-1])==0
     checks.append('Malformed size/version/token/item/index/count/section/kind/unterminated text is rejected before use')
     t=fresh();t.open(scope=0,index=0);assert struct.unpack_from('<I',t.sent[0],20)[0]==0 and struct.unpack_from('<H',t.sent[0],26)[0]==0
-    t=fresh();t.open(identified=0);assert not t.sent
+    t=fresh();t.open(identified=0);assert not t.sent and not t.s('ready') and t.u.mem_read(t.child+0x28,1)==b'\1'
     checks.append('Catalog routes carry no invented instance fields; unidentified owned items keep native disclosure')
-    t=fresh();t.open();old=t.response();t.open(itemid=1202);assert t.receive(old)==0
+    t=fresh();t.open();old=t.response();t.open(itemid=1202);assert t.receive(old)==0 and t.s('loading')
     checks.append('An old item response cannot populate a newly selected item')
-    t=fresh();t.open();t.now+=6000;t.run('Draw');assert not t.s('pending') and not t.s('ready')
-    checks.append('Absent/old server times out without hiding the native description')
-    t=fresh();t.open();t.receive(t.response());t.run('Draw');h=t.read32(WIN+0x18);t.run('Down',[20,h-20]);t.run('Up',[20,h-20]);assert not t.s('ready') and t.s('force') and t.read32(WIN+0x14)==280 and t.u.mem_read(t.child+0x28,1)==b'\1'
-    checks.append('Original restores original dimensions and child visibility and releases only owned thumb capture')
-    t=fresh();t.open();t.receive(t.response());t.run('Draw');t.run('Down',[100,540]);t.run('Up',[100,540]);assert struct.unpack_from('<H',t.sent[-1],10)[0]==3
-    checks.append('Compare sends a read-only compare request rather than equipping or mutating inventory')
+    t=fresh();t.open();t.now+=6000;t.run('Process');assert not t.s('pending') and not t.s('ready')
+    assert t.read32(WIN+0x14)==280 and t.u.mem_read(t.child+0x28,1)==b'\1'
+    t.open(itemid=1202);assert not t.s('ready') and t.s('pending'),'a silent server must not keep blanking descriptions'
+    assert t.receive(t.response())==1 and t.s('ready') and not t.s('loading')
+    t.open(itemid=1203);assert t.s('ready') and t.s('loading'),'a proven server re-enables the opening skeleton'
+    checks.append('Absent server times out from OnProcess back to the native body; later opens skip the skeleton until a reply proves the module')
+    t=fresh();t.open();t.receive(t.response());t.run('Draw');before=len(t.sent)
+    t.open();assert t.s('ready') and not t.s('loading'),'same instance must reopen from its accepted snapshot'
+    assert len(t.sent)==before+1 and struct.unpack_from('<H',t.sent[-1],10)[0]==1
+    checks.append('Reopening the same instance paints its accepted card immediately while the server revalidates it')
+    t2=fresh();t2.open();t2.receive(t2.response())
+    t2.now-=199;t2.open(itemid=1202) # Net +1 ms: this request lands inside the server window.
+    assert t2.s('deferred') and len(t2.sent)==1,'second request within the server window must be queued, not dropped'
+    t2.now+=50;t2.run('Process');assert len(t2.sent)==1;t2.now+=150;t2.run('Process');assert len(t2.sent)==2 and not t2.s('deferred')
+    assert struct.unpack_from('<I',t2.sent[-1],16)[0]==1202 and t2.receive(t2.response())==1 and t2.s('ready')
+    checks.append('Requests are spaced to the server 150 ms window from OnProcess instead of being silently dropped')
+    t=fresh();t.open();t.receive(t.response());t.run('Draw');late=t.add_child();t.run('Draw');assert t.u.mem_read(late+0x28,1)==b'\0'
+    t.run('Message',[0,29,0,0,0,0]);assert t.s('ready') and t.read32(WIN+0x14)==360 and t.u.mem_read(late+0x28,1)==b'\0'
+    assert [x for x in t.native_calls if x[0]==37][-1][2][1]==29
+    t.run('Message',[0,5,0,0,0,0]);assert not t.s('ready') and not t.s('owner') and t.u.mem_read(late+0x28,1)==b'\1'
+    assert t.u.mem_read(t.child+0x28,1)==b'\1' and t.read32(WIN+0x14)==280
+    checks.append('Children created after activation stay hidden, incidental native messages resume the card, and close restores every child')
+    t=fresh();t.open();t.receive(t.response());t.run('Draw');h=t.read32(WIN+0x18);sent=len(t.sent)
+    for x,y in [(20,h-20),(100,h-20),(t.read32(WIN+0x14)-40,h-20)]:t.run('Down',[x,y]);t.run('Up',[x,y])
+    assert len(t.sent)==sent and t.s('ready'),'there are no footer actions'
+    assert not any(struct.unpack_from('<H',r,10)[0]==3 for r in t.sent)
+    checks.append('No Original/Compare/Refresh footer: former button positions are inert and no compare request is ever sent')
     t=fresh();t.open();t.receive(t.response());t.run('Destroy',[0]);assert not t.s('owner') and not t.s('ready');assert t.receive(t.response())==0
     checks.append('Destruction clears ownership; delayed replies cannot dereference a destroyed window')
     result={'passed':True,'checks':checks,'engine_boundaries_mocked':True,'live_accepted':False}

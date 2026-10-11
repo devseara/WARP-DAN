@@ -8,6 +8,8 @@ The accepted scope is the **2025-07-16 Ragexe** patch, the companion Banquet IDU
 
 The accepted client was `Banquet_ItemDescription_Test_v5_20260916.exe`, SHA-256 `20a407fb61fdac0dc2b7e277b1b8f50d00d84f182743b9ddea3caa7c3804cba2`. User acceptance is separate from automated tests: the latter mock native engine boundaries and do not establish an unrecorded live matrix or support for another client version.
 
+**Card redesign (2026-10-10, not live-accepted).** The user approved a grade-tinted card design and asked for no Original/Compare/Refresh footer. The same change fixes the reported stock-description flash: the old client kept the stock body (and stock geometry) on screen for one server round trip, then swapped. That behavior was intentional in the previous verifier. It also fixes stock children created after activation staying visible over the body. The emitted-code suites pass; live screenshots are still required before this is marked accepted.
+
 ## Architecture and ownership
 
 | Layer | Responsibility |
@@ -30,6 +32,7 @@ The accepted client was `Banquet_ItemDescription_Test_v5_20260916.exe`, SHA-256 
 | Equipped `UIItemCollection_ComparisonWnd` | ID 234; vtable `0x01032C5C` |
 | Main/comparison draw | `0x008B4200` |
 | Main/comparison message | `0x008C18B0` / `0x008C3540` |
+| Main/comparison per-frame process | Slot 19 `0x008BAEC0` (both); the manager loop at `0xA44219` calls it every frame. OnDraw runs only for dirty windows and the flag is cleared after the call (`0xA1CE3D`), so request spacing and timeouts live here |
 | Main position | `0x008A0E70`; stock positioning subtracts the main width |
 | Header underlay | Guarded seven-byte detour at `0x008B438A`, resume `0x008B4391` |
 | Native title instructions | `0x008B43CA..0x008B43F6`, preserved against the accepted fixture |
@@ -41,7 +44,9 @@ The accepted client was `Banquet_ItemDescription_Test_v5_20260916.exe`, SHA-256 
 
 Native receivers and calling conventions must be preserved. The header detour saves registers/flags, paints only the exact registered ready window, and replays `CMP [EDI+0x1D4],0`. It runs after stock backing and before untouched native art/title drawing. Comparison paint briefly selects the normal skin branch, then restores its real ID. No title span, foreground color or shared TextOut ownership is changed.
 
-The main and equipped panes have independent snapshots, layout, scrollbars and child restoration. Their actual widths determine adjacency; the pair is clamped to the viewport. On screens at least 592 pixels wide, both active panes fit side by side, each at most 520 pixels wide. Smaller screens can overlap.
+The main and equipped panes have independent snapshots, layout, scrollbars and child restoration. Their actual widths plus an 8-pixel gap determine adjacency; the pair is clamped to the viewport. Each pane is at most 360×560. On screens at least 600 pixels wide, both active panes fit side by side; smaller screens can overlap.
+
+Every native message to an owned pane first hands back the stock geometry and children, runs the stock handler, then resumes the card (closing message 5 excepted). Children are re-enumerated on every draw, so one the stock code creates later is recorded and hidden too.
 
 ## Packet contract
 
@@ -59,20 +64,20 @@ Shared byte-for-byte header: WARP `tools/native/item_description_wire.hpp` and B
 
 The high request-token bit distinguishes candidate and equipped views. It grants no authority: both requests must match the actual inventory index, ItemId, identified state, refine, grade, cards and options. The server index is the native client index minus two. Refresh/Compare also carry the accepted semantic fingerprint.
 
-Each player has two fixed watches, each rate-limited to one request per 150 ms. Excess requests are dropped before allocating the large response. Item addition/removal, inventory refresh, equip changes, refinement, grading, card insertion and descriptor reload invalidate affected watches. Item replacement, malformed replies and stale responses cannot populate a different pane.
+Each player has two fixed watches, each rate-limited to one request per 150 ms. Excess requests are dropped silently before allocating the large response, so the client queues any request issued within 160 ms of that pane's previous one and sends it from OnProcess. The client no longer sends compare (3); the server path remains for compatibility. Item addition/removal, inventory refresh, equip changes, refinement, grading, card insertion and descriptor reload invalidate affected watches. Item replacement, malformed replies and stale responses cannot populate a different pane.
 
 Item Collection and Bestiary share the existing packet fallback through the selected-owner magic registry in `ItemCollectionUI.qjs`. The routing chain preserves AHUI, ASUI, PINC, COUI, BSUI, IDUI and the native unknown-packet fallback; selection order must not steal another module's handler.
 
 ## User interface behavior
 
-- A valid snapshot replaces the relevant native description body. Until then, stock description remains available.
-- The header has a restrained blue/lavender background, binding badge and small Poring accent. Native art, name spans and grade colors remain native.
-- The body/footer use the original white `sysbox_bg.bmp`. Section bars use `#DCE5EF`; frame edges and footer buttons use original RO BMPs.
-- Each card/enchant slot has one collection image with its name and effects beside it. Empty slots stay compact. Partial images clip to the scrolling body. Missing collection art falls back to the item icon.
-- Each pane owns a normally constructed native `UIScrollBar`; Original/close destroys it and releases its mouse capture. The legacy text viewer's scrollbar is not borrowed.
-- **Compare** requests explicitly labeled base-value comparisons; it does not equip gear or simulate full character damage.
-- **Refresh** revalidates the current instance. **Original** restores both panes' dimensions, children and stock adjacency. Reinspect to return to the structured view.
-- Known components open through the native component-description route. Unidentified items and unprofiled indexed containers retain stock disclosure and behavior.
+- **Opening:** an inspectable item takes its final card geometry in the same frame as the native open and shows a loading skeleton until its snapshot arrives. The stock body is never painted first. Reopening the identical instance paints its last accepted snapshot immediately while the server revalidates it.
+- **Fallback:** if no reply arrives within 3 s, the pane returns to the stock description. Until a later reply proves the server module, later opens skip the skeleton and keep the stock body until a snapshot arrives. A non-OK reply also restores stock. An unsolicited stale notice (refine, card or bound change) reinspects in place behind the skeleton.
+- **Header:** a gradient tinted by the native item grade (none blue, D rose, C amber, B green, A violet, taken from `grade_icon{1..4}.bmp` inks). It has a white medallion under the native 75×100 art, a frosted bar under the native title spans, the type label, and a headline (Weapon ATK, Weapon MATK or Armor DEF) with the refine ATK bonus in yellow. The candidate pane shows an up/down arrow against the equipped pane's base+refine total. It also has a binding chip with an open/closed lock, socket pips (enchant slots in violet), an `Equipped` pill on the comparison pane, and the native grade icon at 2× over the art corner. Native art, name spans and grade colors remain native; no grade label text is drawn.
+- **Body:** an info strip (`Lv.`, `Weapon Lv.`, `Weight`), then sections with blue diamond headings and thin dividers: Base Stats (with red/green deltas against the equipped pane), Special Effects, Cards & Enchantments, Card Set Bonuses, Grade, Random Options, Requirements (check/cross), and Trade Information as green/red chips. Numeric tokens in effect text are orange. Every rectangle is clipped by the payload, because the shared fill helper rejects rather than clips negative origins.
+- **Components:** each card/enchant slot is one peach panel with a 40×52 thumbnail, the catalog name, the slot line and its own effects. Empty slots are compact strips. Partial panels clip to the scrolling body. Missing collection art falls back to the item icon. Hovering a known component highlights it; clicking or right-clicking opens it through the native component-description route.
+- **Grade:** one panel with the current grade and every tier; the active tier is checked, unmet tiers are locked and muted.
+- **Scrolling:** each pane owns a normally constructed native `UIScrollBar`, created only when the body overflows; close destroys it and releases its mouse capture. The legacy text viewer's scrollbar is not borrowed.
+- **No footer actions:** there is no Original, Compare or Refresh. Unidentified items and unprofiled indexed containers retain stock disclosure and behavior.
 
 ## Native resources and alignment
 
@@ -98,7 +103,7 @@ The audit identified **107 fixed or connected BMPs** with no missing required en
 | `scroll0*` / `scroll1*` | 12 | Native vertical/horizontal track and thumb families |
 | `basic_interface/dialscr_{up,down,up1,down1}.bmp` | 4 | Alternative scrollbar classes, not the chosen text-viewer scrollbar |
 
-The original text viewer begins at `(91,31)`, and its main art at `(10,11)` is 75×100. The new body starts at y=116; content at y=124. Side/bottom frame pieces are 14 pixels wide. Buttons use native 20-pixel height and matching hit areas. Native scrollbar, text wrapping, image clipping and component hit rectangles use the same layout coordinates.
+The original text viewer begins at `(91,31)`, and its main art at `(10,11)` is 75×100. The card header is y=0..115 and the info strip y=116..153. The scrolling body runs from y=154 to height−12, so the visible height stays height−166. The native scrollbar sits at x=width−27, and content stops at width−32. The frame is a 1px grade-tone edge with an 11px radius and keyed corners, drawn with fills; the card no longer loads `sysbox_*` or footer `btn_*` BMPs. Native scrollbar, text wrapping, image clipping and component hit rectangles use the same layout coordinates. Text is drawn at 11–13px with a 20px headline. The native text call stores the height raw (`0x546F60`), and only the face is a table index, but sizes other than 11/12 still need live confirmation.
 
 Dynamic artwork uses `item/<resource>.bmp`, `collection/<resource>.bmp`, and separate full card art in `cardBmp/<resource>.bmp`. The audit indexed 29,474 candidate paths; presence in an archive is not proof of runtime selection. The inspected loader gave priority to update, maindata, mapdata, palettedata, spritedata, data and greyworld. Loose-file/skin selection remains controlled by the native resource resolver and current client configuration.
 
@@ -158,14 +163,15 @@ Run the resulting client from the existing game folder. A new server installatio
 ## Limits and regression checklist
 
 - This patch targets 2025-07-16; it does not enable the 2026 client.
-- Comparison shows base values, not complete character damage or scripted final totals.
+- Comparison shows base values, not complete character damage or scripted final totals. Headline arrows and stat deltas compare the two panes' server base ATK/DEF/MATK and refine ATK rows only.
+- With no Original button, legacy-only text is not reachable from the card. Three server strings still say "Original": two Banquet notes in `src/map/item_description.cpp` and the generator's grade note (113 items). Reword them with the next server/data deploy.
 - Four native card-backed positions are shared by cards/enchants; five random options remain the gameplay limit.
 - Character-dependent effects can still require Original/manual descriptors. At initial acceptance, 113 items retained additional conditional grade fallbacks.
 - Options 260/261 contain one-argument HP/SP-drain definitions, while those bonuses require chance and amount. They remain explicitly unavailable rather than inventing gameplay values.
 - Snapshot output has a 64-row budget and marks overflow. Arbitrarily long descriptions need a future paging extension.
 - Unprofiled storage/shop/trade/book routes retain stock behavior. No complete specialized-window matrix is claimed.
 
-For future changes, test inventory and Alt+Q, two customized copies of the same ID, graded/long titles, empty and multiple occupied slots, cards/enchants/options, forged metadata, both comparison panes, edge dragging, wheel/arrows/thumb capture, component opening, Original/Refresh/Compare, invalidation/reload, relog/map changes/themes and clean exit. Preserve Item Collection, Bestiary, AutoHunt, AutoSupport, pincode and native title/balloon behavior. Initial acceptance does not retroactively mark unrecorded individual vectors as tested.
+For future changes, test inventory and Alt+Q, two customized copies of the same ID, graded/long titles, empty and multiple occupied slots, cards/enchants/options, forged metadata, both comparison panes, edge dragging, wheel/arrows/thumb capture, component opening, opening without any stock flash, quick successive opens, same-item reopen, server silence fallback, invalidation/reload, relog/map changes/themes and clean exit. Preserve Item Collection, Bestiary, AutoHunt, AutoSupport, pincode and native title/balloon behavior. Initial acceptance does not retroactively mark unrecorded individual vectors as tested.
 
 ## Cleanup verification
 

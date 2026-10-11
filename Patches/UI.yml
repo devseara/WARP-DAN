@@ -114,7 +114,7 @@ CustomUI:
             title : Server-backed Item Description
             recommend : no
             author : Louis T Steinhil
-            desc : Replaces the 2025-07-16 item-description body after a validated Banquet IDUI snapshot. Uses a clean chibi header while preserving native artwork, decorated title rendering, ownership and stock fallback. Structured server data supplies stats, refine, grade, enchantments, random options, cards, requirements and restrictions. Includes scrolling, component inspection and explicitly labeled base-value comparison. QJS embeds a freestanding native payload at patch time; no runtime DLL or recv hook. Requires the matching Banquet server module.
+            desc : Replaces the 2025-07-16 item description and its equipped comparison with a grade-tinted card built from a validated Banquet IDUI snapshot. Each pane opens directly at its final size behind a loading skeleton, so the stock description never flashes first; the stock view returns only if the server does not answer. Native artwork, decorated title rendering and ownership are preserved. Shows a headline ATK/DEF with refine bonus and an up/down arrow against the equipped item, then stats, special effects, card and grade panels, random options, requirements and trade chips, with scrolling and component inspection. QJS embeds a freestanding native payload at patch time; no runtime DLL or recv hook. Requires the matching Banquet server module.
         - ItemCollectionUI:
             title : Enable Item Collection UI 
             recommend : no
