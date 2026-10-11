@@ -1,0 +1,79 @@
+/*
+ * Description: Independent 619x410 native barter UI for 2025-07-16 Ragexe.
+ * Uses barter/*.png and genericsui/buy_* and cancel_* at their original sizes.
+ * Replaces only validated 0B78/0B79 shop displays. Recipes, stock, currencies
+ * and purchase/close packets remain native; the server validates every trade.
+ * No global draw hooks, archive edits, DLL, server diff or other UI changes.
+ */
+BarterUI = function(_)
+{
+	if(!BarterUI.validate())throw Error("BarterUI requires 2025-07-16 Ragexe");
+	const n=AutoCombatUI.nativeHelpers;
+	const read=path=>{const f=new BinFile(path,"r");if(!f.Valid)throw Error("BarterUI: missing "+path);const h=f.ReadHex();f.Close();return(h.match(/[0-9a-fA-F]{2}/g)||[]).map(v=>parseInt(v,16));};
+	const u32=(b,o)=>(b[o]|b[o+1]<<8|b[o+2]<<16|b[o+3]<<24)>>>0;
+	const put=(b,o,v)=>{for(let i=0;i<4;++i)b[o+i]=v>>>(i*8)&255;};
+	const bytes=read(Warp.Path+"/Inputs/BarterUI/runtime.bin"),meta=JSON.parse(String.fromCharCode(...read(Warp.Path+"/Inputs/BarterUI/runtime.json")));
+	const size=u32(bytes,8),count=u32(bytes,12),api=u32(bytes,16),start=32+count*4;
+	let crc=0xFFFFFFFF;for(let i=32;i<bytes.length;++i){crc^=bytes[i];for(let j=0;j<8;++j)crc=(crc>>>1)^((crc&1)?0xEDB88320:0);}
+	if(bytes.length<32 || u32(bytes,0)!==0x49555242 || u32(bytes,4)!==3 || meta.version!==3 || meta.client!==20250716 ||
+		start+size!==bytes.length || size!==meta.size || api!==meta.exports.BarterApi || meta.api_size!==108 || api+108>size || u32(bytes,20)!==108 || u32(bytes,24)!==20250716 || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))throw Error("BarterUI: invalid payload");
+	const names=["BarterApi","BarterState","_BarterReceive@4","_BarterResult@4","_BarterHit@8","@BarterDraw@8","@BarterDown@16","@BarterUp@16","@BarterMove@16","@BarterDrag@16","@BarterCursor@16","@BarterDestroy@12","@BarterRightDown@16","@BarterRightUp@16","@BarterWheel@12","_BarterOwned@8"];
+	for(const name of names)if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("BarterUI: missing "+name);
+	// Complete native receive arms and read-only inventory layout evidence.
+	n.assertCode("BarterUI normal receive",0xCA14EC,"68 98 81 5E 01 8B CF E8 28 57 01 00 E9 E0 CC FF FF");
+	n.assertCode("BarterUI expanded receive",0xCA14FD,"68 98 81 5E 01 8B CF E8 D7 CE 01 00 E9 CF CC FF FF");
+	n.assertCode("BarterUI purchase result",0xCA10EC,"68 98 81 5E 01 8B CF E8 08 FC 02 00 E9 E0 D0 FF FF");
+	n.assertCode("BarterUI inventory count",0xD5CE30,"8B 81 F4 16 00 00 C3");
+	n.assertCode("BarterUI inventory list",0xD5AAA8,"8B 89 F0 16 00 00 8B 01 3B C1");
+	n.assertCode("BarterUI inventory ItemId",0x811A86,"8D 85 D4 FE FF FF 83 BD E8 FE FF FF 10 0F 43 85 D4 FE FF FF");
+	n.assertCode("BarterUI frame ctor",n.FrameConstructor,"55 8B EC 6A FF 68 F9 45 EA 00");
+	for(const [slot,expected] of [[0,n.FrameDeletingDestructor],[20,n.FrameVtableDraw],[25,n.FrameMouseDown],[27,0x880E00],[31,n.FrameMouseUp],[32,0x5A8A50],[33,0x5A8A60],[35,0x5A8AF0]])n.assertVtableSlot("BarterUI frame",slot,expected);
+	const routes=[[0xB78,0xCA14EC],[0xB79,0xCA14FD],[0xCA,0xCA10EC]].map(([op,original])=>{
+		const phy=Exe.Vir2Phy(n.packetTableEntryVir(op),CODE);
+		if(phy<0 || Exe.GetUint32(phy)!==original)throw Error("BarterUI: native packet route changed: "+op.toString(16));
+		return{op,phy,original};
+	});
+	const keys=Exe.FindFunc("GetAsyncKeyState","USER32.dll");if(keys<0)throw Error("BarterUI: keyboard import missing");
+	const code=bytes.slice(start),[phy,vir]=Exe.Allocate(size,16);
+	for(let i=0;i<count;++i){const off=u32(bytes,32+i*4);if(off+4>size || u32(code,off)>=size)throw Error("BarterUI: invalid relocation");put(code,off,u32(code,off)+vir);}
+	const e=name=>vir+meta.exports[name];
+	const table=n.allocateBytes(new Array(4+n.FrameVtableEntries*4).fill(0),4);Exe.SetHex(table.phy,Exe.GetHex(Exe.Vir2Phy(n.FrameVtable-4),table.size));
+	for(const [slot,name] of [[0,"@BarterDestroy@12"],[20,"@BarterDraw@8"],[25,"@BarterDown@16"],[27,"@BarterDrag@16"],[28,"@BarterMove@16"],[30,"@BarterCursor@16"],[31,"@BarterUp@16"],[32,"@BarterRightDown@16"],[33,"@BarterRightUp@16"],[35,"@BarterWheel@12"]])Exe.SetUint32(table.phy+4+slot*4,e(name));
+	const refs=n.resolvePacketRefs(),fit=n.allocateCode(VipUI.nativeDrawing.fit(11,false,false));
+	const art={resolver:n.allocateCode(n.buildItemIconResolver()).vir,blit:n.allocateCode(n.buildColorKeyBlit()).vir,format:n.buildResourcePath("item\\%s.bmp").vir,path:n.allocateBytes(new Array(512).fill(0),4).vir};
+	const item=n.allocateCode(VipUI.nativeDrawing.item(art)),describe=n.allocateCode(VipUI.nativeDrawing.describe(art.resolver));
+	const name=n.allocateCode(BestiaryUI.nativeDrawing.itemName());
+	const blend=n.allocateCode(ModernChatUI.nativeHelpers.buildBlendPixel()),rawPng=n.allocateCode(ModernChatUI.nativeHelpers.buildPngDraw(blend.vir));
+	// Private adapter preserves this frame's opaque surface mode after PNG alpha.
+	const draw=n.asm();draw.emit(0x55,0x8B,0xEC,0x53,0x56,0x8B,0x71,0x24,0x85,0xF6);draw.jcc(0x84,"done");
+	draw.emit(0x0F,0xB6,0x5E,0x28);for(const off of [20,16,12,8])draw.emit(0xFF,0x75,off);
+	draw.call(rawPng.vir);draw.emit(0x88,0x5E,0x28);draw.label("done");draw.emit(0x5E,0x5B,0x5D,0xC2,16,0);
+	const png=n.allocateCode(draw),paths=BarterUI.assets().map(p=>p.replace(/\//g,'\\'));
+	[3,table.vir+4,refs.packetCtorA,refs.packetSend,fit.vir,item.vir,describe.vir,name.vir,png.vir,keys,...paths.map(p=>n.buildResourcePath(p).vir)].forEach((v,i)=>put(code,api+i*4,v));
+	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
+	const receivers=[];
+	for(const r of routes){
+		const a=n.asm();a.emit(0x9C,0x60,0x68);a.dword(n.PacketBuffer);a.call(e(r.op===0xCA?"_BarterResult@4":"_BarterReceive@4"));
+		if(r.op!==0xCA){a.emit(0x85,0xC0);a.jcc(0x84,"stock");a.emit(0x61,0x9D);a.jmp(n.PacketMainLoopReturn);}
+		a.label("stock");a.emit(0x61,0x9D);a.jmp(r.original);const handler=n.allocateCode(a);Exe.SetUint32(r.phy,handler.vir);receivers.push(handler.vir);
+	}
+	const record=[];for(const v of [n.allocateString("BarterUI.v3").vir,...names.map(e),...receivers])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);n.allocateBytes(record,4);
+	BarterUI.onApplied();return true;
+};
+BarterUI.validate=()=>Exe.BuildDate===20250716;
+BarterUI.assets=()=>[...['bg_buy.png','box_top.png','box_mid.png','box_bot.png','item_main_bg.png','slot_box1.png','total_price.png'].map(s=>'barter/'+s),
+	...[].concat(...['buy','cancel'].map(s=>['out','over','press','off'].map(v=>'genericsui/'+s+'_'+v+'.png'))),'barter/item_sell_bg.png','barter/itembox_00.png'];
+BarterUI.onApplied=function()
+{
+	if(Warp.TestMode)return;
+	const root=System.DirPath(Warp.TgtExe),folders=['data','texture',ModernChatUI.nativeHelpers.uiPrefix()],target=root+'/'+folders.join('/'),missing=[];
+	for(const file of BarterUI.assets()){
+		const existing=new BinFile(target+'/'+file,'r'),exists=existing.Valid;existing.Close();if(exists)continue;
+		const source=new BinFile(Warp.Path+'/Assets/BarterUI/'+file,'r'),valid=source.Valid;source.Close();if(!valid)throw Error('BarterUI: missing bundled asset '+file);
+		missing.push(file);
+	}
+	if(!missing.length)return;
+	let path=root;for(const folder of folders){path+='/'+folder;if(!System.MkDir(path))throw Error('BarterUI: cannot create '+path);}
+	for(const folder of ['barter','genericsui'])if(!System.MkDir(target+'/'+folder))throw Error('BarterUI: cannot create '+target+'/'+folder);
+	for(const file of missing)if(!System.Copy(Warp.Path+'/Assets/BarterUI/'+file,target+'/'+file,false))throw Error('BarterUI: cannot copy '+file);
+};

@@ -445,6 +445,12 @@ CustomUI:
             author : Victor Hugo
             desc : Formats zeny amounts in the Barter shop window with thousand separators (e.g., 1,000,000 z instead of 1000000 z). Makes large prices much easier to read at a glance.
 
+        - BarterUI:
+            title : Barter UI (asset-based cards)
+            recommend : no
+            author : DevSeara
+            desc : Separate 619x410 barter window using original barter PNG backgrounds, Zeny boxes and genericsui Buy/Cancel button states. Includes a scrollable two-column catalog and stacked buying list, quantity controls, up to ten materials in one or two rows of five, and item tooltips. Supports native normal and expanded barter packets on 2025-07-16. Installs missing supplied PNGs without overwriting existing artwork; unavailable or incompatible assets fall back to the stock barter window. No server change or other UI replacement.
+
         - TighterClickArea:
             title : Tighter Entity Click Area
             recommend : no
