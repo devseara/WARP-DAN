@@ -17,11 +17,11 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-09-27                                             *
-*   Last Modified : 2026-09-27                                             *
+*   Last Modified : 2026-10-11                                             *
 *                                                                          *
 *   Description   : Installs the Riftlock v1 transport in the profiled     *
 *                   2025-07-16 client. Incoming controls are stripped at   *
-*                   the shared receive queue; native outgoing packets are  *
+*                   the native packet reader; native outgoing packets are  *
 *                   wrapped after stock packet-key obfuscation and before  *
 *                   CPacketQueue insertion.                                *
 *                                                                          *
@@ -43,7 +43,9 @@ RiftlockTransport = function(_)
 				{Name: "RiftlockConnectionResetBridge"},
 				{Name: "RiftlockQueuePacketBridge"},
 				{Name: "RiftlockQueueDeferredPacketBridge"},
-				{Name: "RiftlockReceiveBytesBridge"}
+				{Name: "RiftlockReceiveBytesBridge"},
+				{Name: "RiftlockReadPacketBridge"},
+				{Name: "RiftlockReadRawBridge"}
 			]
 		}
 	]);
@@ -188,6 +190,36 @@ RiftlockTransport.installStaticBridges = function(_, dllName)
 		dllName
 	);
 
+	RiftlockTransport.installPrologueBridge(
+		stateByLabel,
+		{
+			label: "native packet reader",
+			siteVir: 0x00C147D0,
+			stolenLen: 6,
+			expectedHex: "55 8B EC 83 EC 10",
+			exportName: "RiftlockReadPacketBridge"
+		},
+		dllName
+	);
+	RiftlockTransport.installPrologueBridge(
+		stateByLabel,
+		{
+			label: "raw character bootstrap reader",
+			siteVir: 0x00C14780,
+			stolenLen: 7,
+			expectedHex: "55 8B EC 80 7D 10 00",
+			exportName: "RiftlockReadRawBridge"
+		},
+		dllName
+	);
+	// The DLL uses these stock queue methods to peek/read complete controls.
+	for (const address of [0x00C16810, 0x00C16570])
+	{
+		const phy = Exe.Vir2Phy(address, CODE);
+		if (phy < 0 || RiftlockTransport.hexNorm(Exe.GetHex(phy, 3)) !== "55 8B EC")
+			throw Error("RiftlockTransport: native queue method profile mismatch");
+	}
+
 	const queueCalls = [
 		{
 			label: "native receive queue insertion",
@@ -224,7 +256,9 @@ RiftlockTransport.validate = function()
 	if (Exe.BuildDate !== 20250716)
 		return false;
 	const connect = Exe.Vir2Phy(0x00C13FC0, CODE);
+	const reader = Exe.Vir2Phy(0x00C147D0, CODE);
+	const rawReader = Exe.Vir2Phy(0x00C14780, CODE);
 	const sendBuffered = Exe.Vir2Phy(0x00C1495D, CODE);
 	const sendImmediate = Exe.Vir2Phy(0x00C1496C, CODE);
-	return connect >= 0 && sendBuffered >= 0 && sendImmediate >= 0;
+	return connect >= 0 && rawReader >= 0 && reader >= 0 && sendBuffered >= 0 && sendImmediate >= 0;
 };

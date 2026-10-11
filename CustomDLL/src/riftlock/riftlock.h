@@ -38,13 +38,23 @@ extern "C" __declspec(dllexport) void __fastcall RiftlockQueueDeferredPacketBrid
 	const BYTE* packet
 );
 
-// Static bridge at CConnection's receive-queue insertion. It strips Riftlock
-// control frames before login/char/map mode parsers see the native byte stream
-// and forwards every ordinary server byte unchanged.
+// Static bridge at CConnection's receive-queue insertion. It forwards receive
+// bytes unchanged. RiftlockReadPacketBridge strips controls at packet boundaries.
 extern "C" __declspec(dllexport) void __fastcall RiftlockReceiveBytesBridge(
 	void* queue,
 	void* edx,
 	DWORD original,
 	DWORD length,
 	const BYTE* bytes
+);
+
+// Static bridge for the profiled CConnection::ReadPacket. The native reader
+// remains responsible for ordinary/custom packet lengths and payload copying.
+extern "C" __declspec(dllexport) BOOL __fastcall RiftlockReadPacketBridge(
+	void* connection, void* edx, DWORD original, void* packet, unsigned short* length
+);
+
+// Character-login raw four-byte account-ID bootstrap, before framed packets.
+extern "C" __declspec(dllexport) DWORD __fastcall RiftlockReadRawBridge(
+	void* connection, void* edx, DWORD original, void* buffer, DWORD length, bool exact
 );
