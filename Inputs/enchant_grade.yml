@@ -1,0 +1,35 @@
+############################################################################
+#                                                                          #
+#   Custom enchant grade labels.                                           #
+#                                                                          #
+#   Format:                                                                #
+#     - Grade: <number>                                                    #
+#       Label: <text without brackets>                                     #
+#                                                                          #
+#   The client adds the brackets, so Label: Rare displays as              #
+#   "[Rare] Item Name".                                                    #
+#                                                                          #
+#   This map is active only when CustomEnchantGradeLabels is selected.     #
+#   Without that patch, grades 1-4 remain D, C, B, and A. The grade number #
+#   is authoritative; any label text sent in _GRADE_<n>_<text> is ignored. #
+#                                                                          #
+#   You can add future grades here if your client/server starts            #
+#   using them:                                                            #
+#     - Grade: 5                                                           #
+#       Label: Ancient                                                     #
+#     - Grade: 6                                                           #
+#       Label: Divine                                                      #
+#                                                                          #
+############################################################################
+
+- Grade: 1
+  Label: Rare
+
+- Grade: 2
+  Label: Epic
+
+- Grade: 3
+  Label: Mythic
+
+- Grade: 4
+  Label: Legendary

@@ -1,7 +1,7 @@
 /*
  * Author: DevSeara.
  * Description: Inline ItemId-based chat icons for 2025-07-16 Ragexe.
- * Adds ^i[ItemId] to profiled pickup/drop-name call sites. Chat-only input
+ * Adds ^i[ItemId,identified] to profiled pickup/drop-name call sites. Chat-only input
  * converts this syntax into a private, zero-padded native item-link token.
  * Shift-click ITEML links show an icon plus name without angle brackets.
  * Native chat owns wrapping, scrollback, children, detachment and item info.
@@ -18,7 +18,9 @@ const ChatItemIconsStatic = {
 	Prefix: "<ITEML>0000000000000",
 	Tail: "'00)00)00)00)00</ITEML>",
 	RowHeight: 20,
-	IconSize: 18
+	IconSize: 18,
+	ItemIdentifiedOffset: 0x5C,
+	UnidentifiedResourceOffset: 0x1C
 };
 
 ChatItemIconsStatic.guard = function(a, fallback)
@@ -45,17 +47,26 @@ ChatItemIconsStatic.converter = function(prefix, tail, alphabet)
 	a.emit(0x8B, 0x45, 0xFC, 0x2B, 0xC6, 0x83, 0xF8, 5); a.jcc(0x82, "literal");
 	a.emit(0x66, 0x81, 0x3E, 0x5E, 0x69); a.jcc(0x85, "literal");
 	a.emit(0x80, 0x7E, 2, 0x5B); a.jcc(0x85, "literal");
+	a.emit(0xC7, 0x45, 0xEC); a.dword(0); // extra ID-padding zero means unidentified
 	a.emit(0x8D, 0x56, 3, 0x33, 0xC0, 0x33, 0xC9);
 	a.label("digit"); a.emit(0x3B, 0x55, 0xFC); a.jcc(0x83, "literal");
 	a.emit(0x0F, 0xB6, 0x1A, 0x83, 0xFB, 0x5D); a.jcc(0x84, "number_end");
+	a.emit(0x83, 0xFB, 0x2C); a.jcc(0x84, "identify");
 	a.emit(0x83, 0xEB, 48, 0x83, 0xFB, 9); a.jcc(0x87, "literal");
 	a.emit(0x41, 0x83, 0xF9, 7); a.jcc(0x87, "literal");
 	a.emit(0x6B, 0xC0, 10, 0x03, 0xC3, 0x42); a.jmp("digit");
+	a.label("identify");
+	a.emit(0x8B, 0x5D, 0xFC, 0x2B, 0xDA, 0x83, 0xFB, 3); a.jcc(0x82, "literal");
+	a.emit(0x80, 0x7A, 2, 0x5D); a.jcc(0x85, "literal");
+	a.emit(0x0F, 0xB6, 0x5A, 1, 0x83, 0xEB, 48, 0x83, 0xFB, 1); a.jcc(0x87, "literal");
+	a.emit(0x83, 0xF3, 1, 0x89, 0x5D, 0xEC, 0x83, 0xC2, 2);
 	a.label("number_end"); a.emit(0x85, 0xC0); a.jcc(0x84, "literal");
 	a.emit(0x42, 0x89, 0x55, 0xF4, 0x89, 0x45, 0xF0);
 	a.emit(0x8B, 0x45, 0xF8, 0x2B, 0xC7, 0x83, 0xF8, 48); a.jcc(0x82, "fallback");
 	a.emit(0x56, 0xBE); a.dword(prefix); a.emit(0xB9); a.dword(ChatItemIconsStatic.Prefix.length);
-	a.emit(0xF3, 0xA4, 0x5E, 0x8B, 0x45, 0xF0, 0x33, 0xC9, 0xBB); a.dword(62);
+	a.emit(0xF3, 0xA4, 0x5E, 0x83, 0x7D, 0xEC, 0); a.jcc(0x84, "prefix_done");
+	a.emit(0xB0, 48, 0xAA);
+	a.label("prefix_done"); a.emit(0x8B, 0x45, 0xF0, 0x33, 0xC9, 0xBB); a.dword(62);
 	a.label("encode"); a.emit(0x33, 0xD2, 0xF7, 0xF3, 0x8A, 0x92); a.dword(alphabet);
 	a.emit(0x88, 0x54, 0x0D, 0xE0, 0x41, 0x85, 0xC0); a.jcc(0x85, "encode");
 	a.label("reverse"); a.emit(0x49, 0x8A, 0x44, 0x0D, 0xE0, 0xAA, 0x85, 0xC9); a.jcc(0x85, "reverse");
@@ -87,13 +98,35 @@ ChatItemIconsStatic.marker = function()
 {
 	const a = AutoCombatUI.nativeHelpers.asm();
 	// thiscall(std::string* in ECX), after native ITEML syntax validation.
+	// 0 = ordinary link, 1 = identified thumbnail, 2 = unidentified thumbnail.
 	a.emit(0x8B, 0x51, 16, 0x83, 0xFA, 29); a.jcc(0x82, "no");
-	a.emit(0x83, 0xFA, 32); a.jcc(0x87, "no");
+	a.emit(0x83, 0xFA, 33); a.jcc(0x87, "no");
 	a.emit(0x8B, 0x09, 0x33, 0xD2);
 	a.label("zero"); a.emit(0x80, 0x3C, 0x11, 48); a.jcc(0x85, "no");
 	a.emit(0x42, 0x83, 0xFA, 13); a.jcc(0x82, "zero");
-	a.emit(0xB8); a.dword(1); a.emit(0xC3);
+	a.emit(0xB8); a.dword(1);
+	a.emit(0x80, 0x79, 13, 48); a.jcc(0x85, "yes");
+	a.emit(0x80, 0x79, 14, 48); a.jcc(0x84, "no");
+	a.emit(0x40);
+	a.label("yes"); a.emit(0xC3);
 	a.label("no"); a.emit(0x33, 0xC0, 0xC3);
+	return a;
+};
+
+ChatItemIconsStatic.itemFromToken = function(marker)
+{
+	const a = AutoCombatUI.nativeHelpers.asm();
+	ChatItemIconsStatic.guard(a, 0x85B630);
+	// Chat-only call boundary, before the native name/tooltip and CItem copy.
+	// The stock ITEML builder always sets identified=1; private thumbnail
+	// padding restores the pickup/drop snapshot without changing the item ID.
+	a.emit(0x55, 0x8B, 0xEC, 0x56, 0x57, 0x8B, 0x7D, 12);
+	a.emit(0xFF, 0x75, 12, 0xFF, 0x75, 8); a.call(0x85B630);
+	a.emit(0x0F, 0xB6, 0xF0, 0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x4D, 0, 0x83, 0xE9, 0x28); a.call(marker);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x83, 0xF8, 1, 0x0F, 0x94, 0x47, ChatItemIconsStatic.ItemIdentifiedOffset);
+	a.label("done"); a.emit(0x8B, 0xC6, 0x5F, 0x5E, 0x5D, 0xC2, 8, 0);
 	return a;
 };
 
@@ -157,12 +190,33 @@ ChatItemIconsStatic.pickupName = function(format)
 	a.emit(0x3D); a.dword(9999999); a.jcc(0x87, "done");
 	a.emit(0x81, 0x7F, 16); a.dword(400); a.jcc(0x87, "done");
 	a.emit(0x8B, 0xCF, 0x83, 0x7F, 20, 16); a.jcc(0x82, "name_ready"); a.emit(0x8B, 0x0F);
-	a.label("name_ready"); a.emit(0x51, 0x50, 0x68); a.dword(format);
+	a.label("name_ready");
+	a.emit(0x33, 0xD2, 0x80, 0x7E, ChatItemIconsStatic.ItemIdentifiedOffset, 1, 0x0F, 0x94, 0xC2);
+	a.emit(0x51, 0x52, 0x50, 0x68); a.dword(format);
 	a.emit(0x8D, 0x9D); a.dword(-512); a.emit(0x53); a.call(n.StringFormat);
-	a.emit(0x83, 0xC4, 16, 0x33, 0xC9);
+	a.emit(0x83, 0xC4, 20, 0x33, 0xC9);
 	a.label("length"); a.emit(0x80, 0x3C, 0x0B, 0); a.jcc(0x84, "assign"); a.emit(0x41); a.jmp("length");
 	a.label("assign"); a.emit(0x51, 0x53, 0x8B, 0xCF); a.call(0x4F1940);
 	a.label("done"); a.emit(0x8B, 0xC7, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 8, 0);
+	return a;
+};
+
+ChatItemIconsStatic.iconResolver = function()
+{
+	const n = AutoCombatUI.nativeHelpers, a = n.asm();
+	// stdcall(ItemId, identified). Private to chat: all other feature resolvers
+	// retain their existing identified-only behavior and native addresses.
+	a.emit(0x55, 0x8B, 0xEC, 0x56, 0x8B, 0x35); a.dword(n.ItemInfoManager);
+	a.emit(0x85, 0xF6); a.jcc(0x84, "missing");
+	a.emit(0x8D, 0x45, 8, 0x50, 0x8D, 0x4E, 8); a.call(n.ItemInfoLookup);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "missing");
+	a.emit(0x83, 0x7D, 12, 1); a.jcc(0x85, "unidentified");
+	a.emit(0x83, 0xC0, n.ItemInfoIdentifiedResourceOffset); a.jmp("resource");
+	a.label("unidentified"); a.emit(0x83, 0xC0, ChatItemIconsStatic.UnidentifiedResourceOffset);
+	a.label("resource"); a.emit(0x83, 0x78, n.ItemInfoStringCapacityOffset, 16);
+	a.jcc(0x82, "done"); a.emit(0x8B, 0x00); a.jmp("done");
+	a.label("missing"); a.emit(0x33, 0xC0);
+	a.label("done"); a.emit(0x5E, 0x5D, 0xC2, 8, 0);
 	return a;
 };
 
@@ -216,6 +270,7 @@ ChatItemIconsStatic.draw = function(resolver, format, path, blit, withName = fal
 	}
 	a.emit(0x8B, 0x46, 0x24, 0x85, 0xC0); a.jcc(0x84, "done");
 	a.emit(0xC6, 0x40, 0x28, 1);
+	a.emit(0x0F, 0xB6, 0x86); a.dword(0xF8 + ChatItemIconsStatic.ItemIdentifiedOffset); a.emit(0x50);
 	a.emit(0x8D, 0x8E); a.dword(0xF8); a.call(0x5D98A0);
 	a.emit(0x50); a.call(resolver); a.emit(0x85, 0xC0); a.jcc(0x84, "done");
 	a.emit(0x33, 0xC9);
@@ -236,7 +291,10 @@ ChatItemIcons = function(_)
 	n.assertCode("Chat item input", 0x83D840, "55 8B EC 6A FF 68 0D FC E9 00");
 	n.assertCode("Chat pre-wrap input", 0x83D3F0, "55 8B EC 6A FF 68 95 FB E9 00");
 	n.assertCode("Chat item ID getter", 0x5D98A0, "83 C1 2C 83 79 14 10 72 02 8B 09 51");
-	const calls = [[0x841937, 0x84C6B0], [0x84AE83, 0x84C6B0], [0x84AFA7, 0x85F480],
+	n.assertCode("CItem identification flag", 0x6A2A70, "80 79 5C 01 8D 41 2C");
+	n.assertCode("Unidentified resource field", 0xA7EB9E, "8D 48 1C 8D 45 24");
+	n.assertCode("Identified resource field", 0xA7EA2E, "8D 48 58 8D 45 24");
+	const calls = [[0x841937, 0x84C6B0], [0x84AE83, 0x84C6B0], [0x84AFA7, 0x85F480], [0x84AE54, 0x85B630],
 		...[...c.PickupNames, ...c.DropNames].map(site => [site, 0x6A2CE0])];
 	for (const [site, target] of calls) {
 		// Verify an existing CALL by its opcode and resolved rel32, not a wildcard.
@@ -254,9 +312,10 @@ ChatItemIcons = function(_)
 	const rawTrampoline = n.asm(); rawTrampoline.emit(0x55, 0x8B, 0xEC, 0x6A, 0xFF); rawTrampoline.jmp(0x83D3F5);
 	const rawStock = n.allocateCode(rawTrampoline), rawAdd = n.allocateCode(c.addLine(convert.vir, rawStock.vir));
 	const marker = n.allocateCode(c.marker());
+	const itemFromToken = n.allocateCode(c.itemFromToken(marker.vir));
 	const decorateFirst = n.allocateCode(c.decorate(marker.vir, -0x40));
 	const decorateChild = n.allocateCode(c.decorate(marker.vir, -0x28));
-	const blit = n.allocateCode(c.blit()), resolver = n.allocateCode(n.buildItemIconResolver());
+	const blit = n.allocateCode(c.blit()), resolver = n.allocateCode(c.iconResolver());
 	const iconFormat = n.buildResourcePath("item\\%s.bmp").vir;
 	const iconPath = n.allocateBytes(new Array(512).fill(0), 4).vir;
 	const draw = n.allocateCode(c.draw(resolver.vir, iconFormat, iconPath, blit.vir));
@@ -269,16 +328,16 @@ ChatItemIcons = function(_)
 	const vtable = n.allocateBytes(vtBytes, 4); Exe.SetUint32(vtable.phy + 4 + 0x50, draw.vir);
 	const linkVtable = n.allocateBytes(vtBytes, 4); Exe.SetUint32(linkVtable.phy + 4 + 0x50, linkDraw.vir);
 	const size = n.allocateCode(c.sizeChild(marker.vir, vtable.vir + 4, linkVtable.vir + 4));
-	const pickup = n.allocateCode(c.pickupName(n.allocateString("^i[%u]%s").vir));
+	const pickup = n.allocateCode(c.pickupName(n.allocateString("^i[%u,%u]%s").vir));
 	Exe.SetJMP(Exe.Vir2Phy(0x83D840, CODE), add.vir, 0);
 	Exe.SetJMP(Exe.Vir2Phy(0x83D3F0, CODE), rawAdd.vir, 0);
-	for (const [site, target] of [[0x841937, decorateFirst.vir], [0x84AE83, decorateChild.vir], [0x84AFA7, size.vir],
+	for (const [site, target] of [[0x841937, decorateFirst.vir], [0x84AE83, decorateChild.vir], [0x84AFA7, size.vir], [0x84AE54, itemFromToken.vir],
 		...[...c.PickupNames, ...c.DropNames].map(site => [site, pickup.vir])]) Exe.SetCALL(Exe.Vir2Phy(site, CODE), target, 0);
 	// Embedded, versioned test contract: read-only tests locate emitted helpers.
-	const descriptor = n.allocateString("ChatItemIcons.v2");
-	const contract = {version: 2, convert, stock, add, marker, decorateFirst, decorateChild, blit, resolver, draw, vtable, size, pickup, rawStock, rawAdd, linkDraw, linkVtable};
+	const descriptor = n.allocateString("ChatItemIcons.v3");
+	const contract = {version: 3, convert, stock, add, marker, decorateFirst, decorateChild, blit, resolver, draw, vtable, size, pickup, rawStock, rawAdd, linkDraw, linkVtable, itemFromToken};
 	const record = [];
-	for (const value of [descriptor.vir, ...[convert, stock, add, marker, decorateFirst, decorateChild, blit, resolver, draw, vtable, size, pickup, rawStock, rawAdd, linkDraw, linkVtable].map(x => x.vir)])
+	for (const value of [descriptor.vir, ...[convert, stock, add, marker, decorateFirst, decorateChild, blit, resolver, draw, vtable, size, pickup, rawStock, rawAdd, linkDraw, linkVtable, itemFromToken].map(x => x.vir)])
 		record.push(value & 255, value >>> 8 & 255, value >>> 16 & 255, value >>> 24);
 	n.allocateBytes(record, 4);
 	if (typeof PatchDiagnostics !== "undefined") PatchDiagnostics.add("ChatItemIcons.Native", contract);

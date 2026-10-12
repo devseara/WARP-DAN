@@ -1,0 +1,188 @@
+[
+  {
+    "opcode": "00cf",
+    "original": 27,
+    "scoped": 131,
+    "handler": "clif_parse_PMIgnore"
+  },
+  {
+    "opcode": "00e0",
+    "original": 30,
+    "scoped": 134,
+    "handler": "clif_parse_ChangeChatOwner"
+  },
+  {
+    "opcode": "00e2",
+    "original": 26,
+    "scoped": 130,
+    "handler": "clif_parse_KickFromChat"
+  },
+  {
+    "opcode": "00f9",
+    "original": 26,
+    "scoped": 130,
+    "handler": "clif_parse_CreateParty"
+  },
+  {
+    "opcode": "0103",
+    "original": 30,
+    "scoped": 134,
+    "handler": "clif_parse_RemovePartyMember"
+  },
+  {
+    "opcode": "0165",
+    "original": 30,
+    "scoped": 134,
+    "handler": "clif_parse_CreateGuild"
+  },
+  {
+    "opcode": "01a5",
+    "original": 26,
+    "scoped": 130,
+    "handler": "clif_parse_ChangePetName"
+  },
+  {
+    "opcode": "01e8",
+    "original": 28,
+    "scoped": 132,
+    "handler": "clif_parse_CreateParty2"
+  },
+  {
+    "opcode": "01f6",
+    "original": 34,
+    "scoped": 138,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "0202",
+    "original": 26,
+    "scoped": 130,
+    "handler": "clif_parse_FriendsListAdd"
+  },
+  {
+    "opcode": "0207",
+    "original": 34,
+    "scoped": 138,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "0209",
+    "original": 36,
+    "scoped": 140,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "020e",
+    "original": 32,
+    "scoped": 136,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "0231",
+    "original": 26,
+    "scoped": 130,
+    "handler": "clif_parse_ChangeHomunculusName"
+  },
+  {
+    "opcode": "024a",
+    "original": 70,
+    "scoped": 174,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "0293",
+    "original": 70,
+    "scoped": 147,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "029b",
+    "original": 80,
+    "scoped": 184,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "02c4",
+    "original": 26,
+    "scoped": 130,
+    "handler": "clif_parse_PartyInvite2"
+  },
+  {
+    "opcode": "02dd",
+    "original": 32,
+    "scoped": 136,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "02df",
+    "original": 36,
+    "scoped": 140,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "0809",
+    "original": 50,
+    "scoped": 154,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "0916",
+    "original": 26,
+    "scoped": 130,
+    "handler": "clif_parse_GuildInvite2"
+  },
+  {
+    "opcode": "0979",
+    "original": 50,
+    "scoped": 154,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "09f9",
+    "original": 143,
+    "scoped": 455,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "0a08",
+    "original": 26,
+    "scoped": 130,
+    "handler": "clif_parse_Mail_beginwrite"
+  },
+  {
+    "opcode": "0a12",
+    "original": 27,
+    "scoped": 131,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "0a13",
+    "original": 26,
+    "scoped": 130,
+    "handler": "clif_parse_Mail_Receiver_Check"
+  },
+  {
+    "opcode": "0a51",
+    "original": 34,
+    "scoped": 138,
+    "handler": "nullptr"
+  },
+  {
+    "opcode": "0b97",
+    "original": 27,
+    "scoped": 131,
+    "handler": "clif_parse_Mail_Receiver_Check"
+  },
+  {
+    "opcode": "0be2",
+    "original": 137,
+    "scoped": 241,
+    "handler": "clif_parse_macro_user_report"
+  },
+  {
+    "opcode": "0be3",
+    "original": 34,
+    "scoped": 138,
+    "handler": "nullptr"
+  }
+]

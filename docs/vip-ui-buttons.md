@@ -1,59 +1,84 @@
-# Editable VIP button images
+# Readable VIP artwork and buttons
 
-These PNG files are the complete buttons used by the VIP client, including text.
-Edit them in `data/texture/<client UI prefix>/vipui`, keep their dimensions, save
-as PNG, and fully restart Ragnarok. Artwork-only edits do not require WARP or a
-server restart. WARP's missing-file installer preserves existing custom images.
+The native main window is 460x362. Its frame/icons use the unchanged approved
+`vip_design.png` (1412x1114). As of September 22, all controls use the same
+four blank Gacha-style backgrounds, nine-sliced with two-pixel borders.
+Captions, headings, prices and status text use the native 11px regular font
+used by Membership active. The control bounds below remain unchanged; the
+prefixes are control names, not current resource filenames.
 
-| Filename prefix | Size | Button |
+| Main filename prefix | Native x,y | Width,height |
 | --- | --- | --- |
-| applyvip | 60 x 18 | Apply VIP |
-| openstore | 68 x 18 | Open Store |
-| openstorage | 81 x 18 | Open Storage |
-| vipbuffs | 57 x 18 | VIP Buffs |
-| upgrade | 53 x 18 | Main and quest Upgrade |
-| purchase | 56 x 18 | Buy the selected membership duration |
-| refresh | 58 x 18 | Refresh |
-| yes | 28 x 18 | Confirm upgrade quest or hourly buffs |
-| no | 23 x 18 | Decline confirmation |
-| cancel | 43 x 18 | Close quest or purchase popup |
-| close | 15 x 18 | X on main and popup |
-| scroll_top | 13 x 13 | Scroll up |
-| scroll_bot | 13 x 13 | Scroll down |
+| main_close | 439,3 | 18,18 |
+| applyvip | 153,120 | 128,22 |
+| openstore | 289,120 | 128,22 |
+| openstorage | 153,145 | 128,22 |
+| vipbuffs | 289,145 | 128,22 |
+| main_upgrade | 164,252 | 60,20 |
+| refresh | 164,320 | 60,20 |
+| scroll_top | 439,268 | 10,10 |
+| scroll_bot | 439,328 | 10,10 |
 
-Each prefix has four states: `_out.png` = normal, `_over.png` = hover,
-`_press.png` = pressed, `_off.png` = disabled. Exception: normal arrow filenames
-are `scroll_top.png` and `scroll_bot.png` (no `_out`). There are 52 button PNGs.
+| Popup filename prefix | Size | Use |
+| --- | --- | --- |
+| close | 15x18 | Popup X |
+| yes | 28x18 | Confirmation |
+| no | 23x18 | Decline |
+| upgrade | 53x18 | Requirement submission |
+| cancel | 43x18 | Close popup |
+| purchase | 56x18 | Buy selected duration |
 
-The client paints no separate text or border on these controls. Changing the
-image changes its whole appearance, not the action or server permission.
-Upgrade uses the same blue skin as Apply VIP/Open Store. Upgrade, Yes, No,
-Cancel and X have four pixels of horizontal padding around their visible text;
-their labels are vertically centered. Confirmation/action pairs are centered
-in the popup with eight pixels between buttons. Click bounds match the images.
-Refresh also uses that rounded blue skin in all four states, with a centered
-caption. Its existing 58x18 size/click area is unchanged, so replacing only
-`refresh_out/over/press/off.png` needs a client restart, not a WARP/server rebuild.
-Apply VIP is enabled only without active membership or a pending payment. It
-opens the five-duration picker; Purchase is enabled only after a valid selection.
-Selecting a duration or closing the popup never purchases. Open Store and Open
-Storage require active VIP. Store also requires the server's shop permission.
-These rules refresh from membership snapshots, not the retained VIP level.
-VIP Buffs also requires server-confirmed hourly eligibility. Its compact popup
-reuses `yes_*`, `no_*` and `close_*` images. No new artwork is required. No/X
-only closes the popup; Yes requests the server-owned buff claim. The cooldown
-timer is separate text beside VIP Buffs, never painted over its button PNG.
-Alpha transparency is supported; pure magenta remains the native color key.
-Disabled arrows are expected when the active benefit card fits without scrolling.
+The four shared files are `button_out.png`, `button_over.png`,
+`button_press.png`, and `button_off.png` (51x20), copied unchanged from Gacha's
+pull-button skins. Normal captions use Gacha's blue-gray COLORREF 0x7D6045;
+disabled captions use 0xA0A0A0. Keep the source dimensions when editing.
+Only the seven currently referenced images are bundled. The old per-control
+caption PNGs and unused notice board have been removed from the asset folder;
+the historical exporter remains available for restoring older clients.
+Missing/mis-sized normal artwork disables its action; invalid optional states
+fall back to normal. Alpha and the native magenta color key remain supported.
+All five popup modes use the matching blue/silver frame and gold VIP emblem.
 
-The other used UI PNGs are `background.png`, `vip_exp.png`, `item_main_bg.png`,
-`membership_crown.png` and `vip_status_bg.png`. The crown is shared by duration
-cards and earned level slots (none at level zero). Keep its transparent alpha;
-it is fitted into 28px / 24px boxes by the client. `star_on.png` remains bundled
-for recovery but is not rendered. EXP still uses a private ready-state gold tint.
-Level crowns and benefit visibility still follow server snapshots.
+Apply VIP requires inactive membership and no pending payment. Store/storage
+require active VIP; Store additionally requires permission. Buffs requires
+server-confirmed eligibility and no cooldown. `Buffs: HH:MM:SS` sits at y168,
+below the right action column, in a reserved 14px cell with dark navy text. It is
+drawn after every atlas/background patch so no lower glyph pixels are erased.
+Upgrade and EXP
+readiness remain server-authoritative. Purchase requires an explicit duration
+selection and echoes the server's quote; selection or canceling never pays.
+Upgrade confirmations keep the parent visible while a single request waits for
+the server reply. Other actions are disabled while pending; Close stays usable.
+See [request sequencing and tooltip behavior](vip-ui.md).
 
-Migration note: old `openstore_out/over/press.png` files were 66 x 18 skin strips.
-This version needs their complete 68 x 18 replacements and the matching new
-client together. Back up old artwork; do not let an older client use these new
-full-label store images. After migration, keep custom edits at the listed sizes.
+When Native VIP UI is applied during a WARP build, its installer creates
+`data/texture/<client UI prefix>/vipui` beside the output EXE. It copies all 7
+required images only if missing, preserving customized existing artwork and
+repairing partial folders. Keep this resource folder with the output EXE if
+moving it. Fully restart the client after editing images.
+Select **Native VIP UI** and build the client to install all four button-state
+PNGs automatically; no separate button patch or manual image generation is
+needed. Selecting the checkbox without building does not write any images.
+The other three required PNGs are `vip_design.png`, `membership_crown.png`,
+and the user's supplied 19x19 `item_main_bg.png`, unchanged.
+Quest item boxes scale the same box to 32x32. Main-window earned crowns are
+drawn over each level slot separately. The renderer trims transparent padding
+(alpha below 32), caches those bounds, and aspect-fits the actual crown into
+the 17x17 inner box using 4x4 premultiplied-alpha sampling. It never edits the
+original PNG. Purchase-card crowns use the same fitting rule.
+The notice is native text only; `board_txt.png` is no longer loaded or installed.
+The blue frame behind the level/slots/quest text is removed. The EXP track and
+fill are gold at every percentage; this does not grant upgrade permission.
+Retired API slots, including slot 0, stay null. All offsets
+and the 372-byte API / 2664-byte VIPU v4 snapshot remain unchanged.
+
+The filename cleanup requires rebuilding the client; an older EXE still refers
+to the old names/layout. Back up existing images before a one-time migration,
+including older files whose names collide with the newly renamed buttons.
+Ordinary WARP builds preserve custom files and never prune arbitrary images.
+The September 22 local cleanup moved 61 unused PNGs from each of the WARP and
+installed-game VIP folders into `Outputs/vip-assets-cleanup-20260922`, outside
+both active asset folders. Older client rollback may require restoring those
+images along with its executable. Asset inventory/installer tests now reject
+unused images in the WARP bundle; the installer still preserves custom files
+already present in other users' game directories.

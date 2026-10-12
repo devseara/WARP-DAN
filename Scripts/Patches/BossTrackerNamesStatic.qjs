@@ -1,0 +1,69 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Borrow the full        *
+*                   packet name, retain native coordinate/time handling,   *
+*                   and format notifications into bounded512-byte stack    *
+*                   storage. Native hooks, data and code revert together   *
+*                   with the selecting patch.                              *
+*                                                                          *
+\**************************************************************************/
+
+BossTrackerNamesStatic={};
+BossTrackerNamesStatic.install=function(state)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.bossTrackerNames128)return state;
+	const edits=[
+		[0x00CB7363,"81 EC 38 01 00 00","81 EC 38 03 00 00"],
+		[0x00CB73A3,"83 C4 18","90 90 90"],
+		[0x00CB7432,"8D 45 C8","8B 45 C8"],
+		[0x00CB744F,"8D 45 C8","8B 45 C8"],
+		[0x00CB7482,"8D 4D C8","8B 4D C8"]
+	];
+	for(const va of [0x00CB7461,0x00CB7487,0x00CB74B3,0x00CB74CA])
+		edits.push([va,"8D 85 C8 FE FF FF","8D 85 C8 FC FF FF"]);
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("boss tracker storage",e[0],e[1]));
+	const namePhy=ExtNameStaticAsm.assertCode("boss tracker canonical name",0x00CB7377,
+		"8D 45 C8 57 6A 33 6A 00 50 8B F9 E8 CA 09 15 00 8D 46 13 50 8D 45 C8 68 E8 35 FD 00 50 E8 B7 24 87 FF");
+	const a=ExtNameStaticAsm.asm();
+	a.emit(0x57,0x8B,0xF9,0x8D,0x46,0x13,0x89,0x45,0xC8,0xB9);a.dword(128);
+	a.label("name_bytes");a.emit(0x80,0x38,0);a.jcc(0x84,"valid");
+	a.emit(0x40,0x49);a.jcc(0x85,"name_bytes");a.jmp(0x00CB74E2);
+	a.label("valid");a.jmp(0x00CB7399);
+	const name=ExtNameTextStatic.allocateCode(a);
+	const formats=[];
+	for(const [va,prefix,argc] of [[0x00CB7468,"E8 E3 23 87 FF",1],[0x00CB748E,"E8 BD 23 87 FF",3]]){
+		const phy=ExtNameStaticAsm.assertCode("bounded boss notification",va,prefix);
+		const f=ExtNameStaticAsm.asm();f.emit(0x55,0x8B,0xEC);
+		for(let i=argc-1;i>=0;i--)f.emit(0xFF,0x75,16+4*i);
+		f.emit(0xFF,0x75,12,0x6A,0xFF,0x68);f.dword(512);f.emit(0xFF,0x75,8);
+		f.call(0x0059CDF0);f.emit(0x83,0xC4,(argc+4)*4,0x5D,0xC3);
+		formats.push([phy,ExtNameTextStatic.allocateCode(f).virAddr]);
+	}
+	const owner=Exe.ActivePatch;Exe.BeginTag("BossTrackerNamesStatic.Name128",true);
+	try{
+		for(const e of edits)Exe.SetHex(e[3],e[2]);
+		Exe.SetJMP(namePhy,name.virAddr,0);Exe.SetNOPs(namePhy+5,0x22-5);
+		for(const f of formats)Exe.SetCALL(f[0],f[1],0);
+	}finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.bossTrackerNames128=true;return state;
+};

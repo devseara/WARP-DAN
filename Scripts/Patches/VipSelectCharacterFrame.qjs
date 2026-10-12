@@ -1,0 +1,124 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-05                                             *
+*   Last Modified : 2026-07-11                                             *
+*                                                                          *
+*   Description   : Replaces the selected occupied character's animated    *
+*                   slot frame with img_buyslot_normal.bmp while the        *
+*                   account VIP slot value is active. Target: 2025-07-16.  *
+*                                                                          *
+\**************************************************************************/
+
+VipSelectCharacterFrame = function(_)
+{
+	$$(_, 1, `Find the selected-character frame path builder`);
+
+	// cmp [local string capacity], 10 / construct path / ConvPath(path)
+	const pattern =
+		"83 7D DC 10 8D 45 C8 C7 45 A0 01 00 00 00 " +
+		"0F 43 45 C8 50 E8 ?? ?? ?? ?? 83 C4 20";
+	const hits = Exe.FindHexN(pattern, 0, Exe.FileSize);
+	if (hits.length !== 1)
+		throw Error(`VipSelectCharacterFrame: expected one selected-frame builder, found ${hits.length}`);
+
+	const hookAddr = hits[0] + 14;
+	const stolen = "0F 43 45 C8 50"; // cmovae eax,[ebp-38] / push eax
+	if (Exe.GetHex(hookAddr, stolen.byteCount()).replace(/\s+/g, " ").trim().toUpperCase() !== stolen)
+		throw Error("VipSelectCharacterFrame: selected-frame hook bytes do not match the 2025-07-16 client");
+
+	$$(_, 2, `Allocate the dedicated VIP frame path`);
+
+	// CP949: userinterface\select_character_ver3\img_buyslot_normal.bmp
+	const vipFramePath =
+		"C0 AF C0 FA C0 CE C5 CD C6 E4 C0 CC BD BA 5C " +
+		"73 65 6C 65 63 74 5F 63 68 61 72 61 63 74 65 72 5F 76 65 72 33 5C " +
+		"69 6D 67 5F 62 75 79 73 6C 6F 74 5F 6E 6F 72 6D 61 6C 2E 62 6D 70 00";
+	const [vipPathPhy, vipPathVir] = Exe.Allocate(vipFramePath.byteCount(), 1);
+	Exe.SetHex(vipPathPhy, vipFramePath);
+
+	$$(_, 3, `Redirect the occupied selected-card path while VIP is active`);
+
+	const bytes = [];
+	const labels = {};
+	const shortBranches = [];
+	const emit = hex =>
+	{
+		for (const token of hex.trim().split(/\s+/))
+		{
+			if (token.length > 0)
+				bytes.push(parseInt(token, 16));
+		}
+	};
+	const emitUint32 = value =>
+	{
+		for (let index = 0; index < 4; ++index)
+			bytes.push((value >>> (index * 8)) & 0xFF);
+	};
+	const mark = name => labels[name] = bytes.length;
+	const branch8 = (opcode, target) =>
+	{
+		emit(opcode);
+		shortBranches.push({ displacement : bytes.length, target });
+		emit("00");
+	};
+
+	// Replay the stolen cmovae, then override EAX only for an occupied VIP slot.
+	emit("0F 43 45 C8");
+	emit("80 BF 38 01 00 00 00"); // cmp byte ptr [edi+138],0 (occupied slot)
+	branch8("75", "pushPath");
+	emit("83 3D 64 FD 5F 01 00"); // cmp dword ptr [premium_slot],0
+	branch8("7E", "pushPath");
+	emit("B8");
+	emitUint32(vipPathVir);
+
+	mark("pushPath");
+	emit("50 E9 00 00 00 00"); // push eax / return before ConvPath
+	const continuationDisplacement = bytes.length - 4;
+
+	for (const branch of shortBranches)
+	{
+		const delta = labels[branch.target] - (branch.displacement + 1);
+		if (delta < -128 || delta > 127)
+			throw Error(`VipSelectCharacterFrame: short branch to ${branch.target} is out of range`);
+		bytes[branch.displacement] = delta & 0xFF;
+	}
+
+	const [trampolinePhy, trampolineVir] = Exe.Allocate(bytes.length, 0x10);
+	const continuationVir = Exe.Phy2Vir(hookAddr + stolen.byteCount());
+	const continuationDelta = continuationVir - (trampolineVir + continuationDisplacement + 4);
+	for (let index = 0; index < 4; ++index)
+		bytes[continuationDisplacement + index] = (continuationDelta >>> (index * 8)) & 0xFF;
+
+	const trampolineCode = bytes.map(value => value.toString(16).padStart(2, "0")).join(" ");
+	Exe.SetHex(trampolinePhy, trampolineCode);
+	Exe.SetJMP(hookAddr, trampolineVir);
+
+	$$(_, 4, `VIP selected-character frame enabled`);
+	return true;
+};
+
+VipSelectCharacterFrame.validate = function()
+{
+	return Exe.BuildDate === 20250716;
+};

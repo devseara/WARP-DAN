@@ -1,0 +1,773 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-07-13                                             *
+*   Last Modified : 2026-09-15                                             *
+*                                                                          *
+*   Description   : Drains the dispatcher-table EXTN ring into a bounded   *
+*                   exact-text map and redirects the four known Ragexe     *
+*                   TextOutW/GetTextExtentPoint32W call surfaces to EXE    *
+*                   caves. This reproduces the former DLL's name-field     *
+*                   substitution and player-name color behavior without a  *
+*                   custom DLL, recv hook, or runtime code patching.       *
+*                   Shared code outlives individual users; removable name  *
+*                   adapters retain their own patch ownership.             *
+*                                                                          *
+\**************************************************************************/
+
+ExtNameTextStatic = {
+	ApiVersion: 1,
+	Version: "1.0.0",
+	Profiles: {
+		20250716: {
+			Name: "2025-07-16 Ragexe",
+			FrameCaller: 0x00C7642D,
+			FrameCallerPrefix: "8B CE E8",
+			TextOutDirect: 0x005476C7,
+			ExtentDirect: 0x0054758D,
+			TextOutThunk: 0x00DBA690,
+			ExtentThunk: 0x00DBA66C,
+			PacketLengthHook: 0x00C14866,
+			PacketLengthHookPrefix: "FF 75 08 0F B7 C6 8B CF 50 E8 FC 1C 00 00",
+			PacketLengthReturn: 0x00C14874,
+			PacketReadCopy: 0x00C16570,
+			AckNameLengthHook: 0x00C9EB37,
+			AckNameLengthPrefix: "6A 18 C7 85 E8 DF FF FF 00 00 00 00",
+			AckNameLengthReturn: 0x00C9EB43,
+			AckNameAllEntry: 0x00CA9028,
+			AckNameAllHandler: 0x00CF2A50,
+			AckNameNpcTitleHook: 0x00CB3ADD,
+			AckNameNpcTitlePrefix: "8D 7B 22 83 EC 18",
+			AckNameNpcTitleReturn: 0x00CB3AE3,
+			AckNameNpcLengthHook: 0x00CB3BD8,
+			AckNameNpcLengthPrefix: "6A 18 56 8D 4D D8",
+			AckNameNpcLengthReturn: 0x00CB3BDE,
+			StableIat: {
+				textOut: 0x00FC10DC,
+				extent: 0x00FC112C,
+				setTextColor: 0x00FC10E0,
+				multiToWide: 0x00FC1200,
+				wideToMulti: 0x00FC1204
+			}
+		},
+		20260219: {
+			Name: "2026-02-19 Ragexe",
+			FrameCaller: 0x00CE0BAD,
+			FrameCallerPrefix: "8B CE E8",
+			TextOutDirect: 0x00550747,
+			ExtentDirect: 0x0055060D,
+			TextOutThunk: 0x00E60C50,
+			ExtentThunk: 0x00E60C2C,
+			StableIat: {
+				textOut: 0x010C712C,
+				extent: 0x010C70E0,
+				setTextColor: 0x010C7130,
+				multiToWide: 0x010C7240,
+				wideToMulti: 0x010C7244
+			}
+		}
+	},
+	ActiveBuildDate: 0,
+	FeatureNames: 1,
+	FeatureColors: 2,
+	FeatureEmoji: 4,
+	MapCapacity: 2048,
+	ProbeLimit: 32,
+	EntrySize: 0x390,
+	EntryHash: 0,
+	EntryKind: 4,
+	EntryEntityType: 8,
+	EntryColor: 12,
+	EntryKey: 16,
+	EntryValue: 144,
+	KeyCapacity: 128,
+	ValueCapacity: 768,
+	StateReadSequence: 0,
+	StateFeatures: 4,
+	StateSize: 8,
+	RingCapacity: 1024,
+	RingSlotShift: 10,
+	PacketId: 0x0BB7,
+	PacketMagic: 0x4558544E
+};
+
+/// Shared infrastructure is cached for this loaded EXE, independent of the
+/// first selecting feature. Inactive features remove their hooks; cached code
+/// remains address-stable for other users and later re-selection.
+ExtNameTextStatic.withSharedOwner = function(callback)
+{
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	try { return callback(); }
+	finally { Exe.ActivePatch = owner; }
+};
+
+ExtNameTextStatic.registerUser = function(owner, feature)
+{
+	const users = CACHE.get("ExtNameTextStatic.Users") ?? {};
+	users[owner] = (users[owner] ?? 0) | feature;
+	CACHE.put("ExtNameTextStatic.Users", users);
+};
+
+ExtNameTextStatic.release = function(owner)
+{
+	const users = CACHE.get("ExtNameTextStatic.Users") ?? {};
+	delete users[owner];
+	CACHE.put("ExtNameTextStatic.Users", users);
+	const state = CACHE.get("ExtNameTextStatic.State");
+	if (!state || !state.shared)
+		return;
+	state.features = Object.values(users).reduce((mask, feature) => mask | feature, 0);
+	ExtNameTextStatic.writeFeatures(state);
+	if (Object.keys(users).length === 0)
+	{
+		ExtNameTextStatic.withSharedOwner(function()
+		{
+			Exe.DelTag("ExtNameTextStatic.TextBridge");
+			Exe.DelTag("NativeName.FrameCaller");
+			const npc = CACHE.get("AlwaysShowNpcName.QjsState");
+			if (npc && Warp.GetPatchState("AlwaysShowNpcName"))
+				NpcNameStatic.patchFrameCaller(
+					Exe.Vir2Phy(ExtNameTextStatic.FrameCaller, CODE), npc.bridgeVir);
+		});
+	}
+	else
+	{
+		ExtNameTextStatic.patchTextSurfaces(state,
+			(state.features & ExtNameTextStatic.FeatureColors) !== 0);
+		// Restore the outer item renderer after refreshing its shared base.
+		const item = CACHE.get("ItemColorStatic.State");
+		if (item && item.ownerPatch !== owner &&
+			ExtNameTextStatic.isPatchSelected(item.ownerPatch))
+			ItemColorStatic.patchTextSurfaces(item);
+	}
+	CACHE.put("ExtNameTextStatic.State", state);
+};
+
+ExtNameTextStatic.writeFeatures = function(state)
+{
+	if (!state || !Number.isInteger(state.statePhy) ||
+		!Number.isInteger(state.features) ||
+		typeof state.ownerPatch !== "string" || state.ownerPatch.length === 0)
+		throw Error("ExtNameTextStatic: invalid shared feature state");
+
+	const owner = Exe.ActivePatch;
+	if (state.shared)
+		Exe.ActivateGlobal();
+	else if (owner !== state.ownerPatch)
+		Exe.SetActivePatch(state.ownerPatch);
+	try
+	{
+		Exe.SetUint32(
+			state.statePhy + ExtNameTextStatic.StateFeatures,
+			state.features
+		);
+	}
+	finally
+	{
+		Exe.ActivePatch = owner;
+	}
+};
+
+ExtNameTextStatic.selectProfile = function()
+{
+	const profileId = RagexeClientProfile.Id;
+	const profile = ExtNameTextStatic.Profiles[profileId];
+	if (!profile)
+		throw Error(`ExtNameTextStatic does not support client profile ${profileId}`);
+	if (ExtNameTextStatic.ActiveBuildDate === profileId)
+		return profile;
+
+	for (const key in profile)
+		ExtNameTextStatic[key] = profile[key];
+	ExtNameTextStatic.ActiveBuildDate = profileId;
+	return profile;
+};
+
+ExtNameTextStatic.callIat = function(a, iat)
+{
+	a.emit(0xFF, 0x15); a.dword(iat);
+};
+
+ExtNameTextStatic.allocateCode = function(assembler)
+{
+	const [phyAddr, virAddr] = RagexeAllocationStatic.allocate(
+		assembler.bytes.length,
+		0x10
+	);
+	Exe.SetHex(phyAddr, assembler.finish(virAddr));
+	return {phyAddr, virAddr, size: assembler.bytes.length};
+};
+
+ExtNameTextStatic.allocateText = function(value)
+{
+	const bytes = [];
+	for (let i = 0; i < value.length; ++i)
+		bytes.push(value.charCodeAt(i) & 0x7F);
+	bytes.push(0);
+	const [phyAddr, virAddr] = RagexeAllocationStatic.allocate(bytes.length, 1);
+	Exe.SetHex(phyAddr, ExtNameStaticAsm.bytesToHex(bytes));
+	return virAddr;
+};
+
+ExtNameTextStatic.zeroBlock = function(phyAddr, size)
+{
+	const chunkSize = 4096;
+	const chunk = "00 ".repeat(chunkSize).trim();
+	for (let offset = 0; offset < size; offset += chunkSize)
+	{
+		const count = Math.min(chunkSize, size - offset);
+		Exe.SetHex(phyAddr + offset, count === chunkSize
+			? chunk
+			: "00 ".repeat(count).trim());
+	}
+};
+
+ExtNameTextStatic.isPatchSelected = function(name)
+{
+	return typeof name === "string" && name.length > 0 &&
+		(Exe.ActivePatch === name || Warp.GetPatchState(name));
+};
+
+ExtNameTextStatic.isStateLive = function(state)
+{
+	if (!state || !Number.isInteger(state.stateVir) ||
+		!Number.isInteger(state.lookupVir) ||
+		(!state.shared && !ExtNameTextStatic.isPatchSelected(state.ownerPatch)))
+		return false;
+	return !!state.minimal || Number.isInteger(state.bridgeVir);
+};
+
+ExtNameTextStatic.buildHashAnsi = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildHashAnsi(...args);
+};
+
+ExtNameTextStatic.buildStrEqual = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildStrEqual(...args);
+};
+
+ExtNameTextStatic.buildCopyZ = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildCopyZ(...args);
+};
+
+ExtNameTextStatic.buildAppendZ = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildAppendZ(...args);
+};
+
+ExtNameTextStatic.buildMapPut = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildMapPut(...args);
+};
+
+ExtNameTextStatic.buildMapLookup = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildMapLookup(...args);
+};
+
+ExtNameTextStatic.buildPacketStore = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildPacketStore(...args);
+};
+
+ExtNameTextStatic.buildFrame = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildFrame(...args);
+};
+
+ExtNameTextStatic.buildFrameBridge = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.buildFrameBridge(...args);
+};
+
+ExtNameTextStatic.buildFindWide = function(lookupVir, ansiScratchVir, wideToMultiIat)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x75, 0x08, 0x8B, 0x7D, 0x0C);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "missing");
+	a.emit(0x85, 0xFF);
+	a.jcc(0x8E, "missing");
+	a.emit(0x83, 0xFF, 0x7F);
+	a.jcc(0x8F, "missing");
+	a.emit(0x6A, 0x00, 0x6A, 0x00, 0x68); a.dword(255);
+	a.emit(0x68); a.dword(ansiScratchVir);
+	a.emit(0x57, 0x56, 0x6A, 0x00, 0x68); a.dword(65001);
+	ExtNameTextStatic.callIat(a, wideToMultiIat);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, "missing");
+	a.emit(0xC6, 0x80); a.dword(ansiScratchVir); a.emit(0x00);
+	a.emit(0x68); a.dword(ansiScratchVir);
+	a.call(lookupVir);
+	a.jmp("done");
+	a.label("missing");
+	a.emit(0x33, 0xC0);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildTextOut = function(
+	stateVir,
+	findWideVir,
+	wideScratchVir,
+	apis
+)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x1C, 0x53, 0x56, 0x57);
+	a.emit(0xC7, 0x45, 0xF4); a.dword(0);       // didColor
+	a.emit(0xC7, 0x45, 0xF8); a.dword(0);       // matched map entry
+	a.emit(0x8B, 0x45, 0x14, 0x89, 0x45, 0xEC);
+	a.emit(0x8B, 0x45, 0x18, 0x89, 0x45, 0xE8);
+	a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
+	a.dword(ExtNameTextStatic.FeatureNames | ExtNameTextStatic.FeatureColors);
+	a.jcc(0x84, "draw");
+	a.emit(0xFF, 0x75, 0x18, 0xFF, 0x75, 0x14);
+	a.call(findWideVir);
+	a.emit(0x89, 0x45, 0xF8, 0x85, 0xC0);
+	a.jcc(0x84, "draw");
+	a.emit(0x8B, 0xF0);
+	if (apis.colorEnabled)
+	{
+		a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
+		a.dword(ExtNameTextStatic.FeatureColors);
+		a.jcc(0x84, "substitute");
+		a.emit(0x83, 0x7E, ExtNameTextStatic.EntryKind, 0x00);
+		a.jcc(0x85, "substitute");
+		a.emit(0x83, 0x7E, ExtNameTextStatic.EntryEntityType, 0x00);
+		a.jcc(0x85, "substitute");
+		a.emit(0x8B, 0x5E, ExtNameTextStatic.EntryColor, 0x85, 0xDB);
+		a.jcc(0x84, "substitute");
+		// SetTextColor returns the previous COLORREF. Use that return value to
+		// classify the stock main/shadow pass without importing GetTextColor.
+		a.emit(0x53, 0xFF, 0x75, 0x08);
+		ExtNameTextStatic.callIat(a, apis.setTextColor);
+		a.emit(0x89, 0x45, 0xF0);
+		a.emit(0x8B, 0xD0, 0x81, 0xE2); a.dword(0xFF);
+		a.emit(0x83, 0xFA, 0x20);
+		a.jcc(0x87, "apply_color");
+		a.emit(0x8B, 0xD0, 0xC1, 0xEA, 0x08, 0x81, 0xE2); a.dword(0xFF);
+		a.emit(0x83, 0xFA, 0x20);
+		a.jcc(0x87, "apply_color");
+		a.emit(0xC1, 0xE8, 0x10, 0x25); a.dword(0xFF);
+		a.emit(0x83, 0xF8, 0x20);
+		a.jcc(0x86, "restore_shadow");
+		a.label("apply_color");
+		a.emit(0xC7, 0x45, 0xF4); a.dword(1);
+		a.jmp("substitute");
+		a.label("restore_shadow");
+		a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
+		ExtNameTextStatic.callIat(a, apis.setTextColor);
+	}
+	a.label("substitute");
+	a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
+	a.dword(ExtNameTextStatic.FeatureNames);
+	a.jcc(0x84, "draw");
+	a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
+	a.emit(0x68); a.dword(wideScratchVir);
+	a.emit(0x6A, 0xFF, 0x8D, 0x86); a.dword(ExtNameTextStatic.EntryValue); a.emit(0x50);
+	a.emit(0x6A, 0x00, 0x68); a.dword(65001);
+	ExtNameTextStatic.callIat(a, apis.multiToWide);
+	a.emit(0x83, 0xF8, 0x01);
+	a.jcc(0x8E, "draw");
+	a.emit(0x48, 0x89, 0x45, 0xE8);
+	a.emit(0xC7, 0x45, 0xEC); a.dword(wideScratchVir);
+	a.label("draw");
+	if (apis.emojiDraw)
+	{
+		// emojiDraw is embedded only while FluentEmoji is selected. Do not gate
+		// it on the shared feature word: cross-patch write ownership can replay
+		// an older names/colors value into that allocation in the final EXE.
+		a.emit(0x8D, 0x45, 0xE4, 0x50, 0xFF, 0x75, 0xE8, 0xFF, 0x75, 0xEC);
+		a.emit(0xFF, 0x75, 0x10, 0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
+		a.call(apis.emojiDraw);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, "draw_normal");
+		a.emit(0x8B, 0x45, 0xE4, 0x89, 0x45, 0xF8);
+		a.jmp("restore_color");
+	}
+	a.label("draw_normal");
+	a.emit(0xFF, 0x75, 0xE8, 0xFF, 0x75, 0xEC, 0xFF, 0x75, 0x10,
+		0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
+	ExtNameTextStatic.callIat(a, apis.textOut);
+	a.emit(0x89, 0x45, 0xF8);
+	a.label("restore_color");
+	a.emit(0x83, 0x7D, 0xF4, 0x00);
+	a.jcc(0x84, "return");
+	a.emit(0xFF, 0x75, 0xF0, 0xFF, 0x75, 0x08);
+	ExtNameTextStatic.callIat(a, apis.setTextColor);
+	a.label("return");
+	a.emit(0x8B, 0x45, 0xF8, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D,
+		0xC2, 0x14, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.buildExtent = function(
+	stateVir,
+	findWideVir,
+	wideScratchVir,
+	apis
+)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x45, 0x0C, 0x89, 0x45, 0xFC);
+	a.emit(0x8B, 0x45, 0x10, 0x89, 0x45, 0xF8);
+	a.emit(0xF7, 0x05); a.dword(stateVir + ExtNameTextStatic.StateFeatures);
+	a.dword(ExtNameTextStatic.FeatureNames);
+	a.jcc(0x84, "measure");
+	a.emit(0xFF, 0x75, 0x10, 0xFF, 0x75, 0x0C);
+	a.call(findWideVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "measure");
+	a.emit(0x8B, 0xF0);
+	a.emit(0x68); a.dword(ExtNameTextStatic.ValueCapacity);
+	a.emit(0x68); a.dword(wideScratchVir);
+	a.emit(0x6A, 0xFF, 0x8D, 0x86); a.dword(ExtNameTextStatic.EntryValue); a.emit(0x50);
+	a.emit(0x6A, 0x00, 0x68); a.dword(65001);
+	ExtNameTextStatic.callIat(a, apis.multiToWide);
+	a.emit(0x83, 0xF8, 0x01);
+	a.jcc(0x8E, "measure");
+	a.emit(0x48, 0x89, 0x45, 0xF8);
+	a.emit(0xC7, 0x45, 0xFC); a.dword(wideScratchVir);
+	a.label("measure");
+	if (apis.emojiMeasure)
+	{
+		// The emitted call itself is the durable enable state. See buildTextOut.
+		a.emit(0xFF, 0x75, 0x14, 0xFF, 0x75, 0xF8, 0xFF, 0x75, 0xFC,
+			0xFF, 0x75, 0x08);
+		a.call(apis.emojiMeasure);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, "measure_normal");
+		a.emit(0xB8); a.dword(1);
+		a.jmp("done");
+	}
+	a.label("measure_normal");
+	a.emit(0xFF, 0x75, 0x14, 0xFF, 0x75, 0xF8, 0xFF, 0x75, 0xFC,
+		0xFF, 0x75, 0x08);
+	ExtNameTextStatic.callIat(a, apis.extent);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x10, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.findApis = function(requireColor)
+{
+	const stable = ExtNameTextStatic.StableIat;
+	return {
+		textOut: stable.textOut,
+		extent: stable.extent,
+		setTextColor: stable.setTextColor,
+		colorEnabled: requireColor,
+		multiToWide: stable.multiToWide,
+		wideToMulti: stable.wideToMulti
+	};
+};
+
+ExtNameTextStatic.patchTextSurfaces = function(state, requireColor)
+{
+	return ExtNameTextStatic.withSharedOwner(function()
+	{
+		if (!ExtNameTextStatic.isStateLive(state))
+			throw Error("ExtNameTextStatic: refusing stale text-bridge state");
+		const apis = ExtNameTextStatic.findApis(requireColor);
+		const emoji = CACHE.get("FluentEmojiStatic.State");
+		if ((state.features & ExtNameTextStatic.FeatureEmoji) !== 0 && emoji &&
+			ExtNameTextStatic.isPatchSelected(emoji.ownerPatch))
+		{
+			apis.emojiDraw = emoji.drawVir;
+			apis.emojiMeasure = emoji.measureVir;
+		}
+		const findWide = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildFindWide(
+				state.lookupVir,
+				state.ansiScratchVir,
+				apis.wideToMulti
+			)
+		);
+		const textOut = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildTextOut(
+				state.stateVir,
+				findWide.virAddr,
+				state.wideScratchVir,
+				apis
+			)
+		);
+		const extent = ExtNameTextStatic.allocateCode(
+			ExtNameTextStatic.buildExtent(
+				state.stateVir,
+				findWide.virAddr,
+				state.wideScratchVir,
+				apis
+			)
+		);
+
+		const owner = Exe.ActivePatch;
+		Exe.ActivateGlobal();
+		Exe.BeginTag("ExtNameTextStatic.TextBridge", true);
+		try
+		{
+			const textDirectPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutDirect, CODE);
+			const extentDirectPhy = Exe.Vir2Phy(ExtNameTextStatic.ExtentDirect, CODE);
+			const textThunkPhy = Exe.Vir2Phy(ExtNameTextStatic.TextOutThunk, CODE);
+			const extentThunkPhy = Exe.Vir2Phy(ExtNameTextStatic.ExtentThunk, CODE);
+			if (textDirectPhy < 0 || extentDirectPhy < 0 ||
+				textThunkPhy < 0 || extentThunkPhy < 0)
+				throw Error("ExtNameTextStatic: a text call surface is not mapped");
+			Exe.SetCALL(textDirectPhy, textOut.virAddr, 0);
+			Exe.SetNOPs(textDirectPhy + 5, 1);
+			Exe.SetCALL(extentDirectPhy, extent.virAddr, 0);
+			Exe.SetNOPs(extentDirectPhy + 5, 1);
+			Exe.SetJMP(textThunkPhy, textOut.virAddr, 0);
+			Exe.SetNOPs(textThunkPhy + 5, 1);
+			Exe.SetJMP(extentThunkPhy, extent.virAddr, 0);
+			Exe.SetNOPs(extentThunkPhy + 5, 1);
+		}
+		finally
+		{
+			Exe.EndTag();
+			Exe.ActivePatch = owner;
+		}
+		state.findWideVir = findWide.virAddr;
+		state.textOutVir = textOut.virAddr;
+		state.extentVir = extent.virAddr;
+		state.apis = apis;
+		return state;
+	});
+};
+
+ExtNameTextStatic.patchFrameCaller = function(callerPhy, bridgeVir)
+{
+	const owner = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag("NativeName.FrameCaller", true);
+	try
+	{
+		Exe.SetCALL(callerPhy, bridgeVir, 0);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+};
+
+ExtNameTextStatic.buildPacketLengthBridge = function(...args)
+{
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildPacketLengthBridge(...args);
+};
+
+ExtNameTextStatic.buildAckNameAll128 = function(...args)
+{
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildAckNameAll128(...args);
+};
+
+ExtNameTextStatic.buildAckName128LengthBridge = function(...args)
+{
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildAckName128LengthBridge(...args);
+};
+
+ExtNameTextStatic.buildAckNameNpcTitleBridge = function(...args)
+{
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildAckNameNpcTitleBridge(...args);
+};
+
+ExtNameTextStatic.buildAckNameNpcLengthBridge = function(...args)
+{
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.buildAckNameNpcLengthBridge(...args);
+};
+
+ExtNameTextStatic.patch128ByteNamePackets = function(...args)
+{
+	if (typeof NamePackets128Static === "undefined" || NamePackets128Static.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: NamePackets128Static support API 1 is required");
+	return NamePackets128Static.install(...args);
+};
+
+ExtNameTextStatic.ensureInstalled = function(...args)
+{
+	if (typeof EntityTextStatic === "undefined" || EntityTextStatic.ApiVersion !== 1)
+		throw Error("ExtNameTextStatic: EntityTextStatic support API 1 is required");
+	return EntityTextStatic.ensureInstalled(...args);
+};
+
+ExtNameTextStatic.buildMissingFindWide = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x33, 0xC0, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+ExtNameTextStatic.enableEmoji = function(_, renderer)
+{
+	const featureOwner = Exe.ActivePatch;
+	return ExtNameTextStatic.withSharedOwner(function()
+	{
+		ExtNameTextStatic.selectProfile();
+		if (!renderer || !Number.isInteger(renderer.drawVir) ||
+			!Number.isInteger(renderer.measureVir))
+			throw Error("ExtNameTextStatic: emoji renderer state unavailable");
+
+		let state = CACHE.get("ExtNameTextStatic.State");
+		if (!ExtNameTextStatic.isStateLive(state))
+		{
+			const [statePhy, stateVir] = Exe.Allocate(ExtNameTextStatic.StateSize, 4);
+			ExtNameTextStatic.zeroBlock(statePhy, ExtNameTextStatic.StateSize);
+			const [wideScratchPhy, wideScratchVir] = Exe.Allocate(
+				ExtNameTextStatic.ValueCapacity * 2,
+				0x10
+			);
+			ExtNameTextStatic.zeroBlock(
+				wideScratchPhy,
+				ExtNameTextStatic.ValueCapacity * 2
+			);
+			const missing = ExtNameTextStatic.allocateCode(
+				ExtNameTextStatic.buildMissingFindWide()
+			);
+			state = {
+				statePhy,
+				stateVir,
+				wideScratchVir,
+				lookupVir: missing.virAddr,
+				features: 0,
+				ownerPatch: _,
+				shared: true,
+				minimal: true
+			};
+		}
+		ExtNameTextStatic.registerUser(featureOwner, ExtNameTextStatic.FeatureEmoji);
+		state.features |= ExtNameTextStatic.FeatureEmoji;
+		ExtNameTextStatic.writeFeatures(state);
+		CACHE.put("ExtNameTextStatic.State", state);
+		ExtNameTextStatic.patchTextSurfaces(
+			state,
+			(state.features & ExtNameTextStatic.FeatureColors) !== 0
+		);
+		CACHE.put("ExtNameTextStatic.State", state);
+
+		if (typeof ItemColorStatic !== "undefined" &&
+			typeof ItemColorStatic.patchTextSurfaces === "function")
+		{
+			const itemState = CACHE.get("ItemColorStatic.State");
+			if (itemState && Number.isInteger(itemState.stateVir) &&
+				ExtNameTextStatic.isPatchSelected(itemState.ownerPatch))
+			{
+				ItemColorStatic.patchTextSurfaces(itemState);
+				CACHE.put("ItemColorStatic.State", itemState);
+			}
+		}
+		return true;
+	});
+};
+
+ExtNameTextStatic.enable = function(_, feature)
+{
+	const featureOwner = Exe.ActivePatch;
+	ExtNameTextStatic.selectProfile();
+	if (typeof ExtNameStaticAsm === "undefined" || typeof ExtNameStaticAsm.asm !== "function")
+		throw Error("ExtNameTextStatic: assembly helper unavailable");
+	if (typeof CustomPacketDispatch === "undefined" ||
+		typeof CustomPacketDispatch.install !== "function")
+		throw Error("ExtNameTextStatic: EXTN dispatcher helper unavailable");
+
+	// Banquet sends the variable-length ICOL packet immediately after
+	// clif_authok. Even when item-color rendering is not selected, consume it
+	// through the static dispatcher so it cannot block the following login,
+	// NPC-name and skill-list packets. A later CustomColoredItemName patch can
+	// reuse the same cached ICOL block and add its visual layer.
+	CustomPacketDispatch.install(`${_}.Dispatch`, ["EXTN", "ICOL"]);
+	const routes = CACHE.get("CustomPacketDispatch.Routes");
+	const extn = routes && routes.routes ? routes.routes.EXTN : null;
+	if (!extn || extn.transport !== "ring-v2" || !Number.isInteger(extn.blockVir))
+		throw Error("ExtNameTextStatic: EXTN ring-v2 block unavailable");
+
+	const state = ExtNameTextStatic.ensureInstalled(_, extn.blockVir);
+	if ((feature & ExtNameTextStatic.FeatureNames) !== 0)
+		ExtNameTextStatic.patch128ByteNamePackets({});
+	ExtNameTextStatic.registerUser(featureOwner, feature);
+	state.features |= feature;
+	ExtNameTextStatic.writeFeatures(state);
+	if ((feature & ExtNameTextStatic.FeatureColors) !== 0)
+		ExtNameTextStatic.patchTextSurfaces(state, true);
+	CACHE.put("ExtNameTextStatic.State", state);
+
+	// The item-color bridge intentionally wraps the shared TextOutW bridge.
+	// Re-apply it after a later name/color feature rebuilds this base layer so
+	// profile ordering cannot silently disable item-name colors.
+	if (typeof ItemColorStatic !== "undefined" &&
+		typeof ItemColorStatic.patchTextSurfaces === "function")
+	{
+		const itemState = CACHE.get("ItemColorStatic.State");
+		if (itemState && Number.isInteger(itemState.stateVir) &&
+			ExtNameTextStatic.isPatchSelected(itemState.ownerPatch))
+		{
+			ItemColorStatic.patchTextSurfaces(itemState);
+			CACHE.put("ItemColorStatic.State", itemState);
+		}
+	}
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("ExtNameTextStatic.QjsOnly", {
+			owner: _,
+			features: state.features,
+			mapCapacity: ExtNameTextStatic.MapCapacity,
+			frameVir: state.frameVir,
+			textOutVir: state.textOutVir,
+			extentVir: state.extentVir,
+			extnVir: state.extnVir,
+			externalModules: 0
+		});
+	}
+	return true;
+};

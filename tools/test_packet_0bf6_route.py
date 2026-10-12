@@ -49,7 +49,7 @@ def verify(exe,expected):
         struct.pack_into('<I',p,52,0);p[672:1824]=bytes(1152) # actual initial NPC snapshot has no previous rewards
         g.receive(p);window=g.r(g.c['state'])
         assert window and g.r(window+0x28)==1,'initial empty NPC snapshot did not open Gacha through the actual dispatcher'
-        g.invoke(g.c['down'],window,(746,9));g.invoke(g.c['up'],window,(746,9))
+        g.invoke(g.c['down'],window,(746+g.c['contentX'],9));g.invoke(g.c['up'],window,(746+g.c['contentX'],9))
         assert g.r(window+0x28)==0
         struct.pack_into('<I',p,16,88);g.receive(p)
         assert g.r(window+0x28)==1 and g.r(g.c['state']+64+16)==88,'fresh NPC session did not reopen the window'

@@ -1,0 +1,24 @@
+{
+  "source_grf": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\native_act_hd_v3.grf",
+  "backup": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\native_act_hd_v3.grf.before-monk-name-alias-20260912-175837.bak",
+  "before_sha256": "5e35ba2247944d521e51107c518d49e6b62153af61c283314e0d18dc18d4e447",
+  "after_sha256": "4730db4961d2321f6d676f181f7dd40095edbf4faa16697a6df5b7870bc0409f",
+  "added_aliases": [
+    "data/sprite/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ubabd\ud06c_\ub0a8.spr",
+    "data/sprite/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ubabd\ud06c_\ub0a8.act"
+  ],
+  "source_pair": "data/sprite/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ubabd\ud06c_h_\ub0a8",
+  "source_pair_sha256": {
+    ".spr": "b1b57a9508a7c8ecababfe97b56b1acdc37cb974917b0fe05be2aca8dd4956b6",
+    ".act": "251f8c9d1e3d3c70c866b067c7e00e5f649daa4fe3c2298e2231d68ce8573bb1"
+  },
+  "act_scale": [
+    0.5,
+    0.5
+  ],
+  "image_count": 120,
+  "original_entries_preserved": 10,
+  "total_entries": 12,
+  "compressed_sprite_payloads": "unchanged; aliases share their original data offsets",
+  "exe_changed": false
+}

@@ -1,0 +1,562 @@
+[
+  {
+    "name": "Poring",
+    "summary": "A gentle pink jelly that travels by bouncing and swallows stray belongings, making it a familiar companion to beginner adventures.",
+    "url": "https://ragnarok.fandom.com/wiki/Poring",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Familiar",
+    "summary": "Colonies of these cave bats feed with sharp teeth and pursue intruders with relentless, rapid attacks.",
+    "url": "https://ragnarok.fandom.com/wiki/Familiar",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Fabre",
+    "summary": "This round grassland larva begins the life cycle that passes through Pupa before becoming a Creamy.",
+    "url": "https://ragnarok.fandom.com/wiki/Fabre",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Pupa",
+    "summary": "A tough cocoon shelters the next stage of Fabre's life; the creature inside will eventually emerge as a Creamy.",
+    "url": "https://ragnarok.fandom.com/wiki/Pupa",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Condor",
+    "summary": "An aging desert scavenger survives on remains and travelers' scraps. Disturbing one can bring the surrounding flock down upon an intruder.",
+    "url": "https://ragnarok.fandom.com/wiki/Condor",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Willow",
+    "summary": "An old tree animated by troubled fairy magic, remembered for its eerie shape and unsettling sounds.",
+    "url": "https://ragnarok.fandom.com/wiki/Willow",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Chonchon",
+    "summary": "A widespread, fast-moving fly whose discarded wings are associated with the teleportation items carried by travelers.",
+    "url": "https://ragnarok.fandom.com/wiki/Chonchon",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Roda Frog",
+    "summary": "A mutated amphibian of damp grasslands and forests, often found close to water and announced by its persistent croaking.",
+    "url": "https://ragnarok.fandom.com/wiki/Roda_Frog",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Wolf",
+    "summary": "These blue-maned hunters usually avoid people, but threatening one can provoke the rest of its pack.",
+    "url": "https://ragnarok.fandom.com/wiki/Wolf",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Spore",
+    "summary": "A plump, mobile mushroom whose swaying movements attract attention in forests and underground passages.",
+    "url": "https://ragnarok.fandom.com/wiki/Spore",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Zombie",
+    "summary": "Dark shamanic magic has returned this corpse to motion. Its poisonous breath makes the walking dead especially unwelcome company.",
+    "url": "https://ragnarok.fandom.com/wiki/Zombie",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Archer Skeleton",
+    "summary": "A cursed marksman of sunless places, retaining a disturbingly accurate aim despite the loss of living eyes.",
+    "url": "https://ragnarok.fandom.com/wiki/Archer_Skeleton",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Creamy",
+    "summary": "The winged adult of the Fabre life cycle feeds through a curled mouthpart and is known for escaping danger by teleportation.",
+    "url": "https://ragnarok.fandom.com/wiki/Creamy",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Mandragora",
+    "summary": "This rooted plant reaches unsuspecting travelers with stalks concealed beneath the ground, making distance an unreliable protection.",
+    "url": "https://ragnarok.fandom.com/wiki/Mandragora",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Orc Warrior",
+    "summary": "A forest-dwelling fighter from the Orcs' own society, known for intimidating travelers and demanding their possessions.",
+    "url": "https://ragnarok.fandom.com/wiki/Orc_Warrior",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Boa",
+    "summary": "A green snake of woodland and desert country. Its lack of venom does not make an encounter entirely harmless.",
+    "url": "https://ragnarok.fandom.com/wiki/Boa",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Munak",
+    "summary": "Resentment binds this young woman's remains to the living world. The old accounts connect her fate with Bongun.",
+    "url": "https://ragnarok.fandom.com/wiki/Munak",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Soldier Skeleton",
+    "summary": "A restless soldier of dark passages, still carrying a sword in each hand long after flesh and purpose have vanished.",
+    "url": "https://ragnarok.fandom.com/wiki/Soldier_Skeleton",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Isis",
+    "summary": "Accounts describe a royal attendant reborn as a serpent-woman, remaining devoted to the king's tomb and hostile to its intruders.",
+    "url": "https://ragnarok.fandom.com/wiki/Isis",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Poporing",
+    "summary": "A swamp-adapted relative of Poring whose elastic green body carries poison beneath its deceptively familiar bounce.",
+    "url": "https://ragnarok.fandom.com/wiki/Poporing",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Verit",
+    "summary": "This mummified dog continues gathering dropped objects for its master, preserving a strangely cheerful loyalty beyond death.",
+    "url": "https://ragnarok.fandom.com/wiki/Verit",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Elder Willow",
+    "summary": "An ancient Willow inhabited by a fairy, with magical power attributed to the many years it has endured.",
+    "url": "https://ragnarok.fandom.com/wiki/Elder_Willow",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Thara Frog",
+    "summary": "A red, more formidable relative of Roda Frog that favors dark, wet places and shares its noisy croak.",
+    "url": "https://ragnarok.fandom.com/wiki/Thara_Frog",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Hunter Fly",
+    "summary": "A crimson relative of Chonchon, infamous for its speed and deadly pursuit of unwary travelers.",
+    "url": "https://ragnarok.fandom.com/wiki/Hunter_Fly",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Ghoul",
+    "summary": "An unsatisfied corpse-eater raised by a shaman's curse, unable to content itself with the dead and drawn toward the living.",
+    "url": "https://ragnarok.fandom.com/wiki/Ghoul",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Side Winder",
+    "summary": "Stories sometimes give it two heads, but this snake confuses enemies with coordinated movements of its head and blunt tail.",
+    "url": "https://ragnarok.fandom.com/wiki/Sidewinder",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Osiris",
+    "summary": "An ancient ruler once revered as a sun deity, now remembered as a powerful undead lord associated with the Sphinx.",
+    "url": "https://ragnarok.fandom.com/wiki/Osiris",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Baphomet",
+    "summary": "A notorious, scythe-bearing demon whose offspring roam Midgard. Accounts describe the forest incarnation as only a portion of its full power.",
+    "url": "https://ragnarok.fandom.com/wiki/Baphomet",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Golem",
+    "summary": "Ancient magic gave motion to stone. The weight of its enchanted body explains the slow, deliberate movement of this construct.",
+    "url": "https://ragnarok.fandom.com/wiki/Golem",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Mummy",
+    "summary": "A bandaged remnant of Morocc's pyramids, sometimes accompanied by the faithful undead dog Verit.",
+    "url": "https://ragnarok.fandom.com/wiki/Mummy",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Steel Chonchon",
+    "summary": "A yellow-green Chonchon protected by a hard shell, with a habit of collecting whatever travelers leave on the ground.",
+    "url": "https://ragnarok.fandom.com/wiki/Steel_Chonchon",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Obeaune",
+    "summary": "A fierce mermaid whose wild hair is itself a weapon, defending her underwater territory from unwelcome visitors.",
+    "url": "https://ragnarok.fandom.com/wiki/Obeaune",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Marc",
+    "summary": "A proud-looking deep-sea creature resembling a seahorse, protected by exceptionally firm skin and a dragonlike silhouette.",
+    "url": "https://ragnarok.fandom.com/wiki/Marc",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Doppelganger",
+    "summary": "A demon that borrows a living person's appearance, using an adventurer's own likeness to approach and betray its victim.",
+    "url": "https://ragnarok.fandom.com/wiki/Doppelganger",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Thief Bug Egg",
+    "summary": "Several young Thief Bugs may emerge from this egg, continuing the infestation of damp and neglected places.",
+    "url": "https://ragnarok.fandom.com/wiki/Thief_Bug_Egg",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Picky",
+    "summary": "A young Peco Peco that grows quickly while hunting small insects across the desert.",
+    "url": "https://ragnarok.fandom.com/wiki/Picky",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Thief Bug",
+    "summary": "A quick-moving scavenger of dark, damp places, notorious for carrying away unattended belongings and gathering in swarms.",
+    "url": "https://ragnarok.fandom.com/wiki/Thief_Bug",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Rocker",
+    "summary": "A romantic grasshopper musician wanders with a violin and leaf parasol, adding a rather noisy soundtrack to the grasslands.",
+    "url": "https://ragnarok.fandom.com/wiki/Rocker",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Muka",
+    "summary": "A desert cactus with an alarming voice, retaliating against attackers with needles and stored cactus water.",
+    "url": "https://ragnarok.fandom.com/wiki/Muka",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Smokie",
+    "summary": "A woodland raccoon associated with a magical leaf, said to disguise itself and vanish from sight when threatened.",
+    "url": "https://ragnarok.fandom.com/wiki/Smokie",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Yoyo",
+    "summary": "A clever, banana-loving forest monkey that delights in troubling travelers and cooperates readily with its companions.",
+    "url": "https://ragnarok.fandom.com/wiki/Yoyo",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Metaller",
+    "summary": "A brown desert relative of Rocker, adapted to harsher ground and quick to collect discarded items.",
+    "url": "https://ragnarok.fandom.com/wiki/Metaller",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Mistress",
+    "summary": "The elusive queen of the bees directs her workers with the honey pot she carries.",
+    "url": "https://ragnarok.fandom.com/wiki/Mistress",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Bigfoot",
+    "summary": "Despite its misleading name, this creature is a large, solitary bear, fond of sleep and easily angered by disturbance.",
+    "url": "https://ragnarok.fandom.com/wiki/Bigfoot",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Nightmare",
+    "summary": "A spectral horse linked with the journey of the dead to Hel, surrounded by ominous smoke and otherworldly fire.",
+    "url": "https://ragnarok.fandom.com/wiki/Nightmare",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Lunatic",
+    "summary": "A shaggy, rabbit-shaped creature with a fondness for carrots and an exceptionally soft coat.",
+    "url": "https://ragnarok.fandom.com/wiki/Lunatic",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Strouf",
+    "summary": "A lord among the merfolk, carrying a trident associated with lightning against visitors from the surface.",
+    "url": "https://ragnarok.fandom.com/wiki/Strouf",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Vadon",
+    "summary": "A coastal crustacean whose thick armor and powerful pincers are more memorable than its resemblance to an ordinary crab.",
+    "url": "https://ragnarok.fandom.com/wiki/Vadon",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Cornutus",
+    "summary": "A mild sea creature near Izlude that withdraws into a heavy, turban-shaped shell.",
+    "url": "https://ragnarok.fandom.com/wiki/Cornutus",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Hydra",
+    "summary": "An aquatic plant whose hidden roots and reaching tentacles threaten creatures well beyond its small visible body.",
+    "url": "https://ragnarok.fandom.com/wiki/Hydra",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Swordfish",
+    "summary": "A sea hunter distinguished by its blade-like snout, with old accounts also attributing ultrasonic attacks to it.",
+    "url": "https://ragnarok.fandom.com/wiki/Swordfish",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Kukre",
+    "summary": "A swift beach scavenger that consumes dropped objects, sharing the Thief Bug's appetite without its usual group aggression.",
+    "url": "https://ragnarok.fandom.com/wiki/Kukre",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Pirate Skeleton",
+    "summary": "The remains of a pirate lost at sea, still wearing a bandana and wandering as though the old voyage never ended.",
+    "url": "https://ragnarok.fandom.com/wiki/Pirate_Skeleton",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Kaho",
+    "summary": "A flame-wreathed lesser demon from another world, fond of dramatic appearances and showy attacks.",
+    "url": "https://ragnarok.fandom.com/wiki/Kaho",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Crab",
+    "summary": "A familiar coastal creature whose hard shell is its most notable protection.",
+    "url": "https://ragnarok.fandom.com/wiki/Crab",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Shellfish",
+    "summary": "A small marine creature that moves about on a pair of tiny legs.",
+    "url": "https://ragnarok.fandom.com/wiki/Shellfish",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Skeleton",
+    "summary": "A person's lingering resentment has outlived the flesh, leaving animated bones hostile to the living.",
+    "url": "https://ragnarok.fandom.com/wiki/Skeleton",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Poison Spore",
+    "summary": "A venomous, dark-capped Spore whose movements can fool travelers into mistaking it for its gentler relative.",
+    "url": "https://ragnarok.fandom.com/wiki/Poison_Spore",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Golden Thief Bug",
+    "summary": "A rare Thief Bug distinguished by a larger body and a brilliantly golden shell.",
+    "url": "https://ragnarok.fandom.com/wiki/Golden_Thief_Bug",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Orc Hero",
+    "summary": "A celebrated commander from the Orcs' war with humanity, whose swordsmanship is surrounded by tales of thunder.",
+    "url": "https://ragnarok.fandom.com/wiki/Orc_Hero",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Vocal",
+    "summary": "An admired leader among Rockers, blessed with a pleasing voice but willing to turn its violin into a weapon.",
+    "url": "https://ragnarok.fandom.com/wiki/Vocal",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Toad",
+    "summary": "A giant frog that travels with Roda Frogs and boldly challenges creatures of comparable size.",
+    "url": "https://ragnarok.fandom.com/wiki/Toad",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Mastering",
+    "summary": "An unusually large Poring that gathers ordinary Porings around it, lending substance to its commanding name.",
+    "url": "https://ragnarok.fandom.com/wiki/Mastering",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Dragon Fly",
+    "summary": "A rare leader among Chonchons, named for exaggerated tales comparing its strength with that of a dragon.",
+    "url": "https://ragnarok.fandom.com/wiki/Dragon_Fly",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Vagabond Wolf",
+    "summary": "A wolf that survived separation from its original pack and now leads other wolves in search of a living.",
+    "url": "https://ragnarok.fandom.com/wiki/Vagabond_Wolf",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Eclipse",
+    "summary": "A large, unusually hostile Lunatic that rallies its smaller kin against intruders.",
+    "url": "https://ragnarok.fandom.com/wiki/Eclipse",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Andre",
+    "summary": "A diligent worker ant serving Queen Maya, gathering supplies for the colony and relying on nearby workers for support.",
+    "url": "https://ragnarok.fandom.com/wiki/Andre",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Angeling",
+    "summary": "A powerful Poring form whose hostility is linked in old accounts to witnessing the mistreatment of its kin.",
+    "url": "https://ragnarok.fandom.com/wiki/Angeling",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Ant Egg",
+    "summary": "A cluster containing the next generation of the colony; Andre, Piere, or Deniro may emerge when it hatches.",
+    "url": "https://ragnarok.fandom.com/wiki/Ant_Egg",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Anubis",
+    "summary": "A guardian associated with the Sphinx, standing among the desert's ancient supernatural defenders.",
+    "url": "https://ragnarok.fandom.com/wiki/Anubis",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Argiope",
+    "summary": "A huge, segmented arthropod that threatens passersby with venomous fangs.",
+    "url": "https://ragnarok.fandom.com/wiki/Argiope",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Argos",
+    "summary": "An enormous spider whose size makes the ordinary solution to a household pest decidedly impractical.",
+    "url": "https://ragnarok.fandom.com/wiki/Argos",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Bathory",
+    "summary": "A demon-serving witch who travels by broom and attacks through a crystal ball, despite a fondness for girlish ornaments.",
+    "url": "https://ragnarok.fandom.com/wiki/Bathory",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Caramel",
+    "summary": "A timid porcupine whose gentle appearance changes quickly when someone touches its spines.",
+    "url": "https://ragnarok.fandom.com/wiki/Caramel",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Coco",
+    "summary": "A small, swift squirrel usually seen carrying an acorn, with an expression that makes it seem perpetually displeased.",
+    "url": "https://ragnarok.fandom.com/wiki/Coco",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Deniro",
+    "summary": "A red worker ant that scavenges supplies and cooperates with the rest of its colony when threatened.",
+    "url": "https://ragnarok.fandom.com/wiki/Deniro",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Desert Wolf",
+    "summary": "A robust desert hunter that relies on strong jaws and swift legs, with companions ready to join a fight.",
+    "url": "https://ragnarok.fandom.com/wiki/Desert_Wolf",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Deviace",
+    "summary": "An unusual sea creature that lures prey with an antenna and catches it in a remarkably large mouth.",
+    "url": "https://ragnarok.fandom.com/wiki/Deviace",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Deviruchi",
+    "summary": "A young demon that has yet to master magic, relying instead on a surprisingly dangerous little pitchfork.",
+    "url": "https://ragnarok.fandom.com/wiki/Deviruchi",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Dokebi",
+    "summary": "A mischievous creature of Korean tradition, associated with riddles, wealth, and encounters with travelers near Payon.",
+    "url": "https://ragnarok.fandom.com/wiki/Dokebi",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  }
+]

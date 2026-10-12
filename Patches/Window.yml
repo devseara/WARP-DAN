@@ -1,0 +1,318 @@
+############################################################################
+#                                                                          #
+#   Copyright (C) ?-2023 *Various authors*                                 #
+#                                                                          #
+#   This file is a part of WARP project (specific to RO clients)           #
+#                                                                          #
+#   WARP is free software: you can redistribute it and/or modify           #
+#   it under the terms of the GNU General Public License as published by   #
+#   the Free Software Foundation, either version 3 of the License, or      #
+#   (at your option) any later version.                                    #
+#                                                                          #
+#   This program is distributed in the hope that it will be useful,        #
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of         #
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          #
+#   GNU General Public License for more details.                           #
+#                                                                          #
+#   You should have received a copy of the GNU General Public License      #
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.  #
+#                                                                          #
+#                                                                          #
+############################################################################
+#                                                                          #
+#   Author(s)     : Neo-Mind, CrazyBebop                                   #
+#   Created Date  : 2020-08-26                                             #
+#   Last Modified : 2026-03-29                                             #
+#                                                                          #
+############################################################################
+
+ButtonVis:
+    title : BASIC BUTTON VISIBILITY
+    mutex : false
+    color : orangered
+    
+    patches:
+        - HideNewButtons:
+            title : Hide Buttons (New UI)
+            recommend : no
+            author : Neo-Mind,Skylove,Cremané
+            desc : Hides selected buttons below the HP/SP bars in the Basic Info Window (new UI style). Auto Hunt, AutoSupport, Item Collection, and Bestiary are always offered; their choices control the corresponding RO Global/Classic menu children when those UI patches and RO Global Zero Renewal Menu are enabled. Useful for removing buttons for features your server does not support.
+        
+        - ShowNewButtons:
+            title : Show Buttons (New UI)
+            recommend : no
+            author : Neo-Mind,Skylove,Cremané
+            desc : Restores selected hidden buttons below the HP/SP bars in the Basic Info Window (new UI style). Auto Hunt, AutoSupport, Item Collection, and Bestiary are always offered; their choices control the corresponding RO Global/Classic menu children when those UI patches and RO Global Zero Renewal Menu are enabled. Use to bring back buttons that were removed in newer client versions.
+
+CharCreation:
+    title : CHARACTER CREATION
+    mutex : false
+    
+    patches:
+        - CustomNewCharNameHeight:
+            title : Customize new Char Name field height
+            recommend : no
+            author : Andrei Karas (4144)
+            desc : Changes the height of the character name input field in the new character creation dialog. Adjust if the default size clips text or looks misaligned with custom fonts.
+        
+        - IncrNewCharHairs:
+            title : Increase char create Hair limits
+            recommend : no
+            author : Neo-Mind, CrazyBebop
+            desc : Raises the maximum hairstyle and hair color options available during character creation to custom values. Required for servers with more hair options than the default client supports.
+        
+        - CustomCharCreateId:
+            title : Customize job id in char create dialog
+            recommend : no
+            author : Andrei Karas (4144)
+            desc : Overrides the default starting job ID sent in the character creation packet. Use when your server starts new characters as a different class than Novice (e.g., Super Novice or a custom job).
+        
+        - FixLatestNCWin:
+            title : Fix latest new char window
+            recommend : yes
+            author : Neo-Mind
+            desc : Fixes visual issues in the latest character creation window, including a misaligned background image and off-center window positioning. Recommended for a clean character creation experience.
+
+DoramCharCreation:
+    title: CHARACTER CREATION (DORAM)
+    mutex: true
+    
+    patches:
+        - CustomCharCreateSecond:
+            title : Customize second job id in char create dialog
+            recommend : no
+            author : Andrei Karas (4144) , Neo-Mind
+            desc : Replaces the Doram race slot in the character creation window with a custom job ID of your choice. Use to offer an alternative race or class in the second creation slot.
+        
+        - NoDoramCreation:
+            title : Disable Doram character creation UI [Experimental]
+            recommend : no
+            author : Ai4rei/AN , Secret
+            desc : Removes the Doram race option from the character creation UI entirely. Server-side disabling is also recommended to prevent bypasses. Experimental -- may have visual quirks.
+
+CustomFriendWin:
+    title : FRIEND/PARTY WINDOW CUSTOMIZATION
+    mutex : false
+    
+    patches:
+        - CustomPartyLimit:
+            title : Customize party limit
+            recommend : no
+            author : CH.C (jchcc)
+            desc : Changes the maximum number of party members shown in the party window (Alt+Z). Increase this if your server supports larger parties than the default limit.
+        
+        - NoAdvAgencyInParty:
+            title : Remove Adventurer Agency from Party
+            recommend : no
+            author : Andrei Karas (4144) ,  X-EcutiOnner
+            desc : Removes the Adventurer Agency (party recruitment) button from the party window. Use on servers that do not support or want the automated party matching system.
+            
+CustomEquipWin:
+    title : EQUIP WINDOW CUSTOMIZATION
+    mutex : false
+    
+    patches:
+        - NoEquipSwap:
+            title : Remove Eq Swap button
+            recommend : no
+            author : Functor , Andrei Karas (4144) ,  X-EcutiOnner
+            desc : Removes the equipment swap button from the equipment window. Use on servers that do not support the gear swap feature or want a simpler equipment UI.
+        
+        - NoEquipWinTitle:
+            title : Remove Eq Window title
+            recommend : no
+            author : CH.C (jchcc), Andrei Karas (4144) , X-EcutiOnner
+            desc : Removes the title bar text from the equipment window. A cosmetic change for a cleaner equipment window appearance.
+
+        - DisableEquipAttrButton:
+            title : Disable Equipment Attribute Button
+            recommend : no
+            author : Functor, CH.C (jchcc), Andrei (4144), X-EcutiOnner, CrazyBebop
+            desc : Disables the Equipment Attribute (Properties) button in the Equipment Window so clicking it does nothing. Use on servers where the Equipment Properties panel is not applicable.
+
+RedesignedEquipWin:
+    title : Redesigned Alt+Q Equipment Window
+    mutex : true
+    color : steelblue
+
+    patches:
+        - RedesignedEquipmentWindow:
+            title : Backport Equipment UI Assets
+            recommend : no
+            author : Louis T Steinhil
+            desc : Backports the renewal Alt+Q Equipment window with four native rail modes (General, Costume, Title, and Damage Indicator), matching selected-state icons, a neutral native-page body, bg_swap.png, and ibox_shadow.png. Selects the full footer Arrow circle before the stock body-only picker prefilter, pins its balloon when Swap expands the parent, positions native btn_items immediately above icon_cart.png only while Cart is active, remaps the native drag-compatible shadow to the renewal slot grid, and preserves Title, Damage, Costume, Swap, item/provider/picker, release, and equip/unequip ownership. Disable NoEquipSwap and NoEquipWinTitle before selecting this patch.
+
+RedesignedStatusWin:
+    title : Redesigned Alt+A Status Window
+    mutex : true
+    color : steelblue
+
+    patches:
+        - RedesignedStatusWindow:
+            title : Backport Status UI Assets
+            recommend : no
+            author : Louis T Steinhil
+            desc : Backports the supplied renewal Alt+A Stats and Trait tabs to the 2025-07-16 client. Adds independent staged plus/minus allocation with OK and Cancel to both pages, commits through native server-authoritative Status and Trait packets, preserves native row tooltips, and adds hover-only Stat/Trait tab balloons. Dynamic Req and point totals retain native font selector 1 and height 14; glyph-width alpha repair prevents longer values from becoming transparent. Disable Trait Status Button remains supported; Hide Trait Status Button is incompatible because this redesign reuses the native Trait control.
+
+CustomExpBars:
+    title : EXP BAR CUSTOMIZATION
+    mutex : false
+    
+    patches:
+        - CustomBarLimits:
+            title : Customize Experience bar limits
+            recommend : no
+            author : Neo-Mind
+            desc : Overrides the experience bar display limits for Base and Job levels using a custom configuration file. Required if your server has higher max levels than the client normally supports.
+        
+        - ShowExpNumbers:
+            title : Show Experience numbers
+            recommend : no
+            author : Neo-Mind
+            desc : Displays numeric Base and Job experience values directly on top of the EXP bars in the Basic Info Window. Shows exact numbers instead of just a progress bar.
+
+ReturnToLogin:
+    title : RETURN TO LOGIN
+    mutex : false
+
+    patches:
+        - DisConnToLogin:
+            title : Disconnect to Login Window
+            recommend : no
+            author : Neo-Mind , Andrei Karas (4144)
+            desc : Returns to the login window instead of closing the client when disconnected from the server. Lets players reconnect without having to relaunch the game.
+        
+        - CancelToLogin:
+            title : Cancel to Login Window
+            recommend : yes
+            author : Neo-Mind , Andrei Karas (4144)
+            desc : Makes the Cancel button on the character selection screen go back to the login window instead of quitting the game entirely. Convenient for switching accounts without relaunching.
+            needs : RestoreLoginWindow
+
+ShowButton:
+    title : SHOW BUTTON
+    mutex : false
+    color : darkorange
+    
+    patches:
+        - ShowReplayBtn:
+            title : Always show Replay button in Service Select
+            recommend : no
+            author : Neo-Mind,Skylove
+            desc : Shows the Replay button on the Service Select screen, allowing players to browse and watch saved replay files. Normally hidden on most langtypes.
+        
+        - ShowCancelBtn:
+            title : Always show Cancel button in Login
+            recommend : no
+            author : Neo-Mind
+            desc : Restores the Cancel button on the login screen, placed between the Login and Exit buttons. Allows players to go back to the Service Select screen to choose a different server.
+        
+        - ShowRegisterBtn:
+            title : Always show Register button in Login
+            recommend : no
+            author : Neo-Mind
+            desc : Shows a Register button on the login screen for all langtypes. Clicking it opens the registration URL defined in clientinfo.xml's &lt;registrationweb&gt; tag and closes the client. Useful for directing new players to your registration page.
+
+NoLetterLimit:
+    title : 4/6 LETTER LIMIT REMOVAL
+    mutex : false
+    
+    patches:
+        - NoCharnameLimit:
+            title : Remove 4/6 letter Character Name limit
+            recommend : no
+            author : Shinryo
+            desc : Removes the minimum 4-letter (or 6-letter on some langtypes) requirement for character names. Allows shorter names like "GM" or "Ace". Server-side limits may still apply.
+        
+        - NoUsernameLimit:
+            title : Remove 4/6 letter User Name limit
+            recommend : no
+            author : Shinryo
+            desc : Removes the minimum 4-letter (or 6-letter on some langtypes) requirement for account usernames. Server-side limits may still apply.
+        
+        - NoPasswordLimit:
+            title : Remove 4/6 letter Password limit
+            recommend : no
+            author : Shinryo
+            desc : Removes the minimum 4-letter (or 6-letter on some langtypes) requirement for passwords on the client side. Server-side limits may still apply.
+
+SNSButtonAction:
+    title : SNS BUTTON ACTION
+    mutex : true
+    color : darkorange
+
+    patches:
+        - SNSButtonGuide:
+            title : Send custom packet from SNS button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info SNS button (new UI) to send a configurable custom packet, defaulting to 0x0BB2 for the in-game guide/settings flow. Mutually exclusive with the SNS URL action.
+
+        - SNSButtonURL:
+            title : Open URL from SNS button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info SNS button (new UI) to open a custom URL in the default browser. Mutually exclusive with the SNS custom packet action.
+
+BookingButtonAction:
+    title : BOOKING BUTTON ACTION
+    mutex : true
+    color : darkorange
+
+    patches:
+        - BookingButtonGuide:
+            title : Send custom packet from Booking button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info Booking button (new UI) to send a configurable custom packet, defaulting to 0x0BB2 for the in-game guide/settings flow. Mutually exclusive with the Booking URL action.
+
+        - BookingButtonURL:
+            title : Open URL from Booking button (New UI)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Reuses the Basic Info Booking button (new UI) to open a custom URL in the default browser. Mutually exclusive with the Booking custom packet action.
+
+LicenseScreenVis:
+    title : LICENSE SCREEN VISIBILITY
+    mutex : true
+    color : darkorange
+    
+    patches:
+        - HideLicense:
+            title : Always hide License Screen
+            recommend : no
+            author : Shinryo , MS
+            desc : Skips the EULA/license agreement screen entirely on startup, going directly to the Service Select or login screen. Saves time for players on every launch.
+        
+        - ShowLicense:
+            title : Always show License Screen
+            recommend : no
+            author : Neo-Mind
+            desc : Forces the EULA/license agreement screen to show on every startup for all langtypes. Use if your server requires players to accept terms of service before playing.
+
+TraitStatusButton:
+    title: TRAIT STATUS BUTTON BEHAVIOR
+    mutex: false
+    
+    patches:
+        - DisableTraitStatusButton:
+            title : Disable Trait Status Button
+            recommend : no
+            author : Secret,Cremané
+            desc : Disables the Trait Status button in the Status Window so clicking it does nothing. Use on pre-4th job servers where the Trait Status panel is not applicable.
+        
+        - HideTraitStatusButton:
+            title : Hide Trait Status Button
+            recommend : no
+            author : Secret,Skylove
+            desc : Completely hides the Trait Status expansion button from the Status Window. Use on pre-4th job servers to remove the button entirely rather than just disabling it.
+
+HDJobPreviews:
+    title : HD JOB SPRITE PREVIEWS
+    mutex : false
+    patches:
+        - NativeActJobPreviews:
+            title : Fix HD Job Sprite Previews (Alt+Q / Alt+S)
+            recommend : no
+            author : Louis T Steinhil
+            desc : Applies native ACT scale, mirror, rotation and layer tint to Equipment and Skill Tree sprites on the profiled 2025-07-16 client. Draws existing palette-resolved textures into persistent native surfaces, preserving head offsets, frames and window composition. Uses existing SPR/ACT resources without a generated preview pack or runtime DLL. Also accepts the verified ClanBodySkins v11 layout.

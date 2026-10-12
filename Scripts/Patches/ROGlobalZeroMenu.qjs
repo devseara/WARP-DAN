@@ -1,0 +1,2985 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-19                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Restores the native UIMenuIconWnd in the 2025-07-16    *
+*                   Ragexe, appends Auto Hunt, Item Collection, and       *
+*                   AutoSupport, Bestiary, VIP and Battle Pass into free  *
+*                   grid slots. Keeps native menu                       *
+*                   geometry stable across close/reopen and map changes.  *
+*                   New UI uses complete row                              *
+*                   backgrounds; Classic keeps only the height required   *
+*                   by its icons. Available launchers stay below the       *
+*                   minimap. QJS-only.                                    *
+*                                                                          *
+*                                                                          *
+\**************************************************************************/
+
+const MenuZeroStatic = {
+	BuildDate: 20250716,
+	WindowId: 0x133,
+	NativeDispatcher: 0x00814A70,
+	FactoryCase: 0x00A412BF,
+	FactoryBytes:
+		"68 33 01 00 00 8B CF E8 C5 68 00 00 85 C0 75 60 " +
+		"68 D8 00 00 00",
+	DrawVtableEntry: 0x01028200,
+	DrawOriginal: 0x00814150,
+	PositionVtableEntry: 0x010281C0,
+	VisibilityVtableEntry: 0x010281E8,
+	PositionOriginal: 0x00812F80,
+	HitTestVtableEntry: 0x01028278,
+	HitTestOriginal: 0x00812E90,
+	OnCreateVtableEntry: 0x010281EC,
+	OnCreateOriginal: 0x00812FB0,
+	MenuExpandedFlag: 0x0160227C,
+	DisplayPointer: 0x012515F8,
+	WindowManager: 0x0131F4E8,
+	WindowManagerUpdate: 0x00A4CCF0,
+	OperatorNew: 0x00DBBC4F,
+	ButtonConstructor: 0x008172B0,
+	ButtonVtable: 0x01029820,
+	ButtonVtableEntries: 54,
+	ButtonDeletingDestructor: 0x0081A5A0,
+	ButtonDraw: 0x00823E10,
+	ButtonMouseUp: 0x008271F0,
+	ButtonSetImage: 0x0082DAC0,
+	WindowSetImageSize: 0x00A1CB70,
+	WindowAddChildEnd: 0x00A1B780,
+	GetTexMgr: 0x00A90350,
+	ConvPath: 0x00A9F030,
+	LoadSurface: 0x00A8D4A0,
+	ImageDraw: 0x00A1D260,
+
+	ClientToScreen: 0x00A1EF70,
+	ShowTooltip: 0x00A753D0,
+	WindowSurfaceOffset: 0x24,
+	SurfaceAlphaOffset: 0x28,
+	TooltipManager: 0x0121333C,
+	GetWindow: 0x00A47B90,
+
+	TooltipXOffset: 16,
+	TooltipYOffset: -16,
+
+	SetPositionOriginal: 0x00874AF0,
+	SetVisibleOriginal: 0x005AAD80,
+	MakeWindowSwitchSite: 0x00A394C8,
+	MakeWindowSwitchBytes: "0F B6 86 A8 2C A4 00 FF 24 85 04 29 A4 00",
+	PostMakeWindowSite: 0x00A42620,
+	PostMakeWindowReturn: 0x00A42625,
+	PostMakeWindowBytes: "8B 45 EC 85 C0",
+	GoldPositionSite: 0x00A40368,
+	GoldPositionReturn: 0x00A4036D,
+	GoldPositionBytes: "50 8B CE FF D2",
+	TabItmFormat: 0x0102AC48,
+	BackgroundCopyBlock: 0x00814359,
+	BackgroundCopyReturn: 0x0081438B,
+	BackgroundCopyBytes:
+		"C7 47 10 24 00 00 00 C7 47 14 2F 00 00 00 " +
+		"0F 10 05 D8 85 02 01 0F 11 00 0F 10 05 E8 85 02 01 " +
+		"0F 11 40 10 8B 0D F8 85 02 01 89 48 20 C6 40 24 00 89 07",
+	BackgroundDrawBlock: 0x00814392,
+	BackgroundDrawReturn: 0x0081439D,
+	BackgroundDrawBytes: "6A 0D 6A 00 C7 45 FC FF FF FF FF",
+	BackgroundHeightBlock: 0x00814230,
+	BackgroundHeightReturn: 0x00814239,
+	BackgroundHeightBytes: "80 3D 7C 22 60 01 00 6A 00",
+	ProvisionalSize: 0x00A41308,
+	ProvisionalSizeBytes: "68 C5 00 00 00 68 DC 00 00 00",
+	FinalSize: 0x0081400D,
+	FinalSizeBytes: "68 EE 00 00 00 68 DC 00 00 00 FF 50 04",
+	DescriptorLengthBlock: 0x00813722,
+	DescriptorLengthReturn: 0x0081372E,
+	DescriptorLengthBytes: "8D 4D 90 6A 10 C7 45 90 00 00 00 00",
+	DescriptorPointer: 0x0081373C,
+	DescriptorPointerBytes: "68 3C 83 02 01",
+	PanelWidth: 357,
+	PanelHeight: 444,
+	ParentWidth: 360,
+	ParentHeight: 455,
+	ClassicParentWidth: 220,
+	ClassicProvisionalHeight: 197,
+	ClassicFinalHeight: 238,
+	ScreenMargin: 10,
+	MinimapRightInset: 17,
+	LauncherFirstCenterY: 204,
+	LauncherRowGap: 10,
+	GridX: 13,
+	GridY: 12,
+	GridColumns: 5,
+	MaxRows: 7,
+	GridStrideX: 68,
+	GridStrideY: 61,
+	MinGridStrideY: 43,
+	PanelBaseHeight: 17,
+	ParentExtraHeight: 11,
+	ToggleBottomInset: 51,
+	ToggleX: 290,
+	BackgroundBufferSize: 48,
+	AutoHuntButtonWindowId: 0x3F2,
+	ItemCollectionButtonWindowId: 0x3F4,
+	AutoSupportButtonWindowId: 0x3F5,
+	BestiaryButtonWindowId: 0x3FB,
+	VipButtonWindowId: 0x3FE,
+	BattlepassButtonWindowId: 0x3FF,
+	NewButtonWidth: 45,
+	NewButtonHeight: 41,
+	OldButtonWidth: 32,
+	OldButtonHeight: 34,
+	OldGridX: 9,
+	OldGridY: 23,
+	OldGridStrideX: 42,
+	OldGridStrideY: 43,
+	OldPanelBaseHeight: 12,
+	ClassicParentExtraHeight: 2,
+	ChildOffsets: [0xCC, 0xD0, 0xD4],
+	TreeOffsets: [0xB4, 0xBC],
+	LauncherStateNativeRightInset: 0,
+	LauncherStateNativeY: 4,
+	LauncherStatePositionValid: 8,
+	LauncherStateWindow: 12,
+	LauncherStateStride: 16,
+	ManagedWindows: [
+		{
+			key: "cashShop",
+			label: "Cash Shop launcher",
+			windowId: 0xBE,
+			windowCase: 0x8A,
+			vtable: 0x010349E4,
+			draw: 0x008B8D30
+		},
+		{
+			key: "goldPc",
+			label: "Gold PC Cafe",
+			windowId: 0x10B,
+			windowCase: 0xAF,
+			vtable: 0x01039F60,
+			draw: 0x00913360
+		},
+		{
+			key: "roulette",
+			label: "Roulette",
+			windowId: 0x10C,
+			windowCase: 0xB0,
+			vtable: 0x0103A038,
+			draw: 0x00913790
+		},
+		{
+			key: "rodexNotification",
+			label: "RO DEX notification",
+			windowId: 0x106,
+			windowCase: 0xAB,
+			vtable: 0x01039DAC,
+			draw: 0x00913780
+		}
+	],
+	CommandGrid: [
+		[0x0C0, 0], [0x0C3, 1], [0x0C2, 2], [0x0C4, 3], [0x0C7, 4],
+		[0x175, 5], [0x169, 6], [0x0DB, 7], [0x1AE, 8], [0x0C1, 9],
+		[0x1CD, 10], [0x18F, 11], [0x1DC, 12], [0x1D9, 13], [0x1FF, 14],
+		[0x200, 15], [0x172, 16], [0x21C, 17], [0x17B, 18], [0x237, 19],
+		[0x178, 20], [0x245, 21], [0x220, 22], [0x24B, 23], [0x206, 24]
+	],
+	ResourcePushes: [
+		{
+			name: "base-format",
+			relative: "uirenewal\\menuicon\\bt_%s.bmp",
+			oldPointer: 0x01028384,
+			sites: [0x008138C4, 0x0081390A]
+		},
+		{
+			name: "pressed-format",
+			relative: "uirenewal\\menuicon\\bt_%s_press.bmp",
+			oldPointer: 0x010283A8,
+			sites: [0x00813950]
+		},
+		{
+			name: "new-format",
+			relative: "uirenewal\\menuicon\\bt_%s_new.bmp",
+			oldPointer: 0x010283D4,
+			sites: [0x00813B6A, 0x00813BB0]
+		},
+		{
+			name: "new-pressed-format",
+			relative: "uirenewal\\menuicon\\bt_%s_new_press.bmp",
+			oldPointer: 0x010283FC,
+			sites: [0x00813BF6]
+		},
+		{
+			name: "menu-normal",
+			relative: "uirenewal\\menuicon\\bt_menu_normal.bmp",
+			oldPointer: 0x0102842C,
+			sites: [0x00813DCC]
+		},
+		{
+			name: "menu-over",
+			relative: "uirenewal\\menuicon\\bt_menu_over.bmp",
+			oldPointer: 0x01028458,
+			sites: [0x00813DE6]
+		},
+		{
+			name: "menu-pressed",
+			relative: "uirenewal\\menuicon\\bt_menu_press.bmp",
+			oldPointer: 0x01028484,
+			sites: [0x00813DFA]
+		},
+		{
+			name: "menu-new-normal",
+			relative: "uirenewal\\menuicon\\bt_menu_new_normal.bmp",
+			oldPointer: 0x010284B0,
+			sites: [0x00813E8A]
+		},
+		{
+			name: "menu-new-over",
+			relative: "uirenewal\\menuicon\\bt_menu_new_over.bmp",
+			oldPointer: 0x010284E0,
+			sites: [0x00813EA4]
+		},
+		{
+			name: "menu-new-pressed",
+			relative: "uirenewal\\menuicon\\bt_menu_new_press.bmp",
+			oldPointer: 0x01028510,
+			sites: [0x00813EB8]
+		},
+		{
+			name: "menu-close-normal",
+			relative: "uirenewal\\menuicon\\bt_menu_close_normal.bmp",
+			oldPointer: 0x01028540,
+			sites: [0x00813F48]
+		},
+		{
+			name: "menu-close-over",
+			relative: "uirenewal\\menuicon\\bt_menu_close_over.bmp",
+			oldPointer: 0x01028574,
+			sites: [0x00813F62]
+		},
+		{
+			name: "menu-close-pressed",
+			relative: "uirenewal\\menuicon\\bt_menu_close_press.bmp",
+			oldPointer: 0x010285A4,
+			sites: [0x00813F76]
+		}
+	]
+};
+
+MenuZeroStatic.hexNorm = function(hex)
+{
+	return (hex || "").replace(/\s+/g, " ").trim().toUpperCase();
+};
+
+MenuZeroStatic.bytesToHex = function(bytes)
+{
+	return bytes.map(value => (value & 0xFF).toString(16).padStart(2, "0")).join(" ");
+};
+
+MenuZeroStatic.asciiBytes = function(text, nulTerminate = true)
+{
+	const bytes = [];
+	for (let i = 0; i < text.length; i++)
+		bytes.push(text.charCodeAt(i) & 0xFF);
+	if (nulTerminate)
+		bytes.push(0);
+	return bytes;
+};
+
+MenuZeroStatic.findBytes = function(bytes, needle)
+{
+	for (let i = 0; i <= bytes.length - needle.length; i++)
+	{
+		let match = true;
+		for (let j = 0; j < needle.length; j++)
+		{
+			if (bytes[i + j] !== needle[j])
+			{
+				match = false;
+				break;
+			}
+		}
+		if (match)
+			return i;
+	}
+	return -1;
+};
+
+MenuZeroStatic.readCString = function(virAddr, maxLength)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroMenu: string 0x${virAddr.toString(16)} is not mapped`);
+
+	const bytes = [];
+	for (let i = 0; i < maxLength; i++)
+	{
+		const value = Exe.GetUint8(phyAddr + i);
+		bytes.push(value);
+		if (value === 0)
+			return bytes;
+	}
+	throw Error(`ROGlobalZeroMenu: unterminated string at 0x${virAddr.toString(16)}`);
+};
+
+MenuZeroStatic.allocateBytes = function(bytes, alignment = 1)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(bytes.length, alignment);
+	Exe.SetHex(phyAddr, MenuZeroStatic.bytesToHex(bytes));
+	return {phy: phyAddr, vir: virAddr, bytes};
+};
+
+MenuZeroStatic.allocateCode = function(assembly)
+{
+	const [phy, vir] = Exe.Allocate(assembly.bytes.length, 0x10);
+	Exe.SetHex(phy, assembly.finish(vir));
+	return {phy, vir, size: assembly.bytes.length};
+};
+
+MenuZeroStatic.resourcePrefix = function()
+{
+	const source = MenuZeroStatic.readCString(MenuZeroStatic.TabItmFormat, 192);
+	const needle = MenuZeroStatic.asciiBytes("basic_interface\\", false);
+	const position = MenuZeroStatic.findBytes(source, needle);
+	if (position < 0)
+		throw Error("ROGlobalZeroMenu: texture directory prefix not found");
+	return source.slice(0, position);
+};
+
+MenuZeroStatic.buildResourceBytes = function(prefix, relativePath, nulTerminate = true)
+{
+	return prefix.concat(MenuZeroStatic.asciiBytes(relativePath, nulTerminate));
+};
+
+MenuZeroStatic.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+			{
+				if (typeof value !== "number" || !Number.isFinite(value))
+				throw Error(
+					"ROGlobalZeroMenu: invalid byte value " + String(value)
+				);
+				bytes.push(value & 0xFF);
+			}
+		},
+		dword: function(value)
+		{
+			if (typeof value !== "number" || !Number.isFinite(value))
+				throw Error(
+					"ROGlobalZeroMenu: invalid dword value " + String(value)
+				);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error(`ROGlobalZeroMenu: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			bytes.push(opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(`ROGlobalZeroMenu: unresolved label ${fixup.target}`);
+				const targetVir = typeof fixup.target === "string"
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				if (typeof targetVir !== "number" ||
+					!Number.isFinite(targetVir) || targetVir <= 0)
+				{
+					throw Error(
+						"ROGlobalZeroMenu: invalid rel32 target " +
+						String(fixup.target)
+					);
+				}
+				const nextVir = baseVir + fixup.pos + 4;
+				put32(out, fixup.pos, targetVir - nextVir);
+			}
+			return MenuZeroStatic.bytesToHex(out);
+		}
+	};
+};
+
+MenuZeroStatic.pushImmediate = function(a, value)
+{
+	if (value >= -128 && value <= 127)
+		a.emit(0x6A, value);
+	else
+	{
+		a.emit(0x68);
+		a.dword(value);
+	}
+};
+
+MenuZeroStatic.buildPreservedThemeLoad = function(themeLoadVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);                              // PUSHFD / PUSHAD
+	a.call(themeLoadVir);
+	a.emit(0x61, 0x9D, 0xC3);                        // POPAD / POPFD / RET
+	return a;
+};
+
+MenuZeroStatic.buildButtonDestructor = function(buttonStateVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x3B, 0x0D); a.dword(buttonStateVir);         // CMP ECX,[button]
+	a.jcc(0x85, "native");
+	a.emit(0xC7, 0x05); a.dword(buttonStateVir); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(buttonStateVir + 4); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(buttonStateVir + 8); a.dword(0xFFFFFFFF);
+	a.label("native");
+	a.jmp(MenuZeroStatic.ButtonDeletingDestructor);
+	return a;
+};
+
+MenuZeroStatic.buildButtonHover = function(textVir, localX = null, localY = null)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08);
+	a.emit(0x56, 0x8B, 0xF1);
+	a.emit(0x83, 0x7E, 0x28, 0x00);
+	a.jcc(0x84, "done");
+	// UIMenuIconWnd::HitTest can return this native child directly, so use its
+	// stable child-local anchor instead of dispatcher coordinate rewriting.
+	if (Number.isInteger(localX))
+	{
+		a.emit(0xB8); a.dword(localX);
+	}
+	else
+	{
+		a.emit(0x8B, 0x46, 0x14);
+		a.emit(0x83, 0xC0, s.TooltipXOffset);
+	}
+	a.emit(0x89, 0x45, 0xF8);
+	if (Number.isInteger(localY))
+	{
+		a.emit(0xB8); a.dword(localY);
+	}
+	else
+	{
+		a.emit(0x8B, 0x46, 0x18, 0xD1, 0xE8);
+		a.emit(0x83, 0xC0, s.TooltipYOffset);
+	}
+	a.emit(0x89, 0x45, 0xFC);
+	a.emit(0x8D, 0x45, 0xFC, 0x50);
+	a.emit(0x8D, 0x45, 0xF8, 0x50);
+	a.emit(0x8B, 0xCE);
+	a.call(s.ClientToScreen);
+	a.emit(0x8B, 0x0D); a.dword(s.TooltipManager);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	s.pushImmediate(a, 1);
+	s.pushImmediate(a, 0);
+	s.pushImmediate(a, -1);
+	a.emit(0xFF, 0x75, 0xFC);
+	a.emit(0xFF, 0x75, 0xF8);
+	s.pushImmediate(a, textVir);
+	a.call(s.ShowTooltip);
+	a.label("done");
+	a.emit(0x5E, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+MenuZeroStatic.buildOptionalButtonMouseUp = function(requestCellVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);
+	a.emit(0xA1); a.dword(requestCellVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0xFF, 0xD0);                                 // CALL EAX
+	a.label("done");
+	a.emit(0x33, 0xC0, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+MenuZeroStatic.buildButtonMouseDown = function()
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+MenuZeroStatic.cloneButtonVtable = function(
+	mouseUpVir, hoverVir, destructorVir, drawVir, mouseDownVir
+)
+{
+	const sourcePhy = Exe.Vir2Phy(MenuZeroStatic.ButtonVtable);
+	if (sourcePhy < 0)
+		throw Error("ROGlobalZeroMenu: UIButton vtable is not mapped");
+	const bytes = [];
+	for (let index = 0; index < MenuZeroStatic.ButtonVtableEntries; index++)
+	{
+		let value = Exe.GetUint32(sourcePhy + index * 4);
+		if (index === 0)
+			value = destructorVir;
+		else if (index === 20)
+			value = drawVir;
+		else if (index === 25)
+			value = mouseDownVir;
+		else if (index === 28)
+			value = hoverVir;
+		else if (index === 31)
+			value = mouseUpVir;
+		for (let shift = 0; shift < 32; shift += 8)
+			bytes.push((value >>> shift) & 0xFF);
+	}
+	return MenuZeroStatic.allocateBytes(bytes, 4);
+};
+
+MenuZeroStatic.buildEnsureMenuButton = function(
+	buttonStateVir, buttonVtableVir, imagePaths, windowId,
+	themeStateVir, loadThemeVir, enabledCellVir = 0
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                                // ESI=menu parent
+	if (enabledCellVir > 0)
+	{
+		a.emit(0x83, 0x3D); a.dword(enabledCellVir); a.emit(0x00);
+		a.jcc(0x84, "done");
+	}
+	a.call(loadThemeVir);
+	a.emit(0x8B, 0x3D); a.dword(buttonStateVir);         // EDI=tracked child
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "create");
+	a.emit(0x81, 0x3F); a.dword(buttonVtableVir);
+	a.jcc(0x85, "create");
+	a.emit(0x81, 0x7F, 0x2C); a.dword(windowId);
+	a.jcc(0x85, "create");
+	a.emit(0x39, 0x35); a.dword(buttonStateVir + 4);
+	a.jcc(0x85, "create");
+	a.emit(0x39, 0x77, 0x10);                          // native parent == menu
+	a.jcc(0x85, "create");
+
+	const emitImages = function(paths)
+	{
+		for (let state = 0; state < 3; state++)
+		{
+			s.pushImmediate(a, 1);                         // force replacement
+			s.pushImmediate(a, state);
+			s.pushImmediate(a, paths[state]);
+			a.emit(0x8B, 0xCF);
+			a.call(s.ButtonSetImage);
+		}
+	};
+	const emitThemeImages = function(prefix)
+	{
+		a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+		a.jcc(0x84, prefix + "_classic_images");
+		emitImages(imagePaths.renewal);
+		a.jmp(prefix + "_images_ready");
+		a.label(prefix + "_classic_images");
+		emitImages(imagePaths.classic);
+		a.label(prefix + "_images_ready");
+		a.emit(0xFF, 0xB7); a.dword(0xB8);
+		a.emit(0xFF, 0xB7); a.dword(0xB4);
+		a.emit(0x8B, 0xCF);
+		a.call(s.WindowSetImageSize);
+	};
+	const emitImageValidation = function(prefix, pathVir, width, height)
+	{
+		a.emit(0x8D, 0x97); a.dword(0xBC);                // normal-state path
+		a.emit(0x83, 0xBF); a.dword(0xD0); a.emit(0x10);
+		a.jcc(0x82, prefix + "_path_ready");
+		a.emit(0x8B, 0x12);
+		a.label(prefix + "_path_ready");
+		a.emit(0x85, 0xD2);
+		a.jcc(0x84, "refresh_images");
+		a.emit(0xB8); a.dword(pathVir);
+		a.label(prefix + "_path_loop");
+		a.emit(0x8A, 0x1A, 0x3A, 0x18);
+		a.jcc(0x85, "refresh_images");
+		a.emit(0x42, 0x40, 0x84, 0xDB);
+		a.jcc(0x85, prefix + "_path_loop");
+		for (const [offset, expected] of [
+			[0xB4, width], [0xB8, height],
+			[0x14, width], [0x18, height]
+		])
+		{
+			a.emit(0x81, 0xBF); a.dword(offset); a.dword(expected);
+			a.jcc(0x85, "refresh_images");
+		}
+		// UIWindow::SetSize stores a GDI surface at +24. Its actual dimensions
+		// are +04/+08; +0C/+10 are HDC/HBITMAP handles, never dimensions.
+		a.emit(0x8B, 0x47, 0x24);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, "refresh_images");
+		a.emit(0x81, 0x78, 0x04); a.dword(width);
+		a.jcc(0x85, "refresh_images");
+		a.emit(0x81, 0x78, 0x08); a.dword(height);
+		a.jcc(0x85, "refresh_images");
+	};
+
+	a.emit(0xA1); a.dword(themeStateVir);
+	a.emit(0x39, 0x05); a.dword(buttonStateVir + 8);
+	a.jcc(0x85, "refresh_images");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "validate_classic");
+	emitImageValidation(
+		"validate_renewal", imagePaths.renewal[0],
+		s.NewButtonWidth, s.NewButtonHeight
+	);
+	a.jmp("done");
+	a.label("validate_classic");
+	emitImageValidation(
+		"validate_classic", imagePaths.classic[0],
+		s.OldButtonWidth, s.OldButtonHeight
+	);
+	a.jmp("done");
+
+	a.label("create");
+	s.pushImmediate(a, 0x120);
+	a.call(s.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0xF8, 0x8B, 0xCF);
+	a.call(s.ButtonConstructor);
+	a.emit(0xC7, 0x07); a.dword(buttonVtableVir);
+	emitThemeImages("create");
+	a.emit(0xC7, 0x47, 0x2C); a.dword(windowId);
+	a.emit(0x57, 0x8B, 0xCE);
+	a.call(s.WindowAddChildEnd);                       // native menu child
+	a.emit(0x89, 0x3D); a.dword(buttonStateVir);
+	a.emit(0x89, 0x35); a.dword(buttonStateVir + 4);
+	a.emit(0xA1); a.dword(themeStateVir);
+	a.emit(0xA3); a.dword(buttonStateVir + 8);
+	a.jmp("done");
+
+	a.label("refresh_images");
+	emitThemeImages("refresh");
+	a.emit(0xA1); a.dword(themeStateVir);
+	a.emit(0xA3); a.dword(buttonStateVir + 8);
+	a.emit(0xC7, 0x47, 0x58); a.dword(1);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+MenuZeroStatic.buildSyncMenuButton = function(
+	buttonStateVir, visibleMaskVir, visibleVir, gridStrideYVir,
+	themeStateVir, loadThemeVir, priorVisibleVirs
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                                // ESI=menu
+	a.call(loadThemeVir);
+	a.emit(0x8B, 0x3D); a.dword(buttonStateVir);
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "done");
+	a.emit(0x6A, 0x00);
+	a.emit(0x8B, 0x17, 0x8B, 0xCF);
+	a.emit(0xFF, 0x92); a.dword(0xD4);                 // SetVisible(false)
+	// customRoute stores the producer callback immediately before visibility.
+	a.emit(0x83, 0x3D); a.dword(visibleVir - 4); a.emit(0x00);
+	a.jcc(0x84, "done");
+	a.emit(0x83, 0x3D); a.dword(visibleVir); a.emit(0x00);
+	a.jcc(0x84, "done");
+	a.emit(0x83, 0x7E, 0x28, 0x00);                    // parent menu visible?
+	a.jcc(0x84, "done");
+	a.emit(0x80, 0x3D); a.dword(s.MenuExpandedFlag); a.emit(0x00);
+	a.jcc(0x84, "done");
+	a.label("selected");
+	a.emit(0xA1); a.dword(visibleMaskVir);
+	a.emit(0x33, 0xD2);                                // native visible count
+	a.label("count");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "count_done");
+	a.emit(0x8D, 0x48, 0xFF, 0x23, 0xC1, 0x42);
+	a.jmp("count");
+	a.label("count_done");
+	for (let i = 0; i < priorVisibleVirs.length; i++)
+	{
+		const hidden = "prior_" + i + "_hidden";
+		a.emit(0x83, 0x3D); a.dword(priorVisibleVirs[i] - 4); a.emit(0x00);
+		a.jcc(0x84, hidden);
+		a.emit(0x83, 0x3D); a.dword(priorVisibleVirs[i]); a.emit(0x00);
+		a.jcc(0x84, hidden);
+		a.emit(0x42);                                      // prior custom occupies a slot
+		a.label(hidden);
+	}
+	a.emit(0x8B, 0xC2);
+	a.emit(0x33, 0xD2);
+	a.emit(0xB9); a.dword(s.GridColumns);
+	a.emit(0xF7, 0xF1);                                // EAX=row, EDX=column
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic_position");
+	a.emit(0x6B, 0xD2, s.GridStrideX);
+	a.emit(0x83, 0xC2, s.GridX);
+	a.emit(0x0F, 0xAF, 0x05); a.dword(gridStrideYVir);
+	a.emit(0x83, 0xC0, s.GridY);
+	a.jmp("set_position");
+	a.label("classic_position");
+	a.emit(0x6B, 0xD2, s.OldGridStrideX);
+	a.emit(0x83, 0xC2, s.OldGridX);
+	a.emit(0x6B, 0xC0, s.OldGridStrideY);
+	a.emit(0x83, 0xC0, s.OldGridY);
+	a.label("set_position");
+	a.emit(0x39, 0x57, 0x1C);                          // child-local X/Y
+	a.jcc(0x85, "position_changed");
+	a.emit(0x39, 0x47, 0x20);
+	a.jcc(0x84, "show");
+	a.label("position_changed");
+	a.emit(0x50, 0x52);
+	a.emit(0x8B, 0x17, 0x8B, 0xCF);
+	a.emit(0xFF, 0x52, 0x10);
+	a.label("show");
+	a.emit(0x6A, 0x01);
+	a.emit(0x8B, 0x17, 0x8B, 0xCF);
+	a.emit(0xFF, 0x92); a.dword(0xD4);                 // SetVisible(true)
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+MenuZeroStatic.buildDirectOverlay = function(
+	menuPathVir, panelHeightVir, themeStateVir, loadThemeVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                                // ESI=menu canvas
+	a.call(loadThemeVir);
+	a.emit(0x83, 0x7E, 0x28, 0x00);                    // parent visible?
+	a.jcc(0x84, "surface_alpha");
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "surface_alpha");                     // native Classic toggle
+	a.emit(0xC7, 0x45, 0xFC); a.dword(s.ToggleX);
+	a.emit(0xA1); a.dword(panelHeightVir);
+	a.emit(0x83, 0xE8, s.ToggleBottomInset);
+	a.emit(0x89, 0x45, 0xF8);
+
+	a.call(s.GetTexMgr);
+	a.emit(0x8B, 0xD8, 0x85, 0xDB);
+	a.jcc(0x84, "surface_alpha");
+	a.emit(0x68); a.dword(menuPathVir);
+	a.call(s.ConvPath);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "surface_alpha");
+	a.emit(0x50, 0x8B, 0xCB);
+	a.call(s.LoadSurface);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "surface_alpha");
+	// The New MENU fallback uses the native clipped UIWindow compositor.
+	a.emit(0x6A, 0x00, 0x50);                         // alpha / texture
+	a.emit(0xFF, 0x75, 0xF8, 0xFF, 0x75, 0xFC);      // y / x
+	a.emit(0x8B, 0xCE);
+	a.call(s.ImageDraw);
+
+	a.label("surface_alpha");
+	a.emit(0x8B, 0x46, s.WindowSurfaceOffset, 0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0xC6, 0x40, s.SurfaceAlphaOffset, 0x01);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+MenuZeroStatic.buildDrawWrapper = function(reflowVir, overlayVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                                // ESI=menu
+	a.emit(0x8B, 0xCE);
+	a.call(reflowVir);                                 // repair geometry first
+	a.emit(0x8B, 0xCE);
+	a.call(MenuZeroStatic.DrawOriginal);               // stock background/icons
+	a.emit(0x8B, 0xD8);                                // preserve stock EAX
+	a.emit(0x8B, 0xCE);
+	a.call(overlayVir);                                // New MENU fallback
+	a.emit(0x8B, 0xC3, 0x5F, 0x5E, 0x5B);
+	a.emit(0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+MenuZeroStatic.buildBackgroundCopy = function(
+	backgrounds, rowCountVir, themeStateVir, loadThemeVir
+)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	// At BackgroundCopyBlock, EDI is a stack-local std::string, not the menu.
+	// Row measurement must remain in hooks whose native receiver is UIMenuIconWnd.
+	a.emit(0x50, 0x56);                                // preserve dest EAX / ESI
+	a.emit(0xA1); a.dword(rowCountVir);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "row_min_ready");
+	a.emit(0x40);
+	a.label("row_min_ready");
+	a.emit(0x83, 0xF8, backgrounds.renewal.length);
+	a.jcc(0x86, "row_max_ready");                     // JBE
+	a.emit(0xB8); a.dword(backgrounds.renewal.length);
+	a.label("row_max_ready");
+	a.emit(0x48);                                      // zero-based row
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic");
+	for (let index = 0; index < backgrounds.renewal.length; index++)
+	{
+		a.emit(0x83, 0xF8, index);
+		a.jcc(0x84, "renewal_" + index);
+	}
+	a.jmp("renewal_0");
+	for (let index = 0; index < backgrounds.renewal.length; index++)
+	{
+		a.label("renewal_" + index);
+		a.emit(0xBE); a.dword(backgrounds.renewal[index]);
+		a.jmp("selected");
+	}
+	a.label("classic");
+	for (let index = 0; index < backgrounds.classic.length; index++)
+	{
+		a.emit(0x83, 0xF8, index);
+		a.jcc(0x84, "classic_" + index);
+	}
+	a.jmp("classic_0");
+	for (let index = 0; index < backgrounds.classic.length; index++)
+	{
+		a.label("classic_" + index);
+		a.emit(0xBE); a.dword(backgrounds.classic[index]);
+		a.jmp("selected");
+	}
+	a.label("selected");
+	a.emit(0x8B, 0x54, 0x24, 0x04);                   // EDX=saved destination
+	a.emit(0xC7, 0x47, 0x10); a.dword(backgrounds.pathLength);
+	a.emit(0xC7, 0x47, 0x14); a.dword(MenuZeroStatic.BackgroundBufferSize - 1);
+	a.emit(0x0F, 0x10, 0x06);
+	a.emit(0x0F, 0x11, 0x02);
+	a.emit(0x0F, 0x10, 0x46, 0x10);
+	a.emit(0x0F, 0x11, 0x42, 0x10);
+	a.emit(0x0F, 0x10, 0x46, 0x20);
+	a.emit(0x0F, 0x11, 0x42, 0x20);
+	a.emit(0x89, 0x17);                                // destination string pointer
+	a.emit(0x5E, 0x58);                                // restore ESI / EAX
+	a.jmp(MenuZeroStatic.BackgroundCopyReturn);
+	return a;
+};
+
+// Replace a five-byte PUSH immediate with a five-byte CALL. The helper
+// preserves EAX and returns with the selected pointer/value left on the
+// caller's stack exactly as the original PUSH would have done.
+MenuZeroStatic.buildPushSelector = function(
+	classicValue, renewalValue, themeStateVir, loadThemeVir
+)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	a.emit(0x50);                                      // PUSH EAX
+	a.emit(0x8B, 0x44, 0x24, 0x04);                    // MOV EAX,[ESP+4] return
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "renewal");
+	a.emit(0xC7, 0x44, 0x24, 0x04); a.dword(classicValue);
+	a.jmp("finish");
+	a.label("renewal");
+	a.emit(0xC7, 0x44, 0x24, 0x04); a.dword(renewalValue);
+	a.label("finish");
+	a.emit(0x87, 0x04, 0x24, 0xC3);                    // XCHG [ESP],EAX / RET
+	return a;
+};
+
+MenuZeroStatic.buildBackgroundDraw = function(themeStateVir, loadThemeVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "renewal");
+	MenuZeroStatic.pushImmediate(a, 13);
+	a.jmp("origin_ready");
+	a.label("renewal");
+	MenuZeroStatic.pushImmediate(a, 0);
+	a.label("origin_ready");
+	MenuZeroStatic.pushImmediate(a, 0);
+	a.emit(0xC7, 0x45, 0xFC); a.dword(-1);
+	a.jmp(MenuZeroStatic.BackgroundDrawReturn);
+	return a;
+};
+
+MenuZeroStatic.buildBackgroundHeight = function(
+	measureRowsVir, panelHeightVir, oldPanelHeightVir, themeStateVir, loadThemeVir
+)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	a.emit(0x8B, 0xCF);                                // MOV ECX,EDI (menu)
+	a.call(measureRowsVir);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic");
+	a.emit(0xFF, 0x35); a.dword(panelHeightVir);        // renewal full image
+	a.jmp("height_ready");
+	a.label("classic");
+	MenuZeroStatic.pushImmediate(a, 0);                 // no custom Classic panel
+	a.label("height_ready");
+	a.emit(0x80, 0x3D); a.dword(MenuZeroStatic.MenuExpandedFlag);
+	a.emit(0x00);                                      // CMP BYTE [expanded],0
+	a.jmp(MenuZeroStatic.BackgroundHeightReturn);
+	return a;
+};
+
+MenuZeroStatic.buildDescriptorLength = function(themeStateVir, loadThemeVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.call(loadThemeVir);
+	a.emit(0x61, 0x9D);
+	a.emit(0x8D, 0x4D, 0x90);                         // LEA ECX,[EBP-70]
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "renewal");
+	MenuZeroStatic.pushImmediate(a, 16);
+	a.jmp("length_ready");
+	a.label("renewal");
+	MenuZeroStatic.pushImmediate(a, 8);
+	a.label("length_ready");
+	a.emit(0xC7, 0x45, 0x90); a.dword(0);
+	a.jmp(MenuZeroStatic.DescriptorLengthReturn);
+	return a;
+};
+
+MenuZeroStatic.buildAnchor = function()
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x56, 0x57);                                // preserve ESI/EDI
+	a.emit(0x8B, 0xF1, 0x33, 0xFF);                    // ESI=menu, EDI=changed
+	a.emit(0xA1); a.dword(MenuZeroStatic.DisplayPointer);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0x50, 0x28);
+	a.emit(0x2B, 0x56, 0x14);
+	a.emit(0x83, 0xEA, MenuZeroStatic.ScreenMargin);
+	a.jcc(0x89, "x_ready");
+	a.emit(0x33, 0xD2);
+	a.label("x_ready");
+	a.emit(0x39, 0x56, 0x1C);                          // already at desired X?
+	a.jcc(0x84, "x_done");
+	a.emit(0x89, 0x56, 0x1C);
+	a.emit(0xBF); a.dword(1);
+	a.label("x_done");
+	a.emit(0x8B, 0x40, 0x2C);
+	a.emit(0x2B, 0x46, 0x18);
+	a.emit(0x83, 0xE8, MenuZeroStatic.ScreenMargin);
+	a.jcc(0x89, "y_ready");
+	a.emit(0x33, 0xC0);
+	a.label("y_ready");
+	a.emit(0x39, 0x46, 0x20);                          // already at desired Y?
+	a.jcc(0x84, "y_done");
+	a.emit(0x89, 0x46, 0x20);
+	a.emit(0xBF); a.dword(1);
+	a.label("y_done");
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "done");                              // no update during stable draws
+	a.emit(0x56);
+	a.emit(0xB9); a.dword(MenuZeroStatic.WindowManager);
+	a.call(MenuZeroStatic.WindowManagerUpdate);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0xC3);
+	return a;
+};
+
+MenuZeroStatic.buildPositionWrapper = function(
+	anchorVir, themeStateVir, syncLaunchersVir
+)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic");
+	a.emit(0x51);                                      // preserve menu ECX
+	a.call(anchorVir);
+	a.emit(0x59);                                      // restore menu ECX
+	a.call(syncLaunchersVir);
+	a.emit(0xC2, 0x08, 0x00);
+	a.label("classic");
+	a.jmp(MenuZeroStatic.PositionOriginal);
+	return a;
+};
+
+MenuZeroStatic.buildHitTestWrapper = function(themeStateVir, buttonStateVirs)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);                          // frame
+	// Prioritize injected native control-row children before stock traversal.
+	a.emit(0x56, 0x8B, 0xF1);                          // PUSH ESI / ESI=menu
+	for (let index = 0; index < buttonStateVirs.length; ++index)
+	{
+		const miss = `custom_button_${index}_miss`;
+		a.emit(0xA1); a.dword(buttonStateVirs[index]);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, miss);
+		a.emit(0x83, 0x78, 0x28, 0x00);                  // child enabled?
+		a.jcc(0x84, miss);
+		a.emit(0x8B, 0x56, 0x1C);
+		a.emit(0x03, 0x50, 0x1C);                        // menu X + child X
+		a.emit(0x39, 0x55, 0x08);
+		a.jcc(0x8C, miss);
+		a.emit(0x03, 0x50, 0x14);
+		a.emit(0x39, 0x55, 0x08);
+		a.jcc(0x8D, miss);
+		a.emit(0x8B, 0x56, 0x20);
+		a.emit(0x03, 0x50, 0x20);                        // menu Y + child Y
+		a.emit(0x39, 0x55, 0x0C);
+		a.jcc(0x8C, miss);
+		a.emit(0x03, 0x50, 0x18);
+		a.emit(0x39, 0x55, 0x0C);
+		a.jcc(0x8D, miss);
+		a.emit(0x5E, 0x8B, 0xE5, 0x5D);                 // EAX remains child
+		a.emit(0xC2, 0x08, 0x00);
+		a.label(miss);
+	}
+	a.emit(0x5E);
+
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "stock");
+	a.emit(0x80, 0x3D); a.dword(MenuZeroStatic.MenuExpandedFlag);
+	a.emit(0x00);                                      // CMP BYTE [expanded],0
+	a.jcc(0x85, "stock");                             // JNE stock
+	a.emit(0x56);                                      // PUSH ESI
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX
+	a.emit(0x8B, 0x86); a.dword(0xD0);                 // MOV EAX,[ESI+D0]
+	a.emit(0x85, 0xC0);                                // TEST EAX,EAX
+	a.jcc(0x84, "miss");                              // JZ miss
+
+	a.emit(0x8B, 0x56, 0x1C);                          // MOV EDX,[ESI+1C]
+	a.emit(0x03, 0x50, 0x1C);                          // ADD EDX,[EAX+1C]
+	a.emit(0x39, 0x55, 0x08);                          // CMP [EBP+8],EDX
+	a.jcc(0x8C, "miss");                              // JL miss
+	a.emit(0x03, 0x50, 0x14);                          // ADD EDX,[EAX+14]
+	a.emit(0x39, 0x55, 0x08);                          // CMP [EBP+8],EDX
+	a.jcc(0x8D, "miss");                              // JGE miss
+
+	a.emit(0x8B, 0x56, 0x20);                          // MOV EDX,[ESI+20]
+	a.emit(0x03, 0x50, 0x20);                          // ADD EDX,[EAX+20]
+	a.emit(0x39, 0x55, 0x0C);                          // CMP [EBP+C],EDX
+	a.jcc(0x8C, "miss");                              // JL miss
+	a.emit(0x03, 0x50, 0x18);                          // ADD EDX,[EAX+18]
+	a.emit(0x39, 0x55, 0x0C);                          // CMP [EBP+C],EDX
+	a.jcc(0x8D, "miss");                              // JGE miss
+
+	a.emit(0x5E);                                      // POP ESI
+	a.emit(0x8B, 0x50, 0x1C);                          // MOV EDX,[EAX+1C]
+	a.emit(0x29, 0x55, 0x08);                          // SUB [EBP+8],EDX
+	a.emit(0x8B, 0x50, 0x20);                          // MOV EDX,[EAX+20]
+	a.emit(0x29, 0x55, 0x0C);                          // SUB [EBP+C],EDX
+	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
+	a.jmp(MenuZeroStatic.HitTestOriginal);             // stock selection/guards
+
+	a.label("miss");
+	a.emit(0x33, 0xC0);                                // XOR EAX,EAX
+	a.emit(0x5E);                                      // POP ESI
+	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
+	a.emit(0xC2, 0x08, 0x00);                          // RET 8
+
+	a.label("stock");
+	a.emit(0x8B, 0xE5, 0x5D);                          // restore frame
+	a.jmp(MenuZeroStatic.HitTestOriginal);
+	return a;
+};
+
+MenuZeroStatic.emitSetChildPosition = function(
+	a, offset, x, panelHeightVir, label
+)
+{
+	a.emit(0x8B, 0x8E); a.dword(offset);               // MOV ECX,[ESI+offset]
+	a.emit(0x85, 0xC9);                                // TEST ECX,ECX
+	a.jcc(0x84, label);                                // JZ label
+	a.emit(0x39, 0x71, 0x10);                          // child parent == ESI?
+	a.jcc(0x85, label);
+	a.emit(0xA1); a.dword(panelHeightVir);              // MOV EAX,[panel height]
+	a.emit(0x83, 0xE8, MenuZeroStatic.ToggleBottomInset);
+	a.emit(0x81, 0x79, 0x1C); a.dword(x);
+	a.jcc(0x85, label + "_changed");
+	a.emit(0x39, 0x41, 0x20);
+	a.jcc(0x84, label);
+	a.label(label + "_changed");
+	a.emit(0xC7, 0x41, 0x1C); a.dword(x);              // direct native child X
+	a.emit(0x89, 0x41, 0x20);                          // direct native child Y
+	a.emit(0xC7, 0x41, 0x58); a.dword(1);              // force child redraw
+	a.label(label);
+};
+MenuZeroStatic.emitCollectTree = function(a, treeOffset, prefix, maskVir)
+{
+	const done = `${prefix}_done`;
+	const loop = `${prefix}_loop`;
+	const advance = `${prefix}_advance`;
+	const hasRight = `${prefix}_has_right`;
+	const descend = `${prefix}_descend`;
+	const climb = `${prefix}_climb`;
+	const setNode = `${prefix}_set_node`;
+
+	a.emit(0x8B, 0xBE); a.dword(treeOffset);           // MOV EDI,[ESI+treeOffset]
+	a.emit(0x85, 0xFF);                                // TEST EDI,EDI
+	a.jcc(0x84, done);                                 // JZ done
+	a.emit(0x8B, 0x1F);                                // MOV EBX,[EDI] (leftmost)
+	a.label(loop);
+	a.emit(0x3B, 0xDF);                                // CMP EBX,EDI
+	a.jcc(0x84, done);                                 // JE done
+	a.emit(0x8B, 0x43, 0x10);                          // MOV EAX,[EBX+10] (command)
+	for (let i = 0; i < MenuZeroStatic.CommandGrid.length; i++)
+	{
+		const [command] = MenuZeroStatic.CommandGrid[i];
+		a.emit(0x3D); a.dword(command);                  // CMP EAX,command
+		a.jcc(0x84, `${prefix}_command_${i}`);           // JE command
+	}
+	a.jmp(advance);
+
+	for (let i = 0; i < MenuZeroStatic.CommandGrid.length; i++)
+	{
+		const [, index] = MenuZeroStatic.CommandGrid[i];
+		a.label(`${prefix}_command_${i}`);
+		a.emit(0x8B, 0x4B, 0x14);                        // MOV ECX,[EBX+14] (child)
+		a.emit(0x85, 0xC9);                              // TEST ECX,ECX
+		a.jcc(0x84, advance);                            // JZ advance
+		a.emit(0x81, 0x0D); a.dword(maskVir); a.dword(1 << index);
+		a.jmp(advance);
+	}
+
+	a.label(advance);
+	a.emit(0x8B, 0x43, 0x08);                          // MOV EAX,[EBX+8] (right)
+	a.emit(0x80, 0x78, 0x0D, 0x00);                    // CMP BYTE [EAX+0D],0
+	a.jcc(0x84, hasRight);                             // JE has_right
+	a.emit(0x8B, 0x43, 0x04);                          // MOV EAX,[EBX+4] (parent)
+	a.label(climb);
+	a.emit(0x80, 0x78, 0x0D, 0x00);                    // CMP BYTE [EAX+0D],0
+	a.jcc(0x85, setNode);                              // JNE set_node
+	a.emit(0x3B, 0x58, 0x08);                          // CMP EBX,[EAX+8]
+	a.jcc(0x85, setNode);                              // JNE set_node
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.emit(0x8B, 0x40, 0x04);                          // MOV EAX,[EAX+4]
+	a.jmp(climb);
+	a.label(setNode);
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.jmp(loop);
+
+	a.label(hasRight);
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.label(descend);
+	a.emit(0x8B, 0x0B);                                // MOV ECX,[EBX] (left)
+	a.emit(0x80, 0x79, 0x0D, 0x00);                    // CMP BYTE [ECX+0D],0
+	a.jcc(0x85, loop);                                 // JNE loop
+	a.emit(0x8B, 0xD9);                                // MOV EBX,ECX
+	a.jmp(descend);
+	a.label(done);
+};
+
+MenuZeroStatic.emitRepositionTree = function(
+	a, treeOffset, prefix, maskVir, gridStrideYVir
+)
+{
+	const done = `${prefix}_done`;
+	const loop = `${prefix}_loop`;
+	const advance = `${prefix}_advance`;
+	const hasRight = `${prefix}_has_right`;
+	const descend = `${prefix}_descend`;
+	const climb = `${prefix}_climb`;
+	const setNode = `${prefix}_set_node`;
+
+	a.emit(0x8B, 0xBE); a.dword(treeOffset);           // MOV EDI,[ESI+treeOffset]
+	a.emit(0x85, 0xFF);                                // TEST EDI,EDI
+	a.jcc(0x84, done);                                 // JZ done
+	a.emit(0x8B, 0x1F);                                // MOV EBX,[EDI] (leftmost)
+	a.label(loop);
+	a.emit(0x3B, 0xDF);                                // CMP EBX,EDI
+	a.jcc(0x84, done);                                 // JE done
+	a.emit(0x8B, 0x43, 0x10);                          // MOV EAX,[EBX+10] (command)
+	for (let i = 0; i < MenuZeroStatic.CommandGrid.length; i++)
+	{
+		const [command] = MenuZeroStatic.CommandGrid[i];
+		a.emit(0x3D); a.dword(command);                  // CMP EAX,command
+		a.jcc(0x84, `${prefix}_command_${i}`);           // JE command
+	}
+	a.jmp(advance);
+
+	for (let i = 0; i < MenuZeroStatic.CommandGrid.length; i++)
+	{
+		const [, index] = MenuZeroStatic.CommandGrid[i];
+		const priorMask = index === 0 ? 0 : (2 ** index) - 1;
+		a.label(`${prefix}_command_${i}`);
+		a.emit(0x8B, 0x4B, 0x14);                        // MOV ECX,[EBX+14] (child)
+		a.emit(0x85, 0xC9);                              // TEST ECX,ECX
+		a.jcc(0x84, advance);                            // JZ advance
+		if (priorMask === 0)
+			a.emit(0x33, 0xC0);                            // XOR EAX,EAX
+		else
+		{
+			a.emit(0xA1); a.dword(maskVir);                // MOV EAX,[visible mask]
+			a.emit(0x25); a.dword(priorMask);              // AND EAX,prior mask
+		}
+		a.emit(0x33, 0xD2);                              // XOR EDX,EDX (count)
+		a.label(`${prefix}_count_${i}`);
+		a.emit(0x85, 0xC0);                              // TEST EAX,EAX
+		a.jcc(0x84, `${prefix}_count_${i}_done`);         // JZ count done
+		a.emit(0x8D, 0x48, 0xFF);                        // LEA ECX,[EAX-1]
+		a.emit(0x23, 0xC1);                              // AND EAX,ECX
+		a.emit(0x42);                                    // INC EDX
+		a.jmp(`${prefix}_count_${i}`);
+		a.label(`${prefix}_count_${i}_done`);
+		a.emit(0x8B, 0xC2);                              // MOV EAX,EDX (compact slot)
+		a.emit(0x33, 0xD2);                              // XOR EDX,EDX
+		a.emit(0xB9); a.dword(MenuZeroStatic.GridColumns);
+		a.emit(0xF7, 0xF1);                              // DIV ECX; EAX=row, EDX=column
+		a.emit(0x6B, 0xD2, MenuZeroStatic.GridStrideX);   // IMUL EDX,EDX,stride X
+		a.emit(0x83, 0xC2, MenuZeroStatic.GridX);         // ADD EDX,grid X
+		a.emit(0x0F, 0xAF, 0x05); a.dword(gridStrideYVir); // dynamic stride Y
+		a.emit(0x83, 0xC0, MenuZeroStatic.GridY);          // ADD EAX,grid Y
+		a.emit(0x8B, 0x4B, 0x14);                        // MOV ECX,[EBX+14] (child)
+		a.emit(0x39, 0x51, 0x1C);
+		a.jcc(0x85, `${prefix}_position_${i}`);
+		a.emit(0x39, 0x41, 0x20);
+		a.jcc(0x84, advance);
+		a.label(`${prefix}_position_${i}`);
+		a.emit(0x50, 0x52);                              // PUSH Y / PUSH X
+		a.emit(0x8B, 0x11);                              // MOV EDX,[ECX]
+		a.emit(0xFF, 0x52, 0x10);                        // CALL [EDX+10]
+		a.jmp(advance);
+	}
+
+	a.label(advance);
+	a.emit(0x8B, 0x43, 0x08);                          // MOV EAX,[EBX+8] (right)
+	a.emit(0x80, 0x78, 0x0D, 0x00);                    // CMP BYTE [EAX+0D],0
+	a.jcc(0x84, hasRight);                             // JE has_right
+	a.emit(0x8B, 0x43, 0x04);                          // MOV EAX,[EBX+4] (parent)
+	a.label(climb);
+	a.emit(0x80, 0x78, 0x0D, 0x00);                    // CMP BYTE [EAX+0D],0
+	a.jcc(0x85, setNode);                              // JNE set_node
+	a.emit(0x3B, 0x58, 0x08);                          // CMP EBX,[EAX+8]
+	a.jcc(0x85, setNode);                              // JNE set_node
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.emit(0x8B, 0x40, 0x04);                          // MOV EAX,[EAX+4]
+	a.jmp(climb);
+	a.label(setNode);
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.jmp(loop);
+
+	a.label(hasRight);
+	a.emit(0x8B, 0xD8);                                // MOV EBX,EAX
+	a.label(descend);
+	a.emit(0x8B, 0x0B);                                // MOV ECX,[EBX] (left)
+	a.emit(0x80, 0x79, 0x0D, 0x00);                    // CMP BYTE [ECX+0D],0
+	a.jcc(0x85, loop);                                 // JNE loop
+	a.emit(0x8B, 0xD9);                                // MOV EBX,ECX
+	a.jmp(descend);
+	a.label(done);
+};
+
+MenuZeroStatic.buildMeasureRows = function(
+	maskVir, panelHeightVir, rowCountVir, oldPanelHeightVir, gridStrideYVir,
+	customVisibleVirs, themeStateVir
+)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x60);                                      // PUSHAD
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX (menu)
+	a.emit(0xC7, 0x05); a.dword(maskVir); a.dword(0);  // clear visible mask
+	MenuZeroStatic.emitCollectTree(a, MenuZeroStatic.TreeOffsets[0], "measure_b4", maskVir);
+	MenuZeroStatic.emitCollectTree(a, MenuZeroStatic.TreeOffsets[1], "measure_bc", maskVir);
+	a.emit(0xA1); a.dword(maskVir);                    // MOV EAX,[visible mask]
+	a.emit(0x33, 0xD2);                                // XOR EDX,EDX (count)
+	a.label("measure_count");
+	a.emit(0x85, 0xC0);                                // TEST EAX,EAX
+	a.jcc(0x84, "measure_count_done");
+	a.emit(0x8D, 0x48, 0xFF);                          // LEA ECX,[EAX-1]
+	a.emit(0x23, 0xC1);                                // AND EAX,ECX
+	a.emit(0x42);                                      // INC EDX
+	a.jmp("measure_count");
+	a.label("measure_count_done");
+	// Append visible custom children after the compact native commands. Count
+	// MENU as one additional occupant so the final row always retains its
+	// bottom-right control and close/warp/reopen never rebuilds a short surface.
+	for (let i = 0; i < customVisibleVirs.length; i++)
+	{
+		const hidden = "measure_custom_" + i + "_hidden";
+		a.emit(0x83, 0x3D); a.dword(customVisibleVirs[i] - 4); a.emit(0x00);
+		a.jcc(0x84, hidden);
+		a.emit(0x83, 0x3D); a.dword(customVisibleVirs[i]); a.emit(0x00);
+		a.jcc(0x84, hidden);
+		a.emit(0x42);                                      // visible custom button
+		a.label(hidden);
+	}
+	a.emit(0x42);                                      // native MENU control
+	a.emit(0x8B, 0xC2);                                // MOV EAX,occupied slots
+	a.emit(0x83, 0xC0, MenuZeroStatic.GridColumns - 1);
+	a.emit(0x33, 0xD2);                                // XOR EDX,EDX
+	a.emit(0xB9); a.dword(MenuZeroStatic.GridColumns);
+	a.emit(0xF7, 0xF1);                                // ceil(occupied / columns)
+	a.emit(0x83, 0xF8, MenuZeroStatic.MaxRows);
+	a.jcc(0x86, "measure_rows_ready");                 // JBE
+	a.emit(0xB8); a.dword(MenuZeroStatic.MaxRows);
+	a.label("measure_rows_ready");
+	a.emit(0xA3); a.dword(rowCountVir);
+	a.emit(0xC7, 0x05); a.dword(gridStrideYVir);
+	a.dword(MenuZeroStatic.GridStrideY);                 // normal tall-client spacing
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "panel_height");                       // Classic uses its own stride
+	a.emit(0xA1); a.dword(MenuZeroStatic.DisplayPointer);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "panel_height");
+	a.emit(0x8B, 0x40, 0x2C);                          // render viewport height
+	a.emit(0x83, 0xE8,
+		MenuZeroStatic.ParentExtraHeight +
+		MenuZeroStatic.PanelBaseHeight +
+		MenuZeroStatic.ScreenMargin * 2
+	);
+	a.jcc(0x8E, "panel_height");                       // no usable row space
+	a.emit(0x33, 0xD2);                                // EDX:EAX=available pixels
+	a.emit(0x8B, 0x0D); a.dword(rowCountVir);
+	a.emit(0xF7, 0xF1);                                // max fitting stride
+	a.emit(0x83, 0xF8, MenuZeroStatic.GridStrideY);
+	a.jcc(0x83, "panel_height");                       // normal stride already fits
+	a.emit(0x83, 0xF8, MenuZeroStatic.MinGridStrideY);
+	a.jcc(0x83, "store_stride");
+	a.emit(0xB8); a.dword(MenuZeroStatic.MinGridStrideY);
+	a.label("store_stride");
+	a.emit(0xA3); a.dword(gridStrideYVir);
+	a.label("panel_height");
+	a.emit(0xA1); a.dword(rowCountVir);
+	a.emit(0x0F, 0xAF, 0x05); a.dword(gridStrideYVir);
+	a.emit(0x83, 0xC0, MenuZeroStatic.PanelBaseHeight);
+	a.emit(0xA3); a.dword(panelHeightVir);
+	a.emit(0xA1); a.dword(rowCountVir);
+	a.emit(0x6B, 0xC0, MenuZeroStatic.OldGridStrideY);
+	a.emit(0x83, 0xC0, MenuZeroStatic.OldPanelBaseHeight);
+	a.emit(0xA3); a.dword(oldPanelHeightVir);
+	a.emit(0x61, 0xC3);                                // POPAD / RET
+	return a;
+};
+
+MenuZeroStatic.buildApplyLayout = function(
+	anchorVir, measureRowsVir, maskVir, panelHeightVir, oldPanelHeightVir,
+	gridStrideYVir, themeStateVir, ensureButtonVirs, syncButtonVirs,
+	syncLaunchersVir
+)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);                          // frame
+	a.emit(0x53, 0x56, 0x57);                          // preserve EBX/ESI/EDI
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX
+	for (const ensureVir of ensureButtonVirs)
+	{
+		a.emit(0x8B, 0xCE);
+		a.call(ensureVir);
+	}
+	a.emit(0x8B, 0xCE);
+	a.call(measureRowsVir);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic");
+
+	a.emit(0xA1); a.dword(panelHeightVir);
+	a.emit(0x83, 0xC0, MenuZeroStatic.ParentExtraHeight);
+	a.emit(0x81, 0x7E, 0x14); a.dword(MenuZeroStatic.ParentWidth);
+	a.jcc(0x85, "renewal_size_changed");
+	a.emit(0x39, 0x46, 0x18);
+	a.jcc(0x85, "renewal_size_changed");
+	a.emit(0x8B, 0x56, 0x24);                        // backing surface
+	a.emit(0x85, 0xD2);
+	a.jcc(0x84, "renewal_size_changed");
+	a.emit(0x81, 0x7A, 0x04); a.dword(MenuZeroStatic.ParentWidth);
+	a.jcc(0x85, "renewal_size_changed");
+	a.emit(0x39, 0x42, 0x08);                        // surface height == EAX
+	a.jcc(0x84, "renewal_size_ready");
+	a.label("renewal_size_changed");
+	a.emit(0x50);                                      // PUSH renewal height
+	MenuZeroStatic.pushImmediate(a, MenuZeroStatic.ParentWidth);
+	a.emit(0x8B, 0x06, 0x8B, 0xCE);
+	a.emit(0xFF, 0x50, 0x04);                          // SetSize
+	// SetSize updates the frame surface but not the WindowManager's cached
+	// top-level rectangle. A map change can therefore leave child clipping at
+	// the stock quarter-size even though the parent surface is already repaired.
+	a.emit(0x56);
+	a.emit(0xB9); a.dword(MenuZeroStatic.WindowManager);
+	a.call(MenuZeroStatic.WindowManagerUpdate);
+	a.label("renewal_size_ready");
+	for (let i = 0; i < MenuZeroStatic.ChildOffsets.length; i++)
+	{
+		MenuZeroStatic.emitSetChildPosition(
+			a,
+			MenuZeroStatic.ChildOffsets[i],
+			MenuZeroStatic.ToggleX,
+			panelHeightVir,
+			"toggle_" + i + "_done"
+		);
+	}
+	MenuZeroStatic.emitRepositionTree(
+		a, MenuZeroStatic.TreeOffsets[0], "tree_b4", maskVir, gridStrideYVir
+	);
+	MenuZeroStatic.emitRepositionTree(
+		a, MenuZeroStatic.TreeOffsets[1], "tree_bc", maskVir, gridStrideYVir
+	);
+	a.emit(0x8B, 0xCE);
+	a.call(anchorVir);
+	for (const syncVir of syncButtonVirs)
+	{
+		a.emit(0x8B, 0xCE);
+		a.call(syncVir);
+	}
+	a.jmp("sync_external");
+
+	a.label("classic");
+	a.emit(0xA1); a.dword(oldPanelHeightVir);
+	a.emit(0x83, 0xC0, MenuZeroStatic.ClassicParentExtraHeight);
+	a.emit(0x81, 0x7E, 0x14); a.dword(MenuZeroStatic.ClassicParentWidth);
+	a.jcc(0x85, "classic_size_changed");
+	a.emit(0x39, 0x46, 0x18);
+	a.jcc(0x85, "classic_size_changed");
+	a.emit(0x8B, 0x56, 0x24);                        // backing surface
+	a.emit(0x85, 0xD2);
+	a.jcc(0x84, "classic_size_changed");
+	a.emit(0x81, 0x7A, 0x04); a.dword(MenuZeroStatic.ClassicParentWidth);
+	a.jcc(0x85, "classic_size_changed");
+	a.emit(0x39, 0x42, 0x08);                        // surface height == EAX
+	a.jcc(0x84, "classic_size_ready");
+	a.label("classic_size_changed");
+	a.emit(0x50);                                      // PUSH classic height
+	MenuZeroStatic.pushImmediate(a, MenuZeroStatic.ClassicParentWidth);
+	a.emit(0x8B, 0x06, 0x8B, 0xCE);
+	a.emit(0xFF, 0x50, 0x04);                          // SetSize
+	a.emit(0x56);
+	a.emit(0xB9); a.dword(MenuZeroStatic.WindowManager);
+	a.call(MenuZeroStatic.WindowManagerUpdate);
+	a.label("classic_size_ready");
+	for (const syncVir of syncButtonVirs)
+	{
+		a.emit(0x8B, 0xCE);
+		a.call(syncVir);
+	}
+
+	a.label("sync_external");
+	a.call(syncLaunchersVir);
+	a.emit(0xC7, 0x46, 0x58); a.dword(1);             // force full redraw
+	a.emit(0x5F, 0x5E, 0x5B);
+	a.emit(0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+MenuZeroStatic.buildOnCreateWrapper = function(applyLayoutVir)
+{
+	const a = MenuZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                                // ESI=UIMenuIconWnd
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08, 0x8B, 0xCE);
+	a.call(MenuZeroStatic.OnCreateOriginal);            // native lifecycle once
+	a.emit(0x8B, 0xD8);                                // preserve stock EAX
+	a.emit(0x8B, 0xCE);
+	a.call(applyLayoutVir);                             // idempotent reflow only
+	a.emit(0x8B, 0xC3, 0x5F, 0x5E, 0x5B);
+	a.emit(0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+MenuZeroStatic.buildMenuVisibilityWrapper = function(buttonStateVir, reflowVir)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x56, 0x57);             // frame / ESI / EDI
+	a.emit(0x8B, 0xF1);                                // ESI=UIMenuIconWnd
+	a.emit(0x8B, 0x7D, 0x08);                          // EDI=requested visibility
+	a.emit(0x57, 0x8B, 0xCE);
+	a.call(s.SetVisibleOriginal);                       // honor native lifecycle first
+	a.emit(0x50);                                      // preserve stock EAX
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "hide_child");
+	// Close/open reuses this window and can skip the factory seam. Reflow the
+	// object and surface, then refresh the separate WindowManager rectangle.
+	a.emit(0x8B, 0xCE);
+	a.call(reflowVir);
+	a.emit(0x56);
+	a.emit(0xB9); a.dword(s.WindowManager);
+	a.call(s.WindowManagerUpdate);
+	a.jmp("done");
+
+	a.label("hide_child");
+	a.emit(0x8B, 0x3D); a.dword(buttonStateVir);
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "done");
+	a.emit(0x6A, 0x00);
+	a.emit(0x8B, 0x17, 0x8B, 0xCF);
+	a.emit(0xFF, 0x92); a.dword(0xD4);                 // SetVisible(false)
+
+	a.label("done");
+	a.emit(0x58, 0x5F, 0x5E);                         // stock EAX / EDI / ESI
+	a.emit(0x8B, 0xE5, 0x5D, 0xC2, 0x04, 0x00);
+	return a;
+};
+MenuZeroStatic.buildLauncherVisibility = function(
+	stateVir, themeEnabledVir, loadThemeVir, syncVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x56);                                      // PUSH ESI
+	a.emit(0x8B, 0xF1);                                // MOV ESI,ECX (window)
+	a.call(loadThemeVir);
+	a.emit(0x8B, 0x44, 0x24, 0x08);                   // original visibility
+	a.emit(0x50, 0x8B, 0xCE);                         // PUSH value / MOV ECX,ESI
+	a.call(s.SetVisibleOriginal);                      // always honor native request
+	a.emit(0x83, 0x3D); a.dword(themeEnabledVir); a.emit(0x00);
+	a.jcc(0x84, "done");                             // Classic UI
+	a.emit(0x39, 0x35); a.dword(stateVir + s.LauncherStateWindow);
+	a.jcc(0x85, "done");                             // construction not captured yet
+	a.emit(0x83, 0x3D);
+	a.dword(stateVir + s.LauncherStatePositionValid);
+	a.emit(0x00);
+	a.jcc(0x84, "done");
+	a.emit(0x50);                                      // preserve native return value
+	a.call(syncVir);
+	a.emit(0x58);
+	a.label("done");
+	a.emit(0x5E, 0xC2, 0x04, 0x00);                  // POP ESI / RET 4
+	return a;
+};
+
+MenuZeroStatic.buildLauncherPosition = function(
+	stateVir, themeEnabledVir, loadThemeVir, syncVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                                // ESI=managed launcher
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08, 0x8B, 0xCE);
+	a.call(s.SetPositionOriginal);                      // honor native geometry
+	a.emit(0x8B, 0xD8);                                // preserve stock EAX
+	a.emit(0x89, 0x35); a.dword(stateVir + s.LauncherStateWindow);
+
+	// A native SetPosition call is authoritative for the Classic baseline.
+	// Custom New/Classic placement calls bypass this wrapper, so they cannot
+	// poison the baseline that must be restored after a theme switch.
+	a.emit(0xA1); a.dword(s.DisplayPointer);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "theme");
+	a.emit(0x8B, 0x78, 0x28);                          // display width
+	a.emit(0x2B, 0x7E, 0x1C);                          // minus native X
+	a.emit(0x89, 0x3D);
+	a.dword(stateVir + s.LauncherStateNativeRightInset);
+	a.emit(0x8B, 0x46, 0x20);
+	a.emit(0xA3); a.dword(stateVir + s.LauncherStateNativeY);
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + s.LauncherStatePositionValid);
+	a.dword(1);
+
+	a.label("theme");
+	a.call(loadThemeVir);
+	a.emit(0x83, 0x3D); a.dword(themeEnabledVir); a.emit(0x00);
+	a.jcc(0x84, "done");                              // Classic keeps native request
+	a.emit(0x83, 0x3D);
+	a.dword(stateVir + s.LauncherStatePositionValid);
+	a.emit(0x00);
+	a.jcc(0x84, "done");
+	a.call(syncVir);                                    // reclaim New UI placement
+
+	a.label("done");
+	a.emit(0x8B, 0xC3, 0x5F, 0x5E, 0x5B);
+	a.emit(0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+MenuZeroStatic.buildLauncherDraw = function(originalDrawVir, syncVir)
+{
+	const a = MenuZeroStatic.asm();
+	// The map-change layout reset uses a direct/base geometry path which can
+	// bypass the launcher's virtual SetPosition entry. Visible draw is the
+	// first reliable ownership boundary after that reset.
+	a.emit(0x51);                                      // preserve launcher ECX
+	a.call(syncVir);
+	a.emit(0x59);                                      // restore launcher ECX
+	a.jmp(originalDrawVir);
+	return a;
+};
+
+MenuZeroStatic.buildSyncLaunchers = function(
+	launcherStateVir, themeEnabledVir, loadThemeVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.call(loadThemeVir);
+	a.emit(0x33, 0xDB);                               // EBX=next stacked Y (unset)
+	for (let index = 0; index < s.ManagedWindows.length; index++)
+	{
+		const spec = s.ManagedWindows[index];
+		const stateVir = launcherStateVir +
+			index * s.LauncherStateStride;
+		a.emit(0x68); a.dword(spec.windowId);
+		a.emit(0xB9); a.dword(s.WindowManager);
+		a.call(s.GetWindow);
+		a.emit(0x8B, 0xF0);                            // MOV ESI,EAX (window)
+		a.emit(0x85, 0xF6);
+		a.jcc(0x84, `missing_${index}`);
+
+		a.emit(0x39, 0x35);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.jcc(0x84, `identity_ready_${index}`);
+		a.emit(0x89, 0x35);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.dword(0);
+		a.label(`identity_ready_${index}`);
+
+		a.emit(0x83, 0x3D);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.emit(0x00);
+		a.jcc(0x85, `position_ready_${index}`);
+		a.emit(0xA1); a.dword(s.DisplayPointer);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, `next_${index}`);
+		a.emit(0x8B, 0x78, 0x28);                      // display width
+		a.emit(0x2B, 0x7E, 0x1C);                      // minus native X
+		a.emit(0x89, 0x3D);
+		a.dword(stateVir + s.LauncherStateNativeRightInset);
+		a.emit(0x8B, 0x7E, 0x20);
+		a.emit(0x89, 0x3D);
+		a.dword(stateVir + s.LauncherStateNativeY);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.dword(1);
+		a.label(`position_ready_${index}`);
+
+		a.emit(0x83, 0x3D); a.dword(themeEnabledVir); a.emit(0x00);
+		a.jcc(0x84, `classic_${index}`);
+		a.emit(0x83, 0x7E, 0x28, 0x00);                // naturally visible?
+		a.jcc(0x84, `next_${index}`);                  // hidden consumes no row
+		a.emit(0x85, 0xDB);
+		a.jcc(0x85, `stack_y_ready_${index}`);
+		a.emit(0x8B, 0x7E, 0x18);                      // first window height
+		a.emit(0x47, 0xD1, 0xEF);                      // ceil(height / 2)
+		a.emit(0xBB); a.dword(s.LauncherFirstCenterY);
+		a.emit(0x2B, 0xDF);                            // first top = center-half
+		a.label(`stack_y_ready_${index}`);
+		a.emit(0xA1); a.dword(s.DisplayPointer);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, `next_${index}`);
+		a.emit(0x8B, 0x40, 0x28);                      // display width
+		a.emit(0x83, 0xE8, s.MinimapRightInset);
+		a.emit(0x2B, 0x46, 0x14);                      // right-align native width
+		a.emit(0x39, 0x46, 0x1C);
+		a.jcc(0x85, `renewal_position_${index}`);
+		a.emit(0x39, 0x5E, 0x20);
+		a.jcc(0x84, `renewal_position_ready_${index}`);
+		a.label(`renewal_position_${index}`);
+		a.emit(0x53, 0x50);                            // PUSH Y / PUSH X
+		a.emit(0x8B, 0xCE);
+		a.call(s.SetPositionOriginal);                   // bypass ownership wrapper
+		a.label(`renewal_position_ready_${index}`);
+		a.emit(0x03, 0x5E, 0x18);                      // next Y += height
+		a.emit(0x83, 0xC3, s.LauncherRowGap);
+		a.jmp(`next_${index}`);
+
+		a.label(`classic_${index}`);
+		a.emit(0x8B, 0x3D);
+		a.dword(stateVir + s.LauncherStateNativeY);
+		a.emit(0xA1); a.dword(s.DisplayPointer);
+		a.emit(0x85, 0xC0);
+		a.jcc(0x84, `next_${index}`);
+		a.emit(0x8B, 0x40, 0x28);
+		a.emit(0x2B, 0x05);
+		a.dword(stateVir + s.LauncherStateNativeRightInset);
+		a.emit(0x39, 0x46, 0x1C);
+		a.jcc(0x85, `classic_position_${index}`);
+		a.emit(0x39, 0x7E, 0x20);
+		a.jcc(0x84, `next_${index}`);
+		a.label(`classic_position_${index}`);
+		a.emit(0x57, 0x50);
+		a.emit(0x8B, 0xCE);
+		a.call(s.SetPositionOriginal);                   // bypass ownership wrapper
+		a.jmp(`next_${index}`);
+
+		a.label(`missing_${index}`);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.dword(0);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.dword(0);
+		a.label(`next_${index}`);
+	}
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC3);
+	return a;
+};
+
+MenuZeroStatic.buildPostMakeWindow = function(
+	launcherStateVir, syncVir, reflowVir
+)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x9C, 0x60);                              // preserve MakeWindow state
+	a.emit(0x8B, 0x45, 0x08);                        // MOV EAX,[EBP+8] (ID)
+	a.emit(0x3D); a.dword(s.WindowId);
+	a.jcc(0x84, "menu_ready");
+	for (let index = 0; index < s.ManagedWindows.length; index++)
+	{
+		a.emit(0x3D); a.dword(s.ManagedWindows[index].windowId);
+		a.jcc(0x84, "capture_" + index);
+	}
+	a.jmp("done");
+
+	for (let index = 0; index < s.ManagedWindows.length; index++)
+	{
+		const stateVir = launcherStateVir +
+			index * s.LauncherStateStride;
+		a.label("capture_" + index);
+		a.emit(0x8B, 0x75, 0xEC);                      // new window
+		a.emit(0x85, 0xF6);
+		a.jcc(0x84, "done");
+		a.emit(0x39, 0x35);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.jcc(0x84, "state_ready_" + index);
+		a.emit(0x89, 0x35);
+		a.dword(stateVir + s.LauncherStateWindow);
+		a.emit(0xC7, 0x05);
+		a.dword(stateVir + s.LauncherStatePositionValid);
+		a.dword(0);
+		a.label("state_ready_" + index);
+		a.call(syncVir);
+		a.jmp("done");
+	}
+
+	a.label("menu_ready");
+	a.emit(0x8B, 0x75, 0xEC);                        // created/existing menu
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "done");
+	// MakeWindow can return an existing or newly recreated menu after a map
+	// change. Never replay OnCreate; repair layout and registry geometry only.
+	a.emit(0x8B, 0xCE);
+	a.call(reflowVir);
+	a.emit(0x56);
+	a.emit(0xB9); a.dword(s.WindowManager);
+	a.call(s.WindowManagerUpdate);
+
+	a.label("done");
+	a.emit(0x61, 0x9D);
+	a.emit(0x8B, 0x45, 0xEC, 0x85, 0xC0);            // stolen MOV/TEST
+	a.jmp(s.PostMakeWindowReturn);
+	return a;
+};
+MenuZeroStatic.buildGoldPositionCapture = function(stateVir)
+{
+	const s = MenuZeroStatic;
+	const a = s.asm();
+	a.emit(0x8B, 0x0D); a.dword(s.DisplayPointer);
+	a.emit(0x8B, 0x49, 0x28);
+	a.emit(0x2B, 0xC8);                                // display width - native X
+	a.emit(0x89, 0x0D);
+	a.dword(stateVir + s.LauncherStateNativeRightInset);
+	a.emit(0x8B, 0x0C, 0x24);
+	a.emit(0x89, 0x0D); a.dword(stateVir + s.LauncherStateNativeY);
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + s.LauncherStatePositionValid);
+	a.dword(1);
+	a.emit(0x89, 0x35);
+	a.dword(stateVir + s.LauncherStateWindow);
+	a.emit(0x50, 0x8B, 0xCE, 0xFF, 0xD2);            // stolen block
+	a.jmp(s.GoldPositionReturn);
+	return a;
+};
+
+MenuZeroStatic.assertCode = function(label, virAddr, expectedHex)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroMenu: ${label} is not mapped`);
+	const normalized = MenuZeroStatic.hexNorm(expectedHex);
+	const count = normalized.split(" ").length;
+	const actual = MenuZeroStatic.hexNorm(Exe.GetHex(phyAddr, count));
+	if (actual !== normalized)
+		throw Error(`ROGlobalZeroMenu: ${label} mismatch, got ${actual}`);
+	return phyAddr;
+};
+
+MenuZeroStatic.assertVtable = function(label, entryVir, expectedVir)
+{
+	const phyAddr = Exe.Vir2Phy(entryVir);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroMenu: ${label} is not mapped`);
+	const actual = Exe.GetUint32(phyAddr);
+	if (actual !== expectedVir)
+	{
+		throw Error(
+			`ROGlobalZeroMenu: ${label} expected 0x${expectedVir.toString(16)}, ` +
+			`got 0x${actual.toString(16)}`
+		);
+	}
+	return phyAddr;
+};
+
+MenuZeroStatic.getManagedWindowRoutes = function()
+{
+	const s = MenuZeroStatic;
+	const switchPhy = s.assertCode(
+		"UIWindowMgr::MakeWindow main switch",
+		s.MakeWindowSwitchSite,
+		s.MakeWindowSwitchBytes
+	);
+	const indexTableVir = Exe.GetUint32(switchPhy + 3);
+	const indexTablePhy = Exe.Vir2Phy(indexTableVir, CODE);
+	if (indexTablePhy < 0)
+		throw Error("ROGlobalZeroMenu: MakeWindow index table is not mapped");
+	const routes = [];
+	for (const spec of s.ManagedWindows)
+	{
+		const entryPhy = indexTablePhy + spec.windowId;
+		const currentCase = Exe.GetUint8(entryPhy);
+		if (currentCase !== spec.windowCase)
+		{
+			throw Error(
+				`ROGlobalZeroMenu: ${spec.label} route expected ` +
+				`0x${spec.windowCase.toString(16).toUpperCase()}, got ` +
+				`0x${currentCase.toString(16).toUpperCase()}`
+			);
+		}
+		routes.push({key: spec.key, entryPhy, currentCase});
+	}
+	return routes;
+};
+
+MenuZeroStatic.pushBytes = function(pointer)
+{
+	const bytes = [0x68];
+	for (let shift = 0; shift < 32; shift += 8)
+		bytes.push((pointer >>> shift) & 0xFF);
+	return MenuZeroStatic.bytesToHex(bytes);
+};
+
+MenuZeroStatic.verifyNativeLayout = function()
+{
+	const verified = {
+		factoryCasePhy: MenuZeroStatic.assertCode(
+			"UIMenuIconWnd factory case",
+			MenuZeroStatic.FactoryCase,
+			MenuZeroStatic.FactoryBytes
+		),
+		drawVtablePhy: MenuZeroStatic.assertVtable(
+			"UIMenuIconWnd vtable[20]",
+			MenuZeroStatic.DrawVtableEntry,
+			MenuZeroStatic.DrawOriginal
+		),
+		positionVtablePhy: MenuZeroStatic.assertVtable(
+			"UIMenuIconWnd vtable[4]",
+			MenuZeroStatic.PositionVtableEntry,
+			MenuZeroStatic.PositionOriginal
+		),
+		hitTestVtablePhy: MenuZeroStatic.assertVtable(
+			"UIMenuIconWnd vtable[50]",
+			MenuZeroStatic.HitTestVtableEntry,
+			MenuZeroStatic.HitTestOriginal
+		),
+		visibilityVtablePhy: MenuZeroStatic.assertVtable(
+			"UIMenuIconWnd vtable[14]",
+			MenuZeroStatic.VisibilityVtableEntry,
+			MenuZeroStatic.SetVisibleOriginal
+		),
+		onCreateVtablePhy: MenuZeroStatic.assertVtable(
+			"UIMenuIconWnd vtable[15]",
+			MenuZeroStatic.OnCreateVtableEntry,
+			MenuZeroStatic.OnCreateOriginal
+		),
+		buttonDestructorVtablePhy: MenuZeroStatic.assertVtable(
+			"UIButton vtable[0]",
+			MenuZeroStatic.ButtonVtable,
+			MenuZeroStatic.ButtonDeletingDestructor
+		),
+		buttonMouseUpVtablePhy: MenuZeroStatic.assertVtable(
+			"UIButton vtable[31]",
+			MenuZeroStatic.ButtonVtable + 31 * 4,
+			MenuZeroStatic.ButtonMouseUp
+		),
+		backgroundCopyPhy: MenuZeroStatic.assertCode(
+			"background std::string copy block",
+			MenuZeroStatic.BackgroundCopyBlock,
+			MenuZeroStatic.BackgroundCopyBytes
+		),
+		backgroundDrawPhy: MenuZeroStatic.assertCode(
+			"background draw coordinates",
+			MenuZeroStatic.BackgroundDrawBlock,
+			MenuZeroStatic.BackgroundDrawBytes
+		),
+		backgroundHeightPhy: MenuZeroStatic.assertCode(
+			"background draw height",
+			MenuZeroStatic.BackgroundHeightBlock,
+			MenuZeroStatic.BackgroundHeightBytes
+		),
+		provisionalSizePhy: MenuZeroStatic.assertCode(
+			"provisional UIMenuIconWnd size",
+			MenuZeroStatic.ProvisionalSize,
+			MenuZeroStatic.ProvisionalSizeBytes
+		),
+		finalSizePhy: MenuZeroStatic.assertCode(
+			"final UIMenuIconWnd size",
+			MenuZeroStatic.FinalSize,
+			MenuZeroStatic.FinalSizeBytes
+		),
+		descriptorLengthPhy: MenuZeroStatic.assertCode(
+			"adventurerAgency descriptor length",
+			MenuZeroStatic.DescriptorLengthBlock,
+			MenuZeroStatic.DescriptorLengthBytes
+		),
+		descriptorPointerPhy: MenuZeroStatic.assertCode(
+			"adventurerAgency descriptor pointer",
+			MenuZeroStatic.DescriptorPointer,
+			MenuZeroStatic.DescriptorPointerBytes
+		),
+		postMakeWindowPhy: MenuZeroStatic.assertCode(
+			"post-MakeWindow launcher seam",
+			MenuZeroStatic.PostMakeWindowSite,
+			MenuZeroStatic.PostMakeWindowBytes
+		),
+		goldPositionPhy: MenuZeroStatic.assertCode(
+			"Gold native-position seam",
+			MenuZeroStatic.GoldPositionSite,
+			MenuZeroStatic.GoldPositionBytes
+		),
+		managedWindowRoutes: MenuZeroStatic.getManagedWindowRoutes(),
+		launcherDrawEntries: [],
+		launcherPositionEntries: [],
+		launcherVisibilityEntries: [],
+		resourcePushes: []
+	};
+
+	for (const spec of MenuZeroStatic.ManagedWindows)
+	{
+		verified.launcherDrawEntries.push({
+			spec,
+			entryPhy: MenuZeroStatic.assertVtable(
+				`${spec.label} draw vtable`,
+				spec.vtable + 20 * 4,
+				spec.draw
+			)
+		});
+		verified.launcherPositionEntries.push({
+			spec,
+			entryPhy: MenuZeroStatic.assertVtable(
+				`${spec.label} position vtable`,
+				spec.vtable + 4 * 4,
+				MenuZeroStatic.SetPositionOriginal
+			)
+		});
+		verified.launcherVisibilityEntries.push({
+			spec,
+			entryPhy: MenuZeroStatic.assertVtable(
+				`${spec.label} visibility vtable`,
+				spec.vtable + 14 * 4,
+				MenuZeroStatic.SetVisibleOriginal
+			)
+		});
+	}
+
+	for (const resource of MenuZeroStatic.ResourcePushes)
+	{
+		for (const siteVir of resource.sites)
+		{
+			verified.resourcePushes.push({
+				resource,
+				siteVir,
+				sitePhy: MenuZeroStatic.assertCode(
+					`${resource.name} resource PUSH`,
+					siteVir,
+					MenuZeroStatic.pushBytes(resource.oldPointer)
+				)
+			});
+		}
+	}
+	return verified;
+};
+
+ROGlobalZeroMenu = function(_)
+{
+	if (Exe.BuildDate !== MenuZeroStatic.BuildDate)
+		throw Error("ROGlobalZeroMenu supports only the 2025-07-16 client");
+	const theme = CACHE.get("ROGlobalZeroUITheme.State");
+	if (!theme || !Number.isInteger(theme.stateVir) ||
+		!Number.isInteger(theme.loadVir))
+	{
+		throw Error("ROGlobalZeroMenu: ROGlobalZeroUITheme must run first");
+	}
+	if (!Warp.TestMode)
+		Warp.SetPatchState("MoveShopIcon", false);
+	const themeEnabledVir = theme.stateVir +
+		(Number.isInteger(theme.enabledOffset) ? theme.enabledOffset : 0);
+	const autoHuntBridge = CACHE.get("AutoCombatUI.MenuButton.v1");
+	if (!autoHuntBridge || !Number.isInteger(autoHuntBridge.toggleVir) ||
+		!Number.isInteger(autoHuntBridge.requestVir) ||
+		!Number.isInteger(autoHuntBridge.visibleVir))
+	{
+		throw Error("ROGlobalZeroMenu: AutoCombatUI must run first");
+	}
+	const autoHuntHoverText = "Auto Hunt";
+	const autoHuntHover = MenuZeroStatic.allocateBytes(
+		MenuZeroStatic.asciiBytes(autoHuntHoverText)
+	);
+	const itemCollectionHoverText = "Item Collection";
+	const itemCollectionHover = MenuZeroStatic.allocateBytes(
+		MenuZeroStatic.asciiBytes(itemCollectionHoverText)
+	);
+	const itemCollectionRoute = NewButtonVis.customRoute("Item Collection");
+	CACHE.put("ROGlobalZeroMenu.ItemCollectionRoute.v1", itemCollectionRoute);
+
+	const bestiaryHover = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("Bestiary"));
+	const bestiaryRoute = NewButtonVis.customRoute("Bestiary");
+	const vipHover = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("VIP"));
+	const vipRoute = NewButtonVis.customRoute("VIP");
+	const battlepassHover = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("Battle Pass"));
+	const battlepassRoute = NewButtonVis.customRoute("Battle Pass");
+
+	const autoSupportHoverText = "AutoSupport";
+	const autoSupportHover = MenuZeroStatic.allocateBytes(
+		MenuZeroStatic.asciiBytes(autoSupportHoverText)
+	);
+	const autoSupportBridge = CACHE.get("AutoSupportUI.MenuButton.v1");
+	if (!autoSupportBridge || !Number.isInteger(autoSupportBridge.toggleVir) ||
+		!Number.isInteger(autoSupportBridge.requestVir) ||
+		!Number.isInteger(autoSupportBridge.visibleVir))
+	{
+		throw Error("ROGlobalZeroMenu: AutoSupportUI must run first");
+	}
+	const autoHuntRoute = NewButtonVis.customRoute("Auto Hunt");
+	const autoSupportRoute = NewButtonVis.customRoute("AutoSupport");
+	const autoSupportVisibleVir = autoSupportRoute.visibleVir;
+	CACHE.put("ROGlobalZeroMenu.AutoSupportRoute.v1", autoSupportRoute);
+
+	$$(_, 1, "Verify menu, launcher, visibility, and layout seams");
+	const verified = MenuZeroStatic.verifyNativeLayout();
+
+	$$(_, 2, "Allocate renewal menu resources and the chatting descriptor");
+	const prefix = MenuZeroStatic.resourcePrefix();
+	const resourcePaths = {};
+	for (const resource of MenuZeroStatic.ResourcePushes)
+	{
+		resourcePaths[resource.name] = MenuZeroStatic.allocateBytes(
+			MenuZeroStatic.buildResourceBytes(prefix, resource.relative)
+		);
+	}
+	const descriptor = MenuZeroStatic.allocateBytes(MenuZeroStatic.asciiBytes("chatting"));
+	const backgrounds = {
+		renewal: [],
+		classic: [],
+		pathLength: 0
+	};
+	for (let row = 1; row <= MenuZeroStatic.MaxRows; row++)
+	{
+		for (const spec of [
+			{key: "renewal", relative: "uirenewal\\menuicon\\bg_m" + row + ".tga"},
+			{key: "classic", relative: "uirenewal\\menuicon\\bg_o" + row + ".tga"}
+		])
+		{
+			const bytes = MenuZeroStatic.buildResourceBytes(
+				prefix, spec.relative, false
+			);
+			if (backgrounds.pathLength === 0)
+				backgrounds.pathLength = bytes.length;
+			else if (bytes.length !== backgrounds.pathLength)
+			{
+				throw Error(
+					"ROGlobalZeroMenu: row background paths must have equal length"
+				);
+			}
+			if (bytes.length >= MenuZeroStatic.BackgroundBufferSize)
+				throw Error("ROGlobalZeroMenu: row background path exceeds buffer");
+			while (bytes.length < MenuZeroStatic.BackgroundBufferSize)
+				bytes.push(0);
+			backgrounds[spec.key].push(
+				MenuZeroStatic.allocateBytes(bytes, 0x10).vir
+			);
+		}
+	}
+	const buttonPathSpecs = {
+		renewal: [
+			"uirenewal\\menuicon\\bt_autohunt_normal.bmp",
+			"uirenewal\\menuicon\\bt_autohunt_mouseon.bmp",
+			"uirenewal\\menuicon\\bt_autohunt_pressed.bmp"
+		],
+		classic: [
+			"uirenewal\\menuicon\\bt_autohunt_old_normal.bmp",
+			"uirenewal\\menuicon\\bt_autohunt_old_mouseon.bmp",
+			"uirenewal\\menuicon\\bt_autohunt_old_pressed.bmp"
+		]
+	};
+	const buttonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const relative of buttonPathSpecs[key])
+		{
+			buttonImagePaths[key].push(
+				MenuZeroStatic.allocateBytes(
+					MenuZeroStatic.buildResourceBytes(prefix, relative)
+				).vir
+			);
+		}
+	}
+	const itemButtonPathSpecs = {
+		renewal: [
+			"uirenewal\\menuicon\\bt_itemcollection_poring_normal.bmp",
+			"uirenewal\\menuicon\\bt_itemcollection_poring_mouseon.bmp",
+			"uirenewal\\menuicon\\bt_itemcollection_poring_pressed.bmp"
+		],
+		classic: [
+			"uirenewal\\menuicon\\bt_itemcollection_poring_old_normal.bmp",
+			"uirenewal\\menuicon\\bt_itemcollection_poring_old_mouseon.bmp",
+			"uirenewal\\menuicon\\bt_itemcollection_poring_old_pressed.bmp"
+		]
+	};
+	const itemButtonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const relative of itemButtonPathSpecs[key])
+		{
+			itemButtonImagePaths[key].push(
+				MenuZeroStatic.allocateBytes(
+					MenuZeroStatic.buildResourceBytes(prefix, relative)
+				).vir
+			);
+		}
+	}
+	const autoSupportButtonPathSpecs = {
+		renewal: [
+			"autosupport\\menuicon\\bt_autosupport_normal.bmp",
+			"autosupport\\menuicon\\bt_autosupport_mouseon.bmp",
+			"autosupport\\menuicon\\bt_autosupport_pressed.bmp"
+		],
+		classic: [
+			"autosupport\\menuicon\\bt_autosupport_old_normal.bmp",
+			"autosupport\\menuicon\\bt_autosupport_old_mouseon.bmp",
+			"autosupport\\menuicon\\bt_autosupport_old_pressed.bmp"
+		]
+	};
+	const autoSupportButtonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const relative of autoSupportButtonPathSpecs[key])
+		{
+			autoSupportButtonImagePaths[key].push(
+				MenuZeroStatic.allocateBytes(
+					MenuZeroStatic.buildResourceBytes(prefix, relative)
+				).vir
+			);
+		}
+	}
+	const bestiaryButtonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const state of ["normal", "mouseon", "pressed"])
+		{
+			const relative = "bestiary\\menuicon\\bt_bestiary_" +
+				(key === "classic" ? "old_" : "") + state + ".bmp";
+			bestiaryButtonImagePaths[key].push(MenuZeroStatic.allocateBytes(
+				MenuZeroStatic.buildResourceBytes(prefix, relative)).vir);
+		}
+	}
+	const bestiaryButtonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF], 4
+	);
+	const vipButtonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const state of ["normal", "mouseon", "pressed"])
+		{
+			const relative = "uirenewal\\menuicon\\bt_vip_" +
+				(key === "classic" ? "old_" : "") + state + ".bmp";
+			vipButtonImagePaths[key].push(MenuZeroStatic.allocateBytes(
+				MenuZeroStatic.buildResourceBytes(prefix, relative)).vir);
+		}
+	}
+	const vipButtonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF], 4
+	);
+	const battlepassButtonImagePaths = {renewal: [], classic: []};
+	for (const key of ["renewal", "classic"])
+	{
+		for (const state of ["normal", "mouseon", "pressed"])
+		{
+			const relative = "uirenewal\\menuicon\\bt_battlepass_" +
+				(key === "classic" ? "old_" : "") + state + ".bmp";
+			battlepassButtonImagePaths[key].push(MenuZeroStatic.allocateBytes(
+				MenuZeroStatic.buildResourceBytes(prefix, relative)).vir);
+		}
+	}
+	const battlepassButtonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF], 4
+	);
+	const autoSupportButtonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF],
+		4
+	);
+	const buttonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF],
+		4
+	);
+	const itemButtonState = MenuZeroStatic.allocateBytes(
+		[0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF],
+		4
+	);
+
+	const oldPanelHeight = MenuZeroStatic.MaxRows * MenuZeroStatic.OldGridStrideY +
+		MenuZeroStatic.OldPanelBaseHeight;
+	const layoutState = MenuZeroStatic.allocateBytes([
+		0, 0, 0, 0,
+		MenuZeroStatic.PanelHeight & 0xFF,
+		(MenuZeroStatic.PanelHeight >>> 8) & 0xFF,
+		(MenuZeroStatic.PanelHeight >>> 16) & 0xFF,
+		(MenuZeroStatic.PanelHeight >>> 24) & 0xFF,
+		MenuZeroStatic.MaxRows, 0, 0, 0,
+		oldPanelHeight & 0xFF,
+		(oldPanelHeight >>> 8) & 0xFF,
+		(oldPanelHeight >>> 16) & 0xFF,
+		(oldPanelHeight >>> 24) & 0xFF,
+		MenuZeroStatic.GridStrideY, 0, 0, 0
+	], 4);
+	const visibleMaskVir = layoutState.vir;
+	const panelHeightVir = layoutState.vir + 4;
+	const rowCountVir = layoutState.vir + 8;
+	const oldPanelHeightVir = layoutState.vir + 12;
+	const gridStrideYVir = layoutState.vir + 16;
+	const launcherState = MenuZeroStatic.allocateBytes(
+		new Array(
+			MenuZeroStatic.ManagedWindows.length *
+			MenuZeroStatic.LauncherStateStride
+		).fill(0),
+		4
+	);
+
+	const loadTheme = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildPreservedThemeLoad(theme.loadVir)
+	);
+
+	const buttonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(buttonState.vir)
+	);
+	const buttonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildOptionalButtonMouseUp(autoHuntRoute.requestCellVir)
+	);
+	const buttonMouseDown = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonMouseDown()
+	);
+	const buttonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(autoHuntHover.vir, 0, -20)
+	);
+	const buttonVtable = MenuZeroStatic.cloneButtonVtable(
+		buttonMouseUp.vir, buttonHover.vir, buttonDestructor.vir,
+		MenuZeroStatic.ButtonDraw,
+		buttonMouseDown.vir
+	);
+	const ensureAutoHunt = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			buttonState.vir, buttonVtable.vir, buttonImagePaths,
+			MenuZeroStatic.AutoHuntButtonWindowId,
+			theme.stateVir, loadTheme.vir, autoHuntRoute.requestCellVir
+		)
+	);
+	const syncAutoHunt = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			buttonState.vir,
+			visibleMaskVir,
+			autoHuntRoute.visibleVir,
+			gridStrideYVir,
+			theme.stateVir, loadTheme.vir, []
+		)
+	);
+	const itemButtonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(itemButtonState.vir)
+	);
+	const itemButtonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildOptionalButtonMouseUp(itemCollectionRoute.vir)
+	);
+	const itemButtonHover = MenuZeroStatic.allocateCode(
+		// Match native menu labels: anchor above the child, not beside it.
+		MenuZeroStatic.buildButtonHover(itemCollectionHover.vir, 0, -20)
+	);
+	const itemButtonVtable = MenuZeroStatic.cloneButtonVtable(
+		itemButtonMouseUp.vir, itemButtonHover.vir,
+		itemButtonDestructor.vir, MenuZeroStatic.ButtonDraw,
+		buttonMouseDown.vir
+	);
+	const ensureItemCollection = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			itemButtonState.vir, itemButtonVtable.vir,
+			itemButtonImagePaths,
+			MenuZeroStatic.ItemCollectionButtonWindowId,
+			theme.stateVir, loadTheme.vir,
+			itemCollectionRoute.vir
+		)
+	);
+	const syncItemCollection = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			itemButtonState.vir,
+			visibleMaskVir,
+			itemCollectionRoute.vir + 4,
+			gridStrideYVir,
+			theme.stateVir, loadTheme.vir,
+			[autoHuntRoute.visibleVir]
+		)
+	);
+	const autoSupportButtonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(autoSupportButtonState.vir)
+	);
+	const autoSupportButtonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildOptionalButtonMouseUp(autoSupportRoute.requestCellVir)
+	);
+	const autoSupportButtonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(autoSupportHover.vir, 0, -20)
+	);
+	const autoSupportButtonVtable = MenuZeroStatic.cloneButtonVtable(
+		autoSupportButtonMouseUp.vir, autoSupportButtonHover.vir,
+		autoSupportButtonDestructor.vir, MenuZeroStatic.ButtonDraw,
+		buttonMouseDown.vir
+	);
+	const ensureAutoSupport = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			autoSupportButtonState.vir, autoSupportButtonVtable.vir,
+			autoSupportButtonImagePaths,
+			MenuZeroStatic.AutoSupportButtonWindowId,
+			theme.stateVir, loadTheme.vir, autoSupportRoute.requestCellVir
+		)
+	);
+	const syncAutoSupport = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			autoSupportButtonState.vir, visibleMaskVir,
+			autoSupportVisibleVir, gridStrideYVir,
+			theme.stateVir, loadTheme.vir,
+			[autoHuntRoute.visibleVir, itemCollectionRoute.vir + 4]
+		)
+	);
+	const bestiaryButtonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(bestiaryButtonState.vir)
+	);
+	const bestiaryButtonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildOptionalButtonMouseUp(bestiaryRoute.requestCellVir)
+	);
+	const bestiaryButtonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(bestiaryHover.vir, 0, -20)
+	);
+	const bestiaryButtonVtable = MenuZeroStatic.cloneButtonVtable(
+		bestiaryButtonMouseUp.vir, bestiaryButtonHover.vir,
+		bestiaryButtonDestructor.vir, MenuZeroStatic.ButtonDraw, buttonMouseDown.vir
+	);
+	const ensureBestiary = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			bestiaryButtonState.vir, bestiaryButtonVtable.vir, bestiaryButtonImagePaths,
+			MenuZeroStatic.BestiaryButtonWindowId,
+			theme.stateVir, loadTheme.vir, bestiaryRoute.requestCellVir
+		)
+	);
+	const syncBestiary = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			bestiaryButtonState.vir, visibleMaskVir, bestiaryRoute.visibleVir,
+			gridStrideYVir, theme.stateVir, loadTheme.vir,
+			[autoHuntRoute.visibleVir, itemCollectionRoute.visibleVir, autoSupportVisibleVir]
+		)
+	);
+	const vipButtonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(vipButtonState.vir)
+	);
+	const vipButtonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildOptionalButtonMouseUp(vipRoute.requestCellVir)
+	);
+	const vipButtonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(vipHover.vir, 0, -20)
+	);
+	const vipButtonVtable = MenuZeroStatic.cloneButtonVtable(
+		vipButtonMouseUp.vir, vipButtonHover.vir,
+		vipButtonDestructor.vir, MenuZeroStatic.ButtonDraw, buttonMouseDown.vir
+	);
+	const ensureVip = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			vipButtonState.vir, vipButtonVtable.vir, vipButtonImagePaths,
+			MenuZeroStatic.VipButtonWindowId,
+			theme.stateVir, loadTheme.vir, vipRoute.requestCellVir
+		)
+	);
+	const syncVip = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			vipButtonState.vir, visibleMaskVir, vipRoute.visibleVir,
+			gridStrideYVir, theme.stateVir, loadTheme.vir,
+			[autoHuntRoute.visibleVir, itemCollectionRoute.visibleVir, autoSupportVisibleVir, bestiaryRoute.visibleVir]
+		)
+	);
+	const battlepassButtonDestructor = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonDestructor(battlepassButtonState.vir)
+	);
+	const battlepassButtonMouseUp = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildOptionalButtonMouseUp(battlepassRoute.requestCellVir)
+	);
+	const battlepassButtonHover = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildButtonHover(battlepassHover.vir, 0, -20)
+	);
+	const battlepassButtonVtable = MenuZeroStatic.cloneButtonVtable(
+		battlepassButtonMouseUp.vir, battlepassButtonHover.vir,
+		battlepassButtonDestructor.vir, MenuZeroStatic.ButtonDraw, buttonMouseDown.vir
+	);
+	const ensureBattlepass = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildEnsureMenuButton(
+			battlepassButtonState.vir, battlepassButtonVtable.vir, battlepassButtonImagePaths,
+			MenuZeroStatic.BattlepassButtonWindowId,
+			theme.stateVir, loadTheme.vir, battlepassRoute.requestCellVir
+		)
+	);
+	const syncBattlepass = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncMenuButton(
+			battlepassButtonState.vir, visibleMaskVir, battlepassRoute.visibleVir,
+			gridStrideYVir, theme.stateVir, loadTheme.vir,
+			[autoHuntRoute.visibleVir, itemCollectionRoute.visibleVir, autoSupportVisibleVir, bestiaryRoute.visibleVir, vipRoute.visibleVir]
+		)
+	);
+	const syncLaunchers = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildSyncLaunchers(
+			launcherState.vir,
+			themeEnabledVir,
+			loadTheme.vir
+		)
+	);
+	const launcherDraw = [];
+	const launcherPosition = [];
+	const launcherVisibility = [];
+	for (let index = 0; index < MenuZeroStatic.ManagedWindows.length; index++)
+	{
+		const stateVir = launcherState.vir +
+			index * MenuZeroStatic.LauncherStateStride;
+		launcherDraw.push(
+			MenuZeroStatic.allocateCode(
+				MenuZeroStatic.buildLauncherDraw(
+					MenuZeroStatic.ManagedWindows[index].draw,
+					syncLaunchers.vir
+				)
+			)
+		);
+		launcherPosition.push(
+			MenuZeroStatic.allocateCode(
+				MenuZeroStatic.buildLauncherPosition(
+					stateVir,
+					themeEnabledVir,
+					loadTheme.vir,
+					syncLaunchers.vir
+				)
+			)
+		);
+		launcherVisibility.push(
+			MenuZeroStatic.allocateCode(
+				MenuZeroStatic.buildLauncherVisibility(
+					stateVir,
+					themeEnabledVir,
+					loadTheme.vir,
+					syncLaunchers.vir
+				)
+			)
+		);
+	}
+
+	$$(_, 3, "Inject compact menu reflow and under-minimap launchers");
+	const measureRows = MenuZeroStatic.buildMeasureRows(
+		visibleMaskVir,
+		panelHeightVir,
+		rowCountVir,
+		oldPanelHeightVir,
+		gridStrideYVir,
+		[
+			autoHuntRoute.visibleVir,
+			itemCollectionRoute.vir + 4,
+			autoSupportVisibleVir,
+			bestiaryRoute.visibleVir,
+			vipRoute.visibleVir,
+			battlepassRoute.visibleVir
+		],
+		theme.stateVir
+	);
+	const [measureRowsPhy, measureRowsVir] = Exe.Allocate(
+		measureRows.bytes.length, 0x10
+	);
+	Exe.SetHex(measureRowsPhy, measureRows.finish(measureRowsVir));
+	const backgroundCopy = MenuZeroStatic.buildBackgroundCopy(
+		backgrounds,
+		rowCountVir,
+		theme.stateVir,
+		theme.loadVir
+	);
+	const [backgroundCopyPhy, backgroundCopyVir] = Exe.Allocate(
+		backgroundCopy.bytes.length, 0x10
+	);
+	Exe.SetHex(backgroundCopyPhy, backgroundCopy.finish(backgroundCopyVir));
+	const backgroundDraw = MenuZeroStatic.buildBackgroundDraw(
+		theme.stateVir, theme.loadVir
+	);
+	const [backgroundDrawPhy, backgroundDrawVir] = Exe.Allocate(
+		backgroundDraw.bytes.length, 0x10
+	);
+	Exe.SetHex(backgroundDrawPhy, backgroundDraw.finish(backgroundDrawVir));
+	const backgroundHeight = MenuZeroStatic.buildBackgroundHeight(
+		measureRowsVir,
+		panelHeightVir,
+		oldPanelHeightVir,
+		theme.stateVir,
+		theme.loadVir
+	);
+	const [backgroundHeightPhy, backgroundHeightVir] = Exe.Allocate(
+		backgroundHeight.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		backgroundHeightPhy,
+		backgroundHeight.finish(backgroundHeightVir)
+	);
+	const descriptorLength = MenuZeroStatic.buildDescriptorLength(
+		theme.stateVir, theme.loadVir
+	);
+	const [descriptorLengthPhy, descriptorLengthVir] = Exe.Allocate(
+		descriptorLength.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		descriptorLengthPhy,
+		descriptorLength.finish(descriptorLengthVir)
+	);
+	const descriptorSelector = MenuZeroStatic.buildPushSelector(
+		0x0102833C, descriptor.vir, theme.stateVir, theme.loadVir
+	);
+	const [descriptorSelectorPhy, descriptorSelectorVir] = Exe.Allocate(
+		descriptorSelector.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		descriptorSelectorPhy,
+		descriptorSelector.finish(descriptorSelectorVir)
+	);
+	const anchor = MenuZeroStatic.buildAnchor();
+	const [anchorPhy, anchorVir] = Exe.Allocate(anchor.bytes.length, 0x10);
+	Exe.SetHex(anchorPhy, anchor.finish(anchorVir));
+	const positionWrapper = MenuZeroStatic.buildPositionWrapper(
+		anchorVir, theme.stateVir, syncLaunchers.vir
+	);
+	const [positionWrapperPhy, positionWrapperVir] = Exe.Allocate(
+		positionWrapper.bytes.length, 0x10
+	);
+	Exe.SetHex(positionWrapperPhy, positionWrapper.finish(positionWrapperVir));
+	const hitTestWrapper = MenuZeroStatic.buildHitTestWrapper(
+		theme.stateVir, [buttonState.vir, itemButtonState.vir, autoSupportButtonState.vir, bestiaryButtonState.vir, vipButtonState.vir, battlepassButtonState.vir]
+	);
+	const [hitTestWrapperPhy, hitTestWrapperVir] = Exe.Allocate(
+		hitTestWrapper.bytes.length, 0x10
+	);
+	Exe.SetHex(hitTestWrapperPhy, hitTestWrapper.finish(hitTestWrapperVir));
+	const applyLayout = MenuZeroStatic.buildApplyLayout(
+		anchorVir,
+		measureRowsVir,
+		visibleMaskVir,
+		panelHeightVir,
+		oldPanelHeightVir,
+		gridStrideYVir,
+		theme.stateVir,
+		[ensureAutoHunt.vir, ensureItemCollection.vir, ensureAutoSupport.vir, ensureBestiary.vir, ensureVip.vir, ensureBattlepass.vir],
+		[syncAutoHunt.vir, syncItemCollection.vir, syncAutoSupport.vir, syncBestiary.vir, syncVip.vir, syncBattlepass.vir],
+		syncLaunchers.vir
+	);
+	const [applyLayoutPhy, applyLayoutVir] = Exe.Allocate(
+		applyLayout.bytes.length, 0x10
+	);
+	Exe.SetHex(applyLayoutPhy, applyLayout.finish(applyLayoutVir));
+	const directOverlay = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildDirectOverlay(
+			resourcePaths["menu-new-normal"].vir,
+			panelHeightVir, theme.stateVir, loadTheme.vir
+		)
+	);
+	const drawWrapper = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildDrawWrapper(applyLayoutVir, directOverlay.vir)
+	);
+	const onCreateWrapper = MenuZeroStatic.buildOnCreateWrapper(applyLayoutVir);
+	const [onCreateWrapperPhy, onCreateWrapperVir] = Exe.Allocate(
+		onCreateWrapper.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		onCreateWrapperPhy,
+		onCreateWrapper.finish(onCreateWrapperVir)
+	);
+	const visibilityWrapper = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildMenuVisibilityWrapper(
+			buttonState.vir, applyLayoutVir
+		)
+	);
+	const postMakeWindow = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildPostMakeWindow(
+			launcherState.vir, syncLaunchers.vir, applyLayoutVir
+		)
+	);
+	let goldIndex = -1;
+	for (let index = 0; index < MenuZeroStatic.ManagedWindows.length; index++)
+	{
+		if (MenuZeroStatic.ManagedWindows[index].key === "goldPc")
+			goldIndex = index;
+	}
+	if (goldIndex < 0)
+		throw Error("ROGlobalZeroMenu: Gold PC launcher specification missing");
+	const goldPositionCapture = MenuZeroStatic.allocateCode(
+		MenuZeroStatic.buildGoldPositionCapture(
+			launcherState.vir +
+			goldIndex * MenuZeroStatic.LauncherStateStride
+		)
+	);
+	const resourceSelectors = {};
+	for (const resource of MenuZeroStatic.ResourcePushes)
+	{
+		const selector = MenuZeroStatic.buildPushSelector(
+			resource.oldPointer,
+			resourcePaths[resource.name].vir,
+			theme.stateVir,
+			theme.loadVir
+		);
+		const [phy, vir] = Exe.Allocate(selector.bytes.length, 0x10);
+		Exe.SetHex(phy, selector.finish(vir));
+		resourceSelectors[resource.name] = {phy, vir, size: selector.bytes.length};
+	}
+	const sizeSelectors = {};
+	for (const selectorSpec of [
+		["provisionalHeight", MenuZeroStatic.ClassicProvisionalHeight, MenuZeroStatic.ParentHeight],
+		["provisionalWidth", MenuZeroStatic.ClassicParentWidth, MenuZeroStatic.ParentWidth],
+		["finalHeight", MenuZeroStatic.ClassicFinalHeight, MenuZeroStatic.ParentHeight],
+		["finalWidth", MenuZeroStatic.ClassicParentWidth, MenuZeroStatic.ParentWidth]
+	])
+	{
+		const selector = MenuZeroStatic.buildPushSelector(
+			selectorSpec[1], selectorSpec[2], theme.stateVir, theme.loadVir
+		);
+		const [phy, vir] = Exe.Allocate(selector.bytes.length, 0x10);
+		Exe.SetHex(phy, selector.finish(vir));
+		sizeSelectors[selectorSpec[0]] = {phy, vir, size: selector.bytes.length};
+	}
+	$$(_, 4, "Activate theme geometry and reversible launcher ownership");
+	for (const push of verified.resourcePushes)
+	{
+		Exe.SetCALL(
+			push.sitePhy,
+			resourceSelectors[push.resource.name].vir,
+			0
+		);
+	}
+	Exe.SetJMP(verified.descriptorLengthPhy, descriptorLengthVir, 0);
+	Exe.SetNOPs(verified.descriptorLengthPhy + 5, 7);
+	Exe.SetCALL(verified.descriptorPointerPhy, descriptorSelectorVir, 0);
+	Exe.SetJMP(verified.backgroundCopyPhy, backgroundCopyVir, 0);
+	Exe.SetNOPs(verified.backgroundCopyPhy + 5, 45);
+	Exe.SetJMP(verified.backgroundDrawPhy, backgroundDrawVir, 0);
+	Exe.SetNOPs(verified.backgroundDrawPhy + 5, 6);
+	Exe.SetJMP(verified.backgroundHeightPhy, backgroundHeightVir, 0);
+	Exe.SetNOPs(verified.backgroundHeightPhy + 5, 4);
+	Exe.SetCALL(verified.provisionalSizePhy, sizeSelectors.provisionalHeight.vir, 0);
+	Exe.SetCALL(verified.provisionalSizePhy + 5, sizeSelectors.provisionalWidth.vir, 0);
+	Exe.SetCALL(verified.finalSizePhy, sizeSelectors.finalHeight.vir, 0);
+	Exe.SetCALL(verified.finalSizePhy + 5, sizeSelectors.finalWidth.vir, 0);
+	Exe.SetUint32(verified.drawVtablePhy, drawWrapper.vir);
+	Exe.SetUint32(verified.positionVtablePhy, positionWrapperVir);
+	Exe.SetUint32(verified.hitTestVtablePhy, hitTestWrapperVir);
+	Exe.SetUint32(verified.onCreateVtablePhy, onCreateWrapperVir);
+	Exe.SetUint32(verified.visibilityVtablePhy, visibilityWrapper.vir);
+	for (let index = 0; index < verified.launcherVisibilityEntries.length; index++)
+	{
+		Exe.SetUint32(
+			verified.launcherDrawEntries[index].entryPhy,
+			launcherDraw[index].vir
+		);
+		Exe.SetUint32(
+			verified.launcherPositionEntries[index].entryPhy,
+			launcherPosition[index].vir
+		);
+		Exe.SetUint32(
+			verified.launcherVisibilityEntries[index].entryPhy,
+			launcherVisibility[index].vir
+		);
+	}
+	Exe.SetJMP(verified.postMakeWindowPhy, postMakeWindow.vir, 0);
+	Exe.SetJMP(verified.goldPositionPhy, goldPositionCapture.vir, 0);
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		const pathPointers = {};
+		for (const resource of MenuZeroStatic.ResourcePushes)
+			pathPointers[resource.name] = resourcePaths[resource.name].vir;
+		const launcherDiagnostics = [];
+		for (let index = 0; index < MenuZeroStatic.ManagedWindows.length; index++)
+		{
+			const spec = MenuZeroStatic.ManagedWindows[index];
+			launcherDiagnostics.push({
+				key: spec.key,
+				label: spec.label,
+				windowId: spec.windowId,
+				naturalRouteCase:
+					verified.managedWindowRoutes[index].currentCase,
+				stackOrder: index,
+				forceCreated: false,
+				drawVtableVir: spec.vtable + 20 * 4,
+				drawOriginalVir: spec.draw,
+				drawWrapperVir: launcherDraw[index].vir,
+				positionVtableVir: spec.vtable + 4 * 4,
+				positionWrapperVir: launcherPosition[index].vir,
+				visibilityVtableVir: spec.vtable + 14 * 4,
+				visibilityWrapperVir: launcherVisibility[index].vir,
+				stateVir: launcherState.vir +
+					index * MenuZeroStatic.LauncherStateStride
+			});
+		}
+		PatchDiagnostics.add("ROGlobalZeroMenu.QjsOnly", {
+			version: 22,
+			menuWindowId: MenuZeroStatic.WindowId,
+			nativeDispatcherVir: MenuZeroStatic.NativeDispatcher,
+			factoryCaseVir: MenuZeroStatic.FactoryCase,
+			drawVtableVir: MenuZeroStatic.DrawVtableEntry,
+			drawWrapperVir: drawWrapper.vir,
+			directOverlayVir: directOverlay.vir,
+			directOverlaySize: directOverlay.size,
+
+			positionVtableVir: MenuZeroStatic.PositionVtableEntry,
+			positionWrapperVir,
+			positionWrapperSize: positionWrapper.bytes.length,
+			hitTestVtableVir: MenuZeroStatic.HitTestVtableEntry,
+			hitTestWrapperVir,
+			hitTestWrapperSize: hitTestWrapper.bytes.length,
+			visibilityVtableVir: MenuZeroStatic.VisibilityVtableEntry,
+			visibilityWrapperVir: visibilityWrapper.vir,
+			visibilityWrapperSize: visibilityWrapper.size,
+			onCreateVtableVir: MenuZeroStatic.OnCreateVtableEntry,
+			onCreateWrapperVir,
+			onCreateWrapperSize: onCreateWrapper.bytes.length,
+			reflowVir: applyLayoutVir,
+			reflowSize: applyLayout.bytes.length,
+			anchorVir,
+			anchorSize: anchor.bytes.length,
+			backgroundCopyVir,
+			backgroundCopySize: backgroundCopy.bytes.length,
+			backgroundDrawVir,
+			backgroundDrawSize: backgroundDraw.bytes.length,
+			backgroundHeightVir,
+			backgroundHeightSize: backgroundHeight.bytes.length,
+			measureRowsVir,
+			measureRowsSize: measureRows.bytes.length,
+			visibleMaskVir,
+			panelHeightVir,
+			oldPanelHeightVir,
+			gridStrideYVir,
+			minGridStrideY: MenuZeroStatic.MinGridStrideY,
+			rowCountVir,
+			autoHunt: {
+				windowId: MenuZeroStatic.AutoHuntButtonWindowId,
+				nativeChild: true,
+
+				topLevelOverlay: false,
+				hoverText: autoHuntHoverText,
+				hoverTextVir: autoHuntHover.vir,
+				requestVir: autoHuntBridge.requestVir,
+				visibleVir: autoHuntRoute.visibleVir,
+				toggleVir: autoHuntBridge.toggleVir,
+				buttonStateVir: buttonState.vir,
+				buttonVtableVir: buttonVtable.vir,
+				buttonDestructorVir: buttonDestructor.vir,
+
+				buttonMouseDownVir: buttonMouseDown.vir,
+				buttonMouseUpVir: buttonMouseUp.vir,
+				buttonHoverVir: buttonHover.vir,
+				ensureVir: ensureAutoHunt.vir,
+				syncVir: syncAutoHunt.vir,
+				ownershipPolicy:
+					"native UIButton child appended to compact command grid",
+				positionPolicy:
+					"first available slot after visible native commands",
+				newUiSurfacePolicy:
+					"45x41 New icon rendered by stock UIButton draw"
+			},
+			itemCollection: {
+				windowId: MenuZeroStatic.ItemCollectionButtonWindowId,
+				nativeChild: true,
+				topLevelOverlay: false,
+				hoverText: itemCollectionHoverText,
+				hoverTextVir: itemCollectionHover.vir,
+				requestCellVir: itemCollectionRoute.vir,
+				visibleVir: itemCollectionRoute.vir + 4,
+				buttonStateVir: itemButtonState.vir,
+				buttonVtableVir: itemButtonVtable.vir,
+				buttonDestructorVir: itemButtonDestructor.vir,
+				buttonMouseUpVir: itemButtonMouseUp.vir,
+				buttonHoverVir: itemButtonHover.vir,
+				ensureVir: ensureItemCollection.vir,
+				syncVir: syncItemCollection.vir,
+				positionPolicy:
+					"next available slot after Auto Hunt when visible",
+				registrationPolicy:
+					"runtime route cell supports either patch selection order"
+			},
+			bestiary: {
+				windowId: MenuZeroStatic.BestiaryButtonWindowId,
+				nativeChild: true,
+				hoverText: "Bestiary",
+				hoverTextVir: bestiaryHover.vir,
+				requestCellVir: bestiaryRoute.requestCellVir,
+				visibleVir: bestiaryRoute.visibleVir,
+				buttonStateVir: bestiaryButtonState.vir,
+				buttonVtableVir: bestiaryButtonVtable.vir,
+				buttonDestructorVir: bestiaryButtonDestructor.vir,
+				buttonMouseUpVir: bestiaryButtonMouseUp.vir,
+				buttonHoverVir: bestiaryButtonHover.vir,
+				imagePaths: bestiaryButtonImagePaths,
+				ensureVir: ensureBestiary.vir,
+				syncVir: syncBestiary.vir,
+				positionPolicy: "next available slot after visible custom buttons",
+				registrationPolicy: "optional producer in either patch selection order"
+			},
+			vip: {
+				windowId: MenuZeroStatic.VipButtonWindowId,
+				nativeChild: true,
+				hoverText: "VIP",
+				hoverTextVir: vipHover.vir,
+				requestCellVir: vipRoute.requestCellVir,
+				visibleVir: vipRoute.visibleVir,
+				buttonStateVir: vipButtonState.vir,
+				buttonVtableVir: vipButtonVtable.vir,
+				buttonDestructorVir: vipButtonDestructor.vir,
+				buttonMouseUpVir: vipButtonMouseUp.vir,
+				buttonHoverVir: vipButtonHover.vir,
+				imagePaths: vipButtonImagePaths,
+				ensureVir: ensureVip.vir,
+				syncVir: syncVip.vir,
+				positionPolicy: "next available slot after Bestiary",
+				registrationPolicy: "optional producer in either patch selection order"
+			},
+			battlepass: {
+				windowId: MenuZeroStatic.BattlepassButtonWindowId,
+				nativeChild: true,
+				hoverText: "Battle Pass",
+				hoverTextVir: battlepassHover.vir,
+				requestCellVir: battlepassRoute.requestCellVir,
+				visibleVir: battlepassRoute.visibleVir,
+				buttonStateVir: battlepassButtonState.vir,
+				buttonVtableVir: battlepassButtonVtable.vir,
+				buttonDestructorVir: battlepassButtonDestructor.vir,
+				buttonMouseUpVir: battlepassButtonMouseUp.vir,
+				buttonHoverVir: battlepassButtonHover.vir,
+				imagePaths: battlepassButtonImagePaths,
+				ensureVir: ensureBattlepass.vir,
+				syncVir: syncBattlepass.vir,
+				positionPolicy: "next available slot after VIP",
+				registrationPolicy: "optional producer in either patch selection order"
+			},
+			menuToggleImagePolicy:
+				"native control plus parent-canvas New MENU fallback",
+			menuToggleLifecyclePolicy:
+				"native child ownership with direct post-layout coordinates",
+			classicBackgroundPolicy:
+				"zero custom panel draw; parent ends two pixels below final icon",
+			menuWindowRegistryPolicy:
+				"unconditional WindowManager rectangle rebind after visibility and post-MakeWindow",
+			themeStateVir: theme.stateVir,
+			themeEnabledVir,
+			themeLoadBridgeVir: loadTheme.vir,
+			launcherStateVir: launcherState.vir,
+			syncLaunchersVir: syncLaunchers.vir,
+			launcherLayoutPolicy:
+				"visible existing windows reclaim compact layout before draw",
+			launcherRightInset: MenuZeroStatic.MinimapRightInset,
+			launcherFirstCenterY: MenuZeroStatic.LauncherFirstCenterY,
+			launcherRowGap: MenuZeroStatic.LauncherRowGap,
+			postMakeWindowVir: postMakeWindow.vir,
+			goldPositionCaptureVir: goldPositionCapture.vir,
+			launchers: launcherDiagnostics,
+			externalCashShopPolicy: "natural visibility; first stack slot",
+			rodexNotificationPolicy: "natural visibility; fourth stack slot",
+			missingLauncherPolicy: "query only; never create",
+			backgroundPathVirs: {
+				renewal: backgrounds.renewal,
+				classic: backgrounds.classic
+			},
+			backgroundPathLength: backgrounds.pathLength,
+			backgroundPolicy: "complete row-specific texture; never clipped",
+			descriptorVir: descriptor.vir,
+			descriptorName: "chatting",
+			descriptorLengthVir,
+			descriptorSelectorVir,
+			parentWidth: MenuZeroStatic.ParentWidth,
+			maxParentHeight: MenuZeroStatic.ParentHeight,
+			panelWidth: MenuZeroStatic.PanelWidth,
+			maxPanelHeight: MenuZeroStatic.PanelHeight,
+			gridOrigin: [MenuZeroStatic.GridX, MenuZeroStatic.GridY],
+			gridStride: [MenuZeroStatic.GridStrideX, MenuZeroStatic.GridStrideY],
+			gridColumns: MenuZeroStatic.GridColumns,
+			toggleX: MenuZeroStatic.ToggleX,
+			toggleY: "panelHeight - 51",
+			dynamicRows: true,
+			reservedControlRow: false,
+			reservedMenuSlot: true,
+			controlRowPolicy:
+				"custom buttons fill native-grid gaps; rows cover native + visible custom + MENU",
+			visibilityPatches: ["HideNewButtons", "ShowNewButtons"],
+			commandCount: MenuZeroStatic.CommandGrid.length,
+			resourcePaths: pathPointers,
+			externalModules: 0
+		});
+	}
+
+	return true;
+};
+
+ROGlobalZeroMenu.validate = function()
+{
+	if (Exe.BuildDate !== MenuZeroStatic.BuildDate)
+		return false;
+	try
+	{
+		MenuZeroStatic.verifyNativeLayout();
+		return true;
+	}
+	catch (error)
+	{
+		return false;
+	}
+};

@@ -1,0 +1,77 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Consume full 152-byte  *
+*                   booking wire records in Main 2025-07-16. The native    *
+*                   formatter ABI carries a borrowed full-name pointer     *
+*                   plus unchanged scalar fields, then creates owning      *
+*                   native std::strings. No shortened name or alternate    *
+*                   identity is constructed. Native hooks, data and code   *
+*                   revert together with the selecting patch.              *
+*                                                                          *
+\**************************************************************************/
+
+BookingNamesStatic={};
+BookingNamesStatic.convert=function()
+{
+	const a=ExtNameStaticAsm.asm();a.emit(0x55,0x8B,0xEC,0x53,0x56,0x57);
+	a.emit(0x8B,0x7D,8,0x8B,0x75,12,0x8B,0x5D,16);
+	a.label("loop");a.emit(0x85,0xDB);a.jcc(0x84,"done");
+	// 48-byte call carrier: index, pointer, padding20, and original footer20.
+	a.emit(0x57,0x33,0xC0,0xB9);a.dword(12);a.emit(0xF3,0xAB,0x5F,0x8B,6,0x89,7,0x8D,0x46,4,0x89,0x47,4);
+	a.emit(0x56,0x57,0x81,0xC6);a.dword(132);a.emit(0x83,0xC7,28,0xB9);a.dword(5);a.emit(0xF3,0xA5,0x5F,0x5E);
+	a.emit(0x81,0xC6);a.dword(152);a.emit(0x83,0xC7,48,0x4B);a.jmp("loop");
+	a.label("done");a.emit(0x5F,0x5E,0x5B,0x5D,0xC2,12,0);return a;
+};
+BookingNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.bookingNames128)return state;
+	const converter=ExtNameTextStatic.allocateCode(BookingNamesStatic.convert()).virAddr;
+	const patches=[],edits=[];
+	patches.push([0x00CD0031,"0F BF 7E 02 83 EF 05 F7 E7 8B DA BA 30 00 00 00 C1 EB 05",function(){
+		return GuildNamesStatic.leaf([0x0F,0xB7,0x7E,2,0x83,0xEF,5,0x8B,0xC7,0x33,0xD2,0xB9,152,0,0,0,0xF7,0xF1,0x8B,0xD8,0x33,0xC9,0xBA,48,0,0,0],0x00CD0044);
+	}]);
+	patches.push([0x00CD0055,"57 8D 4E 05 89 45 FC 51 50 E8 E8 7C 13 00 83 C4 10",function(){
+		const a=ExtNameStaticAsm.asm();a.emit(0x89,0x45,0xFC,0x83,0xC4,4,0x53,0x8D,0x4E,5,0x51,0x50);a.call(converter);a.jmp(0x00CD0066);return a;
+	}]);
+	patches.push([0x00CD0143,"8B 4D 08 83 EC 30 8B C4",function(){
+		const a=ExtNameStaticAsm.asm();a.emit(0x83,0xEC,48,0x8B,0xC4,0x8B,0x4D,8,0x83,0xC1,2,0x6A,1,0x51,0x50);a.call(converter);
+		a.emit(0xB9);a.dword(0x015FFF18);a.call(0x00AB5260);a.jmp(0x00CD016C);return a;
+	}]);
+	// These are the only native formatter reads of the old inline name area.
+	edits.push([0x00AB4D4C,"8D 8D E4 FD FF FF","8B 8D E4 FD FF FF"],[0x00AB4D5E,"8D 85 E4 FD FF FF","8B 85 E4 FD FF FF"]);
+	// Modern request ACK contains two canonical names, then AID and result.
+	patches.push([0x00CD023B,"8B 46 36 83 F8 0D",()=>GuildNamesStatic.leaf([0x8B,0x86,6,1,0,0,0x83,0xF8,13],0x00CD0241)]);
+	patches.push([0x00CD028C,"FF 76 32 8B 0D 50 17 25 01",()=>GuildNamesStatic.leaf([0xFF,0xB6,2,1,0,0,0x8B,0x0D,0x50,0x17,0x25,1],0x00CD0295)]);
+	for(const s of [[0x00CD03AB,0xDAA],[0x00CD040B,0xDAB]])
+		patches.push([s[0],"8D 46 1A 50 68 "+ExtNameStaticAsm.bytesToHex([s[1]&255,s[1]>>>8,0,0]),()=>GuildNamesStatic.leaf([0x8D,0x86,130,0,0,0,0x50,0x68,s[1]&255,s[1]>>>8,0,0],s[0]+9)]);
+	for(const p of patches){p.push(ExtNameStaticAsm.assertCode("booking wire adapter",p[0],p[1]));p.push(ExtNameTextStatic.allocateCode(p[2]()));}
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("booking full name pointer",e[0],e[1]));
+	const phy=Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir,0x0805),CODE);
+	if(phy<0||Exe.GetUint32(phy)!==0x00CA8346)throw Error("BookingNamesStatic: unexpected search route");
+	const a=ExtNameStaticAsm.asm();a.emit(0x0F,0xB7,0x05);a.dword(routes.packetBufferVir+2);a.emit(0x83,0xF8,5);a.jcc(0x82,"done");a.emit(0x83,0xE8,5,0x33,0xD2,0xB9);a.dword(152);a.emit(0xF7,0xF1,0x85,0xD2);a.jcc(0x85,"done");a.emit(0x68);a.dword(routes.packetBufferVir);a.emit(0x8B,0xCF);a.call(0x00CD0020);a.label("done");a.jmp(routes.mainLoopReturnVir);
+	const route=ExtNameTextStatic.allocateCode(a);
+	const owner=Exe.ActivePatch;Exe.BeginTag("BookingNamesStatic.NamePackets128",true);
+	try{for(const p of patches){Exe.SetJMP(p[3],p[4].virAddr,0);Exe.SetNOPs(p[3]+5,p[1].split(" ").length-5);}for(const e of edits)Exe.SetHex(e[3],e[2]);Exe.SetUint32(phy,route.virAddr);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.bookingNames128=true;return state;
+};

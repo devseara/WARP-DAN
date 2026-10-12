@@ -39,7 +39,9 @@ function verifyChatAssetInstall(source) {
 		const sourceDir = warp + api.config.AssetPath;
 		const targetDir = root + "/data/texture/" + api.config.uiPrefix() + "/uirenewal/chat";
 		for (const file of api.config.Assets) files.set(sourceDir + "/" + file, "bundled:" + file);
-		return {...api, root, files, directories, operations, state, env, sourceDir, targetDir};
+		files.set(sourceDir + "/ModernChatDefaults.lub", "bundled defaults");
+		const defaultsTarget = root + "/data/LuaFiles514/Lua Files/ChatWndInfo/ModernChatDefaults.lub";
+		return {...api, root, files, directories, operations, state, env, sourceDir, targetDir, defaultsTarget};
 	};
 	const expectError = (f, text) => {
 		let failure;
@@ -49,11 +51,14 @@ function verifyChatAssetInstall(source) {
 	};
 	let f = fixture();
 	f.install();
-	check(f.operations.filter(x => x[0] === "mkdir").length === 5, "Create the complete parent chain");
-	check(f.operations.filter(x => x[0] === "copy").length === 19, "Install all 19 PNGs");
+	check(f.operations.filter(x => x[0] === "mkdir").length === 9, "Create both complete parent chains");
+	check(f.operations.filter(x => x[0] === "copy").length === 20, "Install 19 PNGs and default tabs");
+	check(f.files.get(f.defaultsTarget) === "bundled defaults", "Install first-use defaults");
 	for (const file of f.config.Assets) check(f.files.get(f.targetDir + "/" + file) === "bundled:" + file, "Wrong output image: " + file);
 	check(f.state.opened === f.state.closed, "Close every asset handle");
 	f.files.set(f.targetDir + "/icon_emotion.png", "user white smiley");
+	f.files.set(f.defaultsTarget, "user custom default tabs");
+	f.files.set(f.root + "/savedata/ChatWndInfo_U.lua", "user saved tabs");
 	f.operations.length = 0;
 	f.install();
 	check(f.operations.length === 0 && f.files.get(f.targetDir + "/icon_emotion.png") === "user white smiley", "Repeat must preserve custom images");
@@ -61,6 +66,13 @@ function verifyChatAssetInstall(source) {
 	f.install();
 	check(f.operations.filter(x => x[0] === "copy").length === 1, "Repair only the missing PNG");
 	check(f.files.get(f.targetDir + "/icon_emotion.png") === "user white smiley", "Repair must preserve custom images");
+	check(f.files.get(f.defaultsTarget) === "user custom default tabs", "Preserve customized defaults");
+	check(f.files.get(f.root + "/savedata/ChatWndInfo_U.lua") === "user saved tabs", "Never replace saved layout");
+	f.operations.length = 0; f.files.delete(f.defaultsTarget); f.install();
+	check(f.operations.filter(x => x[0] === "copy").length === 1, "Install defaults even if all images already exist");
+	f = fixture(); f.files.delete(f.sourceDir + "/ModernChatDefaults.lub");
+	expectError(f, "missing bundled defaults");
+	check(f.operations.length === 0, "Incomplete defaults bundle must fail before writes");
 	f = fixture(); f.env.TestMode = true; f.install();
 	check(f.operations.length === 0 && f.state.opened === 0, "Test mode must not access asset files");
 	f = fixture(); f.files.delete(f.sourceDir + "/textbox_on.png");
@@ -71,7 +83,7 @@ function verifyChatAssetInstall(source) {
 	check(!f.operations.some(x => x[0] === "copy"), "Directory failure must stop copying");
 	f = fixture(); f.state.failCopy = f.targetDir + "/btn_close.png";
 	expectError(f, " to " + f.state.failCopy);
-	return "PASS: fresh output/data tree, all 19 PNGs, repeat/repair preserves edits, test-mode isolation, missing bundle and filesystem errors";
+	return "PASS: 19 PNGs and first-use defaults, repeat/repair preserves edits and saved layouts, test-mode isolation, missing bundle and filesystem errors";
 }
 
 if (typeof module !== "undefined" && typeof require !== "undefined" && require.main === module) {

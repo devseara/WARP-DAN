@@ -9,7 +9,7 @@ from test_gacha_ui import GachaMachine, snapshot
 OFFSETS=(656,660,664,3472,3476,3776,3780,3784)
 
 def run(exe,preview=None,game=None):
-    m=GachaMachine(exe);c=m.c;s=c['state'];obj=m.ready()
+    m=GachaMachine(exe);c=m.c;s=c['state'];obj=m.ready();dx=c['contentX']
     assert c['packetSize']==3788 and c['wireVersion']==9
     if game:m.client_artwork(game)
     assert s+64+OFFSETS[-1]+4==s+3852 # Rolling is after, not inside, the new snapshot.
@@ -29,11 +29,11 @@ def run(exe,preview=None,game=None):
         m.receive(p);assert m.r(s)==obj
         assert m.r(s+3856)==guard and m.r(s+3852)==0
         m.texts=[];m.invoke(c['draw'],obj);pix,w,h=m.pixels(obj)
-        assert (w,h)==(760,440)
+        assert (w,h)==(c['width'],440)
         for i,off in enumerate(OFFSETS):
             assert m.r(s+64+off)==(ids[i] if i<count else 0)
-            x=22+i*35
-            assert x+31<=298 # No overlap with the rate panel at x=310.
+            x=dx+22+i*35
+            assert x+(34 if c['wallet'] else 31)<=dx+301 # No overlap with the rate panel.
             expected=0xffe7edf8 if i<count else 0xfff4fbfd
             assert m.r(pix+4*(104*w+x+2))==expected,(count,i,'stale/empty featured box')
             for xy in ((x,88),(x+30,117),(x+15,102)):

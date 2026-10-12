@@ -1,0 +1,177 @@
+############################################################################
+#                                                                          #
+#   Copyright (C) ?-2023 *Various authors*                                 #
+#                                                                          #
+#   This file is a part of WARP project (specific to RO clients)           #
+#                                                                          #
+#   WARP is free software: you can redistribute it and/or modify           #
+#   it under the terms of the GNU General Public License as published by   #
+#   the Free Software Foundation, either version 3 of the License, or      #
+#   (at your option) any later version.                                    #
+#                                                                          #
+#   This program is distributed in the hope that it will be useful,        #
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of         #
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          #
+#   GNU General Public License for more details.                           #
+#                                                                          #
+#   You should have received a copy of the GNU General Public License      #
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.  #
+#                                                                          #
+#                                                                          #
+############################################################################
+#                                                                          #
+#   Author(s)     : Neo-Mind, CrazyBebop                                   #
+#   Created Date  : 2020-08-26                                             #
+#   Last Modified : 2026-03-29                                             #
+#                                                                          #
+############################################################################
+
+CustomSpecials:
+    title : SPECIAL CUSTOMIZATIONS
+    mutex : false
+    color : deeppink
+    
+    patches:
+        - BattlepassUI:
+            title : Battle Pass
+            recommend : no
+            author : DevSeara
+            desc : Adds the native Battle Pass window opened with @battlepassui or the shield button after VIP in ROGlobalZeroMenu, with server-backed progress, missions, reward previews and claims. Requires the matching BPUI server implementation. Installs its supplied window artwork and all 12 Battle Pass menu icons beside the patched client. Supports HideNewButtons and ShowNewButtons.
+
+        - PatchDiagnostics:
+            title : Write patch diagnostics log
+            recommend : no
+            author : Louis T Steinhil
+            desc : Writes a patch-time diagnostic log to Outputs, including selected core/custom patches, GRF mode, custom DLL import specs, slash-command registrations, and important GameSettings/UI string markers. This patch does not modify the executable.
+
+        - CustomGameSettingsOptions:
+            title : Provide Custom Game Settings Lua
+            recommend : no
+            author : Louis T Steinhil
+            desc : Copies the custom OptionInfo/GameSettings Lua files for /shownpcname, /fps, and /ping into the target client data folder, and seeds existing savedata without overwriting player settings.
+
+        - CustomShields:
+            title : Enable Custom Shields
+            recommend : no
+            author : Neo-Mind , CrazyBebop
+            desc : Enables custom shield sprites beyond the default set by loading shield definitions from lua files (similar to the Xray system). Required for servers with custom shield graphics.
+
+        - AllowDualCustomWeaponSprites:
+            title : Dual / Off-Hand Daggers, Swords and Axes
+            recommend : no
+            author : Louis T Steinhil
+            desc : "2025-07-16: original dual/off-hand daggers, one-handed swords and axes. Five male and five female Assassin-family body profiles cover all 24 mapped non-Drake views in the audited GRFs. Missing job resources require the 60-entry Inputs/DualWeaponRuntime/dual_weapon_male_assets.grf registered first in the actual embedded or INI loader. Existing accepted placements remain unchanged; added images use individual frame, axis and grip profiles. Other bodies/classes/views remain stock. Keep compositor.dwcp and legacy-support.dwls with their manifests. CPU execution/geometry verified; live acceptance tracked in docs/dual-wield-original-weapon-sprites.md."
+
+        - AllHatEffectsWorldDepthOracle:
+            title : All HatEffects Screen-Size World Depth 
+            recommend : no
+            author : Louis T Steinhil
+            desc : "2025-07-16 build-specific global HatEffect depth patch, live validated on 2026-07-14. It preserves every original HatEffect STR resource, animation, actor attachment, metadata, teardown, screen-space position, apparent scale, and RHW. During only the two generic HatEffect render methods, vertices at/below actor-anchor Y retain a floor-safe four-quantum contact-biased depth; upper vertices reconstruct Y-up reciprocal depth using projection-matrix +0x10/+0x14 and convert it through 0x00554040. Native world STR NPCs remain unchanged."
+        
+        - ClanBodySkins:
+            title : Clan Body Skins (2025-07-16)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Routes server-selected clan body skins through native job, sex and resource paths. Preserves real jobs and body-only perspective correction. Select NativeActJobPreviews for Alt+Q/Alt+S rendering from the same world SPR/ACT pairs. Requires matching server integration and complete skin assets; no new job Lua declarations."
+
+        - CustomJobs:
+            title : Enable Custom Jobs (Reforged)
+            recommend : no
+            author : CrazyBebop
+            desc : Adds support for custom job classes beyond the official set. Jobs are defined via lua files in the data folder. Required for servers with custom classes like Druid or other fan-made jobs.
+
+        - CustomHomuns:
+            title : Enable Custom Homunculi
+            recommend : no
+            author : Neo-Mind
+            desc : Enables custom homunculus types beyond the official set using lua files. Uses the same <b>'ReqJobName'</b> function as custom jobs, so no extra configuration files are needed beyond the job lua.
+
+        - AddLuaOverrides:
+            title : Add Chris' lua overrides [Experimental]
+            recommend : no
+            author : llchrisll , Neo-Mind
+            desc : Loads additional lua override files by llchrisll that extend and patch the client's existing lua tables and functions. Adds quality-of-life improvements and fixes. See <a href="https://llchrisll.github.io/ROTPDocs/addons/cls/?h=lua">documentation</a> for the full list of changes. Experimental.
+
+        - AllowAPBarforAllJobs:
+            title : Allow AP Bar for all Jobs
+            recommend : no
+            author : Skylove, Singe-Horizontal
+            desc : Displays the AP (Activity Points) bar for all job classes, not just 4th jobs. Internally treats every class as a 4th job for the AP gauge check. Useful for servers that give AP to all classes.
+
+        - RemoveMaxNumbersLimit:
+            title : Remove the limit of max number displayed in damage/heal
+            recommend : no
+            author : 4144
+            desc : Removes the cap on displayed damage, healing, and other floating numbers. Without this, very large numbers get clamped to a maximum display value. Required for high-rate servers with large damage output.
+
+        - AllowChatWhileBerserk:
+            title : Allow Chatting While Berserk
+            recommend : no
+            author : Stingor empowered by Claude
+            desc : "Self-contained QJS/EXE patch. The client helper Status_IsBerserkActive (0x00D8E6C0) scans the local status-icon list for EFST_BERSERK (0x6B) and returns 1 while Berserk is up; every chat-channel handler in CModeMgr::SendMsg drops the outgoing CZ_REQUEST_CHAT (opcode 0xF3) on that 1, so the input clears but nothing is sent. Emotes use another command and stay usable. This forces the helper to always return 0, unblocking chat on every channel while Berserk without touching the item/skill Berserk restrictions. NOTE: removes ONLY the client gate; any server-side chat gate for SC_BERSERK must also be removed for chat to go through."
+
+        - RestoreSkillAttackAnimation:
+            title : Restore Skill Attack Animation
+            recommend : no
+            author : Stingor
+            desc : "Gives Sonic Blow and Arrow Vulcan back the attacker's sprite animation -- pick either one or both. Gravity never removed the animations themselves, only the routing that selected them: the client still plays it for Chain Crush Combo, and this sends the chosen skills back through the same path. Sound and effects were never affected."
+
+CustomSkills:
+    title : SKILL CUSTOMIZATIONS
+    mutex : false
+    color : deeppink
+    
+    patches:
+        - CustomPlayerSkills:
+            title : Enable Custom Player skills [Experimental]
+            recommend : no
+            author : Unknown
+            desc : Enables custom player skills beyond the official skill list by loading definitions from lua files. Required for servers that add new skills. Experimental -- may require careful lua configuration.
+        
+        - CustomHomunSkills:
+            title : Enable Custom Homunculus skills [Experimental]
+            recommend : no
+            author : Unknown
+            desc : Enables custom homunculus skills beyond the official list by loading definitions from lua files. Required for servers that add new homunculus abilities. Experimental.
+        
+        - CustomMerceSkills:
+            title : Enable Custom Mercenary skills [Experimental]
+            recommend : no
+            author : Unknown
+            desc : Enables custom mercenary skills beyond the official list by loading definitions from lua files. Required for servers that add new mercenary abilities. Experimental.
+
+        - CustomExtName:
+            title : Enable 128-byte Entity Names 
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Supports 128-byte player, guild, party, mob, companion and NPC display names on 2025-07-16 with the paired server protocol. BG queue identifiers, clan labels and Gold PC service tokens use stock limits; player references remain extended in every adapted system. The 657-byte 0x0BB7 packet carries one canonical name field and guarded static adapters preserve the native handler contracts. Mob information still uses the client's supported Group Title/ID row while the stock mob name remains separate. No CNameInfo mutation, text DLL, recv hook, or runtime patching is used."
+
+        - CustomColoredEnchantGradeName:
+            title : Color Enchant Grade Prefixes 
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Order-independent companion for Custom Item Name Colors. A matching numeric grade entry from packet 0x0BDD conditionally coalesces the client's native post-grade title endpoint, then overrides the item-color database for the complete [Grade] name and slot suffix. Grade-matched Inventory quantity tails are omitted and matched dark shadow draws are suppressed. Uses [D]/[C]/[B]/[A] unless Custom Enchant Grade Labels is selected."
+
+        - CustomColoredItemName:
+            title : Enable Custom Item Name Colors 
+            recommend : no
+            author : Louis T Steinhil
+            desc : "For the profiled 2025-07-16 and 2026-02-19 Ragexe clients, routes packet 0x0BDD to bounded ICOL tables. Producer hooks prefer the optional ICL2 ItemId trailer where CItem is available, then fall back to exact legacy ItemName records for old servers and text-only surfaces. Inventory matching accepts stock slotless and slotted quantity forms. Color Enchant Grade Prefixes conditionally coalesces the native post-grade endpoint so grade color owns the complete decorated title. Matched dark shadows are suppressed and grade quantity tails are omitted. No text DLL, recv hook, API detour, or cross-call continuation is used."
+
+        - CustomPlayerNameColor:
+            title : Enable Custom Player Name Colors 
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Stores PC RGB values with the bounded EXTN exact-text entries and applies them only around matching non-shadow TextOutW player-name draws. No text DLL, recv hook, or runtime patching is used."
+
+        - FluentEmoji:
+            title : Render Fluent Emoji 
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Builds the Fluent manifest into an EXE-resident token table and renders :shortcode:, compact @shortcode@ and raw Unicode aliases through the client's existing GDI+ dependency. Assets are copied beside the patched client. No custom DLL, API detour, recv hook, or runtime code patching is used. Target: 2025-07-16."
+
+        - InGamePincodeUI:
+            title : Open Stock PIN Pad In-Game 
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Handles BOH map packet 0x0BEF/PINC on the normal client update thread, loads the original character-select PIN resources, and creates the stock C7/C8 PIN window over the active in-game scene. The stock UI submits 0x08B8/0x08BA/0x08BE through the current map connection. No custom DLL, replacement keypad, API detour, or foreign UI thread is used. Target: 2025-07-16."

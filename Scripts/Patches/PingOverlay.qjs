@@ -1,0 +1,156 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-09-14                                             *
+*                                                                          *
+*   Description   : Adds a QJS-only ping overlay to the 2025-07-16 client. *
+*                   The static response cave captures the client's own     *
+*                   CZ_REQUEST_TIME2/ZC_NOTIFY_TIME application RTT. No    *
+*                   ICMP worker, Winsock recv hook or custom DLL is used.  *
+*                                                                          *
+\**************************************************************************/
+
+NativeTelemetryOverlay.requireApi(1);
+NativeTelemetryOverlay.PingOption = 10003;
+NativeTelemetryOverlay.StatePingInstalled = 4;
+NativeTelemetryOverlay.StatePingX = 16;
+NativeTelemetryOverlay.StatePingY = 20;
+NativeTelemetryOverlay.StatePingValue = 36;
+NativeTelemetryOverlay.StatePingBuffer = 76;
+
+NativeTelemetryOverlay.registerChannel({
+	apiVersion: 1, id: "ping", flag: 2, optionId: 10003,
+	installedOffset: 4, xOffset: 16, yOffset: 20, valueOffset: 36, bufferOffset: 76,
+	prefix: "Ping: ", suffix: " ms",
+	emitColor: function(a, valueVir, flag)
+	{
+		a.emit(0x8B, 0x0D); a.dword(valueVir);
+		a.emit(0x81, 0xF9); a.dword(50);
+		a.jcc(0x86, `line_${flag}_green`);
+		a.emit(0x81, 0xF9); a.dword(100);
+		a.jcc(0x86, `line_${flag}_yellow`);
+		a.emit(0xBA); a.dword(0x000000FF);
+		a.jmp(`line_${flag}_color_ready`);
+		a.label(`line_${flag}_green`);
+		a.emit(0xBA); a.dword(0x0000FF00);
+		a.jmp(`line_${flag}_color_ready`);
+		a.label(`line_${flag}_yellow`);
+		a.emit(0xBA); a.dword(0x0000FFFF);
+		a.label(`line_${flag}_color_ready`);
+		a.emit(0x52);
+	}
+});
+
+NativeTelemetryOverlay.RequestTickStore = 0x00C82D32;
+NativeTelemetryOverlay.RequestTickBytes =
+	"89 86 74 02 00 00 B8 60 03 00 00 66 89 45 EC";
+NativeTelemetryOverlay.PingSubtract = 0x00C9E8EC;
+NativeTelemetryOverlay.PingSubtractBytes =
+	"FF 15 B0 17 FC 00 2B 87 74 02 00 00";
+NativeTelemetryOverlay.PingCapture = 0x00C9E8F8;
+NativeTelemetryOverlay.PingCaptureReturn = 0x00C9E8FD;
+NativeTelemetryOverlay.PingCaptureBytes = "B9 C0 A3 5F 01";
+
+NativeTelemetryOverlay.installPingCapture = function(_, state)
+{
+	NativeTelemetryOverlay.assertCode(
+		"CZ_REQUEST_TIME2 tick store",
+		NativeTelemetryOverlay.RequestTickStore,
+		NativeTelemetryOverlay.RequestTickBytes
+	);
+	NativeTelemetryOverlay.assertCode(
+		"ZC_NOTIFY_TIME RTT subtraction",
+		NativeTelemetryOverlay.PingSubtract,
+		NativeTelemetryOverlay.PingSubtractBytes
+	);
+	const capturePhy = NativeTelemetryOverlay.assertCode(
+		"ZC_NOTIFY_TIME capture site",
+		NativeTelemetryOverlay.PingCapture,
+		NativeTelemetryOverlay.PingCaptureBytes
+	);
+	const a = NativeTelemetryOverlay.asm();
+	a.emit(0xA3); a.dword(
+		state.stateVir + NativeTelemetryOverlay.StatePingValue
+	);
+	a.emit(0xB9); a.dword(0x015FA3C0);
+	a.jmp(NativeTelemetryOverlay.PingCaptureReturn);
+	const cave = NativeTelemetryOverlay.allocateCode(a);
+	Exe.SetJMP(capturePhy, cave.virAddr, 0);
+	return cave.virAddr;
+};
+
+PingOverlay = function(_)
+{
+	try
+	{
+		if (typeof NativeTelemetryOverlay === "undefined" ||
+			typeof NativeTelemetryOverlay.ensure !== "function")
+			throw Error("PingOverlay: NativeTelemetryOverlay helper unavailable");
+
+		$$(_, 1, "Read ping overlay coordinates");
+		const coordinates = NativeTelemetryOverlay.getCoordinates(
+			"$pingOverlayXY",
+			"Ping Overlay",
+			[-195, 66]
+		);
+		$$(_, 2, "Install shared native post-Present overlay");
+		const state = NativeTelemetryOverlay.ensure(_);
+		NativeTelemetryOverlay.configure(
+			state,
+			NativeTelemetryOverlay.StatePingInstalled,
+			NativeTelemetryOverlay.StatePingX,
+			NativeTelemetryOverlay.StatePingY,
+			coordinates
+		);
+		$$(_, 3, "Capture stock application-packet RTT");
+		const captureVir = NativeTelemetryOverlay.installPingCapture(_, state);
+		$$(_, 4, "Register /ping static command");
+		const toggleVir = NativeTelemetryOverlay.registerCommand(
+			_,
+			"/ping",
+			NativeTelemetryOverlay.PingOption
+		);
+		if (typeof PatchDiagnostics !== "undefined" &&
+			typeof PatchDiagnostics.add === "function")
+			PatchDiagnostics.add("PingOverlay.QjsOnly", {
+				coordinates,
+				stateVir: state.stateVir,
+				captureVir,
+				toggleVir,
+				requestPacket: 0x0360,
+				responsePacket: 0x007F
+			});
+		return true;
+	}
+	catch (error)
+	{
+		PingOverlay.cleanup(Exe.ActivePatch);
+		throw error;
+	}
+};
+
+PingOverlay.cleanup = function(patchName)
+{
+	NativeTelemetryOverlay.release(patchName, NativeTelemetryOverlay.StatePingInstalled);
+};
+
+PingOverlay.validate = function()
+{
+	return Exe.BuildDate === NativeTelemetryOverlay.BuildDate;
+};

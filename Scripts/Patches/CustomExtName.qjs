@@ -1,0 +1,57 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2025-07-16                                             *
+*   Last Modified : 2026-09-15                                             *
+*                                                                          *
+*   Description   : Routes 0x0BB7 through the dispatcher-table EXTN ring   *
+*                   and drains it into a bounded exact-text map. Static    *
+*                   ACK-name adapters and GDI caves consume canonical      *
+*                   128-byte names and titles without a custom DLL or      *
+*                   runtime code patching. Target:2025-07-16 Ragexe.       *
+*                                                                          *
+\**************************************************************************/
+
+CustomExtName = function(_)
+{
+	if (typeof ExtNameTextStatic === "undefined" ||
+		typeof ExtNameTextStatic.enable !== "function")
+		throw Error("CustomExtName: ExtNameTextStatic helper unavailable");
+	$$(_, 1, "Install QJS-only EXTN exact-text map and GDI bridge");
+	try
+	{
+		ExtNameTextStatic.enable(_, ExtNameTextStatic.FeatureNames);
+	}
+	catch (error)
+	{
+		// One adapter failure must not leave earlier native edits installed.
+		Exe.ClearPatch();
+		ExtNameTextStatic.release(_);
+		throw error;
+	}
+	$$(_, 2, "Extended names use static text caves");
+	return true;
+};
+
+CustomExtName.validate = function()
+{
+	return Exe.BuildDate === 20250716 &&
+		typeof ExtNameTextStatic !== "undefined";
+};
+
+/// Release this feature from the shared text bridge before WARP clears it.
+CustomExtName.cleanup = function(_)
+{
+	ExtNameTextStatic.release(_);
+};

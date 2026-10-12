@@ -1,0 +1,58 @@
+{
+  "English": {
+    "locale": "en",
+    "fontSelector": 1,
+    "charset": 0,
+    "codePage": 1252,
+    "codec": "cp1252"
+  },
+  "Traditional Chinese": {
+    "locale": "zh-TW",
+    "fontSelector": 4,
+    "charset": 136,
+    "codePage": 950,
+    "codec": "cp950"
+  },
+  "Thai": {
+    "locale": "th",
+    "fontSelector": 5,
+    "charset": 222,
+    "codePage": 874,
+    "codec": "cp874"
+  },
+  "Brazilian Portuguese": {
+    "locale": "pt-BR",
+    "fontSelector": 1,
+    "charset": 0,
+    "codePage": 1252,
+    "codec": "cp1252"
+  },
+  "Indonesian": {
+    "locale": "id",
+    "fontSelector": 1,
+    "charset": 0,
+    "codePage": 1252,
+    "codec": "cp1252"
+  },
+  "Filipino": {
+    "locale": "fil",
+    "fontSelector": 1,
+    "charset": 0,
+    "codePage": 1252,
+    "codec": "cp1252"
+  },
+  "Korean": {
+    "locale": "ko",
+    "fontSelector": 0,
+    "charset": 129,
+    "codePage": 949,
+    "codec": "cp949"
+  },
+  "Japanese": {
+    "locale": "ja",
+    "fontSelector": 2,
+    "charset": 128,
+    "codePage": 932,
+    "codec": "cp932"
+  }
+}

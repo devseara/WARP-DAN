@@ -12,7 +12,7 @@ from test_gacha_ui import GachaMachine, snapshot
 
 
 def verify(exe, expect_bug=False):
-    m=GachaMachine(exe);c=m.c;obj=m.ready();surface=m.r(obj+0x24)
+    m=GachaMachine(exe);c=m.c;obj=m.ready();surface=m.r(obj+0x24);width=c['width'];tiles=((width+255)//256)*2
     head=m.alloc(12);m.w(head,head);m.w(head+4,head)
     m.w(surface+0x20,head);m.w(surface+0x24,0)
     textures={};uploads=[];draws=[]
@@ -32,20 +32,20 @@ def verify(exe, expect_bug=False):
     m.stub(0x568620,create);m.stub(upload,upload_texture);m.stub(draw,draw_texture)
     def present():
         # The real draw calls the real cache upload helper first.
-        m.invoke(0x53EA90,surface,(0,0,760,440,0))
-        assert (m.r(obj+0x14),m.r(obj+0x18),m.r(surface+4),m.r(surface+8))==(760,440,760,440)
+        m.invoke(0x53EA90,surface,(0,0,width,440,0))
+        assert (m.r(obj+0x14),m.r(obj+0x18),m.r(surface+4),m.r(surface+8))==(width,440,width,440)
     def check_tiles():
-        expected=[(x,y,min(256,760-x),min(256,440-y),0)
-                  for y in (0,256) for x in (0,256,512)]
+        expected=[(x,y,min(256,width-x),min(256,440-y),0)
+                  for y in (0,256) for x in range(0,width,256)]
         assert [tuple(args) for _,args in draws]==expected,draws
-        assert len(uploads)==6
-        for (width,height,mode),args in uploads:
+        assert len(uploads)==tiles
+        for (tile_width,height,mode),args in uploads:
             x,y,w,h,pixels,unused,pitch=args
-            assert (x,y,w,h,unused,pitch)==(0,0,width,height,0,760),args
+            assert (x,y,w,h,unused,pitch)==(0,0,tile_width,height,0,c['width']),args
             assert mode==0 and pixels>=m.r(surface+0x18)
     # Warm the six native opaque tiles before the first History click.
     m.invoke(c['draw'],obj);m.u.mem_write(surface+0x1c,b'\1');present();check_tiles()
-    assert len(textures)==6
+    assert len(textures)==tiles
     uploads.clear();draws.clear()
     m.receive(snapshot(view=2));m.invoke(c['draw'],obj);present()
     if expect_bug:
@@ -61,8 +61,8 @@ def verify(exe, expect_bug=False):
         p=snapshot(view=view,page=page,pages=100 if view==1 else None,admin=view==5)
         m.receive(p);uploads.clear();draws.clear();m.invoke(c['draw'],obj)
         m.u.mem_write(surface+0x1c,b'\1');present();check_tiles()
-        assert len(textures)==6 and m.r(surface+0x28)&255==0
-    print('PASS: real native cached-tile upload/presentation stays 760x440 across History/page arrows/all tabs; six correct non-overlapping tiles, no surface-mode switch')
+        assert len(textures)==tiles and m.r(surface+0x28)&255==0
+    print(f'PASS: real native cached-tile upload/presentation stays {width}x440 across History/page arrows/all tabs; {tiles} non-overlapping tiles, no surface-mode switch')
 
 
 if __name__=='__main__':

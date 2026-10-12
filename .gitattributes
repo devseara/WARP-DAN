@@ -1,12 +1,80 @@
+# Auto detect text files and perform LF normalization
 * text=auto
-*.qjs text eol=crlf
-*.js text eol=crlf
-*.py text eol=lf
-*.md text eol=lf
-*.bgra binary
-*.bmp binary
-*.png binary
-# Keep the generated Git binary diff and its original context whitespace intact.
-install/*.diff -text -whitespace
-# Release snapshots preserve the exact checked and hashed source bytes.
-updates/vip-battlepass-menu/files/** -text -whitespace
+
+# WARP requires CRLF; the runtime metadata also pins exact source bytes.
+Scripts/Patches/AllowDualCustomWeaponSprites.qjs text eol=crlf
+CustomDLL/DualWeapon/compositor.c text eol=crlf
+CustomDLL/DualWeapon/grip_profile.h text eol=lf
+CustomDLL/DualWeapon/held_edge_contacts.h text eol=crlf
+CustomDLL/DualWeapon/native_basis.h text eol=lf
+Inputs/DualWeaponRuntime/*.json text eol=crlf
+Inputs/DualWeaponAuthored/grips/female-assassin-pixel-landmarks.json text eol=crlf
+tools/build_dual_weapon_native_basis.py text eol=lf
+tools/audit_male_assassin_dual_weapon.py text eol=lf
+Scripts/Patches/TargetMonsterHealthBar.qjs text eol=crlf linguist-generated=true
+CustomDLL/DualWeapon/male_compositor.h text eol=lf
+CustomDLL/DualWeapon/male_profile.h text eol=lf
+Inputs/DualWeaponAuthored/grips/male-assassin-landmarks.json text eol=crlf
+
+Inputs/DualWeaponAuthored/male-compat/** binary
+Inputs/DualWeaponRuntime/*.grf binary
+docs/evidence/dual-weapon-male-missing-assets-20260907.json text eol=crlf
+
+Inputs/DualWeaponRuntime/*.dwls binary
+Inputs/DualWeaponAuthored/female-compat/** binary
+Inputs/DualWeaponAuthored/reference/*.dwcp binary
+CustomDLL/DualWeapon/female_dagger_compositor.h text eol=crlf
+CustomDLL/DualWeapon/female_dagger_profile.h text eol=crlf
+CustomDLL/DualWeapon/female_family_compositor.h text eol=crlf
+CustomDLL/DualWeapon/female_family_profile.h text eol=crlf
+CustomDLL/DualWeapon/male_axe_profile.h text eol=crlf
+docs/evidence/assassin-weapon-assets-20260907.json text eol=crlf
+tools/*weapon*.py text eol=lf
+tools/*assassin*.py text eol=lf
+Inputs/DualWeaponAuthored/profiles/*.gz binary
+docs/media/dual-wield/*.gif binary
+tools/build_female_dagger_profile.py text eol=lf
+tools/build_female_family_profile.py text eol=lf
+tools/build_male_axe_profile.py text eol=lf
+tools/inspect_client_grf_handles.py text eol=lf
+
+# Clan skin runtime: pin hashed source and WARP script bytes.
+Scripts/Patches/ClanBodySkins.qjs text eol=crlf
+Scripts/Runtime/ClanBodySkins/*.cpp text eol=crlf
+Inputs/ClanBodySkins/*.json text eol=lf
+Inputs/ClanBodySkins/*.cskb binary
+Inputs/ClanBodySkins/*.bin binary
+tools/clan_perspective_bridge.py text eol=crlf
+
+# Native ACT previews: preserve WARP and hashed payload source bytes.
+Scripts/Patches/NativeActJobPreviews.qjs text eol=crlf
+tools/native/native_act_job_ui.cpp text eol=crlf
+tools/native/native_act_job_ui.qjs.in text eol=crlf
+Inputs/ClanBodySkins/records/*.json text eol=lf
+
+# Item Description: preserve WARP syntax and the embedded payload source hashes.
+Scripts/Patches/ItemDescriptionUI.qjs text eol=crlf linguist-generated=true
+tools/native/item_description.cpp text eol=crlf
+tools/native/item_description_wire.hpp text eol=lf
+tools/fixtures/item_description/baseline.json text eol=lf
+tools/fixtures/item_description/assets/** binary
+
+# Personal UI patches: preserve WARP CRLF and hashed runtime source bytes.
+Scripts/Patches/AutoCombatUI.qjs text eol=crlf
+Scripts/Patches/BattlepassUI.qjs text eol=crlf
+Scripts/Patches/ChatItemIcons.qjs text eol=crlf
+Scripts/Patches/GachaUI.qjs text eol=crlf
+Scripts/Patches/ModernChatUI.qjs text eol=crlf
+Scripts/Patches/ModernNpcDialog.qjs text eol=crlf
+Scripts/Patches/NoticeMarquee.qjs text eol=crlf
+Scripts/Patches/VipUI.qjs text eol=crlf
+Scripts/Runtime/NoticeMarquee/*.cpp -text
+Scripts/Runtime/VipUI/*.cpp -text
+Inputs/NoticeMarquee/*.bin binary
+Inputs/VipUI/*.bin binary
+Assets/BattlepassUI/** binary
+Assets/GachaUI/** binary
+Assets/ModernChatUI/** binary
+Assets/ModernChatUI/ModernChatDefaults.lub text eol=crlf diff
+Assets/ModernNpcDialog/** binary
+Assets/VipUI/** binary

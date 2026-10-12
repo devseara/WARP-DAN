@@ -1,0 +1,34 @@
+{
+  "schema": "character_select_footer_execution/v1",
+  "before_sha256": "93b65d24eeeaf54b0a77002b30c6b375253e942507685aba6d567f365a495bc0",
+  "pe_sha256": "eed157256a8b8fbedcf6a1e11ab04c930cb1975401e44c137524f6f92d628357",
+  "native_page_create_delete_passed": true,
+  "footer_vectors": 120,
+  "original_bug_reproduced": [
+    {
+      "name": "LOUIS T STEINHIL",
+      "expected_slot": 0,
+      "expected_gender": 1,
+      "old_slot": 0,
+      "old_gender": 0,
+      "old_str": 0,
+      "old_game_start_gender": 0
+    },
+    {
+      "name": "weqweqweqw",
+      "expected_slot": 1,
+      "expected_gender": 0,
+      "old_slot": 0,
+      "old_gender": 0,
+      "old_str": 0,
+      "old_game_start_gender": 0
+    }
+  ],
+  "native_game_start_gender_setter_passed": true,
+  "full_native_record_refresh_slots": [
+    0,
+    1
+  ],
+  "full_name_preserved": true,
+  "live_visual_acceptance": false
+}

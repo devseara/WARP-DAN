@@ -1,0 +1,86 @@
+{
+  "schema": "character_select_read_only/v1",
+  "pid": 16252,
+  "exe": "D:\\Programs\\Games\\Ragnarok\\02_client\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "sha256": "93b65d24eeeaf54b0a77002b30c6b375253e942507685aba6d567f365a495bc0",
+  "owner": 1324588280,
+  "vtable": 17380080,
+  "counts": [
+    2,
+    808464455,
+    9472,
+    0
+  ],
+  "records": [
+    {
+      "index": 0,
+      "address": 1324604768,
+      "gid": 5,
+      "job": 4013,
+      "name": "LOUIS T STEINHIL",
+      "canonical": {
+        "slot": 0,
+        "gender": 1,
+        "stats": [
+          99,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "map": "prontera.rsw"
+      },
+      "stale": {
+        "slot": 0,
+        "gender": 0,
+        "stats": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "index": 1,
+      "address": 1324605047,
+      "gid": 6,
+      "job": 4013,
+      "name": "weqweqweqw",
+      "canonical": {
+        "slot": 1,
+        "gender": 0,
+        "stats": [
+          99,
+          99,
+          99,
+          99,
+          99,
+          99
+        ],
+        "map": "prontera.rsw"
+      },
+      "stale": {
+        "slot": 0,
+        "gender": 0,
+        "stats": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  ],
+  "consumer_bytes": {
+    "0x79c646": "8a 87 ae 00 00 00",
+    "0x79c761": "0f b6 8f 8a 00 00 00",
+    "0x79c88e": "0f b6 87 ae 00 00 00",
+    "0x79f1c9": "0f b6 8b ae 00 00 00"
+  }
+}

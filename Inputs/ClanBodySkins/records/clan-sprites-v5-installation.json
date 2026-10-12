@@ -1,0 +1,40 @@
+{
+  "date": "2026-09-14",
+  "release_id": "swordman-mage-acolyte-v5",
+  "status": "installed",
+  "authoritative_archive": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+  "maindata_sha256": "da0709434d7a3b2b1067dfd50802e6981d2baefdaf4bd1ab10dbb1f2982db923",
+  "update_sha256": "d695bf11d1cbcc7f1ad1a1e982f471eca3839c7432bd21949993c71a17bf9f28",
+  "patch_sha256": "3168f50f588fec19bfac982d3ca10bce06eea4defbc834adf305f0147dadb6e9",
+  "world_entries": 12,
+  "duplicate_update_entries_removed": 0,
+  "archive_priority_verified": true,
+  "exe_modified": false,
+  "maindata_transaction": {
+    "status": "installed",
+    "target": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+    "pending": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf.clan-release.pending",
+    "before_sha256": "a6b7af09144a0c1490e01001badb29190f71142e2da62d17c9915068148ab627",
+    "after_sha256": "da0709434d7a3b2b1067dfd50802e6981d2baefdaf4bd1ab10dbb1f2982db923",
+    "original_length": 541935206,
+    "original_header_hex": "4d6173746572206f66204d61676963000102030405060708090a0b0c0d0e74604920000000006e47000000020000",
+    "added": [
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc131\uc9c1\uc790_\ub0a8.act",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc131\uc9c1\uc790_\ub0a8.spr",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc131\uc9c1\uc790_\uc5ec.act",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc131\uc9c1\uc790_\uc5ec.spr"
+    ],
+    "replaced": [],
+    "removed": [],
+    "entries": 18283,
+    "unrelated_records_preserved": 18279,
+    "original_compressed_bytes_preserved": true,
+    "rollback_reconstruction_sha256": "a6b7af09144a0c1490e01001badb29190f71142e2da62d17c9915068148ab627"
+  },
+  "update_transaction": {
+    "status": "already_current",
+    "target": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\update.grf",
+    "sha256": "d695bf11d1cbcc7f1ad1a1e982f471eca3839c7432bd21949993c71a17bf9f28"
+  },
+  "visual_acceptance": "Acolyte V2 accepted in SPR/ACT reviewer; post-installation live client inspection not performed"
+}

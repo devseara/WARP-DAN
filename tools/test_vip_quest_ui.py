@@ -65,8 +65,8 @@ def main():
     looks=artwork(m,args.game) if args.game else None
     if looks is None:m.w(0x159C088,0) # Explicitly missing client item DB; safe no-image path.
     obj=m.ready(snapshot(flags=1|2|4));before=len(m.sent)
-    m.click(obj,315,303);assert not m.r(qs+16) and len(m.sent)==before,'incomplete EXP opened Upgrade'
-    obj=m.ready(snapshot());m.click(obj,315,303);q=m.r(qs)
+    m.click(obj,196,259);assert not m.r(qs+16) and len(m.sent)==before,'incomplete EXP opened Upgrade'
+    obj=m.ready(snapshot());m.click(obj,196,259);q=m.r(qs)
     assert q and m.r(qs+16)==1 and len(m.sent)==before
     assert m.window_order()[-1]==q,'Confirmation must be last in native draw order'
     # Simulate the manager raising the parent on mouse-down. A modal VIP popup
@@ -80,12 +80,12 @@ def main():
     for x,y in [(149,86),(178,86),(185,86),(209,86),(164,77),(164,96)]:
         m.click(q,x,y);assert m.r(qs+16)==1 and len(m.sent)==before,'Invisible old Yes/No area remained clickable'
     m.click(q,193,86);assert not m.r(qs+16) and len(m.sent)==before,'No changed server state'
-    m.click(obj,315,303);m.click(q,164,86)
+    m.click(obj,196,259);m.click(q,164,86)
     assert struct.unpack_from('<H',m.sent[-1],10)[0]==4 and not m.r(q+0x28)
     count=len(m.sent);m.click(q,164,86);assert len(m.sent)==count,'duplicate Yes'
     obj=m.ready(quest(show=False));assert not m.r(qs+16),'VIP icon must not open a saved quest'
     m.receive(quest(opened=False));assert not m.r(qs+16),'refresh must not open a saved quest'
-    m.click(obj,315,303);q=m.r(qs);assert m.r(qs+16)==2 and len(m.sent)==count
+    m.click(obj,196,259);q=m.r(qs);assert m.r(qs+16)==2 and len(m.sent)==count
     assert m.window_order()[-1]==q,'Requirements must be above the main VIP window'
     assert (m.r(q+0x14),m.r(q+0x18))==(360,270)
     m.preview(q,args.output/'vip-upgrade-quest.png')
@@ -96,7 +96,7 @@ def main():
     if looks is not None:assert looks[-3:]==[909,914,606],'wrong/missing required item images'
     m.click(q,132,248);assert len(m.sent)==count,'incomplete quest submitted'
     m.click(q,205,248);assert not m.r(q+0x28) and len(m.sent)==count
-    m.click(obj,315,303);assert m.r(qs+16)==2 and len(m.sent)==count,'saved quest rerolled or reconfirmed'
+    m.click(obj,196,259);assert m.r(qs+16)==2 and len(m.sent)==count,'saved quest rerolled or reconfirmed'
     assert m.window_order()[-1]==q,'Reused requirements window stayed behind main'
     assert m.window_order().count(q)==1,'Reopen duplicated the native window node'
     m.receive(quest(ready=True,opened=False));assert m.r(qs+16)==2
@@ -106,10 +106,10 @@ def main():
     m.click(q,132,248);assert m.r(qs+16)==5 and len(m.sent)==count
     m.preview(q,args.output/'vip-submit-confirm.png')
     m.click(q,164,86);assert struct.unpack_from('<H',m.sent[-1],10)[0]==7
-    count=len(m.sent);m.click(q,132,248);assert len(m.sent)==count and not m.r(obj+0x28)
+    count=len(m.sent);m.click(q,132,248);assert len(m.sent)==count and m.r(obj+0x28)
     obj=m.ready(quest(token=115));q=m.r(qs)
     m.invoke(c['destroy'],q,(1,));assert not m.r(qs) and m.r(obj+0x28) and m.r(c['state'])==obj
-    m.click(obj,315,303);assert m.r(qs) and m.r(qs)!=q
+    m.click(obj,196,259);assert m.r(qs) and m.r(qs)!=q
     m.invoke(c['destroy'],obj,(1,));assert not m.r(m.r(qs)+0x28) and not m.r(qs+16)
     print('PASS: EXP-gated Upgrade, fitted native Yes/No/action/close bounds, real native front-of-draw-list on open/reopen and blocked main click, no action on No, saved quest popup/reopen/no reroll, exact 3 item IDs/images, Zeny/counts, incomplete/ready submission, replay guard, independent drag/capture/close/destroy; no live mutation.')
 

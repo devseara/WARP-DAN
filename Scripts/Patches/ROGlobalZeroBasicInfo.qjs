@@ -1,0 +1,1774 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-18                                             *
+*   Last Modified : 2026-08-12                                             *
+*                                                                          *
+*   Description   : Replaces the classic and AP-class compact              *
+*                   UIBasicInfoWnd draw branches in the 2025-07-16         *
+*                   Ragexe with the RO Global Zero 252x74 HP/SP/AP HUD.    *
+*                   It draws the live Base Level, character name, all      *
+*                   three gauge values and percentages, creates a native   *
+*                   66x66 Job icon child, adds native Job/gauge hover      *
+*                   tooltips, preserves the two legacy title buttons in    *
+*                   Classic UI, suppresses them only in New UI, and forces *
+*                   Alt+V to retain the compact layout. The AP             *
+*                   values reuse the client's SP_AP/SP_MAXAP stat map      *
+*                   populated by AllowAPBarforAllJobs. QJS-only.           *
+*                                                                          *
+\**************************************************************************/
+
+const BasicInfoZeroStatic = {
+	BuildDate: 20250716,
+	WindowCreateVtableEntry: 0x0103E398,
+	WindowCreateOriginal: 0x0095E1D0,
+	WindowDrawVtableEntry: 0x0103E3AC,
+	WindowDrawOriginal: 0x0095E620,
+	BasicInfoResize: 0x0095DFB0,
+	WindowMouseVtableEntry: 0x0103E3CC,
+	WindowMouseOriginal: 0x0095F190,
+	ClassicCompactInsert: 0x0095E69E,
+	ClassicCompactBytes: "8D 85 34 FF FF FF B9 A8 E3 1F 01",
+	ClassicCompactStockResume: 0x0095E6A9,
+	ClassicCompactExit: 0x0095ED06,
+	SpecialCompactInsert: 0x0095E65C,
+	SpecialCompactBytes: "8B CB E8 CD F3 FF FF",
+	SpecialCompactExit: 0x0095E663,
+	CompactToggleBlock: 0x0095F7FD,
+	CompactToggleBytes:
+		"8B 86 B4 00 00 00 57 8B 7E 18 3B F8 75 06 " +
+		"8B 86 B8 00 00 00 50",
+	CompactToggleResume: 0x0095F812,
+	WindowFactorySizeCall: 0x00A3954C,
+	WindowFactorySizeBytes: "56 68 DC 00 00 00 E8 19 36 FE FF",
+	WindowFactoryWidthOffset: 2,
+	WindowFactoryCallOffset: 6,
+	FactoryClassicHeight: 0x00A3952A,
+	FactoryClassicHeightBytes: "BE 37 00 00 00",
+	FactoryClassicHeightOffset: 1,
+	CompactHeightPrimary: 0x0095D0BD,
+	CompactHeightPrimaryBytes: "C7 86 B4 00 00 00 37 00 00 00",
+	CompactHeightPrimaryOffset: 6,
+	CompactHeightAP: 0x0095D0DB,
+	CompactHeightAPBytes: "C7 86 10 01 00 00 47 00 00 00",
+	CompactHeightAPOffset: 6,
+	CompactHeightSaved: 0x0095D0F9,
+	CompactHeightSavedBytes: "C7 86 04 01 00 00 37 00 00 00",
+	CompactHeightSavedOffset: 6,
+	TitleButtonsCreate: 0x0095E1F9,
+	TitleButtonsBytes: "E8 F2 6B F3 FF",
+	TitleButtonsOriginal: 0x00894DF0,
+	TitleButtonsResume: 0x0095E1FE,
+	TitleButtonsSecondCreate: 0x0095E207,
+	TitleButtonsSecondBytes: "E8 74 6F F3 FF",
+	TitleButtonsSecondOriginal: 0x00895180,
+	JobButtonVtable: 0x01010D50,
+	ImageButtonVtable: 0x01029820,
+	JobButtonVtableEntries: 54,
+	JobButtonObjectSize: 0x124,
+	JobButtonConstructor: 0x00701670,
+	JobButtonDestructor: 0x00701720,
+	JobButtonDrawOriginal: 0x00701790,
+	JobButtonInput25: 0x00701920,
+	JobButtonMouse28: 0x008274A0,
+	JobButtonInput31: 0x00701950,
+	JobButtonInput33: 0x00701980,
+	ImageButtonInput25: 0x00826E40,
+	ImageButtonInput31: 0x008271F0,
+	ImageButtonInput33: 0x005A8A60,
+	OperatorNew: 0x00DBBC4F,
+	SetWindowSize: 0x00A1CB70,
+	AddChild: 0x00A1B780,
+	GetTexMgr: 0x00A90350,
+	ConvPath: 0x00A9F030,
+	LoadSurface: 0x00A8D4A0,
+	ImageDraw: 0x00A1D260,
+	ImageDrawPart: 0x00A1D2B0,
+	ClearSurface: 0x00A1CB30,
+	TextWidth: 0x00A21C90,
+	TextDraw: 0x00A25A70,
+	Sprintf: 0x00529850,
+	GetCharacterName: 0x00D7FE40,
+	GetJobId: 0x00D5B580,
+	GetJobName: 0x00D5BB40,
+	GetStatusPoint: 0x0089D340,
+	ClientToScreen: 0x00A1EF70,
+	ShowTooltip: 0x00A753D0,
+	TooltipManager: 0x0121333C,
+	Session: 0x015FA3C0,
+	CurrentJob: 0x015FB9C8,
+	BaseLevel: 0x015FB9F0,
+	CurrentHP: 0x015FF908,
+	MaximumHP: 0x015FF90C,
+	CurrentSP: 0x015FF910,
+	MaximumSP: 0x015FF914,
+	CurrentAPStat: 0xE8,
+	MaximumAPStat: 0xE9,
+	MissingAPMaximum: 200,
+	TabItmFormat: 0x0102AC48,
+	NameControlOffset: 0xC0,
+	LocalSize: 0x188,
+	NameBuffer: 0x00,
+	ValueBuffer: 0x100,
+	PercentBuffer: 0x140,
+	HPWidth: 0x170,
+	SPWidth: 0x174,
+	TextX: 0x178,
+	APWidth: 0x17C,
+	CurrentAP: 0x180,
+	MaximumAP: 0x184,
+	PanelWidth: 252,
+	PanelHeight: 74,
+	ClassicPanelWidth: 220,
+	JobIconX: 1,
+	JobIconY: 7,
+	JobIconSize: 66,
+	StockJobIconSize: 25,
+	StockJobIconOffset: 20,
+	// Reuse the supplied framed RO Global class art by lineage. Newer and
+	// mounted IDs intentionally resolve to an original pointed-ellipse icon;
+	// stock renewalparty art is only the last resort for unmapped jobs.
+	JobAliases: [
+		[13, 7], [21, 14], [4014, 4008], [4022, 4015],
+		[4036, 4030], [4044, 4037], [4048, 1],
+		[4054, 4008], [4055, 4010], [4056, 4012], [4057, 4009],
+		[4058, 4011], [4059, 4013], [4060, 4008], [4061, 4010],
+		[4062, 4012], [4063, 4009], [4064, 4011], [4065, 4013],
+		[4066, 4015], [4067, 4017], [4068, 4020], [4069, 4021],
+		[4070, 4016], [4071, 4019], [4072, 4018], [4073, 4015],
+		[4074, 4017], [4075, 4020], [4076, 4021], [4077, 4016],
+		[4078, 4019], [4079, 4018], [4080, 4008], [4081, 4008],
+		[4082, 4015], [4083, 4015], [4084, 4012], [4085, 4012],
+		[4086, 4011], [4087, 4011], [4096, 4008], [4097, 4010],
+		[4098, 4012], [4099, 4009], [4100, 4011], [4101, 4013],
+		[4102, 4015], [4103, 4017], [4104, 4020], [4105, 4021],
+		[4106, 4016], [4107, 4019], [4108, 4018], [4109, 4008],
+		[4110, 4015], [4111, 4012], [4112, 4011], [4191, 4190],
+		[4218, 0], [4220, 0], [4222, 25], [4223, 4211],
+		[4224, 4212], [4225, 1], [4226, 1], [4227, 2],
+		[4228, 24], [4229, 4215], [4238, 1], [4239, 1],
+		[4240, 2], [4241, 1], [4242, 2], [4243, 1], [4244, 1],
+		[4252, 4008], [4253, 4011], [4254, 4013], [4255, 4010],
+		[4256, 4009], [4257, 4012], [4258, 4015], [4259, 4019],
+		[4260, 4018], [4261, 4017], [4262, 4016], [4263, 4020],
+		[4264, 4021], [4278, 4012], [4279, 4011], [4280, 4008],
+		[4281, 4015], [4302, 1], [4303, 2], [4304, 4211],
+		[4305, 4212], [4306, 4215], [4307, 4190], [4308, 0],
+		[4316, 1], [4332, 4008], [4333, 4011], [4334, 4013],
+		[4335, 4010], [4336, 4009], [4337, 4012], [4338, 4015],
+		[4339, 4019], [4340, 4018], [4341, 4017], [4342, 4016],
+		[4343, 4020], [4344, 4021]
+	],	GaugeFrameX: 56,
+	GaugeFrameY: 16,
+	GaugeX: 61,
+	GaugeWidth: 182,
+	TitleX: 66,
+	TitleY: 1,
+	HPY: 17,
+	HPHeight: 18,
+	SPY: 36,
+	SPHeight: 11,
+	APY: 50,
+	APHeight: 11,
+	TooltipXOffset: 16,
+	TooltipYOffset: -16,
+	White: 0x00FFFFFF,
+	Shadow: 0x00000000
+};
+
+BasicInfoZeroStatic.hexNorm = function(hex)
+{
+	return (hex || "").replace(/\s+/g, " ").trim().toUpperCase();
+};
+
+BasicInfoZeroStatic.bytesToHex = function(bytes)
+{
+	return bytes.map(value => (value & 0xFF).toString(16).padStart(2, "0")).join(" ");
+};
+
+BasicInfoZeroStatic.asciiBytes = function(text, nulTerminate = true)
+{
+	const bytes = [];
+	for (let i = 0; i < text.length; i++)
+		bytes.push(text.charCodeAt(i) & 0xFF);
+	if (nulTerminate)
+		bytes.push(0);
+	return bytes;
+};
+
+BasicInfoZeroStatic.findBytes = function(bytes, needle)
+{
+	for (let i = 0; i <= bytes.length - needle.length; i++)
+	{
+		let match = true;
+		for (let j = 0; j < needle.length; j++)
+		{
+			if (bytes[i + j] !== needle[j])
+			{
+				match = false;
+				break;
+			}
+		}
+		if (match)
+			return i;
+	}
+	return -1;
+};
+
+BasicInfoZeroStatic.readCString = function(virAddr, maxLength)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroBasicInfo: string 0x${virAddr.toString(16)} is not mapped`);
+
+	const bytes = [];
+	for (let i = 0; i < maxLength; i++)
+	{
+		const value = Exe.GetUint8(phyAddr + i);
+		bytes.push(value);
+		if (value === 0)
+			return bytes;
+	}
+	throw Error(`ROGlobalZeroBasicInfo: unterminated string at 0x${virAddr.toString(16)}`);
+};
+
+BasicInfoZeroStatic.allocateBytes = function(bytes, alignment = 1)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(bytes.length, alignment);
+	Exe.SetHex(phyAddr, BasicInfoZeroStatic.bytesToHex(bytes));
+	return [phyAddr, virAddr];
+};
+
+BasicInfoZeroStatic.buildResourcePath = function(relativePath)
+{
+	const source = BasicInfoZeroStatic.readCString(BasicInfoZeroStatic.TabItmFormat, 192);
+	const basicNeedle = BasicInfoZeroStatic.asciiBytes("basic_interface\\", false);
+	const basicPos = BasicInfoZeroStatic.findBytes(source, basicNeedle);
+	if (basicPos < 0)
+		throw Error("ROGlobalZeroBasicInfo: texture directory prefix not found");
+	return BasicInfoZeroStatic.allocateBytes(
+		source.slice(0, basicPos).concat(BasicInfoZeroStatic.asciiBytes(relativePath))
+	)[1];
+};
+
+// Minimal label-aware x86 emitter. Relative targets are fixed after WARP has
+// selected the final virtual address for the allocated code cave.
+BasicInfoZeroStatic.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+				bytes.push(value & 0xFF);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error(`ROGlobalZeroBasicInfo: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			bytes.push(opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(`ROGlobalZeroBasicInfo: unresolved label ${fixup.target}`);
+				const targetVir = typeof fixup.target === "string"
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				const nextVir = baseVir + fixup.pos + 4;
+				put32(out, fixup.pos, targetVir - nextVir);
+			}
+			return BasicInfoZeroStatic.bytesToHex(out);
+		}
+	};
+};
+
+BasicInfoZeroStatic.pushImm = function(a, value)
+{
+	if (value >= -128 && value <= 127)
+		a.emit(0x6A, value);
+	else
+	{
+		a.emit(0x68);
+		a.dword(value);
+	}
+};
+
+BasicInfoZeroStatic.pushLocal = function(a, offset)
+{
+	a.emit(0x8D, 0x85); a.dword(offset);       // LEA EAX,[EBP+offset]
+	a.emit(0x50);                              // PUSH EAX
+};
+
+BasicInfoZeroStatic.emitLoadEax = function(a, source)
+{
+	if (typeof source === "number")
+	{
+		a.emit(0xA1); a.dword(source);           // MOV EAX,[absolute]
+	}
+	else
+	{
+		a.emit(0x8B, 0x85); a.dword(source.local); // MOV EAX,[EBP+local]
+	}
+};
+
+BasicInfoZeroStatic.emitLoadEcx = function(a, source)
+{
+	if (typeof source === "number")
+	{
+		a.emit(0x8B, 0x0D); a.dword(source);     // MOV ECX,[absolute]
+	}
+	else
+	{
+		a.emit(0x8B, 0x8D); a.dword(source.local); // MOV ECX,[EBP+local]
+	}
+};
+
+BasicInfoZeroStatic.emitPushDword = function(a, source)
+{
+	if (typeof source === "number")
+	{
+		a.emit(0xFF, 0x35); a.dword(source);     // PUSH [absolute]
+	}
+	else
+	{
+		a.emit(0xFF, 0xB5); a.dword(source.local); // PUSH [EBP+local]
+	}
+};
+
+BasicInfoZeroStatic.emitLoadSurface = function(a, path, missingLabel)
+{
+	a.call(BasicInfoZeroStatic.GetTexMgr);
+	a.emit(0x8B, 0xD8, 0x85, 0xDB);           // MOV EBX,EAX / TEST EBX,EBX
+	a.jcc(0x84, missingLabel);                 // JZ missing
+	if (path.local)
+		BasicInfoZeroStatic.pushLocal(a, path.value);
+	else
+	{
+		a.emit(0x68); a.dword(path.value);
+	}
+	a.call(BasicInfoZeroStatic.ConvPath);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);     // ADD ESP,4 / TEST EAX,EAX
+	a.jcc(0x84, missingLabel);
+	a.emit(0x50, 0x8B, 0xCB);                 // PUSH EAX / MOV ECX,EBX
+	a.call(BasicInfoZeroStatic.LoadSurface);
+	a.emit(0x85, 0xC0);                       // TEST EAX,EAX
+	a.jcc(0x84, missingLabel);
+};
+
+BasicInfoZeroStatic.emitDrawFull = function(a, pathVir, x, y, label)
+{
+	const done = `${label}_done`;
+	BasicInfoZeroStatic.emitLoadSurface(a, {local: false, value: pathVir}, done);
+	BasicInfoZeroStatic.pushImm(a, 0);          // alpha/default blend
+	a.emit(0x50);                              // surface
+	BasicInfoZeroStatic.pushImm(a, y);
+	BasicInfoZeroStatic.pushImm(a, x);
+	a.emit(0x8B, 0xCE);                       // MOV ECX,ESI (UIBasicInfoWnd)
+	a.call(BasicInfoZeroStatic.ImageDraw);
+	a.label(done);
+};
+
+BasicInfoZeroStatic.emitDrawPart = function(
+	a, pathVir, x, y, widthOffset, height, label
+)
+{
+	const done = `${label}_done`;
+	a.emit(0x83, 0xBD); a.dword(widthOffset); a.emit(0x00); // CMP [EBP+width],0
+	a.jcc(0x8E, done);                         // JLE done
+	BasicInfoZeroStatic.emitLoadSurface(a, {local: false, value: pathVir}, done);
+	BasicInfoZeroStatic.pushImm(a, height);     // source height
+	a.emit(0xFF, 0xB5); a.dword(widthOffset); // source width
+	BasicInfoZeroStatic.pushImm(a, 0);          // source y
+	BasicInfoZeroStatic.pushImm(a, 0);          // source x
+	BasicInfoZeroStatic.pushImm(a, 0);          // use explicit source rectangle
+	BasicInfoZeroStatic.pushImm(a, 0);          // alpha/default blend
+	a.emit(0x50);                              // surface
+	BasicInfoZeroStatic.pushImm(a, y);
+	BasicInfoZeroStatic.pushImm(a, x);
+	a.emit(0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.ImageDrawPart);
+	a.label(done);
+};
+
+BasicInfoZeroStatic.emitRatioWidth = function(
+	a, currentSource, maximumSource, outputOffset, label
+)
+{
+	const zero = `${label}_zero`;
+	const clamp = `${label}_clamp`;
+	const done = `${label}_done`;
+	BasicInfoZeroStatic.emitLoadEax(a, currentSource);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, zero);                         // JLE zero
+	BasicInfoZeroStatic.emitLoadEcx(a, maximumSource);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x8E, zero);
+	a.emit(0x69, 0xC0); a.dword(BasicInfoZeroStatic.GaugeWidth);
+	a.emit(0x99, 0xF7, 0xF9);                 // CDQ / IDIV ECX
+	a.emit(0x3D); a.dword(BasicInfoZeroStatic.GaugeWidth);
+	a.jcc(0x8E, clamp);                        // JLE clamp
+	a.emit(0xB8); a.dword(BasicInfoZeroStatic.GaugeWidth);
+	a.label(clamp);
+	a.emit(0x89, 0x85); a.dword(outputOffset); // MOV [EBP+output],EAX
+	a.jmp(done);
+	a.label(zero);
+	a.emit(0xC7, 0x85); a.dword(outputOffset); a.dword(0);
+	a.label(done);
+};
+
+BasicInfoZeroStatic.emitTextWidth = function(a, bufferOffset, height, bold)
+{
+	BasicInfoZeroStatic.pushImm(a, 0);
+	BasicInfoZeroStatic.pushImm(a, 0);
+	BasicInfoZeroStatic.pushImm(a, height);
+	BasicInfoZeroStatic.pushImm(a, bold);
+	BasicInfoZeroStatic.pushImm(a, 0);
+	BasicInfoZeroStatic.pushLocal(a, bufferOffset);
+	a.emit(0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.TextWidth);
+};
+
+BasicInfoZeroStatic.emitText = function(
+	a, bufferOffset, x, y, color, height, bold, storedX = false
+)
+{
+	BasicInfoZeroStatic.pushImm(a, 0);
+	BasicInfoZeroStatic.pushImm(a, 0);
+	BasicInfoZeroStatic.pushImm(a, color);
+	BasicInfoZeroStatic.pushImm(a, height);
+	BasicInfoZeroStatic.pushImm(a, bold);
+	BasicInfoZeroStatic.pushImm(a, 0);
+	BasicInfoZeroStatic.pushLocal(a, bufferOffset);
+	BasicInfoZeroStatic.pushImm(a, y);
+	if (storedX)
+	{
+		a.emit(0xFF, 0xB5); a.dword(x);         // PUSH [EBP+x]
+	}
+	else
+		BasicInfoZeroStatic.pushImm(a, x);
+	a.emit(0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.TextDraw);
+};
+
+BasicInfoZeroStatic.emitValueRow = function(
+	a, currentSource, maximumSource, valueFormatVir, percentFormatVir, y, label
+)
+{
+	// Current / maximum.
+	BasicInfoZeroStatic.emitPushDword(a, maximumSource);
+	BasicInfoZeroStatic.emitPushDword(a, currentSource);
+	a.emit(0x68); a.dword(valueFormatVir);
+	BasicInfoZeroStatic.pushLocal(a, BasicInfoZeroStatic.ValueBuffer);
+	a.call(BasicInfoZeroStatic.Sprintf);
+	a.emit(0x83, 0xC4, 0x10);
+	BasicInfoZeroStatic.emitTextWidth(
+		a, BasicInfoZeroStatic.ValueBuffer, 14, 1
+	);
+	a.emit(0xD1, 0xF8);                       // SAR EAX,1
+	a.emit(0xBA); a.dword(
+		BasicInfoZeroStatic.GaugeX + (BasicInfoZeroStatic.GaugeWidth >> 1)
+	);
+	a.emit(0x2B, 0xD0);                       // SUB EDX,EAX
+	a.emit(0x89, 0x95); a.dword(BasicInfoZeroStatic.TextX);
+	a.emit(0xFF, 0x85); a.dword(BasicInfoZeroStatic.TextX);
+	BasicInfoZeroStatic.emitText(
+		a, BasicInfoZeroStatic.ValueBuffer, BasicInfoZeroStatic.TextX,
+		y + 1, BasicInfoZeroStatic.Shadow, 14, 1, true
+	);
+	a.emit(0xFF, 0x8D); a.dword(BasicInfoZeroStatic.TextX);
+	BasicInfoZeroStatic.emitText(
+		a, BasicInfoZeroStatic.ValueBuffer, BasicInfoZeroStatic.TextX,
+		y, BasicInfoZeroStatic.White, 14, 1, true
+	);
+
+	// Percentage, clamped to the visible 0..100 range.
+	BasicInfoZeroStatic.emitLoadEcx(a, maximumSource);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x8E, `${label}_zero_percent`);
+	BasicInfoZeroStatic.emitLoadEax(a, currentSource);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8E, `${label}_zero_percent`);
+	a.emit(0x6B, 0xC0, 0x64, 0x99, 0xF7, 0xF9);
+	a.emit(0x83, 0xF8, 0x64);
+	a.jcc(0x8E, `${label}_format_percent`);
+	a.emit(0xB8); a.dword(100);
+	a.jmp(`${label}_format_percent`);
+	a.label(`${label}_zero_percent`);
+	a.emit(0x33, 0xC0);
+	a.label(`${label}_format_percent`);
+	a.emit(0x50);
+	a.emit(0x68); a.dword(percentFormatVir);
+	BasicInfoZeroStatic.pushLocal(a, BasicInfoZeroStatic.PercentBuffer);
+	a.call(BasicInfoZeroStatic.Sprintf);
+	a.emit(0x83, 0xC4, 0x0C);
+	BasicInfoZeroStatic.emitTextWidth(
+		a, BasicInfoZeroStatic.PercentBuffer, 14, 1
+	);
+	a.emit(0xBA); a.dword(
+		BasicInfoZeroStatic.GaugeX + BasicInfoZeroStatic.GaugeWidth - 2
+	);
+	a.emit(0x2B, 0xD0);
+	a.emit(0x89, 0x95); a.dword(BasicInfoZeroStatic.TextX);
+	a.emit(0xFF, 0x85); a.dword(BasicInfoZeroStatic.TextX);
+	BasicInfoZeroStatic.emitText(
+		a, BasicInfoZeroStatic.PercentBuffer, BasicInfoZeroStatic.TextX,
+		y + 1, BasicInfoZeroStatic.Shadow, 14, 1, true
+	);
+	a.emit(0xFF, 0x8D); a.dword(BasicInfoZeroStatic.TextX);
+	BasicInfoZeroStatic.emitText(
+		a, BasicInfoZeroStatic.PercentBuffer, BasicInfoZeroStatic.TextX,
+		y, BasicInfoZeroStatic.White, 14, 1, true
+	);
+};
+
+BasicInfoZeroStatic.buildCompactDraw = function(
+	paths, formats, exitVir, fallbackVir, fallbackKind, themeStateVir, loadThemeVir
+)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.call(loadThemeVir);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "renewal");
+	if (fallbackKind === "classic")
+	{
+		a.emit(0x8D, 0x85, 0x34, 0xFF, 0xFF, 0xFF);
+		a.emit(0xB9); a.dword(0x011FE3A8);
+	}
+	else
+	{
+		a.emit(0x8B, 0xCB);
+		a.call(0x0095DA30);
+	}
+	a.jmp(fallbackVir);
+	a.label("renewal");
+	a.emit(0x9C, 0x60);                       // PUSHFD / PUSHAD
+	a.emit(0x81, 0xEC); a.dword(BasicInfoZeroStatic.LocalSize);
+	a.emit(0x8B, 0xEC);                       // MOV EBP,ESP (stable cave locals)
+	a.emit(0x8B, 0xF3, 0x85, 0xF6);          // MOV ESI,EBX / TEST ESI,ESI
+	a.jcc(0x84, "restore");
+	// The reference HUD has no opaque 220x55 basic_bg_mini underlay. The two
+	// stock title buttons remain separate native children; their visibility is
+	// synchronized to the active theme by the parent Draw wrapper.
+	// The Job icon is not painted into this parent renderer. A genuine
+	// UIJobIconButton child owns its own render context, clipping, position,
+	// and z-order and draws after the parent HP/SP/AP composition.
+
+	// AllowAPBarforAllJobs populates the same native stat map used by the
+	// fourth-Job renderer. Read SP_AP/SP_MAXAP through that client-owned map
+	// instead of duplicating packet state or depending on private globals.
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.CurrentAPStat);
+	a.emit(0xB9); a.dword(BasicInfoZeroStatic.Session);
+	a.call(BasicInfoZeroStatic.GetStatusPoint);
+	a.emit(0x89, 0x85); a.dword(BasicInfoZeroStatic.CurrentAP);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.MaximumAPStat);
+	a.emit(0xB9); a.dword(BasicInfoZeroStatic.Session);
+	a.call(BasicInfoZeroStatic.GetStatusPoint);
+	a.emit(0x89, 0x85); a.dword(BasicInfoZeroStatic.MaximumAP);
+
+	// The stock selector contract is SP_AP=0xE8 and SP_MAXAP=0xE9. Some
+	// non-fourth Job sessions exposed by AllowAPBarforAllJobs deliver the
+	// impossible transient pair current>0/max<=0 (live capture: 200/0).
+	// The server's all-Job BaseAp overlay is 200, so preserve current and supply
+	// only the missing maximum. Valid native pairs remain untouched.
+	a.emit(0x8B, 0x85); a.dword(BasicInfoZeroStatic.MaximumAP);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x8F, "ap_values_ready");             // JG
+	a.emit(0xC7, 0x85); a.dword(BasicInfoZeroStatic.MaximumAP);
+	a.dword(BasicInfoZeroStatic.MissingAPMaximum);
+	a.label("ap_values_ready");
+
+	// ImageDraw has no destination-size arguments: the precomposited frame
+	// remains at its intrinsic 194x50 dimensions with no scaling, stretching,
+	// or cropping. Its divider decoration is below the live HP layer.
+	BasicInfoZeroStatic.emitDrawFull(
+		a, paths.gauge, BasicInfoZeroStatic.GaugeFrameX,
+		BasicInfoZeroStatic.GaugeFrameY, "gauge"
+	);
+
+	// Live fills use the client's cropped-image draw path. The frame's true
+	// interior spans source x=5..186 (182 pixels); clipping the nominal 184px
+	// textures to that width preserves its x=187..189 right border/cap.
+	BasicInfoZeroStatic.emitRatioWidth(
+		a, BasicInfoZeroStatic.CurrentHP, BasicInfoZeroStatic.MaximumHP,
+		BasicInfoZeroStatic.HPWidth, "hp_width"
+	);
+	BasicInfoZeroStatic.emitDrawPart(
+		a, paths.hp, BasicInfoZeroStatic.GaugeX, BasicInfoZeroStatic.HPY,
+		BasicInfoZeroStatic.HPWidth, BasicInfoZeroStatic.HPHeight, "hp"
+	);
+	BasicInfoZeroStatic.emitRatioWidth(
+		a, BasicInfoZeroStatic.CurrentSP, BasicInfoZeroStatic.MaximumSP,
+		BasicInfoZeroStatic.SPWidth, "sp_width"
+	);
+	// SP begins immediately below divider row 19 and occupies frame-local rows
+	// 20..30. Frame rows 31..33 retain the separator above the new AP slot.
+	BasicInfoZeroStatic.emitDrawPart(
+		a, paths.sp, BasicInfoZeroStatic.GaugeX, BasicInfoZeroStatic.SPY,
+		BasicInfoZeroStatic.SPWidth, BasicInfoZeroStatic.SPHeight, "sp"
+	);
+	BasicInfoZeroStatic.emitRatioWidth(
+		a, {local: BasicInfoZeroStatic.CurrentAP},
+		{local: BasicInfoZeroStatic.MaximumAP},
+		BasicInfoZeroStatic.APWidth, "ap_width"
+	);
+	// The AP slot starts at frame-local row 34. The supplied bright 184x11
+	// layer keeps AP visually distinct from the normal blue SP row.
+	BasicInfoZeroStatic.emitDrawPart(
+		a, paths.ap, BasicInfoZeroStatic.GaugeX, BasicInfoZeroStatic.APY,
+		BasicInfoZeroStatic.APWidth, BasicInfoZeroStatic.APHeight, "ap"
+	);
+
+	// The stock compact name child at +C0 is drawn after this parent and would
+	// overlap the custom level/name title. Keep that child off-canvas while the
+	// Alt+V selector below holds the window in compact mode.
+	a.emit(0x8B, 0x8E); a.dword(BasicInfoZeroStatic.NameControlOffset);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "stock_name_hidden");
+	a.emit(0x8B, 0x01);                       // MOV EAX,[ECX]
+	BasicInfoZeroStatic.pushImm(a, -100);
+	BasicInfoZeroStatic.pushImm(a, -100);
+	a.emit(0xFF, 0x50, 0x10);                 // CALL [EAX+10] (SetPosition)
+	a.label("stock_name_hidden");
+
+	// "Lv.<base> <character>" title. GetCharacterName returns the client's
+	// decoded session-name buffer, so the active codepage remains authoritative.
+	a.emit(0xB9); a.dword(BasicInfoZeroStatic.Session);
+	a.call(BasicInfoZeroStatic.GetCharacterName);
+	a.emit(0x50);
+	a.emit(0xFF, 0x35); a.dword(BasicInfoZeroStatic.BaseLevel);
+	a.emit(0x68); a.dword(formats.name);
+	BasicInfoZeroStatic.pushLocal(a, BasicInfoZeroStatic.NameBuffer);
+	a.call(BasicInfoZeroStatic.Sprintf);
+	a.emit(0x83, 0xC4, 0x10);
+	// Match the readable hovered-world-name treatment: one bold white glyph
+	// pass surrounded by a one-pixel black outline. This avoids the merged
+	// horizontal strokes produced by the previous double-strike.
+	for (const [dx, dy] of [
+		[-1, -1], [0, -1], [1, -1],
+		[-1, 0],            [1, 0],
+		[-1, 1],  [0, 1],  [1, 1]
+	])
+	{
+		BasicInfoZeroStatic.emitText(
+			a, BasicInfoZeroStatic.NameBuffer,
+			BasicInfoZeroStatic.TitleX + dx,
+			BasicInfoZeroStatic.TitleY + dy,
+			BasicInfoZeroStatic.Shadow, 14, 1
+		);
+	}
+	BasicInfoZeroStatic.emitText(
+		a, BasicInfoZeroStatic.NameBuffer,
+		BasicInfoZeroStatic.TitleX, BasicInfoZeroStatic.TitleY,
+		BasicInfoZeroStatic.White, 14, 1
+	);
+
+	BasicInfoZeroStatic.emitValueRow(
+		a, BasicInfoZeroStatic.CurrentHP, BasicInfoZeroStatic.MaximumHP,
+		formats.value, formats.percent, 19, "hp"
+	);
+	BasicInfoZeroStatic.emitValueRow(
+		a, BasicInfoZeroStatic.CurrentSP, BasicInfoZeroStatic.MaximumSP,
+		formats.value, formats.percent, 35, "sp"
+	);
+	BasicInfoZeroStatic.emitValueRow(
+		a, {local: BasicInfoZeroStatic.CurrentAP},
+		{local: BasicInfoZeroStatic.MaximumAP},
+		formats.value, formats.percent, 49, "ap"
+	);
+
+	a.label("restore");
+	a.emit(0x8B, 0xE5);                       // MOV ESP,EBP
+	a.emit(0x81, 0xC4); a.dword(BasicInfoZeroStatic.LocalSize);
+	a.emit(0x61, 0x9D);                       // POPAD / POPFD
+	a.jmp(exitVir);
+	return a;
+};
+
+BasicInfoZeroStatic.emitJobSurfaceTry = function(
+	a, formatVir, jobOffset, drawOffset, missingLabel
+)
+{
+	// Format into the shared 256-byte local buffer, normalize through the
+	// client's texture path converter, and leave the loaded surface in EAX.
+	a.emit(0xFF, 0xB5); a.dword(jobOffset);       // PUSH [EBP+job]
+	a.emit(0x68); a.dword(formatVir);
+	a.emit(0x8D, 0x85); a.dword(-0x100);
+	a.emit(0x50);
+	a.call(BasicInfoZeroStatic.Sprintf);
+	a.emit(0x83, 0xC4, 0x0C);
+	a.emit(0x8D, 0x85); a.dword(-0x100);
+	a.emit(0x50);
+	a.call(BasicInfoZeroStatic.ConvPath);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, missingLabel);
+	a.emit(0x50, 0x8B, 0xCB);                  // PUSH path / ECX=TexMgr
+	a.call(BasicInfoZeroStatic.LoadSurface);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, missingLabel);
+	a.emit(0xBE); a.dword(drawOffset);           // centered offset for stock 25x25
+	a.jmp("draw_surface");
+};
+
+BasicInfoZeroStatic.buildJobChildDraw = function(jobFormats, themeStateVir)
+{
+	const rawJob = -0x104;
+	const aliasJob = -0x108;
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);                   // PUSH EBP / MOV EBP,ESP
+	a.emit(0x81, 0xEC); a.dword(0x110);         // path buffer + resolver locals
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF9);     // preserve regs / EDI=this child
+	// The Job icon owns a persistent child surface. Clear it on every draw so
+	// switching to Classic cannot leave the last renewal icon cached onscreen.
+	BasicInfoZeroStatic.pushImm(a, 0xFFFF00FF);
+	a.emit(0x8B, 0xCF);
+	a.call(BasicInfoZeroStatic.ClearSurface);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "done");
+
+	// Preserve the raw client job ID. GetJobId intentionally is not used here:
+	// it collapses mounted/costume identities and caused mismatched resources.
+	a.emit(0xA1); a.dword(BasicInfoZeroStatic.CurrentJob);
+	a.emit(0x89, 0x85); a.dword(rawJob);
+	a.call(BasicInfoZeroStatic.GetTexMgr);
+	a.emit(0x8B, 0xD8, 0x85, 0xDB);            // EBX=TexMgr
+	a.jcc(0x84, "done");
+
+	// Resolution order: exact framed art, framed lineage alias, exact stock,
+	// alias stock, then Novice. This keeps 3rd/4th and mounted variants in the
+	// original pointed-ellipse RO Global design.
+	BasicInfoZeroStatic.emitJobSurfaceTry(
+		a, jobFormats.big, rawJob, 0, "resolve_alias"
+	);
+
+	a.label("resolve_alias");
+	a.emit(0x8B, 0x85); a.dword(rawJob);          // EAX=raw ID
+	for (let index = 0; index < BasicInfoZeroStatic.JobAliases.length; index++)
+	{
+		const alias = BasicInfoZeroStatic.JobAliases[index];
+		a.emit(0x3D); a.dword(alias[0]);
+		a.jcc(0x84, `alias_${index}`);
+	}
+	a.emit(0x33, 0xC0);                          // no alias
+	a.jmp("alias_ready");
+	for (let index = 0; index < BasicInfoZeroStatic.JobAliases.length; index++)
+	{
+		const alias = BasicInfoZeroStatic.JobAliases[index];
+		a.label(`alias_${index}`);
+		a.emit(0xB8); a.dword(alias[1]);
+		a.jmp("alias_ready");
+	}
+	a.label("alias_ready");
+	a.emit(0x89, 0x85); a.dword(aliasJob);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "raw_stock");
+	BasicInfoZeroStatic.emitJobSurfaceTry(
+		a, jobFormats.big, aliasJob, 0, "raw_stock"
+	);
+
+	a.label("raw_stock");
+	BasicInfoZeroStatic.emitJobSurfaceTry(
+		a, jobFormats.stock, rawJob,
+		BasicInfoZeroStatic.StockJobIconOffset, "alias_stock"
+	);
+	a.label("alias_stock");
+	a.emit(0x8B, 0x85); a.dword(aliasJob);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "generic_big");
+	BasicInfoZeroStatic.emitJobSurfaceTry(
+		a, jobFormats.stock, aliasJob,
+		BasicInfoZeroStatic.StockJobIconOffset, "generic_big"
+	);
+	a.label("generic_big");
+	a.emit(0xC7, 0x85); a.dword(aliasJob); a.dword(0);
+	BasicInfoZeroStatic.emitJobSurfaceTry(
+		a, jobFormats.big, aliasJob, 0, "generic_stock"
+	);
+	a.label("generic_stock");
+	BasicInfoZeroStatic.emitJobSurfaceTry(
+		a, jobFormats.stock, aliasJob,
+		BasicInfoZeroStatic.StockJobIconOffset, "done"
+	);
+
+	a.label("draw_surface");
+	BasicInfoZeroStatic.pushImm(a, 1);           // alpha-enabled
+	a.emit(0x50);                                // surface
+	a.emit(0x56, 0x56);                          // centered Y / X
+	a.emit(0x8B, 0xCF);                         // MOV ECX,EDI
+	a.call(BasicInfoZeroStatic.ImageDraw);
+
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B);                   // POP EDI / ESI / EBX
+	a.emit(0x8B, 0xE5, 0x5D, 0xC3);             // restore frame / RET
+	return a;
+};
+
+BasicInfoZeroStatic.buildJobChildDestructor = function(themeStateVir, jobChildOffset)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x3B, 0x0D); a.dword(themeStateVir + jobChildOffset);
+	a.jcc(0x85, "pass");
+	a.emit(0xC7, 0x05); a.dword(themeStateVir + jobChildOffset); a.dword(0);
+	a.label("pass");
+	a.jmp(BasicInfoZeroStatic.JobButtonDestructor);
+	return a;
+};
+
+BasicInfoZeroStatic.cloneJobButtonVtable = function(
+	childDrawVir, childHoverVir, childDestructorVir
+)
+{
+	const jobPhy = Exe.Vir2Phy(BasicInfoZeroStatic.JobButtonVtable);
+	const basePhy = Exe.Vir2Phy(BasicInfoZeroStatic.ImageButtonVtable);
+	if (jobPhy < 0 || basePhy < 0)
+		throw Error("ROGlobalZeroBasicInfo: Job button vtable is not mapped");
+
+	const byteCount = BasicInfoZeroStatic.JobButtonVtableEntries * 4;
+	const [clonePhy, cloneVir] = Exe.Allocate(byteCount, 4);
+	Exe.SetHex(clonePhy, Exe.GetHex(jobPhy, byteCount));
+
+	// Keep the real UIJobIconButton inherited lifecycle, but clear our shared
+	// pointer before its deleting destructor runs and give this instance the
+	// independent renderer above. Its Job-specific
+	// input overrides dispatch to unrelated stock windows, so use the neutral
+	// UIImgButton handlers for this display-only child.
+	Exe.SetUint32(clonePhy, childDestructorVir);
+	Exe.SetUint32(clonePhy + 20 * 4, childDrawVir);
+	Exe.SetUint32(clonePhy + 28 * 4, childHoverVir);
+	for (const slot of [25, 31, 33])
+		Exe.SetUint32(clonePhy + slot * 4, Exe.GetUint32(basePhy + slot * 4));
+
+	return {phy: clonePhy, vir: cloneVir, size: byteCount};
+};
+
+BasicInfoZeroStatic.buildFactorySize = function(themeStateVir, loadThemeVir)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);                 // frame
+	a.emit(0x56);                             // preserve ESI
+	a.emit(0x8B, 0xF1);                       // ESI=UIBasicInfoWnd
+	a.call(loadThemeVir);
+
+	// This wrapper replaces only the factory call to UIWindow::SetWindowSize.
+	// Native vtable slot 15 performs child creation later, so do not attach the
+	// Job child here: its early registration is discarded by native OnCreate.
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "classic_size");
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.PanelHeight);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.PanelWidth);
+	a.jmp("set_size");
+	a.label("classic_size");
+	a.emit(0xFF, 0xB6); a.dword(0xB8);         // stock expanded height
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.ClassicPanelWidth);
+	a.label("set_size");
+	a.emit(0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.SetWindowSize);
+	a.emit(0x5E, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC2, 0x08, 0x00);                 // RET 8, matching SetWindowSize
+	return a;
+};
+
+BasicInfoZeroStatic.buildCreateWrapper = function(
+	jobVtableVir, themeStateVir, loadThemeVir, jobChildOffset, basicInfoOffset
+)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0xF1);                       // ESI=UIBasicInfoWnd
+	a.call(loadThemeVir);
+
+	// Let native OnCreate build and lay out every stock child first. Its child
+	// list initialization is why the former factory-time Job child disappeared
+	// on the first login until Character Select rebuilt the window.
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08, 0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.WindowCreateOriginal);
+	a.emit(0x8B, 0xD8);                       // EBX=native return value
+
+	// Reuse only a child owned by this exact Basic Info instance. Character
+	// Select can create the replacement parent before the old parent finishes
+	// destruction, so a non-null child pointer alone is not sufficient.
+	a.emit(0x3B, 0x35); a.dword(themeStateVir + basicInfoOffset);
+	a.jcc(0x85, "new_parent");
+	a.emit(0x83, 0x3D); a.dword(themeStateVir + jobChildOffset); a.emit(0x00);
+	a.jcc(0x85, "redraw");
+	a.jmp("create");
+	a.label("new_parent");
+	a.emit(0x89, 0x35); a.dword(themeStateVir + basicInfoOffset);
+	a.emit(0xC7, 0x05); a.dword(themeStateVir + jobChildOffset); a.dword(0);
+	a.label("create");
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobButtonObjectSize);
+	a.call(BasicInfoZeroStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0xF8, 0x8B, 0xCF);
+	a.call(BasicInfoZeroStatic.JobButtonConstructor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0xF8);
+	a.emit(0xC7, 0x07); a.dword(jobVtableVir);
+
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconSize);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconSize);
+	a.emit(0x8B, 0xCF);
+	a.call(BasicInfoZeroStatic.SetWindowSize);
+	a.emit(0x8B, 0x07);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconY);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconX);
+	a.emit(0x8B, 0xCF, 0xFF, 0x50, 0x10);
+	a.emit(0x89, 0x3D); a.dword(themeStateVir + jobChildOffset);
+	a.emit(0x57, 0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.AddChild);
+
+	// Populate or clear the cached surface immediately for the active theme.
+	a.label("redraw");
+	a.emit(0x8B, 0x0D); a.dword(themeStateVir + jobChildOffset);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0x01, 0xFF, 0x50, 0x50);
+	a.label("done");
+	a.emit(0x8B, 0xC3, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+BasicInfoZeroStatic.buildCompactToggle = function(themeStateVir, loadThemeVir)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.call(loadThemeVir);
+	a.emit(0x8B, 0x86); a.dword(0xB4);          // stock compact height
+	a.emit(0x57, 0x8B, 0x7E, 0x18);            // PUSH EDI / current height
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x85, "target_ready");                // New UI always remains compact
+	a.emit(0x3B, 0xF8);                         // Classic UI preserves Alt+V
+	a.jcc(0x85, "target_ready");
+	a.emit(0x8B, 0x86); a.dword(0xB8);          // stock expanded height
+	a.label("target_ready");
+	a.emit(0x50);
+	a.jmp(BasicInfoZeroStatic.CompactToggleResume);
+	return a;
+};
+
+BasicInfoZeroStatic.emitTitleButtonVisibility = function(
+	a, themeStateVir, prefix
+)
+{
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, prefix + "_done");
+	a.emit(0xBA); a.dword(1);                    // Classic visible
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, prefix + "_apply");
+	a.emit(0x33, 0xD2);                          // New UI hidden
+	a.label(prefix + "_apply");
+	a.emit(0x39, 0x50, 0x28);                    // visibility already correct?
+	a.jcc(0x84, prefix + "_done");
+	a.emit(0x89, 0x50, 0x28);                    // direct visible state
+	a.emit(0xC7, 0x40, 0x58); a.dword(1);        // request native redraw
+	a.label(prefix + "_done");
+};
+
+BasicInfoZeroStatic.buildTitleButtonCreate = function(
+	originalVir, buttonStateVir, resumeVir, argumentBytes
+)
+{
+	const a = BasicInfoZeroStatic.asm();
+	if (argumentBytes === 8)
+	{
+		a.emit(0x55, 0x8B, 0xEC);               // preserve caller argument frame
+		a.emit(0xFF, 0x75, 0x0C);               // forward arg2
+		a.emit(0xFF, 0x75, 0x08);               // forward arg1
+	}
+	else if (argumentBytes !== 0)
+	{
+		throw Error(
+			"ROGlobalZeroBasicInfo: unsupported title-button argument size"
+		);
+	}
+	// Both stock sites have already preserved UIBasicInfoWnd in EDI.
+	a.emit(0x8B, 0xCF);                         // MOV ECX,EDI
+	a.call(originalVir);
+	a.emit(0xA3); a.dword(buttonStateVir);
+	if (resumeVir)
+	{
+		if (argumentBytes !== 0)
+			throw Error("ROGlobalZeroBasicInfo: jump wrapper cannot own arguments");
+		a.jmp(resumeVir);
+	}
+	else if (argumentBytes === 8)
+	{
+		a.emit(0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00); // RET 8
+	}
+	else
+		a.emit(0xC3);
+	return a;
+};
+
+BasicInfoZeroStatic.buildDrawLifecycleGuard = function(
+	themeStateVir, loadThemeVir, titleButtonStateVir
+)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x56, 0x8B, 0xF1);                   // preserve ESI / ESI=this
+	a.call(loadThemeVir);
+	// Creation can precede the final persisted-theme load. Reconcile both
+	// stock controls every frame so startup and live theme switches converge.
+	a.emit(0xA1); a.dword(titleButtonStateVir);
+	BasicInfoZeroStatic.emitTitleButtonVisibility(
+		a, themeStateVir, "base_button"
+	);
+	a.emit(0xA1); a.dword(titleButtonStateVir + 4);
+	BasicInfoZeroStatic.emitTitleButtonVisibility(
+		a, themeStateVir, "mini_button"
+	);
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "draw");                       // Classic UI keeps native state
+	a.emit(0x81, 0x7E, 0x14); a.dword(BasicInfoZeroStatic.PanelWidth);
+	a.jcc(0x85, "resize");
+	a.emit(0x8B, 0x86); a.dword(0xB4);          // configured compact height
+	a.emit(0x39, 0x46, 0x18);                   // current height already compact?
+	a.jcc(0x84, "draw");
+	a.label("resize");
+	a.emit(0xC7, 0x46, 0x14); a.dword(BasicInfoZeroStatic.PanelWidth);
+	a.emit(0xFF, 0xB6); a.dword(0xB4);
+	a.emit(0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.BasicInfoResize);
+	a.label("draw");
+	a.emit(0x8B, 0xCE, 0x5E);
+	a.jmp(BasicInfoZeroStatic.WindowDrawOriginal);
+	return a;
+};
+
+BasicInfoZeroStatic.buildJobChildHover = function(themeStateVir, tooltips)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08); // EBP frame, two POINT locals
+	a.emit(0x56, 0x57, 0x8B, 0xF1);             // preserve ESI/EDI; ESI=this
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "done");
+
+	// The registered child receives its own local mouse coordinates. Keeping
+	// the hit test here avoids relying on the parent handler, which is bypassed
+	// whenever UI dispatch selects the child first.
+	a.emit(0x8B, 0x45, 0x08);                   // X
+	a.emit(0x85, 0xC0);
+	a.jcc(0x88, "done");                        // JS
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.JobIconSize);
+	a.jcc(0x8D, "done");                        // JGE
+	a.emit(0x8B, 0x45, 0x0C);                   // Y
+	a.emit(0x85, 0xC0);
+	a.jcc(0x88, "done");
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.JobIconSize);
+	a.jcc(0x8D, "done");
+
+	// The enlarged Job child overlaps the left edge of all three gauges. Parent
+	// dispatch selects the child first, so route those overlapping pixels to
+	// the matching gauge tooltip before falling back to the native Job name.
+	a.emit(0x8B, 0x45, 0x08);
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.GaugeX -
+		BasicInfoZeroStatic.JobIconX);
+	a.jcc(0x8C, "job_tooltip");                  // JL
+	a.emit(0x8B, 0x45, 0x0C);
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.HPY -
+		BasicInfoZeroStatic.JobIconY);
+	a.jcc(0x8C, "job_tooltip");
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.HPY +
+		BasicInfoZeroStatic.HPHeight - BasicInfoZeroStatic.JobIconY);
+	a.jcc(0x8C, "hp_tooltip");
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.SPY -
+		BasicInfoZeroStatic.JobIconY);
+	a.jcc(0x8C, "job_tooltip");
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.SPY +
+		BasicInfoZeroStatic.SPHeight - BasicInfoZeroStatic.JobIconY);
+	a.jcc(0x8C, "sp_tooltip");
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.APY -
+		BasicInfoZeroStatic.JobIconY);
+	a.jcc(0x8C, "job_tooltip");
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.APY +
+		BasicInfoZeroStatic.APHeight - BasicInfoZeroStatic.JobIconY);
+	a.jcc(0x8D, "job_tooltip");
+	a.emit(0xBF); a.dword(tooltips.ap);
+	a.jmp("show_tooltip");
+	a.label("hp_tooltip");
+	a.emit(0xBF); a.dword(tooltips.hp);
+	a.jmp("show_tooltip");
+	a.label("sp_tooltip");
+	a.emit(0xBF); a.dword(tooltips.sp);
+	a.jmp("show_tooltip");
+
+	// Use the same effective Job ID/name path as the stock expanded panel. It
+	// keeps mounted/transformed sprites mapped to the user-facing Job name.
+	a.label("job_tooltip");
+	a.emit(0xB9); a.dword(BasicInfoZeroStatic.Session);
+	a.call(BasicInfoZeroStatic.GetJobId);
+	BasicInfoZeroStatic.pushImm(a, -1);
+	a.emit(0x50);
+	a.emit(0xB9); a.dword(BasicInfoZeroStatic.Session);
+	a.call(BasicInfoZeroStatic.GetJobName);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0xF8);                         // EDI=Job-name pointer
+
+	// Match the Inventory hover placement: immediately above and to the right
+	// of the live mouse pointer, converted through this child window.
+	a.label("show_tooltip");
+	a.emit(0x8B, 0x45, 0x08);                   // child-local mouse X
+	a.emit(0x83, 0xC0, BasicInfoZeroStatic.TooltipXOffset);
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x45, 0x0C);                   // child-local mouse Y
+	a.emit(0x83, 0xC0, BasicInfoZeroStatic.TooltipYOffset);
+	a.emit(0x89, 0x45, 0xFC);
+	a.emit(0x8D, 0x45, 0xFC, 0x50);             // PUSH &Y
+	a.emit(0x8D, 0x45, 0xF8, 0x50);             // PUSH &X
+	a.emit(0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.ClientToScreen);
+	a.emit(0x8B, 0x0D); a.dword(BasicInfoZeroStatic.TooltipManager);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	BasicInfoZeroStatic.pushImm(a, 1);
+	BasicInfoZeroStatic.pushImm(a, 0);
+	BasicInfoZeroStatic.pushImm(a, -1);
+	a.emit(0xFF, 0x75, 0xFC);                   // screen Y
+	a.emit(0xFF, 0x75, 0xF8);                   // screen X
+	a.emit(0x57);                               // Job-name pointer
+	a.call(BasicInfoZeroStatic.ShowTooltip);
+
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x8B, 0xE5, 0x5D);       // restore EDI/ESI/frame
+	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+BasicInfoZeroStatic.buildBarHover = function(themeStateVir, tooltips)
+{
+	const a = BasicInfoZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08); // EBP frame, two POINT locals
+	a.emit(0x56, 0x57, 0x8B, 0xF1);             // preserve ESI/EDI; ESI=this
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "pass");
+	a.emit(0x8B, 0x46, 0x18);                   // current parent height
+	a.emit(0x3B, 0x86); a.dword(0xB4);          // compact height
+	a.jcc(0x85, "pass");
+
+	a.emit(0x8B, 0x45, 0x08);                   // X
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.GaugeX);
+	a.jcc(0x8C, "pass");
+	a.emit(0x3D); a.dword(
+		BasicInfoZeroStatic.GaugeX + BasicInfoZeroStatic.GaugeWidth
+	);
+	a.jcc(0x8D, "pass");
+
+	a.emit(0x8B, 0x45, 0x0C);                   // Y
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.HPY);
+	a.jcc(0x8C, "pass");
+	a.emit(0x83, 0xF8,
+		BasicInfoZeroStatic.HPY + BasicInfoZeroStatic.HPHeight);
+	a.jcc(0x8C, "hp_tooltip");
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.SPY);
+	a.jcc(0x8C, "pass");
+	a.emit(0x83, 0xF8,
+		BasicInfoZeroStatic.SPY + BasicInfoZeroStatic.SPHeight);
+	a.jcc(0x8C, "sp_tooltip");
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.APY);
+	a.jcc(0x8C, "pass");
+	a.emit(0x83, 0xF8,
+		BasicInfoZeroStatic.APY + BasicInfoZeroStatic.APHeight);
+	a.jcc(0x8D, "pass");
+	a.emit(0xBF); a.dword(tooltips.ap);
+	a.jmp("show");
+	a.label("hp_tooltip");
+	a.emit(0xBF); a.dword(tooltips.hp);
+	a.jmp("show");
+	a.label("sp_tooltip");
+	a.emit(0xBF); a.dword(tooltips.sp);
+
+	a.label("show");
+	// Match the Inventory hover placement from the live parent-local pointer.
+	a.emit(0x8B, 0x45, 0x08);
+	a.emit(0x83, 0xC0, BasicInfoZeroStatic.TooltipXOffset);
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x45, 0x0C);
+	a.emit(0x83, 0xC0, BasicInfoZeroStatic.TooltipYOffset);
+	a.emit(0x89, 0x45, 0xFC);
+	a.emit(0x8D, 0x45, 0xFC, 0x50);
+	a.emit(0x8D, 0x45, 0xF8, 0x50);
+	a.emit(0x8B, 0xCE);
+	a.call(BasicInfoZeroStatic.ClientToScreen);
+	a.emit(0x8B, 0x0D); a.dword(BasicInfoZeroStatic.TooltipManager);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	BasicInfoZeroStatic.pushImm(a, 1);
+	BasicInfoZeroStatic.pushImm(a, 0);
+	BasicInfoZeroStatic.pushImm(a, -1);
+	a.emit(0xFF, 0x75, 0xFC);
+	a.emit(0xFF, 0x75, 0xF8);
+	a.emit(0x57);
+	a.call(BasicInfoZeroStatic.ShowTooltip);
+
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC2, 0x08, 0x00);
+	a.label("pass");
+	a.emit(0x5F, 0x5E, 0x8B, 0xE5, 0x5D);
+	a.jmp(BasicInfoZeroStatic.WindowMouseOriginal);
+	return a;
+};
+
+BasicInfoZeroStatic.assertVtableSlot = function(label, entryVir, expectedVir)
+{
+	const phyAddr = Exe.Vir2Phy(entryVir);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroBasicInfo: ${label} is not mapped`);
+	const actual = Exe.GetUint32(phyAddr);
+	if (actual !== expectedVir)
+	{
+		throw Error(
+			`ROGlobalZeroBasicInfo: ${label} expected ` +
+			`0x${expectedVir.toString(16)}, ` +
+			`got 0x${actual.toString(16)}`
+		);
+	}
+	return phyAddr;
+};
+
+BasicInfoZeroStatic.assertVtables = function()
+{
+	return {
+		create: BasicInfoZeroStatic.assertVtableSlot(
+			"UIBasicInfoWnd OnCreate vtable[15]",
+			BasicInfoZeroStatic.WindowCreateVtableEntry,
+			BasicInfoZeroStatic.WindowCreateOriginal
+		),
+		draw: BasicInfoZeroStatic.assertVtableSlot(
+			"UIBasicInfoWnd vtable[20]",
+			BasicInfoZeroStatic.WindowDrawVtableEntry,
+			BasicInfoZeroStatic.WindowDrawOriginal
+		),
+		mouse: BasicInfoZeroStatic.assertVtableSlot(
+			"UIBasicInfoWnd vtable[28]",
+			BasicInfoZeroStatic.WindowMouseVtableEntry,
+			BasicInfoZeroStatic.WindowMouseOriginal
+		),
+		jobDestructor: BasicInfoZeroStatic.assertVtableSlot(
+			"UIJobIconButton vtable[0]",
+			BasicInfoZeroStatic.JobButtonVtable,
+			BasicInfoZeroStatic.JobButtonDestructor
+		),
+		jobDraw: BasicInfoZeroStatic.assertVtableSlot(
+			"UIJobIconButton vtable[20]",
+			BasicInfoZeroStatic.JobButtonVtable + 20 * 4,
+			BasicInfoZeroStatic.JobButtonDrawOriginal
+		),
+		jobInput25: BasicInfoZeroStatic.assertVtableSlot(
+			"UIJobIconButton vtable[25]",
+			BasicInfoZeroStatic.JobButtonVtable + 25 * 4,
+			BasicInfoZeroStatic.JobButtonInput25
+		),
+		jobMouse28: BasicInfoZeroStatic.assertVtableSlot(
+			"UIJobIconButton vtable[28]",
+			BasicInfoZeroStatic.JobButtonVtable + 28 * 4,
+			BasicInfoZeroStatic.JobButtonMouse28
+		),
+		jobInput31: BasicInfoZeroStatic.assertVtableSlot(
+			"UIJobIconButton vtable[31]",
+			BasicInfoZeroStatic.JobButtonVtable + 31 * 4,
+			BasicInfoZeroStatic.JobButtonInput31
+		),
+		jobInput33: BasicInfoZeroStatic.assertVtableSlot(
+			"UIJobIconButton vtable[33]",
+			BasicInfoZeroStatic.JobButtonVtable + 33 * 4,
+			BasicInfoZeroStatic.JobButtonInput33
+		),
+		baseInput25: BasicInfoZeroStatic.assertVtableSlot(
+			"UIImgButton vtable[25]",
+			BasicInfoZeroStatic.ImageButtonVtable + 25 * 4,
+			BasicInfoZeroStatic.ImageButtonInput25
+		),
+		baseInput31: BasicInfoZeroStatic.assertVtableSlot(
+			"UIImgButton vtable[31]",
+			BasicInfoZeroStatic.ImageButtonVtable + 31 * 4,
+			BasicInfoZeroStatic.ImageButtonInput31
+		),
+		baseInput33: BasicInfoZeroStatic.assertVtableSlot(
+			"UIImgButton vtable[33]",
+			BasicInfoZeroStatic.ImageButtonVtable + 33 * 4,
+			BasicInfoZeroStatic.ImageButtonInput33
+		)
+	};
+};
+
+BasicInfoZeroStatic.assertCode = function(label, virAddr, expectedBytes)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroBasicInfo: ${label} is not mapped`);
+	const count = BasicInfoZeroStatic.hexNorm(expectedBytes).split(" ").length;
+	const actual = BasicInfoZeroStatic.hexNorm(Exe.GetHex(phyAddr, count));
+	if (actual !== BasicInfoZeroStatic.hexNorm(expectedBytes))
+		throw Error(`ROGlobalZeroBasicInfo: ${label} mismatch, got ${actual}`);
+	return phyAddr;
+};
+
+ROGlobalZeroBasicInfo = function(_)
+{
+	if (Exe.BuildDate !== BasicInfoZeroStatic.BuildDate)
+		throw Error("ROGlobalZeroBasicInfo supports only the 2025-07-16 client");
+	const theme = CACHE.get("ROGlobalZeroUITheme.State");
+	if (!theme || !Number.isInteger(theme.stateVir) ||
+		!Number.isInteger(theme.loadVir) ||
+		!Number.isInteger(theme.jobChildOffset) ||
+		!Number.isInteger(theme.basicInfoOffset))
+		throw Error("ROGlobalZeroBasicInfo: ROGlobalZeroUITheme must run first");
+
+	$$(_, 1, "Verify Basic Info and Job button vtable boundaries");
+	const vtableSlots = BasicInfoZeroStatic.assertVtables();
+	const classicInsertPhy = BasicInfoZeroStatic.assertCode(
+		"classic compact draw branch",
+		BasicInfoZeroStatic.ClassicCompactInsert,
+		BasicInfoZeroStatic.ClassicCompactBytes
+	);
+	const specialInsertPhy = BasicInfoZeroStatic.assertCode(
+		"AP-class compact draw branch",
+		BasicInfoZeroStatic.SpecialCompactInsert,
+		BasicInfoZeroStatic.SpecialCompactBytes
+	);
+	const compactTogglePhy = BasicInfoZeroStatic.assertCode(
+		"Alt+V compact/expanded selector",
+		BasicInfoZeroStatic.CompactToggleBlock,
+		BasicInfoZeroStatic.CompactToggleBytes
+	);
+	const factorySizePhy = BasicInfoZeroStatic.assertCode(
+		"UIBasicInfoWnd factory size call",
+		BasicInfoZeroStatic.WindowFactorySizeCall,
+		BasicInfoZeroStatic.WindowFactorySizeBytes
+	);
+	const factoryHeightPhy = BasicInfoZeroStatic.assertCode(
+		"UIBasicInfoWnd classic factory height",
+		BasicInfoZeroStatic.FactoryClassicHeight,
+		BasicInfoZeroStatic.FactoryClassicHeightBytes
+	);
+	const compactHeightPrimaryPhy = BasicInfoZeroStatic.assertCode(
+		"UIBasicInfoWnd primary compact height",
+		BasicInfoZeroStatic.CompactHeightPrimary,
+		BasicInfoZeroStatic.CompactHeightPrimaryBytes
+	);
+	const compactHeightAPPhy = BasicInfoZeroStatic.assertCode(
+		"UIBasicInfoWnd AP compact height",
+		BasicInfoZeroStatic.CompactHeightAP,
+		BasicInfoZeroStatic.CompactHeightAPBytes
+	);
+	const compactHeightSavedPhy = BasicInfoZeroStatic.assertCode(
+		"UIBasicInfoWnd saved compact height",
+		BasicInfoZeroStatic.CompactHeightSaved,
+		BasicInfoZeroStatic.CompactHeightSavedBytes
+	);
+	const titleButtonsPhy = BasicInfoZeroStatic.assertCode(
+		"UIBasicInfoWnd title-button creation",
+		BasicInfoZeroStatic.TitleButtonsCreate,
+		BasicInfoZeroStatic.TitleButtonsBytes
+	);
+	const titleButtonsSecondPhy = BasicInfoZeroStatic.assertCode(
+		"UIBasicInfoWnd second title-button creation",
+		BasicInfoZeroStatic.TitleButtonsSecondCreate,
+		BasicInfoZeroStatic.TitleButtonsSecondBytes
+	);
+	$$(_, 2, "Build RO Global Zero Basic Info resource paths");
+	const paths = {
+		gauge: BasicInfoZeroStatic.buildResourcePath(
+			"uirenewal\\basicinfo\\gze_bg_ap.bmp"
+		),
+		hp: BasicInfoZeroStatic.buildResourcePath(
+			"uirenewal\\basicinfo\\gze_hp_normal_deco.bmp"
+		),
+		sp: BasicInfoZeroStatic.buildResourcePath(
+			"uirenewal\\basicinfo\\gze_sp_normal.bmp"
+		),
+		ap: BasicInfoZeroStatic.buildResourcePath(
+			"uirenewal\\basicinfo\\gze_ap_normal.bmp"
+		),
+		jobBigFormat: BasicInfoZeroStatic.buildResourcePath(
+			"uirenewal\\jobicon\\big2\\icon_job_%d.bmp"
+		),
+		jobStockFormat: BasicInfoZeroStatic.buildResourcePath(
+			"renewalparty\\icon_jobs_%d.bmp"
+		)
+	};
+	const formats = {
+		name: BasicInfoZeroStatic.allocateBytes(
+			BasicInfoZeroStatic.asciiBytes("Lv.%d %s")
+		)[1],
+		value: BasicInfoZeroStatic.allocateBytes(
+			BasicInfoZeroStatic.asciiBytes("%d / %d")
+		)[1],
+		percent: BasicInfoZeroStatic.allocateBytes(
+			BasicInfoZeroStatic.asciiBytes("%d%%")
+		)[1]
+	};
+	const tooltips = {
+		hp: BasicInfoZeroStatic.allocateBytes(
+			BasicInfoZeroStatic.asciiBytes("Health Pool")
+		)[1],
+		sp: BasicInfoZeroStatic.allocateBytes(
+			BasicInfoZeroStatic.asciiBytes("Mana Pool")
+		)[1],
+		ap: BasicInfoZeroStatic.allocateBytes(
+			BasicInfoZeroStatic.asciiBytes("Activity Points")
+		)[1]
+	};
+
+	$$(_, 3, "Inject classic and AP-class compact native HUD renderers");
+	const classicCode = BasicInfoZeroStatic.buildCompactDraw(
+		paths, formats, BasicInfoZeroStatic.ClassicCompactExit,
+		BasicInfoZeroStatic.ClassicCompactStockResume,
+		"classic", theme.stateVir, theme.loadVir
+	);
+	const [classicCodePhy, classicCodeVir] = Exe.Allocate(
+		classicCode.bytes.length, 0x10
+	);
+	Exe.SetHex(classicCodePhy, classicCode.finish(classicCodeVir));
+	const specialCode = BasicInfoZeroStatic.buildCompactDraw(
+		paths, formats, BasicInfoZeroStatic.SpecialCompactExit,
+		BasicInfoZeroStatic.SpecialCompactExit,
+		"special", theme.stateVir, theme.loadVir
+	);
+	const [specialCodePhy, specialCodeVir] = Exe.Allocate(
+		specialCode.bytes.length, 0x10
+	);
+	Exe.SetHex(specialCodePhy, specialCode.finish(specialCodeVir));
+
+	$$(_, 4, "Create the native Job icon child renderer and vtable");
+	const childDrawCode = BasicInfoZeroStatic.buildJobChildDraw(
+		{big: paths.jobBigFormat, stock: paths.jobStockFormat},
+		theme.stateVir
+	);
+	const [childDrawCodePhy, childDrawCodeVir] = Exe.Allocate(
+		childDrawCode.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		childDrawCodePhy,
+		childDrawCode.finish(childDrawCodeVir)
+	);
+	const childHoverCode = BasicInfoZeroStatic.buildJobChildHover(
+		theme.stateVir, tooltips
+	);
+	const [childHoverCodePhy, childHoverCodeVir] = Exe.Allocate(
+		childHoverCode.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		childHoverCodePhy,
+		childHoverCode.finish(childHoverCodeVir)
+	);
+	const barHoverCode = BasicInfoZeroStatic.buildBarHover(
+		theme.stateVir, tooltips
+	);
+	const [barHoverCodePhy, barHoverCodeVir] = Exe.Allocate(
+		barHoverCode.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		barHoverCodePhy,
+		barHoverCode.finish(barHoverCodeVir)
+	);
+	const childDestructorCode = BasicInfoZeroStatic.buildJobChildDestructor(
+		theme.stateVir, theme.jobChildOffset
+	);
+	const [childDestructorCodePhy, childDestructorCodeVir] = Exe.Allocate(
+		childDestructorCode.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		childDestructorCodePhy,
+		childDestructorCode.finish(childDestructorCodeVir)
+	);
+	const childVtable = BasicInfoZeroStatic.cloneJobButtonVtable(
+		childDrawCodeVir,
+		childHoverCodeVir,
+		childDestructorCodeVir
+	);
+	const factoryCode = BasicInfoZeroStatic.buildFactorySize(
+		theme.stateVir, theme.loadVir
+	);
+	const [factoryCodePhy, factoryCodeVir] = Exe.Allocate(
+		factoryCode.bytes.length, 0x10
+	);
+	Exe.SetHex(factoryCodePhy, factoryCode.finish(factoryCodeVir));
+	const createCode = BasicInfoZeroStatic.buildCreateWrapper(
+		childVtable.vir, theme.stateVir, theme.loadVir,
+		theme.jobChildOffset, theme.basicInfoOffset
+	);
+	const [createCodePhy, createCodeVir] = Exe.Allocate(
+		createCode.bytes.length, 0x10
+	);
+	Exe.SetHex(createCodePhy, createCode.finish(createCodeVir));
+
+	const compactToggleCode = BasicInfoZeroStatic.buildCompactToggle(
+		theme.stateVir, theme.loadVir
+	);
+	const [compactToggleCodePhy, compactToggleCodeVir] = Exe.Allocate(
+		compactToggleCode.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		compactToggleCodePhy,
+		compactToggleCode.finish(compactToggleCodeVir)
+	);
+	const [titleButtonStatePhy, titleButtonStateVir] = BasicInfoZeroStatic.allocateBytes(
+		new Array(8).fill(0), 4
+	);
+	const drawLifecycleCode = BasicInfoZeroStatic.buildDrawLifecycleGuard(
+		theme.stateVir, theme.loadVir, titleButtonStateVir
+	);
+	const [drawLifecycleCodePhy, drawLifecycleCodeVir] = Exe.Allocate(
+		drawLifecycleCode.bytes.length, 0x10
+	);
+	Exe.SetHex(
+		drawLifecycleCodePhy,
+		drawLifecycleCode.finish(drawLifecycleCodeVir)
+	);
+	const titleButtonBaseCreateCode = BasicInfoZeroStatic.buildTitleButtonCreate(
+		BasicInfoZeroStatic.TitleButtonsOriginal,
+		titleButtonStateVir,
+		BasicInfoZeroStatic.TitleButtonsResume, 0
+	);
+	const [titleButtonBaseCreateCodePhy, titleButtonBaseCreateCodeVir] =
+		Exe.Allocate(titleButtonBaseCreateCode.bytes.length, 0x10);
+	Exe.SetHex(
+		titleButtonBaseCreateCodePhy,
+		titleButtonBaseCreateCode.finish(titleButtonBaseCreateCodeVir)
+	);
+	const titleButtonMiniCreateCode = BasicInfoZeroStatic.buildTitleButtonCreate(
+		BasicInfoZeroStatic.TitleButtonsSecondOriginal,
+		titleButtonStateVir + 4,
+		0, 8
+	);
+	const [titleButtonMiniCreateCodePhy, titleButtonMiniCreateCodeVir] =
+		Exe.Allocate(titleButtonMiniCreateCode.bytes.length, 0x10);
+	Exe.SetHex(
+		titleButtonMiniCreateCodePhy,
+		titleButtonMiniCreateCode.finish(titleButtonMiniCreateCodeVir)
+	);
+
+	$$(_, 5, "Install child creation, theme-aware title buttons, draw, hover, and Alt+V routing");
+	Exe.SetJMP(classicInsertPhy, classicCodeVir, 0);
+	Exe.SetJMP(specialInsertPhy, specialCodeVir, 0);
+	Exe.SetNOPs(specialInsertPhy + 5, 2);
+	Exe.SetJMP(compactTogglePhy, compactToggleCodeVir, 0);
+	Exe.SetNOPs(compactTogglePhy + 5, 16);
+	Exe.SetUint32(vtableSlots.create, createCodeVir);
+	Exe.SetUint32(vtableSlots.draw, drawLifecycleCodeVir);
+	Exe.SetUint32(vtableSlots.mouse, barHoverCodeVir);
+	Exe.SetUint32(
+		factorySizePhy + BasicInfoZeroStatic.WindowFactoryWidthOffset,
+		BasicInfoZeroStatic.PanelWidth
+	);
+	Exe.SetUint32(
+		factoryHeightPhy + BasicInfoZeroStatic.FactoryClassicHeightOffset,
+		BasicInfoZeroStatic.PanelHeight
+	);
+	Exe.SetUint32(
+		compactHeightPrimaryPhy + BasicInfoZeroStatic.CompactHeightPrimaryOffset,
+		BasicInfoZeroStatic.PanelHeight
+	);
+	Exe.SetUint32(
+		compactHeightAPPhy + BasicInfoZeroStatic.CompactHeightAPOffset,
+		BasicInfoZeroStatic.PanelHeight
+	);
+	Exe.SetUint32(
+		compactHeightSavedPhy + BasicInfoZeroStatic.CompactHeightSavedOffset,
+		BasicInfoZeroStatic.PanelHeight
+	);
+	Exe.SetCALL(
+		factorySizePhy + BasicInfoZeroStatic.WindowFactoryCallOffset,
+		factoryCodeVir
+	);
+	Exe.SetJMP(titleButtonsPhy, titleButtonBaseCreateCodeVir, 0);
+	Exe.SetCALL(titleButtonsSecondPhy, titleButtonMiniCreateCodeVir, 0);
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("ROGlobalZeroBasicInfo.QjsOnly", {
+			factoryCodeVir,
+			factoryCodeSize: factoryCode.bytes.length,
+			factoryCallVir: BasicInfoZeroStatic.WindowFactorySizeCall +
+				BasicInfoZeroStatic.WindowFactoryCallOffset,
+			createVtableVir: BasicInfoZeroStatic.WindowCreateVtableEntry,
+			createCodeVir,
+			createCodeSize: createCode.bytes.length,
+			drawLifecycleVtableVir: BasicInfoZeroStatic.WindowDrawVtableEntry,
+			drawLifecycleCodeVir,
+			drawLifecycleCodeSize: drawLifecycleCode.bytes.length,
+			classicCodeVir,
+			classicCodeSize: classicCode.bytes.length,
+			classicInsertVir: BasicInfoZeroStatic.ClassicCompactInsert,
+			classicExitVir: BasicInfoZeroStatic.ClassicCompactExit,
+			specialCodeVir,
+			specialCodeSize: specialCode.bytes.length,
+			specialInsertVir: BasicInfoZeroStatic.SpecialCompactInsert,
+			specialExitVir: BasicInfoZeroStatic.SpecialCompactExit,
+			paths,
+			tooltips: ["Health Pool", "Mana Pool", "Activity Points"],
+			tooltipAnchor: "live mouse +16,-16",
+			apMissingMaximumFallback: BasicInfoZeroStatic.MissingAPMaximum,
+			titleStyle: "bold white with one-pixel black outline",
+			childDrawCodeVir,
+			childDrawCodeSize: childDrawCode.bytes.length,
+			jobIconResolution:
+				"exact framed, framed lineage alias, stock, Novice fallback",
+			jobAliasCount: BasicInfoZeroStatic.JobAliases.length,
+			stockJobIconSize: BasicInfoZeroStatic.StockJobIconSize,
+			stockJobIconOffset: BasicInfoZeroStatic.StockJobIconOffset,
+			childHoverCodeVir,
+			childHoverCodeSize: childHoverCode.bytes.length,
+			barHoverCodeVir,
+			barHoverCodeSize: barHoverCode.bytes.length,
+			childDestructorCodeVir,
+			childDestructorCodeSize: childDestructorCode.bytes.length,
+			childVtableVir: childVtable.vir,
+			childVtableSize: childVtable.size,
+			parentMouseVtableVir: BasicInfoZeroStatic.WindowMouseVtableEntry,
+			compactToggleVir: BasicInfoZeroStatic.CompactToggleBlock,
+			compactToggleCodeVir,
+			themeStateVir: theme.stateVir,
+			factorySizeVir: BasicInfoZeroStatic.WindowFactorySizeCall,
+			factoryWidth: BasicInfoZeroStatic.PanelWidth,
+			factoryHeight: BasicInfoZeroStatic.PanelHeight,
+			compactHeightPrimaryVir: BasicInfoZeroStatic.CompactHeightPrimary,
+			compactHeightAPVir: BasicInfoZeroStatic.CompactHeightAP,
+			compactHeightSavedVir: BasicInfoZeroStatic.CompactHeightSaved,
+			titleButtonsCreateVir: BasicInfoZeroStatic.TitleButtonsCreate,
+			titleButtonsOriginalVir: BasicInfoZeroStatic.TitleButtonsOriginal,
+			titleButtonsResumeVir: BasicInfoZeroStatic.TitleButtonsResume,
+			titleButtonsSecondCreateVir:
+				BasicInfoZeroStatic.TitleButtonsSecondCreate,
+			titleButtonsSecondOriginalVir:
+				BasicInfoZeroStatic.TitleButtonsSecondOriginal,
+			titleButtonStatePhy,
+			titleButtonStateVir,
+			titleButtonBaseCreateCodeVir,
+			titleButtonBaseCreateCodeSize:
+				titleButtonBaseCreateCode.bytes.length,
+			titleButtonMiniCreateCodeVir,
+			titleButtonMiniCreateCodeSize:
+				titleButtonMiniCreateCode.bytes.length,
+			titleButtonsPolicy:
+				"both stock children retained; Draw synchronizes Classic visible and New hidden",
+			externalModules: 0
+		});
+	}
+	return true;
+};
+
+ROGlobalZeroBasicInfo.validate = function()
+{
+	if (Exe.BuildDate !== BasicInfoZeroStatic.BuildDate)
+		return false;
+	try
+	{
+		BasicInfoZeroStatic.assertVtables();
+		BasicInfoZeroStatic.assertCode(
+			"classic compact draw branch",
+			BasicInfoZeroStatic.ClassicCompactInsert,
+			BasicInfoZeroStatic.ClassicCompactBytes
+		);
+		BasicInfoZeroStatic.assertCode(
+			"AP-class compact draw branch",
+			BasicInfoZeroStatic.SpecialCompactInsert,
+			BasicInfoZeroStatic.SpecialCompactBytes
+		);
+		BasicInfoZeroStatic.assertCode(
+			"Alt+V compact/expanded selector",
+			BasicInfoZeroStatic.CompactToggleBlock,
+			BasicInfoZeroStatic.CompactToggleBytes
+		);
+		BasicInfoZeroStatic.assertCode(
+			"UIBasicInfoWnd factory size call",
+			BasicInfoZeroStatic.WindowFactorySizeCall,
+			BasicInfoZeroStatic.WindowFactorySizeBytes
+		);
+		BasicInfoZeroStatic.assertCode(
+			"UIBasicInfoWnd classic factory height",
+			BasicInfoZeroStatic.FactoryClassicHeight,
+			BasicInfoZeroStatic.FactoryClassicHeightBytes
+		);
+		BasicInfoZeroStatic.assertCode(
+			"UIBasicInfoWnd primary compact height",
+			BasicInfoZeroStatic.CompactHeightPrimary,
+			BasicInfoZeroStatic.CompactHeightPrimaryBytes
+		);
+		BasicInfoZeroStatic.assertCode(
+			"UIBasicInfoWnd AP compact height",
+			BasicInfoZeroStatic.CompactHeightAP,
+			BasicInfoZeroStatic.CompactHeightAPBytes
+		);
+		BasicInfoZeroStatic.assertCode(
+			"UIBasicInfoWnd saved compact height",
+			BasicInfoZeroStatic.CompactHeightSaved,
+			BasicInfoZeroStatic.CompactHeightSavedBytes
+		);
+		BasicInfoZeroStatic.assertCode(
+			"UIBasicInfoWnd title-button creation",
+			BasicInfoZeroStatic.TitleButtonsCreate,
+			BasicInfoZeroStatic.TitleButtonsBytes
+		);
+		BasicInfoZeroStatic.assertCode(
+			"UIBasicInfoWnd second title-button creation",
+			BasicInfoZeroStatic.TitleButtonsSecondCreate,
+			BasicInfoZeroStatic.TitleButtonsSecondBytes
+		);
+		return true;
+	}
+	catch (error)
+	{
+		return false;
+	}
+};

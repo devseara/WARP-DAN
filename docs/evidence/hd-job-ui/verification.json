@@ -1,0 +1,88 @@
+{
+  "date": "2026-09-12",
+  "asset_tests": 8,
+  "native_bridge_tests": 4,
+  "resource_paths": 61,
+  "unique_asset_pairs": 18,
+  "all_resource_source_hashes_and_native_pairs": "passed",
+  "warp_profiles": [
+    {
+      "case": "clean",
+      "sha256": "e1ca70261f1334836f444a29edf5e0fc531766ec34370b835e19782dbd3e6174",
+      "ui_calls": 9,
+      "payload": "0x171d6a0",
+      "deployed_pairs": 61,
+      "changed_original_call_bytes": 27
+    },
+    {
+      "case": "clan-v11",
+      "sha256": "415eff29c4cda9942d6d2a456e17385443ca5e6a2d8802b6b2368cd24c3c48b0",
+      "ui_calls": 9,
+      "payload": "0x2433360",
+      "deployed_pairs": 61,
+      "changed_original_call_bytes": 32
+    },
+    {
+      "case": "altqa",
+      "sha256": "11fb7016a600629c0b0012d3da229cacc0f521c6789bb4c6a25d2575205e6671",
+      "ui_calls": 9,
+      "payload": "0x17242c0",
+      "deployed_pairs": 61,
+      "changed_original_call_bytes": 0
+    }
+  ],
+  "deployed_client": [
+    {
+      "case": "check",
+      "file": "hd-job-ui-v5-check.exe",
+      "sha256": "f8eff342d87dc226f95c809f7b0089256cef893be50d0c14a0d001027b2c9523",
+      "embedded_priority": [
+        "hd_job_ui_v4_world.grf",
+        "dual_weapon_male_assets.grf",
+        "update.grf",
+        "maindata.grf",
+        "mapdata.grf",
+        "palettedata.grf",
+        "spritedata.grf",
+        "data.grf",
+        "greyworld.grf"
+      ],
+      "loader": "0x2437fd0",
+      "startup_call": "0xdb98b6",
+      "ui_hook_enabled": true
+    }
+  ],
+  "visual_acceptance": "v4 male Monk only; expanded coverage and complete live matrix pending",
+  "source_only_packaging": {
+    "date": "2026-09-12",
+    "generated_assets_tracked": false,
+    "header": "WARP GPL / Louis T Steinhil / Last Modified / Description",
+    "missing_asset_rejected_before_ui_mutation": true,
+    "warp_profiles": [
+      {
+        "case": "clean",
+        "sha256": "3a9b2fb5f1a91c830b6dd278c1f68ca409483c05ae622249a5049f42e9668b15",
+        "ui_calls": 9,
+        "payload": "0x171d6a0",
+        "deployed_pairs": 61,
+        "changed_original_call_bytes": 27
+      },
+      {
+        "case": "clan-v11",
+        "sha256": "c821bb77d9780d66e7c71182721e2578d840d885683b64200a7d87f5aed60b94",
+        "ui_calls": 9,
+        "payload": "0x2433360",
+        "deployed_pairs": 61,
+        "changed_original_call_bytes": 32
+      },
+      {
+        "case": "altqa",
+        "sha256": "fb02633169edf7f47b4549930e3334f6acf15254c29b4683e156362f2be2ec16",
+        "ui_calls": 9,
+        "payload": "0x17242c0",
+        "deployed_pairs": 61,
+        "changed_original_call_bytes": 0
+      }
+    ]
+  }
+}

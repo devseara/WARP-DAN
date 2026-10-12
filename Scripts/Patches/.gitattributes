@@ -1,0 +1,5 @@
+# Bestiary session: WARP and the accepted source ledger require CRLF.
+BestiaryUI.qjs text eol=crlf
+ItemCollectionUI.qjs text eol=crlf
+NewButtonVisibility.qjs text eol=crlf
+ROGlobalZeroMenu.qjs text eol=crlf

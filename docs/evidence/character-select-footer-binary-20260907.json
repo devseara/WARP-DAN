@@ -1,0 +1,168 @@
+{
+  "schema": "character_select_footer_fix/v1",
+  "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\dual_weapon_male_hand_reference\\client-male-hands-preserved.exe",
+  "source_sha256": "93b65d24eeeaf54b0a77002b30c6b375253e942507685aba6d567f365a495bc0",
+  "output": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\character_select_footer_20260907\\client-character-footer.exe",
+  "output_sha256": "c87d98b5b132186ce2cb4378b7ac308064282ba9f2006fae3f2a29521ed83f82",
+  "instruction_count": 26,
+  "changed_byte_count_including_checksum": 48,
+  "all_other_bytes_identical": true,
+  "edits": [
+    {
+      "va": "0x79c646",
+      "file_offset": 3783238,
+      "before": "8a 87 ae 00 00 00",
+      "after": "8a 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c655",
+      "file_offset": 3783253,
+      "before": "88 87 ae 00 00 00",
+      "after": "88 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c761",
+      "file_offset": 3783521,
+      "before": "0f b6 8f 8a 00 00 00",
+      "after": "0f b6 8f f2 00 00 00"
+    },
+    {
+      "va": "0x79c81b",
+      "file_offset": 3783707,
+      "before": "8b 87 a2 00 00 00",
+      "after": "8b 87 0a 01 00 00"
+    },
+    {
+      "va": "0x79c828",
+      "file_offset": 3783720,
+      "before": "83 bf 9e 00 00 00 00",
+      "after": "83 bf 06 01 00 00 00"
+    },
+    {
+      "va": "0x79c88e",
+      "file_offset": 3783822,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c8f3",
+      "file_offset": 3783923,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c964",
+      "file_offset": 3784036,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c9cb",
+      "file_offset": 3784139,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79ca38",
+      "file_offset": 3784248,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79caa3",
+      "file_offset": 3784355,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cb0b",
+      "file_offset": 3784459,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cb80",
+      "file_offset": 3784576,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cc01",
+      "file_offset": 3784705,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cc6c",
+      "file_offset": 3784812,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cd0f",
+      "file_offset": 3784975,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cd9b",
+      "file_offset": 3785115,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79ce12",
+      "file_offset": 3785234,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79f1c9",
+      "file_offset": 3794377,
+      "before": "0f b6 8b ae 00 00 00",
+      "after": "0f b6 8b 16 01 00 00"
+    },
+    {
+      "va": "0x79f304",
+      "file_offset": 3794692,
+      "before": "0f b6 83 84 00 00 00",
+      "after": "0f b6 83 ec 00 00 00"
+    },
+    {
+      "va": "0x79f34c",
+      "file_offset": 3794764,
+      "before": "0f b6 83 85 00 00 00",
+      "after": "0f b6 83 ed 00 00 00"
+    },
+    {
+      "va": "0x79f394",
+      "file_offset": 3794836,
+      "before": "0f b6 83 86 00 00 00",
+      "after": "0f b6 83 ee 00 00 00"
+    },
+    {
+      "va": "0x79f3dc",
+      "file_offset": 3794908,
+      "before": "0f b6 83 87 00 00 00",
+      "after": "0f b6 83 ef 00 00 00"
+    },
+    {
+      "va": "0x79f424",
+      "file_offset": 3794980,
+      "before": "0f b6 83 88 00 00 00",
+      "after": "0f b6 83 f0 00 00 00"
+    },
+    {
+      "va": "0x79f46c",
+      "file_offset": 3795052,
+      "before": "0f b6 83 89 00 00 00",
+      "after": "0f b6 83 f1 00 00 00"
+    },
+    {
+      "va": "0x79f4b9",
+      "file_offset": 3795129,
+      "before": "8d 83 8e 00 00 00",
+      "after": "8d 83 f6 00 00 00"
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Relocate the native    *
+*                   pet/homunculus/mercenary name arrays to 128 bytes,     *
+*                   redirect all profiled executable references, and       *
+*                   consume widened status packet fields. No display-name  *
+*                   alias or truncated key. Native hooks, data and code    *
+*                   revert together with the selecting patch.              *
+*                                                                          *
+\**************************************************************************/
+
+CompanionNamesStatic = {
+	Globals: [
+		{kind: "pet", original: 0x015FB3B8, refs: [[0x008792B2, 0], [0x008792F3, 0], [0x00879318, 0], [0x00886352, 0], [0x008863F4, 0], [0x00C9EC81, 0], [0x00CA667D, 0], [0x00CA66D3, 0], [0x00CB31D2, 0], [0x00CB3C9A, 0], [0x00CD22C4, 0], [0x00CD230D, 0], [0x00D836BA, 0]]},
+		{kind: "hom", original: 0x015FF91C, refs: [[0x0087569C, 0], [0x008756DD, 0], [0x00875702, 0], [0x008844C8, 0], [0x0088451E, 0], [0x00CA7850, 0], [0x00CD1B70, 0], [0x00CD1B8B, 0], [0x00CD1D3D, 0], [0x00CD1EED, 0], [0x00CD20F0, 0], [0x00CD210B, 0]]},
+		{kind: "mer", original: 0x015FF9CC, refs: [[0x0087F53A, 0], [0x0087F559, 0], [0x00CA7BA5, 0], [0x00CC6C1C, 0]]}
+	],
+	Fields: [
+		[0x00CA665A, 0x015E81BB, 0x015E8223],
+		[0x00CA666A, 0x015E81B3, 0x015E821B],
+		[0x00CA669C, 0x015E81B5, 0x015E821D],
+		[0x00CA66A8, 0x015E81B7, 0x015E821F],
+		[0x00CA66B4, 0x015E81B9, 0x015E8221],
+		[0x00CA66F0, 0x015E81B2, 0x015E821A],
+		[0x00CA66FC, 0x015E81B3, 0x015E821B],
+		[0x00CA671B, 0x015E81B3, 0x015E821B],
+		[0x00CA6731, 0x015E81B3, 0x015E821B],
+		[0x00CA673F, 0x015E81B5, 0x015E821D],
+		[0x00CA674D, 0x015E81B7, 0x015E821F],
+		[0x00CA675A, 0x015E81B9, 0x015E8221],
+		[0x00CA6768, 0x015E81B2, 0x015E821A],
+		[0x00CA7C19, 0x015E81C6, 0x015E822E],
+		[0x00CA7C23, 0x015E81C8, 0x015E8230],
+		[0x00CA7C32, 0x015E81D0, 0x015E8238],
+		[0x00CA7C46, 0x015E81CC, 0x015E8234],
+		[0x00CA7C5A, 0x015E81D4, 0x015E823C],
+		[0x00CA7C70, 0x015E81DC, 0x015E8244],
+		[0x00CA7C7A, 0x015E81DE, 0x015E8246],
+		[0x00CA7C84, 0x015E81E2, 0x015E824A],
+		[0x00CA7C90, 0x015E81E6, 0x015E824E],
+		[0x00CA7C9A, 0x015E81D8, 0x015E8240]
+	]
+};
+
+CompanionNamesStatic.buildCopyName = function(copyVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x55, 0x8B, 0xEC);
+	a.emit(0x68); a.dword(128);
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08);
+	a.call(copyVir);
+	a.emit(0x5D, 0xC3); // cdecl: the native caller removes its two arguments.
+	return a;
+};
+
+CompanionNamesStatic.buildHomName = function(nameVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x6A, 0xFF, 0x68); a.dword(128);
+	a.emit(0x68); a.dword(nameVir);
+	a.jmp(0x00CD1EF1);
+	return a;
+};
+
+CompanionNamesStatic.buildHomFields = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	// The name has already been consumed. Every remaining ESI packet access
+	// uses the original stats displacement, so bias only this packet pointer.
+	a.emit(0x83, 0xC6, 0x68);
+	a.emit(0x0F, 0xB6, 0x46, 0x1A, 0x83, 0xC4, 0x14);
+	a.jmp(0x00CD1EFD);
+	return a;
+};
+
+CompanionNamesStatic.install = function(state)
+{
+	if (ExtNameTextStatic.ActiveBuildDate !== 20250716 || state.companionNames128)
+		return state;
+	const sites = [];
+	for (const group of CompanionNamesStatic.Globals)
+		for (const ref of group.refs)
+		{
+			const phy = Exe.Vir2Phy(ref[0], CODE);
+			if (phy < 0 || Exe.GetUint32(phy) !== group.original + ref[1])
+				throw Error("CompanionNamesStatic: native name reference changed");
+			sites.push({phy, group: group.kind, offset: ref[1]});
+		}
+	const fields = CompanionNamesStatic.Fields.map(field => {
+		const phy = Exe.Vir2Phy(field[0], CODE);
+		if (phy < 0 || Exe.GetUint32(phy) !== field[1])
+			throw Error("CompanionNamesStatic: packet field reference changed");
+		return {phy, value: field[2]};
+	});
+	const homNamePhy = ExtNameStaticAsm.assertCode("homunculus name capacity",
+		0x00CD1EE8, "6A FF 6A 20 68 1C F9 5F 01");
+	const homFieldsPhy = ExtNameStaticAsm.assertCode("homunculus stats",
+		0x00CD1EF6, "0F B6 46 1A 83 C4 14");
+	const petCopyPhy = ExtNameStaticAsm.assertCode("pet name copy", 0x00CA6681, "E8 CA 31 88 FF");
+	const merCopyPhy = ExtNameStaticAsm.assertCode("mercenary name copy", 0x00CA7BA9, "E8 A2 1C 88 FF");
+	// The old high-level 0x01A2 homunculus alias is not sent by Main20250716:
+	// homunculi use 0x0BA4. Reject that obsolete layout; real pet levels <=275.
+	const petAliasPhy = ExtNameStaticAsm.assertCode("legacy pet/hom alias",
+		0x00CA6671, "0F 8D 93 00 00 00");
+	const names = {};
+	for (const group of CompanionNamesStatic.Globals)
+	{
+		const [phy, vir] = Exe.Allocate(128, 0x10);
+		ExtNameTextStatic.zeroBlock(phy, 128);
+		names[group.kind] = vir;
+	}
+	const copyZ = ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
+	const copy = ExtNameTextStatic.allocateCode(CompanionNamesStatic.buildCopyName(copyZ.virAddr));
+	const homName = ExtNameTextStatic.allocateCode(CompanionNamesStatic.buildHomName(names.hom));
+	const homFields = ExtNameTextStatic.allocateCode(CompanionNamesStatic.buildHomFields());
+	const owner = Exe.ActivePatch;
+
+	Exe.BeginTag("CompanionNamesStatic.NamePackets128", true);
+	try
+	{
+		for (const site of sites) Exe.SetUint32(site.phy, names[site.group] + site.offset);
+		for (const field of fields) Exe.SetUint32(field.phy, field.value);
+		Exe.SetJMP(homNamePhy, homName.virAddr, 0);
+		Exe.SetNOPs(homNamePhy + 5, 4);
+		Exe.SetJMP(homFieldsPhy, homFields.virAddr, 0);
+		Exe.SetNOPs(homFieldsPhy + 5, 2);
+		Exe.SetCALL(petCopyPhy, copy.virAddr, 0);
+		Exe.SetCALL(merCopyPhy, copy.virAddr, 0);
+		Exe.SetUint32(petAliasPhy + 2, (0x00C9E1D7 - (0x00CA6671 + 6)) >>> 0);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+	state.companionNames128 = true;
+	return state;
+};

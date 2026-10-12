@@ -10,13 +10,17 @@ import re
 import subprocess
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('build',type=Path);args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('build',type=Path)
+    ap.add_argument('--output',type=Path,help='Parent directory for new variant builds')
+    args=ap.parse_args()
     build=args.build.resolve();fixture=build/'warp-fixture'
+    destination=args.output.resolve() if args.output else build.parent
+    destination.mkdir(parents=True,exist_ok=True)
     source=(build/'build-profile.yml').read_text(encoding='utf8')
     assert all(re.search(r'^\s+- '+name+r'\s*$',source,re.M) for name in ('VipUI','BattlepassUI','GachaUI'))
     for name,remove,reverse in [('reverse',[],True),('bp-only',['GachaUI'],False),
                                  ('gacha-only',['BattlepassUI'],False),('vip-only',['BattlepassUI','GachaUI'],False)]:
-        output=build.parent/name;output.mkdir(exist_ok=False)
+        output=destination/name;output.mkdir(exist_ok=False)
         saved=source
         for patch in remove:saved=re.sub(r'^ +-[ ]+'+patch+r'[ \t]*\r?\n','',saved,flags=re.M)
         if reverse:
@@ -32,7 +36,7 @@ def main():
         skipped=fixture/'SkippedPatches.log'
         assert not skipped.is_file() or not skipped.read_text(encoding='utf-8-sig').strip()
         data=target.read_bytes();assert b'VipUI.v4\0' in data
-        for patch,marker in [('BattlepassUI',b'BattlepassUI.'),('GachaUI',b'GachaUI.v20\0')]:
+        for patch,marker in [('BattlepassUI',b'BattlepassUI.'),('GachaUI',b'GachaUI.v22\0')]:
             if patch in remove:assert marker not in data,(name,'unexpected',patch)
             else:assert marker in data,(name,'missing',patch)
         print('PASS staged variant',name,target,flush=True)

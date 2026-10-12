@@ -13,7 +13,7 @@ if args.game:
     lookups=artwork(m,args.game,items=(501,))
 for target in range(6,11):
     p=snapshot(level=target-1,flags=1|2|4|8,token=target+900)
-    obj=m.ready(p);before=len(m.sent);m.click(obj,315,303)
+    obj=m.ready(p);before=len(m.sent);m.click(obj,196,259)
     assert len(m.sent)==before+1 and struct.unpack_from('<H',m.sent[-1],10)[0]==4,'Ticket Upgrade must ask the server directly'
     assert not m.r(qs+16),'No unnecessary EXP confirmation for a ticket'
     struct.pack_into('<H',p,10,1|2|4|8|32|64)
@@ -25,11 +25,11 @@ for target in range(6,11):
     assert any(row[0]==f'VIP {target} Ticket' for row in m.texts)
     assert sum(row[0]=='Inventory:' for row in m.texts)==1,'Only one requirement box'
     pix,w,h=m.pixels(q)
-    assert m.r(pix+(25*w+6)*4)==0xFFC3D4EC and m.r(pix+(73*w+6)*4)==0xFFFFFFFF,'No second row'
+    assert m.r(pix+(25*w+6)*4)==0xFFAFBED5 and m.r(pix+(73*w+6)*4)==0xFFF4FCFF,'One blue-beveled row; no second row'
     before=len(m.sent);m.click(q,150,152);assert len(m.sent)==before,'Cannot submit without the ticket'
     m.click(q,210,152);assert not m.r(qs+16) and len(m.sent)==before,'Cancel does not consume a ticket'
     # Saved ticket opens directly above main and retains compact control positions.
-    struct.pack_into('<H',p,10,1|2|4|8|32);obj=m.ready(p);m.click(obj,315,303);q=m.r(qs)
+    struct.pack_into('<H',p,10,1|2|4|8|32);obj=m.ready(p);m.click(obj,196,259);q=m.r(qs)
     assert m.r(qs+16)==2 and m.window_order()[-1]==q and len(m.sent)==before
     struct.pack_into('<H',p,10,1|2|4|8|32|64|128);struct.pack_into('<I',p,2352,1)
     obj=m.ready(p);q=m.r(qs)
@@ -37,7 +37,7 @@ for target in range(6,11):
     m.click(q,150,152);assert len(m.sent)==before and m.r(qs+16)==5
     m.click(q,164,86);assert len(m.sent)==before+1 and struct.unpack_from('<H',m.sent[-1],10)[0]==7
     m.click(q,150,152);assert len(m.sent)==before+1,'Duplicate click'
-obj=m.ready(snapshot(level=10,flags=1|2|4));before=len(m.sent);m.click(obj,315,303)
+obj=m.ready(snapshot(level=10,flags=1|2|4));before=len(m.sent);m.click(obj,196,259)
 assert len(m.sent)==before and not m.r(qs+16),'Maximum VIP 10 cannot upgrade'
 if args.game:assert lookups and set(lookups)=={501},'Native item helper must render the configured placeholder'
 print('PASS: direct ticket requests for VIP 6-10, compact 360x174 one-box UI, exact names, missing/ready/Cancel/reopen/old-coordinate/replay gates, frontmost window and max-level lock; no live purchases.')

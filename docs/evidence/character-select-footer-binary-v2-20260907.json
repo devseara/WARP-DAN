@@ -1,0 +1,234 @@
+{
+  "schema": "character_select_footer_fix/v1",
+  "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\dual_weapon_male_hand_reference\\client-male-hands-preserved.exe",
+  "source_sha256": "93b65d24eeeaf54b0a77002b30c6b375253e942507685aba6d567f365a495bc0",
+  "output": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\character_select_footer_20260907\\client-character-footer-v2.exe",
+  "output_sha256": "eed157256a8b8fbedcf6a1e11ab04c930cb1975401e44c137524f6f92d628357",
+  "instruction_count": 37,
+  "changed_byte_count_including_checksum": 66,
+  "all_other_bytes_identical": true,
+  "edits": [
+    {
+      "va": "0x79c646",
+      "file_offset": 3783238,
+      "before": "8a 87 ae 00 00 00",
+      "after": "8a 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c655",
+      "file_offset": 3783253,
+      "before": "88 87 ae 00 00 00",
+      "after": "88 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c761",
+      "file_offset": 3783521,
+      "before": "0f b6 8f 8a 00 00 00",
+      "after": "0f b6 8f f2 00 00 00"
+    },
+    {
+      "va": "0x79c81b",
+      "file_offset": 3783707,
+      "before": "8b 87 a2 00 00 00",
+      "after": "8b 87 0a 01 00 00"
+    },
+    {
+      "va": "0x79c828",
+      "file_offset": 3783720,
+      "before": "83 bf 9e 00 00 00 00",
+      "after": "83 bf 06 01 00 00 00"
+    },
+    {
+      "va": "0x79c88e",
+      "file_offset": 3783822,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c8f3",
+      "file_offset": 3783923,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c964",
+      "file_offset": 3784036,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79c9cb",
+      "file_offset": 3784139,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79ca38",
+      "file_offset": 3784248,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79caa3",
+      "file_offset": 3784355,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cb0b",
+      "file_offset": 3784459,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cb80",
+      "file_offset": 3784576,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cc01",
+      "file_offset": 3784705,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cc6c",
+      "file_offset": 3784812,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cd0f",
+      "file_offset": 3784975,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79cd9b",
+      "file_offset": 3785115,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79ce12",
+      "file_offset": 3785234,
+      "before": "0f b6 87 ae 00 00 00",
+      "after": "0f b6 87 16 01 00 00"
+    },
+    {
+      "va": "0x79f1c9",
+      "file_offset": 3794377,
+      "before": "0f b6 8b ae 00 00 00",
+      "after": "0f b6 8b 16 01 00 00"
+    },
+    {
+      "va": "0x79f304",
+      "file_offset": 3794692,
+      "before": "0f b6 83 84 00 00 00",
+      "after": "0f b6 83 ec 00 00 00"
+    },
+    {
+      "va": "0x79f34c",
+      "file_offset": 3794764,
+      "before": "0f b6 83 85 00 00 00",
+      "after": "0f b6 83 ed 00 00 00"
+    },
+    {
+      "va": "0x79f394",
+      "file_offset": 3794836,
+      "before": "0f b6 83 86 00 00 00",
+      "after": "0f b6 83 ee 00 00 00"
+    },
+    {
+      "va": "0x79f3dc",
+      "file_offset": 3794908,
+      "before": "0f b6 83 87 00 00 00",
+      "after": "0f b6 83 ef 00 00 00"
+    },
+    {
+      "va": "0x79f424",
+      "file_offset": 3794980,
+      "before": "0f b6 83 88 00 00 00",
+      "after": "0f b6 83 f0 00 00 00"
+    },
+    {
+      "va": "0x79f46c",
+      "file_offset": 3795052,
+      "before": "0f b6 83 89 00 00 00",
+      "after": "0f b6 83 f1 00 00 00"
+    },
+    {
+      "va": "0x79f4b9",
+      "file_offset": 3795129,
+      "before": "8d 83 8e 00 00 00",
+      "after": "8d 83 f6 00 00 00"
+    },
+    {
+      "va": "0x79abbc",
+      "file_offset": 3776444,
+      "before": "8a 82 ae 00 00 00",
+      "after": "8a 82 16 01 00 00"
+    },
+    {
+      "va": "0x79abf1",
+      "file_offset": 3776497,
+      "before": "ff b2 a2 00 00 00",
+      "after": "ff b2 0a 01 00 00"
+    },
+    {
+      "va": "0x79d2c0",
+      "file_offset": 3786432,
+      "before": "8a 87 ae 00 00 00",
+      "after": "8a 87 16 01 00 00"
+    },
+    {
+      "va": "0x79d30e",
+      "file_offset": 3786510,
+      "before": "ff b7 a2 00 00 00",
+      "after": "ff b7 0a 01 00 00"
+    },
+    {
+      "va": "0x79d701",
+      "file_offset": 3787521,
+      "before": "83 be 9e 00 00 00 00",
+      "after": "83 be 06 01 00 00 00"
+    },
+    {
+      "va": "0x79d71c",
+      "file_offset": 3787548,
+      "before": "8a 86 ae 00 00 00",
+      "after": "8a 86 16 01 00 00"
+    },
+    {
+      "va": "0x8eeed0",
+      "file_offset": 5169872,
+      "before": "0f b6 8e 8a 00 00 00",
+      "after": "0f b6 8e f2 00 00 00"
+    },
+    {
+      "va": "0x8eeefa",
+      "file_offset": 5169914,
+      "before": "8b 86 a2 00 00 00",
+      "after": "8b 86 0a 01 00 00"
+    },
+    {
+      "va": "0xd224d4",
+      "file_offset": 9574612,
+      "before": "0f b6 86 8a 00 00 00",
+      "after": "0f b6 86 f2 00 00 00"
+    },
+    {
+      "va": "0xd22505",
+      "file_offset": 9574661,
+      "before": "8d b0 8e 00 00 00",
+      "after": "8d b0 f6 00 00 00"
+    },
+    {
+      "va": "0xd224f6",
+      "file_offset": 9574646,
+      "before": "b9 2b 00 00 00",
+      "after": "b9 45 00 00 00"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "status": "user_accepted_and_saved_to_grf",
+  "accepted_at": "2026-09-23T20:13:56.999300+00:00",
+  "user_statement": "accepted. save to grf now",
+  "scope": "Accepted v4 visual review: restored fuller male v2 build with localized first Combat 2 pose; female v3 correction retained.",
+  "resources": [
+    {
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.act",
+      "sha256": "75271f26dd1fe580d5e3c554851dc8c9b20a017b2325b69e0d945b9d93c5199b",
+      "bytes": 44748
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.spr",
+      "sha256": "cb946852e64f677b6ccf5b99564986b710c5860687a6581b54c229f4125090a0",
+      "bytes": 9647724
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.act",
+      "sha256": "088a89ead5b6d1c43f1c50bc2c56efe363291b77296a4b012570c7520543286a",
+      "bytes": 44628
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.spr",
+      "sha256": "0afd828df56e71697b0f409d44fff38f41f23fbfe889f1160ed313b9f5e95035",
+      "bytes": 7501464
+    }
+  ],
+  "installed_archive": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+  "installed_sha256": "a6005e69bf58f991dd2dc331074bd6874b70f19d4c82d615e1c2321bdeb6ce82",
+  "all_four_installed_resources_verified": true,
+  "standalone_grf": "Assets/HDNovice/proportions-v4/release/novice-hd-v4-accepted.grf",
+  "standalone_grf_sha256": "4bf99f854efeb742e71d7ab8a5c0dad3ea07454299ae66fc83e19a8556504abc",
+  "standalone_grf_entries": 4,
+  "live_client_test_claimed": false
+}

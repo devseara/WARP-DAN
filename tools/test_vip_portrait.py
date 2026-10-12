@@ -11,12 +11,20 @@ from test_vip_ui import VipMachine, snapshot
 from unicorn.x86_const import UC_X86_REG_ECX
 
 ROOT=Path(__file__).resolve().parents[1]
-parser=argparse.ArgumentParser();parser.add_argument('exe');args=parser.parse_args()
-m=VipMachine(args.exe)
-meta=json.loads((ROOT/'Inputs/VipUI/runtime.json').read_text())
-base=m.c['api']-meta['exports']['VipApi']
-portrait=base+meta['exports']['_VipPortrait@20'];canvas_slot=base+meta['exports']['VipPortraitCanvas']
-obj=m.ready();mode=m.alloc(0x100);world=m.alloc(0x40);actor=m.alloc(0x600)
+parser=argparse.ArgumentParser();parser.add_argument('exe');parser.add_argument('--battlepass',action='store_true');args=parser.parse_args()
+if args.battlepass:
+    from test_battlepass_board import BoardMachine
+    m=BoardMachine(args.exe);obj=m.obj
+    meta=json.loads((ROOT/'Inputs/BattlepassUI/runtime.json').read_text())
+    base=m.c['base'];portrait=m.c['portrait'];canvas_slot=base+meta['exports']['BpPortraitCanvas']
+    m.stub(0xDBBC4F,lambda:m.ret(0,m.alloc(m.args(1)[0])))
+    m.stub(0x86B950,lambda:m.ret(4));m.stub(0x86E240,lambda:m.ret(4))
+else:
+    m=VipMachine(args.exe);obj=m.ready()
+    meta=json.loads((ROOT/'Inputs/VipUI/runtime.json').read_text())
+    base=m.c['api']-meta['exports']['VipApi']
+    portrait=base+meta['exports']['_VipPortrait@20'];canvas_slot=base+meta['exports']['VipPortraitCanvas']
+mode=m.alloc(0x100);world=m.alloc(0x40);actor=m.alloc(0x600)
 m.w(mode+0xCC,world);m.w(world+0x2C,actor);m.w(actor+0x4C8,3)
 m.stub(0xA75340,lambda:m.ret(0,mode));m.stub(0xD5B580,lambda:m.ret(0,7))
 m.stub(0xD84760,lambda:m.ret(0,1))
@@ -70,11 +78,21 @@ render([0,0,0,0])
 pixels=struct.unpack('<'+'I'*(w*h),m.u.mem_read(pix,w*h*4))
 changed=[(i%w,i//w) for i,p in enumerate(pixels) if p!=0xFFAABBCC]
 assert changed and all(20<=x<112 and 48<=y<214 for x,y in changed)
+# The approved large portrait scales small native sprites up to 75% height,
+# preserving aspect ratio and keeping large robes inside the new frame.
+for width,height in ((80,130),(300,350)):
+    size[:]=[width,height];m.u.mem_write(pix,struct.pack('<I',0xFFAABBCC)*(w*h))
+    m.invoke(portrait,0,(obj,13,35,104,137))
+    pixels=struct.unpack('<'+'I'*(w*h),m.u.mem_read(pix,w*h*4))
+    changed=[(i%w,i//w) for i,p in enumerate(pixels) if p!=0xFFAABBCC]
+    assert changed and all(13<=x<117 and 35<=y<172 for x,y in changed)
+    assert max(y for x,y in changed)-min(y for x,y in changed)+1==102
 assert len(set(canvases))==1,'Reopening/drawing leaked preview frames'
 before=len(calls);m.w(world+0x2C,0);m.invoke(portrait,0,(obj,20,48,92,166))
 assert len(calls)==before,'Missing actor must not render stale character'
 m.w(world+0x2C,actor)
-m.invoke(m.c['destroy'],obj,(1,));assert not m.r(canvas_slot),'Portrait canvas leaked on parent destruction'
+m.invoke(m.c['cleanup'],0) if args.battlepass else m.invoke(m.c['destroy'],obj,(1,))
+assert not m.r(canvas_slot),'Portrait canvas leaked on parent destruction'
 print('PASS: native x86 portrait adapter ABI; upper/mid/lower/garment views, all four costumes, '
       'normal fallback, multi-slot deduplication, zero-view costumes, body/hair/palettes, '
       'no equipment writes, bounded large-robe fit, missing actor, reuse/destruction. Live sprite acceptance pending.')

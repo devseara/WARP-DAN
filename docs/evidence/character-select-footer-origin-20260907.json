@@ -1,0 +1,41 @@
+{
+  "schema": "character_select_footer_origin/v1",
+  "introducing_commit": "ea2e303ff4a9c1675974e3a37407d14b5a241f1a",
+  "commit_date": "2026-09-06 06:31:48 +0800",
+  "title": "feat(names): support canonical 128-byte names in Main 2025 client",
+  "baselines": [
+    {
+      "label": "previous_live",
+      "sha256": "7568ea2650cfc880d4a3bd2cd982ba2dffd720a6caf2eb11fc1842fc3b44b232",
+      "layout_sites": {
+        "original_layout": 330,
+        "canonical_layout": 0,
+        "other": 0
+      },
+      "slot_instruction": "0f b6 8f 8a 00 00 00",
+      "sex_instruction": "0f b6 87 ae 00 00 00"
+    },
+    {
+      "label": "user_repatch",
+      "sha256": "e09489696b05ab9497f727443885243582e0645bc5ddca753f6a6ddd303ea2b9",
+      "layout_sites": {
+        "original_layout": 0,
+        "canonical_layout": 330,
+        "other": 0
+      },
+      "slot_instruction": "0f b6 8f 8a 00 00 00",
+      "sex_instruction": "0f b6 87 ae 00 00 00"
+    },
+    {
+      "label": "installed_before_fix",
+      "sha256": "93b65d24eeeaf54b0a77002b30c6b375253e942507685aba6d567f365a495bc0",
+      "layout_sites": {
+        "original_layout": 0,
+        "canonical_layout": 330,
+        "other": 0
+      },
+      "slot_instruction": "0f b6 8f 8a 00 00 00",
+      "sex_instruction": "0f b6 87 ae 00 00 00"
+    }
+  ]
+}

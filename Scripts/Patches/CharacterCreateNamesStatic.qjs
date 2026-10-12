@@ -1,0 +1,108 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Grow its embedded      *
+*                   CHARACTER_INFO and owner by104 bytes, keep native      *
+*                   stats/edit controls coherent, and use a128-byte stack  *
+*                   name. Prefix validation stays native; exact            *
+*                   branch-aware caves avoid overlap. Native hooks, data   *
+*                   and code revert together with the selecting patch.     *
+*                                                                          *
+\**************************************************************************/
+
+CharacterCreateNamesStatic = {};
+CharacterCreateNamesStatic.Edits = [[7993747,"C7 87 C4 02 00 00 00 00 00 00","C7 87 2C 03 00 00 00 00 00 00"],[7993757,"C7 87 C0 02 00 00 00 00 00 00","C7 87 28 03 00 00 00 00 00 00"],[7993767,"C7 87 C8 02 00 00 00 00 00 00","C7 87 30 03 00 00 00 00 00 00"],[7993777,"C7 87 CC 02 00 00 00 00 00 00","C7 87 34 03 00 00 00 00 00 00"],[7993824,"88 87 94 02 00 00","88 87 FC 02 00 00"],[7993833,"88 87 95 02 00 00","88 87 FD 02 00 00"],[7993842,"88 87 96 02 00 00","88 87 FE 02 00 00"],[7993851,"88 87 97 02 00 00","88 87 FF 02 00 00"],[7993860,"88 87 98 02 00 00","88 87 00 03 00 00"],[7993869,"88 87 99 02 00 00","88 87 01 03 00 00"],[7994016,"88 87 9A 02 00 00","88 87 02 03 00 00"],[7994057,"88 87 BE 02 00 00","88 87 26 03 00 00"],[7994170,"0F B6 87 BE 02 00 00","0F B6 87 26 03 00 00"],[7994270,"80 BF BE 02 00 00 01","80 BF 26 03 00 00 01"],[7994324,"0F B6 87 BE 02 00 00","0F B6 87 26 03 00 00"],[7994402,"0F B6 87 BE 02 00 00","0F B6 87 26 03 00 00"],[7994505,"0F B6 87 BE 02 00 00","0F B6 87 26 03 00 00"],[7994600,"0F B6 87 BE 02 00 00","0F B6 87 26 03 00 00"],[7994696,"0F B6 87 BE 02 00 00","0F B6 87 26 03 00 00"],[7994860,"C7 87 5C 03 00 00 00 00 00 00","C7 87 C4 03 00 00 00 00 00 00"],[7994876,"89 87 60 03 00 00","89 87 C8 03 00 00"],[7994885,"C7 87 64 03 00 00 00 00 00 00","C7 87 CC 03 00 00 00 00 00 00"],[7994897,"C7 87 68 03 00 00 00 00 00 00","C7 87 D0 03 00 00 00 00 00 00"],[7994907,"0F 11 87 D0 02 00 00","0F 11 87 38 03 00 00"],[7994914,"66 0F D6 87 E0 02 00 00","66 0F D6 87 48 03 00 00"],[7994922,"66 0F D6 87 30 03 00 00","66 0F D6 87 98 03 00 00"],[7994930,"C6 87 38 03 00 00 00","C6 87 A0 03 00 00 00"],[7994937,"66 89 87 54 03 00 00","66 89 87 BC 03 00 00"],[7995557,"68 6C 03 00 00","68 D4 03 00 00"],[7996881,"89 83 C0 02 00 00","89 83 28 03 00 00"],[7996892,"8B 8B C0 02 00 00","8B 8B 28 03 00 00"],[7996913,"8B 83 C0 02 00 00","8B 83 28 03 00 00"],[7996921,"C7 80 88 00 00 00 17 00 00 00","C7 80 88 00 00 00 7F 00 00 00"],[7996931,"FF B3 C0 02 00 00","FF B3 28 03 00 00"],[7997075,"89 B3 C8 02 00 00","89 B3 30 03 00 00"],[7997238,"89 B3 CC 02 00 00","89 B3 34 03 00 00"],[7997308,"89 83 58 03 00 00","89 83 C0 03 00 00"],[7997319,"8B 8B 58 03 00 00","8B 8B C0 03 00 00"],[7997339,"8B 8B 58 03 00 00","8B 8B C0 03 00 00"],[7997359,"8B 8B 58 03 00 00","8B 8B C0 03 00 00"],[7997382,"8B 8B 58 03 00 00","8B 8B C0 03 00 00"],[7997400,"8B 8B 58 03 00 00","8B 8B C0 03 00 00"],[7997419,"FF B3 58 03 00 00","FF B3 C0 03 00 00"],[7997491,"89 83 54 03 00 00","89 83 BC 03 00 00"],[7997502,"8B 8B 54 03 00 00","8B 8B BC 03 00 00"],[7997522,"8B 8B 54 03 00 00","8B 8B BC 03 00 00"],[7997542,"8B 8B 54 03 00 00","8B 8B BC 03 00 00"],[7997565,"8B 8B 54 03 00 00","8B 8B BC 03 00 00"],[7997583,"8B 8B 54 03 00 00","8B 8B BC 03 00 00"],[7997602,"FF B3 54 03 00 00","FF B3 BC 03 00 00"],[7997615,"8A 83 BE 02 00 00","8A 83 26 03 00 00"],[7997625,"8B 8B 58 03 00 00","8B 8B C0 03 00 00"],[7997646,"8B 8B 54 03 00 00","8B 8B BC 03 00 00"],[7998224,"0F B6 B3 BE 02 00 00","0F B6 B3 26 03 00 00"],[7998321,"89 BC B3 D0 02 00 00","89 BC B3 38 03 00 00"],[7998333,"8B 8C B3 D0 02 00 00","8B 8C B3 38 03 00 00"],[7998354,"8B 8C B3 D0 02 00 00","8B 8C B3 38 03 00 00"],[7998375,"8B 8C B3 D0 02 00 00","8B 8C B3 38 03 00 00"],[7998391,"8B 8C B3 D0 02 00 00","8B 8C B3 38 03 00 00"],[7998411,"8B 8C B3 D0 02 00 00","8B 8C B3 38 03 00 00"],[7998451,"FF B4 B3 D0 02 00 00","FF B4 B3 38 03 00 00"],[7998469,"8B 8B D0 02 00 00","8B 8B 38 03 00 00"],[7998991,"89 BC 83 30 03 00 00","89 BC 83 98 03 00 00"],[7999024,"FF B3 C0 02 00 00","FF B3 28 03 00 00"],[8000032,"8B 81 C4 02 00 00","8B 81 2C 03 00 00"],[8000038,"8B 8C 81 C8 02 00 00","8B 8C 81 30 03 00 00"],[8000701,"89 8E C4 02 00 00","89 8E 2C 03 00 00"],[8000781,"8D 8E C8 02 00 00","8D 8E 30 03 00 00"],[8000818,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8000875,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8000924,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8000977,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8001009,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8001031,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8001088,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8001173,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8001231,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8001330,"B9 2B 00 00 00","B9 45 00 00 00"],[8001352,"68 AF 00 00 00","68 17 01 00 00"],[8001702,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8001738,"0F B6 86 94 02 00 00","0F B6 86 FC 02 00 00"],[8001754,"0F B6 86 95 02 00 00","0F B6 86 FD 02 00 00"],[8001764,"0F B6 86 96 02 00 00","0F B6 86 FE 02 00 00"],[8001774,"0F B6 86 97 02 00 00","0F B6 86 FF 02 00 00"],[8001784,"0F B6 86 98 02 00 00","0F B6 86 00 03 00 00"],[8001794,"0F B6 86 99 02 00 00","0F B6 86 01 03 00 00"],[8001946,"3B 96 CC 02 00 00","3B 96 34 03 00 00"],[8001981,"89 86 C4 02 00 00","89 86 2C 03 00 00"],[8002039,"8B 86 C4 02 00 00","8B 86 2C 03 00 00"],[8002047,"3B 8C 86 C8 02 00 00","3B 8C 86 30 03 00 00"],[8002080,"8B 8C BE D0 02 00 00","8B 8C BE 38 03 00 00"],[8002116,"8B 8C BE D0 02 00 00","8B 8C BE 38 03 00 00"],[8002123,"8B 86 C4 02 00 00","8B 86 2C 03 00 00"],[8002139,"8B 8C BE D0 02 00 00","8B 8C BE 38 03 00 00"],[8002168,"8B 86 C4 02 00 00","8B 86 2C 03 00 00"],[8002242,"8D 86 30 03 00 00","8D 86 98 03 00 00"],[8002448,"8B 84 8E 54 03 00 00","8B 84 8E BC 03 00 00"],[8002462,"0F B6 86 BE 02 00 00","0F B6 86 26 03 00 00"],[8002477,"88 8E BE 02 00 00","88 8E 26 03 00 00"],[8002494,"8B 8E 54 03 00 00","8B 8E BC 03 00 00"],[8002512,"80 BE BE 02 00 00 00","80 BE 26 03 00 00 00"],[8002537,"8B 8F 54 03 00 00","8B 8F BC 03 00 00"],[8002568,"8B 8E 58 03 00 00","8B 8E C0 03 00 00"],[8002601,"8B 8F 54 03 00 00","8B 8F BC 03 00 00"],[8002615,"8D BE D0 02 00 00","8D BE 38 03 00 00"],[8002630,"0F B6 8E BE 02 00 00","0F B6 8E 26 03 00 00"],[8002686,"8D 86 D0 02 00 00","8D 86 38 03 00 00"],[8002898,"8B 8E C0 02 00 00","8B 8E 28 03 00 00"],[8003144,"0F B6 86 BE 02 00 00","0F B6 86 26 03 00 00"],[8003222,"0F B6 86 BE 02 00 00","0F B6 86 26 03 00 00"],[8003317,"0F B6 86 BE 02 00 00","0F B6 86 26 03 00 00"],[8003401,"0F B6 86 BE 02 00 00","0F B6 86 26 03 00 00"],[8003516,"0F B6 86 BE 02 00 00","0F B6 86 26 03 00 00"],[8003610,"0F B6 86 BE 02 00 00","0F B6 86 26 03 00 00"],[8003712,"0F B6 86 BE 02 00 00","0F B6 86 26 03 00 00"],[10722645,"68 6C 03 00 00","68 D4 03 00 00"],[15654874,"68 6C 03 00 00","68 D4 03 00 00"]];
+CharacterCreateNamesStatic.Bridges = [[8001451,"80 7D D8 5B 8A 45 DA 8A 4D D9 75 49 80 F9 67 75 44 3C 6D 0F 84 ED 05 00 00 3C 5B 75 10 80 7D DB 67 75 0A 80 7D DC 6D 0F 84 D9 05 00 00 8B 0D 3C 33 21 01 6A 00 6A 00 6A 00 8B 01 6A 00 68 15 27 00 00 FF 50 18 56 B9 E8 F4 31 01 E8 D5 2F 2A 00 E9 A1 00 00 00 80 F9 5B 75 BF 3C 67 75 BB 80 7D DB 6D EB C3",[{"pc":8001451,"kind":"raw","bytes":"80 BD 40 FF FF FF 5B"},{"pc":8001455,"kind":"raw","bytes":"8A 85 42 FF FF FF"},{"pc":8001458,"kind":"raw","bytes":"8A 8D 41 FF FF FF"},{"pc":8001461,"kind":"jcc","target":8001536,"cond":5},{"pc":8001463,"kind":"raw","bytes":"80 F9 67"},{"pc":8001466,"kind":"jcc","target":8001536,"cond":5},{"pc":8001468,"kind":"raw","bytes":"3C 6D"},{"pc":8001470,"kind":"jcc","target":8002993,"cond":4},{"pc":8001476,"kind":"raw","bytes":"3C 5B"},{"pc":8001478,"kind":"jcc","target":8001496,"cond":5},{"pc":8001480,"kind":"raw","bytes":"80 BD 43 FF FF FF 67"},{"pc":8001484,"kind":"jcc","target":8001496,"cond":5},{"pc":8001486,"kind":"raw","bytes":"80 BD 44 FF FF FF 6D"},{"pc":8001490,"kind":"jcc","target":8002993,"cond":4},{"pc":8001496,"kind":"raw","bytes":"8B 0D 3C 33 21 01"},{"pc":8001502,"kind":"raw","bytes":"6A 00"},{"pc":8001504,"kind":"raw","bytes":"6A 00"},{"pc":8001506,"kind":"raw","bytes":"6A 00"},{"pc":8001508,"kind":"raw","bytes":"8B 01"},{"pc":8001510,"kind":"raw","bytes":"6A 00"},{"pc":8001512,"kind":"raw","bytes":"68 15 27 00 00"},{"pc":8001517,"kind":"raw","bytes":"FF 50 18"},{"pc":8001520,"kind":"raw","bytes":"56"},{"pc":8001521,"kind":"raw","bytes":"B9 E8 F4 31 01"},{"pc":8001526,"kind":"call","target":10766288},{"pc":8001531,"kind":"jmp","target":8001697,"cond":9},{"pc":8001536,"kind":"raw","bytes":"80 F9 5B"},{"pc":8001539,"kind":"jcc","target":8001476,"cond":5},{"pc":8001541,"kind":"raw","bytes":"3C 67"},{"pc":8001543,"kind":"jcc","target":8001476,"cond":5},{"pc":8001545,"kind":"raw","bytes":"80 BD 43 FF FF FF 6D"},{"pc":8001549,"kind":"jmp","target":8001490,"cond":11}],8001551],[8000641,"83 EC 34 A1 24 B9 22 01",[{"pc":8000641,"kind":"raw","bytes":"81 EC 34 01 00 00"},{"pc":8000644,"kind":"raw","bytes":"A1 24 B9 22 01"}],8000649],[8001184,"83 F8 18 7C 42",[{"pc":8001184,"kind":"raw","bytes":"3D 80 00 00 00"},{"pc":8001187,"kind":"jcc","target":8001255,"cond":12}],8001189],[8001416,"8D 45 D8 50 FF 15 3C 1B FC 00",[{"pc":8001416,"kind":"raw","bytes":"8D 85 40 FF FF FF"},{"pc":8001419,"kind":"raw","bytes":"50"},{"pc":8001420,"kind":"raw","bytes":"FF 15 3C 1B FC 00"}],8001426],[8001426,"8D 45 D8 68 A4 E4 01 01",[{"pc":8001426,"kind":"raw","bytes":"8D 85 40 FF FF FF"},{"pc":8001429,"kind":"raw","bytes":"68 A4 E4 01 01"}],8001434]];
+CharacterCreateNamesStatic.Bridges.push([0x00E83CA6,"8B 4A C0 33 C8",[
+	{pc:0x00E83CA6,kind:"raw",bytes:"8B 8A C0 FE FF FF"},
+	{pc:0x00E83CA9,kind:"raw",bytes:"33 C8"}],0x00E83CAB]);
+CharacterCreateNamesStatic.install=function(state)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.characterCreate128)return state;
+	const edits=CharacterCreateNamesStatic.Edits.map(e=>[ExtNameStaticAsm.assertCode("creation owner",e[0],e[1]),e[2]]);
+	const bridges=CharacterCreateNamesStatic.Bridges.map(b=>{
+		const phy=ExtNameStaticAsm.assertCode("creation name frame",b[0],b[1]);
+		const a=ExtNameStaticAsm.asm();
+		for(const ins of b[2]){
+			a.label("pc_"+ins.pc);
+			const target=ins.target>=b[0]&&ins.target<b[3]?"pc_"+ins.target:ins.target;
+			if(ins.kind==="raw")a.emit(...ins.bytes.split(" ").map(x=>parseInt(x,16)));
+			else if(ins.kind==="jcc")a.jcc(0x80+ins.cond,target);
+			else if(ins.kind==="jmp")a.jmp(target);
+			else a.call(target);
+		}
+		a.jmp(b[3]);
+		return [phy,b[1].split(" ").length,ExtNameTextStatic.allocateCode(a).virAddr];
+	});
+	const copyPhy=ExtNameStaticAsm.assertCode("creation canonical copy",0x007A16E7,"8B 8E C0 02 00 00 0F 57 C0 0F 11 45 D8 66 0F D6 45 E8 E8 A2 F9 07 00 8D 55 D8 2B D0 8A 08 8D 40 01 88 4C 10 FF 84 C9 75 F3 0F 10 45 D8 8D 86 10 02 00 00 0F 11 86 7C 02 00 00 F3 0F 7E 45 E8 66 0F D6 86 8C 02 00 00");
+	const copyZ=ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
+	const a=ExtNameStaticAsm.asm();
+	a.emit(0x8B,0x8E);a.dword(0x328);a.call(0x008210A0);
+	a.emit(0x8B,0xD0,0xB9);a.dword(128);a.label("raw_name_bytes");
+	a.emit(0x80,0x3A,0);a.jcc(0x84,"copy_name");
+	a.emit(0x42,0x49);a.jcc(0x85,"raw_name_bytes");a.jmp(0x007A16A5);
+	a.label("copy_name");
+	a.emit(0x68);a.dword(128);a.emit(0x50,0x8D,0x95);a.dword(0xFFFFFF40);a.emit(0x52);a.call(copyZ.virAddr);
+	a.emit(0x68);a.dword(128);a.emit(0x8D,0x85);a.dword(0xFFFFFF40);a.emit(0x50);
+	a.emit(0x8D,0x86);a.dword(0x27C);a.emit(0x50);a.call(copyZ.virAddr);
+	a.emit(0x8D,0x86);a.dword(0x210);a.jmp(0x007A172E);
+	const copy=ExtNameTextStatic.allocateCode(a);
+	const sendBytes="0F 10 05 44 82 5F 01 B8 39 0A 00 00 66 89 85 14 FD FF FF 0F B7 05 40 82 5F 01 66 89 85 2F FD FF FF 0F B7 05 2E 82 5F 01 66 89 85 31 FD FF FF A0 62 82 5F 01 88 85 2E FD FF FF 0F BF 05 2C 82 5F 01 0F 11 85 16 FD FF FF 89 85 33 FD FF FF F3 0F 7E 05 54 82 5F 01 A0 86 82 5F 01 66 0F D6 85 26 FD FF FF 88 85 37 FD FF FF E8 9C F1 EE FF 8B F0 E8 95 F1 EE FF 0F BF 8D 14 FD FF FF 51 8B C8 E8 86 E8 EE FF 8D 8D 14 FD FF FF 51 50 8B CE E8 37 ED EE FF".split(" ").map(x=>parseInt(x,16));
+	// Exe.GetHex guards the original source image; earlier tagged relocations
+	// are composed only in the final output, not reflected by this source read.
+	const sendPhy=ExtNameStaticAsm.assertCode("creation140-byte request",0x00D25B56,
+		sendBytes.map(x=>x.toString(16).padStart(2,"0")).join(" ").toUpperCase());
+	const s=ExtNameStaticAsm.asm(), selected=state.characterInfo128.selectedVir;
+	s.emit(0x60,0x81,0xEC);s.dword(140);
+	s.emit(0x8B,0xFC,0x33,0xC0,0xB9);s.dword(35);s.emit(0xF3,0xAB,0x8B,0xDC);
+	s.emit(0x66,0xC7,0x03,0x39,0x0A);
+	s.emit(0x68);s.dword(128);s.emit(0x68);s.dword(selected+108);
+	s.emit(0x8D,0x43,2,0x50);s.call(copyZ.virAddr);
+	s.emit(0xA0);s.dword(selected+242);s.emit(0x88,0x83);s.dword(130);
+	for(const f of [[104,131],[86,133]]){
+		s.emit(0x0F,0xB7,0x05);s.dword(selected+f[0]);s.emit(0x66,0x89,0x83);s.dword(f[1]);
+	}
+	s.emit(0x0F,0xBF,0x05);s.dword(selected+84);s.emit(0x89,0x83);s.dword(135);
+	s.emit(0xA0);s.dword(selected+278);s.emit(0x88,0x83);s.dword(139);
+	s.call(0x00C14D60);s.emit(0x8B,0xC8,0x53,0x68);s.dword(140);s.call(0x00C14920);
+	s.emit(0x81,0xC4);s.dword(140);s.emit(0x61);s.jmp(0x00D25BE9);
+	const send=ExtNameTextStatic.allocateCode(s);
+	const enterPhy=ExtNameStaticAsm.assertCode("creation Enter-key name",0x007A1D52,"8B 8E C0 02 00 00 0F 57 C0 0F 11 45 D4 C6 45 EC 00 66 0F D6 45 E4 E8 33 F3 07 00 8D 55 D4 2B D0 8A 08 8D 40 01 88 4C 10 FF 84 C9 75 F3 0F 10 45 D4 8B 06 8B CE 6A 00 6A 00 6A 00 FF B6 8C 00 00 00 0F 11 86 7C 02 00 00 6A 06 F3 0F 7E 45 E4 6A 00 66 0F D6 86 8C 02 00 00 FF 90 94 00 00 00");
+	const key=ExtNameStaticAsm.asm();
+	key.emit(0x8B,0x8E);key.dword(0x328);key.call(0x008210A0);
+	key.emit(0x8B,0xD0,0xB9);key.dword(128);key.label("raw_bytes");
+	key.emit(0x80,0x3A,0);key.jcc(0x84,"valid");
+	key.emit(0x42,0x49);key.jcc(0x85,"raw_bytes");key.jmp(0x007A1DB1);
+	key.label("valid");key.emit(0x68);key.dword(128);key.emit(0x50,0x8D,0x96);key.dword(0x27C);key.emit(0x52);key.call(copyZ.virAddr);
+	key.emit(0x8B,0x06,0x8B,0xCE,0x6A,0,0x6A,0,0x6A,0,0xFF,0xB6);key.dword(0x8C);
+	key.emit(0x6A,6,0x6A,0,0xFF,0x90);key.dword(0x94);key.jmp(0x007A1DB1);
+	const enter=ExtNameTextStatic.allocateCode(key);
+	const owner=Exe.ActivePatch;Exe.BeginTag("CharacterCreateNamesStatic.Info128",true);
+	try{
+		for(const e of edits)Exe.SetHex(e[0],e[1]);
+		for(const b of bridges){Exe.SetJMP(b[0],b[2],0);Exe.SetNOPs(b[0]+5,b[1]-5);}
+		Exe.SetJMP(copyPhy,copy.virAddr,0);Exe.SetNOPs(copyPhy+5,0x47-5);
+		Exe.SetJMP(sendPhy,send.virAddr,0);Exe.SetNOPs(sendPhy+5,0x93-5);
+		Exe.SetJMP(enterPhy,enter.virAddr,0);Exe.SetNOPs(enterPhy+5,0x5F-5);
+	}finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.characterCreate128=true;return state;
+};

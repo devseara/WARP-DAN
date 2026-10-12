@@ -1,0 +1,62 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-24                                             *
+*   Last Modified : 2026-07-24                                             *
+*                                                                          *
+*   Description   : Gives a matching numeric enchant-grade ICOL entry      *
+*                   precedence over the item-color database for the        *
+*                   complete decorated title. The runtime mode             *
+*                   conditionally gates the profiled native post-grade     *
+*                   endpoint, is order-independent, and never uses         *
+*                   cross-draw continuation. Targets: 2025-07-16 and       *
+*                   2026-02-19 Ragexe.                                     *
+*                                                                          *
+\**************************************************************************/
+
+CustomColoredEnchantGradeName = function(_)
+{
+	if (typeof ItemColorStatic === "undefined" ||
+		typeof ItemColorStatic.enableGradeColors !== "function")
+		throw Error("CustomColoredEnchantGradeName: item-color helper unavailable");
+
+	const config = ItemColorStatic.enableGradeColors();
+	$$(_, 1, "Give enchant-grade colors precedence over decorated item titles");
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("ItemColorStatic.GradeColors", {
+			enabled: true,
+			pending: config === null,
+			gradeConfigVir: config ? config.virAddr : 0
+		});
+	}
+	return true;
+};
+
+CustomColoredEnchantGradeName.cleanup = function()
+{
+	if (typeof ItemColorStatic !== "undefined" &&
+		typeof ItemColorStatic.disableGradeColors === "function")
+		ItemColorStatic.disableGradeColors();
+};
+
+CustomColoredEnchantGradeName.validate = function()
+{
+	return typeof RagexeClientProfile !== "undefined" &&
+		(RagexeClientProfile.Id === 20250716 ||
+			RagexeClientProfile.Id === 20260219) &&
+		typeof ItemColorStatic !== "undefined" &&
+		typeof ItemColorStatic.enableGradeColors === "function";
+};

@@ -1,0 +1,113 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Read 136-byte records  *
+*                   and give the native name cache and friend objects      *
+*                   full strings, without any truncated temporary name     *
+*                   key. Native hooks, data and code revert together with  *
+*                   the selecting patch.                                   *
+*                                                                          *
+\**************************************************************************/
+
+FriendNamesStatic={};
+FriendNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.friendNames128)return state;
+	const patches=[
+		[0x00CBF52F,"6A 00 6A 20 83 DA 00",function(){
+			return GuildNamesStatic.leaf([0x6A,0,0x68,0x88,0,0,0,0x83,0xDA,0],0x00CBF536);
+		}],
+		[0x00CBF583,"8B C7 C1 E0 05 03 C2",function(){
+			return GuildNamesStatic.leaf([0x69,0xC7,0x88,0,0,0,0x03,0xC2],0x00CBF58A);
+		}],
+		[0x00CBF5C6,"8D 85 54 FF FF FF C6 45 EC 00 50 68 E8 35 FD 00 6A FF 0F 57 C0 8D 45 D4 6A 19 50 0F 11 45 D4 66 0F D6 45 E4 E8 01 D8 8D FF 8B 0D 00 18 25 01 83 C4 14",function(){
+			return GuildNamesStatic.leaf([0x69,0xC7,0x88,0,0,0,0x03,0x85,0x38,0xFF,0xFF,0xFF,0x83,0xC0,8,0x89,0x45,0xD4,0x8B,0x0D,0,0x18,0x25,1],0x00CBF5F8);
+		}]
+	];
+	const edits=[
+		[0x00F256B9,"8B 8A 08 FF FF FF","8B 8A 08 FD FF FF"], // ACK frame+512 secondary GS cookie
+		[0x00EB1F69,"8B 8A 5C FE FF FF","8B 8A 5C FC FF FF"], // request frame+512 secondary GS cookie
+		[0x00CBF618,"8D 45 D4","8B 45 D4"],
+		[0x00CBF61B,"6A 19","6A 7F"],
+		[0x00CBF776,"8D 4D D4","8B 4D D4"],
+		[0x00CBF789,"8D 45 D4","8B 45 D4"]
+	];
+	// Keep notification storage on this invocation's stack, not in shared scratch.
+	// Existing locals occupy EBP-0xFC..EBP; reserve another 512 bytes below them.
+	edits.push([0x00CB5231,"81 EC F0 00 00 00","81 EC F0 02 00 00"]);
+	for(const va of [0x00CB528D,0x00CB529B,0x00CB52F9,0x00CB536F,0x00CB537A,0x00CB5385,0x00CB5390,0x00CB539B])
+		edits.push([va,"8D 45 D4","8D 46 0C"]);
+	edits.push([0x00CB52EA,"8D 4D D4","8D 4E 0C"]);
+	for(const va of [0x00CB52AD,0x00CB52BC,0x00CB53AD,0x00CB53BC])
+		edits.push([va,"8D 85 54 FF FF FF","8D 85 04 FD FF FF"]);
+	// Remove the unused 24-byte stack-name copy entirely.
+	for(const e of [
+		[0x00CB525A,"0F 10 46 0C"],[0x00CB5262,"0F 11 45 D4"],
+		[0x00CB5266,"C6 45 EC 00"],[0x00CB526A,"F3 0F 7E 46 1C"],
+		[0x00CB526F,"66 0F D6 45 E4"]])
+		edits.push([e[0],e[1],e[1].split(" ").map(()=> "90").join(" ")]);
+	const format=ExtNameStaticAsm.asm();
+	format.emit(0x55,0x8B,0xEC,0xFF,0x75,0x10,0xFF,0x75,0x0C,0x6A,0xFF,0x68);format.dword(512);
+	format.emit(0xFF,0x75,8);format.call(0x0059CDF0);
+	format.emit(0x83,0xC4,20,0x5D,0xC3);
+	const formatter=ExtNameTextStatic.allocateCode(format);
+	// The request dialog owns a formatted string, never a fixed-width name.
+	edits.push([0x008C4041,"81 EC 94 01 00 00","81 EC 94 03 00 00"]);
+	edits.push([0x008C419D,"8D 85 70 FF FF FF","8D 85 60 FC FF FF"]);
+	edits.push([0x008C41C0,"8D 95 70 FF FF FF","8D 95 60 FC FF FF"]);
+	patches.push([0x00CA75B8,"6A 18 8D 85 04 FE FF FF 68 A2 81 5E 01 50 FF 15 1C 1B FC 00",function(){
+		// Preserve the later ADD ESP,20 (12 former copy args + two checks).
+		return GuildNamesStatic.leaf([0x83,0xEC,12],0x00CA75CC);
+	}]);
+	edits.push([0x00CA75D1,"C6 85 1C FE FF FF 00","90 90 90 90 90 90 90"]);
+	edits.push([0x00CA7613,"8D 8D 04 FE FF FF","B9 A2 81 5E 01 90"]);
+	const formatSites=[
+		ExtNameStaticAsm.assertCode("friend request formatter",0x008C41A4,"E8 A7 56 C6 FF"),
+		ExtNameStaticAsm.assertCode("friend success formatter",0x00CB52B4,"E8 97 45 87 FF"),
+		ExtNameStaticAsm.assertCode("friend failure formatter",0x00CB53B4,"E8 97 44 87 FF")
+	];
+	// 0x0AF7's flag-3 name cache path owns std::string, not a fixed array.
+	// Its end pointer is only compared with the beginning; use the real end.
+	patches.push([0x00CB326C,"8D 46 20 C7 45 EC 00 00 00 00",function(){
+		return GuildNamesStatic.leaf([0x8D,0x86,0x88,0,0,0,0xC7,0x45,0xEC,0,0,0,0],0x00CB3276);
+	}]);
+	edits.push([0x00CB329E,"6A 18","6A 7F"]);
+	for(const p of patches){p.push(ExtNameStaticAsm.assertCode("friend list bridge",p[0],p[1]));p.push(ExtNameTextStatic.allocateCode(p[2]()));}
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("friend name pointer",e[0],e[1]));
+	const entry=Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir,0x0201),CODE);
+	if(entry<0||Exe.GetUint32(entry)!==0x00CA75A7)throw Error("FriendNamesStatic: list dispatch changed");
+	const a=ExtNameStaticAsm.asm();
+	a.emit(0x0F,0xB7,0x05);a.dword(routes.packetBufferVir+2);
+	a.emit(0x83,0xF8,4);a.jcc(0x82,"done");
+	a.emit(0x83,0xE8,4,0x33,0xD2,0xB9);a.dword(136);a.emit(0xF7,0xF1,0x85,0xD2);a.jcc(0x85,"done");
+	a.emit(0x68);a.dword(routes.packetBufferVir);a.emit(0x8B,0xCF);a.call(0x00CBF4E0);
+	a.label("done");a.jmp(routes.mainLoopReturnVir);
+	const dispatch=ExtNameTextStatic.allocateCode(a);
+	const owner=Exe.ActivePatch;Exe.BeginTag("FriendNamesStatic.NamePackets128",true);
+	try{
+		for(const p of patches){Exe.SetJMP(p[3],p[4].virAddr,0);Exe.SetNOPs(p[3]+5,p[1].split(" ").length-5);}
+		for(const e of edits)Exe.SetHex(e[3],e[2]);
+		for(const phy of formatSites)Exe.SetCALL(phy,formatter.virAddr,0);
+		Exe.SetUint32(entry,dispatch.virAddr);
+	}finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.friendNames128=true;return state;
+};

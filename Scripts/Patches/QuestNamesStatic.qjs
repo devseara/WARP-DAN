@@ -1,0 +1,88 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Main2025-07-16         *
+*                   canonical quest objective names,128 bytes. Replace     *
+*                   the old three51-byte inline fields with one            *
+*                   record-owned3x128 allocation. The intrusive list       *
+*                   tracks ownership only; it is not a name alias/cache.   *
+*                   Copy/move/base destruction preserve native record      *
+*                   lifetime. Native hooks, data and code revert together  *
+*                   with the selecting patch.                              *
+*                                                                          *
+\**************************************************************************/
+
+QuestNamesStatic={};
+QuestNamesStatic.owners=function(head)
+{
+	const find=ExtNameStaticAsm.asm();find.emit(0xA1);find.dword(head);find.label("next");find.emit(0x85,0xC0);find.jcc(0x84,"done");find.emit(0x39,8);find.jcc(0x84,"done");find.emit(0x8B,0x40,4);find.jmp("next");find.label("done");find.emit(0xC3);
+	const f=ExtNameTextStatic.allocateCode(find).virAddr;
+	const ensure=ExtNameStaticAsm.asm();ensure.emit(0x53,0x56,0x57,0x8B,0xD9);ensure.call(f);ensure.emit(0x85,0xC0);ensure.jcc(0x85,"found");ensure.emit(0x68);ensure.dword(392);ensure.call(0x00DBBC4F);ensure.emit(0x83,0xC4,4,0x8B,0xF0,0x8B,0xF8,0x33,0xC0,0xB9);ensure.dword(98);ensure.emit(0xF3,0xAB,0x89,0x1E,0xA1);ensure.dword(head);ensure.emit(0x89,0x46,4,0x89,0x35);ensure.dword(head);ensure.emit(0x8B,0xC6);ensure.label("found");ensure.emit(0x83,0xC0,8,0x89,0x83);ensure.dword(0xE6);ensure.emit(0x5F,0x5E,0x5B,0xC3);
+	const e=ExtNameTextStatic.allocateCode(ensure).virAddr;
+	const release=ExtNameStaticAsm.asm();release.emit(0x53,0x56,0x8B,0xD9,0xBE);release.dword(head);release.label("next");release.emit(0x8B,6,0x85,0xC0);release.jcc(0x84,"done");release.emit(0x39,0x18);release.jcc(0x84,"remove");release.emit(0x8D,0x70,4);release.jmp("next");release.label("remove");release.emit(0x8B,0x50,4,0x89,0x16,0xC7,0x83);release.dword(0xE6);release.dword(0);release.emit(0x68);release.dword(392);release.emit(0x50);release.call(0x00DBBC7F);release.emit(0x83,0xC4,8);release.label("done");release.emit(0x5E,0x5B,0xC3);
+	const r=ExtNameTextStatic.allocateCode(release).virAddr;
+	const clone=ExtNameStaticAsm.asm();clone.emit(0x55,0x8B,0xEC,0x53,0x56,0x57,0x8B,0x5D,8,0x8B,0x4D,12,0x3B,0xD9);clone.jcc(0x84,"done");clone.call(f);clone.emit(0x85,0xC0);clone.jcc(0x84,"empty");clone.emit(0x8D,0x70,8,0x8B,0xCB);clone.call(e);clone.emit(0x8B,0xF8,0xB9);clone.dword(96);clone.emit(0xF3,0xA5);clone.jmp("done");clone.label("empty");clone.emit(0x8B,0xCB);clone.call(r);clone.emit(0xC7,0x83);clone.dword(0xE6);clone.dword(0);clone.label("done");clone.emit(0x5F,0x5E,0x5B,0x5D,0xC2,8,0);
+	const c=ExtNameTextStatic.allocateCode(clone).virAddr;
+	const move=ExtNameStaticAsm.asm();move.emit(0x55,0x8B,0xEC,0x53,0x56,0x8B,0x5D,8,0x8B,0x75,12,0x3B,0xDE);move.jcc(0x84,"done");move.emit(0x8B,0xCB);move.call(r);move.emit(0x8B,0xCE);move.call(f);move.emit(0x85,0xC0);move.jcc(0x84,"empty");move.emit(0x89,0x18,0x83,0xC0,8,0x89,0x83);move.dword(0xE6);move.emit(0xC7,0x86);move.dword(0xE6);move.dword(0);move.jmp("done");move.label("empty");move.emit(0xC7,0x83);move.dword(0xE6);move.dword(0);move.label("done");move.emit(0x5E,0x5B,0x5D,0xC2,8,0);
+	return {ensure:e,release:r,clone:c,move:ExtNameTextStatic.allocateCode(move).virAddr};
+};
+QuestNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.questNames128)return state;
+	const [phy,head]=Exe.Allocate(4,4);ExtNameTextStatic.zeroBlock(phy,4);const own=QuestNamesStatic.owners(head);
+	const patches=[],bridge=function(va,old,a){patches.push([ExtNameStaticAsm.assertCode("quest canonical names",va,old),old.split(" ").length,ExtNameTextStatic.allocateCode(a).virAddr]);};
+	const d=ExtNameStaticAsm.asm();d.emit(0x60);d.call(own.release);d.emit(0x61,0x55,0x8B,0xEC,0x6A,0xFF);d.jmp(0x00641E15);bridge(0x00641E10,"55 8B EC 6A FF",d);
+	const copy=ExtNameStaticAsm.asm();copy.emit(0x60,0xFF,0x75,8,0x52);copy.call(own.clone);copy.emit(0x61,0x8D,0x8A);copy.dword(0x1B8);copy.jmp(0x006408A0);bridge(0x0064088A,"8D BA E6 00 00 00",copy);
+	const move=ExtNameStaticAsm.asm();move.emit(0x60,0x52,0x57);move.call(own.move);move.emit(0x61);move.jmp(0x006405B8);bridge(0x006405AF,"81 C7 E6 00 00 00",move);
+	const assign=ExtNameStaticAsm.asm();assign.emit(0x60,0x57,0x56);assign.call(own.clone);assign.emit(0x61);assign.jmp(0x00CAEA0E);bridge(0x00CAEA00,"8A 04 0B 8D 49 01",assign);
+	const reader=ExtNameStaticAsm.asm();reader.emit(0x8B,0xCF);reader.call(own.ensure);reader.emit(0x8B,0xD0,0x69,0xC3);reader.dword(128);reader.jmp(0x00C8578C);bridge(0x00C85783,"8D 97 E6 00 00 00 6B C3 33",reader);
+	for(const p of [[0x00CFE6D6,"8D B5 D6 FE FF FF",-0x210,0x00CFE6DC],[0x00CB6666,"8D B5 BE FE FF FF",-0x228,0x00CB666C]]){
+		const a=ExtNameStaticAsm.asm();a.emit(0x51,0x8D,0x8D);a.dword(p[2]);a.call(own.ensure);a.emit(0x8B,0xF0,0x59);a.jmp(p[3]);bridge(p[0],p[1],a);
+	}
+	bridge(0x00CFE4FA,"6B C0 2C 03 F8",GuildNamesStatic.leaf([0x69,0xC0,0x94,0,0,0,0x03,0xF8],0x00CFE4FF));
+	bridge(0x00CFE6E2,"83 85 D4 FD FF FF 2C",GuildNamesStatic.leaf([0x81,0x85,0xD4,0xFD,0xFF,0xFF,0x94,0,0,0],0x00CFE6E9));
+	bridge(0x00CFE814,"83 C6 33 8B 8D CC FD FF FF",GuildNamesStatic.leaf([0x81,0xC6,0x80,0,0,0,0x8B,0x8D,0xCC,0xFD,0xFF,0xFF],0x00CFE81D));
+	bridge(0x00CB678A,"83 C7 2A 83 C6 33",GuildNamesStatic.leaf([0x81,0xC7,0x92,0,0,0,0x81,0xC6,0x80,0,0,0],0x00CB6790));
+	for(const p of [[0x00CFE784,"6A 33 56 E8 64 E6 89 FF",0x00CFE78C],[0x00CFE7D2,"6A 33 56 E8 16 E6 89 FF",0x00CFE7DA],[0x00CFE803,"6A 33 56 E8 E5 E5 89 FF",0x00CFE80B],[0x00CB6701,"6A 33 56 E8 E7 66 8E FF",0x00CB6709],[0x00CB674A,"6A 33 56 E8 9E 66 8E FF",0x00CB6752],[0x00CB6778,"6A 33 56 E8 70 66 8E FF",0x00CB6780]]){
+		const a=ExtNameStaticAsm.asm();a.emit(0x68);a.dword(128);a.emit(0x56);a.call(0x0059CDF0);a.jmp(p[2]);bridge(p[0],p[1],a);
+	}
+	// A supplied canonical server name wins over class/job resource-name fallbacks.
+	for(const p of [[0x00CFE739,"3D E8 03 00 00",20,0x00CFE7FB,0x00CFE73E],[0x00CB66B3,"81 F9 E8 03 00 00",14,0x00CB6770,0x00CB66B9]]){
+		const a=ExtNameStaticAsm.asm();a.emit(0x80,0x7F,p[2],0);a.jcc(0x84,"stock");a.emit(0x8D,0x47,p[2]);a.jmp(p[3]);a.label("stock");a.emit(...p[1].split(" ").map(x=>parseInt(x,16)));a.jmp(p[4]);bridge(p[0],p[1],a);
+	}
+	const dispatches=[];
+	for(const list of [true,false]){
+		const id=list?0x9F8:0x9F9,expected=list?0x00CA33DB:0x00CA3426;
+		const entry=Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir,id),CODE);if(entry<0||Exe.GetUint32(entry)!==expected)throw Error("QuestNamesStatic: quest route changed");
+		const a=ExtNameStaticAsm.asm();a.emit(0x60,0xBE);a.dword(routes.packetBufferVir);
+		if(list){a.emit(0x0F,0xB7,0x5E,2,0x83,0xFB,8);a.jcc(0x82,"bad");a.emit(0x83,0xEB,8,0x8B,0x56,4,0x83,0xC6,8);}
+		else{a.emit(0xBB);a.dword(453);a.emit(0xBA);a.dword(1);a.emit(0x83,0xC6,2);}
+		a.label("quest");a.emit(0x85,0xD2);a.jcc(0x84,"end");a.emit(0x83,0xFB,15);a.jcc(0x82,"bad");a.emit(0x0F,0xB7,0x6E,13,0x83,0xFD,3);a.jcc(0x87,"bad");a.emit(0x83,0xEB,15,0x83,0xC6,15);
+		a.label("objective");a.emit(0x85,0xED);a.jcc(0x84,"next");a.emit(0x81,0xFB);a.dword(list?148:146);a.jcc(0x82,"bad");a.emit(0x8D,0x7E,list?20:18,0xB9);a.dword(128);a.emit(0x33,0xC0,0xF2,0xAE);a.jcc(0x85,"bad");a.emit(0x81,0xC6);a.dword(list?148:146);a.emit(0x81,0xEB);a.dword(list?148:146);a.emit(0x4D);a.jmp("objective");
+		a.label("next");a.emit(0x4A);a.jmp("quest");a.label("end");if(list){a.emit(0x85,0xDB);a.jcc(0x85,"bad");}
+		a.emit(0x61);a.jmp(expected);a.label("bad");a.emit(0x61);a.jmp(routes.mainLoopReturnVir);dispatches.push([entry,ExtNameTextStatic.allocateCode(a).virAddr]);
+	}
+	const owner=Exe.ActivePatch;Exe.BeginTag("QuestNamesStatic.Name128",true);
+	try{for(const p of patches){Exe.SetJMP(p[0],p[2],0);Exe.SetNOPs(p[0]+5,p[1]-5);}for(const d of dispatches)Exe.SetUint32(d[0],d[1]);}
+	finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.questNames128=true;return state;
+};

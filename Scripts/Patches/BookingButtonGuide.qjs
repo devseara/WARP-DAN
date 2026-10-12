@@ -1,0 +1,90 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-05-25                                             *
+*   Last Modified : 2026-05-25                                             *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief Reuse the Basic Info "Booking" button to send the custom in-game
+///        guide/settings packet. The hover label is injected directly so it
+///        does not depend on msgstringtable.csv.
+///
+BookingButtonGuide = function(_)
+{
+	const packetID = Exe.GetUserInput(
+		'$bookingBtnPacket',
+		D_Uint16,
+		"Booking Button Packet",
+		"Enter the packet ID to send when Booking button is clicked",
+		0x0BB2,
+		{min: 1, saveDefault: true}
+	);
+	if (packetID === false)
+		Cancel("No Booking packet ID entered");
+
+	const hoverVarName = '$bookingBtnHover';
+	const hoverText = Exe.GetUserInput(
+		hoverVarName,
+		D_Text,
+		"Booking Button Hover",
+		"Enter the hover label to show for the Booking button",
+		"In-Game Settings",
+		{minLen: 1, maxLen: 60, saveDefault: true}
+	);
+	if (hoverText === false)
+		Cancel("No Booking hover label entered");
+
+	const [, hoverAddr] = Exe.AddFromVar(hoverVarName);
+	const hoverLen = hoverText.length;
+	if (hoverLen <= 0)
+		throw Error("Booking hover label is empty");
+
+	$$(_, 3.3, `Resolve Booking button ID`)
+	const targetID = NewBasicButton.getID(_, NewBasicButton.BookingButtonIdx, "Booking");
+
+	$$(_, 4.1, `Register Booking hover label`)
+	NewBasicButtonHover.registerText(_, targetID, hoverAddr, hoverLen);
+
+	NewBasicButton.ensureVisible(_, targetID);
+
+	$$(_, 5.1, `Register Booking packet click action`)
+	NewBasicButtonClick.registerPacket(_, targetID, packetID);
+
+	return true;
+};
+
+///
+/// \brief Disable for unsupported clients.
+///
+BookingButtonGuide.validate = function()
+{
+	return NewBasicButtonClick.validatePacket();
+};
+
+BookingButtonGuide.cleanup = function(patchName)
+{
+	NewBasicButtonHover.unregister(patchName);
+	NewBasicButtonClick.unregister(patchName);
+};

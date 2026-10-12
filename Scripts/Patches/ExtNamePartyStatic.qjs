@@ -1,0 +1,138 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Consume 0x0AE4 (297    *
+*                   bytes) and 0x0AE5 (132-byte header, 158-byte           *
+*                   entries). Pass original full-name pointers into stock  *
+*                   native std::string consumers. The list vector is a     *
+*                   borrowed, validated view. Native hooks, data and code  *
+*                   revert together with the selecting patch.              *
+*                                                                          *
+\**************************************************************************/
+
+ExtNamePartyStatic = {};
+
+ExtNamePartyStatic.buildMember = function(bufferVir, returnVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0xBA); a.dword(bufferVir);
+	a.emit(0xFF, 0x72, 0x06);
+	a.emit(0x0F, 0xB6, 0x82); a.dword(296); a.emit(0x50);
+	a.emit(0x0F, 0xB6, 0x82); a.dword(295); a.emit(0x50);
+	a.emit(0x8D, 0x42, 0x17, 0x50);
+	a.emit(0x0F, 0xB7, 0x42, 0x10, 0x50);
+	a.emit(0x0F, 0xB7, 0x42, 0x0E, 0x50);
+	a.emit(0x0F, 0xB6, 0x42, 0x16, 0x50);
+	a.emit(0xFF, 0x72, 0x0A);
+	a.emit(0x8D, 0x82); a.dword(279); a.emit(0x50);
+	a.emit(0xFF, 0x72, 0x02);
+	a.emit(0x8D, 0x82); a.dword(151); a.emit(0x50);
+	a.emit(0x8B, 0xCF);
+	a.call(0x00CF2560);
+	a.jmp(returnVir);
+	return a;
+};
+
+ExtNamePartyStatic.buildList = function(bufferVir, returnVir)
+{
+	const a = ExtNameStaticAsm.asm();
+	// Validate an exact number of complete entries before borrowing the packet.
+	a.emit(0x0F, 0xB7, 0x05); a.dword(bufferVir + 2);
+	a.emit(0x3D); a.dword(132); a.jcc(0x82, "done");
+	a.emit(0x2D); a.dword(132);
+	a.emit(0x33, 0xD2, 0xB9); a.dword(158);
+	a.emit(0xF7, 0xF1, 0x85, 0xD2); a.jcc(0x85, "done");
+	a.emit(0x69, 0xC0); a.dword(158);
+	a.emit(0x05); a.dword(bufferVir + 132);
+	// No vector allocator/destructor is involved; CED690 only reads this view.
+	a.emit(0x83, 0xEC, 0x0C);
+	a.emit(0xC7, 0x04, 0x24); a.dword(bufferVir + 132);
+	a.emit(0x89, 0x44, 0x24, 0x04, 0x89, 0x44, 0x24, 0x08);
+	a.emit(0x8B, 0xC4, 0x50, 0x68); a.dword(bufferVir + 4);
+	a.emit(0x8B, 0xCF);
+	a.call(0x00CED690);
+	a.emit(0x83, 0xC4, 0x0C);
+	a.label("done");
+	a.jmp(returnVir);
+	return a;
+};
+
+ExtNamePartyStatic.buildListAdvance = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	a.emit(0x81, 0xC6); a.dword(158);
+	a.emit(0x81, 0xC7); a.dword(158);
+	a.jmp(0x00CED9DE);
+	return a;
+};
+
+ExtNamePartyStatic.install = function(state, routes)
+{
+	if (ExtNameTextStatic.ActiveBuildDate !== 20250716 || state.partyNames128)
+		return state;
+	const edits = [
+		// AE4: the party name is argument 8; read it directly at full length.
+		[0x00CF26AC, "8D 45 D4", "8B 45 24"],
+		[0x00CF26FC, "8D 45 D4", "8B 45 24"],
+		[0x00CF2756, "8D 4D D4", "8B 4D 24"],
+		[0x00CF2769, "8D 45 D4", "8B 45 24"],
+		// AE5: the party name is argument 1. Its old stack copy is unused.
+		[0x00CED6CD, "8D 45 D4", "8B 45 08"],
+		[0x00CED73E, "8D 45 D4", "8B 45 08"],
+		[0x00CED79B, "8D 4D D4", "8B 4D 08"],
+		[0x00CED7AA, "8D 45 D4", "8B 45 08"],
+		// ESI is the raw entry; EDI is its mapName field.
+		[0x00CED7C7, "8D 7E 20 66 0F 1F 44 00 00", "8D BE 88 00 00 00 90 90 90"],
+		[0x00CED892, "8B 47 E4", "8B 46 04"],
+		[0x00CED89B, "8D 45 B8", "8D 46 08"],
+		[0x00CED8B1, "8D 45 B8", "8D 46 08"]
+	];
+	for (const edit of edits)
+		edit.push(ExtNameStaticAsm.assertCode("128-byte party field", edit[0], edit[1]));
+	const advancePhy = ExtNameStaticAsm.assertCode("128-byte party entry stride", 0x00CED9D8, "83 C6 36 83 C7 36");
+	const memberEntry = Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir, 0x0AE4), CODE);
+	const listEntry = Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir, 0x0AE5), CODE);
+	if (memberEntry < 0 || listEntry < 0 || Exe.GetUint32(memberEntry) !== 0x00CA9781 || Exe.GetUint32(listEntry) !== 0x00CA9792)
+		throw Error("ExtNamePartyStatic: unexpected native party dispatcher");
+	const member = ExtNameTextStatic.allocateCode(ExtNamePartyStatic.buildMember(routes.packetBufferVir, routes.mainLoopReturnVir));
+	const list = ExtNameTextStatic.allocateCode(ExtNamePartyStatic.buildList(routes.packetBufferVir, routes.mainLoopReturnVir));
+	const advance = ExtNameTextStatic.allocateCode(ExtNamePartyStatic.buildListAdvance());
+	const owner = Exe.ActivePatch;
+
+	Exe.BeginTag("ExtNamePartyStatic.NamePackets128", true);
+	try
+	{
+		for (const edit of edits)
+			Exe.SetHex(edit[3], edit[2]);
+		Exe.SetJMP(advancePhy, advance.virAddr, 0);
+		Exe.SetNOPs(advancePhy + 5, 1);
+		Exe.SetUint32(memberEntry, member.virAddr);
+		Exe.SetUint32(listEntry, list.virAddr);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = owner;
+	}
+	state.partyNames128 = {memberVir: member.virAddr, listVir: list.virAddr, advanceVir: advance.virAddr};
+	return state;
+};

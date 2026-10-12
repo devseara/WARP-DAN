@@ -1,0 +1,395 @@
+{
+  "date": "2026-09-23",
+  "status": "confirmed_defects_require_correction",
+  "work": "Assets/ClanBodySkins/all-jobs-motion-audit-20260923",
+  "coverage": {
+    "pairs": 12,
+    "actions": 1248,
+    "frame_uses": 5472,
+    "render_checks": 21888,
+    "numerical_neck_screens": 5472,
+    "all_action_f0_visual_overviews": 1248,
+    "all_direction_walk_loops_played": 96,
+    "close_pixel_inspection": "Selected reported and flagged joins, listed below. No claim that all 5472 frames received individual manual pixel certification.",
+    "live_client_validation": false
+  },
+  "grf_modified": false,
+  "sprite_exports_modified": false,
+  "findings": "findings.json",
+  "reviewer": "neck-review.html",
+  "resources": [
+    {
+      "job": "swordman",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.spr",
+      "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/male-angel-complete-v9.spr",
+      "sha256": "8384dd725be556d8557c856c0f141cfa58ae009859338689d4220bda3b45ade8",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "8384dd725be556d8557c856c0f141cfa58ae009859338689d4220bda3b45ade8",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "swordman",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.act",
+      "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/male-angel-complete-v9.act",
+      "sha256": "bbe4823abba1471f716e8044fffec9b7fc6b4a7cde766ad6f8298f92d6a7cc71",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "bbe4823abba1471f716e8044fffec9b7fc6b4a7cde766ad6f8298f92d6a7cc71",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "swordman",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.spr",
+      "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/female-angel-complete-v9.spr",
+      "sha256": "f00d5661844bf8e7e5f0009f02316900a497f2bf5a9a848f8fb38458c7c45533",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "f00d5661844bf8e7e5f0009f02316900a497f2bf5a9a848f8fb38458c7c45533",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "swordman",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.act",
+      "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/female-angel-complete-v9.act",
+      "sha256": "579c32d3b5d7d12bef0f5c2262f2b0dd4f638ececa6f96ab61ec201ce936e28c",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "579c32d3b5d7d12bef0f5c2262f2b0dd4f638ececa6f96ab61ec201ce936e28c",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "mage",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.spr",
+      "source": "Assets/ClanBodySkins/Mage/male-scale-v4/assets/male-angel-mage-v4.spr",
+      "sha256": "9d3df879764c6bcc04c60f40ae55ce3d30d5332205dc45cacb05da0aa35c6bc1",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "9d3df879764c6bcc04c60f40ae55ce3d30d5332205dc45cacb05da0aa35c6bc1",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "mage",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.act",
+      "source": "Assets/ClanBodySkins/Mage/male-scale-v4/assets/male-angel-mage-v4.act",
+      "sha256": "1bfbc244b16b4a22290bfa2ddba672b8ac1f343c5b5f3286161e88edc860c031",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "1bfbc244b16b4a22290bfa2ddba672b8ac1f343c5b5f3286161e88edc860c031",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "mage",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.spr",
+      "source": "Assets/ClanBodySkins/Mage/female-gait-v10/assets/female-angel-mage-v10.spr",
+      "sha256": "c2b95522379e7177b2eb5ee048cd197a8341623db5aa351170f1298ce3451187",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "c2b95522379e7177b2eb5ee048cd197a8341623db5aa351170f1298ce3451187",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "mage",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.act",
+      "source": "Assets/ClanBodySkins/Mage/female-gait-v10/assets/female-angel-mage-v10.act",
+      "sha256": "c0f57499f23f501230b24268f025c2c5da192b6b58b2587c44805fabbfe4dec6",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "c0f57499f23f501230b24268f025c2c5da192b6b58b2587c44805fabbfe4dec6",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "acolyte",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc131\uc9c1\uc790_\ub0a8.spr",
+      "source": "Assets/ClanBodySkins/Acolyte/motion-v3/assets/male-angel-acolyte-v3.spr",
+      "sha256": "81f07bfc95f3b722b9ef18376beea7a1e3e61e0948a130ff9514ce6ba483862c",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "81f07bfc95f3b722b9ef18376beea7a1e3e61e0948a130ff9514ce6ba483862c",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "acolyte",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc131\uc9c1\uc790_\ub0a8.act",
+      "source": "Assets/ClanBodySkins/Acolyte/motion-v3/assets/male-angel-acolyte-v3.act",
+      "sha256": "91785e792f0f00cf7905894c7239b01b1bc688e4d796afa84de004b1df69168d",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "91785e792f0f00cf7905894c7239b01b1bc688e4d796afa84de004b1df69168d",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "acolyte",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc131\uc9c1\uc790_\uc5ec.spr",
+      "source": "Assets/ClanBodySkins/Acolyte/motion-v3/assets/female-angel-acolyte-v3.spr",
+      "sha256": "25355597d65237b65bf2bfdaff92be9c5b014a0b204648bb20f218d6e74b46d0",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "25355597d65237b65bf2bfdaff92be9c5b014a0b204648bb20f218d6e74b46d0",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "acolyte",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc131\uc9c1\uc790_\uc5ec.act",
+      "source": "Assets/ClanBodySkins/Acolyte/motion-v3/assets/female-angel-acolyte-v3.act",
+      "sha256": "4fdda1b9b4950711ea6f6d6ce152bdc2cd4ec900bc7612333778238ecbfc28a5",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "4fdda1b9b4950711ea6f6d6ce152bdc2cd4ec900bc7612333778238ecbfc28a5",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "archer",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uad81\uc218_\ub0a8.spr",
+      "source": "Assets/ClanBodySkins/Archer/scale-v6/assets/male-angel-archer-v6.spr",
+      "sha256": "a37f3f8a2b5a643ca3f6e47dd4565a5c0f9fbc097e20ef178587c772d2fc51fd",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "a37f3f8a2b5a643ca3f6e47dd4565a5c0f9fbc097e20ef178587c772d2fc51fd",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "archer",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uad81\uc218_\ub0a8.act",
+      "source": "Assets/ClanBodySkins/Archer/scale-v6/assets/male-angel-archer-v6.act",
+      "sha256": "7b98efcc3c6ab95ca91fc52a15b81f01de309c3205db2e51a9478050e8a73545",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "7b98efcc3c6ab95ca91fc52a15b81f01de309c3205db2e51a9478050e8a73545",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "archer",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uad81\uc218_\uc5ec.spr",
+      "source": "Assets/ClanBodySkins/Archer/scale-v6/assets/female-angel-archer-v6.spr",
+      "sha256": "ac95803904a1b2bfa8086471a7b92650250feedde00e30df1c11b7e66a920cba",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "ac95803904a1b2bfa8086471a7b92650250feedde00e30df1c11b7e66a920cba",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "archer",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uad81\uc218_\uc5ec.act",
+      "source": "Assets/ClanBodySkins/Archer/scale-v6/assets/female-angel-archer-v6.act",
+      "sha256": "5eb52e90aafb17734357ace4de4c8532f4bc9e4d0ea2227a0ec7166054e7a63f",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "5eb52e90aafb17734357ace4de4c8532f4bc9e4d0ea2227a0ec7166054e7a63f",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "merchant",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc0c1\uc778_\ub0a8.spr",
+      "source": "Assets/ClanBodySkins/Merchant/complete-v1/assets/male-angel-merchant-v1.spr",
+      "sha256": "f3f8de4f0ebd859d4c6924246396221e6e653e0218fcb4f0131f9ae9e2e570ba",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "f3f8de4f0ebd859d4c6924246396221e6e653e0218fcb4f0131f9ae9e2e570ba",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "merchant",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc0c1\uc778_\ub0a8.act",
+      "source": "Assets/ClanBodySkins/Merchant/complete-v1/assets/male-angel-merchant-v1.act",
+      "sha256": "5db0cbacd0852bd3df1b120f86402ea9c1670b9976e5543e2c78180c71ee375b",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "5db0cbacd0852bd3df1b120f86402ea9c1670b9976e5543e2c78180c71ee375b",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "merchant",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc0c1\uc778_\uc5ec.spr",
+      "source": "Assets/ClanBodySkins/Merchant/complete-v1/assets/female-angel-merchant-v1.spr",
+      "sha256": "8fceaf185615899edd6c5cfdc7565041f87cbe89fceb0258389970f65c6f7e71",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "8fceaf185615899edd6c5cfdc7565041f87cbe89fceb0258389970f65c6f7e71",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "merchant",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc0c1\uc778_\uc5ec.act",
+      "source": "Assets/ClanBodySkins/Merchant/complete-v1/assets/female-angel-merchant-v1.act",
+      "sha256": "57ea2727c432ef7c73ec73789a95b0669513154477539a41df42b7c579069e78",
+      "archives": [
+        "maindata.grf"
+      ],
+      "effective_archive": "maindata.grf",
+      "effective_sha256": "57ea2727c432ef7c73ec73789a95b0669513154477539a41df42b7c579069e78",
+      "matches_accepted": true,
+      "loose_files": []
+    },
+    {
+      "job": "thief",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub3c4\ub451_\ub0a8.spr",
+      "source": "Assets/ClanBodySkins/Thief/complete-v1/assets/male-angel-thief-v1.spr",
+      "sha256": "6dcf7c337ff549c7fa8ccb742435f4cb92235fd3c0b37acab3ea57ceac6b5a11",
+      "archives": [],
+      "effective_archive": null,
+      "effective_sha256": null,
+      "matches_accepted": null,
+      "loose_files": []
+    },
+    {
+      "job": "thief",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub3c4\ub451_\ub0a8.act",
+      "source": "Assets/ClanBodySkins/Thief/complete-v1/assets/male-angel-thief-v1.act",
+      "sha256": "cc80565a507e3e7146898f6ca255568113ffcc6dc4d7ffccd99836ea8f36fbac",
+      "archives": [],
+      "effective_archive": null,
+      "effective_sha256": null,
+      "matches_accepted": null,
+      "loose_files": []
+    },
+    {
+      "job": "thief",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub3c4\ub451_\uc5ec.spr",
+      "source": "Assets/ClanBodySkins/Thief/complete-v1/assets/female-angel-thief-v1.spr",
+      "sha256": "2ca98e7e3094f61cef72bc031523e7cf58069f0b24f3c7b0c226a79a687b1679",
+      "archives": [],
+      "effective_archive": null,
+      "effective_sha256": null,
+      "matches_accepted": null,
+      "loose_files": []
+    },
+    {
+      "job": "thief",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub3c4\ub451_\uc5ec.act",
+      "source": "Assets/ClanBodySkins/Thief/complete-v1/assets/female-angel-thief-v1.act",
+      "sha256": "54ea3a7bfaeb4e07a59927643c577abd0606e9d113789ecd0814fa7a22af5256",
+      "archives": [],
+      "effective_archive": null,
+      "effective_sha256": null,
+      "matches_accepted": null,
+      "loose_files": []
+    }
+  ],
+  "evidence": [
+    {
+      "path": "inventory.json",
+      "sha256": "59da8d0d49f15b8cc001bd173d9867c142f1121164b23c3c09f2ab8ac2e48cb7"
+    },
+    {
+      "path": "findings.json",
+      "sha256": "6333040989173238041883fdd4a400d9a0b8190a8ebd8d9d1dcef02f8c4aa99f"
+    },
+    {
+      "path": "screening.json",
+      "sha256": "b5a529f5a283bbe900e5b4549378803d70bae12a4238033c96601317654b88ee"
+    },
+    {
+      "path": "neck-joins/screen.json",
+      "sha256": "e437ab5275aa71ca5a2e9bb820c49eb03ca11c3a7eb17f83cfca178245847053"
+    },
+    {
+      "path": "review-data.json",
+      "sha256": "0a412a7895598b21a708f21bbc1ef11dad02bc9130e86e57386a5348df81bf83"
+    },
+    {
+      "path": "neck-review.html",
+      "sha256": "1c698aaec23449c4e0bf7cd1ab28681dbe545e397110a0763dd7377eae00c711"
+    },
+    {
+      "path": "neck-joins/browser-verification.json",
+      "sha256": "8bb02a468cadeac15bc4fab817997f1c1bb4784272ffdfd0e5280be61482948d"
+    }
+  ],
+  "audit_tools": [
+    {
+      "path": "tools/audit_clan_motion.py",
+      "sha256": "11df1ae902e18ba6cfd39e19ec8e45508dc1fefa29c59cdd173477784d6b5614"
+    },
+    {
+      "path": "tools/audit_clan_neck_joins.py",
+      "sha256": "e5f1fa54825ec09ab90c4334de6af832971b4b22d4aaa8e6985648094f7a53d6"
+    },
+    {
+      "path": "tools/clan_neck_review.html",
+      "sha256": "1c698aaec23449c4e0bf7cd1ab28681dbe545e397110a0763dd7377eae00c711"
+    }
+  ],
+  "native_reference_files_verified": 48
+}

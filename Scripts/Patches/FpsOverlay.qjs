@@ -1,0 +1,119 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-09-14                                             *
+*                                                                          *
+*   Description   : Adds a QJS-only FPS overlay to the 2025-07-16 client.  *
+*                   A static post-Present cave counts native frames and    *
+*                   draws transparent GDI text inside the client HWND.     *
+*                   No custom DLL, D3D proxy, COM-vtable mutation or       *
+*                   runtime code patching is used.                         *
+*                                                                          *
+\**************************************************************************/
+
+NativeTelemetryOverlay.requireApi(1);
+NativeTelemetryOverlay.FpsOption = 10002;
+NativeTelemetryOverlay.StateFpsInstalled = 0;
+NativeTelemetryOverlay.StateFpsX = 8;
+NativeTelemetryOverlay.StateFpsY = 12;
+NativeTelemetryOverlay.StateFpsFrames = 24;
+NativeTelemetryOverlay.StateFpsWindowStart = 28;
+NativeTelemetryOverlay.StateFpsValue = 32;
+NativeTelemetryOverlay.StateFpsBuffer = 44;
+NativeTelemetryOverlay.GetTickCountIat = 0x00FC120C;
+
+NativeTelemetryOverlay.registerChannel({
+	apiVersion: 1, id: "fps", flag: 1, optionId: 10002,
+	installedOffset: 0, xOffset: 8, yOffset: 12, valueOffset: 32, bufferOffset: 44,
+	prefix: "FPS: ", suffix: "",
+	emitColor: function(a) { a.emit(0x68); a.dword(0x00FFFFFF); },
+	emitSample: function(a, stateVir)
+	{
+		NativeTelemetryOverlay.callIat(a, NativeTelemetryOverlay.GetTickCountIat);
+		a.emit(0x8B, 0xD8);
+		a.emit(0x8B, 0x15); a.dword(stateVir + NativeTelemetryOverlay.StateFpsWindowStart);
+		a.emit(0x85, 0xD2);
+		a.jcc(0x85, "have_fps_start");
+		a.emit(0xA3); a.dword(stateVir + NativeTelemetryOverlay.StateFpsWindowStart);
+		a.emit(0x8B, 0xD0);
+		a.label("have_fps_start");
+		a.emit(0xFF, 0x05); a.dword(stateVir + NativeTelemetryOverlay.StateFpsFrames);
+		a.emit(0x8B, 0xC8, 0x2B, 0xCA, 0x81, 0xF9); a.dword(1000);
+		a.jcc(0x82, "fps_ready");
+		a.emit(0xA1); a.dword(stateVir + NativeTelemetryOverlay.StateFpsFrames);
+		a.emit(0x69, 0xC0); a.dword(1000);
+		a.emit(0x33, 0xD2, 0xF7, 0xF1);
+		a.emit(0xA3); a.dword(stateVir + NativeTelemetryOverlay.StateFpsValue);
+		a.emit(0xC7, 0x05); a.dword(stateVir + NativeTelemetryOverlay.StateFpsFrames); a.dword(0);
+		a.emit(0x89, 0x1D); a.dword(stateVir + NativeTelemetryOverlay.StateFpsWindowStart);
+		a.label("fps_ready");
+	}
+});
+
+FpsOverlay = function(_)
+{
+	try
+	{
+		$$(_, 1, "Read FPS overlay coordinates");
+		const coordinates = NativeTelemetryOverlay.getCoordinates(
+			"$fpsOverlayXY",
+			"FPS Overlay",
+			[-195, 50]
+		);
+		$$(_, 2, "Install shared native post-Present overlay");
+		const state = NativeTelemetryOverlay.ensure(_);
+		NativeTelemetryOverlay.configure(
+			state,
+			NativeTelemetryOverlay.StateFpsInstalled,
+			NativeTelemetryOverlay.StateFpsX,
+			NativeTelemetryOverlay.StateFpsY,
+			coordinates
+		);
+		$$(_, 3, "Register /fps static command");
+		const toggleVir = NativeTelemetryOverlay.registerCommand(
+			_,
+			"/fps",
+			NativeTelemetryOverlay.FpsOption
+		);
+		if (typeof PatchDiagnostics !== "undefined" &&
+			typeof PatchDiagnostics.add === "function")
+			PatchDiagnostics.add("FpsOverlay.QjsOnly", {
+				coordinates,
+				stateVir: state.stateVir,
+				presentVir: state.presentVir,
+				toggleVir
+			});
+		return true;
+	}
+	catch (error)
+	{
+		FpsOverlay.cleanup(Exe.ActivePatch);
+		throw error;
+	}
+};
+
+FpsOverlay.cleanup = function(patchName)
+{
+	NativeTelemetryOverlay.release(patchName, NativeTelemetryOverlay.StateFpsInstalled);
+};
+
+FpsOverlay.validate = function()
+{
+	return Exe.BuildDate === NativeTelemetryOverlay.BuildDate;
+};

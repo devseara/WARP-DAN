@@ -22,6 +22,7 @@ def main():
     ap.add_argument('--reverse-feature-order', action='store_true')
     ap.add_argument('--with-notice', action='store_true', help='Select stock announcement item icons (legacy NoticeMarquee ID), staged profile only')
     ap.add_argument('--with-vip', action='store_true', help='Select independent native VIP UI, staged profile only')
+    ap.add_argument('--with-ui-theme', action='store_true', help='Select the shared Classic/New UI toggle before chat, staged profile only')
     args = ap.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
@@ -34,6 +35,10 @@ def main():
     shutil.copy2(ROOT / 'Patches.yml', fixture / 'Patches.yml')
     target = output / 'Ragnarok-chat-test.exe'
     saved = args.profile.read_text(encoding='utf-8-sig')
+    if args.with_ui_theme and not re.search(r'^\s+- ROGlobalZeroUITheme\s*$', saved, re.M):
+        saved, added = re.subn(r'^( +)- ModernChatUI([ \t]*\r?)$',
+                              r'\1- ROGlobalZeroUITheme\2\n\1- ModernChatUI', saved, flags=re.M)
+        assert added == 1, 'Expected one ModernChatUI selection'
     if args.with_vip and not re.search(r'^\s+- VipUI\s*$', saved, re.M):
         saved, added = re.subn(r'^( +)- ChatItemIcons([ \t]*\r?)$', r'\1- ChatItemIcons\2\n\1- VipUI', saved, flags=re.M)
         assert added == 1, 'Expected one ChatItemIcons selection'

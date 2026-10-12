@@ -1,0 +1,975 @@
+[
+  {
+    "name": "Drainliar",
+    "summary": "Larger and more formidable than a Familiar, this blood-feeding bat gathers in cave colonies and pursues intruders.",
+    "url": "https://ragnarok.fandom.com/wiki/Drainliar",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Drops",
+    "summary": "An orange Poring relative adapted to desert heat, Drops still scavenges belongings left upon the ground.",
+    "url": "https://ragnarok.fandom.com/wiki/Drops",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Dustiness",
+    "summary": "A moth protected by an unusually tough body, often encountered in dim places around Mount Mjolnir.",
+    "url": "https://ragnarok.fandom.com/wiki/Dustiness",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Eddga",
+    "summary": "Forest communities revere this ancient pipe-smoking tiger, whose resentment grows as people destroy the mountains around him.",
+    "url": "https://ragnarok.fandom.com/wiki/Eddga",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Eggyra",
+    "summary": "A wandering egg creature whose thick shell conceals the life within as it drifts through dungeon passages.",
+    "url": "https://ragnarok.fandom.com/wiki/Eggyra",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Evil Druid",
+    "summary": "Once a distinguished priest, this cursed undead carries a floating spellbook that crackles with supernatural energy.",
+    "url": "https://ragnarok.fandom.com/wiki/Evil_Druid",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Flora",
+    "summary": "A rooted, sunflower-like predator that feeds upon travelers. Alchemists collect parts of this unsettling plant for their work.",
+    "url": "https://ragnarok.fandom.com/wiki/Flora",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Frilldora",
+    "summary": "This desert lizard spreads a broad neck frill and catches insects with its long, quick tongue.",
+    "url": "https://ragnarok.fandom.com/wiki/Frilldora",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Ghostring",
+    "summary": "A spectral Poring said to have returned through lingering resentment, its familiar outline changed by an unsettled afterlife.",
+    "url": "https://ragnarok.fandom.com/wiki/Ghostring",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Giearth",
+    "summary": "An underground earth fairy devoted to gathering and working ore, with little patience for anyone disturbing its possessions.",
+    "url": "https://ragnarok.fandom.com/wiki/Giearth",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Hode",
+    "summary": "A giant desert worm that retreats beneath the sand, concealing its considerable length from passing travelers.",
+    "url": "https://ragnarok.fandom.com/wiki/Hode",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Horn",
+    "summary": "Usually peaceful, this large beetle relies on its scissor-like jaws when something threatens it.",
+    "url": "https://ragnarok.fandom.com/wiki/Horn",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Horong",
+    "summary": "A violet death-fire associated with wandering spirits. Accounts agree on its eerie glow, while its origins remain uncertain.",
+    "url": "https://ragnarok.fandom.com/wiki/Horong",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Jakk",
+    "summary": "A formally dressed pumpkin-headed creature sometimes described as a demon's familiar, with a face suited to autumn festivities.",
+    "url": "https://ragnarok.fandom.com/wiki/Jakk",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Joker",
+    "summary": "An enchanted playing card created through dark magical experiments, assigned to guard a tower against intruders.",
+    "url": "https://ragnarok.fandom.com/wiki/Joker",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Khalitzburg",
+    "summary": "A knight's spirit remains imprisoned in armor after Glastheim's chivalry fell to Himmelmez's curse.",
+    "url": "https://ragnarok.fandom.com/wiki/Khalitzburg",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Magnolia",
+    "summary": "An unhappy spirit linked to an unhatched Peco Peco egg, appearing as the bizarre union of egg and frying pan.",
+    "url": "https://ragnarok.fandom.com/wiki/Magnolia",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Mantis",
+    "summary": "Despite its bladed limbs, this martial insect favors punches and kicks, even carrying a little fan.",
+    "url": "https://ragnarok.fandom.com/wiki/Mantis",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Marduk",
+    "summary": "A desert shaman associated with the curses that bind guardians to a king's tomb.",
+    "url": "https://ragnarok.fandom.com/wiki/Marduk",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Marina",
+    "summary": "An elastic jellyfish whose muscular tentacles serve as whips. It can endure brief excursions beyond its cool aquatic home.",
+    "url": "https://ragnarok.fandom.com/wiki/Marina",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Marine Sphere",
+    "summary": "A drifting aquatic sphere with an explosive response to danger, making it useful and hazardous to alchemists.",
+    "url": "https://ragnarok.fandom.com/wiki/Marine_Sphere",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Marionette",
+    "summary": "A lesser demon occupies a puppet once used in royal performances, leaving a cursed doll suspended upon strings.",
+    "url": "https://ragnarok.fandom.com/wiki/Marionette",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Marse",
+    "summary": "A small squid-like creature that spins its body and lashes out with long, flexible tentacles.",
+    "url": "https://ragnarok.fandom.com/wiki/Marse",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Martin",
+    "summary": "A burrowing mole that occasionally emerges from its underground home to search for food.",
+    "url": "https://ragnarok.fandom.com/wiki/Martin",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Matyr",
+    "summary": "A magically created hound of the Sphinx, waking from dark mist when it catches an adventurer's scent.",
+    "url": "https://ragnarok.fandom.com/wiki/Matyr",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Maya",
+    "summary": "The ant colony's powerful queen usually remains within her damp, dark nest, emerging when invaders threaten it.",
+    "url": "https://ragnarok.fandom.com/wiki/Maya",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Medusa",
+    "summary": "A snake-haired monster whose dreadful gaze is associated with petrification in accounts passed between adventurers.",
+    "url": "https://ragnarok.fandom.com/wiki/Medusa",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Minorous",
+    "summary": "An ox-headed hammer bearer dwelling deep in a labyrinth, hostile to anyone disturbing its isolation.",
+    "url": "https://ragnarok.fandom.com/wiki/Minorous",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Moonlight Flower",
+    "summary": "A bell-bearing fox demon commands fox followers, concealing a dangerous presence behind her youthful appearance.",
+    "url": "https://ragnarok.fandom.com/wiki/Moonlight_Flower",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Myst",
+    "summary": "Living poisonous fog, thought to contain countless tiny organisms, drifts through darkness with a strangely window-like face.",
+    "url": "https://ragnarok.fandom.com/wiki/Myst",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Orc Skeleton",
+    "summary": "Even stripped to its bones, this reanimated Orc Warrior continues the fighting that defined its life.",
+    "url": "https://ragnarok.fandom.com/wiki/Orc_Skeleton",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Orc Zombie",
+    "summary": "Death has slowed this Orc Warrior and dulled its senses, but has failed to extinguish its fighting spirit.",
+    "url": "https://ragnarok.fandom.com/wiki/Orc_Zombie",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Pasana",
+    "summary": "A cursed soldier remains within the pyramid, bound beyond death to defend its former master.",
+    "url": "https://ragnarok.fandom.com/wiki/Pasana",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Phen",
+    "summary": "A slender blue fish recognized by its pointed snout and melancholy eyes, moving through the underwater world.",
+    "url": "https://ragnarok.fandom.com/wiki/Phen",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Phreeoni",
+    "summary": "Its origins remain obscure, but the enormous tongue and unexpected power of this creature leave little room for complacency.",
+    "url": "https://ragnarok.fandom.com/wiki/Phreeoni",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Piere",
+    "summary": "A green worker ant devoted to Queen Maya, gathering supplies and scavenging for the colony.",
+    "url": "https://ragnarok.fandom.com/wiki/Piere",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Plankton",
+    "summary": "Tiny drifting aquatic organisms form part of the food supply that sustains larger life beneath the water.",
+    "url": "https://ragnarok.fandom.com/wiki/Plankton",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Rafflesia",
+    "summary": "An aggressive, animate bush near Lighthalzen; whether magic or scientific interference caused its transformation remains uncertain.",
+    "url": "https://ragnarok.fandom.com/wiki/Rafflesia",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Raydric",
+    "summary": "A fallen castle guard's spirit inhabits its armor, maintaining a grim defense long after death.",
+    "url": "https://ragnarok.fandom.com/wiki/Raydric",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Requiem",
+    "summary": "Once an enslaved tomb-builder, this cursed figure carries a heavy coffin through the Sphinx and turns that burden against intruders.",
+    "url": "https://ragnarok.fandom.com/wiki/Requiem",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Sandman",
+    "summary": "A fairy formed from desert sand, sometimes mistaken in Morocc's folklore for the ghost of a traveler lost there.",
+    "url": "https://ragnarok.fandom.com/wiki/Sandman",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Savage",
+    "summary": "A forest boar that becomes formidable when angered, bringing its coarse tusks to bear against a threat.",
+    "url": "https://ragnarok.fandom.com/wiki/Savage",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Savage Babe",
+    "summary": "A tiny young Savage whose appealing appearance has made it a familiar candidate for an adventurer's pet.",
+    "url": "https://ragnarok.fandom.com/wiki/Savage_Babe",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Skeleton Worker",
+    "summary": "The resentment of a miner killed in an accident animates these bones, continuing a lifetime's labor beneath the earth.",
+    "url": "https://ragnarok.fandom.com/wiki/Skeleton_Worker",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Sohee",
+    "summary": "A sorrowful spirit associated with Payon, whose tears conceal resentment that may suddenly turn fierce.",
+    "url": "https://ragnarok.fandom.com/wiki/Sohee",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Stainer",
+    "summary": "A colorful ladybug that preys on troublesome insects; its patterned shell is also valued as decoration.",
+    "url": "https://ragnarok.fandom.com/wiki/Stainer",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Tarou",
+    "summary": "A small pale-furred rodent at home in the darkness of culverts and mines.",
+    "url": "https://ragnarok.fandom.com/wiki/Tarou",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Vitata",
+    "summary": "A plump honey ant supplies its queen with honey and royal jelly, supporting the colony from within.",
+    "url": "https://ragnarok.fandom.com/wiki/Vitata",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Zenorc",
+    "summary": "This withdrawn, altered Orc survives in caves by scavenging scarce supplies, avoiding attention whenever possible.",
+    "url": "https://ragnarok.fandom.com/wiki/Zenorc",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Zerom",
+    "summary": "An enslaved builder of the Sphinx remains bound by a curse, denied rest and compelled to guard Pharaoh's domain.",
+    "url": "https://ragnarok.fandom.com/wiki/Zerom",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Whisper",
+    "summary": "An apparition clothed in ghostly fabric, capable of slipping from sight as it haunts dark passages.",
+    "url": "https://ragnarok.fandom.com/wiki/Whisper",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Nine Tail",
+    "summary": "Forest magic has accumulated within this many-tailed fox. Stories claim it can assume human form, though that remains unconfirmed.",
+    "url": "https://ragnarok.fandom.com/wiki/Nine_Tail",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Bongun",
+    "summary": "He is said to have accepted an undead existence so that he could continue protecting his beloved Munak.",
+    "url": "https://ragnarok.fandom.com/wiki/Bongun",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Orc Archer",
+    "summary": "A practiced Orc bowman brings ranged support to a people more commonly associated with close combat.",
+    "url": "https://ragnarok.fandom.com/wiki/Orc_Archer",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Orc Lord",
+    "summary": "An intelligent Orc chief with a reputation for martial skill, favoring direct physical combat over conventional weapons.",
+    "url": "https://ragnarok.fandom.com/wiki/Orc_Lord",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Mimic",
+    "summary": "A tempting treasure chest conceals a swift creature, turning an adventurer's appetite for riches into a dangerous encounter.",
+    "url": "https://ragnarok.fandom.com/wiki/Mimic",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Wraith",
+    "summary": "A cursed spirit hides in shadow, believing that stolen vitality can restore the life it has lost.",
+    "url": "https://ragnarok.fandom.com/wiki/Wraith",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Alarm",
+    "summary": "Magic animated this alarm clock to defend the Clock Tower, turning an ordinary timepiece into a tireless sentinel.",
+    "url": "https://ragnarok.fandom.com/wiki/Alarm",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Rideword",
+    "summary": "A living book inhabits magical libraries; whether it belongs to their security or merely infests them is uncertain.",
+    "url": "https://ragnarok.fandom.com/wiki/Rideword",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Skeleton Prisoner",
+    "summary": "A wrongfully accused prisoner's bones remain restless, carrying a grudge against the jailers who condemned them.",
+    "url": "https://ragnarok.fandom.com/wiki/Skeleton_Prisoner",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Zombie Prisoner",
+    "summary": "A corpse from the castle prison returns with hatred that has spread beyond its captors to the living.",
+    "url": "https://ragnarok.fandom.com/wiki/Zombie_Prisoner",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Mysteltainn",
+    "summary": "The animated chain wrapped around this sword is the creature itself, wielding the blade as its borrowed body.",
+    "url": "https://ragnarok.fandom.com/wiki/Mysteltainn",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Executioner",
+    "summary": "A living chain binds and controls a sword, transforming the weapon into the body of a roaming threat.",
+    "url": "https://ragnarok.fandom.com/wiki/Executioner",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Sting",
+    "summary": "An entity shaped from mud, capable of striking from farther away than its soft, earthen appearance suggests.",
+    "url": "https://ragnarok.fandom.com/wiki/Sting",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Cramp",
+    "summary": "A hostile sewer rodent resembling Tarou, distinguished by a bite delivered through poisonous teeth.",
+    "url": "https://ragnarok.fandom.com/wiki/Cramp",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Brilight",
+    "summary": "For reasons still unclear, this ladybug grew unusually large and aggressive, retreating into dark places.",
+    "url": "https://ragnarok.fandom.com/wiki/Brilight",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "High Orc",
+    "summary": "A formidable Orc distinguished by strength and intelligence, associated with raids on neighboring settlements.",
+    "url": "https://ragnarok.fandom.com/wiki/High_Orc",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Stem Worm",
+    "summary": "An altered Worm Tail bears a stronger tendril, giving its otherwise familiar form greater reach and force.",
+    "url": "https://ragnarok.fandom.com/wiki/Stem_Worm",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Penomena",
+    "summary": "A dangerous, mobile relative of Hydra that need not wait in one place for prey to approach.",
+    "url": "https://ragnarok.fandom.com/wiki/Penomena",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Marin",
+    "summary": "A Poring relative adapted to Lutie's perpetual winter, with little of its cousins' interest in discarded belongings.",
+    "url": "https://ragnarok.fandom.com/wiki/Marin",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Sasquatch",
+    "summary": "A white-furred bear of the country around Lutie, known for its hostility toward passing travelers.",
+    "url": "https://ragnarok.fandom.com/wiki/Sasquatch",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Christmas Cookie",
+    "summary": "A mischievous fairy worker from Lutie's Toy Factory, bringing seasonal color to its busy workshops.",
+    "url": "https://ragnarok.fandom.com/wiki/Christmas_Cookie",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Cruiser",
+    "summary": "A toy soldier equipped with a rifle stands guard over the factory where toys are made.",
+    "url": "https://ragnarok.fandom.com/wiki/Cruiser",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Myst Case",
+    "summary": "Magic animates this toy box directly; unlike a Mimic, its movement is not attributed to a resident spirit.",
+    "url": "https://ragnarok.fandom.com/wiki/Myst_Case",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Chepet",
+    "summary": "The apparent girl is a puppet controlled by the strange doll she carries, attacking with burning matchsticks.",
+    "url": "https://ragnarok.fandom.com/wiki/Chepet",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Gargoyle",
+    "summary": "A winged lesser demon that threatens travelers from above, using a bow while airborne.",
+    "url": "https://ragnarok.fandom.com/wiki/Gargoyle",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Raggler",
+    "summary": "An injured seagull soldier gets around with a walking stick; healthier members of its kind serve as messengers.",
+    "url": "https://ragnarok.fandom.com/wiki/Raggler",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Nereid",
+    "summary": "A cave-dwelling worm with weak eyesight that relies upon scent to locate its prey.",
+    "url": "https://ragnarok.fandom.com/wiki/Nereid",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Pest",
+    "summary": "A poorly understood creature that covers its eyes as it launches a spinning attack.",
+    "url": "https://ragnarok.fandom.com/wiki/Pest",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Goblin Archer",
+    "summary": "Goblin bowmen become especially dangerous together, concentrating their arrows on a shared target.",
+    "url": "https://ragnarok.fandom.com/wiki/Goblin_Archer",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Gryphon",
+    "summary": "Combining an eagle's head and wings with a lion's body, this magnificent beast can become a Royal Guard's mount.",
+    "url": "https://ragnarok.fandom.com/wiki/Gryphon",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Dark Frame",
+    "summary": "A cursed mirror waits for someone to inspect their reflection, then reveals the threat behind its familiar surface.",
+    "url": "https://ragnarok.fandom.com/wiki/Dark_Frame",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Wild Rose",
+    "summary": "A clever, troublesome cat recognizable by the large ribbon on its back; travelers whisper that it can be tamed.",
+    "url": "https://ragnarok.fandom.com/wiki/Wild_Rose",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Wind Ghost",
+    "summary": "A skull-like apparition wrapped in a green cloak, feared for the strength of its magic.",
+    "url": "https://ragnarok.fandom.com/wiki/Wind_Ghost",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Merman",
+    "summary": "A warrior of the deep-sea tribes, encountered beneath the waves and in caves along the coast.",
+    "url": "https://ragnarok.fandom.com/wiki/Merman",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Cookie",
+    "summary": "A playful fairy employed in Lutie's Toy Factory, as fond of tricks as the seasonal workers around it.",
+    "url": "https://ragnarok.fandom.com/wiki/Cookie",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Aster",
+    "summary": "A gentle sea-dwelling starfish, lending an unassuming shape to the varied creatures of the underwater world.",
+    "url": "https://ragnarok.fandom.com/wiki/Aster",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Carat",
+    "summary": "A ball-riding demon in a clown's guise keeps trying to entertain Glastheim's inhabitants, despite its unreceptive undead audience.",
+    "url": "https://ragnarok.fandom.com/wiki/Carat",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Bloody Knight",
+    "summary": "A once-valiant senior knight remains cursed within bloodstained armor, a dark remnant of the castle's former chivalry.",
+    "url": "https://ragnarok.fandom.com/wiki/Bloody_Knight",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Clock",
+    "summary": "An ancient wall clock became animate after long years among people, carrying familiar domestic features into the Clock Tower.",
+    "url": "https://ragnarok.fandom.com/wiki/Clock",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Clock Tower Manager",
+    "summary": "A magical caretaker maintains Aldebaran's Clock Tower and defends both itself and the structure when threatened.",
+    "url": "https://ragnarok.fandom.com/wiki/Clock_Tower_Manager",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Alligator",
+    "summary": "A humanoid alligator whose reputation is less hostile than that of the related Crocodile tribe.",
+    "url": "https://ragnarok.fandom.com/wiki/Alligator",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Dark Lord",
+    "summary": "A demon sovereign whose manifestations remain devastating even when the mortal world limits the power he can bring into it.",
+    "url": "https://ragnarok.fandom.com/wiki/Dark_Lord",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Orc Lady",
+    "summary": "An Orc woman armed with a massive kitchen knife, quick to defend an Orc Baby in distress.",
+    "url": "https://ragnarok.fandom.com/wiki/Orc_Lady",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Megalith",
+    "summary": "A mysterious island statue directs surrounding rocks against its enemies, animating an otherwise monumental stone form.",
+    "url": "https://ragnarok.fandom.com/wiki/Megalith",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Alice",
+    "summary": "A mechanical maid continues tending Glastheim Castle, turning her cleaning equipment against unwelcome intruders.",
+    "url": "https://ragnarok.fandom.com/wiki/Alice",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Raydric Archer",
+    "summary": "A dead castle guard's spirit remains bound to armor, defending the ruins with a bow instead of a sword.",
+    "url": "https://ragnarok.fandom.com/wiki/Raydric_Archer",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Greatest General",
+    "summary": "A neglected village guardian is said to have turned sorrow into anger, lashing out at travelers while remaining rooted in place.",
+    "url": "https://ragnarok.fandom.com/wiki/Greatest_General",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Stalactic Golem",
+    "summary": "An advanced member of the golem family, its stone body evokes the cavern formations around it.",
+    "url": "https://ragnarok.fandom.com/wiki/Stalactic_Golem",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Tri Joint",
+    "summary": "An ancient cave creature protected by a hard shell; fossil discoveries suggest its kind has existed for a long time.",
+    "url": "https://ragnarok.fandom.com/wiki/Tri_Joint",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Sage Worm",
+    "summary": "Esteemed among its own kind, this unusually intelligent worm lends a scholarly presence to an otherwise unlikely body.",
+    "url": "https://ragnarok.fandom.com/wiki/Sage_Worm",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Kobold Archer",
+    "summary": "A bow-using member of the wandering Kobold tribes, traveling in small groups through desert country.",
+    "url": "https://ragnarok.fandom.com/wiki/Kobold_Archer",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Chimera",
+    "summary": "A fire-breathing creature combining the features of lion, goat, and serpent into one unsettling body.",
+    "url": "https://ragnarok.fandom.com/wiki/Chimera",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Maya Purple",
+    "summary": "Queen Maya's mate helps defend the ant nest and its brood, reinforcing the colony's formidable guardians.",
+    "url": "https://ragnarok.fandom.com/wiki/Maya_Purple",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Wraith Dead",
+    "summary": "A restless ghost wanders without direction, concealing a threatening mouth and teeth within its stomach.",
+    "url": "https://ragnarok.fandom.com/wiki/Wraith_Dead",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Creamy Fear",
+    "summary": "A far more dangerous Creamy relative whose familiar silhouette can mislead adventurers accustomed to the ordinary butterfly.",
+    "url": "https://ragnarok.fandom.com/wiki/Creamy_Fear",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Panzer Goblin",
+    "summary": "This inventive Goblin has acquired a powered jetpack, lending an improbable mechanical advantage to its airborne attacks.",
+    "url": "https://ragnarok.fandom.com/wiki/Panzer_Goblin",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Turtle General",
+    "summary": "Turtle Island's leader is an agile veteran of twin-blade combat, defying the slowness travelers expect from turtles.",
+    "url": "https://ragnarok.fandom.com/wiki/Turtle_General",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Assaulter",
+    "summary": "A ninja warrior from Turtle Island throws an oversized shuriken with practiced accuracy.",
+    "url": "https://ragnarok.fandom.com/wiki/Assaulter",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Lord of the Dead",
+    "summary": "An armored champion of death from the realm of Hel, bearing an immense lance and an imposing shield.",
+    "url": "https://ragnarok.fandom.com/wiki/Lord_of_the_Dead",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Poison Toad",
+    "summary": "A poisonous toad that favors damp, dark surroundings, where its squat outline is easy to overlook.",
+    "url": "https://ragnarok.fandom.com/wiki/Poison_Toad",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Dullahan",
+    "summary": "An inhabited suit of armor stalks Niflheim, carrying the presence of its unseen occupant through the realm of the dead.",
+    "url": "https://ragnarok.fandom.com/wiki/Dullahan",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Deviling",
+    "summary": "A devilish member of the Poring family, retaining a jelly-like silhouette despite its darker nature.",
+    "url": "https://ragnarok.fandom.com/wiki/Deviling",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Kraben",
+    "summary": "Folklore describes a winged magician transformed into a creature with rice-pounding pestles for legs and a smaller pestle for a tail.",
+    "url": "https://ragnarok.fandom.com/wiki/Kraben",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Metaling",
+    "summary": "This metallic Poring relative scavenges loose objects like its softer cousins, despite a body associated with living machinery.",
+    "url": "https://ragnarok.fandom.com/wiki/Metaling",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Pitman",
+    "summary": "A dead miner's ghost haunts a rusting mine cart, unable to leave the tunnels where it continues to wander.",
+    "url": "https://ragnarok.fandom.com/wiki/Pitman",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Ungoliant",
+    "summary": "A formidable inhabitant of the Einbroch region, adding another hazard to the country surrounding its industrial city.",
+    "url": "https://ragnarok.fandom.com/wiki/Ungoliant",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Teddy Bear",
+    "summary": "A stuffed bear has become animate, turning a comforting toy into an unsettling encounter.",
+    "url": "https://ragnarok.fandom.com/wiki/Teddy_Bear",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Anopheles",
+    "summary": "A swarm of tiny blood-drinking insects attacks together, making its collective presence more dangerous than any single member.",
+    "url": "https://ragnarok.fandom.com/wiki/Anopheles",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Cecil Damon",
+    "summary": "A former member of the Hunter Guild during its days in Payon's Archer Village, remembered for her place among its hunters.",
+    "url": "https://ragnarok.fandom.com/wiki/Cecil_Damon",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Vesper",
+    "summary": "A vast mechanical guardian roams Juperos's underground laboratory; accounts associate what remains inside it with Vesper Newton.",
+    "url": "https://ragnarok.fandom.com/wiki/Vesper",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Orc Baby",
+    "summary": "This young Orc carries its own axe and calls upon Orc Warrior and Orc Lady parents when it needs help.",
+    "url": "https://ragnarok.fandom.com/wiki/Orc_Baby",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Lady Tanee",
+    "summary": "A female spirit associated with a banana tree, drawing upon stories of an alluring supernatural presence dwelling within the plant.",
+    "url": "https://ragnarok.fandom.com/wiki/Lady_Tanee",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Kiel D-01",
+    "summary": "Kiel Jr.'s first fourth-generation robot reworks the design of his own second-generation body with extensive modifications.",
+    "url": "https://ragnarok.fandom.com/wiki/Kiel-D-01",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Alicel",
+    "summary": "A third-generation Kiel Hyre robot trained at the academy to interact with people, part of a program sold to Rekenber.",
+    "url": "https://ragnarok.fandom.com/wiki/Alicel",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Aliot",
+    "summary": "A third-generation robot developed by the Kiel Hyre Foundation, educated among academy prototypes intended to learn human interaction.",
+    "url": "https://ragnarok.fandom.com/wiki/Aliot",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Aliza",
+    "summary": "A mechanical maid manages cleaning and supplies inside the Kiel Hyre Robot Factory, usually absorbed in her assigned work.",
+    "url": "https://ragnarok.fandom.com/wiki/Aliza",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Ktullanux",
+    "summary": "An ice beast deep within the Ice Cave was coerced by Sessrumnir priests into guarding a boy imprisoned there.",
+    "url": "https://ragnarok.fandom.com/wiki/Ktullanux",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Stapo",
+    "summary": "A stone-bodied member of the Poring family, giving the familiar bouncing form a mineral counterpart.",
+    "url": "https://ragnarok.fandom.com/wiki/Stapo",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Magmaring",
+    "summary": "Magma flows across the body of this Poring relative, replacing the familiar cool jelly with a volcanic appearance.",
+    "url": "https://ragnarok.fandom.com/wiki/Magmaring",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Golden Savage",
+    "summary": "A Savage distinguished by an unusual golden coat, standing out from the ordinary boars of its family.",
+    "url": "https://ragnarok.fandom.com/wiki/Golden_Savage",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Banshee",
+    "summary": "A restless spirit haunts the cursed monastery on Nameless Island, sharing the sorrowful atmosphere of its abandoned halls.",
+    "url": "https://ragnarok.fandom.com/wiki/Banshee",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Entweihen Crothen",
+    "summary": "An ambitious demon associated with Nacht Sieger, outwardly an adviser while seeking the chance to seize its superior's position.",
+    "url": "https://ragnarok.fandom.com/wiki/Entweihen_Crothen",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Tatacho",
+    "summary": "These shaggy creatures often sit motionless, rolling about when cold weather lowers their body temperature.",
+    "url": "https://ragnarok.fandom.com/wiki/Tatacho",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Nepenthes",
+    "summary": "This unusual plant absorbs harmful minerals from the ground, leaving the soil beneath it unexpectedly fertile.",
+    "url": "https://ragnarok.fandom.com/wiki/Nepenthes",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Nidhoggr's Shadow",
+    "summary": "A manifestation of Nidhoggr's dark energy, giving tangible form to the shadow associated with the great dragon.",
+    "url": "https://ragnarok.fandom.com/wiki/Nidhoggr%27s_Shadow",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Headless Mule",
+    "summary": "A fire-breathing headless mule draws upon Brazilian folklore about a cursed human forced into a terrifying animal form.",
+    "url": "https://ragnarok.fandom.com/wiki/Headless_Mule",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Scorpion",
+    "summary": "A desert insect protected by a hard shell, carrying venom at the tip of its raised tail.",
+    "url": "https://ragnarok.fandom.com/wiki/Scorpion",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  },
+  {
+    "name": "Abysmal Knight",
+    "summary": "Once part of Glastheim's White Knight cavalry, this merciless rider belongs to the chivalry transformed by Himmelmez's curse.",
+    "url": "https://ragnarok.fandom.com/wiki/Knight_of_Abyss",
+    "source_kind": "community_wiki",
+    "attribution": "Ragnarok Wiki contributors (paraphrased)"
+  }
+]

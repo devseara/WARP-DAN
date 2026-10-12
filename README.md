@@ -1,226 +1,85 @@
-# WARP-DAN: Battle Pass, Chat UI, NPC Dialog and Universal Gacha
+# WARP0716
 
-**Latest update (2026-10-08): [VIP and Battle Pass menu icons](docs/menu-icons-update.md).**
-Includes both complete 12-icon sets, native menu buttons, and automatic Battle
-Pass artwork installation when the patch is selected. The current-WARP update
-is published separately from the preserved September package described below.
+![The WARP0716 patcher](docs/images/warp0716_patcher.png)
 
-WARP patch package by **DevSeara** for the **2025-07-16 Ragexe** client.
-This is a focused add-on, not a full WARP distribution. It contains no game
-executable, server source, credentials, or personal installation profiles.
+## Development Status - Active Again
 
-**Accepted stable release:** Battle Pass and Gacha were confirmed working by
-the user on September 15, 2026. Both repositories are preserved at tag
-`stable-battlepass-gacha-2026-09-15`. See the [baseline, checks and restore guide](docs/stable-battlepass-gacha.md)
-before developing another feature.
+**WARP0716 development has resumed.** After a pause, the project is back open, and I'll keep working on patches as time allows.
 
-## Included patches
+**What's been built so far:**
+- 41 recommended patches for the 2025-07-16 kRO Ragexe client
+- Custom Jobs system (Reforged)
+- EnableCustomFonts, fully rewritten to load .ttf fonts natively
+- Multi-connection clientinfo support
+- Cancel-to-exit on the service select screen
+- …and plenty more improvements across the board
 
-- **Native VIP UI** (`VipUI`, ID 10008): five membership durations, ten levels,
-  crowns, character/equipment preview, hourly buffs, saved item/ticket quests,
-  final submission confirmation, editable centered benefit cards and complete
-  button PNGs. Keep `.NativeUIVersion = 1`; matching VIPU v4 server required.
-  See [VIP setup and upgrade instructions](docs/vip-ui.md).
-- **Original Announcements with Item Icons** (`NoticeMarquee`, ID 10007):
-  keeps the original stationary top-screen announcement and adds the item image
-  directly before its name. No marquee or Notice label. Install the separate
-  add-on from [the announcement guide](docs/announcement-item-icons.md) after
-  the baseline package below. Automatic identification-aware names are pending.
-- **Project Rebirth Battle Pass Window [QJS]** (`BattlepassUI`, ID 10003):
-  native Battle Pass window and its 25 runtime BMP images. My Stats and Hunter
-  show only the canonical character name, without actor-title decorations.
-- **Supplied Renewal Chat UI** (`ModernChatUI`, ID 10001): translucent chat,
-  movable/detachable/redockable native tabs, PM input, white emoji/send icons,
-  hand cursor feedback, configurable tab font, and white/bold selected tabs.
-  Includes 19 PNG images.
-- **Inline Chat Item Icons** (`ChatItemIcons`, ID 10004): item thumbnails in
-  pickup/drop messages and Shift-click item links, preserving native item data.
-- **Renewal NPC Dialog UI v3** (`ModernNpcDialog`, ID 10005): Myth of Yggdrasil
-  reference styling, rounded frames, light-blue NPC text/choice panels, centered
-  choice buttons, and 25 supplied PNGs. Includes the first-paint NPC background
-  correction and the 2025 choice-window OK/Cancel fix. See the
-  [NPC dialog notes](docs/modern-npc-dialog.md) for scope and verification.
-- **Universal Zeny Gacha UI v20** (`GachaUI`, ID 10006): multiple independently
-  configured NPC machines; costs, reward pools, rates, pity, history, spending
-  rankings, winners and GM99 reset scoped per machine. Native rolling/reveal/
-  sequential delivery, item right-click descriptions, 12-slot pages and four
-  automatically deployed arrow PNGs. Four tiers, inventory-overflow mail, and
-  up to eight Legendary featured items with hidden unused boxes. See the
-  [Gacha guide](docs/gacha-ui.md).
+**Running a newer client?** [WARP2026](https://github.com/zVictorHG/WARP2026-Project) by zVictorHG targets the **2026-01-07 Ragexe** ([rAthena thread](https://rathena.org/board/topic/149414-2026-01-07-ragexe-clientinfo-warp/)). Some patches, like CustomJobs, will be ported over there as time allows.
 
-The Battle Pass feature requires the matching Project Rebirth server-side BPUI
-implementation. Its server source is **not included** in this WARP-only package.
-Chat, item icons and NPC dialogs do not require a new server component.
-Gacha requires the matching GCHA wire-v9 server bridge, NPCs and mail worker from
-[devseara/Ragnarok](https://github.com/devseara/Ragnarok/commit/7b3e48a2dd4c2bcd618e0661389c59e2757c129e).
-The [Gacha guide](docs/gacha-ui.md) links the exact server files and SQL setup.
+Thanks to everyone who's tested, reported issues, and helped shape WARP0716. Your bug reports and feedback are what keep this project moving.
 
-## Install into WARP
+---
 
-The installation diff is based on
-[YlenXWalker/WARP20250716-main at 9a10e8b](https://github.com/YlenXWalker/WARP20250716-main/commit/9a10e8b).
-Use that compatible WARP baseline or check compatibility with `git apply --check`.
-Other WARP forks/client builds are not assumed compatible.
+WARP patches for the 2025-07-16 kRO client build. 20+ patches fixed, dead/incompatible patches removed, and all patch descriptions rewritten for the 07-16 client. If you find something off, please [open an issue](https://github.com/CrazyBebop/WARP0716/issues).
 
-1. Close WARP and back up or commit your WARP working copy.
-2. Download/clone this package outside the WARP directory.
-3. In PowerShell, set the package path and run the following from your WARP directory:
+## Getting the Client
 
-   ```powershell
-   $patchPackage = 'D:\warp\WARP-DAN'
-   $installDiff = Join-Path $patchPackage 'install\DevSeara-BattlePass-ChatUI-NPC-Gacha.diff'
-   git apply --check -- $installDiff
-   # Continue only if the check above succeeds.
-   git apply --whitespace=nowarn -- $installDiff
-   ```
+The easiest way to play is **WARPGATE**, a one-click downloader and updater.
 
-   The diff installs the scripts, all images, patch registrations, stable IDs,
-   CRLF attributes, and the native UI helper export. Exporting the helper does
-   **not** enable Auto Combat or Chat UI. Do not copy only the five QJS files:
-   their registrations, assets and helper exports are also required.
+**[Download WARPGATE](https://mirror2.romirrors.com/downloads/Warpgate.zip)**
 
-   If the check fails, do not force it. Check whether these patches are already
-   installed or whether your WARP version/local changes differ. The original
-   author's current WARP working copy already contains these patches.
+Unzip it and run it. WARPGATE downloads the full 2025-07-16 client for you, keeps the English translation up to date (powered by [llchrisll/ROenglishRE](https://github.com/llchrisll/ROenglishRE/)), and updates itself. No manual EXE patching, no hunting down GRFs, no ClientGenerator steps. Download, run, and play.
 
-4. Restart WARP, select the desired DevSeara patches, load the original
-   **2025-07-16** client, choose the output EXE, and apply.
+![WARPGATE](docs/images/warpgate.png)
 
-### Upgrade an existing v20 package with the Battle Pass name fix
+That's all most people need. The sections below are for server operators and tinkerers who want to build or customize their own client.
 
-For a WARP tree installed from package commit `a1a0f7b`, apply:
+## What's New
 
-```powershell
-$patchPackage = 'D:\warp\WARP-DAN'
-$nameDiff = Join-Path $patchPackage 'install\DevSeara-BattlePass-plain-name-upgrade.diff'
-git apply --check -- $nameDiff
-# Continue only if the check above succeeds.
-git apply --whitespace=nowarn -- $nameDiff
-```
+See **[CHANGELOG.md](CHANGELOG.md)** for every patch and update, newest first.
 
-This changes only BattlepassUI.qjs. Rebuild from the original client with the
-same patch selections. No server/NPC/database change is required. The fresh
-combined diff includes this fix; do not apply the incremental diff twice.
+The latest is the **July 29, 2026 Ragexe update**: the exit button on server select now works, switching to a different server mid-session is fixed, start-up is leaner with no 8 server limit, and a broken `clientinfo.xml` now tells you what is wrong. Those fixes are in the executable itself, so get the new one through **[WARPGATE](https://mirror2.romirrors.com/downloads/Warpgate.zip)** (the **RAGEXE** tab) rather than by re-WARPing an older exe.
 
-### Upgrade an existing Gacha v15 installation to v20
+**Custom Jobs Guide:** [HTML](docs/CustomJobs/CUSTOM_JOBS_GUIDE.html) | [Online](https://legacygamers.net/docs/public/customjobs-reforged/)
 
-For a WARP tree installed from package commit `144adb2`, use:
+## Advanced: Patch Your Own EXE with WARP
 
-```powershell
-$patchPackage = 'D:\warp\WARP-DAN'
-$upgradeDiff = Join-Path $patchPackage 'install\DevSeara-Gacha-v20-upgrade.diff'
-git apply --check -- $upgradeDiff
-# Continue only if the check above succeeds.
-git apply --whitespace=nowarn -- $upgradeDiff
-```
+WARP is the patcher that WARPGATE's client is built with. If you run your own server or want to hand-pick your patch set, you can WARP an exe yourself. This build of WARP is tuned for the **2025-07-16 kRO Ragexe** (build 175220998); point it at that unpacked exe.
 
-This changes the Gacha client script only; the prior registrations, shared
-packet router and four arrow images remain required. Install the matching
-wire-v9 map-server/client pair and v16 char-server/mail schema from the server
-repository. Do not mix old and new Gacha wire versions. Existing player records
-and pity are retained; no Admin reset is needed.
-Then apply the Battle Pass plain-name upgrade above to reach the stable release.
+Maintainers changing custom item or enchant-grade colors must follow the
+[normative item/grade renderer contract](docs/item-grade-color-renderer-contract.md).
+It defines grade-over-item precedence, conditional native post-grade endpoint
+coalescing, anchored slotless/slotted Inventory matching, quantity omission,
+wrapped Alt+Q span integrity, window-title shadow suppression, native
+item-balloon outlines, and the required 2025/2026 regression matrix.
 
-### Upgrade an existing Battle Pass/Chat/NPC package to Gacha
+You can get the WARP patcher two ways: from this repo (`win32/WARP.exe`), or by downloading it through [WARPGATE](https://mirror2.romirrors.com/downloads/Warpgate.zip).
 
-For a WARP tree installed using package commit `35ef127`'s
-`DevSeara-BattlePass-ChatUI-NPC.diff`, apply only this incremental diff:
+### Setup
+1. Launch `win32/WARP.exe` (or the copy from WARPGATE)
+2. Load your unpacked exe
+3. Select your patches and apply
 
-```powershell
-$patchPackage = 'D:\warp\WARP-DAN'
-$upgradeDiff = Join-Path $patchPackage 'install\DevSeara-Gacha-v15-upgrade.diff'
-git apply --check -- $upgradeDiff
-# Continue only if the check above succeeds.
-git apply --whitespace=nowarn -- $upgradeDiff
-```
+### Recommended Patches
+Click **"Recommended"** in the WARP GUI to select all recommended patches at once. A YAML profile is also included at `profiles/community_recommended.yml` for reference.
 
-This historical step adds Gacha v15. Then apply `DevSeara-Gacha-v20-upgrade.diff`
-above before building the current client. It adds Gacha and its arrow assets, and safely routes Battle Pass/Gacha to
-independent handlers. Either feature can still be selected alone. Do not apply
-both the fresh combined diff and this upgrade, or force either onto a WARP
-tree that already has Gacha. The author's live WARP tree already has v20.
+### Known Conflict
+**NoPassEncr** requires **UseOldLogin**. Do not enable both **UseSSOLogin** and **NoPassEncr**. The WARP GUI handles this automatically, but YAML profiles need manual care.
 
-### Upgrade an existing Battle Pass/Chat UI package installation
+## Issues & Suggestions
 
-If you already applied the original `DevSeara-BattlePass-ChatUI.diff` from
-package commit `048e704`, use the incremental diff instead of the combined one:
+Found a bug or have a suggestion? Post it in the [Issues](https://github.com/CrazyBebop/WARP0716/issues) section or join the [Discord](https://discord.com/invite/7CpRVcmjeB).
 
-```powershell
-$patchPackage = 'D:\warp\WARP-DAN'
-$upgradeDiff = Join-Path $patchPackage 'install\DevSeara-NPC-Dialog-upgrade.diff'
-git apply --check -- $upgradeDiff
-# Continue only if the check above succeeds.
-git apply --whitespace=nowarn -- $upgradeDiff
-```
+## Donate
 
-Run these commands from your WARP directory, with WARP closed and your changes
-backed up or committed. Do not apply both the combined and incremental diffs.
-After this historical NPC upgrade, apply the Gacha upgrade above if desired.
-The original Battle Pass/Chat UI diff is retained unchanged for reproducibility.
-Neither diff should be forced onto a working copy where NPC UI is already
-installed. Pulling this package updates the package files; it does not apply
-them to a separate WARP installation automatically.
+It is never required, but if you feel the need to contribute to the project financially, you can do so by clicking the button below.
 
-### Automatic client artwork deployment
+<a href="https://www.buymeacoffee.com/crazybebop"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-blue.png" height="60" width="217" alt="Buy Me A Coffee"></a>
 
-The assets are copied when the selected WARP diff is **applied**, not just when
-its checkbox is ticked. Every missing parent directory is created beside the
-chosen output EXE:
+**PayPal:** <a href="https://www.paypal.com/donate/?hosted_button_id=WW9FD6SLEZ5BN"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" alt="Donate via PayPal"></a>
 
-```text
-<target EXE directory>/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/battlepassui/
-<target EXE directory>/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/uirenewal/chat/
-<target EXE directory>/data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/genericsui/
-```
+Special thanks to everyone who has donated. Your support keeps this project going.
 
-Existing client images are preserved. Reapplying repairs missing images without
-overwriting edited skins/icons. The Battle Pass `.bgra` files and
-`Skin_Names.json` are WARP build inputs; only the 25 BMPs are deployed.
-The legacy chat textbox PNGs stay in the bundle but are not used to draw the
-neutral translucent gray message field.
-NPC UI can be selected by itself: the installed Chat UI and Auto Combat helper
-scripts are required, but their patches do not need to be selected.
-The same applies to Gacha. Its four arrow PNGs deploy under `genericsui/gacha` without
-overwriting existing images; item icons come from the client's own resources.
+## Credits
 
-## Verification
-
-The package contains source-level installer/default-input regression tests:
-
-```powershell
-node tools/test_battlepass_asset_install.js
-node tools/test_modern_chat_asset_install.js
-node tools/test_modern_chat_font_inputs.js
-node tools/test_modern_npc_asset_install.js
-node tools/test_gacha_asset_install.js
-```
-
-Offline native chat tests require Python, Pillow, pefile, Capstone, and Unicorn:
-
-```powershell
-uv run --with pillow --with pefile --with capstone --with unicorn python tools/test_modern_chat_ui.py path/to/patched.exe
-uv run --with pillow --with pefile --with capstone --with unicorn python tools/test_chat_item_icons.py path/to/patched.exe
-uv run --with pillow --with pefile --with capstone --with unicorn python tools/test_modern_chat_controls.py path/to/patched.exe --font Arial --size 12 --weight 400
-uv run --with pillow --with pefile --with capstone --with unicorn python tools/test_modern_npc_dialog.py path/to/patched.exe
-```
-
-Use the same font values selected during patching for the controls test.
-Installer tests cover fresh target folders, every bundled image, no-overwrite
-repeat/repair behavior, test-mode isolation, and file/directory errors.
-Real WARP builds verified Battle Pass by itself and the full combined patch
-profile, including automatic image deployment and preservation of edited assets.
-Offline checks are not a substitute for live testing with your client/server.
-NPC v3 passes the native first-paint regression and preserves the accepted v2
-choice frames/buttons pixel-for-pixel. Live NPC v3 visual acceptance is still
-pending. Run the tests from this package; test tools are not installed by the
-WARP installation diffs.
-
-Gacha tests and server requirements are in [the Gacha guide](docs/gacha-ui.md).
-Fresh/upgrade installer and feature-routing checks are recorded in
-[package verification](docs/gacha-package-verification.md).
-
-## License and attribution
-
-GPL-3.0-or-later; see [LICENSE](LICENSE). WARP and existing native helpers retain
-their original authorship and license. DevSeara is credited for these custom
-Battle Pass, chat, NPC dialog and Gacha diffs. Project Rebirth server/project names are retained.
+Built on [WARP](https://github.com/Neo-Mind/WARP) by Neo-Mind and [Warp2025](https://github.com/hiphop9/Warp2025) by hiphop9.

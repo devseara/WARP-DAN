@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "client": 20250716,
+  "size": 217768,
+  "api_size": 124,
+  "exports": {
+    "@ShopCursor@16": 7408,
+    "@ShopDestroy@12": 7584,
+    "@ShopDown@16": 7824,
+    "@ShopDrag@16": 8096,
+    "@ShopDraw@8": 8128,
+    "@ShopMove@16": 11296,
+    "@ShopRightDown@16": 11472,
+    "@ShopRightUp@16": 11584,
+    "@ShopUp@16": 11824,
+    "@ShopWheel@12": 12704,
+    "ShopApi": 20480,
+    "ShopIconIdentified": 20604,
+    "ShopState": 20624,
+    "_ShopHit@8": 12976,
+    "_ShopInventory@4": 13952,
+    "_ShopName@8": 14032,
+    "_ShopReceive@4": 14128,
+    "_ShopResource@4": 15104
+  },
+  "source_sha256": "3dbd18c0892017b5d476344e5e217c08017beb85031016b01553c7f2145f8436",
+  "payload_sha256": "cc296e09bdf67e2437d4ec6670869461350cdef65fd6f1882df6a105209ed66e",
+  "runtime_imports": []
+}

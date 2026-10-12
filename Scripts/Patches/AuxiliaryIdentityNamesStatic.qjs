@@ -1,0 +1,62 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Full adoption names,   *
+*                   corrected BG camp footer, and bounded consumption of   *
+*                   the legacy world-info acknowledgment (no native UI).   *
+*                   Native hooks, data and code revert together with the   *
+*                   selecting patch.                                       *
+*                                                                          *
+\**************************************************************************/
+
+AuxiliaryIdentityNamesStatic={};
+AuxiliaryIdentityNamesStatic.install=function(state,routes)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.auxiliaryIdentity128)return state;
+	const edits=[
+		[0x00CA26A6,"83 C4 0C","90 90 90"],
+		[0x00CA26A9,"C6 85 38 FE FF FF 00","90 90 90 90 90 90 90"],
+		[0x00CA26D1,"8D 8D 20 FE FF FF","B9 A2 81 5E 01 90"],
+		[0x00CA28CA,"A0 B6 81 5E 01","A0 1E 82 5E 01"],
+		[0x00CA28EF,"8A 0D B6 81 5E 01","8A 0D 1E 82 5E 01"]
+	];
+	for(const e of edits)e.push(ExtNameStaticAsm.assertCode("auxiliary identity field",e[0],e[1]));
+	const adoptPhy=ExtNameStaticAsm.assertCode("adoption full name",0x00CA268D,
+		"6A 18 8D 85 20 FE FF FF 68 A2 81 5E 01 50 FF 15 1C 1B FC 00");
+	const worldPhy=Exe.Vir2Phy(CustomPacketDispatch.tableEntryVir(routes.switchTableVir,0x0979),CODE);
+	if(worldPhy<0||Exe.GetUint32(worldPhy)!==0x00CAA2B7)throw Error("AuxiliaryIdentityNamesStatic: world-info default route changed");
+	const a=ExtNameStaticAsm.asm();
+	a.emit(0xB8);a.dword(routes.packetBufferVir+10);a.emit(0xB9);a.dword(128);
+	a.label("name_bytes");a.emit(0x80,0x38,0);a.jcc(0x84,"valid");
+	a.emit(0x40,0x49);a.jcc(0x85,"name_bytes");a.jmp(routes.mainLoopReturnVir);
+	a.label("valid");a.jmp(0x00CA26A1);
+	const adopt=ExtNameTextStatic.allocateCode(a);
+	const owner=Exe.ActivePatch;Exe.BeginTag("AuxiliaryIdentityNamesStatic.Name128",true);
+	try{
+		for(const e of edits)Exe.SetHex(e[3],e[2]);
+		Exe.SetJMP(adoptPhy,adopt.virAddr,0);Exe.SetNOPs(adoptPhy+5,15);
+		// This2025 executable has no0979 handler. Consume its complete154-byte
+		// record then ignore it, without the unknown-packet stream reset path.
+		Exe.SetUint32(worldPhy,routes.mainLoopReturnVir);
+	}finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.auxiliaryIdentity128=true;return state;
+};

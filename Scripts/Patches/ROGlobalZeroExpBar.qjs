@@ -1,0 +1,1027 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-19                                             *
+*   Last Modified : 2026-07-20                                             *
+*                                                                          *
+*   Description   : Adds the RO Global Zero EXP HUD to the 2025-07-16      *
+*                   Ragexe as an independent 1004x15 top-level UIWindow.   *
+*                   The window owns its native canvas, loads the supplied  *
+*                   uirenewal/expbar assets through the client texture     *
+*                   manager, and reads the live 64-bit Base/Job EXP state. *
+*                   It is inserted behind the normal UI, remains click-    *
+*                   through while exposing native EXP hover tooltips, and  *
+*                   never creates, resizes, hooks, or depends on           *
+*                   UIBasicInfoWnd. Alt+V therefore cannot hide it.        *
+*                   QJS-only.                                              *
+*                                                                          *
+\**************************************************************************/
+
+const ExpBarZeroStatic = {
+	BuildDate: 20250716,
+	RenderHook: 0x00C74FD6,
+	RenderHookBytes: "E8 F5 3F DD FF",
+	WindowManagerDraw: 0x00A48FD0,
+	WindowManager: 0x0131F4E8,
+	Renderer: 0x012515F8,
+	OperatorNew: 0x00DBBC4F,
+	WindowConstructor: 0x00A1B190,
+	WindowDeletingDestructor: 0x00A1B750,
+	WindowSetSize: 0x00A245C0,
+	WindowAddTopLevelFront: 0x00A2D240,
+	WindowClearSurface: 0x00A1CB30,
+	BaseWindowVtable: 0x0104AC44,
+	BaseWindowVtableEntries: 53,
+	BaseWindowDestructor: 0x00A1B750,
+	BaseWindowDraw: 0x005DD270,
+	BaseWindowMouseMove: 0x005A89B0,
+	BaseWindowPassiveMouse: 0x005A89E0,
+	BaseWindowHitTest: 0x00A23220,
+	WindowObjectSize: 0x7C,
+	WindowWidthOffset: 0x14,
+	WindowHeightOffset: 0x18,
+	WindowXOffset: 0x1C,
+	WindowYOffset: 0x20,
+	WindowSurfaceOffset: 0x24,
+	SurfaceWidthOffset: 0x04,
+	SurfacePixelsOffset: 0x18,
+	WindowVisibleOffset: 0x28,
+	WindowIdOffset: 0x2C,
+	WindowDirtyOffset: 0x58,
+	RendererWidthOffset: 0x28,
+	RendererHeightOffset: 0x2C,
+	GetTexMgr: 0x00A90350,
+	ConvPath: 0x00A9F030,
+	LoadSurface: 0x00A8D4A0,
+	ImageDraw: 0x00A1D260,
+	ImageDrawPart: 0x00A1D2B0,
+	TextDraw: 0x00A25A70,
+	Sprintf: 0x00529850,
+	Int64ToDouble: 0x00DBC2C0,
+	ShowTooltip: 0x00A753D0,
+	TooltipManager: 0x0121333C,
+	Session: 0x015FA3C0,
+	GetJobId: 0x00D5B580,
+	GetMaxBaseLevel: 0x00D99CA0,
+	GetMaxJobLevel: 0x00D99D30,
+	PercentScaleDouble: 0x00FD4C50,
+	PercentTenthFloat: 0x0100B650,
+	PercentFullDouble: 0x0102FCD0,
+	PercentTooltipFormat: 0x0102F1F0,
+	TabItmFormat: 0x0102AC48,
+	CurrentBaseExp: 0x015FB9D0,
+	MaximumBaseExp: 0x015FB9D8,
+	CurrentJobExp: 0x015FB9E8,
+	MaximumJobExp: 0x015FB9E0,
+	BaseLevel: 0x015FB9F0,
+	JobLevel: 0x015FB9F8,
+	BaseExpLoad: 0x0095E546,
+	BaseExpLoadBytes:
+		"FF 35 DC B9 5F 01 8B 8F F0 00 00 00 FF 35 D8 B9 5F 01 " +
+		"FF 35 D4 B9 5F 01 FF 35 D0 B9 5F 01 E8 F7 51 F0 FF",
+	JobExpLoad: 0x0095E5D3,
+	JobExpLoadBytes:
+		"FF 35 E4 B9 5F 01 8B 8F F4 00 00 00 FF 35 E0 B9 5F 01 " +
+		"FF 35 EC B9 5F 01 FF 35 E8 B9 5F 01 E8 6A 51 F0 FF",
+	BackgroundWidth: 502,
+	BackgroundHeight: 15,
+	CombinedWidth: 1004,
+	TrackWidth: 422,
+	TrackHeight: 7,
+	TrackY: 8,
+	JobTrackX: 80,
+	BaseLevelX: 478,
+	JobLevelX: 553,
+	LevelY: 1,
+	LevelHeight: 14,
+	LevelTextWidth: 24,
+	BaseLevelColor: 0x00FFFFFF,
+	JobLevelColor: 0x00FFF000,
+	CanvasClearColor: 0x00000000,
+	SurfaceAlphaOffset: 0x28,
+	TooltipYOffset: -16,
+	StateWindow: 0,
+	StateScale: 4,
+	StateSize: 8,
+	LocalBaseWidth: -0x04,
+	LocalJobWidth: -0x08,
+	LocalBaseBuffer: -0x20,
+	LocalJobBuffer: -0x30,
+	LocalSize: 0x30,
+	HoverBuffer: -0x80,
+	HoverRatio: -0x18,
+	HoverX: -0x10,
+	HoverY: -0x0C,
+	HoverLevel: -0x08,
+	HoverMaxLevelFunc: -0x04,
+	HoverLocalSize: 0x80
+};
+
+ExpBarZeroStatic.bytesToHex = function(bytes)
+{
+	return bytes.map(value =>
+		(value & 0xFF).toString(16).padStart(2, "0")
+	).join(" ");
+};
+
+ExpBarZeroStatic.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+				bytes.push(value & 0xFF);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error(`ROGlobalZeroExpBar: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			bytes.push(opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(`ROGlobalZeroExpBar: unresolved label ${fixup.target}`);
+				const targetVir = typeof fixup.target === "string"
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				put32(out, fixup.pos, targetVir - (baseVir + fixup.pos + 4));
+			}
+			return ExpBarZeroStatic.bytesToHex(out);
+		}
+	};
+};
+
+ExpBarZeroStatic.allocateBytes = function(bytes, alignment = 1)
+{
+	const [phy, vir] = Exe.Allocate(bytes.length, alignment);
+	Exe.SetHex(phy, ExpBarZeroStatic.bytesToHex(bytes));
+	return {phy, vir, size: bytes.length};
+};
+
+ExpBarZeroStatic.allocateCode = function(assembler)
+{
+	const [phy, vir] = Exe.Allocate(assembler.bytes.length, 0x10);
+	Exe.SetHex(phy, assembler.finish(vir));
+	return {phy, vir, size: assembler.bytes.length};
+};
+
+ExpBarZeroStatic.asciiBytes = function(text, nulTerminate = true)
+{
+	const bytes = [];
+	for (let i = 0; i < text.length; i++)
+		bytes.push(text.charCodeAt(i) & 0xFF);
+	if (nulTerminate)
+		bytes.push(0);
+	return bytes;
+};
+
+ExpBarZeroStatic.findBytes = function(bytes, needle)
+{
+	for (let i = 0; i <= bytes.length - needle.length; i++)
+	{
+		let match = true;
+		for (let j = 0; j < needle.length; j++)
+		{
+			if (bytes[i + j] !== needle[j])
+			{
+				match = false;
+				break;
+			}
+		}
+		if (match)
+			return i;
+	}
+	return -1;
+};
+
+ExpBarZeroStatic.readCString = function(virAddr, maxLength)
+{
+	const phy = Exe.Vir2Phy(virAddr);
+	if (phy < 0)
+		throw Error(`ROGlobalZeroExpBar: string 0x${virAddr.toString(16)} is not mapped`);
+	const bytes = [];
+	for (let i = 0; i < maxLength; i++)
+	{
+		const value = Exe.GetUint8(phy + i);
+		bytes.push(value);
+		if (value === 0)
+			return bytes;
+	}
+	throw Error(`ROGlobalZeroExpBar: unterminated string at 0x${virAddr.toString(16)}`);
+};
+
+ExpBarZeroStatic.buildResourcePath = function(relativePath)
+{
+	const source = ExpBarZeroStatic.readCString(ExpBarZeroStatic.TabItmFormat, 192);
+	const needle = ExpBarZeroStatic.asciiBytes("basic_interface\\", false);
+	const pos = ExpBarZeroStatic.findBytes(source, needle);
+	if (pos < 0)
+		throw Error("ROGlobalZeroExpBar: texture directory prefix not found");
+	return ExpBarZeroStatic.allocateBytes(
+		source.slice(0, pos).concat(ExpBarZeroStatic.asciiBytes(relativePath))
+	);
+};
+
+ExpBarZeroStatic.pushImm = function(a, value)
+{
+	if (value >= -128 && value <= 127)
+		a.emit(0x6A, value);
+	else
+	{
+		a.emit(0x68);
+		a.dword(value);
+	}
+};
+
+ExpBarZeroStatic.pushLocalValue = function(a, offset)
+{
+	a.emit(0xFF, 0x75, offset);
+};
+
+ExpBarZeroStatic.pushLocalAddress = function(a, offset)
+{
+	a.emit(0x8D, 0x85);
+	a.dword(offset);
+	a.emit(0x50);
+};
+
+ExpBarZeroStatic.pushAbsoluteValue = function(a, address)
+{
+	a.emit(0xFF, 0x35);
+	a.dword(address);
+};
+
+ExpBarZeroStatic.emitLoadSurface = function(a, pathVir, missingLabel)
+{
+	a.call(ExpBarZeroStatic.GetTexMgr);
+	a.emit(0x8B, 0xD8, 0x85, 0xDB);
+	a.jcc(0x84, missingLabel);
+	ExpBarZeroStatic.pushImm(a, pathVir);
+	a.call(ExpBarZeroStatic.ConvPath);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, missingLabel);
+	a.emit(0x50, 0x8B, 0xCB);
+	a.call(ExpBarZeroStatic.LoadSurface);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, missingLabel);
+};
+
+ExpBarZeroStatic.emitDrawFull = function(a, pathVir, x, y, label)
+{
+	const done = `${label}_done`;
+	ExpBarZeroStatic.emitLoadSurface(a, pathVir, done);
+	ExpBarZeroStatic.pushImm(a, 0);
+	a.emit(0x50);
+	ExpBarZeroStatic.pushImm(a, y);
+	ExpBarZeroStatic.pushImm(a, x);
+	a.emit(0x8B, 0xCE);
+	a.call(ExpBarZeroStatic.ImageDraw);
+	a.label(done);
+};
+
+ExpBarZeroStatic.emitRatioWidth = function(
+	a, stateVir, currentVir, maximumVir, outputOffset, label
+)
+{
+	const maximumPositive = `${label}_maximum_positive`;
+	const positive = `${label}_positive`;
+	const zero = `${label}_zero`;
+	const done = `${label}_done`;
+	a.emit(0xA1); a.dword(maximumVir + 4);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x88, zero);
+	a.jcc(0x85, maximumPositive);
+	a.emit(0x83, 0x3D); a.dword(maximumVir); a.emit(0x00);
+	a.jcc(0x86, zero);
+	a.label(maximumPositive);
+	a.emit(0xDF, 0x2D); a.dword(currentVir);
+	a.emit(0xDF, 0x2D); a.dword(maximumVir);
+	a.emit(0xDE, 0xF9);
+	a.emit(0xDA, 0x0D); a.dword(stateVir + ExpBarZeroStatic.StateScale);
+	a.emit(0xDB, 0x5D, outputOffset);
+	a.emit(0x83, 0x7D, outputOffset, 0x00);
+	a.jcc(0x8F, positive);
+	a.jmp(zero);
+	a.label(positive);
+	a.emit(0x81, 0x7D, outputOffset); a.dword(ExpBarZeroStatic.TrackWidth);
+	a.jcc(0x8E, done);
+	a.emit(0xC7, 0x45, outputOffset); a.dword(ExpBarZeroStatic.TrackWidth);
+	a.jmp(done);
+	a.label(zero);
+	a.emit(0xC7, 0x45, outputOffset); a.dword(0);
+	a.label(done);
+};
+
+ExpBarZeroStatic.emitCapAwareRatioWidth = function(
+	a, stateVir, currentVir, maximumVir, levelVir, maxLevelFuncVir,
+	outputOffset, label
+)
+{
+	const full = `${label}_full`;
+	const done = `${label}_cap_done`;
+	a.emit(0xB9); a.dword(ExpBarZeroStatic.Session);
+	a.call(ExpBarZeroStatic.GetJobId);
+	a.emit(0x50);                                  // PUSH jobId
+	a.emit(0xB9); a.dword(ExpBarZeroStatic.Session);
+	a.call(maxLevelFuncVir);
+	a.emit(0x39, 0x05); a.dword(levelVir);         // CMP [level],EAX
+	a.jcc(0x8D, full);                             // level >= class cap
+	ExpBarZeroStatic.emitRatioWidth(
+		a, stateVir, currentVir, maximumVir, outputOffset, `${label}_ratio`
+	);
+	a.jmp(done);
+	a.label(full);
+	a.emit(0xC7, 0x45, outputOffset); a.dword(ExpBarZeroStatic.TrackWidth);
+	a.label(done);
+};
+
+ExpBarZeroStatic.emitBaseFill = function(a, pathVir)
+{
+	a.emit(0x83, 0x7D, ExpBarZeroStatic.LocalBaseWidth, 0x00);
+	a.jcc(0x8E, "base_fill_done");
+	ExpBarZeroStatic.emitLoadSurface(a, pathVir, "base_fill_done");
+	a.emit(0x8B, 0xF8);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.TrackHeight);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.TrackWidth);
+	ExpBarZeroStatic.pushImm(a, 0);
+	a.emit(0xB8); a.dword(ExpBarZeroStatic.TrackWidth);
+	a.emit(0x2B, 0x45, ExpBarZeroStatic.LocalBaseWidth, 0x50);
+	ExpBarZeroStatic.pushImm(a, 0);
+	ExpBarZeroStatic.pushImm(a, 0);
+	a.emit(0x57);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.TrackY);
+	a.emit(0xB8); a.dword(ExpBarZeroStatic.TrackWidth);
+	a.emit(0x2B, 0x45, ExpBarZeroStatic.LocalBaseWidth, 0x50);
+	a.emit(0x8B, 0xCE);
+	a.call(ExpBarZeroStatic.ImageDrawPart);
+	a.label("base_fill_done");
+};
+
+ExpBarZeroStatic.emitJobFill = function(a, pathVir)
+{
+	a.emit(0x83, 0x7D, ExpBarZeroStatic.LocalJobWidth, 0x00);
+	a.jcc(0x8E, "job_fill_done");
+	ExpBarZeroStatic.emitLoadSurface(a, pathVir, "job_fill_done");
+	a.emit(0x8B, 0xF8);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.TrackHeight);
+	ExpBarZeroStatic.pushLocalValue(a, ExpBarZeroStatic.LocalJobWidth);
+	ExpBarZeroStatic.pushImm(a, 0);
+	ExpBarZeroStatic.pushImm(a, 0);
+	ExpBarZeroStatic.pushImm(a, 0);
+	ExpBarZeroStatic.pushImm(a, 0);
+	a.emit(0x57);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.TrackY);
+	ExpBarZeroStatic.pushImm(
+		a,
+		ExpBarZeroStatic.BackgroundWidth + ExpBarZeroStatic.JobTrackX
+	);
+	a.emit(0x8B, 0xCE);
+	a.call(ExpBarZeroStatic.ImageDrawPart);
+	a.label("job_fill_done");
+};
+
+ExpBarZeroStatic.emitLevel = function(
+	a, levelVir, bufferOffset, formatVir, x, color
+)
+{
+	ExpBarZeroStatic.pushAbsoluteValue(a, levelVir);
+	ExpBarZeroStatic.pushImm(a, formatVir);
+	ExpBarZeroStatic.pushLocalAddress(a, bufferOffset);
+	a.call(ExpBarZeroStatic.Sprintf);
+	a.emit(0x83, 0xC4, 0x0C);
+	ExpBarZeroStatic.pushImm(a, 0);
+	ExpBarZeroStatic.pushImm(a, 0);
+	ExpBarZeroStatic.pushImm(a, color);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.LevelHeight);
+	ExpBarZeroStatic.pushImm(a, 1);
+	ExpBarZeroStatic.pushImm(a, 0);
+	ExpBarZeroStatic.pushLocalAddress(a, bufferOffset);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.LevelY);
+	ExpBarZeroStatic.pushImm(a, x);
+	a.emit(0x8B, 0xCE);
+	a.call(ExpBarZeroStatic.TextDraw);
+};
+
+ExpBarZeroStatic.emitPreserveSurfaceAlpha = function(a, label)
+{
+	const done = `${label}_surface_alpha_done`;
+	// ImageDraw copies the source surface's alpha-capable flag to the target
+	// canvas. The opaque BMP gauge fills are drawn after the alpha TGA frames,
+	// so they otherwise reset the whole canvas to the opaque upload path.
+	a.emit(0x8B, 0x46, ExpBarZeroStatic.WindowSurfaceOffset); // MOV EAX,[ESI+surface]
+	a.emit(0x85, 0xC0);                                      // TEST EAX,EAX
+	a.jcc(0x84, done);
+	a.emit(0xC6, 0x40, ExpBarZeroStatic.SurfaceAlphaOffset, 0x01);
+	a.label(done);
+};
+
+ExpBarZeroStatic.emitOpaqueTextRegion = function(a, x, label)
+{
+	const row = `${label}_row`;
+	const pixel = `${label}_pixel`;
+	const done = `${label}_done`;
+	// GDI SetTextColor uses COLORREF, so the Base-white and Job-cyan RGB
+	// values above are exact. GDI nevertheless clears the high alpha byte of
+	// every glyph pixel on this 32-bit DIB. The supplied EXP backgrounds make
+	// both number cells opaque, so restore alpha only within those cells.
+	a.emit(0x8B, 0x46, ExpBarZeroStatic.WindowSurfaceOffset);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, done);
+	a.emit(0x8B, 0x78, ExpBarZeroStatic.SurfacePixelsOffset); // EDI=pixels
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, done);
+	a.emit(0x8B, 0x58, ExpBarZeroStatic.SurfaceWidthOffset);  // EBX=pitch/4
+	a.emit(0xBA); a.dword(ExpBarZeroStatic.LevelY);
+	a.emit(0x0F, 0xAF, 0xD3);                                // IMUL EDX,EBX
+	a.emit(0x81, 0xC2); a.dword(x);
+	a.emit(0x8D, 0x3C, 0x97);                                // first pixel
+	a.emit(0xBA); a.dword(ExpBarZeroStatic.LevelHeight);
+	a.label(row);
+	a.emit(0xB9); a.dword(ExpBarZeroStatic.LevelTextWidth);
+	a.emit(0x8B, 0xC7);
+	a.label(pixel);
+	a.emit(0xC6, 0x40, 0x03, 0xFF);                          // alpha=255
+	a.emit(0x83, 0xC0, 0x04);
+	a.emit(0x49);
+	a.jcc(0x85, pixel);
+	a.emit(0x8D, 0x3C, 0x9F);                                // next row
+	a.emit(0x4A);
+	a.jcc(0x85, row);
+	a.label(done);
+};
+
+ExpBarZeroStatic.buildDraw = function(
+	stateVir, paths, levelFormatVir, themeStateVir, loadThemeVir
+)
+{
+	const a = ExpBarZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, ExpBarZeroStatic.LocalSize);
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.CanvasClearColor);
+	a.emit(0x8B, 0xCE);
+	a.call(ExpBarZeroStatic.WindowClearSurface);
+	a.call(loadThemeVir);
+	// A freshly created Classic-mode canvas has not yet passed through the BMP
+	// draws which normally establish alpha composition. Preserve transparent
+	// clear pixels before the early exit as well as after the New-UI draw.
+	ExpBarZeroStatic.emitPreserveSurfaceAlpha(a, "clear");
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "done");
+	ExpBarZeroStatic.emitDrawFull(a, paths.baseBackground.vir, 0, 0, "base_background");
+	ExpBarZeroStatic.emitDrawFull(
+		a,
+		paths.jobBackground.vir,
+		ExpBarZeroStatic.BackgroundWidth,
+		0,
+		"job_background"
+	);
+	ExpBarZeroStatic.emitCapAwareRatioWidth(
+		a,
+		stateVir,
+		ExpBarZeroStatic.CurrentBaseExp,
+		ExpBarZeroStatic.MaximumBaseExp,
+		ExpBarZeroStatic.BaseLevel,
+		ExpBarZeroStatic.GetMaxBaseLevel,
+		ExpBarZeroStatic.LocalBaseWidth,
+		"base_ratio"
+	);
+	ExpBarZeroStatic.emitCapAwareRatioWidth(
+		a,
+		stateVir,
+		ExpBarZeroStatic.CurrentJobExp,
+		ExpBarZeroStatic.MaximumJobExp,
+		ExpBarZeroStatic.JobLevel,
+		ExpBarZeroStatic.GetMaxJobLevel,
+		ExpBarZeroStatic.LocalJobWidth,
+		"job_ratio"
+	);
+	ExpBarZeroStatic.emitBaseFill(a, paths.baseFill.vir);
+	ExpBarZeroStatic.emitJobFill(a, paths.jobFill.vir);
+	ExpBarZeroStatic.emitLevel(
+		a,
+		ExpBarZeroStatic.BaseLevel,
+		ExpBarZeroStatic.LocalBaseBuffer,
+		levelFormatVir,
+		ExpBarZeroStatic.BaseLevelX,
+		ExpBarZeroStatic.BaseLevelColor
+	);
+	ExpBarZeroStatic.emitLevel(
+		a,
+		ExpBarZeroStatic.JobLevel,
+		ExpBarZeroStatic.LocalJobBuffer,
+		levelFormatVir,
+		ExpBarZeroStatic.JobLevelX,
+		ExpBarZeroStatic.JobLevelColor
+	);
+	ExpBarZeroStatic.emitOpaqueTextRegion(
+		a, ExpBarZeroStatic.BaseLevelX, "base_level_alpha"
+	);
+	ExpBarZeroStatic.emitOpaqueTextRegion(
+		a, ExpBarZeroStatic.JobLevelX, "job_level_alpha"
+	);
+	ExpBarZeroStatic.emitPreserveSurfaceAlpha(a, "draw");
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+ExpBarZeroStatic.buildPassThroughHitTest = function()
+{
+	const a = ExpBarZeroStatic.asm();
+	a.emit(0x33, 0xC0, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+ExpBarZeroStatic.buildPassiveHover = function(themeStateVir)
+{
+	const a = ExpBarZeroStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);
+	a.emit(0x81, 0xEC); a.dword(ExpBarZeroStatic.HoverLocalSize);
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1);       // preserve; ESI=this
+	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
+	a.jcc(0x84, "hover_done");
+
+	// Slot 29 observes absolute renderer coordinates for every top-level
+	// window. It does not participate in selection, so the HUD can stay fully
+	// click-through through the separate slot-50 override below.
+	a.emit(0x83, 0x7E, ExpBarZeroStatic.WindowVisibleOffset, 0x00);
+	a.jcc(0x84, "hover_done");
+	a.emit(0x8B, 0x45, 0x08);                   // absolute X
+	a.emit(0x89, 0x45, ExpBarZeroStatic.HoverX);
+	a.emit(0x2B, 0x46, ExpBarZeroStatic.WindowXOffset);
+	a.jcc(0x88, "hover_done");                 // local X < 0
+	a.emit(0x3D); a.dword(ExpBarZeroStatic.CombinedWidth);
+	a.jcc(0x8D, "hover_done");                 // local X >= width
+	a.emit(0x8B, 0x55, 0x0C);                   // absolute Y
+	a.emit(0x89, 0x55, ExpBarZeroStatic.HoverY);
+	a.emit(0x2B, 0x56, ExpBarZeroStatic.WindowYOffset);
+	a.jcc(0x88, "hover_done");
+	a.emit(0x83, 0xFA, ExpBarZeroStatic.BackgroundHeight);
+	a.jcc(0x8D, "hover_done");
+
+	a.emit(0x3D); a.dword(ExpBarZeroStatic.BackgroundWidth);
+	a.jcc(0x82, "hover_base");                 // local X < 502
+	a.emit(0xBF); a.dword(ExpBarZeroStatic.CurrentJobExp);
+	a.emit(0xBB); a.dword(ExpBarZeroStatic.MaximumJobExp);
+	a.emit(0xC7, 0x45, ExpBarZeroStatic.HoverLevel);
+	a.dword(ExpBarZeroStatic.JobLevel);
+	a.emit(0xC7, 0x45, ExpBarZeroStatic.HoverMaxLevelFunc);
+	a.dword(ExpBarZeroStatic.GetMaxJobLevel);
+	a.jmp("hover_selected");
+
+	a.label("hover_base");
+	a.emit(0xBF); a.dword(ExpBarZeroStatic.CurrentBaseExp);
+	a.emit(0xBB); a.dword(ExpBarZeroStatic.MaximumBaseExp);
+	a.emit(0xC7, 0x45, ExpBarZeroStatic.HoverLevel);
+	a.dword(ExpBarZeroStatic.BaseLevel);
+	a.emit(0xC7, 0x45, ExpBarZeroStatic.HoverMaxLevelFunc);
+	a.dword(ExpBarZeroStatic.GetMaxBaseLevel);
+
+	a.label("hover_selected");
+	// The stock BasicInfo renderer treats a character at the native per-job
+	// level cap as complete even when its EXP qwords contain the cap sentinel.
+	// Reuse those exact resolvers before consulting the live EXP ratio.
+	a.emit(0xB9); a.dword(ExpBarZeroStatic.Session);
+	a.call(ExpBarZeroStatic.GetJobId);
+	a.emit(0x50);                                  // PUSH jobId
+	a.emit(0xB9); a.dword(ExpBarZeroStatic.Session);
+	a.emit(0xFF, 0x55, ExpBarZeroStatic.HoverMaxLevelFunc);
+	a.emit(0x8B, 0x55, ExpBarZeroStatic.HoverLevel);
+	a.emit(0x39, 0x02);                            // CMP [level],EAX
+	a.jcc(0x8D, "hover_full");
+
+	// Outside the cap case, show a full bar for a saturated EXP pair and use
+	// the stock truncated one-decimal calculation for an active level.
+	a.emit(0x8B, 0x4B, 0x04);                   // maximum high
+	a.emit(0x8B, 0x03);                         // maximum low
+	a.emit(0x3B, 0x4F, 0x04);                   // maximum < current?
+	a.jcc(0x8C, "hover_full");
+	a.jcc(0x8F, "maximum_valid_range");
+	a.emit(0x3B, 0x07);
+	a.jcc(0x86, "hover_full");
+	a.label("maximum_valid_range");
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "maximum_nonzero");
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "hover_done");
+	a.label("maximum_nonzero");
+	a.emit(0x8B, 0x0F, 0x8B, 0x57, 0x04);       // current low/high
+	a.call(ExpBarZeroStatic.Int64ToDouble);
+	a.emit(0xF2, 0x0F, 0x11, 0x45, ExpBarZeroStatic.HoverRatio);
+	a.emit(0x8B, 0x0B, 0x8B, 0x53, 0x04);       // maximum low/high
+	a.call(ExpBarZeroStatic.Int64ToDouble);
+	a.emit(0xF2, 0x0F, 0x10, 0x4D, ExpBarZeroStatic.HoverRatio);
+	a.emit(0xF2, 0x0F, 0x5E, 0xC8);             // DIVSD XMM1,XMM0
+	a.emit(0xF2, 0x0F, 0x59, 0x0D);
+	a.dword(ExpBarZeroStatic.PercentScaleDouble);
+	a.emit(0xF2, 0x0F, 0x2C, 0xC1);             // truncate thousandths
+	a.emit(0x66, 0x0F, 0x6E, 0xC0);
+	a.emit(0x0F, 0x5B, 0xC0);
+	a.emit(0xF3, 0x0F, 0x59, 0x05);
+	a.dword(ExpBarZeroStatic.PercentTenthFloat);
+	a.emit(0x0F, 0x5A, 0xC0);
+	a.jmp("format_hover_percent");
+
+	a.label("hover_full");
+	a.emit(0xF2, 0x0F, 0x10, 0x05);
+	a.dword(ExpBarZeroStatic.PercentFullDouble);
+
+	a.label("format_hover_percent");
+	a.emit(0x83, 0xEC, 0x08);
+	a.emit(0xF2, 0x0F, 0x11, 0x04, 0x24);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.PercentTooltipFormat);
+	ExpBarZeroStatic.pushLocalAddress(a, ExpBarZeroStatic.HoverBuffer);
+	a.call(ExpBarZeroStatic.Sprintf);
+	a.emit(0x83, 0xC4, 0x10);
+
+	a.emit(0x83, 0x45, ExpBarZeroStatic.HoverY, ExpBarZeroStatic.TooltipYOffset);
+	a.emit(0x8B, 0x0D); a.dword(ExpBarZeroStatic.TooltipManager);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "hover_done");
+	ExpBarZeroStatic.pushImm(a, 1);
+	ExpBarZeroStatic.pushImm(a, 0);
+	ExpBarZeroStatic.pushImm(a, -1);
+	ExpBarZeroStatic.pushLocalValue(a, ExpBarZeroStatic.HoverY);
+	ExpBarZeroStatic.pushLocalValue(a, ExpBarZeroStatic.HoverX);
+	ExpBarZeroStatic.pushLocalAddress(a, ExpBarZeroStatic.HoverBuffer);
+	a.call(ExpBarZeroStatic.ShowTooltip);
+
+	a.label("hover_done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D);
+	a.emit(0xC2, 0x08, 0x00);
+	return a;
+};
+
+ExpBarZeroStatic.buildDestructor = function(stateVir)
+{
+	const a = ExpBarZeroStatic.asm();
+	a.emit(0xC7, 0x05);
+	a.dword(stateVir + ExpBarZeroStatic.StateWindow);
+	a.dword(0);
+	a.jmp(ExpBarZeroStatic.WindowDeletingDestructor);
+	return a;
+};
+
+ExpBarZeroStatic.cloneWindowVtable = function(
+	drawVir, passiveHoverVir, passThroughHitTestVir, destructorVir
+)
+{
+	const sourcePhy = Exe.Vir2Phy(ExpBarZeroStatic.BaseWindowVtable);
+	if (sourcePhy < 0)
+		throw Error("ROGlobalZeroExpBar: base UIWindow vtable is not mapped");
+	const byteCount = ExpBarZeroStatic.BaseWindowVtableEntries * 4;
+	// Native pub/vending checks use typeid() on every top-level window.
+	// Preserve the MSVC Complete Object Locator at vtable[-1].
+	if (sourcePhy < 4 || Exe.Vir2Phy(Exe.GetUint32(sourcePhy - 4)) < 0)
+		throw Error("ROGlobalZeroExpBar: native vtable RTTI is not mapped");
+	const [storagePhy, storageVir] = Exe.Allocate(byteCount + 4, 4);
+	const clonePhy = storagePhy + 4;
+	const cloneVir = storageVir + 4;
+	Exe.SetHex(storagePhy, Exe.GetHex(sourcePhy - 4, byteCount + 4));
+	Exe.SetUint32(clonePhy, destructorVir);
+	Exe.SetUint32(clonePhy + 20 * 4, drawVir);
+	Exe.SetUint32(clonePhy + 29 * 4, passiveHoverVir);
+	Exe.SetUint32(clonePhy + 50 * 4, passThroughHitTestVir);
+	return {phy: clonePhy, vir: cloneVir, size: byteCount};
+};
+
+ExpBarZeroStatic.buildRenderWrapper = function(stateVir, vtableVir)
+{
+	const a = ExpBarZeroStatic.asm();
+	a.emit(0x9C, 0x60);
+	a.emit(0x8B, 0x35); a.dword(stateVir + ExpBarZeroStatic.StateWindow);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x85, "window_ready");
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.WindowObjectSize);
+	a.call(ExpBarZeroStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "draw_manager");
+	a.emit(0x8B, 0xF0);
+	ExpBarZeroStatic.pushImm(a, 0);
+	a.emit(0x8B, 0xCE);
+	a.call(ExpBarZeroStatic.WindowConstructor);
+	a.emit(0xC7, 0x06); a.dword(vtableVir);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.BackgroundHeight);
+	ExpBarZeroStatic.pushImm(a, ExpBarZeroStatic.CombinedWidth);
+	a.emit(0x8B, 0xCE);
+	a.call(ExpBarZeroStatic.WindowSetSize);
+	a.emit(0x89, 0x35); a.dword(stateVir + ExpBarZeroStatic.StateWindow);
+	a.emit(0x56);
+	a.emit(0xB9); a.dword(ExpBarZeroStatic.WindowManager);
+	a.call(ExpBarZeroStatic.WindowAddTopLevelFront);
+	a.label("window_ready");
+	a.emit(0x8B, 0x15); a.dword(ExpBarZeroStatic.Renderer);
+	a.emit(0x85, 0xD2);
+	a.jcc(0x84, "mark_dirty");
+	a.emit(0x8B, 0x42, ExpBarZeroStatic.RendererWidthOffset);
+	a.emit(0x2D); a.dword(ExpBarZeroStatic.CombinedWidth);
+	a.emit(0xD1, 0xF8);
+	a.emit(0x89, 0x46, ExpBarZeroStatic.WindowXOffset);
+	a.emit(0x8B, 0x42, ExpBarZeroStatic.RendererHeightOffset);
+	a.emit(0x2D); a.dword(ExpBarZeroStatic.BackgroundHeight);
+	a.emit(0x89, 0x46, ExpBarZeroStatic.WindowYOffset);
+	a.label("mark_dirty");
+	a.emit(0xC7, 0x46, ExpBarZeroStatic.WindowDirtyOffset);
+	a.dword(1);
+	a.label("draw_manager");
+	a.emit(0x61, 0x9D);
+	a.emit(0xB9); a.dword(ExpBarZeroStatic.WindowManager);
+	a.call(ExpBarZeroStatic.WindowManagerDraw);
+	a.emit(0xC3);
+	return a;
+};
+
+ExpBarZeroStatic.assertCode = function(label, virAddr, expectedBytes)
+{
+	const phy = Exe.Vir2Phy(virAddr, CODE);
+	if (phy < 0)
+		throw Error(`ROGlobalZeroExpBar: ${label} is not mapped`);
+	const expected = expectedBytes.replace(/\s+/g, " ").trim().toUpperCase();
+	const actual = Exe.GetHex(phy, expected.split(" ").length)
+		.replace(/\s+/g, " ").trim().toUpperCase();
+	if (actual !== expected)
+		throw Error(`ROGlobalZeroExpBar: ${label} mismatch, got ${actual}`);
+	return phy;
+};
+
+ExpBarZeroStatic.assertMappedBytes = function(label, virAddr, expectedBytes)
+{
+	const phy = Exe.Vir2Phy(virAddr);
+	if (phy < 0)
+		throw Error(`ROGlobalZeroExpBar: ${label} is not mapped`);
+	const expected = expectedBytes.replace(/\s+/g, " ").trim().toUpperCase();
+	const actual = Exe.GetHex(phy, expected.split(" ").length)
+		.replace(/\s+/g, " ").trim().toUpperCase();
+	if (actual !== expected)
+		throw Error(`ROGlobalZeroExpBar: ${label} mismatch, got ${actual}`);
+	return phy;
+};
+
+ExpBarZeroStatic.assertVtableSlot = function(label, slot, expectedVir)
+{
+	const phy = Exe.Vir2Phy(ExpBarZeroStatic.BaseWindowVtable + slot * 4);
+	if (phy < 0)
+		throw Error(`ROGlobalZeroExpBar: ${label} vtable slot is not mapped`);
+	const actual = Exe.GetUint32(phy);
+	if (actual !== expectedVir)
+	{
+		throw Error(
+			`ROGlobalZeroExpBar: ${label} expected 0x${expectedVir.toString(16)}, ` +
+			`got 0x${actual.toString(16)}`
+		);
+	}
+};
+
+ExpBarZeroStatic.verifyNativeContracts = function()
+{
+	const renderHookPhy = ExpBarZeroStatic.assertCode(
+		"in-game UIWindowMgr draw call",
+		ExpBarZeroStatic.RenderHook,
+		ExpBarZeroStatic.RenderHookBytes
+	);
+	ExpBarZeroStatic.assertCode(
+		"Base EXP state load",
+		ExpBarZeroStatic.BaseExpLoad,
+		ExpBarZeroStatic.BaseExpLoadBytes
+	);
+	ExpBarZeroStatic.assertCode(
+		"Job EXP state load",
+		ExpBarZeroStatic.JobExpLoad,
+		ExpBarZeroStatic.JobExpLoadBytes
+	);
+	ExpBarZeroStatic.assertCode(
+		"uint64-to-double helper",
+		ExpBarZeroStatic.Int64ToDouble,
+		"83 3D 24 2F 60 01 06"
+	);
+	ExpBarZeroStatic.assertCode(
+		"32-bit UI surface pixel layout",
+		0x0053EBA0,
+		"55 8B EC 53 8B 59 04 33 C0 56 8B 71 18"
+	);
+	ExpBarZeroStatic.assertCode(
+		"session job-id getter",
+		ExpBarZeroStatic.GetJobId,
+		"8B 89 08 16 00 00 83 F9 07"
+	);
+	ExpBarZeroStatic.assertCode(
+		"native maximum Base-level resolver",
+		ExpBarZeroStatic.GetMaxBaseLevel,
+		"55 8B EC 56 8B 75 08 B9 C0 A3 5F 01 56 E8"
+	);
+	ExpBarZeroStatic.assertCode(
+		"native maximum Job-level resolver",
+		ExpBarZeroStatic.GetMaxJobLevel,
+		"55 8B EC 56 8B 75 08 B9 C0 A3 5F 01 56 E8"
+	);
+	ExpBarZeroStatic.assertMappedBytes(
+		"stock EXP tooltip scale",
+		ExpBarZeroStatic.PercentScaleDouble,
+		"00 00 00 00 00 40 8F 40"
+	);
+	ExpBarZeroStatic.assertMappedBytes(
+		"stock EXP tooltip tenth",
+		ExpBarZeroStatic.PercentTenthFloat,
+		"CD CC CC 3D"
+	);
+	ExpBarZeroStatic.assertMappedBytes(
+		"stock full EXP percentage",
+		ExpBarZeroStatic.PercentFullDouble,
+		"00 00 00 00 00 00 59 40"
+	);
+	ExpBarZeroStatic.assertMappedBytes(
+		"stock EXP tooltip format",
+		ExpBarZeroStatic.PercentTooltipFormat,
+		"25 2E 31 66 20 25 25 00"
+	);
+	ExpBarZeroStatic.assertVtableSlot(
+		"base deleting destructor", 0, ExpBarZeroStatic.BaseWindowDestructor
+	);
+	ExpBarZeroStatic.assertVtableSlot(
+		"base resize", 1, ExpBarZeroStatic.WindowSetSize
+	);
+	ExpBarZeroStatic.assertVtableSlot(
+		"base OnDraw", 20, ExpBarZeroStatic.BaseWindowDraw
+	);
+	ExpBarZeroStatic.assertVtableSlot(
+		"base mouse move", 28, ExpBarZeroStatic.BaseWindowMouseMove
+	);
+	ExpBarZeroStatic.assertVtableSlot(
+		"base passive mouse observer", 29,
+		ExpBarZeroStatic.BaseWindowPassiveMouse
+	);
+	ExpBarZeroStatic.assertVtableSlot(
+		"base recursive hit test", 50, ExpBarZeroStatic.BaseWindowHitTest
+	);
+	return {renderHookPhy};
+};
+
+ROGlobalZeroExpBar = function(_)
+{
+	if (Exe.BuildDate !== ExpBarZeroStatic.BuildDate)
+		throw Error("ROGlobalZeroExpBar supports only the 2025-07-16 client");
+	const theme = CACHE.get("ROGlobalZeroUITheme.State");
+	if (!theme || !Number.isInteger(theme.stateVir) ||
+		!Number.isInteger(theme.loadVir))
+		throw Error("ROGlobalZeroExpBar: ROGlobalZeroUITheme must run first");
+	$$(_, 1, "Verify the in-game UI pass, generic UIWindow ABI, and live EXP state");
+	const verified = ExpBarZeroStatic.verifyNativeContracts();
+	$$(_, 2, "Build client-native uirenewal EXP resource paths");
+	const paths = {
+		baseBackground: ExpBarZeroStatic.buildResourcePath(
+			"uirenewal\\expbar\\bg_exp_base2.tga"
+		),
+		jobBackground: ExpBarZeroStatic.buildResourcePath(
+			"uirenewal\\expbar\\bg_exp_job2.tga"
+		),
+		baseFill: ExpBarZeroStatic.buildResourcePath(
+			"uirenewal\\expbar\\gze_exp_base.bmp"
+		),
+		jobFill: ExpBarZeroStatic.buildResourcePath(
+			"uirenewal\\expbar\\gze_exp_job.bmp"
+		)
+	};
+	const levelFormat = ExpBarZeroStatic.allocateBytes(
+		ExpBarZeroStatic.asciiBytes(" %d")
+	);
+	const state = ExpBarZeroStatic.allocateBytes(
+		new Array(ExpBarZeroStatic.StateSize).fill(0), 4
+	);
+	Exe.SetUint32(
+		state.phy + ExpBarZeroStatic.StateScale,
+		ExpBarZeroStatic.TrackWidth
+	);
+	$$(_, 3, "Create the independent click-through EXP UIWindow renderer");
+	const draw = ExpBarZeroStatic.allocateCode(
+		ExpBarZeroStatic.buildDraw(
+			state.vir, paths, levelFormat.vir,
+			theme.stateVir, theme.loadVir
+		)
+	);
+	const passiveHover = ExpBarZeroStatic.allocateCode(
+		ExpBarZeroStatic.buildPassiveHover(theme.stateVir)
+	);
+	const passThroughHitTest = ExpBarZeroStatic.allocateCode(
+		ExpBarZeroStatic.buildPassThroughHitTest()
+	);
+	const destructor = ExpBarZeroStatic.allocateCode(
+		ExpBarZeroStatic.buildDestructor(state.vir)
+	);
+	const vtable = ExpBarZeroStatic.cloneWindowVtable(
+		draw.vir, passiveHover.vir, passThroughHitTest.vir, destructor.vir
+	);
+	$$(_, 4, "Attach the EXP window to the normal in-game UI pass behind stock windows");
+	const renderWrapper = ExpBarZeroStatic.allocateCode(
+		ExpBarZeroStatic.buildRenderWrapper(state.vir, vtable.vir)
+	);
+	Exe.SetCALL(verified.renderHookPhy, renderWrapper.vir, 0);
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("ROGlobalZeroExpBar.QjsOnly", {
+			nativeHost: "independent top-level UIWindow",
+			independentOfBasicInfo: true,
+			altVIndependent: true,
+			renderHookVir: ExpBarZeroStatic.RenderHook,
+			renderWrapperVir: renderWrapper.vir,
+			windowStateVir: state.vir,
+			themeStateVir: theme.stateVir,
+			windowVtableVir: vtable.vir,
+			drawVir: draw.vir,
+			passiveHoverVir: passiveHover.vir,
+			passThroughHitTestVir: passThroughHitTest.vir,
+			windowSize: [
+				ExpBarZeroStatic.CombinedWidth,
+				ExpBarZeroStatic.BackgroundHeight
+			],
+			trackSize: [ExpBarZeroStatic.TrackWidth, ExpBarZeroStatic.TrackHeight],
+			levelTextHeight: ExpBarZeroStatic.LevelHeight,
+			levelTextOpacityRepair: [
+				ExpBarZeroStatic.LevelTextWidth,
+				ExpBarZeroStatic.LevelHeight
+			],
+			tooltipFormat: "%.1f %%",
+			tooltipAnchor: "live mouse coordinates",
+			capDetection: "native per-job Base/Job level resolvers",
+			preservesTgaAlpha: true,
+			clickThrough: true,
+			renderOrder: "front of top-level list; stock UI paints above it",
+			externalModules: 0
+		});
+	}
+	return true;
+};
+
+ROGlobalZeroExpBar.cleanup = function()
+{
+};
+
+ROGlobalZeroExpBar.validate = function()
+{
+	if (Exe.BuildDate !== ExpBarZeroStatic.BuildDate)
+		return false;
+	try
+	{
+		ExpBarZeroStatic.verifyNativeContracts();
+		return true;
+	}
+	catch (error)
+	{
+		return false;
+	}
+};

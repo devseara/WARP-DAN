@@ -1,0 +1,65 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-09-06                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Target: Main 2025-07-16 Ragexe. Pet and homunculus     *
+*                   text controls accept127 bytes and send                 *
+*                   complete130-byte requests with a128-byte name field.   *
+*                   Percent characters remain literal; confirmation text   *
+*                   is bounded to its native512-byte area. Native hooks,   *
+*                   data and code revert together with the selecting       *
+*                   patch.                                                 *
+*                                                                          *
+\**************************************************************************/
+
+CompanionRenameNamesStatic={};
+CompanionRenameNamesStatic.install=function(state)
+{
+	if(ExtNameTextStatic.ActiveBuildDate!==20250716||state.companionRenameNames128)return state;
+	const hooks=[],edits=[];
+	const h=(va,old,a)=>hooks.push([ExtNameStaticAsm.assertCode("companion rename",va,old),old.split(" ").length,ExtNameTextStatic.allocateCode(a)]);
+	const copy=ExtNameTextStatic.allocateCode(ExtNameTextStatic.buildCopyZ());
+	for(const spec of [[0x00C8FAC3,0x01A5],[0x00C9082D,0x0231]]){
+		const a=ExtNameStaticAsm.asm();a.emit(0x56,0x57,0x81,0xEC);a.dword(132);a.emit(0x8B,0xFC,0x33,0xC0,0xB9);a.dword(33);a.emit(0xF3,0xAB,0x8B,0xFC,0x66,0xC7,7,spec[1]&255,spec[1]>>>8,0x68);a.dword(128);a.emit(0x52,0x8D,0x47,2,0x50);a.call(copy.virAddr);
+		a.call(0x00C14D60);a.emit(0x57,0x68);a.dword(130);a.emit(0x8B,0xC8);a.call(0x00C14920);a.emit(0x81,0xC4);a.dword(132);a.emit(0x5F,0x5E,0x33,0xC0);a.jmp(0x00C930AD);
+		h(spec[0],spec[1]===0x01A5?"8B CA B8 A5 01 00 00":"8B CA B8 31 02 00 00",a);
+	}
+	for(const spec of [[0x00886259,"83 F8 18 72 35",0x00886293],[0x00884389,"83 F8 18 72 33",0x008843C1]]){
+		const a=ExtNameStaticAsm.asm();a.emit(0x3D);a.dword(128);a.jcc(0x82,spec[2]);a.jmp(spec[0]+5);h(spec[0],spec[1],a);
+	}
+	// +88 is the edit control byte limit, not its SetSize(width,height).
+	for(const va of [0x00879339,0x00875723])
+		edits.push([ExtNameStaticAsm.assertCode("companion edit byte limit",va,"C7 80 88 00 00 00 32 00 00 00"),"C7 80 88 00 00 00 7F 00 00 00"]);
+	const literal=ExtNameTextStatic.allocateCode(CompanionNamesStatic.buildCopyName(copy.virAddr));
+	const copySites=[
+		[0x008792F7,"E8 54 05 CB FF"],[0x008756E1,"E8 6A 41 CB FF"],
+		[0x008863F8,"E8 53 34 CA FF"],[0x00884522,"E8 29 53 CA FF"]
+	].map(p=>ExtNameStaticAsm.assertCode("literal companion name",p[0],p[1]));
+	const a=ExtNameStaticAsm.asm();a.emit(0x55,0x8B,0xEC,0xFF,0x75,16,0xFF,0x75,12,0x6A,0xFF,0x68);a.dword(512);a.emit(0xFF,0x75,8);a.call(0x0059CDF0);a.emit(0x83,0xC4,20,0x5D,0xC3);
+	const format=ExtNameTextStatic.allocateCode(a);
+	const formatSites=[[0x00886313,"E8 38 35 CA FF"],[0x00884441,"E8 0A 54 CA FF"]].map(p=>ExtNameStaticAsm.assertCode("companion bounded confirmation",p[0],p[1]));
+	const owner=Exe.ActivePatch;Exe.BeginTag("CompanionRenameNamesStatic.NamePackets128",true);
+	try{
+		for(const p of hooks){Exe.SetJMP(p[0],p[2].virAddr,0);Exe.SetNOPs(p[0]+5,p[1]-5);}
+		for(const e of edits)Exe.SetHex(e[0],e[1]);for(const site of copySites)Exe.SetCALL(site,literal.virAddr,0);for(const site of formatSites)Exe.SetCALL(site,format.virAddr,0);
+	}finally{Exe.EndTag();Exe.ActivePatch=owner;}
+	state.companionRenameNames128=true;return state;
+};

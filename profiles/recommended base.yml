@@ -1,0 +1,149 @@
+from: "D:/Programs/Games/Ragnarok/01_github/WARP0716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo.exe"
+to: "D:/Programs/Games/Ragnarok/01_github/WARP20250716-main/2025-07-16_Ragexe_175220998_clientinfo/2025-07-16_Ragexe_175220998_clientinfo_patched.exe"
+inputs:
+    $copyFluentEmojiAssets:
+        data: ''
+        display: "true"
+        type: 10
+
+    $newchangemat:
+        data: '53797374656d454e5c4368616e67654d6174657269616c5f454e2e6c756200'
+        display: "SystemEN\\ChangeMaterial_EN.lub"
+        type: 10
+    
+    $newRcmdQInfoList:
+        data: '73797374656d454e5c5265636f6d6d656e6465645175657374735f454e00'
+        display: "systemEN\\RecommendedQuests_EN"
+        type: 10
+    
+    $newMapInfo:
+        data: '73797374656d454e5c4d6170496e666f5f454e2e6c756200'
+        display: "systemEN\\MapInfo_EN.lub"
+        type: 10
+    
+    $newOngQInfoList:
+        data: '73797374656d454e5c4f6e676f696e675175657374735f454e00'
+        display: "systemEN\\OngoingQuests_EN"
+        type: 10
+    
+    $newMonSizeEffect:
+        data: '53797374656d454e5c4d6f6e737465725f53697a655f4566666563745f454e2e6c756200'
+        display: "SystemEN\\Monster_Size_Effect_EN.lub"
+        type: 10
+    
+    $newTownInfo:
+        data: '53797374656d454e5c546f776e696e666f5f454e2e6c756200'
+        display: "SystemEN\\Towninfo_EN.lub"
+        type: 10
+    
+    $newTipBox:
+        data: '53797374656d454e5c746970626f785f454e2e6c756200'
+        display: "SystemEN\\tipbox_EN.lub"
+        type: 10
+    
+    $newPetEvoCln:
+        data: '73797374656d454e5c50657445766f6c7574696f6e5f454e2e6c756200'
+        display: "systemEN\\PetEvolution_EN.lub"
+        type: 10
+    
+    $translationFile:
+        data: ''
+        display: "Inputs/Translations_EN.yml"
+        type: 10
+    
+    $enchantGradeMap:
+        data: ''
+        display: "Inputs/enchant_grade.yml"
+        type: 10
+    
+    $newPrivAirplane:
+        data: '53797374656d454e5c50726976617465416972706c616e655f454e2e6c756200'
+        display: "SystemEN\\PrivateAirplane_EN.lub"
+        type: 10
+    
+    $newCheckAtt:
+        data: '53797374656d454e5c436865636b417474656e64616e63655f454e2e6c756200'
+        display: "SystemEN\\CheckAttendance_EN.lub"
+        type: 10
+    
+    $customDLL:
+        data: ''
+        display: "Inputs/DLLSpec.yml"
+        type: 10
+    
+    $newQuestQuali:
+        data: '53797374656d454e5c5175657374436c617373696669636174696f6e496e666f5f454e2e6c756200'
+        display: "SystemEN\\QuestClassificationInfo_EN.lub"
+        type: 10
+    
+    $dataINI:
+        data: '444154412e494e4900'
+        display: "DATA.INI"
+        type: 10
+    
+    $newspopup:
+        data: '53797374656d454e5c53706f7075705f454e2e6c756200'
+        display: "SystemEN\\Spopup_EN.lub"
+        type: 10
+    
+    $newItemInfo:
+        data: '53797374656d454e5c6974656d496e666f5f454e2e6c756200'
+        display: "SystemEN\\itemInfo_EN.lub"
+        type: 10
+    
+    $newAchieveList:
+        data: '73797374656d454e5c416368696576656d656e74735f454e2e6c756200'
+        display: "systemEN\\Achievements_EN.lub"
+        type: 10
+    
+patches:
+    - EnableWho
+    - EnableShowName
+    - AlwaysShowNpcName
+    - MediumCamAngle
+    - UseOldLogin
+    - AlwaysAscii
+    - CallKoreaClientInfo
+    - PlainTextDesc
+    - LoadKrExtSettings
+    - HideBuildInfo
+    - FixArrowsCharset
+    - TranslateClient
+    - NoGGuard
+    - CustomItemInfoLub
+    - CustomAchieveLub
+    - CustomMonSizeEffLub
+    - CustomTownInfoLub
+    - CustomPetEvoClnLub
+    - CustomTipboxLub
+    - CustomCheckAttLub
+    - CustomPrivAirplaneLub
+    - CustomMapInfoLub
+    - CustomOngQuestInfoLub
+    - CustomRcmdQuestInfoLub
+    - CustomspopupLub
+    - CustomChangeMatLub
+    - CustomQuestQualiLub
+    - GRFsFromIni
+    - EnableSysMenu
+    - No1and1Arg
+    - RestoreIcon
+    - NoNagle
+    - SendClientFlags
+    - NoPassEncr
+    - PatchDiagnostics
+    - CustomExtName
+    - CustomColoredItemName
+    - CustomColoredEnchantGradeName
+    - FluentEmoji
+    - OpenToServiceSelect
+    - GuildBrackets
+    - FixChatAt
+    - NoHourly
+    - NoHelpMsg
+    - CustomEnchantGradeLabels
+    - DisableExpensiveCharRender
+    - FixSkillbarReset
+    - NoGravityAds
+    - NoGravityLogo
+    - FixLatestNCWin

@@ -1,0 +1,105 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-06                                             *
+*   Last Modified : 2026-07-06                                             *
+*   Description   : Reuses the Basic Info Booking button on the             *
+*                   2025-07-16 client to open a custom URL instead of      *
+*                   sending the custom packet; packet mode is disabled     *
+*                   when this URL mode is selected.                        *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief Reuse the Basic Info "Booking" button by opening a custom URL in
+///        the user's default browser. This is the URL-mode counterpart to
+///        BookingButtonGuide.
+///
+BookingButtonURL = function(_)
+{
+	const urlVarName = '$bookingBtnURL';
+	const url = Exe.GetUserInput(
+		urlVarName,
+		D_Text,
+		"Booking Button URL",
+		"Enter the URL to open when Booking button is clicked",
+		"https://example.com/",
+		{minLen: 8, maxLen: 255, saveDefault: true}
+	);
+	if (url === false)
+		Cancel("No Booking URL entered");
+
+	if (!Warp.TestMode)
+		Warp.SetPatchState('BookingButtonGuide', false);
+
+	const hoverVarName = '$bookingBtnURLHover';
+	const hoverText = Exe.GetUserInput(
+		hoverVarName,
+		D_Text,
+		"Booking Button URL Hover",
+		"Enter the hover label to show for the Booking URL button",
+		"Booking",
+		{minLen: 1, maxLen: 60, saveDefault: true}
+	);
+	if (hoverText === false)
+		Cancel("No Booking URL hover label entered");
+
+	const [, urlAddr] = Exe.AddFromVar(urlVarName);
+	const [, openAddr] = Exe.AddText("open");
+	const [, hoverAddr] = Exe.AddFromVar(hoverVarName);
+	const hoverLen = hoverText.length;
+	if (hoverLen <= 0)
+		throw Error("Booking URL hover label is empty");
+
+	$$(_, 2.1, `Find ShellExecuteA import`)
+	const shellExecIA = Exe.FindFunc("ShellExecuteA", "SHELL32.dll");
+	if (shellExecIA < 0)
+		throw Error("ShellExecuteA import not found");
+
+	$$(_, 3.3, `Resolve Booking button ID`)
+	const targetID = NewBasicButton.getID(_, NewBasicButton.BookingButtonIdx, "Booking");
+
+	$$(_, 4.1, `Register Booking URL hover label`)
+	NewBasicButtonHover.registerText(_, targetID, hoverAddr, hoverLen);
+
+	NewBasicButton.ensureVisible(_, targetID);
+
+	$$(_, 5.1, `Register Booking URL click action`)
+	NewBasicButtonClick.registerURL(_, targetID, urlAddr, shellExecIA, openAddr);
+
+	return true;
+};
+
+///
+/// \brief Disable for unsupported clients.
+///
+BookingButtonURL.validate = function()
+{
+	return NewBasicButtonClick.validateURL();
+};
+
+BookingButtonURL.cleanup = function(patchName)
+{
+	NewBasicButtonHover.unregister(patchName);
+	NewBasicButtonClick.unregister(patchName);
+};

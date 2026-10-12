@@ -1,0 +1,54 @@
+{
+  "schema": "npc_title_fix/v1",
+  "configuration": "Release x64",
+  "build_exit_code": 0,
+  "build_log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\npc_group_title_20260911\\server-build\\build-solution.log",
+  "runtime_deployed": false,
+  "expected_title": "<Responsible for smelting products>",
+  "previous_title": "<Responsible for smelti",
+  "npc_title_capacity": 128,
+  "other_title_capacity": 24,
+  "tests": {
+    "server_cases": 72,
+    "client_receiver_cases": 32,
+    "packet_contracts": 15
+  },
+  "artifacts": [
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\npc_group_title_20260911\\server-build\\map-server.exe",
+      "bytes": 7692800,
+      "sha256": "ff6af13885a2b40cdc6382666fa6d30280e61fbc8410d3c72707211858db432d"
+    },
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\npc_group_title_20260911\\server-build\\map-server.pdb",
+      "bytes": 70782976,
+      "sha256": "ee4e13d60f2482a3e04112f3a7205c2d305154c552338b8a79c06237b6449a8f"
+    },
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\npc_group_title_20260911\\server-build\\login-server.exe",
+      "bytes": 414720,
+      "sha256": "71f6d5a8f7c98304e2f3f04737264ec0c64a4793eb40bf747af570546c9e5984"
+    },
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\npc_group_title_20260911\\server-build\\char-server.exe",
+      "bytes": 1003008,
+      "sha256": "5c1fe0ce671ded6b556f3d3e8ab6b8b5f964c31c9af791222946b701860b2357"
+    },
+    {
+      "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\npc_group_title_20260911\\server-build\\web-server.exe",
+      "bytes": 769536,
+      "sha256": "2267e87679f03efbe693a176926b4df4d4ce4fb0fb5769b1ead61102a5d0ecbf"
+    }
+  ],
+  "source_hashes": {
+    "src/common/mmo.hpp": "a6cc848b4cb1f9e03d0ef537f9e9c9dc83a39c3348bf3a70a557904c5a48a8eb",
+    "src/map/unit.hpp": "d1865193a0d9890edd28d5f57c8441861f6b3e300388a6e44b0212943c0a23fa",
+    "src/map/script.cpp": "c0fa1a36da446b26321fbf6dd0808e590e2bed9382a9693f12b07071a5eed69d",
+    "src/map/status.cpp": "9d0588f413527f7a1889eee4c2cc524161cd70fe2534114797d509091b23cd68",
+    "src/map/mob.cpp": "90dcc7c3ca2b54f50cd82d0fc2de4667529df6b2dd0ab6c55d29294cbedb8c4b"
+  },
+  "unchanged_client": {
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\2025-07-16_Ragexe_name_menu_fixed.exe",
+    "sha256": "2b111715ae643bee75963b2a4b0d152dda8a4d27b8ded4e49f3fc52570f473d5"
+  }
+}

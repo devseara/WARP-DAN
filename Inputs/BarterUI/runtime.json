@@ -1,0 +1,27 @@
+{
+  "version": 3,
+  "client": 20250716,
+  "size": 134816,
+  "api_size": 108,
+  "exports": {
+    "@BarterCursor@16": 7888,
+    "@BarterDestroy@12": 8064,
+    "@BarterDown@16": 8160,
+    "@BarterDrag@16": 8432,
+    "@BarterDraw@8": 8464,
+    "@BarterMove@16": 11360,
+    "@BarterRightDown@16": 11520,
+    "@BarterRightUp@16": 11600,
+    "@BarterUp@16": 11696,
+    "@BarterWheel@12": 13088,
+    "BarterApi": 20480,
+    "BarterState": 20608,
+    "_BarterHit@8": 13376,
+    "_BarterOwned@8": 14352,
+    "_BarterReceive@4": 14656,
+    "_BarterResult@4": 15504
+  },
+  "source_sha256": "35188138663ddac1d5d8ec102a16c0bc7426ec760d701b36037031cf43b8743a",
+  "payload_sha256": "5ce01b1d22e30361625a5bff857bfcb85511178758f08a83d8f37c0171a88b29",
+  "runtime_imports": []
+}

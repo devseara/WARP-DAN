@@ -1,0 +1,55 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2025-07-16                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : QJS-only player-name color patch for the 2025-07-16    *
+*                   client. Uses the shared EXTN exact-text map and applies *
+*                   RGB only around non-shadow TextOutW player-name draws, *
+*                   matching the former DLL bridge without a custom DLL.  *
+*                                                                          *
+\**************************************************************************/
+
+CustomPlayerNameColor = function(_)
+{
+	if (typeof ExtNameTextStatic === "undefined" ||
+		typeof ExtNameTextStatic.enable !== "function")
+		throw Error("CustomPlayerNameColor: ExtNameTextStatic helper unavailable");
+	$$(_, 1, "Install QJS-only exact player-name color bridge");
+	ExtNameTextStatic.enable(_, ExtNameTextStatic.FeatureColors);
+	$$(_, 2, "Player name colors are applied around TextOutW");
+	return true;
+};
+
+CustomPlayerNameColor.validate = function()
+{
+	return Exe.BuildDate === 20250716 &&
+		typeof ExtNameTextStatic !== "undefined";
+};
+
+/// Release this feature from the shared text bridge before WARP clears it.
+CustomPlayerNameColor.cleanup = function(_)
+{
+	ExtNameTextStatic.release(_);
+};

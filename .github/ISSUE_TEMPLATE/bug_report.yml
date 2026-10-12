@@ -1,0 +1,33 @@
+name: Bug Report
+description: Report a patch or client issue
+labels: ["bug"]
+body:
+  - type: input
+    id: patch
+    attributes:
+      label: Patch Name
+      description: Which patch is affected?
+      placeholder: e.g. CustomJobs, NoGGuard, GRFsFromIni
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the issue
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this?
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots
+    validations:
+      required: false

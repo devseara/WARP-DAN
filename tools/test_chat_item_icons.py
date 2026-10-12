@@ -33,7 +33,7 @@ class IconMachine(Machine):
     def __init__(self, exe):
         super().__init__(exe, ASSETS)
         self.contract = {}
-        tag = self.pe.__data__.find(b'ChatItemIcons.v2\0')
+        tag = self.pe.__data__.find(b'ChatItemIcons.v3\0')
         assert tag >= 0, 'ChatItemIcons was not applied'
         tag_va = self.base + self.pe.get_rva_from_offset(tag)
         needle = pack(tag_va)
@@ -45,7 +45,7 @@ class IconMachine(Machine):
                 locations.append(self.base + section.VirtualAddress + pos)
                 pos += 1
         assert len(locations) == 1, locations
-        names = 'convert stock add marker decorateFirst decorateChild blit resolver draw vtable size pickup rawStock rawAdd linkDraw linkVtable'.split()
+        names = 'convert stock add marker decorateFirst decorateChild blit resolver draw vtable size pickup rawStock rawAdd linkDraw linkVtable itemFromToken'.split()
         self.contract = dict(zip(names, [self.r(locations[0]+4+i*4) for i in range(len(names))]))
         self.imports = {}
         for module in self.pe.DIRECTORY_ENTRY_IMPORT:
@@ -124,6 +124,9 @@ def test_converter(m):
         ('hello', 'hello'), ('You got ^i[501]Red Potion (10).', 'You got '+PREFIX+b62(501)+TAIL+'Red Potion (10).'),
         ('^i[1] ^i[9999999]', PREFIX+'1'+TAIL+' '+PREFIX+b62(9999999)+TAIL),
         ('^i[0000501]', PREFIX+b62(501)+TAIL),
+        ('^i[1201,0]Dagger / ^i[1201,1]Knife', PREFIX+'0'+b62(1201)+TAIL+'Dagger / '+PREFIX+b62(1201)+TAIL+'Knife'),
+        ('^i[1,0] ^i[9999999,0]', PREFIX+'01'+TAIL+' '+PREFIX+'0'+b62(9999999)+TAIL),
+        ('^i[501,2] ^i[501,] ^i[501,00] ^i[,0] ^i[0,0] ^i[501,0', '^i[501,2] ^i[501,] ^i[501,00] ^i[,0] ^i[0,0] ^i[501,0'),
         ('^i[0] ^i[-1] ^i[] ^i[12345678] ^i[12x] ^i[501', '^i[0] ^i[-1] ^i[] ^i[12345678] ^i[12x] ^i[501'),
         ("<ITEML>000041jn%0a&01'04)12)34)56)78+01,02-03</ITEML>",
          "<ITEML>000041jn%0a&01'04)12)34)56)78+01,02-03</ITEML>"),
@@ -134,7 +137,7 @@ def test_converter(m):
         m.invoke(m.contract['convert'], 0, [source,dest])
         assert m.cstr(m.u.reg_read(UC_X86_REG_EAX)) == expected, raw
         assert bytes(m.u.mem_read(dest+1536,32)) == b'Z'*32
-    for raw in ['x'*1024, '^i[501]'*150]:
+    for raw in ['x'*1024, '^i[501]'*150, '^i[501,0]'*100]:
         source = m.text_buffer(raw)
         m.invoke(m.contract['convert'], 0, [source,dest])
         assert m.u.reg_read(UC_X86_REG_EAX) == source
@@ -199,12 +202,13 @@ def native_font_boundaries(m):
 
 def test_native_tokenizer(m):
     native_crt(m)
-    for value in [1,501,1201,1202,65536,9999999]:
-        source=m.string('0'*13+b62(value)+TAIL[:-8]); vector=m.alloc(12)
-        m.invoke(0x847AF0,0,[source,vector])
-        start,end=m.r(vector),m.r(vector+4)
-        assert end-start>=12
-        assert m.r(start)==0 and m.r(start+4)==0 and m.r(start+8)==value
+    for zeros in [13,14]:
+        for value in [1,501,1201,1202,65536,9999999]:
+            source=m.string('0'*zeros+b62(value)+TAIL[:-8]); vector=m.alloc(12)
+            m.invoke(0x847AF0,0,[source,vector])
+            start,end=m.r(vector),m.r(vector+4)
+            assert end-start>=12
+            assert m.r(start)==0 and m.r(start+4)==0 and m.r(start+8)==value
 
 
 def test_native_first_pass(m):
@@ -220,6 +224,7 @@ def test_native_first_pass(m):
     pane=m.window(parent=m.window())
     for raw,expected in [
         ('You got '+PREFIX+b62(501)+TAIL+'Red Potion (10).','You got '+' '*8+'Red Potion (10).'),
+        ('You got '+PREFIX+'0'+b62(1201)+TAIL+'Dagger (1).','You got '+' '*8+'Dagger (1).'),
         (PREFIX+'1'+TAIL+' / '+PREFIX+b62(9999999)+TAIL,' '*8+' / '+' '*8),
         ('Seara : <ITEML>000000'+b62(501)+TAIL,'Seara : '+' '*8+'Red Potion'),
         ('<ITEML>000000'+b62(501)+TAIL+' / <ITEML>000000'+b62(501)+TAIL,
@@ -237,21 +242,35 @@ def test_native_child_pass(m):
     native_crt(m)
     native_font_boundaries(m)
     m.string('<ITEML>',0x1204068);m.string('</ITEML>',0x1204080)
-    children=[]
+    children=[];opened=[]
+    description=m.window();description_vt=m.alloc(0x100);show=m.alloc(16)
+    m.w(description,description_vt);m.w(description_vt+0x94,show)
+    def description_factory():
+        assert m.args(1)==[12];m.ret(4,description)
+    def show_description():
+        args=m.args(6)
+        assert args[:2]==[0,24] and args[3:]==[0,0,0]
+        item=args[2]
+        opened.append((item,m.u.mem_read(item+0x5C,1)[0]))
+        m.ret(24)
+    m.stub(0xA39340,description_factory);m.stub(show,show_description)
+    m.stub(0xA23340,lambda:m.ret(0)) # Invalidation only; no renderer/desktop.
     def item_ctor():
         obj=m.u.reg_read(UC_X86_REG_ECX)
         m.u.mem_write(obj,bytes(0xF8));m.string('',obj+0x2C);m.ret(0,obj)
     def item_from_token():
         vector,item=m.args(2)
         value=m.r(m.r(vector)+8)
-        m.string(str(value),item+0x2C);m.ret(8,1)
+        m.string(str(value),item+0x2C);m.u.mem_write(item+0x5C,b'\x01');m.ret(8,1)
     def item_copy():
         dest=m.u.reg_read(UC_X86_REG_ECX);source=m.args(1)[0]
-        m.string(m.str_value(source+0x2C),dest+0x2C);m.ret(4,dest)
+        m.string(m.str_value(source+0x2C),dest+0x2C)
+        m.u.mem_write(dest+0x5C,bytes(m.u.mem_read(source+0x5C,1)));m.ret(4,dest)
     def widget_ctor():
         obj=m.u.reg_read(UC_X86_REG_ECX)
         m.u.mem_write(obj,bytes(0x200));m.w(obj,0x102E648)
         m.string('',obj+0x7C);m.string('',obj+0xD4);m.string('',obj+0xF8+0x2C)
+        m.string('',obj+0x94) # Native cached hover name.
         m.ret(0,obj)
     def widget_text():
         obj=m.u.reg_read(UC_X86_REG_ECX);args=m.args(6)
@@ -262,20 +281,27 @@ def test_native_child_pass(m):
         children.append(obj);m.ret(4)
     m.stub(0x6A1B20,item_ctor);m.stub(0x85B630,item_from_token)
     m.stub(0x6A25F0,item_copy)
-    m.stub(0x6A2CE0,lambda: (m.string('Red Potion',m.args(2)[0]),m.ret(8,m.args(2)[0])))
+    def item_name():
+        item=m.u.reg_read(UC_X86_REG_ECX)
+        name='Red Potion' if m.u.mem_read(item+0x5C,1)==b'\x01' else 'Unknown item'
+        out=m.args(2)[0];m.string(name,out);m.ret(8,out)
+    m.stub(0x6A2CE0,item_name)
     m.stub(0x835910,widget_ctor);m.stub(0x8448B0,widget_text)
-    m.stub(0x831A50,lambda:m.ret(4));m.stub(0xA1B780,attach)
+    # Run the real tooltip setter, which takes char*, not std::string*.
+    m.stub(0xA1B780,attach)
     m.stub(0xD99070,lambda:m.ret(0))
     m.stub(0x5AA6B0,lambda:m.ret(4))
     for parent_vt in [0x1037F80,0x1037EA8]:
-        for raw,visible,child_text,vt in [
+        for raw,visible,child_text,vt,identified in [
             ('You got '+PREFIX+b62(501)+TAIL+'Red Potion (10).',
-             'You got '+' '*8+'Red Potion (10).',' '*8,'vtable'),
+             'You got '+' '*8+'Red Potion (10).',' '*8,'vtable',1),
+            ('You got '+PREFIX+'0'+b62(501)+TAIL+'Unknown item (1).',
+             'You got '+' '*8+'Unknown item (1).',' '*8,'vtable',0),
             ('Seara : <ITEML>000000'+b62(501)+TAIL,
-             'Seara : '+' '*8+'Red Potion',' '*8+'Red Potion','linkVtable'),
+             'Seara : '+' '*8+'Red Potion',' '*8+'Red Potion','linkVtable',1),
         ]:
-            children.clear()
-            pane=m.window(parent=m.window(vt=parent_vt))
+            children.clear();opened.clear()
+            pane=m.window(vt=0x102D280,parent=m.window(vt=parent_vt))
             head=m.alloc(20);m.w(head,head);m.w(head+4,head);m.w(pane+0xD4,head)
             out=m.alloc(24);source=m.string(raw)
             try:m.invoke(0x84A780,pane,[out,m.text_buffer(visible),source])
@@ -290,8 +316,17 @@ def test_native_child_pass(m):
             assert m.r(child)==m.contract[vt]+4
             assert m.r(child+0x10)==pane and m.r(child+0x18)==18
             assert m.str_value(child+0xF8+0x2C)=='501'
+            assert bytes(m.u.mem_read(child+0xF8+0x5C,1))==bytes([identified])
+            assert m.str_value(child+0x94)==('Red Potion' if identified else 'Unknown item')
             assert m.str_value(child+0x7C)==child_text
             if vt=='linkVtable': assert m.str_value(child+0xD4)==child_text
+            # Execute both native item-click entries, the real pane SendMsg
+            # route and its message-24 description dispatch. The embedded CItem
+            # must arrive unchanged; a new identified-only CItem is not created.
+            for offset in [0x64,0x68]:
+                m.invoke(m.r(m.r(child)+offset),child,[1,1])
+                assert opened[-1]==(child+0xF8,identified)
+            assert len(opened)==2
 
 
 def test_native_wrap_gate(m):
@@ -308,7 +343,7 @@ def test_native_wrap_gate(m):
         wrapped.append(m.cstr(m.args(3)[0]));m.ret(12)
     m.stub(0xA23A20,plain_wrap)
     pane=m.window(w=120,parent=m.window());m.w(pane,table)
-    for text in ['You got ^i[501]Red Potion (10).','^i[1]abc ^i[9999999]xyz']:
+    for text in ['You got ^i[501]Red Potion (10).','^i[1]abc ^i[9999999]xyz','You got ^i[1201,0]Dagger (1).']:
         source=m.text_buffer(text)
         m.invoke(0x83D3F0,pane,[source,0xFFFF00,source])
         assert '<ITEML>' in seen[-1] and '^i[' not in seen[-1]
@@ -382,6 +417,27 @@ def test_link_long_names(m):
         assert results[0]==' '*8+expected
 
 
+def test_identification_scope(m):
+    frame=m.alloc(2048)+1024;item=m.alloc(0xF8)
+    def stock():
+        m.u.mem_write(item+0x5C,b'\x01');m.ret(8,1)
+    m.stub(0x85B630,stock)
+    for parent_vt in [0x1037F80,0x1037EA8,0x1020000]:
+        pane=m.window(parent=m.window(vt=parent_vt))
+        for zeros in [6,13,14,15]:
+            m.string('0'*zeros+b62(501)+TAIL[:-8],frame-0x28)
+            m.framed(m.contract['itemFromToken'],frame,pane,[0,item])
+            expected=0 if zeros==14 and parent_vt!=0x1020000 else 1
+            assert m.u.mem_read(item+0x5C,1)==bytes([expected])
+            assert m.u.reg_read(UC_X86_REG_EAX)==1
+    # A failed native ITEML construction must stay failed and untouched.
+    m.stub(0x85B630,lambda:m.ret(8,0))
+    pane=m.window(parent=m.window());m.string('0'*14+b62(501)+TAIL[:-8],frame-0x28)
+    m.u.mem_write(item+0x5C,b'\x7f')
+    m.framed(m.contract['itemFromToken'],frame,pane,[0,item])
+    assert m.u.reg_read(UC_X86_REG_EAX)==0 and m.u.mem_read(item+0x5C,1)==b'\x7f'
+
+
 def test_drop_producer(m):
     native_crt(m)
     # Both old dispatch and new packet-handler paths call the same ID-aware
@@ -394,7 +450,7 @@ def test_drop_producer(m):
     captured=[];deleted=[]
     def inventory_item():
         out,index=m.args(2);assert index==7
-        m.u.mem_write(out,bytes(0xF8));m.w(out+4,10);m.string('501',out+0x2C)
+        m.u.mem_write(out,bytes(0xF8));m.w(out+4,10);m.string('501',out+0x2C);m.u.mem_write(out+0x5C,b'\x01')
         m.ret(8,out)
     m.stub(0xD5AA40,inventory_item)
     m.stub(0xD57A30,lambda:(deleted.append(m.args(2)),m.ret(8)))
@@ -403,8 +459,8 @@ def test_drop_producer(m):
     def message():
         assert m.args(1)[0]==1609;m.ret(0,fmt)
     def prefix():
-        out,format_ptr,item_id,name=m.args(4)
-        m.u.mem_write(out,(f'^i[{item_id}]'+m.cstr(name)).encode()+b'\0');m.ret(0)
+        out,format_ptr,item_id,identified,name=m.args(5)
+        m.u.mem_write(out,(f'^i[{item_id},{identified}]'+m.cstr(name)).encode()+b'\0');m.ret(0)
     def format_drop():
         out,format_ptr,name,count=m.args(4);assert format_ptr==fmt
         m.string(f'You dropped {m.cstr(name)} ({count}).',out);m.ret(0,out)
@@ -414,7 +470,7 @@ def test_drop_producer(m):
     owner=m.alloc(0x400);packet=m.alloc(8)
     m.u.mem_write(packet,struct.pack('<HHHH',0xAF,7,2,0))
     m.invoke(0xCC5EB0,owner,[packet])
-    assert captured[0][1]=='You dropped ^i[501]Red Potion (2).'
+    assert captured[0][1]=='You dropped ^i[501,1]Red Potion (2).'
     assert captured[0][0][2:]==[0xFFFF00,6,0]
     assert deleted==[[7,2]]
 
@@ -434,19 +490,21 @@ def test_add_and_pickup(m):
     # Native CItem::ItemIdGetter uses +2C, not display-name matching.
     fmt = m.alloc(16)
     def snprintf():
-        dest, format_ptr, item_id, name = m.args(4)
-        assert m.cstr(format_ptr)=='^i[%u]%s'
-        value=f'^i[{item_id}]'+m.cstr(name)
+        dest, format_ptr, item_id, identified, name = m.args(5)
+        assert m.cstr(format_ptr)=='^i[%u,%u]%s'
+        value=f'^i[{item_id},{identified}]'+m.cstr(name)
         m.u.mem_write(dest,value.encode()+b'\0');m.ret(0,len(value))
     # Resolve the native StringFormat CALL from the pickup wrapper.
     ins=list(m.cs.disasm(bytes(m.u.mem_read(m.contract['pickup'],256)),m.contract['pickup']))
     calls=[int(i.op_str,16) for i in ins if i.mnemonic=='call']
     format_call=calls[2]; m.stub(format_call,snprintf)
-    for value in [1201,1202,0,9999999,10000000]:
-        item=m.alloc(0x100);m.string(str(value),item+0x2C);out=m.alloc(24)
-        m.invoke(m.contract['pickup'],item,[out,0])
-        expected=f'^i[{value}]Knife [3]' if 1<=value<=9999999 else 'Knife [3]'
-        assert m.str_value(out)==expected,(value,m.str_value(out))
+    for identified in [0,1,2,255]:
+        for value in [1201,1202,0,9999999,10000000]:
+            item=m.alloc(0x100);m.string(str(value),item+0x2C);out=m.alloc(24)
+            m.u.mem_write(item+0x5C,bytes([identified]))
+            m.invoke(m.contract['pickup'],item,[out,0])
+            expected=f'^i[{value},{int(identified==1)}]Knife [3]' if 1<=value<=9999999 else 'Knife [3]'
+            assert m.str_value(out)==expected,(value,m.str_value(out))
 
 
 def test_blit(m):
@@ -471,7 +529,7 @@ def test_blit(m):
 
 
 def test_draw(m):
-    node=m.alloc(0x90);m.string('test_red_potion',node+0x58)
+    node=m.alloc(0x90);m.string('test_red_potion',node+0x58);m.string('unknown_dagger',node+0x1C)
     manager=m.alloc(32);m.w(0x159C088,manager)
     looked_up=[]
     def lookup():
@@ -486,8 +544,10 @@ def test_draw(m):
     def format_path():
         dest,fmt,key=m.args(3)
         value=m.cstr(fmt).replace('%s',m.cstr(key))
-        assert value.endswith('\\item\\test_red_potion.bmp')
+        assert value.endswith(('\\item\\test_red_potion.bmp','\\item\\unknown_dagger.bmp'))
+        loaded_paths.append(value)
         m.u.mem_write(dest,value.encode('latin1')+b'\0');m.ret(0,len(value))
+    loaded_paths=[]
     m.stub(format_addr,format_path)
     tex=m.alloc(0x130);src=m.alloc(24*24*4)
     m.w(tex+0x114,24);m.w(tex+0x118,24);m.w(tex+0x11C,src)
@@ -495,6 +555,7 @@ def test_draw(m):
     m.stub(0xA8D4A0,lambda:m.ret(4,tex))
     for item_id in [501,502]:
         obj=m.window(w=25,h=18);m.string(str(item_id),obj+0xF8+0x2C)
+        m.u.mem_write(obj+0xF8+0x5C,b'\x01')
         m.invoke(m.contract['draw'],obj)
         assert looked_up[-1]==item_id
         pixels,_,_=m.pixels(obj)
@@ -525,6 +586,7 @@ def test_draw(m):
     for item_id,hover in [(501,False),(502,False),(501,True)]:
         obj=m.window(w=90,h=18,vt=m.contract['linkVtable']+4)
         m.string(str(item_id),obj+0xF8+0x2C);m.string(' '*8+'Red Potion',obj+0xD4)
+        m.u.mem_write(obj+0xF8+0x5C,b'\x01')
         m.w(obj+0xB4,0xFFFF00);m.w(obj+0xC8,12);m.w(obj+0x1FC,1)
         m.u.mem_write(obj+0xC4,bytes([int(hover),int(hover)]))
         m.invoke(m.contract['linkDraw'],obj)
@@ -534,11 +596,25 @@ def test_draw(m):
         assert m.r(pix+(w+25)*4)==0xFFFFFF00 and m.r(pix+(w+26)*4)==0xFF000000
         assert m.u.mem_read(m.r(obj+0x24)+0x28,1)==b'\x01'
     assert len(drawn)==3 and len(underlines)==1
+    for identified in [0,1,0,1,255]:
+        obj=m.window(w=25,h=18);m.string('501',obj+0xF8+0x2C)
+        m.u.mem_write(obj+0xF8+0x5C,bytes([identified]))
+        m.invoke(m.contract['draw'],obj)
+        resource='test_red_potion' if identified==1 else 'unknown_dagger'
+        assert loaded_paths[-1].endswith('\\item\\'+resource+'.bmp')
+    # Both SSO and heap-backed resource strings, empty/missing resources,
+    # and null managers must remain safe without revealing identified art.
+    for resource in ['dagger','unknown_resource_name_longer_than_sso','']:
+        m.string(resource,node+0x1C)
+        m.invoke(m.contract['resolver'],0,[501,0])
+        assert m.cstr(m.u.reg_read(UC_X86_REG_EAX))==resource
+    m.w(0x159C088,0);m.invoke(m.contract['resolver'],0,[501,0])
+    assert m.u.reg_read(UC_X86_REG_EAX)==0
 
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('exe');args=parser.parse_args()
-    for test in [test_converter,test_native_decode,test_native_tokenizer,test_native_first_pass,test_native_child_pass,test_native_wrap_gate,test_scopes_and_spacing,test_link_long_names,test_add_and_pickup,test_drop_producer,test_blit,test_draw]:
+    for test in [test_converter,test_native_decode,test_native_tokenizer,test_native_first_pass,test_native_child_pass,test_native_wrap_gate,test_scopes_and_spacing,test_link_long_names,test_identification_scope,test_add_and_pickup,test_drop_producer,test_blit,test_draw]:
         test(IconMachine(args.exe));print('PASS',test.__name__)
     print('PASS: bounded syntax, actual native ItemId decoding, scoped native-link spacing,')
     print('      main/floating routing, pickup/drop identity, icon-plus-name links, native handlers and clipped pixels.')

@@ -2,33 +2,35 @@
  * Author: DevSeara.
  * Description: Native VIP membership card using supplied vipui PNGs for
  * 2025-07-16 Ragexe. VIPU/0A1C snapshots and independent 0BFA requests.
- * No DLL, global text, BPUI/GCHA router, roulette art or saved-profile edits.
+ * Independent VIP menu button; no BPUI/GCHA router or Settings/roulette hook.
  * Prices come from NPC offers; purchases echo quotes for server revalidation.
  */
 const VipUIStatic = {
-	assets:["background.png","vip_exp.png","item_main_bg.png","star_on.png",
-		"openstore_out.png","openstore_over.png","openstore_press.png",
-		"upgrade_out.png","upgrade_over.png","upgrade_press.png","upgrade_off.png","vip_status_bg.png",
-		"scroll_top.png","scroll_bot.png"],
-	purchase:["purchase_out.png","purchase_over.png","purchase_press.png","purchase_off.png"],
-	cardAssets:["membership_crown.png"],
+	// Keep private API slots stable; retired legacy artwork is no longer loaded or installed.
+	assets:[null,null,"item_main_bg.png",null,null,null,null,null,null,null,null,null,null,null],
+	purchase:["button_out.png","button_over.png","button_press.png","button_off.png"],
+	cardAssets:["membership_crown.png","vip_design.png"],
+	mainButtons:[
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"]
+	],
 	buttons:[
-		["close_out.png","close_over.png","close_press.png","close_off.png"],
-		["applyvip_out.png","applyvip_over.png","applyvip_press.png","applyvip_off.png"],
-		["openstore_out.png","openstore_over.png","openstore_press.png","openstore_off.png"],
-		["openstorage_out.png","openstorage_over.png","openstorage_press.png","openstorage_off.png"],
-		["vipbuffs_out.png","vipbuffs_over.png","vipbuffs_press.png","vipbuffs_off.png"],
-		["upgrade_out.png","upgrade_over.png","upgrade_press.png","upgrade_off.png"],
-		["refresh_out.png","refresh_over.png","refresh_press.png","refresh_off.png"],
-		["yes_out.png","yes_over.png","yes_press.png","yes_off.png"],
-		["no_out.png","no_over.png","no_press.png","no_off.png"],
-		["cancel_out.png","cancel_over.png","cancel_press.png","cancel_off.png"],
-		["scroll_top.png","scroll_top_over.png","scroll_top_press.png","scroll_top_off.png"],
-		["scroll_bot.png","scroll_bot_over.png","scroll_bot_press.png","scroll_bot_off.png"]
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"],
+		["button_out.png","button_over.png","button_press.png","button_off.png"]
 	]
 };
 // Bounded private text helpers. Never use actor-title substitution for names.
-VipUIStatic.fit = function(fontSize=12,center=false,bold=false,right=false)
+VipUIStatic.fit = function(fontSize=11,center=false,bold=false,right=false)
 {
 	const n=AutoCombatUI.nativeHelpers,a=n.asm();
 	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x57,0x8B,0x75,8,0x8B,0x7D,12,0x33,0xDB);
@@ -41,7 +43,7 @@ VipUIStatic.fit = function(fontSize=12,center=false,bold=false,right=false)
 	a.emit(0x53,0x57,0xFF,0x75,20,0xFF,0x75,16,0x8B,0xCE);a.call(n.TextDraw);
 	a.label("done");a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC2,24,0);return a;
 };
-VipUIStatic.plain = function()
+VipUIStatic.plain = function(fontSize=12)
 {
 	const n=AutoCombatUI.nativeHelpers,a=n.asm(),iat=v=>{a.emit(0xFF,0x15);a.dword(v);};
 	a.emit(0x55,0x8B,0xEC,0x81,0xEC);a.dword(320);a.emit(0x53,0x56,0x57,0x8B,0x75,8,0x8B,0x7D,12,0x33,0xDB);
@@ -50,7 +52,7 @@ VipUIStatic.plain = function()
 	n.pushImm(a,128);a.emit(0x8D,0x85);a.dword(-320);a.emit(0x50,0x53,0x57);n.pushImm(a,0);n.pushImm(a,65001);iat(0xFC1200);
 	a.emit(0x8B,0xD8,0x85,0xDB);a.jcc(0x84,"done");a.emit(0xFF,0x76,0x24,0x8D,0x4D,0xE0);a.call(0x5443C0);
 	a.emit(0x83,0x7D,0xE0,0);a.jcc(0x84,"destroy");
-	for(const v of [0,0,12,0])n.pushImm(a,v);a.emit(0x8D,0x4D,0xE0);a.call(0x546F60);
+	for(const v of [0,0,fontSize,0])n.pushImm(a,v);a.emit(0x8D,0x4D,0xE0);a.call(0x546F60);
 	a.emit(0x0F,0xB6,0x45,0xFE,0x50,0x0F,0xB6,0x45,0xFD,0x50,0x6A,0,0xFF,0x75,0xF0,0xFF,0x75,0xEC,0xB9);a.dword(0x124F3CC);a.call(0x546270);
 	a.emit(0x50,0xFF,0x75,0xE0);iat(0xFC1120);a.emit(0xFF,0x75,28,0xFF,0x75,0xE0);iat(0xFC10E0);a.emit(0x89,0x45,0xD4);
 	a.label("measure");a.emit(0x8D,0x45,0xD8,0x50,0x53,0x8D,0x85);a.dword(-320);a.emit(0x50,0xFF,0x75,0xE0);iat(0xFC112C);
@@ -101,6 +103,31 @@ VipUIStatic.describe = function(resolver)
 	a.label("destroy");a.emit(0x8B,0xCB);a.call(0x5A4300);
 	a.label("done");a.emit(0x5F,0x5B,0x8B,0xE5,0x5D,0xC2,4,0);return a;
 };
+// Dedicated main-menu launcher. The Settings/roulette command stays native.
+// This opens only the VIP card; purchases still require a server-issued token.
+VipUIStatic.menuToggle = function(close, refs)
+{
+	const a=AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x55,0x8B,0xEC,0x83,0xEC,24);
+	a.call(close);a.emit(0x85,0xC0);a.jcc(0x85,"done");
+	for(const [off,value] of [[-24,0x00180BFA],[-20,0x55504956],[-16,0x000D0004],[-12,0],[-8,0],[-4,0]]) {
+		a.emit(0xC7,0x45,off&255);a.dword(value);
+	}
+	a.call(refs.packetCtorA);a.emit(0x85,0xC0);a.jcc(0x84,"done");
+	a.emit(0x8B,0xC8,0x8D,0x45,0xE8,0x50,0x6A,24);a.call(refs.packetSend);
+	a.label("done");a.emit(0x8B,0xE5,0x5D,0xC3);return a;
+};
+VipUIStatic.escapeKey = function(handler)
+{
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	a.emit(0x9C,0x60,0x81,0xF9);a.dword(n.WindowManager);a.jcc(0x85,"stock");
+	// pushad/pushfd leave vk/lParam/firstPress at +40/+44/+48.
+	for(let i=0;i<3;++i)a.emit(0xFF,0x74,0x24,48);
+	a.call(handler);a.emit(0x85,0xC0);a.jcc(0x84,"stock");
+	a.emit(0x61,0x9D,0xB8);a.dword(1);a.emit(0xC2,12,0);
+	a.label("stock");a.emit(0x61,0x9D);a.jmp(0xA471E0);
+	return a;
+};
 VipUI = function(_)
 {
 	if(!VipUI.validate()) throw Error("VipUI requires 2025-07-16 Ragexe");
@@ -112,15 +139,22 @@ VipUI = function(_)
 	const size=u32(bytes,8),count=u32(bytes,12),api=u32(bytes,16),start=32+count*4;
 	let crc=0xFFFFFFFF;for(let i=32;i<bytes.length;++i){crc^=bytes[i];for(let j=0;j<8;++j)crc=(crc>>>1)^((crc&1)?0xEDB88320:0);}
 	if(bytes.length<32 || u32(bytes,0)!==0x32504956 || u32(bytes,4)!==2 || meta.version!==2 || meta.client!==20250716 ||
-		start+size!==bytes.length || size!==meta.size || api!==meta.exports.VipApi || meta.api_size!==320 || api+320>size || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))
+		start+size!==bytes.length || size!==meta.size || api!==meta.exports.VipApi || meta.api_size!==372 || api+372>size || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))
 		throw Error("VipUI: invalid native payload");
 	const names=["VipApi","VipState","_VipOpen@0","_VipReceive@4","_VipHit@8","@VipDraw@8","@VipDown@16","@VipUp@16","@VipMove@16","@VipDrag@16","@VipCursor@16","@VipDestroy@12","_VipTick@16","VipQuestState","_VipQuestOpen@4"];
-	for(const name of [...names,"@VipRightDown@16","@VipRightUp@16"])if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("VipUI: missing "+name);
+	for(const name of [...names,"@VipRightDown@16","@VipRightUp@16","@VipWheel@12","_VipToggleClose@0","_VipEscape@12"])if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("VipUI: missing "+name);
+	for(const site of [0xDB86B3,0xDB87AE]) {
+		const rel=(0xA471E0-site-5)>>>0;
+		n.assertCode("VIP keyboard call",site,"E8 "+n.bytesToHex([rel&255,rel>>>8&255,rel>>>16&255,rel>>>24])+" 84 C0");
+	}
 	for(const [name,va,hex] of [["frame ctor",n.FrameConstructor,"55 8B EC 6A FF 68 F9 45 EA 00"],
+		["benefit tooltip",0xA753D0,"55 8B EC 6A FF 68 4A 3B EF 00"],
+		["tooltip coordinates",0xA1EF70,"55 8B EC 8B 55 08 8B 41 1C 56 8B 75 0C 01"],
 		["frame drag",0x880E00,"55 8B EC 83 EC 1C 53 8B D9"],["text metrics",n.TextWidth,"55 8B EC 6A FF 68 5D B6 EE 00"],
 		["bring to front",0xA39130,"55 8B EC 51 56 57 8B 7D 08 8B F1 85 FF"],
 		["front list tail",0xA39246,"8D 45 08 50 FF B6 7C 01 00 00 8D 8E 7C 01 00 00"]]) n.assertCode("VIP "+name,va,hex);
-	for(const [slot,expected] of [[0,n.FrameDeletingDestructor],[20,n.FrameVtableDraw],[25,n.FrameMouseDown],[27,0x880E00],[31,n.FrameMouseUp],[32,0x5A8A50],[33,0x5A8A60]])n.assertVtableSlot("VIP frame",slot,expected);
+	for(const [slot,expected] of [[0,n.FrameDeletingDestructor],[20,n.FrameVtableDraw],[25,n.FrameMouseDown],[27,0x880E00],[31,n.FrameMouseUp],[32,0x5A8A50],[33,0x5A8A60],[35,0x5A8AF0]])n.assertVtableSlot("VIP frame",slot,expected);
+	n.assertCode("VIP native wheel ABI",0x5A8AF0,"C2 04 00");
 	for(const [name,va,hex] of [
 		["CItem constructor",0x6A1B20,"55 8B EC 6A FF 68 8B 54 E5 00"],
 		["CItem destructor",0x5A4300,"55 8B EC 6A FF 68 8B 33 E2 00"],
@@ -143,10 +177,12 @@ VipUI = function(_)
 	const e=name=>vir+meta.exports[name];
 	const source=Exe.Vir2Phy(n.FrameVtable-4),table=n.allocateBytes(new Array(4+n.FrameVtableEntries*4).fill(0),4);
 	Exe.SetHex(table.phy,Exe.GetHex(source,table.size));
-	for(const [slot,name] of [[0,"@VipDestroy@12"],[20,"@VipDraw@8"],[25,"@VipDown@16"],[27,"@VipDrag@16"],[28,"@VipMove@16"],[30,"@VipCursor@16"],[31,"@VipUp@16"],[32,"@VipRightDown@16"],[33,"@VipRightUp@16"]])Exe.SetUint32(table.phy+4+slot*4,e(name));
+	for(const [slot,name] of [[0,"@VipDestroy@12"],[20,"@VipDraw@8"],[25,"@VipDown@16"],[27,"@VipDrag@16"],[28,"@VipMove@16"],[30,"@VipCursor@16"],[31,"@VipUp@16"],[32,"@VipRightDown@16"],[33,"@VipRightUp@16"],[35,"@VipWheel@12"]])Exe.SetUint32(table.phy+4+slot*4,e(name));
 	const refs=n.resolvePacketRefs();
-	const fit=n.allocateCode(VipUIStatic.fit()),plain=n.allocateCode(VipUIStatic.plain()),offerText=n.allocateCode(VipUIStatic.fit(14,false,true));
-	const priceText=n.allocateCode(VipUIStatic.fit(18,false,true,true));
+	const fit=n.allocateCode(VipUIStatic.fit()),plain=n.allocateCode(VipUIStatic.plain(11)),offerText=n.allocateCode(VipUIStatic.fit(11,false,false));
+	const priceText=n.allocateCode(VipUIStatic.fit(11,false,false,true));
+	const infoText=n.allocateCode(VipUIStatic.fit(11,false,false)),infoPlain=n.allocateCode(VipUIStatic.plain(11));
+	const statusText=n.allocateCode(VipUIStatic.fit(11,true,false)),bodyText=n.allocateCode(VipUIStatic.fit(11,false,false));
 	const blend=n.allocateCode(ModernChatUI.nativeHelpers.buildBlendPixel());
 	const png=n.allocateCode(VipUIStatic.png(n.allocateCode(ModernChatUI.nativeHelpers.buildPngDraw(blend.vir)).vir));
 	const moduleIat=Exe.FindFunc("GetModuleHandleA","KERNEL32.dll"),procIat=Exe.FindFunc("GetProcAddress","KERNEL32.dll");
@@ -155,13 +191,19 @@ VipUI = function(_)
 		format:n.buildResourcePath("item\\%s.bmp").vir,path:n.allocateBytes(new Array(512).fill(0),4).vir};
 	const item=n.allocateCode(VipUIStatic.item(art)),describe=n.allocateCode(VipUIStatic.describe(art.resolver));
 	const values=[2,table.vir+4,refs.packetCtorA,refs.packetSend,fit.vir,plain.vir,png.vir,
-		...VipUIStatic.assets.slice(0,12).map(file=>n.buildResourcePath("vipui\\"+file).vir),moduleIat,procIat,item.vir,
-		...VipUIStatic.assets.slice(12).map(file=>n.buildResourcePath("vipui\\"+file).vir),
+		...VipUIStatic.assets.slice(0,12).map(file=>file?n.buildResourcePath("vipui\\"+file).vir:0),moduleIat,procIat,item.vir,
+		...VipUIStatic.assets.slice(12).map(file=>file?n.buildResourcePath("vipui\\"+file).vir:0),
 		...[].concat(...VipUIStatic.buttons).map(file=>n.buildResourcePath("vipui\\"+file).vir),describe.vir,
 		...VipUIStatic.purchase.map(file=>n.buildResourcePath("vipui\\"+file).vir),offerText.vir,
-		n.buildResourcePath("vipui\\membership_crown.png").vir,priceText.vir];
+		n.buildResourcePath("vipui\\membership_crown.png").vir,priceText.vir,
+		n.buildResourcePath("vipui\\vip_design.png").vir,infoText.vir,infoPlain.vir,statusText.vir,bodyText.vir,
+		...[].concat(...VipUIStatic.mainButtons).map(file=>n.buildResourcePath("vipui\\"+file).vir)];
 	values.forEach((v,i)=>put(code,api+i*4,v));
 	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
+	const menu=n.allocateCode(VipUIStatic.menuToggle(e("_VipToggleClose@0"),refs));
+	NewButtonVis.publishCustomButton("VIP",{requestVir:menu.vir,toggleVir:menu.vir});
+	const key=n.allocateCode(VipUIStatic.escapeKey(e("_VipEscape@12")));
+	for(const site of [0xDB86B3,0xDB87AE])Exe.SetCALL(Exe.Vir2Phy(site,CODE),key.vir);
 	const a=n.asm();a.emit(0x9C,0x60,0xBE);a.dword(n.PacketBuffer);
 	a.emit(0x66,0x83,0x7E,2,8);a.jcc(0x82,"stock");
 	a.emit(0x81,0x7E,4);a.dword(0x55504956);a.jcc(0x85,"stock");
@@ -173,15 +215,36 @@ VipUI = function(_)
 	const marker=n.allocateString("VipUI.v4"),record=[];
 	for(const v of [marker.vir,...names.map(e),receiver.vir,fit.vir,plain.vir,png.vir,refs.packetCtorA,refs.packetSend,fallback])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);
 	n.allocateBytes(record,4);
+	const menuMarker=n.allocateString("VipMenu.v1"),menuRecord=[];
+	for(const v of [menuMarker.vir,menu.vir])menuRecord.push(v&255,v>>>8&255,v>>>16&255,v>>>24);
+	n.allocateBytes(menuRecord,4);
 	VipUI.onApplied();return true;
 };
 VipUI.validate=()=>Exe.BuildDate===20250716;
+// Patch-time emitters only; reuse never opens VIP or installs its hooks.
+VipUI.nativeDrawing={fit:VipUIStatic.fit,item:VipUIStatic.item,describe:VipUIStatic.describe};
 VipUI.onApplied=function()
 {
 	if(Warp.TestMode)return;
 	let target=System.DirPath(Warp.TgtExe);
 	for(const folder of ["data","texture",ModernChatUI.nativeHelpers.uiPrefix(),"vipui"]){target+="/"+folder;if(!System.MkDir(target))throw Error("VipUI: cannot create "+target);}
-	const files=[...new Set([...VipUIStatic.assets,...[].concat(...VipUIStatic.buttons),...VipUIStatic.purchase,...VipUIStatic.cardAssets])];
+	const files=[...new Set([...VipUIStatic.assets,...[].concat(...VipUIStatic.buttons),...VipUIStatic.purchase,...VipUIStatic.cardAssets,...[].concat(...VipUIStatic.mainButtons)].filter(Boolean))];
 	for(const file of files){const f=new BinFile(target+"/"+file,"r"),exists=f.Valid;f.Close();if(exists)continue;
 		if(!System.Copy(Warp.Path+"/Assets/VipUI/"+file,target+"/"+file,false))throw Error("VipUI: cannot copy "+file);}
+	const menuRoot=System.DirPath(Warp.TgtExe)+"/data/texture/"+ModernChatUI.nativeHelpers.uiPrefix()+"/uirenewal";
+	const menuTarget=menuRoot+"/menuicon";
+	if(!System.MkDir(menuRoot) || !System.MkDir(menuTarget))throw Error("VipUI: cannot create "+menuTarget);
+	const menuFiles=["bt_vip.bmp","bt_vip_disabled.bmp","bt_vip_new.bmp","bt_vip_new_press.bmp",
+		"bt_vip_press.bmp","bt_vip_old_disabled.bmp"];
+	for(const theme of ["","old_"])for(const state of ["normal","mouseon","pressed"])
+		menuFiles.push("bt_vip_"+theme+state+".bmp");
+	for(const file of menuFiles) {
+		const path=menuTarget+"/"+file;
+		const f=new BinFile(path,"r"),exists=f.Valid;f.Close();if(exists)continue;
+		if(!System.Copy(Warp.Path+"/Assets/VipUI/menuicon/"+file,path,false))throw Error("VipUI: cannot copy "+file);
+	}
+	for(const file of ["bg_m7.tga","bg_o7.tga"]){
+		const f=new BinFile(menuTarget+"/"+file,"r"),exists=f.Valid;f.Close();if(exists)continue;
+		if(!System.Copy(Warp.Path+"/Assets/ROGlobalZeroMenu/menuicon/"+file,menuTarget+"/"+file,false))throw Error("VipUI: cannot copy "+file);
+	}
 };

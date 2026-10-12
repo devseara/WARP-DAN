@@ -1,0 +1,695 @@
+{
+  "date": "2026-09-12",
+  "priority": "v4 embedded GRF order, then supplied Downloads update.grf; original stock chain used for fallback",
+  "archive_count": 10,
+  "complete_body_pairs": 2206,
+  "native_body_pairs": 2145,
+  "scaled_body_paths": 61,
+  "unique_generated_pairs": 18,
+  "unpaired_act_resources": [
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/(null)_\ub0a8_\ucc3d",
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uae38\ub85c\ud2f4\ud06c\ub85c\uc2a4_\uc5ec_1",
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ub3c4\uc544\uba38_\ub0a8_2",
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ub3c4\uc544\uba38_\ub0a8_3",
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ub3c4\uc544\uba38_\ub0a8_4",
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/(null)_\ub0a8_\ucc3d",
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/rebellion_\uc5ec_\uae30\uad00\ucd1d_\uac80\uad11",
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ub3c4\uc544\uba38_\uc5ec_2",
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ub3c4\uc544\uba38_\uc5ec_3",
+    "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ub3c4\uc544\uba38_\uc5ec_4"
+  ],
+  "resource_paths": [
+    {
+      "resource": "clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8",
+      "source_archives": {
+        "spr": "hd_job_ui_v4_world.grf",
+        "act": "hd_job_ui_v4_world.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec",
+      "source_archives": {
+        "spr": "hd_job_ui_v4_world.grf",
+        "act": "hd_job_ui_v4_world.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\ub3c4\ub78c\uc871/\ubab8\ud1b5/\ub0a8/\uacb0\ud63c_\ub0a8",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\ub3c4\ub78c\uc871/\ubab8\ud1b5/\ub0a8/\ud55c\ubcf5_\ub0a8",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\ub3c4\ub78c\uc871/\ubab8\ud1b5/\uc5ec/\uacb0\ud63c_\uc5ec",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\ub3c4\ub78c\uc871/\ubab8\ud1b5/\uc5ec/\ud55c\ubcf5_\uc5ec",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_1/meister_madogear1_\ub0a8",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_1/meister_madogear1_\ub0a8_1",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_1/\uc6b4\uc601\uc7902_\ub0a8_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_2/meister_madogear1_\ub0a8",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_2/meister_madogear1_\ub0a8_2",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_2/meister_madogear2_\ub0a8_2",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_2/\uc6b4\uc601\uc7902_\ub0a8_2",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_3/meister_madogear1_\ub0a8_3",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_3/meister_madogear2_\ub0a8_3",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_3/\uc6b4\uc601\uc7902_\ub0a8_3",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_4/meister_madogear1_\ub0a8_4",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/costume_4/\uc6b4\uc601\uc7902_\ub0a8_4",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/meister_madogear1_\ub0a8",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ub3c4\uae30\uc5b4_\ub0a8",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ub3c4\uae30\uc5b4_\ub0a8_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ubabd\ud06c_h_\ub0a8",
+      "source_archives": {
+        "spr": "hd_job_ui_v4_world.grf",
+        "act": "hd_job_ui_v4_world.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ubabd\ud06c_\ub0a8",
+      "source_archives": {
+        "spr": "hd_job_ui_v4_world.grf",
+        "act": "hd_job_ui_v4_world.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc6b4\uc601\uc7902_\ub0a8",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uc6b4\uc601\uc7902_\ub0a8_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8c/costume_1/meister_madogear1_\ub0a8",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8c/costume_1/\ub9c8\ub3c4\uae30\uc5b4_\ub0a8_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8c/costume_1/\uc6b4\uc601\uc7902_\ub0a8_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8c/meister_madogear1_\ub0a8",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8c/\ub9c8\ub3c4\uae30\uc5b4_\ub0a8",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8c/\uc6b4\uc601\uc7902_\ub0a8",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_1/meister_madogear1_\uc5ec",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_1/meister_madogear1_\uc5ec_1",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_1/\uc6b4\uc601\uc7902_\uc5ec_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_2/meister_madogear1_\uc5ec",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_2/meister_madogear1_\uc5ec_2",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_2/meister_madogear2_\uc5ec_2",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_2/\uc6b4\uc601\uc7902_\uc5ec_2",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_3/meister_madogear1_\uc5ec_3",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_3/meister_madogear2_\uc5ec_3",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_3/\uc6b4\uc601\uc7902_\uc5ec_3",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_4/meister_madogear1_\uc5ec_4",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/costume_4/\uc6b4\uc601\uc7902_\uc5ec_4",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/meister_madogear1_\uc5ec",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ub3c4\uae30\uc5b4_\uc5ec",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ub3c4\uae30\uc5b4_\uc5ec_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc5ec/costume_1/\ub9c8\ub3c4\uae30\uc5b4_\uc5ec_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc5ec/costume_1/\uc6b4\uc601\uc7902_\uc5ec_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc5ec/meister_madogear1_\uc5ec",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc5ec/\ub9c8\ub3c4\uae30\uc5b4_\uc5ec",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc5ec/\uc6b4\uc601\uc7902_\uc5ec",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc5ec/\ud65c\uc6a9\ubcd1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc6b4\uc601\uc7902_\uc5ec",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc6b4\uc601\uc7902_\uc5ec_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ud65c\uc6a9\ubcd1",
+      "source_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "palettedata.grf",
+        "act": "palettedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ecc/costume_1/\ub9c8\ub3c4\uae30\uc5b4_\uc5ec_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ecc/costume_1/\uc6b4\uc601\uc7902_\uc5ec_1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ecc/meister_madogear1_\uc5ec",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ecc/\ub9c8\ub3c4\uae30\uc5b4_\uc5ec",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ecc/\uc6b4\uc601\uc7902_\uc5ec",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    },
+    {
+      "resource": "\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ecc/\ud65c\uc6a9\ubcd1",
+      "source_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      },
+      "fallback_archives": {
+        "spr": "spritedata.grf",
+        "act": "spritedata.grf"
+      }
+    }
+  ],
+  "visual_acceptance": "Only the supplied male-Monk screenshot is accepted; expanded resource paths require live acceptance."
+}

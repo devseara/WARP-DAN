@@ -1,22 +1,23 @@
 /*
  * Project Rebirth - native Battle Pass window, GPL-3.0-or-later.
  * Author: DevSeara.
- * Description: Adds a 796x510 UIFrameWnd using the 2025-07-16 client's
- * own surface/text/input functions. @battlepassui opens it. BPUI snapshots
+ * Description: Adds a 920x560 UIFrameWnd using the 2025-07-16 client's
+ * own surface/text/input functions. @battlepassui or the optional native
+ * ROGlobalZeroMenu Battle Pass shield button opens it. BPUI snapshots
  * use a magic-gated 0x0BF6 route; other emotion packets retain stock handling.
  * No custom DLL, WebView, foreign UI thread, or runtime EXE/IAT patching.
  * Native canvas/assembler helpers are provided by AutoCombatUI.qjs.
  */
 
 const BattlepassUIStatic = {
-	BuildDate: 20250716, Width: 796, Height: 510, WindowId: 0x3F8,
-	// Transparent drawing space lets the original 26px hand cross the right
-	// edge. It is excluded from hit testing and from the visible layout.
-	CursorMargin: 25, FrameHitTest: 0x00A23220,
+	BuildDate: 20250716, Width: 920, Height: 560, WindowId: 0x3F8,
+	// The board uses the stock cursor. No unused transparent cursor margin.
+	CursorMargin: 0, FrameHitTest: 0x00A23220,
 	// One WARP height for every label; headings use bold for emphasis.
-	Font: { Body: 16, Heading: 16, Notes: 16, Button: 16, Title: 16, Tab: 16 },
+	Font: { Body: 11, Heading: 11, Notes: 11, Button: 11, Title: 11, Tab: 11 },
 	RequestId: 0x0BF9, SnapshotId: 0x0BF6, Magic: 0x49555042,
-	PacketSize: 2872, VisualsSize: 2272, DetailsSize: 2240, LegacySize: 788, StateSize: 3028, Snapshot: 32, UserHidden: 3020,
+	PacketSize: 2872, VisualsSize: 2272, DetailsSize: 2240, LegacySize: 788, StateSize: 10756, Snapshot: 32, UserHidden: 3020,
+	BoardPacketSize: 10600, BoardSize: 7728, SixBoardPacketSize: 7976, SixBoardSize: 5104, LegacyBoardPacketSize: 7256, LegacyBoardSize: 4384, Extra: 3028,
 	EscapeHeld: 3024, KeyEvent: 0x00A471E0,
 	BrowsePage: 3012, BrowseTrack: 3016,
 	SelectionType: 2904, Difficulty: 2908, Pending: 2912, RequestValue: 2916, RewardMode: 2920,
@@ -50,6 +51,7 @@ for (let i = 0; i < 5; ++i) {
 }
 
 BattlepassUIStatic.ClientAssets = [
+	"button_out.png", "button_over.png", "button_press.png", "button_off.png",
 	"Abandon_Dialog_Background.bmp", "Button_Disabled_Off.bmp",
 	"Button_Hover_Over.bmp", "Button_Mouse_Press.bmp",
 	"Button_Normal_Out.bmp", "Cursor_Hover.bmp",
@@ -61,6 +63,14 @@ BattlepassUIStatic.ClientAssets = [
 	"Progress_Fill.bmp", "Quest_Type_Border.bmp",
 	"Quest_Type_Border_Disabled.bmp", "Reward_Row_Background.bmp",
 	"Section_Divider.bmp", "Selection_Border.bmp", "Window_Background.bmp"
+];
+
+BattlepassUIStatic.MenuAssets = [
+	"bt_battlepass.bmp", "bt_battlepass_disabled.bmp", "bt_battlepass_mouseon.bmp",
+	"bt_battlepass_new.bmp", "bt_battlepass_new_press.bmp", "bt_battlepass_normal.bmp",
+	"bt_battlepass_press.bmp", "bt_battlepass_pressed.bmp",
+	"bt_battlepass_old_disabled.bmp", "bt_battlepass_old_mouseon.bmp",
+	"bt_battlepass_old_normal.bmp", "bt_battlepass_old_pressed.bmp"
 ];
 
 BattlepassUIStatic.uiPrefix = function()
@@ -192,7 +202,13 @@ BattlepassUIStatic.sender = function(refs, action, state)
 	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 1188); a.emit(16); a.jcc(0x84, "no_visuals");
 	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(3);
 	a.emit(0xF6, 0x05); a.dword(state + b.Snapshot + 1188); a.emit(32); a.jcc(0x84, "send");
-	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(4); a.jmp("send");
+	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(4);
+	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 1188); a.word(512); a.jcc(0x84,"send");
+	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(5);
+	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 1188); a.word(1024); a.jcc(0x84,"send");
+	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(6);
+	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 1188); a.word(2048); a.jcc(0x84,"send");
+	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(7); a.jmp("send");
 	a.label("no_visuals");
 	if (action >= 16) a.jmp("done");
 	// Negotiate only after the server advertises variable-length v2 requests.
@@ -212,10 +228,32 @@ BattlepassUIStatic.sender = function(refs, action, state)
 	return a;
 };
 
-BattlepassUIStatic.receiver = function(state, fallback, open)
+BattlepassUIStatic.receiver = function(state, fallback, open, notify=0)
 {
 	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
 	a.emit(0x9C, 0x60, 0xBE); a.dword(n.PacketBuffer);
+	a.emit(0x66,0x81,0x7E,2);a.word(b.BoardPacketSize);a.jcc(0x85,"v6");
+	a.emit(0x81,0x7E,4);a.dword(b.Magic);a.jcc(0x85,"stock");
+	a.emit(0x66,0x83,0x7E,8,7);a.jcc(0x85,"consumed");
+	a.emit(0xB9);a.dword(b.BoardSize);a.jmp("copy_board");
+	a.label("v6");
+	a.emit(0x66,0x81,0x7E,2);a.word(b.SixBoardPacketSize);a.jcc(0x85,"v5");
+	a.emit(0x81,0x7E,4);a.dword(b.Magic);a.jcc(0x85,"stock");
+	a.emit(0x66,0x83,0x7E,8,6);a.jcc(0x85,"consumed");
+	// A downgrade cannot retain UI text from an earlier v7 server reply.
+	a.emit(0x31,0xC0,0xBF);a.dword(state+b.Extra+b.SixBoardSize);a.emit(0xB9);a.dword((b.BoardSize-b.SixBoardSize)/4);a.emit(0xFC,0xF3,0xAB);
+	a.emit(0xB9);a.dword(b.SixBoardSize);a.jmp("copy_board");
+	a.label("v5");
+	a.emit(0x66,0x81,0x7E,2);a.word(b.LegacyBoardPacketSize);a.jcc(0x85,"v4");
+	a.emit(0x81,0x7E,4);a.dword(b.Magic);a.jcc(0x85,"stock");
+	a.emit(0x66,0x83,0x7E,8,5);a.jcc(0x85,"consumed");
+	// A legacy reply must not retain sixth items from an earlier v6 snapshot.
+	a.emit(0x31,0xC0,0xBF);a.dword(state+b.Extra+b.LegacyBoardSize);a.emit(0xB9);a.dword((b.BoardSize-b.LegacyBoardSize)/4);a.emit(0xFC,0xF3,0xAB);
+	a.emit(0xB9);a.dword(b.LegacyBoardSize);
+	a.label("copy_board");
+	a.emit(0x56,0x81,0xC6);a.dword(b.PacketSize);a.emit(0xBF);a.dword(state+b.Extra);
+	a.emit(0xFC,0xF3,0xA4,0x5E,0xB9);a.dword(b.PacketSize);a.jmp("copy");
+	a.label("v4");
 	a.emit(0x66, 0x81, 0x7E, 0x02); a.word(b.PacketSize); a.jcc(0x85, "visuals");
 	a.emit(0x81, 0x7E, 0x04); a.dword(b.Magic); a.jcc(0x85, "stock");
 	a.emit(0x66, 0x83, 0x7E, 0x08, 0x04); a.jcc(0x85, "consumed");
@@ -242,6 +280,7 @@ BattlepassUIStatic.receiver = function(state, fallback, open)
 		a.emit(0xC6, 0x05); a.dword(state + b.Snapshot + field[0] + field[1] - 1); a.emit(0);
 	}
 	a.emit(0xC7, 0x05); a.dword(state + b.Ready); a.dword(1);
+	if(notify)a.call(notify);
 	// Keep an expired mission visible until the server clears it. Older poll
 	// replies must not prematurely release the explicit new-mission request.
 	a.emit(0x83, 0x3D); a.dword(state + b.Pending); a.emit(2); a.jcc(0x85, "start_reply");
@@ -250,7 +289,7 @@ BattlepassUIStatic.receiver = function(state, fallback, open)
 	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(4); a.jcc(0x82, "selection_done");
 	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 1188); a.word(256); a.jcc(0x85, "selection_pending");
 	a.jmp("selection_done");
-	a.label("new_mission_ready"); a.emit(0xC7, 0x05); a.dword(state + b.Tab); a.dword(0); a.jmp("selection_done");
+	a.label("new_mission_ready"); a.emit(0xC7, 0x05); a.dword(state + b.Tab); a.dword(1); a.jmp("selection_done");
 	// A successful Start returns directly to the Active page. Rejections keep
 	// the Board visible; either reply releases the local double-click guard.
 	a.label("start_reply");
@@ -391,10 +430,11 @@ BattlepassUIStatic.emitReleaseInput = function(a, state, prefix)
 	a.label(prefix + "_done");
 };
 
-BattlepassUIStatic.destructor = function(state, stop)
+BattlepassUIStatic.destructor = function(state, stop, cleanup=0)
 {
 	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
 	a.emit(0x56, 0x8B, 0xF1);
+	if(cleanup)a.call(cleanup);
 	a.emit(0xC7, 0x05); a.dword(state + b.Window); a.dword(0);
 	a.call(stop);
 	b.emitReleaseInput(a, state, "destroy_input");
@@ -1549,19 +1589,78 @@ BattlepassUIStatic.dragMove = function(state, hover)
 	return a;
 };
 
+// Native renderer helpers only: selecting VIP/Bestiary/Gacha is not required.
+// Reuse their reviewed emitters without installing those features or hooks.
+BattlepassUIStatic.renderer = function(state,refs,stop,art,font)
+{
+	const n=AutoCombatUI.nativeHelpers,b=BattlepassUIStatic;
+	const read=path=>{const f=new BinFile(path,"r");if(!f.Valid)throw Error("BattlepassUI: missing "+path);const h=f.ReadHex();f.Close();return(h.match(/[0-9a-fA-F]{2}/g)||[]).map(v=>parseInt(v,16));};
+	const u32=(bytes,o)=>(bytes[o]|bytes[o+1]<<8|bytes[o+2]<<16|bytes[o+3]<<24)>>>0;
+	const put=(bytes,o,value)=>{for(let i=0;i<4;++i)bytes[o+i]=value>>>(i*8)&255;};
+	const bytes=read(Warp.Path+"/Inputs/BattlepassUI/runtime.bin");
+	const meta=JSON.parse(String.fromCharCode(...read(Warp.Path+"/Inputs/BattlepassUI/runtime.json")));
+	const size=u32(bytes,8),count=u32(bytes,12),api=u32(bytes,16),start=32+count*4;
+	let crc=0xFFFFFFFF;for(let i=32;i<bytes.length;++i){crc^=bytes[i];for(let j=0;j<8;++j)crc=(crc>>>1)^((crc&1)?0xEDB88320:0);}
+	if(bytes.length<32 || u32(bytes,0)!==0x35555042 || u32(bytes,4)!==4 || meta.version!==4 || meta.client!==20250716 ||
+		start+size!==bytes.length || size!==meta.size || api!==meta.exports.BpApi || meta.api_size!==80 || api+80>size ||
+		u32(bytes,20)!==80 || u32(bytes,24)!==b.BoardSize || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))throw Error("BattlepassUI: invalid renderer payload");
+	const names=["BpApi","_BpDraw@4","_BpMouse@16","_BpMove@12","_BpCursor@12","_BpNotify@0","_BpCleanup@0","_BpPortrait@20","_BestiaryPreview@32"];
+	for(const name of names)if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("BattlepassUI: missing "+name);
+	for(const [name,va,hex] of [
+		["portrait constructor",0x7AC210,"55 8B EC 6A FF 68 4C 5B E8 00"],
+		["portrait draw",0x7AC820,"55 8B EC 6A FF 68 4E 5C E8 00"],
+		["portrait destructor",0x79A6A0,"55 8B EC 6A FF 68 44 2F E8 00"],
+		["equipment array",0xD59BF9,"69 C0 F8 00 00 00 81 C1 D0 17 00 00"],
+		["costume array",0xD800F4,"69 C0 F8 00 00 00 81 C1 30 2B 00 00"],
+		["monster view resolver",0xD5BB40,"55 8B EC 8B 55 08 83 EC 0C 56 57 8B F9"],
+		["right down",0xA46ECD,"FF 90 80 00 00 00"],["right up",0xA46F32,"FF 90 84 00 00 00"]
+	])n.assertCode("Battle Pass "+name,va,hex);
+	const [phy,vir]=Exe.Allocate(size,16),code=bytes.slice(start);
+	if(phy<0 || vir<=0 || Exe.Vir2Phy(vir)!==phy)throw Error("BattlepassUI: invalid renderer allocation");
+	for(let i=0;i<count;++i){const off=u32(bytes,32+i*4);if(off+4>size || u32(code,off)>=size)throw Error("BattlepassUI: invalid relocation");put(code,off,vir+u32(code,off));}
+	const entry=name=>vir+meta.exports[name];
+	const itemArt={resolver:art.resolver,blit:art.blit,format:n.buildResourcePath("item\\%s.bmp").vir,path:n.allocateBytes(new Array(512).fill(0),4).vir};
+	const values=[state,state+b.Extra,font.Body,refs.packetCtorA,refs.packetSend,
+		n.allocateCode(VipUI.nativeDrawing.fit(font.Body)).vir,art.plainPlayer,n.allocateCode(VipUI.nativeDrawing.fit(font.Body,true)).vir,
+		n.allocateCode(VipUI.nativeDrawing.item(itemArt)).vir,n.allocateCode(VipUI.nativeDrawing.describe(art.resolver)).vir,
+		n.allocateCode(BestiaryUI.nativeDrawing.monster(entry("_BestiaryPreview@32"))).vir,
+		n.allocateCode(BestiaryUI.nativeDrawing.itemName()).vir,
+		...["out","over","press","off"].map(s=>n.buildResourcePath("battlepassui\\button_"+s+".png").vir),stop,n.FrameMouseDown,n.FrameMouseUp,
+		n.buildResourcePath("map\\").vir];
+	values.forEach((v,i)=>put(code,api+i*4,v));
+	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
+	const record=[],marker=n.allocateString("BattlepassUI.Board.v5").vir;
+	for(const v of [marker,vir,size,state,state+b.Extra,...names.map(entry)])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);
+	n.allocateBytes(record,4);
+	return {entry,base:vir,size,api:entry("BpApi")};
+};
+BattlepassUIStatic.bridge = function(entry,mode=-1,draw=false)
+{
+	const n=AutoCombatUI.nativeHelpers,a=n.asm();
+	a.emit(0x55,0x8B,0xEC,0x56,0x8B,0xF1);
+	if(!draw){if(mode>=0)n.pushImm(a,mode);a.emit(0xFF,0x75,12,0xFF,0x75,8);}
+	a.emit(0x56);a.call(entry);
+	// Match Gacha: keep the stock opaque surface mode for its entire lifetime.
+	// GDI text has zero alpha; switching mode also corrupts existing GPU tiles.
+	a.emit(0x5E,0x8B,0xE5,0x5D);if(draw)a.emit(0xC3);else a.emit(0xC2,8,0);
+	return a;
+};
+
 BattlepassUI = function(_)
 {
 	BattlepassUIStatic.verify();
 	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic;
 	// Ask before allocating or writing any client code, so Cancel is clean.
-	const font = b.getFontSettings();
+	// This skin shares Gacha/VIP's compact native 11px typography. Old saved
+	// font-height inputs remain untouched but do not stretch the fixed layout.
+	const font = Object.assign({},b.Font);
 	b.prepareButtonLayout(font);
 	const state = n.allocateBytes(new Array(b.StateSize).fill(0), 4);
 	const putText = (key, text) => {
 		const bytes = n.asciiBytes(text).slice(0, b.Fields[key][1] - 1);
 		bytes.push(0); Exe.SetHex(state.phy + b.Snapshot + b.Fields[key][0], n.bytesToHex(bytes));
 	};
-	Exe.SetUint32(state.phy + b.Tab, 1);
+	Exe.SetUint32(state.phy + b.Tab, 0);
 	putText("mission", "Waiting for Battle Pass data...");
 	putText("status", "Connecting to map server");
 	putText("primary", "Get New Mission");
@@ -1580,12 +1679,13 @@ BattlepassUI = function(_)
 		killTimer: n.allocateString("KillTimer").vir
 	};
 	const start = n.allocateCode(b.startTimer(state.vir, timer.vir, imports, strings));
-	const destroy = n.allocateCode(b.destructor(state.vir, stop.vir));
 	const fill = n.allocateCode(n.buildFillRect());
-	const hover = n.allocateCode(b.hover(state.vir));
-	const scope = n.allocateCode(b.cursorScope(state.vir, hover.vir));
 	const art = b.artwork();
 	art.plainPlayer = n.allocateCode(b.plainPlayer(font.Body)).vir;
+	const runtime=b.renderer(state.vir,refs,stop.vir,art,font);
+	const hover=n.allocateCode(b.bridge(runtime.entry("_BpMove@12")));
+	const scope = n.allocateCode(b.cursorScope(state.vir, hover.vir));
+	const destroy=n.allocateCode(b.destructor(state.vir,stop.vir,runtime.entry("_BpCleanup@0")));
 	art.scope = scope.vir;
 	art.prepareCursorCanvas = n.allocateCode(b.prepareCursorCanvas()).vir;
 	art.cursors = ["cursorshover", "cursorsclick"].map(name => art.full(name));
@@ -1593,17 +1693,28 @@ BattlepassUI = function(_)
 		const image = art.read(name);
 		if (image.w !== 26 || image.h < 1 || image.h > 22) throw Error("BattlepassUI: unsupported cursor dimensions");
 	}
-	const draw = n.allocateCode(b.draw(state.vir, fill.vir, font, art));
-	const down = n.allocateCode(b.mouse(state.vir, senders, stop.vir, false));
-	const up = n.allocateCode(b.mouse(state.vir, senders, stop.vir, true));
+	const draw=n.allocateCode(b.bridge(runtime.entry("_BpDraw@4"),-1,true));
+	const down=n.allocateCode(b.bridge(runtime.entry("_BpMouse@16"),0));
+	const up=n.allocateCode(b.bridge(runtime.entry("_BpMouse@16"),1));
 	const drag = n.allocateCode(b.dragMove(state.vir, hover.vir));
-	const right = n.allocateCode(b.itemRightClick(state.vir, art.resolver));
+	const right=n.allocateCode(b.bridge(runtime.entry("_BpMouse@16"),2));
+	const rightUp=n.allocateCode(b.bridge(runtime.entry("_BpMouse@16"),3));
+	const cursorPoll=n.allocateCode(b.bridge(runtime.entry("_BpCursor@12")));
 	const vtable = n.cloneFrameVtable(draw.vir, down.vir, up.vir, destroy.vir, hover.vir);
 	Exe.SetUint32(vtable.phy + b.FrameDragMoveSlot * 4, drag.vir);
 	Exe.SetUint32(vtable.phy + 32 * 4, right.vir);
+	Exe.SetUint32(vtable.phy + 33 * 4, rightUp.vir);
+	Exe.SetUint32(vtable.phy + 30 * 4, cursorPoll.vir);
 	const hitTest = n.allocateCode(b.hitTest());
 	Exe.SetUint32(vtable.phy + 50 * 4, hitTest.vir);
 	const toggle = n.allocateCode(b.toggle(state.vir, vtable.vir, senders[0], start.vir, stop.vir));
+	// Reuse the existing native toggle and BPUI refresh protocol. A global
+	// indirect cell keeps menu selection order and producer removal safe.
+	NewButtonVis.publishCustomButton("Battle Pass", {requestVir: toggle.vir, toggleVir: toggle.vir});
+	const windowRecord=[];
+	for(const value of [n.allocateString("BattlepassUI.Window.v5").vir,vtable.vir,toggle.vir,draw.vir,down.vir,up.vir,right.vir,rightUp.vir,cursorPoll.vir,destroy.vir])
+		windowRecord.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
+	n.allocateBytes(windowRecord,4);
 	// Seven bytes covering complete original instructions; other keys retain stock ABI.
 	n.assertCode("Battlepass native key dispatcher", b.KeyEvent, "55 8B EC 53 56 8B F1");
 	const keyStockAsm = n.asm(); keyStockAsm.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x8B, 0xF1); keyStockAsm.jmp(b.KeyEvent + 7);
@@ -1616,7 +1727,7 @@ BattlepassUI = function(_)
 	// The globally owned 0x0BF6 router handles foreign/stock envelopes. Never
 	// compete with GachaUI for an independently serialized dispatch-slot write.
 	const fallback = n.PacketMainLoopReturn;
-	const receive = n.allocateCode(b.receiver(state.vir, fallback, toggle.vir));
+	const receive = n.allocateCode(b.receiver(state.vir, fallback, toggle.vir,runtime.entry("_BpNotify@0")));
 	// A dedicated envelope on 0x0BF6 leaves AutoHunt/Pincode's 0x0BEF router untouched.
 	n.registerPacket0BF6(_, "bpui", receive.vir);
 	// Six bytes covering complete instructions from the unmodified software cursor.
@@ -1678,35 +1789,56 @@ BattlepassUIStatic.onApplied = function()
 	if (Warp.TestMode)
 		return;
 	const b = BattlepassUIStatic;
-	const source = Warp.Path + "/Assets/BattlepassUI/client";
 	const root = System.DirPath(Warp.TgtExe);
-	const folders = ["data", "texture", b.uiPrefix(), "battlepassui"];
-	const target = root + "/" + folders.join("/");
+	const prefix = ["data", "texture", b.uiPrefix()];
+	const groups = [
+		{source: "/Assets/BattlepassUI/client", folders: [...prefix, "battlepassui"], files: b.ClientAssets},
+		{source: "/Assets/BattlepassUI/menuicon", folders: [...prefix, "uirenewal", "menuicon"], files: b.MenuAssets},
+		{source: "/Assets/ROGlobalZeroMenu/menuicon", folders: [...prefix, "uirenewal", "menuicon"], files: ["bg_m7.tga", "bg_o7.tga"]}
+	];
 	const missing = [];
-	for (const file of b.ClientAssets)
+	for (const group of groups)
 	{
-		// Preserve client-side skin edits; install only absent images.
-		const existing = new BinFile(target + "/" + file, 'r');
-		const present = existing.Valid;
-		existing.Close();
-		if (present) continue;
-		const asset = new BinFile(source + "/" + file, 'r');
-		const available = asset.Valid;
-		asset.Close();
-		if (!available) throw Error("BattlepassUI: missing bundled image " + source + "/" + file);
-		missing.push(file);
+		const source = Warp.Path + group.source, target = root + "/" + group.folders.join("/");
+		for (const file of group.files)
+		{
+			// Preflight every missing asset before writing; preserve custom skins.
+			const existing = new BinFile(target + "/" + file, 'r');
+			const present = existing.Valid;
+			existing.Close();
+			if (present) continue;
+			const asset = new BinFile(source + "/" + file, 'r');
+			const available = asset.Valid;
+			asset.Close();
+			if (!available) throw Error("BattlepassUI: missing bundled image " + source + "/" + file);
+			missing.push({source: source + "/" + file, target: target + "/" + file, folders: group.folders});
+		}
 	}
-	if (missing.length === 0) return;
 	// Create every parent beside the selected target EXE, even without data/.
-	let directory = root;
-	for (const folder of folders)
+	const created = new Set();
+	for (const asset of missing)
 	{
-		directory += "/" + folder;
-		if (!System.MkDir(directory)) throw Error("BattlepassUI: cannot create " + directory);
+		let directory = root;
+		for (const folder of asset.folders)
+		{
+			directory += "/" + folder;
+			if (created.has(directory)) continue;
+			if (!System.MkDir(directory)) throw Error("BattlepassUI: cannot create " + directory);
+			created.add(directory);
+		}
 	}
-	for (const file of missing)
-		if (!System.Copy(source + "/" + file, target + "/" + file, false))
-			throw Error("BattlepassUI: cannot copy " + source + "/" + file + " to " + target + "/" + file);
+	for (const asset of missing)
+		if (!System.Copy(asset.source, asset.target, false))
+			throw Error("BattlepassUI: cannot copy " + asset.source + " to " + asset.target);
 };
 
 BattlepassUI.onApplied = BattlepassUIStatic.onApplied;
+
+BattlepassUI.onSelected = function()
+{
+	// Selection may precede choosing an output EXE. The apply callback handles
+	// that case, and also a different output chosen after this selection.
+	if (Warp.TestMode || typeof Warp.TgtExe !== "string" || Warp.TgtExe.trim().length === 0)
+		return;
+	BattlepassUIStatic.onApplied();
+};

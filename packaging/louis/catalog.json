@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "release": "1.1.0",
+  "client_profiles": [
+    20250716
+  ],
+  "modules": {
+    "telemetry-core": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Support/Class_NativeTelemetry.qjs"
+      ],
+      "requires": [
+        "slash-commands"
+      ]
+    },
+    "slash-commands": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Patches/CustomSlashCommand.qjs"
+      ],
+      "requires": []
+    },
+    "static-asm": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Support/Class_StaticAsm.qjs"
+      ],
+      "requires": []
+    },
+    "text-runtime": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Init/LouisRuntime.qjs"
+      ],
+      "requires": []
+    },
+    "static-text": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Patches/ExtNameTextStatic.qjs"
+      ],
+      "requires": [
+        "static-asm",
+        "text-runtime"
+      ]
+    },
+    "packet-dispatch": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Patches/CustomPacketDispatch.qjs"
+      ],
+      "requires": [
+        "text-runtime"
+      ]
+    },
+    "entity-text": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Patches/EntityTextStatic.qjs"
+      ],
+      "requires": [
+        "static-text",
+        "packet-dispatch"
+      ]
+    },
+    "name-packets": {
+      "version": "1.0.0",
+      "files": [
+        "Scripts/Patches/NamePackets128Static.qjs",
+        "Scripts/Patches/AuxiliaryIdentityNamesStatic.qjs",
+        "Scripts/Patches/BookingNamesStatic.qjs",
+        "Scripts/Patches/BossTrackerNamesStatic.qjs",
+        "Scripts/Patches/CharacterCreateNamesStatic.qjs",
+        "Scripts/Patches/CharacterNamesStatic.qjs",
+        "Scripts/Patches/CharacterOldCreateNamesStatic.qjs",
+        "Scripts/Patches/CharacterRenameNamesStatic.qjs",
+        "Scripts/Patches/ChatRoomNamesStatic.qjs",
+        "Scripts/Patches/CompanionNamesStatic.qjs",
+        "Scripts/Patches/CompanionRenameNamesStatic.qjs",
+        "Scripts/Patches/ExtNamePartyStatic.qjs",
+        "Scripts/Patches/FriendNamesStatic.qjs",
+        "Scripts/Patches/GuildNamesStatic.qjs",
+        "Scripts/Patches/GuildStorageLogNamesStatic.qjs",
+        "Scripts/Patches/MailNamesStatic.qjs",
+        "Scripts/Patches/ModernPartyNamesStatic.qjs",
+        "Scripts/Patches/NameRequestGapsStatic.qjs",
+        "Scripts/Patches/OutgoingSocialNamesStatic.qjs",
+        "Scripts/Patches/QuestNamesStatic.qjs",
+        "Scripts/Patches/SocialNamesStatic.qjs",
+        "Scripts/Patches/StarNamesStatic.qjs",
+        "Scripts/Patches/WhisperBlockNamesStatic.qjs",
+        "Scripts/Patches/WhisperNamesStatic.qjs"
+      ],
+      "requires": [
+        "entity-text"
+      ]
+    }
+  },
+  "features": {
+    "ping": {
+      "patch": "PingOverlay",
+      "patch_id": 45000,
+      "title": "Native Ping Overlay (/ping)",
+      "description": "Stock application RTT with a native overlay and /ping toggle. Target: 2025-07-16.",
+      "files": [
+        "Scripts/Patches/PingOverlay.qjs"
+      ],
+      "requires": [
+        "telemetry-core"
+      ],
+      "command": "/ping"
+    },
+    "fps": {
+      "patch": "FpsOverlay",
+      "patch_id": 45001,
+      "title": "Native FPS Overlay (/fps)",
+      "description": "Native frame counter with a shared overlay and /fps toggle. Target: 2025-07-16.",
+      "files": [
+        "Scripts/Patches/FpsOverlay.qjs"
+      ],
+      "requires": [
+        "telemetry-core"
+      ],
+      "command": "/fps"
+    },
+    "emoji": {
+      "patch": "FluentEmoji",
+      "patch_id": 45002,
+      "title": "Render Fluent Emoji",
+      "description": "Manifest-driven shortcode, compact-menu and Unicode emoji using the existing GDI+ renderer. Target: 2025-07-16.",
+      "files": [
+        "Scripts/Patches/FluentEmoji.qjs"
+      ],
+      "asset_trees": [
+        "Images/BohEmoji/fluent"
+      ],
+      "requires": [
+        "static-text"
+      ],
+      "instructions": [
+        "WARP copies the supplied emoji PNGs beside the patched client under BohEmoji/fluent. Distribute that folder with your resulting EXE.",
+        "Use :red_heart: in text or @red_heart@ in NPC menu labels. The manifest also contains supported Unicode aliases."
+      ]
+    },
+    "player-colors": {
+      "patch": "CustomPlayerNameColor",
+      "patch_id": 45003,
+      "title": "Enable Custom Player Name Colors",
+      "description": "Applies matching player colors through the EXTN exact-text map, preserving dark passes and restoring HDC color. Target: 2025-07-16.",
+      "files": [
+        "Scripts/Patches/CustomPlayerNameColor.qjs"
+      ],
+      "requires": [
+        "entity-text"
+      ],
+      "instructions": [
+        "Requires matching server-side 0x0BB7 EXTN metadata. This archive contains the client patch only; it does not install server code.",
+        "Original name lengths remain unchanged unless the extended-names feature is also purchased and selected."
+      ]
+    },
+    "extended-names": {
+      "patch": "CustomExtName",
+      "patch_id": 45004,
+      "title": "Enable 128-byte Entity Names",
+      "description": "Extends supported native name packet/UI surfaces using the matching EXTN server protocol. Target: 2025-07-16.",
+      "files": [
+        "Scripts/Patches/CustomExtName.qjs"
+      ],
+      "requires": [
+        "name-packets"
+      ],
+      "instructions": [
+        "Requires the matching 128-byte-name server protocol, including its native packet layouts and 0x0BB7 EXTN metadata. This archive contains client code only.",
+        "Use this package with the matching server integration; it is not a generic name-length switch for an unmodified server."
+      ]
+    }
+  }
+}

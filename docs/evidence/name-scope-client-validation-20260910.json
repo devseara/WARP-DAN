@@ -1,0 +1,138 @@
+{
+  "pe": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\2025-07-16_Ragexe_name_menu_fixed.exe",
+  "sha256": "2b111715ae643bee75963b2a4b0d152dda8a4d27b8ded4e49f3fc52570f473d5",
+  "before": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+  "npc_overlay": true,
+  "suites": [
+    {
+      "suite": "verify_extname_cache_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_cache_pe.log"
+    },
+    {
+      "suite": "verify_extname_party_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\party-full-final.log",
+      "resolution": "Moved test stubs out of the larger full-profile PE; reran the same native packet checks."
+    },
+    {
+      "suite": "verify_character_create_actions_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_character_create_actions_pe.log"
+    },
+    {
+      "suite": "verify_character_create_callback_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_character_create_callback_pe.log"
+    },
+    {
+      "suite": "verify_character_select_footer_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_character_select_footer_pe.log"
+    },
+    {
+      "suite": "verify_extname_character_rename_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_character_rename_pe.log"
+    },
+    {
+      "suite": "verify_extname_companion_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_companion_pe.log"
+    },
+    {
+      "suite": "verify_extname_companion_rename_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_companion_rename_pe.log"
+    },
+    {
+      "suite": "verify_extname_social_reuse_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_social_reuse_pe.log"
+    },
+    {
+      "suite": "verify_extname_mail_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_mail_pe.log"
+    },
+    {
+      "suite": "verify_extname_quest_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_quest_pe.log"
+    },
+    {
+      "suite": "verify_extname_star_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_star_pe.log"
+    },
+    {
+      "suite": "verify_extname_battleground_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_battleground_pe.log"
+    },
+    {
+      "suite": "verify_extname_guild_log_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_guild_log_pe.log"
+    },
+    {
+      "suite": "verify_extname_guild_clan_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_guild_clan_pe.log"
+    },
+    {
+      "suite": "verify_extname_boss_tracker_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_boss_tracker_pe.log"
+    },
+    {
+      "suite": "verify_auxiliary_identity_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_auxiliary_identity_pe.log"
+    },
+    {
+      "suite": "verify_name_eh_frames_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_name_eh_frames_pe.log"
+    },
+    {
+      "suite": "verify_legacy_creation_enter_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_legacy_creation_enter_pe.log"
+    },
+    {
+      "suite": "verify_name_request_gaps_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_name_request_gaps_pe.log"
+    },
+    {
+      "suite": "verify_extname_npc_pe.py",
+      "passed": true,
+      "returncode": 0,
+      "log": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\verify_extname_npc_pe.log"
+    }
+  ],
+  "passed": true,
+  "initial_aggregate_passed": false,
+  "initial_aggregate_report": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\2025-07-16_name_menu_fixed_20260910\\name-validation\\summary.json"
+}

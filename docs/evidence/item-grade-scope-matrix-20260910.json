@@ -1,0 +1,254 @@
+[
+  {
+    "case": "2025/item/stock/item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_item_stock_item.exe",
+    "built": true,
+    "observed_order": [
+      "item"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/item/custom/item-labels",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_item_custom_item-labels.exe",
+    "built": true,
+    "observed_order": [
+      "item",
+      "labels"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/item/custom/labels-item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_item_custom_labels-item.exe",
+    "built": true,
+    "observed_order": [
+      "labels",
+      "item"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/grade/stock/item-grade",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_grade_stock_item-grade.exe",
+    "built": true,
+    "observed_order": [
+      "item",
+      "grade"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/grade/stock/grade-item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_grade_stock_grade-item.exe",
+    "built": true,
+    "observed_order": [
+      "grade",
+      "item"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/grade/custom/item-grade-labels",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_grade_custom_item-grade-labels.exe",
+    "built": true,
+    "observed_order": [
+      "item",
+      "grade",
+      "labels"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/grade/custom/item-labels-grade",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_grade_custom_item-labels-grade.exe",
+    "built": true,
+    "observed_order": [
+      "item",
+      "labels",
+      "grade"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/grade/custom/grade-item-labels",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_grade_custom_grade-item-labels.exe",
+    "built": true,
+    "observed_order": [
+      "grade",
+      "item",
+      "labels"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/grade/custom/grade-labels-item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_grade_custom_grade-labels-item.exe",
+    "built": true,
+    "observed_order": [
+      "grade",
+      "labels",
+      "item"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/grade/custom/labels-item-grade",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_grade_custom_labels-item-grade.exe",
+    "built": true,
+    "observed_order": [
+      "labels",
+      "item",
+      "grade"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2025/grade/custom/labels-grade-item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2025_grade_custom_labels-grade-item.exe",
+    "built": true,
+    "observed_order": [
+      "labels",
+      "grade",
+      "item"
+    ],
+    "source": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo.exe",
+    "source_sha256": "73349f3606de8e9535d91b73e0177813c38369f06795f5a91200715a177f1a9f"
+  },
+  {
+    "case": "2026/item/stock/item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_item_stock_item.exe",
+    "built": true,
+    "observed_order": [
+      "item"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/item/custom/item-labels",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_item_custom_item-labels.exe",
+    "built": true,
+    "observed_order": [
+      "item",
+      "labels"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/item/custom/labels-item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_item_custom_labels-item.exe",
+    "built": true,
+    "observed_order": [
+      "labels",
+      "item"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/grade/stock/item-grade",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_grade_stock_item-grade.exe",
+    "built": true,
+    "observed_order": [
+      "item",
+      "grade"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/grade/stock/grade-item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_grade_stock_grade-item.exe",
+    "built": true,
+    "observed_order": [
+      "grade",
+      "item"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/grade/custom/item-grade-labels",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_grade_custom_item-grade-labels.exe",
+    "built": true,
+    "observed_order": [
+      "item",
+      "grade",
+      "labels"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/grade/custom/item-labels-grade",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_grade_custom_item-labels-grade.exe",
+    "built": true,
+    "observed_order": [
+      "item",
+      "labels",
+      "grade"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/grade/custom/grade-item-labels",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_grade_custom_grade-item-labels.exe",
+    "built": true,
+    "observed_order": [
+      "grade",
+      "item",
+      "labels"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/grade/custom/grade-labels-item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_grade_custom_grade-labels-item.exe",
+    "built": true,
+    "observed_order": [
+      "grade",
+      "labels",
+      "item"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/grade/custom/labels-item-grade",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_grade_custom_labels-item-grade.exe",
+    "built": true,
+    "observed_order": [
+      "labels",
+      "item",
+      "grade"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  },
+  {
+    "case": "2026/grade/custom/labels-grade-item",
+    "path": "D:\\Programs\\Games\\Ragnarok\\01_github\\WARP20250716-main\\Outputs\\item_grade_scope_accepted_20260910\\2026_grade_custom_labels-grade-item.exe",
+    "built": true,
+    "observed_order": [
+      "labels",
+      "grade",
+      "item"
+    ],
+    "source": "C:\\Users\\chris\\Downloads\\Realm_of_Infinite_Destiny\\Realm of Infinite Destiny\\roid_backup.exe",
+    "source_sha256": "2118d12fe578da5a66a101655e02587259b4fd0ede546fd58892fcf696254656"
+  }
+]

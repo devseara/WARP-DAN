@@ -1,0 +1,816 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-07-20                                             *
+*   Last Modified : 2026-07-23                                             *
+*                                                                          *
+*   Description   : Adds the RO Global Classic UI / New UI theme switch    *
+*                   to the native 2025-07-16 Game Settings Basic page.     *
+*                   The switch uses btn_tema_0/1.bmp, persists one byte    *
+*                   in savedata, and publishes shared QJS state consumed   *
+*                   by the Global Zero Inventory, Basic Info, Status       *
+*                   Icons, EXP Bar, and Menu patches.                      *
+*                                                                          *
+\**************************************************************************/
+
+const GlobalUIThemeStatic = {
+	BuildDate: 20250716,
+	GameSettingsVtable: 0x01047D7C,
+	GameSettingsCreateEntry: 0x01047DB8,
+	GameSettingsCreateOriginal: 0x009D5890,
+	BasicPageOffset: 0xDC,
+	ChildListOffset: 0x50,
+	ImageButtonVtable: 0x01029820,
+	ImageButtonSourceVtableEntries: 54,
+	GameSettingsChildVtableEntries: 56,
+	ImageButtonDeletingDestructor: 0x0081A5A0,
+	ImageButtonConstructor: 0x008172B0,
+	ImageButtonMouseDown: 0x00826E40,
+	ImageButtonObjectSize: 0x120,
+	OperatorNew: 0x00DBBC4F,
+	SetWindowSize: 0x00A1CB70,
+	AddChild: 0x00A1B780,
+	GetTexMgr: 0x00A90350,
+	ConvPath: 0x00A9F030,
+	LoadSurface: 0x00A8D4A0,
+	ImageDraw: 0x00A1D260,
+	TextDraw: 0x00A25A70,
+	TextLabelConstructor: 0x00983EE0,
+	TextLabelSetText: 0x009AE0D0,
+	TextLabelSetHeight: 0x009AE040,
+	TextLabelSetBold: 0x009AE000,
+	TextLabelObjectSize: 0xFC,
+	WindowManager: 0x0131F4E8,
+	GetWindow: 0x00A47B90,
+	CloseWindow: 0x00A2E770,
+	CreateWindow: 0x00A39340,
+	BasicInfoWindowId: 0,
+	InventoryWindowId: 8,
+	MenuWindowId: 0x133,
+	BasicInfoResize: 0x0095DFB0,
+	BasicInfoCompactHeightOffset: 0xB4,
+	BasicInfoExpandedHeightOffset: 0xB8,
+	RenewalBasicInfoWidth: 252,
+	ClassicBasicInfoWidth: 220,
+	CreateFileIat: 0x00FC1224,
+	ReadFileIat: 0x00FC122C,
+	WriteFileIat: 0x00FC1234,
+	CloseHandleIat: 0x00FC1238,
+	TabItmFormat: 0x0102AC48,
+	StateEnabled: 0,
+	StateLoaded: 4,
+	StateChild: 8,
+	StateByte: 12,
+	StateCount: 16,
+	StateJobChild: 20,
+	StateBasicInfo: 24,
+	StateThemeLabel: 28,
+	StateClassicLabel: 32,
+	StateNewLabel: 36,
+	StateChatRefresh: 40,
+	StateSize: 44,
+	RowShift: 27,
+	RowX: 20,
+	RowY: 7,
+	RowWidth: 250,
+	RowHeight: 22,
+	ToggleX: 159,
+	ToggleY: 6,
+	ToggleWidth: 34,
+	ToggleHeight: 9,
+	ControlId: 0x7FFE,
+	Black: 0x00000000,
+	TextHeight: 12
+};
+
+GlobalUIThemeStatic.hexNorm = function(hex)
+{
+	return (hex || "").replace(/\s+/g, " ").trim().toUpperCase();
+};
+
+GlobalUIThemeStatic.bytesToHex = function(bytes)
+{
+	return bytes.map(value => (value & 0xFF).toString(16).padStart(2, "0")).join(" ");
+};
+
+GlobalUIThemeStatic.asciiBytes = function(text, nulTerminate = true)
+{
+	const bytes = [];
+	for (let i = 0; i < text.length; i++)
+		bytes.push(text.charCodeAt(i) & 0xFF);
+	if (nulTerminate)
+		bytes.push(0);
+	return bytes;
+};
+
+GlobalUIThemeStatic.findBytes = function(bytes, needle)
+{
+	for (let i = 0; i <= bytes.length - needle.length; i++)
+	{
+		let matched = true;
+		for (let j = 0; j < needle.length; j++)
+		{
+			if (bytes[i + j] !== needle[j])
+			{
+				matched = false;
+				break;
+			}
+		}
+		if (matched)
+			return i;
+	}
+	return -1;
+};
+
+GlobalUIThemeStatic.readCString = function(virAddr, maxLength)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr);
+	if (phyAddr < 0)
+		throw Error(`ROGlobalZeroUITheme: string 0x${virAddr.toString(16)} is not mapped`);
+	const bytes = [];
+	for (let i = 0; i < maxLength; i++)
+	{
+		const value = Exe.GetUint8(phyAddr + i);
+		bytes.push(value);
+		if (value === 0)
+			return bytes;
+	}
+	throw Error(`ROGlobalZeroUITheme: unterminated string at 0x${virAddr.toString(16)}`);
+};
+
+GlobalUIThemeStatic.allocateBytes = function(bytes, alignment = 1)
+{
+	const [phy, vir] = Exe.Allocate(bytes.length, alignment);
+	Exe.SetHex(phy, GlobalUIThemeStatic.bytesToHex(bytes));
+	return {phy, vir, size: bytes.length};
+};
+
+GlobalUIThemeStatic.buildResourcePath = function(relativePath)
+{
+	const source = GlobalUIThemeStatic.readCString(GlobalUIThemeStatic.TabItmFormat, 192);
+	const needle = GlobalUIThemeStatic.asciiBytes("basic_interface\\", false);
+	const pos = GlobalUIThemeStatic.findBytes(source, needle);
+	if (pos < 0)
+		throw Error("ROGlobalZeroUITheme: texture directory prefix not found");
+	return GlobalUIThemeStatic.allocateBytes(
+		source.slice(0, pos).concat(GlobalUIThemeStatic.asciiBytes(relativePath))
+	);
+};
+
+GlobalUIThemeStatic.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+				bytes.push(value & 0xFF);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error(`ROGlobalZeroUITheme: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			bytes.push(opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(`ROGlobalZeroUITheme: unresolved label ${fixup.target}`);
+				const targetVir = typeof fixup.target === "string"
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				put32(out, fixup.pos, targetVir - (baseVir + fixup.pos + 4));
+			}
+			return GlobalUIThemeStatic.bytesToHex(out);
+		}
+	};
+};
+
+GlobalUIThemeStatic.pushImm = function(a, value)
+{
+	if (value >= -128 && value <= 127)
+		a.emit(0x6A, value & 0xFF);
+	else
+	{
+		a.emit(0x68);
+		a.dword(value);
+	}
+};
+
+GlobalUIThemeStatic.allocateCode = function(assembler)
+{
+	const [phy, vir] = Exe.Allocate(assembler.bytes.length, 0x10);
+	Exe.SetHex(phy, assembler.finish(vir));
+	return {phy, vir, size: assembler.bytes.length};
+};
+
+GlobalUIThemeStatic.buildLoad = function(stateVir, pathVir)
+{
+	const a = GlobalUIThemeStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.emit(0x83, 0x3D); a.dword(stateVir + GlobalUIThemeStatic.StateLoaded); a.emit(0x00);
+	a.jcc(0x85, "done");
+	a.emit(0xC7, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateLoaded); a.dword(1);
+	a.emit(0x6A, 0x00, 0x68); a.dword(0x80);
+	a.emit(0x6A, 0x03, 0x6A, 0x00, 0x6A, 0x03);
+	a.emit(0x68); a.dword(0x80000000);
+	a.emit(0x68); a.dword(pathVir);
+	a.emit(0xFF, 0x15); a.dword(GlobalUIThemeStatic.CreateFileIat);
+	a.emit(0x8B, 0xD8, 0x83, 0xFB, 0xFF);
+	a.jcc(0x84, "done");
+	a.emit(0x6A, 0x00, 0x68); a.dword(stateVir + GlobalUIThemeStatic.StateCount);
+	a.emit(0x6A, 0x01, 0x68); a.dword(stateVir + GlobalUIThemeStatic.StateByte);
+	a.emit(0x53, 0xFF, 0x15); a.dword(GlobalUIThemeStatic.ReadFileIat);
+	a.emit(0x8B, 0xF0, 0x53, 0xFF, 0x15); a.dword(GlobalUIThemeStatic.CloseHandleIat);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "done");
+	a.emit(0x83, 0x3D); a.dword(stateVir + GlobalUIThemeStatic.StateCount); a.emit(0x01);
+	a.jcc(0x85, "done");
+	a.emit(0x0F, 0xB6, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateByte);
+	a.emit(0x83, 0xF8, 0x01);
+	a.jcc(0x87, "done");
+	a.emit(0xA3); a.dword(stateVir + GlobalUIThemeStatic.StateEnabled);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC3);
+	return a;
+};
+
+GlobalUIThemeStatic.buildToggle = function(stateVir, pathVir, loadVir)
+{
+	const a = GlobalUIThemeStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+	a.call(loadVir);
+	a.emit(0xA1); a.dword(stateVir + GlobalUIThemeStatic.StateEnabled);
+	a.emit(0x83, 0xF0, 0x01);
+	a.emit(0xA3); a.dword(stateVir + GlobalUIThemeStatic.StateEnabled);
+	a.emit(0xA2); a.dword(stateVir + GlobalUIThemeStatic.StateByte);
+	a.emit(0x6A, 0x00, 0x68); a.dword(0x80);
+	a.emit(0x6A, 0x02, 0x6A, 0x00, 0x6A, 0x01);
+	a.emit(0x68); a.dword(0x40000000);
+	a.emit(0x68); a.dword(pathVir);
+	a.emit(0xFF, 0x15); a.dword(GlobalUIThemeStatic.CreateFileIat);
+	a.emit(0x8B, 0xD8, 0x83, 0xFB, 0xFF);
+	a.jcc(0x84, "apply");
+	a.emit(0x6A, 0x00, 0x68); a.dword(stateVir + GlobalUIThemeStatic.StateCount);
+	a.emit(0x6A, 0x01, 0x68); a.dword(stateVir + GlobalUIThemeStatic.StateByte);
+	a.emit(0x53, 0xFF, 0x15); a.dword(GlobalUIThemeStatic.WriteFileIat);
+	a.emit(0x53, 0xFF, 0x15); a.dword(GlobalUIThemeStatic.CloseHandleIat);
+	a.label("apply");
+	// Optional chat subscriber updates existing windows without destroying logs,
+	// recipient history, tab/filter identity or a partially typed message.
+	a.emit(0xA1); a.dword(stateVir + GlobalUIThemeStatic.StateChatRefresh);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "chat_done");
+	a.emit(0xFF, 0xD0); a.label("chat_done");
+	// Inventory is optional: rebuild it only when it is currently open.
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.InventoryWindowId);
+	a.emit(0xB9); a.dword(GlobalUIThemeStatic.WindowManager);
+	a.call(GlobalUIThemeStatic.GetWindow);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "menu_refresh");
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.InventoryWindowId);
+	a.emit(0xB9); a.dword(GlobalUIThemeStatic.WindowManager);
+	a.call(GlobalUIThemeStatic.CloseWindow);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.InventoryWindowId);
+	a.emit(0xB9); a.dword(GlobalUIThemeStatic.WindowManager);
+	a.call(GlobalUIThemeStatic.CreateWindow);
+
+	// The menu is persistent; recreate it so theme-specific resources and
+	// geometry are selected immediately. This also rebuilds Game Settings.
+	a.label("menu_refresh");
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.MenuWindowId);
+	a.emit(0xB9); a.dword(GlobalUIThemeStatic.WindowManager);
+	a.call(GlobalUIThemeStatic.GetWindow);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "menu_create");
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.MenuWindowId);
+	a.emit(0xB9); a.dword(GlobalUIThemeStatic.WindowManager);
+	a.call(GlobalUIThemeStatic.CloseWindow);
+	a.label("menu_create");
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.MenuWindowId);
+	a.emit(0xB9); a.dword(GlobalUIThemeStatic.WindowManager);
+	a.call(GlobalUIThemeStatic.CreateWindow);
+
+	// BasicInfoResize also anchors the stock Alt+V menu. Run it after the menu
+	// has been recreated so the first theme switch lands at the native position.
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.BasicInfoWindowId);
+	a.emit(0xB9); a.dword(GlobalUIThemeStatic.WindowManager);
+	a.call(GlobalUIThemeStatic.GetWindow);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "redraw_job");
+	a.emit(0x8B, 0xF0);
+	a.emit(0x83, 0x3D); a.dword(stateVir + GlobalUIThemeStatic.StateEnabled); a.emit(0x00);
+	a.jcc(0x84, "classic_size");
+	a.emit(0xC7, 0x46, 0x14); a.dword(GlobalUIThemeStatic.RenewalBasicInfoWidth);
+	a.emit(0xFF, 0xB6); a.dword(GlobalUIThemeStatic.BasicInfoCompactHeightOffset);
+	a.jmp("resize");
+	a.label("classic_size");
+	a.emit(0xC7, 0x46, 0x14); a.dword(GlobalUIThemeStatic.ClassicBasicInfoWidth);
+	a.emit(0xFF, 0xB6); a.dword(GlobalUIThemeStatic.BasicInfoExpandedHeightOffset);
+	a.label("resize");
+	a.emit(0x8B, 0xCE);
+	a.call(GlobalUIThemeStatic.BasicInfoResize);
+
+	// The Job icon child owns a cached surface. Explicitly redraw it so both
+	// appearance and removal happen in the same click instead of a later frame.
+	a.label("redraw_job");
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateJobChild);
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0x01, 0xFF, 0x50, 0x50);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC3);
+	return a;
+};
+
+GlobalUIThemeStatic.emitText = function(a, textVir, x, y, bold)
+{
+	GlobalUIThemeStatic.pushImm(a, 0);
+	GlobalUIThemeStatic.pushImm(a, bold);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.Black);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextHeight);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	GlobalUIThemeStatic.pushImm(a, 0);
+	a.emit(0x68); a.dword(textVir);
+	GlobalUIThemeStatic.pushImm(a, y);
+	GlobalUIThemeStatic.pushImm(a, x);
+	a.emit(0x8B, 0xCE);
+	a.call(GlobalUIThemeStatic.TextDraw);
+};
+
+
+GlobalUIThemeStatic.emitImage = function(a, pathVir, x, y, label)
+{
+	a.call(GlobalUIThemeStatic.GetTexMgr);
+	a.emit(0x8B, 0xD8, 0x85, 0xDB);
+	a.jcc(0x84, label);
+	a.emit(0x68); a.dword(pathVir);
+	a.call(GlobalUIThemeStatic.ConvPath);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, label);
+	a.emit(0x50, 0x8B, 0xCB);
+	a.call(GlobalUIThemeStatic.LoadSurface);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, label);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	a.emit(0x50);
+	GlobalUIThemeStatic.pushImm(a, y);
+	GlobalUIThemeStatic.pushImm(a, x);
+	a.emit(0x8B, 0xCE);
+	a.call(GlobalUIThemeStatic.ImageDraw);
+};
+
+GlobalUIThemeStatic.buildDraw = function(stateVir, paths, labels)
+{
+	const a = GlobalUIThemeStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0x83, 0x3D); a.dword(stateVir + GlobalUIThemeStatic.StateEnabled); a.emit(0x00);
+	a.jcc(0x84, "classic");
+	GlobalUIThemeStatic.emitImage(
+		a, paths.enabled.vir,
+		GlobalUIThemeStatic.ToggleX, GlobalUIThemeStatic.ToggleY,
+		"done"
+	);
+	a.jmp("done");
+	a.label("classic");
+	GlobalUIThemeStatic.emitImage(
+		a, paths.disabled.vir,
+		GlobalUIThemeStatic.ToggleX, GlobalUIThemeStatic.ToggleY,
+		"done"
+	);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+GlobalUIThemeStatic.buildMouseDown = function(toggleVir)
+{
+	const a = GlobalUIThemeStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);
+	a.emit(0x8B, 0x45, 0x08);
+	a.emit(0x3D); a.dword(GlobalUIThemeStatic.ToggleX);
+	a.jcc(0x8C, "done");
+	a.emit(0x3D); a.dword(
+		GlobalUIThemeStatic.ToggleX + GlobalUIThemeStatic.ToggleWidth
+	);
+	a.jcc(0x8D, "done");
+	a.emit(0x8B, 0x45, 0x0C);
+	a.emit(0x3D); a.dword(GlobalUIThemeStatic.ToggleY);
+	a.jcc(0x8C, "done");
+	a.emit(0x3D); a.dword(
+		GlobalUIThemeStatic.ToggleY + GlobalUIThemeStatic.ToggleHeight
+	);
+	a.jcc(0x8D, "done");
+	a.call(toggleVir);
+	a.label("done");
+	a.emit(0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+GlobalUIThemeStatic.buildNoOp = function()
+{
+	const a = GlobalUIThemeStatic.asm();
+	a.emit(0xC3);
+	return a;
+};
+
+GlobalUIThemeStatic.buildChildDestructor = function(stateVir)
+{
+	const a = GlobalUIThemeStatic.asm();
+	a.emit(0x3B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateChild);
+	a.jcc(0x85, "pass");
+	a.emit(0xC7, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateChild); a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.dword(0);
+	a.emit(0xC7, 0x05); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.dword(0);
+	a.label("pass");
+	a.jmp(GlobalUIThemeStatic.ImageButtonDeletingDestructor);
+	return a;
+};
+
+GlobalUIThemeStatic.cloneButtonVtable = function(
+	drawVir, mouseDownVir, noOpVir, destructorVir
+)
+{
+	const sourcePhy = Exe.Vir2Phy(GlobalUIThemeStatic.ImageButtonVtable);
+	if (sourcePhy < 0)
+		throw Error("ROGlobalZeroUITheme: UIImageButton vtable is not mapped");
+	const sourceByteCount = GlobalUIThemeStatic.ImageButtonSourceVtableEntries * 4;
+	const byteCount = GlobalUIThemeStatic.GameSettingsChildVtableEntries * 4;
+	const [phy, vir] = Exe.Allocate(byteCount, 4);
+	Exe.SetHex(phy, Exe.GetHex(sourcePhy, sourceByteCount));
+	Exe.SetUint32(phy + 54 * 4, noOpVir);
+	Exe.SetUint32(phy + 55 * 4, noOpVir);
+	Exe.SetUint32(phy, destructorVir);
+	Exe.SetUint32(phy + 20 * 4, drawVir);
+	Exe.SetUint32(phy + 25 * 4, mouseDownVir);
+	return {phy, vir, size: byteCount};
+};
+
+GlobalUIThemeStatic.buildCreateWrapper = function(
+	stateVir, loadVir, buttonVtableVir,
+	themeTextVir, themeTextLength, classicTextVir, classicTextLength,
+	newTextVir, newTextLength
+)
+{
+	const a = GlobalUIThemeStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57, 0x8B, 0xF1);
+	a.emit(0xFF, 0x75, 0x0C, 0xFF, 0x75, 0x08, 0x8B, 0xCE);
+	a.call(GlobalUIThemeStatic.GameSettingsCreateOriginal);
+	a.emit(0x50);
+	a.call(loadVir);
+	a.emit(0x83, 0x3D); a.dword(stateVir + GlobalUIThemeStatic.StateChild); a.emit(0x00);
+	a.jcc(0x85, "done");
+	a.emit(0x8B, 0xBE); a.dword(GlobalUIThemeStatic.BasicPageOffset);
+	a.emit(0x85, 0xFF);
+	a.jcc(0x84, "done");
+
+	// Shift only the stock Basic-page children to make room for the theme row.
+	a.emit(0x8B, 0x5F, GlobalUIThemeStatic.ChildListOffset);
+	a.emit(0x8B, 0x13);
+	a.label("shift_loop");
+	a.emit(0x3B, 0xD3);
+	a.jcc(0x84, "create");
+	a.emit(0x52, 0x8B, 0x4A, 0x08, 0x85, 0xC9);
+	a.jcc(0x84, "shift_next");
+	a.emit(0x8B, 0x01);
+	a.emit(0x8B, 0x51, 0x20);
+	a.emit(0x83, 0xC2, GlobalUIThemeStatic.RowShift);
+	a.emit(0x52, 0xFF, 0x71, 0x1C);
+	a.emit(0xFF, 0x50, 0x10);
+	a.label("shift_next");
+	a.emit(0x5A, 0x8B, 0x12);
+	a.jmp("shift_loop");
+
+	a.label("create");
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.ImageButtonObjectSize);
+	a.call(GlobalUIThemeStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.ImageButtonConstructor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "done");
+	a.emit(0x8B, 0xD8);
+	a.emit(0xC7, 0x03); a.dword(buttonVtableVir);
+	a.emit(0xC7, 0x43, 0x2C); a.dword(GlobalUIThemeStatic.ControlId);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.RowHeight);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.RowWidth);
+	a.emit(0x8B, 0xCB);
+	a.call(GlobalUIThemeStatic.SetWindowSize);
+	a.emit(0x8B, 0x03);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.RowY);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.RowX);
+	a.emit(0x8B, 0xCB, 0xFF, 0x50, 0x10);
+	// Use the same native UIText class and +0xDC bold property as the stock
+	// Skin, Audio Setting, Mail, and other Game Settings headings.
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextLabelObjectSize);
+	a.call(GlobalUIThemeStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "attach_row");
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.TextLabelConstructor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "attach_row");
+	a.emit(0xA3); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	GlobalUIThemeStatic.pushImm(a, 13);
+	GlobalUIThemeStatic.pushImm(a, 80);
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.SetWindowSize);
+	a.emit(0xA1); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.emit(0x8B, 0x10);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	GlobalUIThemeStatic.pushImm(a, 0);
+	a.emit(0x8B, 0xC8, 0xFF, 0x52, 0x10);
+	GlobalUIThemeStatic.pushImm(a, themeTextLength);
+	a.emit(0x68); a.dword(themeTextVir);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetText);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextHeight);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetHeight);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetBold);
+	a.emit(0xFF, 0x35); a.dword(stateVir + GlobalUIThemeStatic.StateThemeLabel);
+	a.emit(0x8B, 0xCB);
+	a.call(GlobalUIThemeStatic.AddChild);
+	a.label("attach_row");
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextLabelObjectSize);
+	a.call(GlobalUIThemeStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "classic_label_done");
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.TextLabelConstructor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "classic_label_done");
+	a.emit(0xA3); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	GlobalUIThemeStatic.pushImm(a, 13);
+	GlobalUIThemeStatic.pushImm(a, 70);
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.SetWindowSize);
+	a.emit(0xA1); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.emit(0x8B, 0x10);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	GlobalUIThemeStatic.pushImm(a, 88);
+	a.emit(0x8B, 0xC8, 0xFF, 0x52, 0x10);
+	GlobalUIThemeStatic.pushImm(a, classicTextLength);
+	a.emit(0x68); a.dword(classicTextVir);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetText);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextHeight);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetHeight);
+	GlobalUIThemeStatic.pushImm(a, 0);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetBold);
+	a.emit(0xFF, 0x35); a.dword(stateVir + GlobalUIThemeStatic.StateClassicLabel);
+	a.emit(0x8B, 0xCB);
+	a.call(GlobalUIThemeStatic.AddChild);
+	a.label("classic_label_done");
+
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextLabelObjectSize);
+	a.call(GlobalUIThemeStatic.OperatorNew);
+	a.emit(0x83, 0xC4, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "new_label_done");
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.TextLabelConstructor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "new_label_done");
+	a.emit(0xA3); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	GlobalUIThemeStatic.pushImm(a, 13);
+	GlobalUIThemeStatic.pushImm(a, 50);
+	a.emit(0x8B, 0xC8);
+	a.call(GlobalUIThemeStatic.SetWindowSize);
+	a.emit(0xA1); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.emit(0x8B, 0x10);
+	GlobalUIThemeStatic.pushImm(a, 1);
+	GlobalUIThemeStatic.pushImm(a, 201);
+	a.emit(0x8B, 0xC8, 0xFF, 0x52, 0x10);
+	GlobalUIThemeStatic.pushImm(a, newTextLength);
+	a.emit(0x68); a.dword(newTextVir);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetText);
+	GlobalUIThemeStatic.pushImm(a, GlobalUIThemeStatic.TextHeight);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetHeight);
+	GlobalUIThemeStatic.pushImm(a, 0);
+	a.emit(0x8B, 0x0D); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.call(GlobalUIThemeStatic.TextLabelSetBold);
+	a.emit(0xFF, 0x35); a.dword(stateVir + GlobalUIThemeStatic.StateNewLabel);
+	a.emit(0x8B, 0xCB);
+	a.call(GlobalUIThemeStatic.AddChild);
+	a.label("new_label_done");
+	a.emit(0x53, 0x8B, 0xCF);
+	a.call(GlobalUIThemeStatic.AddChild);
+	a.emit(0x89, 0x1D); a.dword(stateVir + GlobalUIThemeStatic.StateChild);
+	a.label("done");
+	a.emit(0x58, 0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x08, 0x00);
+	return a;
+};
+
+GlobalUIThemeStatic.assertVtable = function(label, entryVir, expectedVir)
+{
+	const phy = Exe.Vir2Phy(entryVir);
+	if (phy < 0)
+		throw Error(`ROGlobalZeroUITheme: ${label} is not mapped`);
+	const actual = Exe.GetUint32(phy);
+	if (actual !== expectedVir)
+	{
+		throw Error(
+			`ROGlobalZeroUITheme: ${label} expected 0x${expectedVir.toString(16)}, ` +
+			`got 0x${actual.toString(16)}`
+		);
+	}
+	return phy;
+};
+
+ROGlobalZeroUITheme = function(_)
+{
+	if (Exe.BuildDate !== GlobalUIThemeStatic.BuildDate)
+		throw Error("ROGlobalZeroUITheme supports only the 2025-07-16 client");
+
+	$$(_, 1, "Verify Game Settings and UIImageButton native contracts");
+	const createEntryPhy = GlobalUIThemeStatic.assertVtable(
+		"CUIGameSettingsUI vtable[15]",
+		GlobalUIThemeStatic.GameSettingsCreateEntry,
+		GlobalUIThemeStatic.GameSettingsCreateOriginal
+	);
+	GlobalUIThemeStatic.assertVtable(
+		"UIImageButton vtable[0]",
+		GlobalUIThemeStatic.ImageButtonVtable,
+		GlobalUIThemeStatic.ImageButtonDeletingDestructor
+	);
+	GlobalUIThemeStatic.assertVtable(
+		"UIImageButton vtable[25]",
+		GlobalUIThemeStatic.ImageButtonVtable + 25 * 4,
+		GlobalUIThemeStatic.ImageButtonMouseDown
+	);
+
+	$$(_, 2, "Allocate the persistent shared Classic/New theme state");
+	const state = GlobalUIThemeStatic.allocateBytes(
+		new Array(GlobalUIThemeStatic.StateSize).fill(0), 4
+	);
+	Exe.SetUint32(state.phy + GlobalUIThemeStatic.StateEnabled, 1);
+	const persistPath = GlobalUIThemeStatic.allocateBytes(
+		GlobalUIThemeStatic.asciiBytes("savedata\\roglobal_ui_theme.dat")
+	);
+	const load = GlobalUIThemeStatic.allocateCode(
+		GlobalUIThemeStatic.buildLoad(state.vir, persistPath.vir)
+	);
+	const toggle = GlobalUIThemeStatic.allocateCode(
+		GlobalUIThemeStatic.buildToggle(state.vir, persistPath.vir, load.vir)
+	);
+	CACHE.put("ROGlobalZeroUITheme.State", {
+		stateVir: state.vir,
+		statePhy: state.phy,
+		enabledOffset: GlobalUIThemeStatic.StateEnabled,
+		loadVir: load.vir,
+		toggleVir: toggle.vir,
+		persistPathVir: persistPath.vir,
+		jobChildOffset: GlobalUIThemeStatic.StateJobChild,
+		basicInfoOffset: GlobalUIThemeStatic.StateBasicInfo,
+		chatRefreshOffset: GlobalUIThemeStatic.StateChatRefresh
+	});
+
+	$$(_, 3, "Build the native Basic-page theme row and supplied toggle textures");
+	const paths = {
+		disabled: GlobalUIThemeStatic.buildResourcePath(
+			"uirenewal\\basicinfo\\btn_tema_0.bmp"
+		),
+		enabled: GlobalUIThemeStatic.buildResourcePath(
+			"uirenewal\\basicinfo\\btn_tema_1.bmp"
+		)
+	};
+	const labels = {
+		theme: GlobalUIThemeStatic.allocateBytes(GlobalUIThemeStatic.asciiBytes("UI Theme")),
+		classic: GlobalUIThemeStatic.allocateBytes(GlobalUIThemeStatic.asciiBytes("Classic UI")),
+		renewal: GlobalUIThemeStatic.allocateBytes(GlobalUIThemeStatic.asciiBytes("New UI"))
+	};
+	const draw = GlobalUIThemeStatic.allocateCode(
+		GlobalUIThemeStatic.buildDraw(state.vir, paths, labels)
+	);
+	const mouseDown = GlobalUIThemeStatic.allocateCode(
+		GlobalUIThemeStatic.buildMouseDown(toggle.vir)
+	);
+	const noOp = GlobalUIThemeStatic.allocateCode(
+		GlobalUIThemeStatic.buildNoOp()
+	);
+	const destructor = GlobalUIThemeStatic.allocateCode(
+		GlobalUIThemeStatic.buildChildDestructor(state.vir)
+	);
+	const buttonVtable = GlobalUIThemeStatic.cloneButtonVtable(
+		draw.vir, mouseDown.vir, noOp.vir, destructor.vir
+	);
+	const createWrapper = GlobalUIThemeStatic.allocateCode(
+		GlobalUIThemeStatic.buildCreateWrapper(
+			state.vir, load.vir, buttonVtable.vir,
+			labels.theme.vir, 8, labels.classic.vir, 10,
+			labels.renewal.vir, 6
+		)
+	);
+
+	$$(_, 4, "Attach the switch to the native Game Settings Basic page");
+	Exe.SetUint32(createEntryPhy, createWrapper.vir);
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("ROGlobalZeroUITheme.QjsOnly", {
+			gameSettingsVtableVir: GlobalUIThemeStatic.GameSettingsVtable,
+			createWrapperVir: createWrapper.vir,
+			stateVir: state.vir,
+			loadVir: load.vir,
+			toggleVir: toggle.vir,
+			buttonVtableVir: buttonVtable.vir,
+			buttonDrawVir: draw.vir,
+			buttonMouseDownVir: mouseDown.vir,
+			buttonDestructorVir: destructor.vir,
+			buttonGameSettingsNoOpVir: noOp.vir,
+			rowPosition: [GlobalUIThemeStatic.RowX, GlobalUIThemeStatic.RowY],
+			rowSize: [GlobalUIThemeStatic.RowWidth, GlobalUIThemeStatic.RowHeight],
+			persistFile: "savedata\\roglobal_ui_theme.dat",
+			externalModules: 0
+		});
+	}
+	return true;
+};
+
+ROGlobalZeroUITheme.validate = function()
+{
+	if (Exe.BuildDate !== GlobalUIThemeStatic.BuildDate)
+		return false;
+	try
+	{
+		GlobalUIThemeStatic.assertVtable(
+			"CUIGameSettingsUI vtable[15]",
+			GlobalUIThemeStatic.GameSettingsCreateEntry,
+			GlobalUIThemeStatic.GameSettingsCreateOriginal
+		);
+		GlobalUIThemeStatic.assertVtable(
+			"UIImageButton vtable[0]",
+			GlobalUIThemeStatic.ImageButtonVtable,
+			GlobalUIThemeStatic.ImageButtonDeletingDestructor
+		);
+		GlobalUIThemeStatic.assertVtable(
+			"UIImageButton vtable[25]",
+			GlobalUIThemeStatic.ImageButtonVtable + 25 * 4,
+			GlobalUIThemeStatic.ImageButtonMouseDown
+		);
+		return true;
+	}
+	catch (error)
+	{
+		return false;
+	}
+};

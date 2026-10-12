@@ -1,0 +1,10 @@
+{
+  "copy_capacity": 24,
+  "send_call": "0x00914DF6",
+  "packet_id": "0xa16",
+  "length": 26,
+  "payload_hex": "160a474f4c445043434146450000000000000000000000000000",
+  "name": "GOLDPCCAFE",
+  "server_packed_size": 130,
+  "scope": "Native sender fragment; string copy and network services stubbed; no network traffic"
+}

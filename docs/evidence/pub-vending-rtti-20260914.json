@@ -1,0 +1,772 @@
+{
+  "before": {
+    "exe": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\pub-vending-rtti-20260914\\before.exe",
+    "sha256": "48c7cece98b8dc723bd5ac6cf11773f6ddbbe724e2bc33b1ffaedcb3b1823023",
+    "runtime_sha256": "9d02e952396bdff3abfe5654e07b7a713c84268a225e11ed9a3bf338ed1e424c",
+    "expected_broken": true,
+    "passed": true,
+    "clone_count": 7,
+    "valid_count": 0,
+    "clones": [
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1c77874",
+        "locator": "0x0",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": false,
+        "construction_refs": [
+          {
+            "site": "0x1db7703",
+            "window_ids": [
+              "0x3f0"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [
+            {
+              "instruction": "0x100073ec",
+              "address": "0xc",
+              "size": 4,
+              "access": 19
+            }
+          ],
+          "descriptor": "0x0",
+          "passed": false
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1db7020",
+        "locator": "0x0",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": false,
+        "construction_refs": [
+          {
+            "site": "0x1db7460",
+            "window_ids": [
+              "0x3f1"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [
+            {
+              "instruction": "0x100073ec",
+              "address": "0xc",
+              "size": 4,
+              "access": 19
+            }
+          ],
+          "descriptor": "0x0",
+          "passed": false
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1dd71d4",
+        "locator": "0x0",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": false,
+        "construction_refs": [
+          {
+            "site": "0x1fb6b86",
+            "window_ids": [
+              "0x3f6"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [
+            {
+              "instruction": "0x100073ec",
+              "address": "0xc",
+              "size": 4,
+              "access": 19
+            }
+          ],
+          "descriptor": "0x0",
+          "passed": false
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1fb6360",
+        "locator": "0x0",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": false,
+        "construction_refs": [
+          {
+            "site": "0x1fb6938",
+            "window_ids": [
+              "0x3f7"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [
+            {
+              "instruction": "0x100073ec",
+              "address": "0xc",
+              "size": 4,
+              "access": 19
+            }
+          ],
+          "descriptor": "0x0",
+          "passed": false
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1fcc9e4",
+        "locator": "0xfe",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": false,
+        "construction_refs": [
+          {
+            "site": "0x1fccb29",
+            "window_ids": [
+              "0x3f3"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [
+            {
+              "instruction": "0x100073ec",
+              "address": "0x10a",
+              "size": 4,
+              "access": 19
+            }
+          ],
+          "descriptor": "0xfe",
+          "passed": false
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x248372c",
+        "locator": "0x0",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": false,
+        "construction_refs": [
+          {
+            "site": "0x2483b7f",
+            "window_ids": [
+              "0x3fa"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [
+            {
+              "instruction": "0x100073ec",
+              "address": "0xc",
+              "size": 4,
+              "access": 19
+            }
+          ],
+          "descriptor": "0x0",
+          "passed": false
+        }
+      },
+      {
+        "family": "UIWindow",
+        "vtable": "0x1fcff04",
+        "locator": "0x0",
+        "expected_locator": "0x10ce590",
+        "expected_descriptor": "0x12357ac",
+        "type_name": ".?AVUIWindow@@",
+        "locator_preserved": false,
+        "construction_refs": [
+          {
+            "site": "0x1fd000d",
+            "window_ids": []
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [
+            {
+              "instruction": "0x100073ec",
+              "address": "0xc",
+              "size": 4,
+              "access": 19
+            }
+          ],
+          "descriptor": "0x0",
+          "passed": false
+        }
+      }
+    ],
+    "scope": "Exact native RTTI pointer-load instructions; no whole-process or live UI emulation"
+  },
+  "fixed": {
+    "exe": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\pub-vending-rtti-20260914\\fixed.exe",
+    "sha256": "73a3a6e28ea8c4a5ccd14d5a8fed85ae15c05e148c3910ad7c18e04718622350",
+    "runtime_sha256": "9d02e952396bdff3abfe5654e07b7a713c84268a225e11ed9a3bf338ed1e424c",
+    "expected_broken": false,
+    "passed": true,
+    "clone_count": 7,
+    "valid_count": 7,
+    "clones": [
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1c77878",
+        "locator": "0x10c2acc",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": true,
+        "construction_refs": [
+          {
+            "site": "0x1db7703",
+            "window_ids": [
+              "0x3f0"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [],
+          "descriptor": "0x12357fc",
+          "passed": true
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1db7024",
+        "locator": "0x10c2acc",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": true,
+        "construction_refs": [
+          {
+            "site": "0x1db7460",
+            "window_ids": [
+              "0x3f1"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [],
+          "descriptor": "0x12357fc",
+          "passed": true
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1dd71d8",
+        "locator": "0x10c2acc",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": true,
+        "construction_refs": [
+          {
+            "site": "0x1fb6b86",
+            "window_ids": [
+              "0x3f6"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [],
+          "descriptor": "0x12357fc",
+          "passed": true
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1fb6364",
+        "locator": "0x10c2acc",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": true,
+        "construction_refs": [
+          {
+            "site": "0x1fb6938",
+            "window_ids": [
+              "0x3f7"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [],
+          "descriptor": "0x12357fc",
+          "passed": true
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x1fcc9e8",
+        "locator": "0x10c2acc",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": true,
+        "construction_refs": [
+          {
+            "site": "0x1fccb29",
+            "window_ids": [
+              "0x3f3"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [],
+          "descriptor": "0x12357fc",
+          "passed": true
+        }
+      },
+      {
+        "family": "UIFrameWnd",
+        "vtable": "0x2483730",
+        "locator": "0x10c2acc",
+        "expected_locator": "0x10c2acc",
+        "expected_descriptor": "0x12357fc",
+        "type_name": ".?AVUIFrameWnd@@",
+        "locator_preserved": true,
+        "construction_refs": [
+          {
+            "site": "0x2483b7f",
+            "window_ids": [
+              "0x3fa"
+            ]
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [],
+          "descriptor": "0x12357fc",
+          "passed": true
+        }
+      },
+      {
+        "family": "UIWindow",
+        "vtable": "0x1fcff08",
+        "locator": "0x10ce590",
+        "expected_locator": "0x10ce590",
+        "expected_descriptor": "0x12357ac",
+        "type_name": ".?AVUIWindow@@",
+        "locator_preserved": true,
+        "construction_refs": [
+          {
+            "site": "0x1fd000d",
+            "window_ids": []
+          }
+        ],
+        "runtime_typeid_reads": {
+          "entry": "0x100073e7",
+          "faults": [],
+          "descriptor": "0x12357ac",
+          "passed": true
+        }
+      }
+    ],
+    "scope": "Exact native RTTI pointer-load instructions; no whole-process or live UI emulation"
+  },
+  "build": {
+    "baseline_matches_deployed": true,
+    "baseline_sha256": "48c7cece98b8dc723bd5ac6cf11773f6ddbbe724e2bc33b1ffaedcb3b1823023",
+    "fixed_sha256": "73a3a6e28ea8c4a5ccd14d5a8fed85ae15c05e148c3910ad7c18e04718622350",
+    "baseline_exit": 0,
+    "fixed_exit": 0
+  },
+  "introduced": [
+    {
+      "commit": "8bd71ba5f005af2a9980b429214c7f322ee421f5",
+      "date": "2026-07-20T07:05:33+08:00",
+      "subject": "feat: add RO Global Zero EXP Bar",
+      "feature": "RO Global EXP bar",
+      "path": "Scripts/Patches/ROGlobalZeroExpBar.qjs",
+      "cloned_without_locator": true
+    },
+    {
+      "commit": "60855e5fcf609f4a7574ad0f839088fc80ed5842",
+      "date": "2026-07-20T13:29:39+08:00",
+      "subject": "feat: add RO Global Zero AutoCombat UI Preview",
+      "feature": "AutoCombat UI",
+      "path": "Scripts/Patches/AutoCombatUI.qjs",
+      "cloned_without_locator": true
+    },
+    {
+      "commit": "be4de5ecc42f3dbdd3d37660dd3709c877bd034a",
+      "date": "2026-09-01T05:14:15+08:00",
+      "subject": "feat: add native Item Collection UI",
+      "feature": "Item Collection UI",
+      "path": "Scripts/Patches/ItemCollectionUI.qjs",
+      "cloned_without_locator": true
+    },
+    {
+      "commit": "21260af2934ba725cac3bdac7094345a665878b8",
+      "date": "2026-09-04T06:26:12+08:00",
+      "subject": "feat: add AutoSupport client UI",
+      "feature": "AutoSupport UI",
+      "path": "Scripts/Patches/AutoSupportUI.qjs",
+      "cloned_without_locator": true
+    },
+    {
+      "commit": "6ec304a4ab56e6c96fabe00a6363bcdf2baebe54",
+      "date": "2026-09-12T20:48:10+08:00",
+      "subject": "initial implementation Bestiary",
+      "feature": "Bestiary UI",
+      "path": "Scripts/Patches/BestiaryUI.qjs",
+      "cloned_without_locator": true
+    }
+  ],
+  "source_sha256": {
+    "Scripts/Patches/AutoCombatUI.qjs": "10df634bf5e8f7bfe7507464d5a17026d4abcf333377ac7add0a9ea261aa68aa",
+    "Scripts/Patches/AutoSupportUI.qjs": "83f6199173cafeeb53c476c38af50ee28372cc707c5a2002f5f30c653af1e483",
+    "Scripts/Patches/BestiaryUI.qjs": "5b4268dcb13536701c1c525acdbe7b7ded88dd1781efc58c0f46bfb7fe957a31",
+    "Scripts/Patches/ItemCollectionUI.qjs": "2a12e809b5bdcb31f56d448ded2ac2f5dd24d87f0cc6629ffd1860bf75ba0c39",
+    "Scripts/Patches/ROGlobalZeroExpBar.qjs": "7af63b0d0455ccfc4caf594b237823e7203a8d195cf2940d08932179d9fd7902"
+  },
+  "live_acceptance": {
+    "confirmed_by": "user",
+    "date": "2026-09-14",
+    "vectors": [
+      "create own pub",
+      "create own vending shop"
+    ],
+    "deployed_sha256": "73a3a6e28ea8c4a5ccd14d5a8fed85ae15c05e148c3910ad7c18e04718622350"
+  },
+  "deployment": [
+    {
+      "target": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+      "sha256": "73a3a6e28ea8c4a5ccd14d5a8fed85ae15c05e148c3910ad7c18e04718622350",
+      "backup": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\pub-vending-rtti-20260914\\deployment-backup\\game",
+      "updated_files": [
+        "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+        "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.epi",
+        "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe.secure.txt"
+      ]
+    },
+    {
+      "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+      "sha256": "73a3a6e28ea8c4a5ccd14d5a8fed85ae15c05e148c3910ad7c18e04718622350",
+      "backup": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\pub-vending-rtti-20260914\\deployment-backup\\repository",
+      "updated_files": [
+        "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+        "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo_patched.epi",
+        "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\2025-07-16_Ragexe_175220998_clientinfo\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe.secure.txt"
+      ]
+    }
+  ],
+  "lifecycle": {
+    "passed": true,
+    "cases": [
+      {
+        "case": "baseline",
+        "passed": true,
+        "buttons": [
+          {
+            "button": "Auto Hunt",
+            "child": "0x3f2",
+            "mouse_up": "0x1a9a1b0",
+            "emitted_target": "0x1884450",
+            "published_target": "0x1884450",
+            "target_bytes": "ff15b017fc0083c04ba348448801c7054444880101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1,
+            "native_visibility_checks": []
+          },
+          {
+            "button": "AutoSupport",
+            "child": "0x3f5",
+            "mouse_up": "0x1a9ad40",
+            "emitted_target": "0x1a836d0",
+            "published_target": "0x1a836d0",
+            "target_bytes": "ff15b017fc0083c04ba3bc36a801c705b836a80101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Item Collection",
+            "child": "0x3f4",
+            "mouse_up": "0x1a9a770",
+            "emitted_target": "0x1a99350",
+            "published_target": "0x1a99350",
+            "target_bytes": "9c606a006a006a006a01e891c5feffc705d850a80100000000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Bestiary",
+            "child": "0x3fb",
+            "mouse_up": "0x1a9b330",
+            "emitted_target": "0x1b04f30",
+            "published_target": "0x1b04f30",
+            "target_bytes": "9c60c705e438af01000000008b3564fca90185f60f84fa0000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          }
+        ]
+      },
+      {
+        "case": "reapply-autohunt",
+        "passed": true,
+        "buttons": [
+          {
+            "button": "Auto Hunt",
+            "child": "0x3f2",
+            "mouse_up": "0x1a9a1b0",
+            "emitted_target": "0x1dd3870",
+            "published_target": "0x1dd3870",
+            "target_bytes": "ff15b017fc0083c04ba36838dd01c7056438dd0101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1,
+            "native_visibility_checks": []
+          },
+          {
+            "button": "AutoSupport",
+            "child": "0x3f5",
+            "mouse_up": "0x1a9ad40",
+            "emitted_target": "0x1a836d0",
+            "published_target": "0x1a836d0",
+            "target_bytes": "ff15b017fc0083c04ba3bc36a801c705b836a80101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Item Collection",
+            "child": "0x3f4",
+            "mouse_up": "0x1a9a770",
+            "emitted_target": "0x1a99350",
+            "published_target": "0x1a99350",
+            "target_bytes": "9c606a006a006a006a01e891c5feffc705d850a80100000000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Bestiary",
+            "child": "0x3fb",
+            "mouse_up": "0x1a9b330",
+            "emitted_target": "0x1b04f30",
+            "published_target": "0x1b04f30",
+            "target_bytes": "9c60c705e438af01000000008b3564fca90185f60f84fa0000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          }
+        ]
+      },
+      {
+        "case": "reapply-autosupport",
+        "passed": true,
+        "buttons": [
+          {
+            "button": "Auto Hunt",
+            "child": "0x3f2",
+            "mouse_up": "0x1a9a1b0",
+            "emitted_target": "0x1884450",
+            "published_target": "0x1884450",
+            "target_bytes": "ff15b017fc0083c04ba348448801c7054444880101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1,
+            "native_visibility_checks": []
+          },
+          {
+            "button": "AutoSupport",
+            "child": "0x3f5",
+            "mouse_up": "0x1a9ad40",
+            "emitted_target": "0x1f03a20",
+            "published_target": "0x1f03a20",
+            "target_bytes": "ff15b017fc0083c04ba30c3af001c705083af00101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Item Collection",
+            "child": "0x3f4",
+            "mouse_up": "0x1a9a770",
+            "emitted_target": "0x1a99350",
+            "published_target": "0x1a99350",
+            "target_bytes": "9c606a006a006a006a01e891c5feffc705d850a80100000000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Bestiary",
+            "child": "0x3fb",
+            "mouse_up": "0x1a9b330",
+            "emitted_target": "0x1b04f30",
+            "published_target": "0x1b04f30",
+            "target_bytes": "9c60c705e438af01000000008b3564fca90185f60f84fa0000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          }
+        ]
+      },
+      {
+        "case": "reapply-item",
+        "passed": true,
+        "buttons": [
+          {
+            "button": "Auto Hunt",
+            "child": "0x3f2",
+            "mouse_up": "0x1a9a1b0",
+            "emitted_target": "0x1884450",
+            "published_target": "0x1884450",
+            "target_bytes": "ff15b017fc0083c04ba348448801c7054444880101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1,
+            "native_visibility_checks": []
+          },
+          {
+            "button": "AutoSupport",
+            "child": "0x3f5",
+            "mouse_up": "0x1a9ad40",
+            "emitted_target": "0x1a836d0",
+            "published_target": "0x1a836d0",
+            "target_bytes": "ff15b017fc0083c04ba3bc36a801c705b836a80101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Item Collection",
+            "child": "0x3f4",
+            "mouse_up": "0x1a9a770",
+            "emitted_target": "0x1b2fbe0",
+            "published_target": "0x1b2fbe0",
+            "target_bytes": "9c606a006a006a006a01e891c5feffc70564b9b10100000000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Bestiary",
+            "child": "0x3fb",
+            "mouse_up": "0x1a9b330",
+            "emitted_target": "0x1b04f30",
+            "published_target": "0x1b04f30",
+            "target_bytes": "9c60c705e438af01000000008b3564fca90185f60f84fa0000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          }
+        ]
+      },
+      {
+        "case": "reapply-bestiary",
+        "passed": true,
+        "buttons": [
+          {
+            "button": "Auto Hunt",
+            "child": "0x3f2",
+            "mouse_up": "0x1a9a1b0",
+            "emitted_target": "0x1884450",
+            "published_target": "0x1884450",
+            "target_bytes": "ff15b017fc0083c04ba348448801c7054444880101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1,
+            "native_visibility_checks": []
+          },
+          {
+            "button": "AutoSupport",
+            "child": "0x3f5",
+            "mouse_up": "0x1a9ad40",
+            "emitted_target": "0x1a836d0",
+            "published_target": "0x1a836d0",
+            "target_bytes": "ff15b017fc0083c04ba3bc36a801c705b836a80101000000c3",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Item Collection",
+            "child": "0x3f4",
+            "mouse_up": "0x1a9a770",
+            "emitted_target": "0x1a99350",
+            "published_target": "0x1a99350",
+            "target_bytes": "9c606a006a006a006a01e891c5feffc705d850a80100000000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          },
+          {
+            "button": "Bestiary",
+            "child": "0x3fb",
+            "mouse_up": "0x1a9b330",
+            "emitted_target": "0x1bd2170",
+            "published_target": "0x1bd2170",
+            "target_bytes": "9c60c7052c0bbc01000000008b35acceb60185f60f84fa0000",
+            "entry_valid": true,
+            "target_matches_current": true,
+            "visible": 1,
+            "expected_visible": 1
+          }
+        ]
+      }
+    ]
+  },
+  "bestiary_menu": {
+    "passed": true,
+    "checks": [
+      "New/Classic/New image refresh, 96 compact-grid placements, parent/expanded/visibility/producer gates, no duplicate child",
+      "Native child destructor clears the cached owner; menu recreation attaches to the new parent",
+      "Actual menu mouse-up closes/reopens the Bestiary journal and sends one catalog request; stack/registers preserved",
+      "All six emitted native texture paths resolve to byte-identical deployed 24-bit BI_RGB button states"
+    ],
+    "engine_boundaries_mocked": true,
+    "live_accepted": false
+  },
+  "stale_bridge_operands": 0
+}

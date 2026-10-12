@@ -1,0 +1,70 @@
+{
+  "status": "accepted",
+  "date": "2026-09-13",
+  "user_message": "accepted. pls save work and documentation. add the sprite in maindata.grf and clean up the stage github",
+  "versions": {
+    "swordman": "V9 both sexes",
+    "mage_male": "V3",
+    "mage_female": "V7"
+  },
+  "resources": [
+    {
+      "job": "swordman",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.spr",
+      "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/male-angel-complete-v9.spr",
+      "sha256": "8384dd725be556d8557c856c0f141cfa58ae009859338689d4220bda3b45ade8"
+    },
+    {
+      "job": "swordman",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uac80\uc0ac_\ub0a8.act",
+      "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/male-angel-complete-v9.act",
+      "sha256": "bbe4823abba1471f716e8044fffec9b7fc6b4a7cde766ad6f8298f92d6a7cc71"
+    },
+    {
+      "job": "swordman",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.spr",
+      "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/female-angel-complete-v9.spr",
+      "sha256": "f00d5661844bf8e7e5f0009f02316900a497f2bf5a9a848f8fb38458c7c45533"
+    },
+    {
+      "job": "swordman",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uac80\uc0ac_\uc5ec.act",
+      "source": "Assets/ClanBodySkins/Swordman/complete-v9/assets/female-angel-complete-v9.act",
+      "sha256": "579c32d3b5d7d12bef0f5c2262f2b0dd4f638ececa6f96ab61ec201ce936e28c"
+    },
+    {
+      "job": "mage",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.spr",
+      "source": "Assets/ClanBodySkins/Mage/male-gait-v3/assets/male-angel-mage-v3.spr",
+      "sha256": "fd3e767caea1cf50adf0670e2f02d83a9e51cfb8ac4c39d857804820c02fa80d"
+    },
+    {
+      "job": "mage",
+      "sex": "male",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\ub9c8\ubc95\uc0ac_\ub0a8.act",
+      "source": "Assets/ClanBodySkins/Mage/male-gait-v3/assets/male-angel-mage-v3.act",
+      "sha256": "570065adce83db21e461cbcd5971e2195aa52c23a06ca5e511124f1854cf2780"
+    },
+    {
+      "job": "mage",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.spr",
+      "source": "Assets/ClanBodySkins/Mage/female-gait-v7/assets/female-angel-mage-v7.spr",
+      "sha256": "b8510ddda6313b2a682c3d64d774a7d45efa0dc9bc3633c8b68304ce4b8121f4"
+    },
+    {
+      "job": "mage",
+      "sex": "female",
+      "entry": "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\ub9c8\ubc95\uc0ac_\uc5ec.act",
+      "source": "Assets/ClanBodySkins/Mage/female-gait-v7/assets/female-angel-mage-v7.act",
+      "sha256": "956f25b5cfac42d0b625443d8ef7d23bd4ef6edf51dfcc21b780ff6086161e66"
+    }
+  ],
+  "preview_renderer": "NativeActJobPreviews",
+  "generated_preview_entries": 0
+}

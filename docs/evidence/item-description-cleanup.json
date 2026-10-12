@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "accepted_client_sha256": "20a407fb61fdac0dc2b7e277b1b8f50d00d84f182743b9ddea3caa7c3804cba2",
+  "cleanup_client_sha256": "c7178d3517ca9126fe73b9a830b0122d9320d6798d9b57171709bb8ae1fbe263",
+  "exact_pixels_text_requests_and_dimensions": [
+    "default",
+    "bound",
+    "small",
+    "scroll",
+    "original",
+    "compare",
+    "paired panes"
+  ],
+  "engine_boundaries_mocked": true
+}

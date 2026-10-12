@@ -1,0 +1,37 @@
+{
+  "status": "installed",
+  "authoritative_archive": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+  "maindata_sha256": "c5acb244880a50dbdcadb1fb526bfa9d7e4e38ceec270e642a9eac1dc05987a0",
+  "update_sha256": "d695bf11d1cbcc7f1ad1a1e982f471eca3839c7432bd21949993c71a17bf9f28",
+  "patch_sha256": "b3727ca71b0fa89114f682a282efe069d2ed3272d1492ea2a18002f1c2207fbd",
+  "world_entries": 16,
+  "duplicate_update_entries_removed": 0,
+  "archive_priority_verified": true,
+  "exe_modified": false,
+  "maindata_transaction": {
+    "status": "installed",
+    "target": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+    "pending": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf.clan-release.pending",
+    "before_sha256": "07caba41d9482054bbfcacec04e9b3034acef13eb7b424ec42344756543e527c",
+    "after_sha256": "c5acb244880a50dbdcadb1fb526bfa9d7e4e38ceec270e642a9eac1dc05987a0",
+    "original_length": 602234230,
+    "original_header_hex": "4d6173746572206f66204d61676963000102030405060708090a0b0c0d0ee676e123000000007647000000020000",
+    "added": [],
+    "replaced": [
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uad81\uc218_\ub0a8.act",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\ub0a8/\uad81\uc218_\ub0a8.spr",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uad81\uc218_\uc5ec.act",
+      "data/sprite/clan_skins/1/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uad81\uc218_\uc5ec.spr"
+    ],
+    "removed": [],
+    "entries": 18287,
+    "unrelated_records_preserved": 18283,
+    "original_compressed_bytes_preserved": true,
+    "rollback_reconstruction_sha256": "07caba41d9482054bbfcacec04e9b3034acef13eb7b424ec42344756543e527c"
+  },
+  "update_transaction": {
+    "status": "already_current",
+    "target": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\update.grf",
+    "sha256": "d695bf11d1cbcc7f1ad1a1e982f471eca3839c7432bd21949993c71a17bf9f28"
+  }
+}

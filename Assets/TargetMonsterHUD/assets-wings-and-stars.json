@@ -1,0 +1,73 @@
+{
+  "canvas": [
+    768,
+    232
+  ],
+  "name_top": 28,
+  "pixel_format": "BGRA32",
+  "bmp_header": "BITMAPV4HEADER",
+  "alpha": "straight",
+  "pixel_offset": 122,
+  "resource_root": "data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/uirenewal/mobhpbar/wings-and-stars",
+  "tiers": [
+    {
+      "name": "normal",
+      "label": "NORMAL",
+      "empty": "target_mob_normal_empty.bmp",
+      "full": "target_mob_normal_full.bmp",
+      "fill": [
+        228,
+        70,
+        540,
+        94
+      ],
+      "percent_top": 75,
+      "label_top": 2
+    },
+    {
+      "name": "mini",
+      "label": "MINI BOSS",
+      "empty": "target_mob_mini_empty.bmp",
+      "full": "target_mob_mini_full.bmp",
+      "fill": [
+        153,
+        73,
+        615,
+        112
+      ],
+      "percent_top": 85,
+      "label_top": 3
+    },
+    {
+      "name": "mvp",
+      "label": "MVP",
+      "empty": "target_mob_mvp_empty.bmp",
+      "full": "target_mob_mvp_full.bmp",
+      "fill": [
+        87,
+        73,
+        681,
+        114
+      ],
+      "percent_top": 86,
+      "label_top": 5
+    }
+  ],
+  "source": "User-supplied 33232 BMPs; V5 header normalized to V4 without changing pixel bytes.",
+  "source_sha256": {
+    "target_mob_normal_empty.bmp": "dc99f9f4c61add7263c7d03997710a977cd7588110b8f29879f7b0ede1c3e361",
+    "target_mob_normal_full.bmp": "974f121d11a72ac57eee6b5f5aa2d1dc8f7372836973fff9cd9a5e0529d63458",
+    "target_mob_mini_empty.bmp": "0fc7fdf4ad87df94aecf429110037f0cac860ecf1ec4050976a02e823374fabb",
+    "target_mob_mini_full.bmp": "b718ebeca77835f9e6895a3c5a85cc25b1757cbff8258aae6b2517ec981e6dea",
+    "target_mob_mvp_empty.bmp": "5eccfddc2581b4f8f9c514186a9d22b94d09912496f1bf9d1371a3f2e173dbfd",
+    "target_mob_mvp_full.bmp": "9504798546c07e1e112018edbbf6e278b188614a05103d5bf74293110f853cbf"
+  },
+  "asset_sha256": {
+    "target_mob_normal_empty.bmp": "782d4000a4fa9153c91c8bca1861897f2e927d6e8c0be437a77380335cfb34b1",
+    "target_mob_normal_full.bmp": "73c944849ff0b476a1be1df7734318d95c509bebe8e1673063236aceff1b7911",
+    "target_mob_mini_empty.bmp": "f007f8fae9a678541ce742fa14672bc62264f534e2d007bef4533c05bee3e998",
+    "target_mob_mini_full.bmp": "5d4ea3ec022f781b5ce88ec4baefc8b38e3e0fc609d7654c12ddc11da1d97193",
+    "target_mob_mvp_empty.bmp": "9093a85b2081e9f6f5983c0c727d98ed08880e4271f5f9a781e2ed88387f3de1",
+    "target_mob_mvp_full.bmp": "b976447b5cdc6e35bef5ea1501e12463e2fc9ed0bc16a88fe2c782f0ae3c305f"
+  }
+}

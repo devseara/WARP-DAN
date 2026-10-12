@@ -1,0 +1,162 @@
+{
+  "date": "2026-09-24",
+  "status": "retired_from_working_tree",
+  "reason": "Superseded one-off job authoring, scale/motion experiments and old release reports; current correction/release code consumes pinned SPR/ACT baselines instead. Reusable locked-native tracing tools are retained.",
+  "archive": {
+    "path": "Assets/ClanBodySkins/releases/retired-tools-20260924/clan-retired-authoring.zip",
+    "sha256": "4432631e4841332867324847b088ade934ede0a89e49feaa9d1c51a47f193d00",
+    "bytes": 72399
+  },
+  "files": [
+    {
+      "path": "Inputs/ClanBodySkins/records/clan-acolyte-motion-audit.json",
+      "bytes": 2902,
+      "sha256": "524db3081588848fd4bb7000d6794c50d86da2383b3a69bf368898fcd328580e"
+    },
+    {
+      "path": "Inputs/ClanBodySkins/records/clan-acolyte-motion-correction.json",
+      "bytes": 2953,
+      "sha256": "8e0b09a5ce82c74078585f56557c6ad19d13ea93d289394beb72f4ddc2a2ac8b"
+    },
+    {
+      "path": "Inputs/ClanBodySkins/records/clan-body-scale-audit.json",
+      "bytes": 11381,
+      "sha256": "6b7174e638fc6fdd928fd0b53d4b4b331d3b1094ddbba5b78a3d794f5e3d6efd"
+    },
+    {
+      "path": "Inputs/ClanBodySkins/records/clan-merchant-trace-review.json",
+      "bytes": 2022,
+      "sha256": "1bfe4651d4159c14362bc2ebb1019798d0612538137e3a4f495489a90a7eac9e"
+    },
+    {
+      "path": "Inputs/ClanBodySkins/records/clan-sprites-v10-installation.json",
+      "bytes": 9501,
+      "sha256": "1ea6ef0aee83150f07c2740f9ce2c15ae25c0c45c60ec9f8cd83f47880bf732e"
+    },
+    {
+      "path": "Inputs/ClanBodySkins/records/clan-sprites-v8-installation.json",
+      "bytes": 2076,
+      "sha256": "c5eb906830531f0f76cbd1b38cd3c1262f99a411feb8adaf215c52500f834bce"
+    },
+    {
+      "path": "Inputs/ClanBodySkins/records/clan-sprites-v9-installation.json",
+      "bytes": 6926,
+      "sha256": "4b89d6ac5375e09eeb7538b6b19d7c7ddd00ac9b6dc93bc4dc47711a2091fc19"
+    },
+    {
+      "path": "Inputs/ClanBodySkins/records/clan-thief-design-review.json",
+      "bytes": 682,
+      "sha256": "9455e1b19dc9aa227de5372f4500ed67f68fe4de50b4e9861cb799d19b8bde1a"
+    },
+    {
+      "path": "Inputs/ClanBodySkins/records/clan-walk-size-correction.json",
+      "bytes": 2785,
+      "sha256": "f967763252a6a3fbff4aad83501cfd02dcad25b27b38d1ead757b121e2076bf9"
+    },
+    {
+      "path": "tools/audit_acolyte_motion.py",
+      "bytes": 11493,
+      "sha256": "2a2e05e399de758ae6972c4adbf63afc5d0c0bb559b14d291a7ecb4ddb61e3c4"
+    },
+    {
+      "path": "tools/audit_clan_body_scale.py",
+      "bytes": 13967,
+      "sha256": "29c92e76dc6954ef2d5ebd43a844bcd9128405a4b5d9294e9f1a0d5b6a3decf7"
+    },
+    {
+      "path": "tools/correct_thief_actions.py",
+      "bytes": 2758,
+      "sha256": "29595aece0f684ea44816eaf9153dfd5673a70c89b39338fb99f6dd80d65f2f7"
+    },
+    {
+      "path": "tools/finalize_thief_review.py",
+      "bytes": 8405,
+      "sha256": "9089818ad62623dee92b776105ede5f0cc43162760898b08e53e986f17304516"
+    },
+    {
+      "path": "tools/fit_merchant_trace_registration.py",
+      "bytes": 3347,
+      "sha256": "d4a6770dff6ac53730182502131d265d2fe4e6bb54e7fda12197422f3eeeb2e4"
+    },
+    {
+      "path": "tools/fit_thief_collars.py",
+      "bytes": 7626,
+      "sha256": "deeb146dfeb3368f50176001b8d6346f31b32f6d1f90b51b0198a16999297d1a"
+    },
+    {
+      "path": "tools/fix_clan_walk_size.py",
+      "bytes": 22607,
+      "sha256": "5ae824ada97004286af92370eaf0c592794c11b4a667b68fe0eb4877239f5ca8"
+    },
+    {
+      "path": "tools/import_merchant_trace_redraw.py",
+      "bytes": 8451,
+      "sha256": "9fee28f128ce10a2eb46709394663555d6e221a64623bc98e8fefd33224cd1c9"
+    },
+    {
+      "path": "tools/merchant_sprite_workflow.py",
+      "bytes": 11023,
+      "sha256": "8901b4adeb3024522221c35ccb2c10d4835af952f232416bd44a49c032c26f22"
+    },
+    {
+      "path": "tools/normalize_thief_sheet_grid.py",
+      "bytes": 4534,
+      "sha256": "0026f8f2da3555c477f73ade0e83ed3b838fd4f50a3189a2fabee7c4a5fe5fd8"
+    },
+    {
+      "path": "tools/review_merchant_trace.py",
+      "bytes": 4901,
+      "sha256": "9c6a0de9bcc5b21da7881b6cad3638004593f8ef7b001f5df4d3be92f0e92999"
+    },
+    {
+      "path": "tools/thief_action_workflow.py",
+      "bytes": 12771,
+      "sha256": "adb9b35adfae5f186c627c28fd24f6732a5f13ae20c3b5c5079359693087e8b0"
+    },
+    {
+      "path": "tools/thief_design_review.html",
+      "bytes": 3835,
+      "sha256": "8df29a894b916fb17bc53c7466a71c4f3c0cf6534556e8ccf868a0c43a0eaf4b"
+    },
+    {
+      "path": "tools/thief_design_workflow.py",
+      "bytes": 12915,
+      "sha256": "012849a132ef286dd51e7a8a9802822031bc345ac151d53e151e865f1f45a935"
+    },
+    {
+      "path": "tools/verify_thief_review_browser.cjs",
+      "bytes": 4114,
+      "sha256": "69d16a3026dbd7e55070d3fbb3288a916e5fd3fe4a4f68b1fa3a958e0956b62a"
+    }
+  ],
+  "kept_reusable_tools": [
+    "tools/build_registered_angel_job.py",
+    "tools/native_sprite_trace_review.html",
+    "tools/native_sprite_tracing.py",
+    "tools/select_angel_pose_correction.py"
+  ],
+  "protected_hashes_before": {
+    "Inputs/ClanBodySkins/runtime.cskb": "5fc98b97f57e5be093ea922c94c508f2b481d798c22f92bd8e70a7a3602b179c",
+    "Inputs/ClanBodySkins/runtime.json": "45001cff0e929efd054f29b677b9199ea4b8fa4b1ce3a88df82a85ff0448fdfe",
+    "Inputs/ClanBodySkins/perspective.bin": "74f9711cb92315c024daed59bcbc5684bd1dd0386d3bbde8183fdd9663ecda11",
+    "Inputs/ClanBodySkins/perspective.json": "9ab7d181787f617a1cc18a58d913a6fd51b326c1c6f4c22131be20899e7c7746",
+    "Inputs/ClanBodySkins/records/clan-sprites-current.json": "73c0b499d0f3528425de8db0c55d6e8f2b5cbbfbe153cd8505af9cb6a3106c9e",
+    "Inputs/ClanBodySkins/records/clan-neck-motion-correction.json": "0c991825c1e419a24f2b47eb6d83a43e635208eff4c7748246ca3dfb563046e3",
+    "Inputs/ClanBodySkins/records/clan-sprites-v11-installation.json": "c43c001c89ffa07aa47cccb41116515a5febbf64b875a102f772a8160277e880",
+    "Inputs/ClanBodySkins/records/clan-sprites-v12-installation.json": "6aca56498ba57431a3b1fa3b4e4f9472e40c367fd8c86bc27be3b969de938e34"
+  },
+  "grf_modified": false,
+  "runtime_inputs_modified": false,
+  "validation": {
+    "release_tests_passed": 8,
+    "qjs_payload_checks": "passed",
+    "retained_tool_imports": "passed",
+    "runtime_inputs_unchanged": true,
+    "installed_sprite_resource_pins_unchanged": true,
+    "active_dependency_check": "no retained tool imports a retired file"
+  },
+  "manifest_metadata_changes": [
+    "Remove retired authoring entries",
+    "Link this retirement record; resource paths and hashes unchanged"
+  ]
+}

@@ -12,8 +12,10 @@ from unicorn.x86_const import UC_X86_REG_ECX, UC_X86_REG_EIP
 
 def replay(exe, expect_crash):
     m=GachaMachine(exe);c=m.c;s=c['state'];obj=m.ready();manager=0x131F4E8
+    item_xy=(30+c['contentX'],149+(10 if c['banners'] else 0))
+    pull_xy=(705+c['contentX'],395)
     m.w(obj+0x1c,0);m.w(obj+0x20,0);m.w(obj+0x10,0)
-    m.right(obj,(30,149))
+    m.right(obj,item_xy)
     assert m.r(s+60),'right-down did not record the item slot'
     assert m.r(manager+0x19c)==(obj if expect_crash else 0)
     # Native outer poll starts at its actual capture/no-capture selection.
@@ -42,12 +44,12 @@ def replay(exe, expect_crash):
     assert m.r(manager+0x19c)==0
     # Right inspection must never disturb another window's existing capture.
     other=m.alloc(256);m.w(manager+0x19c,other)
-    m.right(obj,(30,149));m.right(obj,(30,149),True)
+    m.right(obj,item_xy);m.right(obj,item_xy,True)
     assert m.r(manager+0x19c)==other and not m.sent
     # Normal left-button controls still retain capture until mouse-up.
     m.w(manager+0x19c,0)
-    m.invoke(c['down'],obj,(705,395));assert m.r(manager+0x19c)==obj
-    m.invoke(c['up'],obj,(705,395));assert m.r(manager+0x19c)==0
+    m.invoke(c['down'],obj,pull_xy);assert m.r(manager+0x19c)==obj
+    m.invoke(c['up'],obj,pull_xy);assert m.r(manager+0x19c)==0
     print('PASS: actual native poll takes uncaptured path after item right-down; no 00A46B1C crash, foreign capture preserved, left controls still capture/release')
 
 

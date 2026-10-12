@@ -1,0 +1,31 @@
+{
+  "status": "deployed_requested_correction",
+  "files": [
+    {
+      "path": "assets/female-angel-mage-v9.spr",
+      "sha256": "76877bc757999076905d7670dc72f542fc1a098716dc868273983b0c54cbf17f"
+    },
+    {
+      "path": "assets/female-angel-mage-v9.act",
+      "sha256": "e85b0e1a6544b8515f26bacfb50711cf269333be88323743fe63d760cd6d215c"
+    }
+  ],
+  "asset_root": "Assets/ClanBodySkins/Mage/female-gait-v9",
+  "maindata_sha256": "09f9c024a6a49219b072d544e1fbe6df43f3202590f5ade3ca2ffbea5b4e44e5",
+  "patch_sha256": "b1e89a380c420618fc8b8b2d1b646a323be62f607c71265255ad2af093e03057",
+  "changed_frames": 8,
+  "unchanged_frame_uses": 448,
+  "act_bytes_identical_to_v8": true,
+  "previous_opaque_pixels_preserved": true,
+  "restored_pixels": 3032,
+  "same_panel_fill_pixels": 54,
+  "neutral_frame_matches_intact_v7": true,
+  "unrelated_grf_records_preserved": 18278,
+  "visual_acceptance": "Pending user follow-up",
+  "superseded_by": "clan-female-mage-v10.json",
+  "subsequent_live_findings": [
+    "Rear walk appears smaller than the idle outfit",
+    "Rear hands lack sway",
+    "Front hands/waist garment still looks unfinished"
+  ]
+}

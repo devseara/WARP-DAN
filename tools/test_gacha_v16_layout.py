@@ -8,6 +8,7 @@ from test_gacha_ui import GachaMachine, snapshot
 
 def run(exe,preview=None,game=None):
     m=GachaMachine(exe);c=m.c;s=c['state'];obj=m.ready()
+    dx=c['contentX']
     if game:m.client_artwork(game)
     p=snapshot(admin=True)
     def text(off,size,value):p[off:off+size]=value.encode()[:size-1].ljust(size,b'\0')
@@ -30,39 +31,40 @@ def run(exe,preview=None,game=None):
             Image.frombytes('RGBA',(w,h),bytes(m.u.mem_read(pix,w*h*4)),'raw','BGRA').save(preview.with_name(preview.stem+'-'+suffix+'.png'))
     m.receive(p);draw('four-tiers')
     expected=[('Common','93.90%'),('Rare','5.00%'),('Epic','1.00%'),('Legendary','0.10%')]
-    rate_x=331+int(m.font.getlength('Legendary'))
+    rate_x=331+dx+int(m.font.getlength('Legendary'))
     for i,(name,rate) in enumerate(expected):
-        assert any(t==name and (x,y)==(323,66+i*13) for t,x,y,_ in m.texts)
+        assert any(t==name and (x,y)==(323+dx,66+i*13) for t,x,y,_ in m.texts)
         assert any(t==rate and (x,y)==(rate_x,66+i*13) for t,x,y,_ in m.texts)
-    renamed=any(v in m.pe.get_memory_mapped_image() for v in (b'GachaUI.v19\0',b'GachaUI.v20\0'))
+    renamed=c['banners'] or any(v in m.pe.get_memory_mapped_image() for v in (b'GachaUI.v19\0',b'GachaUI.v20\0'))
     tabs=[(2,'Zeny Gacha',10,77),(3,'Show Prizes',91,78),(4,'History',173,51),
           (5,'Top Spenders',228,87),
           (6,'Legendary Winners' if renamed else 'Grand Winners',319,116 if renamed else 93),
           (9,'Admin',439 if renamed else 416,48)]
     for id_,label,x,width in tabs:
+        x+=dx
         hit=next(t for t in m.texts if t[0]==label and t[2]==26)
         measured=int(m.font.getlength(label));assert width==measured+14
         assert hit[1]==x+7,(label,hit)
         for xy in [(x,22),(x+width-1,41),(x+width//2,30)]:
             m.invoke(c['hit'],0,xy);assert m.u.reg_read(UC_X86_REG_EAX)==id_
-    assert any(t=='1,000,000 per pull' and (x,y)==(20,368) for t,x,y,_ in m.texts)
-    assert any(t=='54,321,000 Zeny' and (x,y)==(531,53) for t,x,y,_ in m.texts)
+    assert any(t=='1,000,000 per pull' and (x,y)==(20+dx,382 if c['wallet'] else 368) for t,x,y,_ in m.texts)
+    if not c['wallet']:assert any(t=='54,321,000 Zeny' and (x,y)==(531+dx,53) for t,x,y,_ in m.texts)
     assert b'genericsui\\gacha\\itembox_000.png' not in m.pe.get_memory_mapped_image()
-    assert sum(t=='54,321,000 Zeny' for t,_,_,_ in m.texts)==1
-    assert any(t=='MAIL | Legendary' for t,_,_,_ in m.texts)
+    assert sum(t=='54,321,000 Zeny' for t,_,_,_ in m.texts)==(0 if c['wallet'] else 1)
+    assert any(t==('MAIL' if c['banners'] else 'MAIL | Legendary') for t,_,_,_ in m.texts)
     assert any(t=='Featured Legendary prizes' for t,_,_,_ in m.texts)
     if renamed:
         assert b'Grand Winners' not in m.pe.get_memory_mapped_image()
         assert b'Legendary Winners' in m.pe.get_memory_mapped_image()
     # Same total balance remains in the HEADER, never in the confirmation panel.
     struct.pack_into('<H',p,10,3);struct.pack_into('<I',p,20,123);m.receive(p);draw('four-tier-confirmation')
-    assert sum(t=='54,321,000 Zeny' for t,_,_,_ in m.texts)==1
+    assert sum(t=='54,321,000 Zeny' for t,_,_,_ in m.texts)==(0 if c['wallet'] else 1)
     assert not any(t=='54,321,000 Zeny' and y>=176 for t,x,y,_ in m.texts)
     assert any('inventory, or mail' in t for t,_,_,_ in m.texts)
     for page,pages in [(1,10),(10,10),(100,100)]:
         q=snapshot(view=1,page=page,pages=pages);m.receive(q);draw('centered-page-'+str(page))
         label=f'Page {page} / {pages}';span=int(m.font.getlength(label))
-        assert any(t==label and x==622+(103-span)//2 and y==360 for t,x,y,_ in m.texts)
+        assert any(t==label and x==622+dx+(103-span)//2 and y==360 for t,x,y,_ in m.texts)
     for count in (0,2,5,0xffffffff):
         q=snapshot();struct.pack_into('<I',q,3660,count);before=bytes(m.u.mem_read(s,3856));m.receive(q);assert bytes(m.u.mem_read(s,3856))==before
     print('PASS: four named/rated tiers, Legendary card + mail label, six text-fit tab hitboxes, plain balance/per-pull text with no itembox asset, no modal balance, exact centered 1/10/100-page text and invalid tier-count rejection')

@@ -1,0 +1,335 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   This program is distributed in the hope that it will be useful,        *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+*   You should have received a copy of the GNU General Public License      *
+*   along with this program.  If not, see <http://www.gnu.org/licenses/>.  *
+*                                                                          *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-05-25                                             *
+*   Last Modified : 2026-07-24                                             *
+*                                                                          *
+*   Description   : Replaces stock [D]/[C]/[B]/[A] marks by numeric grade *
+*                   and publishes the identical map to the QJS-only item   *
+*                   renderer. This patch alone enables custom label words; *
+*                   server sentinel label text is never authoritative.     *
+*                                                                          *
+\**************************************************************************/
+
+///
+/// \brief Replaces the hardcoded enchant grade name marks ([D]/[C]/[B]/[A])
+///        with labels from Inputs/enchant_grade.yml.
+///
+CustomEnchantGradeLabels = function(_)
+{
+	const pattern = CustomEnchantGradeLabels.Pattern;
+
+	$$(_, 1.1, `Find the client function that formats item enchant grade labels`)
+	const hookAddr = Exe.FindHex(pattern);
+	if (hookAddr < 0)
+		throw Error("Enchant grade formatter was not found");
+
+	$$(_, 1.2, `Read the original formatter dependencies`)
+	const formatStr  = Exe.GetUint32(hookAddr + 0x61); // "[%s] "
+	const formatFunc = Exe.GetTgtAddr(hookAddr + 0x6D);
+
+	$$(_, 2.1, `Load the grade label mapping`)
+	const inFile = Exe.GetUserInput(
+		'$enchantGradeMap',
+		D_InFile,
+		"Enchant Grade Labels",
+		"Enter the YAML file containing enchant grade label names",
+		"Inputs/enchant_grade.yml"
+	);
+	if (inFile === false || inFile.isEmpty())
+		Cancel("No enchant grade label file specified");
+
+	const labels = CustomEnchantGradeLabels.LoadLabels(inFile);
+	if (labels.isEmpty())
+		Cancel("No enchant grade labels were found");
+
+	$$(_, 2.2, `Add the custom labels into the client`)
+	for (const entry of labels)
+		entry.addr = Exe.AddText(entry.label)[1];
+
+	const [emptyPhy, emptyLabel] = Exe.Allocate(1, 1);
+	Exe.SetHex(emptyPhy, "00");
+
+	$$(_, 3.1, `Build a data-driven grade lookup`)
+	let lookupCode = FP_START
+	+	PUSH(ESI)
+	+	" 0F B7 89 88 00 00 00" // movzx ecx, word ptr [ecx+88h]
+	;
+
+	const parts = [lookupCode];
+	const localTgts = {};
+	const selectedIdx = labels.length + 1;
+	const failIdx = selectedIdx + 2;
+	const okIdx = selectedIdx + 1;
+
+	labels.forEach((entry, idx) =>
+	{
+		const labelIdx = idx + 1;
+
+		parts[0] += CustomEnchantGradeLabels.CmpCxImm16(entry.grade)
+		+	JE(Filler(labelIdx))
+		;
+
+		parts.push(
+			MOV(EAX, entry.addr)
+		+	JMP(Filler(selectedIdx))
+		);
+	});
+
+	parts[0] += MOV(EAX, emptyLabel)
+	+	JMP(Filler(selectedIdx))
+	;
+
+	parts.push(
+		MOV(ESI, [EBP, 0x0C])
+	+	PUSH(EAX)
+	+	PUSH(formatStr)
+	+	PUSH(-1)
+	+	PUSH([ESI])
+	+	PUSH([EBP, 0x08])
+	+	CALL(Filler(90))
+	+	ADD(ESP, 0x14)
+	+	TEST(EAX, EAX)
+	+	JLE(Filler(failIdx))
+	+	CMP(BYTE_PTR, [EBP, 0x10], 0)
+	+	JE(Filler(okIdx))
+	+	SUB([ESI], EAX)
+	);
+
+	parts.push(
+		POP(ESI)
+	+	FP_STOP
+	+	RETN(0x0C)
+	);
+
+	parts.push(
+		XOR(EAX, EAX)
+	+	POP(ESI)
+	+	FP_STOP
+	+	RETN(0x0C)
+	);
+
+	$$(_, 3.2, `Resolve generated labels and formatter call`)
+	const offsets = MapAddrs(parts);
+	for (let idx = 1; idx <= labels.length; idx++)
+		localTgts[idx] = offsets[idx];
+	localTgts[selectedIdx] = offsets[selectedIdx];
+	localTgts[okIdx] = offsets[okIdx];
+	localTgts[failIdx] = offsets[failIdx];
+
+	$$(_, 3.3, `Replace the original hardcoded formatter`)
+	AutoHook(hookAddr, parts, {
+		allocSize : offsets.last(),
+		localTgts,
+		targets : {
+			90 : formatFunc
+		}
+	});
+
+	CustomEnchantGradeLabels.HookBroadcastFormatter(_, labels, emptyLabel);
+	if (typeof ItemColorStatic === "undefined" ||
+		typeof ItemColorStatic.installGradeLabelRegistry !== "function")
+		throw Error("CustomEnchantGradeLabels: item-color grade registry unavailable");
+	const gradeConfig =
+		ItemColorStatic.installGradeLabelRegistry(labels);
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("ItemColorStatic.GradeLabels", {
+			custom: true,
+			count: labels.length,
+			pending: gradeConfig === null,
+			gradeConfigVir: gradeConfig ? gradeConfig.virAddr : 0
+		});
+	}
+
+	return true;
+};
+
+CustomEnchantGradeLabels.Pattern =
+	"55 8B EC 51 0F B7 89 88 00 00 00 33 C0 66 89 45 FC "
++	"B8 01 00 00 00 56 66 3B C1 75 06 C6 45 FC 44 EB 37 "
++	"B8 02 00 00 00 66 3B C1 75 06 C6 45 FC 43 EB 27 "
++	"B8 03 00 00 00 66 3B C1 75 06 C6 45 FC 42 EB 17 "
++	"0F B6 45 FC BE 04 00 00 00 66 3B F1 BA 41 00 00 00 "
++	"0F 44 C2 88 45 FC 8B 75 0C 8D 45 FC 50 68"
+;
+
+CustomEnchantGradeLabels.CmpCxImm16 = value =>
+	" 66 81 F9" + value.toHex(2);
+
+CustomEnchantGradeLabels.HookBroadcastFormatter = function(_, labels, emptyLabel)
+{
+	$$(_, 4.1, `Find the grade enchant broadcast formatter`)
+	const hookAddr = Exe.FindHex(CustomEnchantGradeLabels.BroadcastPattern);
+	if (hookAddr < 0)
+		return;
+
+	const postGradeAddr = Exe.FindHex(
+		"C7 45 90 00 00 00 00 C7 45 A0 00 00 00 00 C7 45 A4 00 00 00 00",
+		hookAddr,
+		hookAddr + 0x400
+	);
+	if (postGradeAddr < 0)
+		throw Error("Grade enchant broadcast continuation was not found");
+
+	const assignPrefix = Exe.FindLastHex("8D 4D D8 E8", postGradeAddr, hookAddr);
+	if (assignPrefix < 0)
+		throw Error("Grade enchant broadcast string assignment helper was not found");
+
+	const postGradeVir = Exe.Phy2Vir(postGradeAddr, CODE);
+	const assignFunc = Exe.GetTgtAddr(assignPrefix + 4);
+	const successFormat = Exe.AddText("[%s] succeeded in enhancing the grade, and acquired the [%s %s] item.")[1];
+	const failFormat = Exe.AddText("[%s] failed to upgrade the [%s %s] item.")[1];
+
+	$$(_, 4.2, `Build broadcast grade label lookup`)
+	const parts = [
+		MOV(EAX, [EBP, -0x198])
+	+	MOVZX(ECX, [EAX, 0x1E])
+	];
+
+	const localTgts = {};
+	const assignBaseIdx = 1;
+	const unknownIdx = labels.length + 1;
+	const postIdx = labels.length + 2;
+	const targets = {
+		90 : assignFunc
+	};
+	targets[postIdx] = postGradeVir;
+
+	labels.forEach((entry, idx) =>
+	{
+		const labelIdx = assignBaseIdx + idx;
+
+		parts[0] += CMP(ECX, entry.grade)
+		+	JE(Filler(labelIdx))
+		;
+
+		parts.push(
+			LEA(ECX, [EBP, -0x28])
+		+	PUSH(entry.label.length)
+		+	PUSH(entry.addr)
+		+	CALL(Filler(90))
+		+	JMP(Filler(postIdx))
+		);
+	});
+
+	parts[0] += JMP(Filler(unknownIdx));
+
+	parts.push(
+		LEA(ECX, [EBP, -0x28])
+	+	PUSH(0)
+	+	PUSH(emptyLabel)
+	+	CALL(Filler(90))
+	+	JMP(Filler(postIdx))
+	);
+
+	labels.forEach((entry, idx) => localTgts[assignBaseIdx + idx] = 0);
+	localTgts[unknownIdx] = 0;
+
+	$$(_, 4.3, `Resolve broadcast formatter labels`)
+	const offsets = MapAddrs(parts);
+	labels.forEach((entry, idx) => localTgts[assignBaseIdx + idx] = offsets[assignBaseIdx + idx]);
+	localTgts[unknownIdx] = offsets[unknownIdx];
+
+	$$(_, 4.4, `Replace the broadcast hardcoded grade labels`)
+	AutoHook(hookAddr, parts, {
+		allocSize : offsets.last(),
+		localTgts,
+		targets
+	});
+
+	$$(_, 4.5, `Remove the literal "grade" word from broadcast messages`)
+	CustomEnchantGradeLabels.ReplaceBroadcastMsgString(
+		hookAddr,
+		0x0E86,
+		successFormat
+	);
+	CustomEnchantGradeLabels.ReplaceBroadcastMsgString(
+		hookAddr,
+		0x0E87,
+		failFormat
+	);
+};
+
+CustomEnchantGradeLabels.ReplaceBroadcastMsgString = function(hookAddr, msgId, formatAddr)
+{
+	const pushAddr = Exe.FindHex(PUSH(msgId), hookAddr, hookAddr + 0x500);
+	if (pushAddr < 0)
+		throw Error(`Grade enchant broadcast MsgString ${msgId} was not found`);
+
+	const callAddr = Exe.FindHex(CALL(ALLWC), pushAddr, pushAddr + 0x30);
+	if (callAddr < 0)
+		throw Error(`Grade enchant broadcast MsgString ${msgId} lookup was not found`);
+
+	Exe.SetHex(callAddr, MOV(EAX, formatAddr));
+};
+
+CustomEnchantGradeLabels.BroadcastPattern =
+	"B9 01 00 00 00 8B 85 68 FE FF FF 0F B7 40 1E "
++	"66 3B C8 0F 85 AC 00 00 00"
+;
+
+CustomEnchantGradeLabels.LoadLabels = file =>
+{
+	const yaml = Warp.LoadYaml(file);
+	if (yaml === false || !IsArr(yaml))
+		throw Error("Enchant grade label file is not readable or has invalid format");
+
+	let labels = [];
+	for (const entry of yaml)
+	{
+		const grade = entry.Grade;
+		const label = entry.Label;
+
+		if (!IsNum(grade) || grade <= 0 || grade > 0xFFFF)
+			continue;
+		if (!IsStr(label) || label.isEmpty())
+			continue;
+
+		for (let idx = 0; idx < label.length; idx++)
+		{
+			if (label.charCodeAt(idx) === 0)
+				throw Error(`Enchant grade ${grade} contains an invalid null character`);
+		}
+
+		labels.push({ grade, label });
+	}
+
+	labels.sort((a, b) => a.grade - b.grade);
+	return labels;
+};
+
+CustomEnchantGradeLabels.cleanup = () =>
+{
+	if (typeof ItemColorStatic !== "undefined" &&
+		typeof ItemColorStatic.resetGradeLabelRegistry === "function")
+		ItemColorStatic.resetGradeLabelRegistry();
+	else
+		CACHE.del("ItemColorStatic.CustomGradeLabels");
+};
+
+CustomEnchantGradeLabels.validate = () =>
+	Exe.FindHex(CustomEnchantGradeLabels.Pattern) > 0 &&
+	typeof ItemColorStatic !== "undefined" &&
+	typeof ItemColorStatic.installGradeLabelRegistry === "function";

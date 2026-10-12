@@ -1,0 +1,73 @@
+{
+  "job": "thief",
+  "revision": "v1",
+  "status": "accepted_pending_installation",
+  "date": "2026-09-23",
+  "accepted": true,
+  "installed": false,
+  "design_accepted": true,
+  "female_variant": "Full navy trousers; user authorized 2026-09-23",
+  "actions_per_sex": 104,
+  "frame_uses_per_sex": 456,
+  "unique_native_drawings_per_sex": 116,
+  "native_head_frames_identical": 912,
+  "act_layer_scale": 0.25,
+  "stock_fallback_frames": 0,
+  "work": "Assets/ClanBodySkins/Thief/complete-v1",
+  "review": "full-action-review.html",
+  "overview": "overview.png",
+  "files": [
+    {
+      "sex": "male",
+      "path": "assets/male-angel-thief-v1.spr",
+      "sha256": "6dcf7c337ff549c7fa8ccb742435f4cb92235fd3c0b37acab3ea57ceac6b5a11",
+      "bytes": 38271320
+    },
+    {
+      "sex": "male",
+      "path": "assets/male-angel-thief-v1.act",
+      "sha256": "cc80565a507e3e7146898f6ca255568113ffcc6dc4d7ffccd99836ea8f36fbac",
+      "bytes": 44748
+    },
+    {
+      "sex": "female",
+      "path": "assets/female-angel-thief-v1.spr",
+      "sha256": "2ca98e7e3094f61cef72bc031523e7cf58069f0b24f3c7b0c226a79a687b1679",
+      "bytes": 37881944
+    },
+    {
+      "sex": "female",
+      "path": "assets/female-angel-thief-v1.act",
+      "sha256": "54ea3a7bfaeb4e07a59927643c577abd0606e9d113789ecd0814fa7a22af5256",
+      "bytes": 44748
+    }
+  ],
+  "checks": [
+    {
+      "sex": "male",
+      "images": 212,
+      "actions": 104,
+      "frame_uses": 456,
+      "alpha_and_registration_key_checks": true,
+      "connected_body_images": true,
+      "native_head_renders_identical": 456
+    },
+    {
+      "sex": "female",
+      "images": 212,
+      "actions": 104,
+      "frame_uses": 456,
+      "alpha_and_registration_key_checks": true,
+      "connected_body_images": true,
+      "native_head_renders_identical": 456
+    }
+  ],
+  "annotation_completion_is_separate": true,
+  "source_prompts": "generation-requests.json",
+  "browser_verification": "browser-verification.json",
+  "walking_directions_played": 8,
+  "canonical_pose_boards_inspected": 30,
+  "acceptance_date": "2026-09-23",
+  "user_confirmation": "Looks right",
+  "acceptance_record": "user-review.json"
+}

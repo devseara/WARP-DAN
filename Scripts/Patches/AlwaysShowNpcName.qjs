@@ -1,0 +1,734 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Ylen X Walker                                       *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Ylen X Walker, Louis T Steinhil                        *
+*   Created Date  : 2026-06-11                                             *
+*   Last Modified : 2026-09-08                                             *
+*                                                                          *
+*   Description   : Rehosts the 2025-07-16 client's native NPC name        *
+*                   balloons through guarded static EXE caves. A bounded   *
+*                   GID/balloon table is fed by the EXTN dispatcher ring;  *
+*                   no NPC-name DLL, runtime hook, or heap container is    *
+*                   required. /shownpcname persistence uses a one-byte     *
+*                   savedata file through existing client Win32 imports.   *
+*                                                                          *
+\**************************************************************************/
+
+const NpcNameStatic = {
+	BuildDate: 20250716,
+	FrameCaller: 0x00C7642D,
+	FrameCallerContext: 0x00C7642B,
+	FrameCallerBytes: "8B CE E8 EE 13 00 00",
+	OriginalFrame: 0x00C77820,
+	GameModeVtable: 0x010904B8,
+	BalloonFactory: 0x00C714B0,
+	BalloonSetup: 0x00C6D1D0,
+	GetActor: 0x00A69EB0,
+	GetActorFallback: 0x00A69FA0,
+	DestroyBalloon: 0x00A447D0,
+	GetOption: 0x0068EA70,
+	SetOption: 0x0068FD50,
+	CreateFileIat: 0x00FC1224,
+	ReadFileIat: 0x00FC122C,
+	WriteFileIat: 0x00FC1234,
+	CloseHandleIat: 0x00FC1238,
+	UiManager: 0x0131F4E8,
+	ViewportPtr: 0x012515F8,
+	ShowNpcOption: 10001,
+	NameAboveOption: 0x5C,
+	WorldOffset: 0xCC,
+	BalloonOffset: 0x2AC,
+	HoverGidOffset: 0x2D8,
+	TableCapacity: 256,
+	EntrySize: 12,
+	RetryFrames: 15,
+	ExtnRingCapacity: 1024,
+	ExtnRingSlotShift: 10,
+	ExtnPacketId: 0x0BB7,
+	ExtnV4TypeOffset: 652,
+	ExtnWideTypeOffset: 772,
+	ExtnLegacyTypeOffset: 232,
+	NpcType: 2,
+	StateReadSequence: 0,
+	StateLastGameMode: 4,
+	StateLastWorld: 8,
+	StateFrameCounter: 12,
+	StateTable: 16,
+	StateSize: 16 + 256 * 12
+};
+
+NpcNameStatic.patchFrameCaller = function(callerPhy, bridgeVir)
+{
+	const callerPatch = Exe.ActivePatch;
+	Exe.ActivateGlobal();
+	Exe.BeginTag("NativeName.FrameCaller", true);
+	try
+	{
+		Exe.SetCALL(callerPhy, bridgeVir, 0);
+	}
+	finally
+	{
+		Exe.EndTag();
+		Exe.ActivePatch = callerPatch;
+	}
+};
+
+NpcNameStatic.hexNorm = function(hex)
+{
+	return (hex || "").replace(/\s+/g, " ").trim().toUpperCase();
+};
+
+NpcNameStatic.bytesToHex = function(bytes)
+{
+	return bytes.map(value => (value & 0xFF).toString(16).padStart(2, "0")).join(" ");
+};
+
+NpcNameStatic.asciiBytes = function(text)
+{
+	const bytes = [];
+	for (let i = 0; i < text.length; i++)
+		bytes.push(text.charCodeAt(i) & 0xFF);
+	bytes.push(0);
+	return bytes;
+};
+
+NpcNameStatic.allocateBytes = function(bytes, alignment = 1)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(bytes.length, alignment);
+	Exe.SetHex(phyAddr, NpcNameStatic.bytesToHex(bytes));
+	return {phyAddr, virAddr, size: bytes.length};
+};
+
+NpcNameStatic.asm = function()
+{
+	const bytes = [];
+	const labels = {};
+	const fixups = [];
+
+	const put32 = function(out, pos, value)
+	{
+		const v = value >>> 0;
+		out[pos] = v & 0xFF;
+		out[pos + 1] = (v >>> 8) & 0xFF;
+		out[pos + 2] = (v >>> 16) & 0xFF;
+		out[pos + 3] = (v >>> 24) & 0xFF;
+	};
+
+	return {
+		bytes,
+		emit: function(...values)
+		{
+			for (const value of values)
+				bytes.push(value & 0xFF);
+		},
+		dword: function(value)
+		{
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			put32(bytes, pos, value);
+		},
+		label: function(name)
+		{
+			if (Object.prototype.hasOwnProperty.call(labels, name))
+				throw Error(`AlwaysShowNpcName: duplicate label ${name}`);
+			labels[name] = bytes.length;
+		},
+		rel32: function(opcode, target)
+		{
+			bytes.push(opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		call: function(target) { this.rel32(0xE8, target); },
+		jmp: function(target) { this.rel32(0xE9, target); },
+		jcc: function(opcode, target)
+		{
+			bytes.push(0x0F, opcode);
+			const pos = bytes.length;
+			bytes.push(0, 0, 0, 0);
+			fixups.push({pos, target});
+		},
+		finish: function(baseVir)
+		{
+			const out = bytes.slice();
+			for (const fixup of fixups)
+			{
+				if (typeof fixup.target === "string" &&
+					!Object.prototype.hasOwnProperty.call(labels, fixup.target))
+					throw Error(`AlwaysShowNpcName: unresolved label ${fixup.target}`);
+				const targetVir = typeof fixup.target === "string"
+					? baseVir + labels[fixup.target]
+					: fixup.target;
+				put32(out, fixup.pos, targetVir - (baseVir + fixup.pos + 4));
+			}
+			return NpcNameStatic.bytesToHex(out);
+		}
+	};
+};
+
+NpcNameStatic.assertCode = function(label, virAddr, expectedHex)
+{
+	const phyAddr = Exe.Vir2Phy(virAddr, CODE);
+	if (phyAddr < 0)
+		throw Error(`AlwaysShowNpcName: ${label} is not mapped`);
+	const expected = NpcNameStatic.hexNorm(expectedHex);
+	const actual = NpcNameStatic.hexNorm(
+		Exe.GetHex(phyAddr, expected.split(" ").length)
+	);
+	if (actual !== expected)
+		throw Error(`AlwaysShowNpcName: ${label} mismatch, got ${actual}`);
+	return phyAddr;
+};
+
+NpcNameStatic.allocateCode = function(assembler)
+{
+	const [phyAddr, virAddr] = Exe.Allocate(assembler.bytes.length, 0x10);
+	Exe.SetHex(phyAddr, assembler.finish(virAddr));
+	return {phyAddr, virAddr, size: assembler.bytes.length};
+};
+
+NpcNameStatic.buildToggle = function()
+{
+	const a = NpcNameStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC);                 // PUSH EBP / MOV EBP,ESP
+	a.emit(0x68); a.dword(NpcNameStatic.ShowNpcOption);
+	a.call(NpcNameStatic.GetOption);
+	a.emit(0x83, 0xC4, 0x04);
+	a.emit(0x84, 0xC0, 0x0F, 0x94, 0xC0);    // TEST AL,AL / SETE AL
+	a.emit(0x0F, 0xB6, 0xC0, 0x50);          // MOVZX EAX,AL / PUSH EAX
+	a.emit(0x68); a.dword(NpcNameStatic.ShowNpcOption);
+	a.call(NpcNameStatic.SetOption);
+	a.emit(0x83, 0xC4, 0x08, 0x5D, 0xC3);
+	return a;
+};
+
+NpcNameStatic.buildFrameBridge = function(frameVir)
+{
+	const a = NpcNameStatic.asm();
+	a.emit(0x51);                              // PUSH ECX (CGameMode*)
+	a.call(NpcNameStatic.OriginalFrame);
+	a.emit(0x59);                              // POP ECX
+	a.call(frameVir);
+	a.emit(0xC3);
+	return a;
+};
+
+NpcNameStatic.buildPersistence = function(persistVir, pathVir)
+{
+	const a = NpcNameStatic.asm();
+	a.emit(0x55, 0x8B, 0xEC, 0x53, 0x56, 0x57);
+
+	// First frame: load one byte from savedata/shownpcname.dat when present.
+	a.emit(0x83, 0x3D); a.dword(persistVir); a.emit(0x00);
+	a.jcc(0x85, "check_change");
+	a.emit(0xC7, 0x05); a.dword(persistVir); a.dword(1);
+	a.emit(0x6A, 0x00, 0x68); a.dword(0x80);  // template, attributes
+	a.emit(0x6A, 0x03, 0x6A, 0x00, 0x6A, 0x03); // OPEN_EXISTING, security, share
+	a.emit(0x68); a.dword(0x80000000);         // GENERIC_READ
+	a.emit(0x68); a.dword(pathVir);
+	a.emit(0xFF, 0x15); a.dword(NpcNameStatic.CreateFileIat);
+	a.emit(0x8B, 0xD8, 0x83, 0xFB, 0xFF);
+	a.jcc(0x84, "check_change");
+	a.emit(0x6A, 0x00, 0x68); a.dword(persistVir + 12);
+	a.emit(0x6A, 0x01, 0x68); a.dword(persistVir + 8);
+	a.emit(0x53, 0xFF, 0x15); a.dword(NpcNameStatic.ReadFileIat);
+	a.emit(0x8B, 0xF0, 0x53, 0xFF, 0x15); a.dword(NpcNameStatic.CloseHandleIat);
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "check_change");
+	a.emit(0x83, 0x3D); a.dword(persistVir + 12); a.emit(0x01);
+	a.jcc(0x85, "check_change");
+	a.emit(0x0F, 0xB6, 0x05); a.dword(persistVir + 8);
+	a.emit(0x83, 0xF8, 0x01);
+	a.jcc(0x87, "check_change");
+	a.emit(0xA3); a.dword(persistVir + 4);
+	a.emit(0x50, 0x68); a.dword(NpcNameStatic.ShowNpcOption);
+	a.call(NpcNameStatic.SetOption);
+	a.emit(0x83, 0xC4, 0x08);
+
+	// Both slash commands and Game Settings update option 10001. Mirror any
+	// change to disk immediately, so logout timing cannot lose the state.
+	a.label("check_change");
+	a.emit(0x68); a.dword(NpcNameStatic.ShowNpcOption);
+	a.call(NpcNameStatic.GetOption);
+	a.emit(0x83, 0xC4, 0x04, 0x0F, 0xB6, 0xC0);
+	a.emit(0x3B, 0x05); a.dword(persistVir + 4);
+	a.jcc(0x84, "done");
+	a.emit(0xA3); a.dword(persistVir + 4);
+	a.emit(0xA2); a.dword(persistVir + 8);
+	a.emit(0x6A, 0x00, 0x68); a.dword(0x80);
+	a.emit(0x6A, 0x02, 0x6A, 0x00, 0x6A, 0x01); // CREATE_ALWAYS, security, share
+	a.emit(0x68); a.dword(0x40000000);         // GENERIC_WRITE
+	a.emit(0x68); a.dword(pathVir);
+	a.emit(0xFF, 0x15); a.dword(NpcNameStatic.CreateFileIat);
+	a.emit(0x8B, 0xD8, 0x83, 0xFB, 0xFF);
+	a.jcc(0x84, "done");
+	a.emit(0x6A, 0x00, 0x68); a.dword(persistVir + 12);
+	a.emit(0x6A, 0x01, 0x68); a.dword(persistVir + 8);
+	a.emit(0x53, 0xFF, 0x15); a.dword(NpcNameStatic.WriteFileIat);
+	a.emit(0x53, 0xFF, 0x15); a.dword(NpcNameStatic.CloseHandleIat);
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x5D, 0xC3);
+	return a;
+};
+
+NpcNameStatic.buildFrame = function(
+	stateVir,
+	tableVir,
+	extnVir,
+	persistenceVir
+)
+{
+	const a = NpcNameStatic.asm();
+	const state = offset => stateVir + offset;
+	const emitDestroyEax = function()
+	{
+		a.emit(0x50);                            // PUSH EAX balloon
+		a.emit(0xB9); a.dword(NpcNameStatic.UiManager);
+		a.call(NpcNameStatic.DestroyBalloon);
+	};
+	const emitRetry = function()
+	{
+		a.emit(0x8B, 0x45, 0xE0);               // MOV EAX,[EBP-20] frame
+		a.emit(0x83, 0xC0, NpcNameStatic.RetryFrames);
+		a.emit(0x89, 0x47, 0x08);               // MOV [EDI+8],EAX
+	};
+	// Frame prologue and strict CGameMode/world-manager guards.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x28);
+	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF1);     // save EBX/ESI/EDI; ESI=this
+	a.emit(0x85, 0xF6);
+	a.jcc(0x84, "done");
+	a.emit(0x81, 0x3E); a.dword(NpcNameStatic.GameModeVtable);
+	a.jcc(0x85, "done");
+	a.emit(0x8B, 0x9E); a.dword(NpcNameStatic.WorldOffset);
+	a.emit(0x85, 0xDB);
+	a.jcc(0x84, "done");
+	a.emit(0xFF, 0x05); a.dword(state(NpcNameStatic.StateFrameCounter));
+	a.emit(0xA1); a.dword(state(NpcNameStatic.StateFrameCounter));
+	a.emit(0x89, 0x45, 0xE0);                 // [EBP-20] current frame
+
+	// A new mode/world invalidates every balloon and table entry.
+	a.emit(0x39, 0x35); a.dword(state(NpcNameStatic.StateLastGameMode));
+	a.jcc(0x85, "reset_map");
+	a.emit(0x3B, 0x1D); a.dword(state(NpcNameStatic.StateLastWorld));
+	a.jcc(0x84, "drain_ring");
+	a.label("reset_map");
+	// Login can replace CGameMode while retaining the same live world manager.
+	// That is not a map transition: keep the EXTN GID set and only discard the
+	// balloon objects owned by the retired mode. A changed world pointer is the
+	// authoritative boundary that invalidates the GID set.
+	a.emit(0x83, 0x3D); a.dword(state(NpcNameStatic.StateLastWorld)); a.emit(0x00);
+	a.jcc(0x84, "full_reset");
+	a.emit(0x3B, 0x1D); a.dword(state(NpcNameStatic.StateLastWorld));
+	a.jcc(0x85, "full_reset");
+	a.emit(0xBF); a.dword(tableVir);
+	a.emit(0xB9); a.dword(NpcNameStatic.TableCapacity);
+	a.label("stabilize_loop");
+	a.emit(0x8B, 0x47, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "stabilize_clear");
+	a.emit(0x51);
+	emitDestroyEax();
+	a.emit(0x59);
+	a.label("stabilize_clear");
+	a.emit(0xC7, 0x47, 0x04); a.dword(0);
+	a.emit(0xC7, 0x47, 0x08); a.dword(0);
+	a.emit(0x83, 0xC7, NpcNameStatic.EntrySize, 0x49);
+	a.jcc(0x85, "stabilize_loop");
+	a.emit(0x89, 0x35); a.dword(state(NpcNameStatic.StateLastGameMode));
+	a.emit(0x89, 0x1D); a.dword(state(NpcNameStatic.StateLastWorld));
+	a.jmp("drain_ring");
+	a.label("full_reset");
+	a.emit(0xBF); a.dword(tableVir);
+	a.emit(0xB9); a.dword(NpcNameStatic.TableCapacity);
+	a.label("reset_loop");
+	a.emit(0x8B, 0x47, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "reset_clear");
+	a.emit(0x51);
+	emitDestroyEax();
+	a.emit(0x59);
+	a.label("reset_clear");
+	a.emit(0xC7, 0x07); a.dword(0);
+	a.emit(0xC7, 0x47, 0x04); a.dword(0);
+	a.emit(0xC7, 0x47, 0x08); a.dword(0);
+	a.emit(0x83, 0xC7, NpcNameStatic.EntrySize, 0x49);
+	a.jcc(0x85, "reset_loop");
+	a.emit(0x89, 0x35); a.dword(state(NpcNameStatic.StateLastGameMode));
+	a.emit(0x89, 0x1D); a.dword(state(NpcNameStatic.StateLastWorld));
+
+	// Drain the lock-free EXTN ring and add type-2 NPC GIDs to the table.
+	a.label("drain_ring");
+	a.emit(0xA1); a.dword(extnVir + 4);         // EAX=write sequence
+	a.emit(0x89, 0x45, 0xE4);                 // snapshot in [EBP-1C]
+	a.emit(0x8B, 0x15); a.dword(state(NpcNameStatic.StateReadSequence));
+	a.emit(0x8B, 0xC8, 0x2B, 0xCA);          // ECX=write-read
+	a.emit(0x85, 0xC9);
+	a.jcc(0x84, "after_drain");
+	a.emit(0x81, 0xF9); a.dword(NpcNameStatic.ExtnRingCapacity);
+	a.jcc(0x86, "drain_loop");               // JBE
+	a.emit(0x8B, 0xD0, 0x81, 0xEA); a.dword(NpcNameStatic.ExtnRingCapacity);
+	a.label("drain_loop");
+	a.emit(0x3B, 0x55, 0xE4);
+	a.jcc(0x84, "store_read_sequence");
+	a.emit(0x8B, 0xC2, 0x25); a.dword(NpcNameStatic.ExtnRingCapacity - 1);
+	a.emit(0xC1, 0xE0, NpcNameStatic.ExtnRingSlotShift);
+	a.emit(0x05); a.dword(extnVir + 16);
+	a.emit(0x8B, 0x08, 0x8D, 0x40, 0x04);    // ECX=len; EAX=packet
+	a.emit(0x66, 0x81, 0x38); a.emit(0xB7, 0x0B);
+	a.jcc(0x85, "next_packet");
+	a.emit(0x0F, 0xB7, 0x58, 0x02, 0x3B, 0xD9);
+	a.jcc(0x85, "next_packet");
+	a.emit(0x81, 0x78, 0x04); a.dword(0x4558544E);
+	a.jcc(0x85, "next_packet");
+	a.emit(0x81, 0xF9); a.dword(653);
+	a.jcc(0x84, "v4_packet");
+	a.emit(0x81, 0xF9); a.dword(657);
+	a.jcc(0x84, "v4_packet");
+	a.emit(0x81, 0xF9); a.dword(773);
+	a.jcc(0x84, "wide_packet");
+	a.emit(0x81, 0xF9); a.dword(777);
+	a.jcc(0x84, "wide_packet");
+	a.emit(0x81, 0xF9); a.dword(233);
+	a.jcc(0x84, "legacy_packet");
+	a.emit(0x81, 0xF9); a.dword(237);
+	a.jcc(0x85, "next_packet");
+	a.label("legacy_packet");
+	a.emit(0x80, 0xB8); a.dword(NpcNameStatic.ExtnLegacyTypeOffset); a.emit(NpcNameStatic.NpcType);
+	a.jcc(0x85, "next_packet");
+	a.jmp("packet_gid");
+	a.label("wide_packet");
+	a.emit(0x80, 0xB8); a.dword(NpcNameStatic.ExtnWideTypeOffset); a.emit(NpcNameStatic.NpcType);
+	a.jcc(0x85, "next_packet");
+	a.jmp("packet_gid");
+	a.label("v4_packet");
+	a.emit(0x80, 0xB8); a.dword(NpcNameStatic.ExtnV4TypeOffset); a.emit(NpcNameStatic.NpcType);
+	a.jcc(0x85, "next_packet");
+	a.label("packet_gid");
+	a.emit(0x8B, 0x48, 0x08, 0x85, 0xC9);
+	a.jcc(0x84, "next_packet");
+	a.emit(0xBF); a.dword(tableVir);
+	a.emit(0xBB); a.dword(NpcNameStatic.TableCapacity);
+	a.label("find_gid");
+	a.emit(0x3B, 0x0F);
+	a.jcc(0x84, "refresh_gid");
+	a.emit(0x83, 0x3F, 0x00);
+	a.jcc(0x84, "insert_gid");
+	a.emit(0x83, 0xC7, NpcNameStatic.EntrySize, 0x4B);
+	a.jcc(0x85, "find_gid");
+	a.jmp("next_packet");
+	a.label("insert_gid");
+	a.emit(0x89, 0x0F);
+	a.emit(0xC7, 0x47, 0x04); a.dword(0);
+	a.label("refresh_gid");
+	a.emit(0xC7, 0x47, 0x08); a.dword(0);
+	a.label("next_packet");
+	a.emit(0x42);
+	a.jmp("drain_loop");
+	a.label("store_read_sequence");
+	a.emit(0x89, 0x15); a.dword(state(NpcNameStatic.StateReadSequence));
+	a.label("after_drain");
+	a.call(persistenceVir);
+
+	// The client option is the single source of truth for slash/UI toggles.
+	a.emit(0x68); a.dword(NpcNameStatic.ShowNpcOption);
+	a.call(NpcNameStatic.GetOption);
+	a.emit(0x83, 0xC4, 0x04, 0x84, 0xC0);
+	a.jcc(0x85, "render_enabled");
+
+	// Disabled: destroy only balloon objects; retain GIDs for instant re-enable.
+	a.emit(0xBF); a.dword(tableVir);
+	a.emit(0xB9); a.dword(NpcNameStatic.TableCapacity);
+	a.label("disabled_loop");
+	a.emit(0x8B, 0x47, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "disabled_clear");
+	a.emit(0x51);
+	emitDestroyEax();
+	a.emit(0x59);
+	a.label("disabled_clear");
+	a.emit(0xC7, 0x47, 0x04); a.dword(0);
+	a.emit(0xC7, 0x47, 0x08); a.dword(0);
+	a.emit(0x83, 0xC7, NpcNameStatic.EntrySize, 0x49);
+	a.jcc(0x85, "disabled_loop");
+	a.jmp("done");
+
+	// Save native hover state, then update every active bounded-table entry.
+	a.label("render_enabled");
+	a.emit(0x8B, 0x9E); a.dword(NpcNameStatic.WorldOffset);
+	a.emit(0x8B, 0x86); a.dword(NpcNameStatic.BalloonOffset);
+	a.emit(0x89, 0x45, 0xFC);
+	a.emit(0x8B, 0x86); a.dword(NpcNameStatic.HoverGidOffset);
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0x68); a.dword(NpcNameStatic.NameAboveOption);
+	a.call(NpcNameStatic.GetOption);
+	a.emit(0x83, 0xC4, 0x04, 0x0F, 0xB6, 0xC0);
+	a.emit(0x89, 0x45, 0xF4);
+	a.emit(0xC7, 0x45, 0xF0); a.dword(NpcNameStatic.TableCapacity);
+	a.emit(0xBF); a.dword(tableVir);
+	a.label("render_loop");
+	a.emit(0x8B, 0x07, 0x85, 0xC0);
+	a.jcc(0x84, "render_next");
+	a.emit(0x8B, 0x4D, 0xE0, 0x3B, 0x4F, 0x08);
+	a.jcc(0x82, "render_next");               // retry frame not reached
+	a.emit(0x50, 0x8B, 0xCB);
+	a.call(NpcNameStatic.GetActor);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x85, "actor_ready");
+	a.emit(0xFF, 0x37, 0x8B, 0xCB);
+	a.call(NpcNameStatic.GetActorFallback);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "actor_missing");
+	a.label("actor_ready");
+	a.emit(0x89, 0x45, 0xEC);                 // [EBP-14] actor
+	// Match the proven DLL guard: an actor can exist before its interned name
+	// at +0x110 is published during initial login. BalloonSetup is not valid
+	// until that pointer is ready.
+	a.emit(0x83, 0xB8); a.dword(0x110); a.emit(0x00);
+	a.jcc(0x84, "retry_entry");
+	a.emit(0x8B, 0x57, 0x04, 0x85, 0xD2);
+	a.jcc(0x85, "balloon_ready");
+	a.emit(0xC7, 0x45, 0xE8); a.dword(0);
+	a.emit(0x8D, 0x45, 0xE8, 0x50);
+	a.call(NpcNameStatic.BalloonFactory);
+	a.emit(0x8B, 0x55, 0xE8, 0x89, 0x57, 0x04);
+	a.emit(0x85, 0xD2);
+	a.jcc(0x84, "retry_entry");
+	a.emit(0x8B, 0x57, 0x04);
+	a.label("balloon_ready");
+	a.emit(0x85, 0xD2);
+	a.jcc(0x84, "retry_entry");
+	a.emit(0x89, 0x96); a.dword(NpcNameStatic.BalloonOffset);
+	a.emit(0xFF, 0x75, 0xEC, 0x8B, 0xCE);
+	a.call(NpcNameStatic.BalloonSetup);
+
+	// Reject native edge-clamped balloons so off-screen NPCs do not stack at
+	// viewport borders. A short frame retry replaces the DLL's millisecond timer.
+	a.emit(0x8B, 0x57, 0x04);
+	a.emit(0xA1); a.dword(NpcNameStatic.ViewportPtr);
+	a.emit(0x89, 0x45, 0xDC, 0x85, 0xC0);
+	a.jcc(0x84, "above_adjust");
+	a.emit(0x8B, 0x4A, 0x14, 0x85, 0xC9);
+	a.jcc(0x8E, "above_adjust");
+	a.emit(0x8B, 0x45, 0xDC, 0x8B, 0x40, 0x28, 0x05);
+	a.dword(512);
+	a.emit(0x3B, 0xC8);
+	a.jcc(0x8F, "above_adjust");
+	a.emit(0x8B, 0x4A, 0x18, 0x85, 0xC9);
+	a.jcc(0x8E, "above_adjust");
+	a.emit(0x8B, 0x45, 0xDC, 0x8B, 0x40, 0x2C, 0x05);
+	a.dword(512);
+	a.emit(0x3B, 0xC8);
+	a.jcc(0x8F, "above_adjust");
+	a.emit(0x8B, 0x42, 0x1C, 0x83, 0xF8, 0xFD);
+	a.jcc(0x8E, "clipped_balloon");
+	a.emit(0x8B, 0x42, 0x20, 0x83, 0xF8, 0xFD);
+	a.jcc(0x8E, "clipped_balloon");
+	a.emit(0x8B, 0x45, 0xDC, 0x8B, 0x40, 0x28);
+	a.emit(0x2B, 0x42, 0x14, 0x83, 0xC0, 0x03);
+	a.emit(0x39, 0x42, 0x1C);
+	a.jcc(0x8D, "clipped_balloon");
+	a.emit(0x8B, 0x45, 0xDC, 0x8B, 0x40, 0x2C);
+	a.emit(0x2B, 0x42, 0x18, 0x83, 0xC0, 0x03);
+	a.emit(0x39, 0x42, 0x20);
+	a.jcc(0x8D, "clipped_balloon");
+
+	// Match the DLL's /font above-head correction using actor scale.
+	a.label("above_adjust");
+	a.emit(0x83, 0x7D, 0xF4, 0x00);
+	a.jcc(0x84, "render_success");
+	a.emit(0xA1); a.dword(NpcNameStatic.ViewportPtr);
+	a.emit(0x85, 0xC0);
+	a.jcc(0x84, "render_success");
+	a.emit(0x8B, 0x40, 0x2C, 0x85, 0xC0);
+	a.jcc(0x8E, "render_success");
+	a.emit(0xC1, 0xF8, 0x02, 0xF7, 0xD8);
+	a.emit(0x89, 0x45, 0xE4);                 // approximate -height/4
+	a.emit(0x8B, 0x45, 0xEC);
+	a.emit(0xDB, 0x45, 0xE4, 0xD8, 0x48, 0x5C, 0xDB, 0x5D, 0xE4);
+	a.emit(0x8B, 0x57, 0x04, 0x8B, 0x02, 0x8B, 0x40, 0x10);
+	a.emit(0x8B, 0x4A, 0x20, 0x03, 0x4D, 0xE4, 0x51);
+	a.emit(0xFF, 0x72, 0x1C, 0x8B, 0xCA, 0xFF, 0xD0);
+	a.label("render_success");
+	a.emit(0xC7, 0x47, 0x08); a.dword(0);
+	a.jmp("render_next");
+
+	a.label("actor_missing");
+	a.emit(0x8B, 0x47, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "retry_entry");
+	emitDestroyEax();
+	a.emit(0xC7, 0x47, 0x04); a.dword(0);
+	a.label("retry_entry");
+	emitRetry();
+	a.jmp("render_next");
+
+	a.label("clipped_balloon");
+	a.emit(0x8B, 0x47, 0x04, 0x85, 0xC0);
+	a.jcc(0x84, "retry_entry");
+	emitDestroyEax();
+	a.emit(0xC7, 0x47, 0x04); a.dword(0);
+	a.jmp("retry_entry");
+
+	a.label("render_next");
+	a.emit(0x83, 0xC7, NpcNameStatic.EntrySize);
+	a.emit(0xFF, 0x4D, 0xF0);
+	a.jcc(0x85, "render_loop");
+	a.emit(0x8B, 0x45, 0xFC);
+	a.emit(0x89, 0x86); a.dword(NpcNameStatic.BalloonOffset);
+	a.emit(0x8B, 0x45, 0xF8);
+	a.emit(0x89, 0x86); a.dword(NpcNameStatic.HoverGidOffset);
+
+	a.label("done");
+	a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC3);
+	return a;
+};
+
+AlwaysShowNpcName = function(_)
+{
+	if (Exe.BuildDate !== NpcNameStatic.BuildDate)
+		throw Error("AlwaysShowNpcName supports only the 2025-07-16 client");
+	if (typeof CustomPacketDispatch === "undefined" ||
+		typeof CustomPacketDispatch.install !== "function")
+		throw Error("AlwaysShowNpcName: CustomPacketDispatch helper unavailable");
+	if (typeof CustomSlashCommand === "undefined" ||
+		typeof CustomSlashCommand.register !== "function")
+		throw Error("AlwaysShowNpcName: CustomSlashCommand helper unavailable");
+
+	$$(_, 1, "Install bounded EXTN discovery transport");
+	CustomPacketDispatch.install(`${_}.Dispatch`, ["EXTN"]);
+	const dispatch = CACHE.get("CustomPacketDispatch.Routes");
+	const extn = dispatch && dispatch.routes ? dispatch.routes.EXTN : null;
+	if (!extn || extn.transport !== "ring-v2" ||
+		!Number.isInteger(extn.blockVir))
+		throw Error("AlwaysShowNpcName: EXTN ring-v2 block unavailable");
+
+	$$(_, 2, "Verify native frame caller and balloon API entry points");
+	const callerContextPhy = NpcNameStatic.assertCode(
+		"frame caller",
+		NpcNameStatic.FrameCallerContext,
+		NpcNameStatic.FrameCallerBytes
+	);
+	NpcNameStatic.assertCode("balloon factory", NpcNameStatic.BalloonFactory, "55 8B EC 6A FF");
+	NpcNameStatic.assertCode("balloon setup", NpcNameStatic.BalloonSetup, "55 8B EC 6A FF");
+	NpcNameStatic.assertCode("actor lookup", NpcNameStatic.GetActor, "55 8B EC 8B 51 10");
+	NpcNameStatic.assertCode("balloon destroy", NpcNameStatic.DestroyBalloon, "55 8B EC 8B 45 08");
+
+	$$(_, 3, "Allocate fixed NPC state and native caves");
+	const [statePhy, stateVir] = Exe.Allocate(NpcNameStatic.StateSize, 0x10);
+	for (let offset = 0; offset < NpcNameStatic.StateSize; offset += 4)
+		Exe.SetUint32(statePhy + offset, 0);
+	const tableVir = stateVir + NpcNameStatic.StateTable;
+	const [persistPhy, persistVir] = Exe.Allocate(16, 4);
+	Exe.SetUint32(persistPhy, 0);              // loaded
+	Exe.SetUint32(persistPhy + 4, 0xFFFFFFFF); // last value
+	Exe.SetUint32(persistPhy + 8, 0);          // byte buffer
+	Exe.SetUint32(persistPhy + 12, 0);         // I/O count
+	const persistPath = NpcNameStatic.allocateBytes(
+		NpcNameStatic.asciiBytes("savedata\\shownpcname.dat")
+	);
+
+	const toggle = NpcNameStatic.allocateCode(NpcNameStatic.buildToggle());
+	const persistence = NpcNameStatic.allocateCode(
+		NpcNameStatic.buildPersistence(persistVir, persistPath.virAddr)
+	);
+	const frame = NpcNameStatic.allocateCode(
+		NpcNameStatic.buildFrame(
+			stateVir,
+			tableVir,
+			extn.blockVir,
+			persistence.virAddr
+		)
+	);
+	const bridge = NpcNameStatic.allocateCode(
+		NpcNameStatic.buildFrameBridge(frame.virAddr)
+	);
+	CACHE.put("AlwaysShowNpcName.QjsState", {
+		bridgeVir: bridge.virAddr,
+		frameVir: frame.virAddr,
+		frameCaller: NpcNameStatic.FrameCaller
+	});
+
+	$$(_, 4, "Activate frame bridge and /shownpcname static command");
+	NpcNameStatic.patchFrameCaller(callerContextPhy + 2, bridge.virAddr);
+	CustomSlashCommand.register(`${_}.SlashCommand`, {
+		command: "/shownpcname",
+		targetVir: toggle.virAddr,
+		optionId: NpcNameStatic.ShowNpcOption
+	});
+
+	if (typeof PatchDiagnostics !== "undefined" &&
+		typeof PatchDiagnostics.add === "function")
+	{
+		PatchDiagnostics.add("AlwaysShowNpcName.QjsOnly", {
+			frameCaller: NpcNameStatic.FrameCaller,
+			bridgeVir: bridge.virAddr,
+			frameVir: frame.virAddr,
+			toggleVir: toggle.virAddr,
+			persistenceVir: persistence.virAddr,
+			persistStateVir: persistVir,
+			persistPathVir: persistPath.virAddr,
+			stateVir,
+			tableVir,
+			tableCapacity: NpcNameStatic.TableCapacity,
+			extnVir: extn.blockVir,
+			dllImports: 0
+		});
+	}
+
+	try
+	{
+		const fp = new TextFile(OUTDIR + "AlwaysShowNpcName_result.txt", "w");
+		if (fp.Valid)
+		{
+			fp.WriteLine("AlwaysShowNpcName patch result :");
+			fp.WriteLine("  Build date: " + Exe.BuildDate);
+			fp.WriteLine("  Frame caller: 0x00C7642D -> guarded static bridge");
+			fp.WriteLine("  Original updater: 0x00C77820, called first");
+			fp.WriteLine("  NPC discovery: 0x0BB7 EXTN ring-v2");
+			fp.WriteLine("  State: bounded 256-entry static table");
+			fp.WriteLine("  Toggle: /shownpcname and Game Settings option 10001");
+			fp.WriteLine("  Persistence: savedata\\shownpcname.dat (one byte)");
+			fp.WriteLine("  NPC-name external modules/runtime hooks: none");
+			fp.Close();
+		}
+	}
+	catch (error)
+	{
+		// Diagnostic output is best effort and does not affect the patch.
+	}
+
+	return true;
+};
+
+AlwaysShowNpcName.validate = function()
+{
+	if (Exe.BuildDate !== NpcNameStatic.BuildDate)
+		return false;
+	try
+	{
+		NpcNameStatic.assertCode(
+			"frame caller",
+			NpcNameStatic.FrameCallerContext,
+			NpcNameStatic.FrameCallerBytes
+		);
+		NpcNameStatic.assertCode("balloon factory", NpcNameStatic.BalloonFactory, "55 8B EC 6A FF");
+		NpcNameStatic.assertCode("balloon setup", NpcNameStatic.BalloonSetup, "55 8B EC 6A FF");
+		return true;
+	}
+	catch (error)
+	{
+		return false;
+	}
+};

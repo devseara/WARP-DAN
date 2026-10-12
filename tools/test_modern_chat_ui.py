@@ -17,7 +17,7 @@ from unicorn.x86_const import *
 def pack(value):
     return struct.pack('<I', value & 0xffffffff)
 
-ASSETS = Path(__file__).resolve().parents[1] / 'Assets' / 'ModernChatUI'
+ASSETS = Path(r'D:\AAARAGNAROK\Ragnarok Online\data\texture\À¯ÀúÀÎÅÍÆäÀÌ½º\uirenewal\chat')
 
 def over(source, destination):
     sa, da = source >> 24, destination >> 24
@@ -34,6 +34,8 @@ def over(source, destination):
 class Machine:
     def __init__(self, exe, assets):
         self.pe = pefile.PE(exe)
+        self.white_input = self.pe.__data__.find(b'ModernChatUI.Input.v1\0') >= 0
+        self.input_color = 0xFFFFFF if self.white_input else 0xC7C7C7
         self.base = self.pe.OPTIONAL_HEADER.ImageBase
         self.u = Uc(UC_ARCH_X86, UC_MODE_32)
         self.u.mem_map(0, 0x1000) # Native floating event's fs:[0] SEH chain.
@@ -82,9 +84,21 @@ class Machine:
         # controls/font suite exercises successful private GDI font creation.
         no_gdi=self.alloc(16); self.stub(no_gdi,lambda:self.ret(4,0)); self.w(0xFC1268,no_gdi)
         self.w(0x1602614,1920); self.w(0x1602618,1080)
+        # Most suites assume an already-loaded New UI preference. The theme
+        # suite separately executes the real saved-file loader and toggle.
+        mapped = self.pe.get_memory_mapped_image()
+        theme_tag = mapped.find(b'ModernChatUI.Theme.v1\0')
+        if theme_tag >= 0:
+            descriptor = mapped.find(pack(self.base+theme_tag))
+            assert descriptor >= 0
+            state = self.r(self.base+descriptor+4)
+            self.w(state+4, 1)
 
     def stub(self, address, fn):
-        self.u.hook_add(UC_HOOK_CODE, lambda u,a,s,d: fn(), begin=address, end=address)
+        if not hasattr(self, '_machine_stubs'): self._machine_stubs = {}
+        if address in self._machine_stubs: self.u.hook_del(self._machine_stubs[address])
+        self._machine_stubs[address] = self.u.hook_add(
+            UC_HOOK_CODE, lambda u,a,s,d: fn(), begin=address, end=address)
 
     def alloc(self, size):
         address = self.heap
@@ -218,7 +232,7 @@ class Machine:
         assert self.r(obj+0xF4)==0,'native text/caret inset was not normalized'
         color=self.r(obj+0x90)|(self.r(obj+0x94)<<8)|(self.r(obj+0x98)<<16)
         assert color==0xFF00FF
-        assert self.r(obj+0xA8)==0xC7C7C7
+        assert self.r(obj+0xA8)==self.input_color
         pix,w,h=self.pixels(obj)
         self.u.mem_write(pix,pack(color)*(w*h))
         self.w(pix+4,self.r(obj+0xA8))
@@ -266,9 +280,11 @@ def main():
     main_draw=m.r(0x1037FD0); shared_tab_draw=m.r(0x102DD94); pane_draw=m.r(0x102D2D0)
     assert main_draw!=0x8F3340 and pane_draw!=0x851960,'patch absent'
     names=('Main','Market','Battle','Party','Guild')
-    png_draw=next(t for t in m.targets(main_draw)
-                  if bytes(m.u.mem_read(t,12))==bytes.fromhex('55 8b ec 83 ec 20 53 56 57 8b 71 24'))
-    m.stub(png_draw,m.image) # Observe only; run the real emitted PNG compositor.
+    png_draws=list(dict.fromkeys(t for t in m.targets(main_draw)
+                  if bytes(m.u.mem_read(t,12))==bytes.fromhex('55 8b ec 83 ec 20 53 56 57 8b 71 24')))
+    png_draw=png_draws[-1] # Ordinary, non-tinted control blitter.
+    for draw in png_draws:
+        m.stub(draw,m.image) # Observe only; run real emitted compositors below.
     parent,tab=m.setup()
     for active in (0,1):
         m.u.mem_write(0x131F50C,bytes([active])); m.texts.clear(); m.images.clear()
@@ -287,14 +303,15 @@ def main():
         for off in (0xE0,0xE4,0xE8):
             assert m.r(m.r(parent+off)+0x20)==0xFFFFFF9C,'recipient selector visible'
         message=m.r(parent+0xBC)
-        assert m.r(message+0x20)==(200 if active else 0xFFFFFF9C)
+        assert m.r(message+0x20)==((198 if m.white_input else 200) if active else 0xFFFFFF9C)
         recipient=m.r(parent+0xC0)
-        assert m.r(recipient+0x20)==(200 if active else 0xFFFFFF9C)
+        assert m.r(recipient+0x20)==((198 if m.white_input else 200) if active else 0xFFFFFF9C)
         if active:
-            assert (m.r(message+0x1c),m.r(message+0x14),m.r(message+0x18))==(116,423,16)
+            assert (m.r(message+0x1c),m.r(message+0x14),m.r(message+0x18))==(116,399,16)
             assert (m.r(recipient+0x1c),m.r(recipient+0x14),m.r(recipient+0x18))==(23,81,16)
         assert any('Enter to type' in x[0] for x in m.texts)==(not active)
         pix,w,h=m.pixels(parent)
+        assert m.r(pix+((h-35)*w+w-51)*4)==0x807C808B, 'channel/emoticon separator missing'
         assert m.r(pix+(10*w+10)*4)==0x80111114,'message panel is not translucent'
         assert m.r(pix+(198*w+3)*4)==0x80404040,'input gray missing'
         assert m.r(pix+(208*w+297)*4)==0x80404040
@@ -340,13 +357,13 @@ def main():
     tex=m.load_texture('textbox_off.png'); tw,th=m.r(tex+0x114),m.r(tex+0x118)
     center=m.r(tex+0x11c)+(th//2*tw+tw//2)*4
     original_center=m.r(center); m.w(center,0xFF171923)
-    m.invoke(m.r(0x1028DFC),edit); assert m.r(edit+0xA8)==0xC7C7C7
+    m.invoke(m.r(0x1028DFC),edit); assert m.r(edit+0xA8)==m.input_color
     m.w(center,0xFFF7FAFE)
-    m.invoke(m.r(0x1028DFC),edit); assert m.r(edit+0xA8)==0xC7C7C7
+    m.invoke(m.r(0x1028DFC),edit); assert m.r(edit+0xA8)==m.input_color
     m.w(center,original_center)
     click=m.r(0x1037FE4); event=m.r(0x1038014)
     for active in (0,1):
-        for x in (8,100,107,108,116,200,542):
+        for x in (23,100,107,108,116,200,518):
             before=len(m.forwards); m.u.mem_write(0x131F50C,bytes([active]))
             m.w(0x131F4E8+0x19c,0); m.invoke(click,parent,[x,205])
             assert len(m.forwards)==before,'input click reached stock recipient/drag handling'
@@ -356,6 +373,7 @@ def main():
             assert m.r(parent+0xB4)==target,'native last-focused chat edit not updated'
             assert m.r(0x131F4E8+0x19c)==0,'input click started window dragging'
     m.stub(0xA39340,lambda:(m.forwards.append(('emoji_window',m.args(1)[0])),m.ret(4)))
+    m.stub(0xA47B90,lambda:m.ret(4,0)) # Empty window registry for open-only tests.
     for active in (0,1):
         for x in (543,550,566,567,580,590):
             m.u.mem_write(0x131F50C,bytes([active]));before=len(m.forwards)
@@ -393,7 +411,8 @@ def main():
     assert tab_click==0x858B90,'native tab selection/capture not retained'
     assert m.r(m.r(tab)+0x6c)==0x85A620,'native tab detachment not retained'
     assert m.r(0x102DD44+0x6c)==0x85A620,'drag handler of unrelated tabs changed'
-    assert m.r(0x1037F80+0x6c)==0x8F87C0 and m.r(0x1037F80+0x7c)==0x8F72E0
+    # Main pointer wrappers preserve native dragging outside an armed toolbar
+    # dropdown. The movement/release vectors below execute those stock paths.
     pane_vector=(m.r(parent+0xF4),m.r(parent+0xF8))
     names_vector=bytes(m.u.mem_read(m.r(tab+0xB4),5*24))
     for unlocked in (0,1):
@@ -504,14 +523,24 @@ def main():
         m.ret(argc*4)
     m.stub(0x82DAC0,lambda:resource_setter(3))
     m.stub(0x82DA00,lambda:resource_setter(1))
+    # Real gear calls receive a constructed UIBitmapButton, not the parent
+    # floating chat. Its native tooltip string starts empty with capacity 15.
+    button=m.window(24,20,0x1029820,floating)
+    m.w(button+0xA8,15)
+    def string_copy():
+        dest,src,count=m.args(3)
+        m.u.mem_write(dest,bytes(m.u.mem_read(src,count)));m.ret(0,dest)
+    m.stub(0xE07D7B,string_copy) # CRT memmove; native string assign stays real.
     for sites,filename,argc in [((0x8F0933,0x8F0972,0x8F09B1),'icon_settings.png',3),
                                ((0x8F072A,0x8F0769,0x8F07A8),'btn_min.png',3),
                                ((0x8F0D25,),'btn_expand.png',1)]:
         for site in sites:
             target=m.targets(site,5)[0]
-            m.invoke(target,floating,[0xDEADBEEF]+list(range(argc-1)))
+            m.invoke(target,button,[0xDEADBEEF]+list(range(argc-1)))
             assert m.forwards[-1][1].endswith('\\'+filename)
             assert m.forwards[-1][2]==list(range(argc-1))
+            if filename=='icon_settings.png':
+                assert m.cstr(button+0x94)=='Chat Settings'
     # Actual edit-layout trampoline executes both native branches then reapplies bottom layout.
     for active in (0,1):
         m.u.mem_write(0x131F50C,bytes([active])); m.invoke(0x8F9840,parent)

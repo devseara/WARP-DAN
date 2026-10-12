@@ -1,0 +1,39 @@
+{
+  "status": "needs_correction",
+  "job": "acolyte",
+  "date": "2026-09-14",
+  "actions_per_sex": 104,
+  "frame_uses_per_sex": 456,
+  "source_drawings_per_sex": 110,
+  "world_scale": 0.25,
+  "installed": false,
+  "accepted": false,
+  "files": [
+    {
+      "sex": "male",
+      "path": "assets/male-angel-acolyte-v1.spr",
+      "sha256": "df078b653080cc3236ddad8fce0d852717ff001d037007eaf5dcf54c0a8b98a8"
+    },
+    {
+      "sex": "male",
+      "path": "assets/male-angel-acolyte-v1.act",
+      "sha256": "9ac1e634d8ae2c0dd65b9ef8201493085a5e6b094931a78fadd13d75370df99d"
+    },
+    {
+      "sex": "female",
+      "path": "assets/female-angel-acolyte-v1.spr",
+      "sha256": "964415c069f78b3bb5bfc218656a52400aa38f95d861d04989dca683bbdc0bc2"
+    },
+    {
+      "sex": "female",
+      "path": "assets/female-angel-acolyte-v1.act",
+      "sha256": "7ded5e1e832fd6e484cb9e03cc1ea604325437f22a6ac6253a48f0c756017acf"
+    }
+  ],
+  "native_metadata_preserved": true,
+  "independent_decoder_match": true,
+  "stock_fallback_frame_uses": 0,
+  "retained_accepted_swordman_mage_resources": true,
+  "artifact_root": "Assets/ClanBodySkins/Acolyte/complete-v1",
+  "user_review": "Male sit floating head and rear-view head/body placement across actions"
+}

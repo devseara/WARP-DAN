@@ -12,8 +12,9 @@ from test_modern_chat_ui import pack
 
 
 def contract(m):
-    tag=m.pe.__data__.find(b'ModernChatUI.v12\0')
-    assert tag>=0,'ModernChatUI v12 was not applied'
+    tag=m.pe.__data__.find(b'ModernChatUI.v13\0')
+    if tag<0: tag=m.pe.__data__.find(b'ModernChatUI.v12\0')
+    assert tag>=0,'ModernChatUI v12/v13 was not applied'
     va=m.base+m.pe.get_rva_from_offset(tag)
     data=m.pe.get_memory_mapped_image();positions=[];pos=0
     while (pos:=data.find(pack(va),pos))>=0:
@@ -121,8 +122,9 @@ def test_icons(m,c):
     for name,asset in [('', 'icon_general.png'),('WhisperTarget','icon_pm.png')]:
         m.string(name,recipient+0xD8);m.images.clear()
         main=m.r(0x1037FD0)
-        png=next(t for t in m.targets(main) if bytes(m.u.mem_read(t,12))==bytes.fromhex('55 8b ec 83 ec 20 53 56 57 8b 71 24'))
-        m.stub(png,m.image)
+        pngs=set(t for t in m.targets(main) if bytes(m.u.mem_read(t,12))==bytes.fromhex('55 8b ec 83 ec 20 53 56 57 8b 71 24'))
+        for png in pngs:
+            m.stub(png,m.image)
         m.invoke(main,parent)
         assert any(row[:3]==(asset,5,201) for row in m.images)
         assert any(row[:3]==('btn_emote2.png',549,202) for row in m.images)
@@ -138,6 +140,7 @@ def test_icons(m,c):
 
 def test_control_cursor(m,c):
     # Execute the native setter, including its change-only animation reset.
+    m.stub(0xA753D0,lambda:m.ret(24))  # Tooltip publishing tested separately.
     cursor=m.alloc(0x80);m.w(0x121333C,cursor)
     notifications=[]
     def notify():
@@ -153,11 +156,11 @@ def test_control_cursor(m,c):
             m.w(0x11E40E4,pressed)
             for unlocked in [0,1]:
                 m.u.mem_write(0x15FAAEC,bytes([unlocked]))
-                for x in [0,108,width-52,width-51,width-28,width-27,width-19,
+                for x in [0,3,22,23,108,width-76,width-75,width-52,width-51,width-28,width-27,width-19,
                           width-18,width-11,width-10,width-4,width-3,width-1,width]:
                     for y in [height-43,height-42,height-23,height-22,height-21,
                               height-20,height-1,height]:
-                        hand=(width-51<=x<width-3 and height-42<=y<height-22 or
+                        hand=((3<=x<23 or width-75<=x<width-3) and height-42<=y<height-22 or
                               width-18<=x<width-10 and height-20<=y<height)
                         m.invoke(c['cursor'],parent,[x,y])
                         assert m.r(cursor+0x50)==(2 if hand else 0),(width,height,x,y,pressed)
@@ -215,6 +218,7 @@ def test_native_actions(m,c):
         assert m.r(parent+0xB4)==edit and m.r(0x131F4E8+0x1A0)==edit
     assert len(calls)==2
     emoji=[]
+    m.stub(0xA47B90,lambda:m.ret(4,0)) # Window-registry lookup boundary.
     def open_emoji():
         assert m.u.reg_read(UC_X86_REG_ECX)==0x131F4E8
         emoji.append(m.args(1)[0]);m.ret(4,0)

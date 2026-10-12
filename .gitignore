@@ -1,3 +1,48 @@
+# Ignore Outputs contents but keep the folder
+/Outputs/*
+!/Outputs/.gitkeep
+
+# Ignore root-level config files
+# Settings.yml is tracked so WARP0716 dark theme is default
+/LastSession.yml
+
+# Ignore Skipped Patches logs
+SkippedPatches.log
+
+# Ignore DLL build artifacts
+/CustomDLL/src/*.dll
+/CustomDLL/src/*.exp
+/CustomDLL/src/*.lib
+/CustomDLL/src/*.obj
+/CustomDLL/src/*.exe
+/CustomDLL/src/riftlock_stage/
+
+# Ignore files copied by local console profile smoke tests
+/SystemEN/
+
+# Ignore local client source/extract folders
+/2025-*_Ragexe_*_clientinfo/
+/2025-*_Ragexe_*_clientinfo.zip
+
+# Python analysis caches are not baseline source or evidence.
 __pycache__/
-*.pyc
-.venv/
+
+# Isolated HUD build/verification environment.
+/.venv-target-hud/
+
+# Generated job preview SPR/ACT packs are supplied separately.
+/Assets/HDJobUI/
+
+# Clan artwork, accepted binary releases and authoring recovery bundles are local.
+# Tracked acceptance manifests live in Inputs/ClanBodySkins/records; tooling in tools.
+/Assets/ClanBodySkins/
+
+# Local item-description audit/concept output; durable evidence lives in docs/tools.
+/output/item-description-audit/
+/output/item-inspection-concept/
+
+# Generated Novice HD artwork, review renders and recovery bundles.
+/Assets/HDNovice/
+
+# First-job HD artwork, accepted binaries, authoring history and recovery bundles.
+/Assets/HDFirstJobs/
