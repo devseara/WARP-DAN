@@ -17,14 +17,15 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-09-13                                             *
+*   Last Modified : 2026-10-12                                             *
 *                                                                          *
 *   Description   : Routes reserved clan body values 30001..30255 on       *
 *                   2025-07-16 Ragexe to clan_skins/<skin>/<native path>   *
 *                   only when both SPR and ACT exist. Preserves native     *
 *                   job, sex, weapon and palette behavior with stock       *
-*                   fallback. Keeps completed clan world quads uniformly   *
-*                   mapped. Alt+Q/Alt+S ACT rendering is supplied by the   *
+*                   fallback. Uniform world-quad RHW for every sprite,     *
+*                   including clan bodies, is UniformSpriteRHW's job.      *
+*                   Alt+Q/Alt+S ACT rendering is supplied by the           *
 *                   separate NativeActJobPreviews patch. Statically        *
 *                   injects the profiled runtime with no client DLL.       *
 *                                                                          *
@@ -78,32 +79,6 @@ ClanSkinStatic.write = function(phy, bytes)
 		Exe.SetHex(phy + at, ClanSkinStatic.hex(bytes.slice(at, at + 8192)));
 };
 
-// This boundary precedes the weapon-depth hook. No shared hook, cache,
-// renderer-state override or patch-order dependency is required.
-ClanSkinStatic.preparePerspective = function()
-{
-	const code = ClanSkinStatic.readBytes(Warp.Path + "/Inputs/ClanBodySkins/perspective.bin");
-	const rawMeta = ClanSkinStatic.readBytes(Warp.Path + "/Inputs/ClanBodySkins/perspective.json");
-	const meta = JSON.parse(String.fromCharCode(...rawMeta));
-	if (meta.version !== 1 || meta.client !== 20250716 || code.length !== meta.bytes ||
-		code[code.length - 1] !== 0xC3 || ClanSkinStatic.crc32(code, 0) !== meta.crc32)
-		throw Error("ClanBodySkins: perspective bridge metadata/CRC mismatch");
-	const site = 0x00C4A63E;
-	const signature = "8B 45 D8 0B 88 24 01 00 00";
-	const phy = ClanSkinStatic.assertBytes("completed sprite quad", site, signature);
-	const original = signature.split(" ").map(x => parseInt(x, 16));
-	return {code, site, phy, signature, original};
-};
-ClanSkinStatic.installPerspective = function(state)
-{
-	ClanSkinStatic.assertBytes("completed sprite quad", state.site, state.signature);
-	const prefix = state.code.slice(0, -1);
-	const [phy, va] = Exe.Allocate(prefix.length + state.original.length + 5, 0x10);
-	const resumeVa = va + prefix.length + state.original.length;
-	ClanSkinStatic.write(phy, prefix.concat(state.original, ClanSkinStatic.jump(resumeVa, state.site + state.original.length)));
-	ClanSkinStatic.write(state.phy, ClanSkinStatic.jump(state.site, va).concat([0x90, 0x90, 0x90, 0x90]));
-};
-
 ClanBodySkins = function(_)
 {
 	if (!ClanBodySkins.validate()) throw Error("ClanBodySkins supports 2025-07-16 Ragexe only");
@@ -121,7 +96,6 @@ ClanBodySkins = function(_)
 		meta.api_version !== 2 || meta.api_size !== 40 ||
 		ClanSkinStatic.crc32(bytes, 32) !== u32(bytes, 28))
 		throw Error("ClanBodySkins: runtime metadata/CRC mismatch");
-	const perspective = ClanSkinStatic.preparePerspective();
 	const hooks = [
 		{va: 0x00B43AF0, signature: "55 8B EC 6A FF 68 8B 4B F1 00", stolen: 5, entry: "@ClanBodyHook@32"},
 		{va: 0x00B42910, signature: "55 8B EC 6A FF 68 6B 48 F1 00", stolen: 5, entry: "@ClanAlternateBodyHook@32"},
@@ -169,7 +143,6 @@ ClanBodySkins = function(_)
 		while (patch.length < hook.stolen) patch.push(0x90);
 		ClanSkinStatic.write(hook.phy, patch);
 	}
-	ClanSkinStatic.installPerspective(perspective);
 	return true;
 };
 ClanBodySkins.validate = function()

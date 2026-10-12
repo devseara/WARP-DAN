@@ -21,10 +21,9 @@ def run(existing=None):
         row = verify_clan(target, source=ORIGINAL if name == 'clan-only' else None, verbose=False)
         if name != 'clan-only':
             payload = int(row['payload_va'], 16)
-            writes = [(va, size) for va, size, _ in HOOKS] + [(0xc4a63e, 9)]
+            writes = [(va, size) for va, size, _ in HOOKS]
             allocations = [(payload, row['payload_bytes'])]
             allocations += [(row['native_api'][i + 1], size + 5) for i, (_, size, _) in enumerate(HOOKS)]
-            allocations += [(row['perspective']['bridge_va'], row['perspective']['bridge_bytes'])]
             ui = verify_preview(ORIGINAL, target, True, writes, allocations)
             row.update(native_preview_verified=True, unrelated_native_code_verified=True, native_changed_bytes=len(ui['existing_code_changes']))
         row['case'] = name

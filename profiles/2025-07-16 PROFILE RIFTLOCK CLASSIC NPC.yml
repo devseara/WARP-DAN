@@ -379,6 +379,7 @@ patches:
     - AllowDualCustomWeaponSprites
     - AllHatEffectsWorldDepthOracle
     - ClanBodySkins
+    - UniformSpriteRHW
     - AddLuaOverrides
     - AllowAPBarforAllJobs
     - RemoveMaxNumbersLimit
