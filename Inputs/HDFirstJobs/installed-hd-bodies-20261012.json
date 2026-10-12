@@ -1,0 +1,226 @@
+{
+  "status": "installed_inventory_verified_live_defects_open",
+  "date": "2026-10-12",
+  "authoritative_archive": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+  "archive_sha256": "a8c8b2c924f1df7cebbb07f36497edff5a1c75b9d4d5e374383e60813e226ac8",
+  "pairs": 14,
+  "actions": 1456,
+  "frame_uses": 6384,
+  "resources": [
+    {
+      "entry": "data/sprite/인간족/몸통/여/궁수_여.act",
+      "archive": "maindata.grf",
+      "sha256": "e3fab05da672dbcec3ca00eef8430f5ef48d4b9db3da431a985f8617167cba3d",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/도둑_여.act",
+      "archive": "maindata.grf",
+      "sha256": "98d713711a5e7a766121d2cce29d216259dbd21f868e5a6fd07008770c53842e",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/마법사_여.spr",
+      "archive": "maindata.grf",
+      "sha256": "b964720835013284d491acb796dd39e1ffdc26d5b7f623919a2f1622fb3072f1",
+      "bytes": 17701048
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/도둑_여.spr",
+      "archive": "maindata.grf",
+      "sha256": "c1ff4f3f335268c11919c5490364a8a541d870ff202dd5c93cef113c04cbfe28",
+      "bytes": 9579928
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/도둑_남.spr",
+      "archive": "maindata.grf",
+      "sha256": "b916a69c3bea1177466ec4c3087f872f5c9b0be81f092387b3fede3e35f4363b",
+      "bytes": 9333080
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/궁수_여.spr",
+      "archive": "maindata.grf",
+      "sha256": "49729d6ba67b6d7af2d94eefa77d8c4799e3cd1038c9f4ad3ced364d94a844b7",
+      "bytes": 9178040
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/상인_남.act",
+      "archive": "maindata.grf",
+      "sha256": "d21500ff0627913eb094d8380630dd01f8822225082568a5337b2d80d4d979ea",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/성직자_여.act",
+      "archive": "maindata.grf",
+      "sha256": "97c710536196ed868d5ce6a204c50953ca47f2028a86fa5b5b98e5628f6f9a94",
+      "bytes": 44708,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/상인_여.act",
+      "archive": "maindata.grf",
+      "sha256": "1c77bba1f21deae091ee60cdd2992b22a048061dcb50707f0f4a27a9bf109f52",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/궁수_남.act",
+      "archive": "maindata.grf",
+      "sha256": "10da3c43b9091cb9009e5f9087bbad00caeafa9248c424f86be1d6d2c228a8e6",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/검사_여.spr",
+      "archive": "maindata.grf",
+      "sha256": "c52d2816042c9ba93cec79d78efe53cbb5d0e314b29d640fa48080adddc8fe26",
+      "bytes": 9259904
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/마법사_여.act",
+      "archive": "maindata.grf",
+      "sha256": "841bf4ad96a9b0c69451a9848bbbf1948115e327ec91e402268f5ca5c22e9ff8",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/궁수_남.spr",
+      "archive": "maindata.grf",
+      "sha256": "f9c00ae81acfcf37b4546206a13eb630ffe58f5ef10242e896eb5c60a7e80f45",
+      "bytes": 9163736
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/검사_여.act",
+      "archive": "maindata.grf",
+      "sha256": "5d5fdf3b730a40b89d06016846fba2065297b5d0ac34ad50022ff6cdefce9119",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/상인_여.spr",
+      "archive": "maindata.grf",
+      "sha256": "24fc4a4a0c32f5493ede80aad05f45ac5b41264db9cc91170efbebd2a336a8aa",
+      "bytes": 8597976
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/검사_남.spr",
+      "archive": "maindata.grf",
+      "sha256": "d36d887a38bb3ed43a14da6014b6d873f91c9331589891ff963475db8bc6acbf",
+      "bytes": 9776808
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/성직자_남.act",
+      "archive": "maindata.grf",
+      "sha256": "e6fc454c7d130605fc1dc00950cf3b0d41d52dd11c667cfff01158935e11fb92",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/마법사_남.spr",
+      "archive": "maindata.grf",
+      "sha256": "cd5328b361ffd7974f319622569a8b3760b72e63e33b7e5e1f4a0cff083ace78",
+      "bytes": 10875656
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.spr",
+      "archive": "maindata.grf",
+      "sha256": "15672384e1d9ec6ea2f721efc199c7cb5121e9a13c4c56094e9d0662ed9e8cba",
+      "bytes": 9845632
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/초보자_남.act",
+      "archive": "maindata.grf",
+      "sha256": "61e2f34da22f4aead664f4ce538c1e73e3e188a43e84cdef7ceb81b4f3cb7ca1",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/도둑_남.act",
+      "archive": "maindata.grf",
+      "sha256": "9c41929cd2072f28011caa67f3296cb20cbb71d6f3098e01a1424e1af96222d4",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.spr",
+      "archive": "maindata.grf",
+      "sha256": "0afd828df56e71697b0f409d44fff38f41f23fbfe889f1160ed313b9f5e95035",
+      "bytes": 7501464
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/상인_남.spr",
+      "archive": "maindata.grf",
+      "sha256": "4f465b64b1bc868dbefabe20fc0155286be7a77c55bccf3908f7f19ec11bb968",
+      "bytes": 9424064
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/초보자_여.act",
+      "archive": "maindata.grf",
+      "sha256": "088a89ead5b6d1c43f1c50bc2c56efe363291b77296a4b012570c7520543286a",
+      "bytes": 44628,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/마법사_남.act",
+      "archive": "maindata.grf",
+      "sha256": "d11067857d70de1d90259bb0d82b27c848d446ba310070f3e311406ac8bd501c",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/검사_남.act",
+      "archive": "maindata.grf",
+      "sha256": "d6bb19fb6589ab4450c9cb3d2bed27cc0b5b75aef65b1b6c3e0ff32e65f24339",
+      "bytes": 44748,
+      "actions": 104,
+      "frame_uses": 456
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/성직자_여.spr",
+      "archive": "maindata.grf",
+      "sha256": "8ea6d4a7010619387afb80b148c70310b1b54c92fdb604868a09389ae5ab2bd2",
+      "bytes": 7403944
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/남/성직자_남.spr",
+      "archive": "maindata.grf",
+      "sha256": "47795f18bb9f8825042608bac2ae55d75f4d3f8e46e4fbe4245b4c2b66104f50",
+      "bytes": 8276392
+    }
+  ],
+  "current_female_mage": "female-mage-grounded-preparation-v16",
+  "installation_record": "Inputs/HDFirstJobs/female-mage-grounded-v16-installation.json",
+  "live_acceptance_complete": false,
+  "open_issues": [
+    "Zoom-dependent head/body drift",
+    "Melee3 first-frame residue in four actions"
+  ],
+  "loader_mode": "embedded",
+  "archive_order": [
+    "dual_weapon_male_assets.grf",
+    "update.grf",
+    "maindata.grf",
+    "mapdata.grf",
+    "palettedata.grf",
+    "spritedata.grf",
+    "data.grf",
+    "greyworld.grf"
+  ],
+  "signing_verification_record": "Assets/HDFirstJobs/releases/female-mage-grounded-v16-20261012/installed-verification.json"
+}

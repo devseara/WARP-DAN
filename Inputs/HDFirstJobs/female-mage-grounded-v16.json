@@ -1,0 +1,19 @@
+{
+  "status": "user_accepted_installed",
+  "files": [
+    {
+      "path": "candidate/mage-female.spr",
+      "sha256": "b964720835013284d491acb796dd39e1ffdc26d5b7f623919a2f1622fb3072f1"
+    },
+    {
+      "path": "candidate/mage-female.act",
+      "sha256": "841bf4ad96a9b0c69451a9848bbbf1948115e327ec91e402268f5ca5c22e9ff8"
+    }
+  ],
+  "installed": true,
+  "deployment_authorized": true,
+  "known_issue": "Melee3 first-frame detached residue A88/A89/A94/A95 remains",
+  "user_acceptance": true,
+  "accepted_date": "2026-10-12",
+  "installation_record": "Inputs/HDFirstJobs/female-mage-grounded-v16-installation.json"
+}

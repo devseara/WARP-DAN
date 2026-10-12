@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-12",
+  "canonical": "docs/hd-sprites.md",
+  "canonical_sha256": "f83af2c5818cfe34b9782b5621b41eba3a53a65ad62d00d51ab044d76c62e002",
+  "archived_guides": [
+    {
+      "path": "docs/clan-body-skins.md",
+      "sha256": "0830d1f25efd14fd191144aa35e66cd32d161208168145b5946324d81900cb9f"
+    },
+    {
+      "path": "docs/first-job-hd-sprites.md",
+      "sha256": "dc16b29c468d7251480e9013a61a5065d01ca1ff553c23a381d2507256b406fb"
+    },
+    {
+      "path": "docs/novice-hd-sprites.md",
+      "sha256": "69b2513e0b02415109bae4174f630dabbd1218e08f8a9cdfc69b53ca646a5593"
+    },
+    {
+      "path": "docs/hd-job-sprite-previews.md",
+      "sha256": "1e86db5d2b4c67088ef03732fee5a060ccf55e8f138bed77613ef58dd496b492"
+    }
+  ],
+  "archive": "Assets\\HDFirstJobs\\documentation-history\\20261012\\pre-consolidation-docs.zip",
+  "archive_sha256": "a2a0d434c0fbe8bb6f70dbd4075229e1505942df22918b76362f58f8959a6a78",
+  "redirects": [
+    "docs/clan-body-skins.md",
+    "docs/first-job-hd-sprites.md",
+    "docs/novice-hd-sprites.md",
+    "docs/hd-job-sprite-previews.md"
+  ],
+  "reason": "User requested one document, current GRF/state recheck, mounts with attack/casting and 2-1/2-2 production plan.",
+  "latest_cleanup_manifest": "Assets/HDFirstJobs/cleanup-history/20261012/manifest.json",
+  "current_female_mage_record": "Inputs/HDFirstJobs/female-mage-grounded-v16.json"
+}
