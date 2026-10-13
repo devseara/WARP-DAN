@@ -65,25 +65,26 @@ InventoryUI.onApplied=function()
 // BeginTag erases earlier writes: every reopening must emit the complete route.
 InventoryUI.cursorRoute=function()
 {
-	const n=AutoCombatUI.nativeHelpers,key="InventoryCart.Cursor.Global.v2",cacheKey="InventoryCart.Cursor.v2";
+	const n=AutoCombatUI.nativeHelpers,key="StorageInventoryCart.Cursor.Global.v3",cacheKey="StorageInventoryCart.Cursor.v3";
 	for(const address of [0xC75165,0xD26DA0,0xD27471]){
 		const rel=(0xA74410-address-5)>>>0;
-		n.assertCode("Inventory/Cart original cursor call",address,n.bytesToHex([0xE8,rel&255,rel>>>8&255,rel>>>16&255,rel>>>24]));
+		n.assertCode("Inventory/Cart/Storage original cursor call",address,n.bytesToHex([0xE8,rel&255,rel>>>8&255,rel>>>16&255,rel>>>24]));
 	}
 	let route=CACHE.get(cacheKey);
-	if(!route)CACHE.setup(key,"InventoryCartCursorV2",{cleanTag_after_userDel:false,dealloc_after_zeroUsers:false});
+	if(!route)CACHE.setup(key,"StorageInventoryCartCursorV3",{cleanTag_after_userDel:false,dealloc_after_zeroUsers:false});
 	const previous=Exe.ActivePatch;
 	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag(key));
 	try {
 		if(!route){
-			const cells=n.allocateBytes(new Array(8).fill(0),4);
-			route={inventoryCellPhy:cells.phy,inventoryCellVir:cells.vir,cartCellPhy:cells.phy+4,cartCellVir:cells.vir+4,inventoryVir:0,cartVir:0,code:[]};
+			const cells=n.allocateBytes(new Array(12).fill(0),4);
+			route={inventoryCellPhy:cells.phy,inventoryCellVir:cells.vir,cartCellPhy:cells.phy+4,cartCellVir:cells.vir+4,storageCellPhy:cells.phy+8,storageCellVir:cells.vir+8,inventoryVir:0,cartVir:0,storageVir:0,code:[]};
 			const dispatch=(cell,fallback)=>{
 				const a=n.asm();a.emit(0x9C,0x83,0x3D);a.dword(cell);a.emit(0);a.jcc(0x85,"selected");
 				a.emit(0x9D);a.jmp(fallback);a.label("selected");a.emit(0x9D,0xFF,0x25);a.dword(cell);
 				const stub=n.allocateCode(a);route.code.push({phy:stub.phy,hex:a.finish(stub.vir)});return stub.vir;
 			};
-			route.cartDispatchVir=dispatch(route.cartCellVir,0xA74410);
+			route.storageDispatchVir=dispatch(route.storageCellVir,0xA74410);
+			route.cartDispatchVir=dispatch(route.cartCellVir,route.storageDispatchVir);
 			route.routerVir=dispatch(route.inventoryCellVir,route.cartDispatchVir);
 			CACHE.put(cacheKey,route);
 		}
@@ -91,12 +92,13 @@ InventoryUI.cursorRoute=function()
 	} finally {Exe.EndTag();Exe.ActivePatch=previous;}
 	CACHE.addUser(key,"InventoryUI");return route;
 };
-// Emit every byte owned by the open global tag, including both registrations.
+// Emit every byte owned by the open global tag, including all three registrations.
 InventoryUI.writeCursorRoute=function(route)
 {
 	for(const stub of route.code)Exe.SetHex(stub.phy,stub.hex);
 	Exe.SetUint32(route.inventoryCellPhy,route.inventoryVir);
 	Exe.SetUint32(route.cartCellPhy,route.cartVir);
+	Exe.SetUint32(route.storageCellPhy,route.storageVir);
 	for(const address of [0xC75165,0xD26DA0,0xD27471])Exe.SetCALL(Exe.Vir2Phy(address),route.routerVir);
 };
 InventoryUI.cursorTarget=function()
@@ -105,15 +107,15 @@ InventoryUI.cursorTarget=function()
 };
 InventoryUI.installCursor=function(entry)
 {
-	const route=CACHE.get("InventoryCart.Cursor.v2"),previous=Exe.ActivePatch;
+	const route=CACHE.get("StorageInventoryCart.Cursor.v3"),previous=Exe.ActivePatch;
 	if(!route || !Number.isInteger(entry) || entry<=0)throw Error("InventoryUI: invalid cursor registration");
-	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("InventoryCart.Cursor.Global.v2"));
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("StorageInventoryCart.Cursor.Global.v3"));
 	try {route.inventoryVir=entry;InventoryUI.writeCursorRoute(route);}
 	finally {Exe.EndTag();Exe.ActivePatch=previous;}
 };
 InventoryUI.cleanup=function()
 {
-	const key="InventoryCart.Cursor.Global.v2",cacheKey="InventoryCart.Cursor.v2",route=CACHE.get(cacheKey);
+	const key="StorageInventoryCart.Cursor.Global.v3",cacheKey="StorageInventoryCart.Cursor.v3",route=CACHE.get(cacheKey);
 	if(!route)return;
 	const previous=Exe.ActivePatch;
 	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag(key));
