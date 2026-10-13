@@ -1,0 +1,23 @@
+{
+  "tradeui/bg.png": "3eb4596f83e083b89ba1582502cb8d17c0a1e41e6e153b7264015d3f10669cf9",
+  "tradeui/bg_send.png": "ee1cf0fecfc22ea2025891ed36ad1f9de37dd8930247a8060be9801f6312e4e7",
+  "tradeui/bg_send_cancel.png": "73e1c951c08a0f62a953f3d7465a5abbea3efad23d0c8eab78746aeac5ad4be0",
+  "tradeui/bg_send_ok.png": "3dc45f368dba27ab69c88e4ed74cb73479fe2fd5126f973764479d50e2e60366",
+  "tradeui/bg_receive.png": "bdb68d6c56230476d8d66f35e8bda3205903ddc9d7bb71de3729ea2fde2dc20e",
+  "tradeui/bg_receive_cancel.png": "a70c462c78e6539fa7f0760f2b2e6e21548769ba33e98fbc4b6d6d59bb140820",
+  "tradeui/bg_receive_ok.png": "a6851b3c699306c46525cba3764668cbca52d4898e2c34fb89a916281f617f8b",
+  "tradeui/ss_off.png": "6454d134c09fedac49b526a6a22934baa859a0ce2a9d38cf46e97de4c66d7af0",
+  "tradeui/ss_on.png": "4475d6e4c7a4ec8282a207215c4cc5c156c7e0569e5a34bfe7874343654d76db",
+  "tradeui/trade_off.png": "8ed308407913d520894c7bd12ba0da91fb569b755abe2b8732161321eb7330c9",
+  "tradeui/trade_out.png": "1ba7fdea57cbf2c1ba8478ae49224dcd9c2a34cae16185b8032edf5919474c3c",
+  "tradeui/trade_over.png": "33d2e87c285dcbeba87f1e455d13b385a37fcf123aaa71d22e99e76e868777af",
+  "tradeui/trade_press.png": "2304ecb3dd17fa383ab537e59862a781ae39cff2436518b71de059c7bfc2ea78",
+  "genericsui/ok_off.png": "08fad1abe8f1649b82c0f4fd03c7bdc889f22d290b0fc1bad899ece620341a74",
+  "genericsui/ok_out.png": "f59c5aaf0465518bac42372b8a416f1329cb1ebf31b66deb6cbaae99d1455981",
+  "genericsui/ok_over.png": "af3bdcc4b072d57eae3bef5e348316d1d8ccb759af70519b56c595d5785c7c6d",
+  "genericsui/ok_press.png": "acdeefccb6db1306ab7f27a60349c1b0dac6ea67cb809706efca36449903251a",
+  "genericsui/cancel_off.png": "fec9a3a91a40194da25bd030db2b59d640b6f1b85ae11d93e2335732745107b1",
+  "genericsui/cancel_out.png": "f3cc28f822b59a4393568974fb7c22390da73f5daac8288391b5299198fc7179",
+  "genericsui/cancel_over.png": "3353d6499ab65e7fa7cc91a791c78f6ed3129593df5f59d7aafdd185f96f10cd",
+  "genericsui/cancel_press.png": "efda84afe14ed41f33f39f3f6c78f8ce575264869d2aeca3d48f51027daa1659"
+}

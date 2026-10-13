@@ -674,6 +674,15 @@ Vending:
             author : DevSeara
             desc : Native marketui storefront for 2025-07-16. Live comma prices, scrolling listings and buying bag, SOLD tags, sales history, a currency list and purchase confirmation. Supports Zeny, Cash Points and configured item currencies through the matching extended-vending server module. Requires its SQL migration and vending_ui configuration.
 
+Trade:
+    title : PLAYER TRADE
+    patches:
+        - TradeUI:
+            title : Trade UI (two panels and comma Zeny input)
+            recommend : no
+            author : DevSeara
+            desc : Native player trade for 2025-07-16. Original tradeui panels, ten slots per side, ready overlays, live comma Zeny input, generic OK/Cancel and Trade buttons. Preserves native item dragging, amount prompts, server checks and two-stage confirmation. Installs missing bundled assets beside the patched EXE. No server recompile required.
+
 StorageInventory:
     title : STORAGE, INVENTORY AND CART
     mutex : false

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "client": 20250716,
+  "size": 17432,
+  "api_size": 104,
+  "exports": {
+    "@TradeConstruct@8": 1392,
+    "@TradeCreate@16": 1616,
+    "@TradeDestroy@12": 1664,
+    "@TradeDown@16": 1712,
+    "@TradeDraw@8": 1824,
+    "@TradeDrop@20": 2848,
+    "@TradeEditDraw@8": 2928,
+    "@TradeEditEvent@32": 2960,
+    "@TradeEvent@32": 3056,
+    "@TradeInitialize@12": 3152,
+    "@TradeMove@16": 3296,
+    "@TradeNumeric@8": 3376,
+    "@TradeProcess@8": 3456,
+    "@TradeRight@16": 3504,
+    "@TradeUp@16": 3552,
+    "TradeApi": 12288,
+    "TradeState": 12392,
+    "_TradeFormat@12": 3680,
+    "_TradeHit@8": 3968
+  },
+  "source_sha256": "ce6d376c440c5d4d8471e8830d9e7614f61dcf8a241c5978568904494993db6f",
+  "payload_sha256": "912c5e1f13418599f29cd4cfabbb7f80abb8f7b7aff86b95739fc68e7d20bc5a",
+  "runtime_imports": []
+}
