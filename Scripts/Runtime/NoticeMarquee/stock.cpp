@@ -13,7 +13,7 @@ typedef void* (__cdecl *ManagerFn)();
 typedef const char* (__cdecl *PathFn)(const char*);
 typedef void* (__thiscall *TextureFn)(void*,const char*);
 struct Api { u32 version; const char* prefix; ResourceFn resource; };
-extern "C" __declspec(dllexport) Api NoticeApi = {2,0,0};
+extern "C" __declspec(dllexport) Api NoticeApi = {3,0,0};
 static u32 field(void* p,int offset) { return *(u32*)((u8*)p+offset); }
 static const int IconSize=18, IconAdvance=20;
 static bool tag(const char* s,int n,int& used,u32& id,u32& identified) {
@@ -38,6 +38,93 @@ static bool tagged(const char* s,int n) {
 	int used;u32 id,identified;
 	for(int i=0;i<n;++i) if(tag(s+i,n-i,used,id,identified)) return true;
 	return false;
+}
+// MSVC's native narrow string. Borrowed inputs are never destroyed; the native
+// formatter owns its output and that output is released with its own destructor.
+struct NativeString { u32 data[4],size,capacity; };
+static const char* chars(const NativeString& s) { return s.capacity<16?(const char*)s.data:(const char*)s.data[0]; }
+static NativeString borrow(const char* s,int n) {
+	NativeString value={{0,0,0,0},(u32)n,15};
+	if(n<16) { for(int i=0;i<n;++i) ((volatile char*)value.data)[i]=s[i]; }
+	else { value.data[0]=(u32)s;value.capacity=(u32)n; }
+	return value;
+}
+static int base62(char c) {
+	if(c>='0' && c<='9') return c-'0';
+	if(c>='a' && c<='z') return c-'a'+10;
+	if(c>='A' && c<='Z') return c-'A'+36;
+	return -1;
+}
+static bool field62(const char* s,int n,int& at,char separator) {
+	if(at>=n || s[at++]!=separator) return false;
+	int start=at;u32 value=0;
+	while(at<n && base62(s[at])>=0) {
+		u32 digit=(u32)base62(s[at++]);if(value>(0xFFFFFFFFu-digit)/62) return false;
+		value=value*62+digit;
+	}
+	return at-start>=2;
+}
+static bool itemLink(const char* s,int n,int& used,u32& id) {
+	const char* open="<ITEML>";const char* close="</ITEML>";
+	if(n<37) return false;
+	for(int i=0;i<7;++i) if(s[i]!=open[i]) return false;
+	int end=7;while(end<n && end<512 && s[end]!='<') ++end;
+	if(end+8>n || end==512) return false;
+	for(int i=0;i<8;++i) if(s[end+i]!=close[i]) return false;
+	for(int i=7;i<12;++i) if(base62(s[i])<0) return false;
+	if(s[12]!='0' && s[12]!='1') return false;
+	int at=13;id=0;
+	while(at<end && base62(s[at])>=0) {
+		u32 digit=(u32)base62(s[at++]);if(id>(9999999u-digit)/62) return false;
+		id=id*62+digit;
+	}
+	if(at==13 || !id) return false;
+	if(at<end && s[at]=='%' && !field62(s,end,at,'%')) return false;
+	if(at<end && s[at]=='&' && !field62(s,end,at,'&')) return false;
+	if(!field62(s,end,at,'\'')) return false;
+	for(int i=0;i<4;++i) if(!field62(s,end,at,')')) return false;
+	int options=0;
+	while(at<end && options++<5) if(!field62(s,end,at,'+') || !field62(s,end,at,',') || !field62(s,end,at,'-')) return false;
+	if(at!=end) return false;
+	used=end+8;return true;
+}
+typedef NativeString* (__thiscall *LinksFn)(void*,NativeString*,const NativeString*);
+extern "C" __declspec(dllexport) NativeString* __fastcall NoticeLinks(void* manager,void*,NativeString* out,const NativeString* input) {
+	// Only the two broadcast call sites enter here. General chat keeps its own
+	// original ITEML children, click handlers and decoration hooks.
+	LinksFn stock=(LinksFn)0x8E1730;
+	if(!manager || !input || input->size>1023) return stock(manager,out,input);
+	u32 panes=field(manager,0xF4);if(!panes || panes==field(manager,0xF8) || !*(u32*)panes) return stock(manager,out,input);
+	void* pane=*(void**)panes;const char* source=chars(*input);if(!source) return stock(manager,out,input);
+	char converted[1024],raw[512];int at=0,written=0,n=(int)input->size;bool changed=false;u32 precedingIcon=0;
+	while(at<n) {
+		int used=0;u32 id=0,identified=1;
+		if(itemLink(source+at,n-at,used,id)) {
+			int body=used-15;for(int i=0;i<body;++i) raw[i]=source[at+7+i];raw[body]=0;
+			NativeString token=borrow(raw,body),name={{0,0,0,0},0,15};
+			u8 valid=((u8 (__thiscall *)(void*,NativeString*,NativeString*))0x849A00)(pane,&token,&name);
+			if(valid && name.size && name.size<=1023) {
+				char digits[10];int count=0;u32 number=id;
+				do { digits[count++]=(char)('0'+number%10);number/=10; } while(number);
+				int prefix=precedingIcon==id?0:count+4;
+				if(written+prefix+(int)name.size>1023) { ((void (__thiscall *)(void*))0x4F08F0)(&name);return stock(manager,out,input); }
+				if(prefix) { converted[written++]='^';converted[written++]='i';converted[written++]='[';while(count) converted[written++]=digits[--count];converted[written++]=']'; }
+				const char* text=chars(name);for(u32 i=0;i<name.size;++i) converted[written++]=text[i];
+				((void (__thiscall *)(void*))0x4F08F0)(&name);at+=used;changed=true;precedingIcon=0;continue;
+			}
+			((void (__thiscall *)(void*))0x4F08F0)(&name);
+		}
+		if(tag(source+at,n-at,used,id,identified)) {
+			if(written+used>1023) return stock(manager,out,input);
+			for(int i=0;i<used;++i) converted[written++]=source[at++];precedingIcon=id;
+		} else {
+			if(written==1023) return stock(manager,out,input);
+			converted[written++]=source[at++];precedingIcon=0;
+		}
+	}
+	if(!changed) return stock(manager,out,input);
+	converted[written]=0;NativeString prepared=borrow(converted,written);
+	return stock(manager,out,&prepared);
 }
 static Size measure(void* w,const char* s,int n,int font,int height,int bold,int italic) {
 	Size total={0,0};int at=0,used;u32 id,identified;

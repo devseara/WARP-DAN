@@ -48,7 +48,7 @@ CustomUI:
             title : Original Announcements with Item Icons
             recommend : no
             author : DevSeara
-            desc : Keeps the original announcement presentation and adds inline item icons using ^i[ItemID] markup. No scrolling marquee or external runtime DLL is added. The internal NoticeMarquee ID is retained for saved profiles.
+            desc : Keeps the original announcement presentation and adds inline item icons for Shift-clicked item links and ^i[ItemID] markup. No scrolling marquee or external runtime DLL is added. The internal NoticeMarquee ID is retained for saved profiles.
 
         - ModernNpcDialog:
             title : Renewal NPC Dialog UI

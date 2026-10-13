@@ -28,6 +28,13 @@ Battle Pass, Gacha, their shared helpers, or the existing baseline installer.
 Restart WARP and select this patch when rebuilding from the original client.
 Select **Inline Chat Item Icons** as well to show the same images in chat panes.
 
+Shift-clicked `<ITEML>` links now also show their icon in `@kami`, `@kamib`,
+`@lkami` and colored announcements. The announcement-only conversion keeps the
+numeric ItemId and obtains the exact native name, including grade, refine and
+slots. General chat keeps its original linked-item children and interactions.
+This fixes the previous path, which flattened a link to its name and chat icon
+spacing before the announcement renderer could recover the item identity.
+
 Examples in script announcements:
 
 ```text
@@ -53,12 +60,13 @@ not guessed or matched against the item database.
 
 `Scripts/Runtime/NoticeMarquee/stock.cpp` is an import-free x86 payload; rebuild
 using `uv run --with pefile python tools/build_notice_marquee.py` with MSVC x86
-tools installed. The generated version-2 payload and JSON metadata are in
+tools installed. The generated version-3 payload and JSON metadata are in
 `Inputs/NoticeMarquee/`. No game executable, DLL or private profile is shipped.
 
 The QJS validates size, CRC, relocations and original call targets. Only native
-balloon measure/draw/height sites `7890DE`, `78922E`, `7894E2`, `789500` and the
-009A wrapping call `CB84ED` are replaced. Both stock broadcast insertion calls
+balloon measure/draw/height sites `7890DE`, `78922E`, `7894E2`, `789500`, the
+009A wrapping call `CB84ED`, and the two announcement text-conversion calls
+`CB8437` / `CB7870` are replaced. Both stock broadcast insertion calls
 `CB8621` and `CB7943` still reach `788ED0`. No packet-length or shared text hooks
 are changed, and the existing 01C3 packet/buffer limits are not extended.
 
@@ -68,12 +76,26 @@ routine. Both measurement and line advance include the icon height; the stock
 four-pixel line gaps remain. Catalog resources use actual numeric IDs and the
 identified/unidentified resource keys, not server display-name guesses.
 
+The new conversion uses the native ITEML tokenizer/CItem name formatter before
+chat-specific spacing is inserted. It validates bounded 2025 link fields,
+preserves the input string, and emits the existing `^i[ItemId]` syntax beside the
+native name. Adjacent explicit icons are not duplicated. Failed lookup, malformed
+links, missing chat context or expansion past 1023 bytes use the original input.
+
 ## Verification
 
 ```powershell
 uv run --with pillow --with pefile --with capstone --with unicorn python tools/test_stock_announcement_icons.py path/to/patched.exe
 python tools/verify_stable_features.py --manifest docs/stable-battlepass-gacha.json
 ```
+
+`test_announcement_patch.cjs` can apply the real QJS into emulator-write records
+from the original client without creating an EXE. Pass those records to
+`test_announcement_item_links.py existing-client.exe records.json` and to the
+stock suite with `--patch-writes records.json`. The native link suite reproduces
+the old missing-icon behavior and checks the new conversion through actual x86
+string/tokenizer/name paths, grade/refine/card/options, both announcement routes,
+multiple links, explicit-icon deduplication, malformed input and size limits.
 
 The native boundary suite executes actual emitted x86 helpers and the original
 balloon renderer with native tree/list layouts. It covers icon/name placement,

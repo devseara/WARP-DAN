@@ -3,7 +3,8 @@
  * Description: Stock 2025-07-16 announcements with inline item images.
  * Keeps stock balloon insertion, background, colors, lifetime and position.
  * Legacy name/ID preserves saved profiles; no marquee or custom window.
- * Scoped balloon measure/draw and tagged-only wrapping. No shared text hook.
+ * Scoped balloon measure/draw, ITEML conversion and tagged-only wrapping.
+ * No shared text hook; Shift-click announcements retain native item names.
  */
 const NoticeMarqueeStatic = {};
 NoticeMarqueeStatic.read = function(path)
@@ -42,16 +43,17 @@ NoticeMarquee = function(_)
 	const c=NoticeMarqueeStatic,n=AutoCombatUI.nativeHelpers;
 	const bytes=c.read(Warp.Path+"/Inputs/NoticeMarquee/runtime.bin");
 	const meta=JSON.parse(String.fromCharCode(...c.read(Warp.Path+"/Inputs/NoticeMarquee/runtime.json")));
-	if(bytes.length<32 || c.u32(bytes,0)!==0x31544F4E || c.u32(bytes,4)!==2 || meta.client!==20250716 || meta.version!==2)
+	if(bytes.length<32 || c.u32(bytes,0)!==0x31544F4E || c.u32(bytes,4)!==3 || meta.client!==20250716 || meta.version!==3)
 		throw Error("NoticeMarquee: payload version mismatch");
 	const size=c.u32(bytes,8),count=c.u32(bytes,12),api=c.u32(bytes,16),start=32+count*4;
 	if(size!==meta.size || start+size!==bytes.length || api+12>size || api!==meta.exports.NoticeApi ||
 		c.crc(bytes)!==c.u32(bytes,28)) throw Error("NoticeMarquee: payload integrity failed");
-	const names=["@NoticeMeasure@36","@NoticeHeight@32","@NoticeDraw@44","NoticeSplit"];
+	const names=["@NoticeMeasure@36","@NoticeHeight@32","@NoticeDraw@44","NoticeSplit","@NoticeLinks@16"];
 	for(const name of names) if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)
 		throw Error("NoticeMarquee: invalid export " + name);
 	const sites=[[0x7890DE,0xA21A50,names[0]],[0x78922E,0xA21A50,names[0]],
-		[0x7894E2,0xA27C20,names[2]],[0x789500,0xA21880,names[1]],[0xCB84ED,0x979F10,names[3]]];
+		[0x7894E2,0xA27C20,names[2]],[0x789500,0xA21880,names[1]],[0xCB84ED,0x979F10,names[3]],
+		[0xCB8437,0x8E1730,names[4]],[0xCB7870,0x8E1730,names[4]]];
 	for(const [site,target] of [...sites,[0xCB8621,0x788ED0],[0xCB7943,0x788ED0]]) {
 		const p=Exe.Vir2Phy(site,CODE);
 		if(p<0 || Exe.GetUint8(p)!==0xE8 || ((site+5+Exe.GetUint32(p+1))>>>0)!==target)
@@ -59,6 +61,7 @@ NoticeMarquee = function(_)
 	}
 	n.assertCode("Stock announcement draw",0x789430,"55 8B EC 83 EC 18");
 	n.assertCode("Stock announcement measure",0xA21A50,"55 8B EC 6A FF");
+	n.assertCode("Native item-link name",0x849A00,"55 8B EC 6A FF 68 91 10 EA 00");
 	const reloc=[];
 	for(let i=0;i<count;++i) {
 		const off=c.u32(bytes,32+4*i);
@@ -73,7 +76,7 @@ NoticeMarquee = function(_)
 	c.put(code,api+4,prefix.vir);c.put(code,api+8,resolver.vir);
 	for(let at=0;at<code.length;at+=4096) Exe.SetHex(phy+at,n.bytesToHex(code.slice(at,at+4096)));
 	for(const [site,target,name] of sites) Exe.SetCALL(Exe.Vir2Phy(site,CODE),vir+meta.exports[name],0);
-	const marker=n.allocateString("AnnouncementItemIcons.v1");
+	const marker=n.allocateString("AnnouncementItemIcons.v2");
 	const values=[marker.vir,vir,vir+api,...names.map(x=>vir+meta.exports[x])];
 	const record=new Array(values.length*4).fill(0);values.forEach((v,i)=>c.put(record,i*4,v));
 	n.allocateBytes(record,4);

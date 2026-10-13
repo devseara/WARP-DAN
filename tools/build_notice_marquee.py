@@ -1,4 +1,5 @@
 """Compile stock-announcement icons (legacy filename; no marquee or install)."""
+import argparse
 import hashlib
 import json
 import os
@@ -11,13 +12,16 @@ import pefile
 ROOT = Path(__file__).resolve().parents[1]
 
 def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--work-dir',type=Path,default=ROOT/'Outputs/stock-announcement-20260917/runtime')
+    args=parser.parse_args()
     vswhere = Path(os.environ['ProgramFiles(x86)'])/'Microsoft Visual Studio/Installer/vswhere.exe'
     vs = Path(subprocess.check_output([str(vswhere),'-latest','-products','*','-requires',
               'Microsoft.VisualStudio.Component.VC.Tools.x86.x64','-property','installationPath'],text=True).strip())
     version = (vs/'VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt').read_text().strip()
     tools = vs/'VC/Tools/MSVC'/version/'bin/Hostx64/x86'
     source = ROOT / 'Scripts/Runtime/NoticeMarquee/stock.cpp'
-    work = ROOT / 'Outputs/stock-announcement-20260917/runtime'
+    work = args.work_dir.resolve()
     work.mkdir(parents=True, exist_ok=True)
     obj, dll = work/'runtime.obj', work/'relocation-container.dll'
     subprocess.run([str(tools/'cl.exe'), '/nologo', '/c', '/TP', '/GR-', '/O2', '/Oi', '/GS-', '/Zl', '/W4', '/WX', '/Fo'+str(obj), str(source)], cwd=work, check=True)
@@ -43,11 +47,11 @@ def main():
             relocs.append(offset)
     exports = {s.name.decode():s.address-first for s in pe.DIRECTORY_ENTRY_EXPORT.symbols}
     body = struct.pack('<'+'I'*len(relocs),*relocs)+code
-    header = struct.pack('<8I',0x31544F4E,2,len(code),len(relocs),exports['NoticeApi'],0,0,zlib.crc32(body))
+    header = struct.pack('<8I',0x31544F4E,3,len(code),len(relocs),exports['NoticeApi'],0,0,zlib.crc32(body))
     out = ROOT/'Inputs/NoticeMarquee/runtime.bin'
     out.parent.mkdir(parents=True,exist_ok=True)
     out.write_bytes(header+body)
-    meta = {'version':2,'client':20250716,'api_size':12,'size':len(code),'exports':exports,
+    meta = {'version':3,'client':20250716,'api_size':12,'size':len(code),'exports':exports,
             'source_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
             'payload_sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'runtime_imports':[]}
     out.with_suffix('.json').write_text(json.dumps(meta,indent=2)+'\n',encoding='utf8')

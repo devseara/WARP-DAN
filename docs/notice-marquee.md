@@ -34,9 +34,16 @@ Restart an already-open WARP to reload the revised patch. Target: 2025-07-16 Rag
 
 `Scripts/Runtime/NoticeMarquee/stock.cpp` is the active runtime. Build with
 `uv run --with pefile python tools/build_notice_marquee.py`; the builder emits
-version-2 `Inputs/NoticeMarquee/runtime.bin` and its integrity metadata.
+version-3 `Inputs/NoticeMarquee/runtime.bin` and its integrity metadata.
 `Scripts/Patches/NoticeMarquee.qjs` verifies the payload and all original call
-targets before embedding it. New EXEs contain `AnnouncementItemIcons.v1`.
+targets before embedding it. New EXEs contain `AnnouncementItemIcons.v2`.
+
+The October 13 revision restores icons for Shift-clicked ITEML announcements.
+Two announcement-only native text-conversion calls now retain the ItemId and
+exact native decorated name before the link loses its identity. General chat
+keeps its original icon children and item interactions. See
+[announcement item icons](announcement-item-icons.md) for current validation.
+The deployment history below describes the earlier explicit-`^i` release.
 
 The retired scrolling runtime, test, and documentation are recoverable from
 `Outputs/stock-announcement-20260917/retired-marquee/`; previous September 16

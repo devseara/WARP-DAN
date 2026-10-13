@@ -3,19 +3,27 @@ import argparse
 from pathlib import Path
 import re
 import struct
+import json
 from unicorn import UC_HOOK_CODE
 from unicorn.x86_const import *
 from test_modern_chat_ui import Machine, pack
+
+PATCH_WRITES=None
 
 class StockMachine(Machine):
     def __init__(self, exe):
         self.stubs={}
         super().__init__(exe,Path('.'))
         data=self.pe.__data__
-        pos=data.find(b'AnnouncementItemIcons.v1\0');assert pos>=0
+        version=2 if b'AnnouncementItemIcons.v2\0' in data else 1
+        pos=data.find(f'AnnouncementItemIcons.v{version}\0'.encode());assert pos>=0
         va=self.base+self.pe.get_rva_from_offset(pos)
         record=data.find(pack(va));assert record>=0
         _,self.payload,self.api,self.measure,self.height,self.draw,self.split=struct.unpack_from('<7I',data,record)
+        if version==2:self.links=struct.unpack_from('<I',data,record+28)[0]
+        if PATCH_WRITES:
+            for write in PATCH_WRITES['writes']:self.u.mem_write(write['va'],bytes.fromhex(write['hex']))
+            for name,value in PATCH_WRITES['contract'].items():setattr(self,name,value)
         self.rendered=[];self.requests=[];self.measures=[];self.lines=[];self.missing=False
         self.stub(0xA21A50,self.native_measure)
         self.stub(0xA21880,lambda:self.ret(24,12))
@@ -88,7 +96,9 @@ class StockMachine(Machine):
         return size
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('exe');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('exe');ap.add_argument('--patch-writes',type=Path);args=ap.parse_args()
+    global PATCH_WRITES
+    if args.patch_writes:PATCH_WRITES=json.loads(args.patch_writes.read_text())
     m=StockMachine(args.exe)
     # Producer calls, vtable, background, expiry and original queue untouched.
     for site in (0xCB8621,0xCB7943):assert m.r(site+1)+site+5 & 0xFFFFFFFF==0x788ED0

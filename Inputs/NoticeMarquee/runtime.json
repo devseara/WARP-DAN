@@ -1,16 +1,17 @@
 {
-  "version": 2,
+  "version": 3,
   "client": 20250716,
   "api_size": 12,
-  "size": 8204,
+  "size": 12300,
   "exports": {
-    "@NoticeDraw@44": 1408,
-    "@NoticeHeight@32": 1904,
-    "@NoticeMeasure@36": 2080,
-    "NoticeApi": 8192,
-    "NoticeSplit": 2256
+    "@NoticeDraw@44": 2480,
+    "@NoticeHeight@32": 2976,
+    "@NoticeLinks@16": 3152,
+    "@NoticeMeasure@36": 4192,
+    "NoticeApi": 12288,
+    "NoticeSplit": 4368
   },
-  "source_sha256": "1232cf088632343226172e2e556baae70a6cd46df770f409ddf3b65ba111c912",
-  "payload_sha256": "4d127dfcb4e1ae58188b8225eeaeeda8833fe05cfd589e62ef28b6e0ae8062aa",
+  "source_sha256": "6e7733b584e3d514b47308e4517a44bd05fba839801f1a0ec7ae78c16db74c35",
+  "payload_sha256": "6a821a41050ff169bbcde8933ea69d75b0ba62aa3f9789512b3b951d634c3318",
   "runtime_imports": []
 }
