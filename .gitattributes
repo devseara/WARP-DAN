@@ -91,3 +91,6 @@ Inputs/InventoryUI/*.json text eol=lf
 Inputs/CartUI/*.json text eol=lf
 Assets/StorageInventoryUI/**/*.png binary
 Assets/StorageInventoryUI/**/*.bmp binary
+
+# Preserve the portable server patch checksum across Windows checkouts.
+server/Extended-Vending-VendingUI.diff -text

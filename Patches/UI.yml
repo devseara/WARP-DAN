@@ -665,6 +665,15 @@ DailyRewards:
             author : DevSeara
             desc : Replaces the Attendance menu action with Battle Pass-style attendance and quest grids, Available/Claimed stamps, and Gacha-style Daily Roll cards with paginated possible rewards. Supports six items per attendance day and quest with the DRUI v2 server; older DRUI v1 single-item servers remain compatible. 2025-07-16 only; uses the existing Attendance menu icon.
 
+Vending:
+    title : VENDING
+    patches:
+        - VendingUI:
+            title : Vending UI (market storefront and item currencies)
+            recommend : no
+            author : DevSeara
+            desc : Native marketui storefront for 2025-07-16. Live comma prices, scrolling listings and buying bag, SOLD tags, sales history, a currency list and purchase confirmation. Supports Zeny, Cash Points and configured item currencies through the matching extended-vending server module. Requires its SQL migration and vending_ui configuration.
+
 StorageInventory:
     title : STORAGE, INVENTORY AND CART
     mutex : false

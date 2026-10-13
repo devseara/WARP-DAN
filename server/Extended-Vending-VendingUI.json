@@ -1,0 +1,30 @@
+{
+  "server_base": "fb4d4ae901d4490fd10234c3186667009a00b5cc",
+  "patch_sha256": "fc73f59c935149eeb50a0d264263d644a1894daaf0594006a104ac00bd6583aa",
+  "files": [
+    "src/map/pc.hpp",
+    "src/custom/battle_config_struct.inc",
+    "src/custom/battle_config_init.inc",
+    "src/map/itemdb.cpp",
+    "src/map/clif.cpp",
+    "src/map/buyingstore.hpp",
+    "src/map/vending.cpp",
+    "conf/import/battle_conf.txt",
+    "sql-files/main.sql",
+    "src/map/vending_ui_wire.hpp",
+    "src/map/extended_vending.hpp",
+    "src/map/extended_vending.inc",
+    "db/item_vending_db.yml",
+    "db/import/item_vending_db.yml",
+    "conf/import/extended_vending.txt",
+    "sql-files/upgrades/2026-10-12-extended-vending.sql",
+    "tools/test_extended_vending_server.cpp",
+    "doc/vending-ui.md"
+  ],
+  "excluded_preexisting_edits": [
+    "doc/daily-rewards.md",
+    "src/map/daily_rewards.cpp",
+    "src/map/daily_rewards_wire.hpp",
+    "tools/test_daily_rewards_server.cpp"
+  ]
+}

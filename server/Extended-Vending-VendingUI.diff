@@ -1,0 +1,857 @@
+diff --git a/conf/import/battle_conf.txt b/conf/import/battle_conf.txt
+index e5802e5..1cc1f1f 100644
+--- a/conf/import/battle_conf.txt
++++ b/conf/import/battle_conf.txt
+@@ -1,3 +1,4 @@
+ import: conf/battle/population_engine.conf
+ import: conf/import/job_party_bonus.txt
+ import: conf/import/vip_levels.txt
++import: conf/import/extended_vending.txt
+diff --git a/sql-files/main.sql b/sql-files/main.sql
+index 6e2300b..aa8ed59 100644
+--- a/sql-files/main.sql
++++ b/sql-files/main.sql
+@@ -1158,6 +1158,7 @@ CREATE TABLE IF NOT EXISTS `vendings` (
+   `head_direction` CHAR( 1 ) NOT NULL DEFAULT '0',
+   `sit` CHAR( 1 ) NOT NULL DEFAULT '1',
+   `autotrade` tinyint(4) NOT NULL,
++  `extended_vending_item` INT UNSIGNED NOT NULL DEFAULT 0,
+   PRIMARY KEY (`id`)
+ ) ENGINE=MyISAM;
+ 
+diff --git a/src/custom/battle_config_init.inc b/src/custom/battle_config_init.inc
+index d4584f6..90dd09b 100644
+--- a/src/custom/battle_config_init.inc
++++ b/src/custom/battle_config_init.inc
+@@ -10,6 +10,9 @@
+  * Format:
+  *	 { "name", &battle_config.<variable name>, <default value>, <minimum value>, <maximum value> },
+  **/
++{ "vending_ui", &battle_config.vending_ui, 0, 0, 1 },
++{ "extended_vending", &battle_config.extended_vending, 0, 0, 1 },
++{ "extended_vending_cash", &battle_config.extended_vending_cash, 0, 0, 1 },
+ 
+ { "bg_afk_deserter_time",               &battle_config.bg_afk_deserter_time,             	10,     0,      INT_MAX,        },
+ { "bg_afk_kick_deserter",             &battle_config.bg_afk_kick_deserter,             	1,      0,      1,              },
+diff --git a/src/custom/battle_config_struct.inc b/src/custom/battle_config_struct.inc
+index 46c8b3b..880d220 100644
+--- a/src/custom/battle_config_struct.inc
++++ b/src/custom/battle_config_struct.inc
+@@ -11,6 +11,9 @@
+  * Format:
+  *	 <datatype> name;
+  **/
++	int vending_ui;
++	int extended_vending;
++	int extended_vending_cash;
+ 
+ int32 bg_afk_deserter_time;
+ int32 bg_afk_kick_deserter;
+diff --git a/src/map/buyingstore.hpp b/src/map/buyingstore.hpp
+index 77b37b6..ff7c363 100644
+--- a/src/map/buyingstore.hpp
++++ b/src/map/buyingstore.hpp
+@@ -49,6 +49,7 @@ struct s_autotrader {
+ 		head_dir, ///< Head direction
+ 		sit; ///< Is sitting?
+ 	char title[MESSAGE_SIZE]; ///< Store name
++	uint32 vend_currency; ///< Extended vending currency persisted with autotrade
+ 	uint32 limit; ///< Maximum zeny to be spent (for buyingstore)
+ 	uint16 count; ///< Number of item in store
+ 	struct s_autotrade_entry **entries; ///< Store details
+diff --git a/src/map/clif.cpp b/src/map/clif.cpp
+index 6e7f9a4..6e985d8 100644
+--- a/src/map/clif.cpp
++++ b/src/map/clif.cpp
+@@ -61,6 +61,7 @@
+ #include "bestiary_ui.hpp"
+ #include "gacha_ui.hpp"
+ #include "daily_rewards.hpp"
++#include "extended_vending.hpp"
+ #include "item_description.hpp"
+ #include "instance_scaling.hpp"
+ #include "intif.hpp"
+@@ -8401,6 +8402,7 @@ void clif_cart_delitem( const map_session_data& sd, int32 index, int32 amount ){
+ /// num:
+ ///     number of allowed item slots
+ void clif_openvendingreq( map_session_data& sd, uint16 num ){
++	if (extended_vending::setup(sd,num)) return;
+ 	PACKET_ZC_OPENSTORE packet{};
+ 
+ 	packet.packetType = HEADER_ZC_OPENSTORE;
+@@ -8449,6 +8451,7 @@ void clif_closevendingboard( block_list& bl, send_target target, block_list* tbl
+ /// R 0133 <packet len>.W <owner id>.L { <price>.L <amount>.W <index>.W <type>.B <name id>.W <identified>.B <damaged>.B <refine>.B <card1>.W <card2>.W <card3>.W <card4>.W }* (ZC_PC_PURCHASE_ITEMLIST_FROMMC)
+ /// R 0800 <packet len>.W <owner id>.L <unique id>.L { <price>.L <amount>.W <index>.W <type>.B <name id>.W <identified>.B <damaged>.B <refine>.B <card1>.W <card2>.W <card3>.W <card4>.W }* (ZC_PC_PURCHASE_ITEMLIST_FROMMC2)
+ void clif_vendinglist( map_session_data& sd, map_session_data& vsd ){
++	if (extended_vending::list(sd,vsd)) return;
+ 	PACKET_ZC_PC_PURCHASE_ITEMLIST_FROMMC* p = reinterpret_cast<PACKET_ZC_PC_PURCHASE_ITEMLIST_FROMMC*>( packet_buffer );
+ 
+ 	p->packetType = HEADER_ZC_PC_PURCHASE_ITEMLIST_FROMMC;
+@@ -8520,6 +8523,7 @@ void clif_buyvending( map_session_data& sd, uint16 index, uint16 amount, e_pc_pu
+ /// Show's vending player its list of items for sale.
+ /// 0a28 <result>.B (ZC_ACK_OPENSTORE2)
+ void clif_openvending_ack( const map_session_data& sd, e_ack_openstore2 result ){
++	if (battle_config.vending_ui) { if(result!=OPENSTORE2_SUCCESS) extended_vending::failure(sd,"Store could not open. Reuse the Vending skill."); return; }
+ #if PACKETVER >= 20141022
+ 	PACKET_ZC_ACK_OPENSTORE2 packet{};
+ 
+@@ -8533,6 +8537,7 @@ void clif_openvending_ack( const map_session_data& sd, e_ack_openstore2 result )
+ /// Shop creation success.
+ /// 0136 <packet len>.W <owner id>.L { <price>.L <index>.W <amount>.W <type>.B <name id>.W <identified>.B <damaged>.B <refine>.B <card1>.W <card2>.W <card3>.W <card4>.W }* (ZC_PC_PURCHASE_MYITEMLIST)
+ void clif_openvending( const map_session_data& sd ){
++	if (extended_vending::owner(sd)) return;
+ 	PACKET_ZC_PC_PURCHASE_MYITEMLIST* p = reinterpret_cast<PACKET_ZC_PC_PURCHASE_MYITEMLIST*>( packet_buffer );
+ 
+ 	p->packetType = HEADER_ZC_PC_PURCHASE_MYITEMLIST;
+@@ -8572,6 +8577,7 @@ void clif_openvending( const map_session_data& sd ){
+ /// 0137 <index>.W <amount>.W (ZC_DELETEITEM_FROM_MCSTORE)
+ /// 09e5 <index>.W <amount>.W <GID>.L <Date>.L <zeny>.L (ZC_DELETEITEM_FROM_MCSTORE2)
+ void clif_vendingreport( map_session_data& sd, uint16 index, uint16 amount, uint32 char_id, int32 zeny ){
++	if (extended_vending::report(sd,index,amount,char_id,zeny)) return;
+ 	PACKET_ZC_DELETEITEM_FROM_MCSTORE packet{};
+ 
+ 	packet.packetType = HEADER_ZC_DELETEITEM_FROM_MCSTORE;
+@@ -33543,6 +33549,10 @@ void clif_parse_custom_ui(int32 fd, map_session_data* sd)
+ 		return;
+ 	}
+ 	const uint32 magic = RFIFOL(fd, 4);
++	if (magic == vending_ui_wire::magic) {
++		if(packet_length==sizeof(vending_ui_wire::Request)){vending_ui_wire::Request request;memcpy(&request,RFIFOP(fd,0),sizeof(request));extended_vending::process(*sd,request);}
++		return;
++	}
+ 	if (magic == daily_rewards_wire::magic) {
+ 		if (packet_length == sizeof(daily_rewards_wire::Request)) {
+ 			daily_rewards_wire::Request request;
+diff --git a/src/map/itemdb.cpp b/src/map/itemdb.cpp
+index c089ff6..b0da893 100644
+--- a/src/map/itemdb.cpp
++++ b/src/map/itemdb.cpp
+@@ -2,6 +2,7 @@
+ // For more information, see LICENCE in the main folder
+ 
+ #include "itemdb.hpp"
++#include "extended_vending.hpp"
+ #include "item_description.hpp"
+ 
+ #include <chrono>
+@@ -5269,6 +5270,7 @@ static void itemdb_read(void) {
+ 	item_reform_db.load();
+ 	item_enchant_db.load();
+ 	item_package_db.load();
++	extended_vending::load();
+ 	random_option_dropchance.load();
+ 	item_description::reload();
+ 
+diff --git a/src/map/pc.hpp b/src/map/pc.hpp
+index e0d0b70..5f5db0d 100644
+--- a/src/map/pc.hpp
++++ b/src/map/pc.hpp
+@@ -32,6 +32,7 @@
+ #include "status.hpp" // unit_data
+ #include "unit.hpp" // unit_data
+ #include "vending.hpp" // struct s_vending
++#include "vending_ui_wire.hpp"
+ 
+ enum AtCommandType : uint8;
+ enum e_instance_mode : uint8;
+@@ -935,6 +936,11 @@ public:
+ 	int32 vender_id;
+ 	int32 vend_num;
+ 	uint16 vend_skill_lv;
++	uint32 vend_currency = 0, vend_ui_nonce = 0;
++	uint16 vend_ui_phase = 0, vend_ui_slots = 0;
++	uint32 vend_ui_history_count = 0;
++	vending_ui_wire::History vend_ui_history[vending_ui_wire::max_history]{};
++	uint32 vend_ui_item_ids[MAX_CART]{};
+ 	char message[MESSAGE_SIZE];
+ 	struct s_vending vending[MAX_VENDING];
+ 
+diff --git a/src/map/vending.cpp b/src/map/vending.cpp
+index d19f72b..2445d55 100644
+--- a/src/map/vending.cpp
++++ b/src/map/vending.cpp
+@@ -2,6 +2,7 @@
+ // For more information, see LICENCE in the main folder
+ 
+ #include "vending.hpp"
++#include "extended_vending.hpp"
+ 
+ #include <cstdlib> // atoi
+ 
+@@ -14,7 +15,6 @@
+ #include "achievement.hpp"
+ #include "atcommand.hpp"
+ #include "battle.hpp"
+-#include "buyingstore.hpp"
+ #include "buyingstore.hpp" // struct s_autotrade_entry, struct s_autotrader
+ #include "chrif.hpp"
+ #include "clif.hpp"
+@@ -71,6 +71,7 @@ void vending_closevending(map_session_data* sd)
+ 		sd->vender_id = 0;
+ 		clif_closevendingboard( *sd, AREA_WOS, nullptr );
+ 		idb_remove(vending_db, sd->status.char_id);
++		extended_vending::closed(*sd);
+ 	}
+ }
+ 
+@@ -107,10 +108,8 @@ void vending_vendinglistreq(map_session_data* sd, int32 id)
+  */
+ static double vending_calc_tax(map_session_data *sd, double zeny)
+ {
+-	if (battle_config.vending_tax && zeny >= battle_config.vending_tax_min)
+-		zeny -= zeny * (battle_config.vending_tax / 10000.);
++	return extended_vending::net(*sd,static_cast<uint32>(zeny));
+ 
+-	return zeny;
+ }
+ 
+ /**
+@@ -124,7 +123,8 @@ static double vending_calc_tax(map_session_data *sd, double zeny)
+  */
+ void vending_purchasereq(map_session_data* sd, int32 aid, int32 uid, const uint8* data, int32 count)
+ {
+-	int32 i, j, cursor, w, new_ = 0, blank, vend_list[MAX_VENDING];
++	int32 i, j, cursor, new_ = 0, blank, vend_list[MAX_VENDING];
++	int64 w = 0;
+ 	double z;
+ 	struct s_vending vending[MAX_VENDING]; // against duplicate packets
+ 	map_session_data* vsd = map_id2sd(aid);
+@@ -175,16 +175,16 @@ void vending_purchasereq(map_session_data* sd, int32 aid, int32 uid, const uint8
+ 			vend_list[i] = j;
+ 
+ 		z += ((double)vsd->vending[j].value * (double)amount);
+-		if( z > (double)sd->status.zeny || z < 0. || z > (double)MAX_ZENY ) {
++		if( z < 0. || z > (double)MAX_ZENY || (!vsd->vend_currency && z > (double)sd->status.zeny) ) {
+ 			clif_buyvending( *sd, idx, amount, PURCHASEMC_NO_ZENY ); // you don't have enough zeny
+ 			return;
+ 		}
+-		if( z + (double)vsd->status.zeny > (double)MAX_ZENY ) {
++		if( !vsd->vend_currency && !battle_config.vending_over_max && z + (double)vsd->status.zeny > (double)MAX_ZENY ) {
+ 			clif_buyvending( *sd, idx, vsd->vending[j].amount, PURCHASEMC_OUT_OF_STOCK ); // too much zeny = overflow
+ 			return;
+ 
+ 		}
+-		w += itemdb_weight(vsd->cart.u.items_cart[idx].nameid) * amount;
++		w += static_cast<int64>(itemdb_weight(vsd->cart.u.items_cart[idx].nameid)) * amount;
+ 		if( w + sd->weight > sd->max_weight ) {
+ 			clif_buyvending( *sd, idx, amount, PURCHASEMC_OVERWEIGHT );
+ 			return;
+@@ -217,10 +217,11 @@ void vending_purchasereq(map_session_data* sd, int32 aid, int32 uid, const uint8
+ 		}
+ 	}
+ 
+-	pc_payzeny(sd, (int32)z, LOG_TYPE_VENDING, vsd->status.char_id);
+-	achievement_update_objective(sd, AG_SPEND_ZENY, 1, (int32)z);
+-	z = vending_calc_tax(sd, z);
+-	pc_getzeny(vsd, (int32)z, LOG_TYPE_VENDING, sd->status.char_id);
++	if (!extended_vending::preflight_goods(*sd,*vsd,data,count) || !extended_vending::pay(*sd,*vsd,static_cast<int64>(z))) {
++		clif_displaymessage(sd->fd,"Purchase rejected: check currency, stack limits, weight and seller capacity.");
++		clif_buyvending(*sd,0,0,PURCHASEMC_NO_ZENY);
++		return;
++	}
+ 
+ 	for( i = 0; i < count; i++ ) {
+ 		int16 amount = *(uint16*)(data + 4*i + 0);
+@@ -246,7 +247,7 @@ void vending_purchasereq(map_session_data* sd, int32 aid, int32 uid, const uint8
+ 		}
+ 
+ 		pc_cart_delitem(vsd, idx, amount, 0, LOG_TYPE_VENDING);
+-		z = vending_calc_tax(sd, z);
++		z = vending_calc_tax(vsd, z);
+ 		clif_vendingreport( *vsd, idx, amount, sd->status.char_id, (int32)z );
+ 
+ 		//print buyer's name
+@@ -308,6 +309,7 @@ int8 vending_openvending( map_session_data& sd, const char* message, const uint8
+ 	StringBuf buf;
+ 
+ 	if ( pc_isdead(&sd) || !sd.state.prevend || pc_istrading(&sd)) {
++		extended_vending::failure(sd,"Store could not open. Reuse the Vending skill.");
+ 		return 1; // can't open vendings lying dead || didn't use via the skill (wpe/hack) || can't have 2 shops at once
+ 	}
+ 
+@@ -331,6 +333,15 @@ int8 vending_openvending( map_session_data& sd, const char* message, const uint8
+ 		return 3;
+ 	}
+ 
++	bool used[MAX_CART]{};
++	if(!extended_vending::allowed(sd.vend_currency) || (battle_config.vending_ui && !at && sd.vend_ui_phase!=2)) {
++		clif_openvending_ack(sd,OPENSTORE2_FAILED); return 1;
++	}
++	for(int n=0;n<count;++n) {
++		uint16 index;memcpy(&index,data+8*n,2);
++		if(index<2 || index>=MAX_CART+2 || used[index-2]) {clif_openvending_ack(sd,OPENSTORE2_FAILED);return 1;}
++		used[index-2]=true;
++	}
+ 	if (save_settings&CHARSAVE_VENDING) // Avoid invalid data from saving
+ 		chrif_save(&sd, CSAVE_INVENTORY|CSAVE_CART);
+ 
+@@ -354,6 +365,7 @@ int8 vending_openvending( map_session_data& sd, const char* message, const uint8
+ 		||  !itemdb_cantrade(&sd.cart.u.items_cart[index], pc_get_group_level(&sd), pc_get_group_level(&sd)) ) // untradeable item
+ 			continue;
+ 
++		sd.vend_ui_item_ids[index] = sd.cart.u.items_cart[index].nameid;
+ 		sd.vending[i].index = index;
+ 		sd.vending[i].amount = amount;
+ 		sd.vending[i].value = min(value, (uint32)battle_config.vending_max_value);
+@@ -362,7 +374,7 @@ int8 vending_openvending( map_session_data& sd, const char* message, const uint8
+ 	}
+ 
+ 	// check if the total value of the items plus the current zeny is over the limit
+-	if ( !battle_config.vending_over_max && (static_cast<int64>(sd.status.zeny) + total) > MAX_ZENY ) {
++	if ( !sd.vend_currency && !battle_config.vending_over_max && (static_cast<int64>(sd.status.zeny) + total) > MAX_ZENY ) {
+ #if PACKETVER >= 20200819
+ 		clif_msg_color( sd, MSI_MERCHANTSHOP_TOTA_LOVER_ZENY_ERR, color_table[COLOR_RED] );
+ #endif
+@@ -400,9 +412,9 @@ int8 vending_openvending( map_session_data& sd, const char* message, const uint8
+ 	if( !IS_POPULATION_ENGINE_ACCOUNT_ID(sd.status.account_id) ) {
+ 		Sql_EscapeString( mmysql_handle, message_sql, sd.message );
+ 
+-		if( Sql_Query( mmysql_handle, "INSERT INTO `%s`(`id`, `account_id`, `char_id`, `sex`, `map`, `x`, `y`, `title`, `autotrade`, `body_direction`, `head_direction`, `sit`) "
+-			"VALUES( %d, %d, %d, '%c', '%s', %d, %d, '%s', %d, '%d', '%d', '%d' );",
+-			vendings_table, sd.vender_id, sd.status.account_id, sd.status.char_id, sd.status.sex == SEX_FEMALE ? 'F' : 'M', map_getmapdata(sd.m)->name, sd.x, sd.y, message_sql, sd.state.autotrade, at ? at->dir : sd.ud.dir, at ? at->head_dir : sd.head_dir, at ? at->sit : pc_issit(&sd) ) != SQL_SUCCESS ) {
++		if( Sql_Query( mmysql_handle, "INSERT INTO `%s`(`id`, `account_id`, `char_id`, `sex`, `map`, `x`, `y`, `title`, `autotrade`, `body_direction`, `head_direction`, `sit`, `extended_vending_item`) "
++			"VALUES( %d, %d, %d, '%c', '%s', %d, %d, '%s', %d, '%d', '%d', '%d', %u );",
++			vendings_table, sd.vender_id, sd.status.account_id, sd.status.char_id, sd.status.sex == SEX_FEMALE ? 'F' : 'M', map_getmapdata(sd.m)->name, sd.x, sd.y, message_sql, sd.state.autotrade, at ? at->dir : sd.ud.dir, at ? at->head_dir : sd.head_dir, at ? at->sit : pc_issit(&sd), sd.vend_currency ) != SQL_SUCCESS ) {
+ 			Sql_ShowDebug(mmysql_handle);
+ 		}
+ 
+@@ -455,6 +467,8 @@ bool vending_search( const map_session_data* sd, t_itemid nameid )
+  */
+ bool vending_searchall( const map_session_data* sd, const struct s_search_store_search* s )
+ {
++	// Native market search has no currency field and interprets every price as Zeny.
++	if(sd->vend_currency) return true;
+ 	int32 i, c, slot;
+ 	uint32 idx, cidx;
+ 	const item* it;
+@@ -565,6 +579,7 @@ void vending_reopen( map_session_data& sd )
+ 		npc_event_dequeue(&sd);
+ 		pc_cleareventtimer(&sd);
+ 
++		sd.vend_currency=at->vend_currency;
+ 		// Open the vending again
+ 		if( (fail = vending_openvending(sd, at->title, data, count, at)) == 0 ) {
+ 			// Make vendor look perfect
+@@ -604,7 +619,7 @@ void do_init_vending_autotrade(void)
+ {
+ 	if (battle_config.feature_autotrade) {
+ 		if (Sql_Query(mmysql_handle,
+-			"SELECT `id`, `account_id`, `char_id`, `sex`, `title`, `body_direction`, `head_direction`, `sit` "
++			"SELECT `id`, `account_id`, `char_id`, `sex`, `title`, `body_direction`, `head_direction`, `sit`, `extended_vending_item` "
+ 			"FROM `%s` "
+ 			"WHERE `autotrade` = 1 AND (SELECT COUNT(`vending_id`) FROM `%s` WHERE `vending_id` = `id`) > 0 "
+ 			"ORDER BY `id`;",
+@@ -634,6 +649,7 @@ void do_init_vending_autotrade(void)
+ 				Sql_GetData(mmysql_handle, 5, &data, nullptr); at->dir = atoi(data);
+ 				Sql_GetData(mmysql_handle, 6, &data, nullptr); at->head_dir = atoi(data);
+ 				Sql_GetData(mmysql_handle, 7, &data, nullptr); at->sit = atoi(data);
++				Sql_GetData(mmysql_handle, 8, &data, nullptr); at->vend_currency = static_cast<uint32>(strtoull(data,nullptr,10));
+ 				at->count = 0;
+ 
+ 				if (battle_config.feature_autotrade_direction >= 0)
+@@ -747,8 +763,8 @@ void vending_update(map_session_data &sd)
+ {
+ 	if (IS_POPULATION_ENGINE_ACCOUNT_ID(sd.status.account_id))
+ 		return;
+-	if (Sql_Query(mmysql_handle, "UPDATE `%s` SET `map` = '%s', `x` = '%d', `y` = '%d', `body_direction` = '%d', `head_direction` = '%d', `sit` = '%d', `autotrade` = '%d' WHERE `id` = '%d'",
+-		vendings_table, map_getmapdata(sd.m)->name, sd.x, sd.y, sd.ud.dir, sd.head_dir, pc_issit(&sd), sd.state.autotrade,
++	if (Sql_Query(mmysql_handle, "UPDATE `%s` SET `map` = '%s', `x` = '%d', `y` = '%d', `body_direction` = '%d', `head_direction` = '%d', `sit` = '%d', `autotrade` = '%d', `extended_vending_item` = '%u' WHERE `id` = '%d'",
++		vendings_table, map_getmapdata(sd.m)->name, sd.x, sd.y, sd.ud.dir, sd.head_dir, pc_issit(&sd), sd.state.autotrade, sd.vend_currency,
+ 		sd.vender_id
+ 	) != SQL_SUCCESS) {
+ 		Sql_ShowDebug(mmysql_handle);
+@@ -775,3 +791,5 @@ void do_init_vending(void)
+ 	vending_autotrader_db = uidb_alloc(DB_OPT_BASE);
+ 	vending_nextid = 0;
+ }
++
++#include "extended_vending.inc"
+diff --git a/src/map/vending_ui_wire.hpp b/src/map/vending_ui_wire.hpp
+new file mode 100644
+--- /dev/null
++++ b/src/map/vending_ui_wire.hpp
+@@ -0,0 +1,31 @@
++// VendingUI v1. Currency zero is Zeny; UINT32_MAX is Cash Points.
++#ifndef VENDING_UI_WIRE_HPP
++#define VENDING_UI_WIRE_HPP
++#include <cstdint>
++namespace vending_ui_wire {
++constexpr uint32_t magic=0x49554E56;
++constexpr uint32_t cash=0xFFFFFFFFu;
++constexpr uint16_t version=1, snapshot_id=0x0BF3, request_id=0x0BF8;
++constexpr unsigned max_rows=200, max_history=16;
++enum Mode : uint16_t { Closed, Currency, Setup, Owner, Buyer, Error };
++enum Action : uint16_t { SelectCurrency=1, Cancel, Refresh };
++#pragma pack(push,1)
++struct Request {uint16_t opcode,length;uint32_t magic;uint16_t version,action;uint32_t nonce,arg,owner,shop,reserved;};
++struct Row {
++    uint32_t item,index,amount,price;
++    uint8_t identified,refine,grade,type;
++    uint32_t cards[4];
++    uint8_t options[25];
++    uint8_t pad[3];
++};
++struct History {uint32_t item,amount,total,time;char buyer[24];};
++struct Header {
++    uint16_t opcode,length;uint32_t magic;uint16_t version,mode;
++    uint32_t nonce,owner,shop,currency,balance,max_price;
++    uint16_t max_slots,count,history_count,tax;
++    char title[80],owner_name[24],currency_name[48],message[96];
++};
++#pragma pack(pop)
++static_assert(sizeof(Request)==32 && sizeof(Row)==64 && sizeof(History)==40 && sizeof(Header)==292,"VendingUI v1 sizes");
++}
++#endif
+diff --git a/src/map/extended_vending.hpp b/src/map/extended_vending.hpp
+new file mode 100644
+--- /dev/null
++++ b/src/map/extended_vending.hpp
+@@ -0,0 +1,22 @@
++// Extended Vending, adapted from Lilith / Easycore V3.01 for this server.
++#ifndef EXTENDED_VENDING_HPP
++#define EXTENDED_VENDING_HPP
++#include "vending_ui_wire.hpp"
++class map_session_data;
++namespace extended_vending {
++void load();
++bool allowed(uint32_t currency);
++bool setup(map_session_data& sd,uint16_t slots);
++bool list(const map_session_data& receiver,const map_session_data& seller);
++bool owner(const map_session_data& seller);
++bool report(map_session_data& seller,uint16_t index,uint16_t amount,uint32_t buyer,int32_t total);
++void closed(map_session_data& sd);
++void failure(const map_session_data& sd,const char* message);
++void process(map_session_data& sd,const vending_ui_wire::Request& request);
++bool validate_payment(map_session_data& buyer,map_session_data& seller,int64_t gross);
++bool pay(map_session_data& buyer,map_session_data& seller,int64_t gross);
++int32_t tax(const map_session_data& seller);
++uint32_t net(const map_session_data& seller,uint32_t gross);
++bool preflight_goods(map_session_data& buyer,map_session_data& seller,const uint8_t* data,int count);
++}
++#endif
+diff --git a/src/map/extended_vending.inc b/src/map/extended_vending.inc
+new file mode 100644
+--- /dev/null
++++ b/src/map/extended_vending.inc
+@@ -0,0 +1,141 @@
++// Included by vending.cpp, so all server build variants compile this module.
++// Currency selection and item currency support derived from Lilith / Easycore
++// Extended_Vending_V3.01. No virtual item IDs collide with the live item DB.
++#include "extended_vending.hpp"
++#include <algorithm>
++#include <array>
++#include <vector>
++#include <map>
++
++namespace extended_vending {
++using namespace vending_ui_wire;
++struct CurrencyData {uint32 id;int32 tax=-1;};
++class CurrencyDatabase final : public TypesafeYamlDatabase<uint32,CurrencyData> {
++public:
++    CurrencyDatabase():TypesafeYamlDatabase("ITEM_VENDING_DB",1){}
++    const std::string getDefaultLocation() override {return std::string(db_path)+"/item_vending_db.yml";}
++    uint64 parseBodyNode(const ryml::NodeRef& node) override {
++        std::string name;if(!asString(node,"Item",name))return 0;
++        auto item=item_db.search_aegisname(name.c_str());
++        if(!item || !itemdb_isstackable2(item.get()) || item->flag.guid || item->flag.autoequip){invalidWarning(node,"Currency must be an existing stackable item without GUID/autoequip.\n");return 0;}
++        int32 rate=-1;if(node.has_child("Tax") && !asInt32(node,"Tax",rate))return 0;
++        if(rate < -1 || rate>10000){invalidWarning(node,"Tax must be -1 or 0..10000.\n");return 0;}
++        auto entry=std::make_shared<CurrencyData>();entry->id=item->nameid;entry->tax=rate;put(entry->id,entry);return 1;
++    }
++};
++static CurrencyDatabase currencies;
++void load(){currencies.clear();currencies.load();}
++bool allowed(uint32 currency){return currency==0 || (battle_config.extended_vending && (currency==cash?battle_config.extended_vending_cash!=0:currencies.exists(currency)));}
++static bool plain(const item& it,uint32 id){
++    if(it.nameid!=id || it.amount<=0 || it.bound || it.expire_time || it.unique_id || it.equip || it.equipSwitch || it.refine || it.attribute || !it.identify || it.enchantgrade)return false;
++    for(auto card:it.card)if(card)return false;
++    for(const auto& option:it.option)if(option.id || option.value || option.param)return false;
++    return true;
++}
++static uint32 balance(const map_session_data& sd,uint32 currency){
++    if(!currency)return sd.status.zeny;if(currency==cash)return static_cast<uint32>(std::max(0,sd.cashPoints));
++    uint32 result=0;for(int i=0;i<MAX_INVENTORY;++i)if(sd.inventory_data[i] && plain(sd.inventory.u.items_inventory[i],currency))result+=sd.inventory.u.items_inventory[i].amount;return result;
++}
++int32 tax(const map_session_data& seller){auto row=currencies.find(seller.vend_currency);return row && row->tax>=0?row->tax:battle_config.vending_tax;}
++uint32 net(const map_session_data& seller,uint32 gross){int32 rate=tax(seller);return gross>=static_cast<uint32>(battle_config.vending_tax_min)?static_cast<uint32>(static_cast<uint64>(gross)*(10000-rate)/10000):gross;}
++static void currency_name(char* out,size_t size,uint32 id){if(!id)safestrncpy(out,"Zeny",size);else if(id==cash)safestrncpy(out,"Cash Points",size);else{auto item=item_db.find(id);safestrncpy(out,item?item->ename.c_str():"Unavailable currency",size);}}
++static uint32 display_id(uint32 id){auto view=itemdb_viewid(id);return view?view:id;}
++static Row row(const item& item,int index,uint32 amount,uint32 price){
++    Row r{};r.item=display_id(item.nameid);r.index=index+2;r.amount=amount;r.price=price;r.identified=item.identify;r.refine=item.refine;r.grade=item.enchantgrade;r.type=static_cast<uint8>(itemdb_type(item.nameid));
++    for(unsigned i=0;i<4;++i)r.cards[i]=item.card[i] && !itemdb_isspecial(item.card[0])?display_id(item.card[i]):item.card[i];
++    for(unsigned i=0;i<5;++i){uint16 id=item.option[i].id;int16 value=item.option[i].value;memcpy(r.options+i*5,&id,2);memcpy(r.options+i*5+2,&value,2);r.options[i*5+4]=item.option[i].param;}return r;
++}
++static void send(const map_session_data& receiver,const map_session_data& seller,Mode mode,const std::vector<Row>& rows,const char* message=""){
++    if(!battle_config.vending_ui || receiver.fd<=0 || rows.size()>max_rows)return;
++    Header h{};h.opcode=snapshot_id;h.magic=magic;h.version=version;h.mode=mode;h.nonce=receiver.vend_ui_nonce;h.owner=seller.status.account_id;h.shop=seller.vender_id;
++    h.currency=seller.vend_currency;h.balance=balance(receiver,h.currency);h.max_price=battle_config.vending_max_value;h.max_slots=std::min<int>(MAX_VENDING,2+pc_checkskill(const_cast<map_session_data*>(&seller),MC_VENDING));
++    h.count=static_cast<uint16>(rows.size());h.tax=static_cast<uint16>(tax(seller));
++    h.history_count=mode==Owner?std::min<unsigned>(seller.vend_ui_history_count,max_history):0;
++    safestrncpy(h.title,seller.message,sizeof(h.title));safestrncpy(h.owner_name,seller.status.name,sizeof(h.owner_name));currency_name(h.currency_name,sizeof(h.currency_name),h.currency);safestrncpy(h.message,message,sizeof(h.message));
++    h.length=static_cast<uint16>(sizeof(h)+rows.size()*sizeof(Row)+h.history_count*sizeof(History));
++    std::vector<uint8> bytes(h.length);memcpy(bytes.data(),&h,sizeof(h));if(!rows.empty())memcpy(bytes.data()+sizeof(h),rows.data(),rows.size()*sizeof(Row));
++    if(h.history_count)memcpy(bytes.data()+sizeof(h)+rows.size()*sizeof(Row),seller.vend_ui_history,h.history_count*sizeof(History));
++    clif_send(bytes.data(),h.length,&receiver,SELF);
++}
++static std::vector<Row> stock(const map_session_data& sd){std::vector<Row> rows;for(int i=0;i<sd.vend_num && rows.size()<max_rows;++i){const auto& v=sd.vending[i];if(v.index>=0 && v.index<MAX_CART && v.amount>0)rows.push_back(row(sd.cart.u.items_cart[v.index],v.index,v.amount,v.value));}return rows;}
++static void show_setup(map_session_data& sd){
++    std::vector<Row> rows;for(int i=0;i<MAX_CART && rows.size()<max_rows;++i){const auto& it=sd.cart.u.items_cart[i];
++        if(it.nameid && it.amount>0 && it.id && it.identify && !it.attribute && !it.expire_time && (!it.bound || pc_can_give_bounded_items(&sd)) && itemdb_cantrade(&it,pc_get_group_level(&sd),pc_get_group_level(&sd)))rows.push_back(row(it,i,it.amount,0));}
++    send(sd,sd,Setup,rows);
++}
++bool setup(map_session_data& sd,uint16 slots){
++    if(!battle_config.vending_ui)return false;
++    sd.vend_currency=0;sd.vend_ui_phase=1;sd.vend_ui_slots=std::min<int>(slots,MAX_VENDING);sd.vend_ui_history_count=0;if(++sd.vend_ui_nonce==0)++sd.vend_ui_nonce;
++    std::vector<Row> rows;Row z{};z.index=0;z.amount=sd.status.zeny;rows.push_back(z);
++    if(battle_config.extended_vending){if(battle_config.extended_vending_cash){Row c{};c.index=cash;c.amount=balance(sd,cash);rows.push_back(c);}
++        std::map<uint32,std::shared_ptr<CurrencyData>> sorted(currencies.begin(),currencies.end());for(const auto& pair:sorted){if(rows.size()==max_rows)break;Row r{};r.item=r.index=pair.first;r.identified=1;r.amount=balance(sd,pair.first);rows.push_back(r);}}
++    if(rows.size()==1){sd.vend_ui_phase=2;show_setup(sd);}else send(sd,sd,Currency,rows);return true;
++}
++bool list(const map_session_data& receiver,const map_session_data& seller){if(!battle_config.vending_ui)return false;send(receiver,seller,Buyer,stock(seller));return true;}
++bool owner(const map_session_data& sd){if(!battle_config.vending_ui)return false;send(sd,sd,Owner,stock(sd));return true;}
++bool report(map_session_data& seller,uint16 index,uint16 amount,uint32 buyer,int32 total){
++    if(!battle_config.vending_ui)return false;
++    for(unsigned i=std::min<unsigned>(seller.vend_ui_history_count,max_history-1);i>0;--i)seller.vend_ui_history[i]=seller.vend_ui_history[i-1];
++    auto& h=seller.vend_ui_history[0];h={};
++    // A sold-out cart slot has already been cleared; retain the last snapshot ID.
++    if(index<MAX_CART)h.item=display_id(seller.vend_ui_item_ids[index]);h.amount=amount;h.total=std::max(0,total);h.time=static_cast<uint32>(time(nullptr));
++    auto* customer=map_charid2sd(buyer);if(customer)safestrncpy(h.buyer,customer->status.name,sizeof(h.buyer));else safestrncpy(h.buyer,"Customer",sizeof(h.buyer));
++    seller.vend_ui_history_count=std::min<unsigned>(seller.vend_ui_history_count+1,max_history);owner(seller);return true;
++}
++void closed(map_session_data& sd){sd.vend_ui_phase=0;sd.vend_currency=0;if(battle_config.vending_ui)send(sd,sd,Closed,{});}
++void failure(const map_session_data& sd,const char* message){if(battle_config.vending_ui)send(sd,sd,Error,{},message);}
++void process(map_session_data& sd,const Request& r){
++    if(!battle_config.vending_ui || r.opcode!=request_id || r.length!=sizeof(r) || r.magic!=magic || r.version!=version || r.reserved || r.nonce!=sd.vend_ui_nonce)return;
++    if(r.action==SelectCurrency && sd.vend_ui_phase==1 && sd.state.prevend && !sd.state.vending && allowed(r.arg) && pc_can_give_items(&sd) && !pc_isdead(&sd)){
++        sd.vend_currency=r.arg;sd.vend_ui_phase=2;show_setup(sd);
++    }else if(r.action==Cancel && (sd.vend_ui_phase==1 || sd.vend_ui_phase==2) && sd.state.prevend && !sd.state.vending){sd.state.prevend=0;sd.state.workinprogress=WIP_DISABLE_NONE;closed(sd);}
++}
++
++// Match pc_additem's slot and stack rules on a private inventory copy. Multiple
++// goods with the same ItemId are checked cumulatively, including cards/unique ID.
++static bool simulate_add(std::array<item,MAX_INVENTORY>& inv,int slots,const item& incoming,int amount){
++    auto data=item_db.find(incoming.nameid);if(!data || amount<=0 || amount>MAX_AMOUNT || (data->stack.inventory && amount>data->stack.amount))return false;
++    int found=-1;if(itemdb_isstackable2(data.get()) && !incoming.expire_time && !data->flag.guid){for(int i=0;i<MAX_INVENTORY;++i)if(inv[i].nameid==incoming.nameid && inv[i].bound==incoming.bound && !inv[i].expire_time && inv[i].unique_id==incoming.unique_id && memcmp(inv[i].card,incoming.card,sizeof(incoming.card))==0){found=i;break;}}
++    if(found>=0){if(found>=slots || amount>MAX_AMOUNT-inv[found].amount || (data->stack.inventory && amount>data->stack.amount-inv[found].amount))return false;inv[found].amount+=amount;}
++    else{for(int i=0;i<std::min(slots,MAX_INVENTORY);++i)if(!inv[i].nameid){inv[i]=incoming;inv[i].amount=amount;return true;}return false;}return true;
++}
++bool preflight_goods(map_session_data& buyer,map_session_data& seller,const uint8* data,int count){
++    std::array<item,MAX_INVENTORY> inventory;memcpy(inventory.data(),buyer.inventory.u.items_inventory,sizeof(inventory));
++    for(int i=0;i<count;++i){uint16 amount,index;memcpy(&amount,data+4*i,2);memcpy(&index,data+4*i+2,2);if(index<2 || index>=MAX_CART+2 || !simulate_add(inventory,buyer.status.inventory_slots,seller.cart.u.items_cart[index-2],amount))return false;}return true;
++}
++bool validate_payment(map_session_data& buyer,map_session_data& seller,int64 gross){
++    if(gross<0 || gross>MAX_ZENY || !allowed(seller.vend_currency))return false;
++    auto cost=static_cast<uint32>(gross),income=net(seller,cost),currency=seller.vend_currency;
++    if(balance(buyer,currency)<cost)return false;
++    if(!currency)return battle_config.vending_over_max || income<=MAX_ZENY-seller.status.zeny;
++    if(currency==cash)return buyer.status.account_id!=seller.status.account_id && income<=static_cast<uint32>(MAX_CASHPOINT-seller.cashPoints);
++    auto info=item_db.find(currency);if(!info || !itemdb_isstackable2(info.get()) || info->flag.guid || info->flag.autoequip)return false;
++    item payment{};payment.nameid=currency;payment.identify=1;
++    if(!itemdb_cantrade(&payment,pc_get_group_level(&buyer),pc_get_group_level(&seller)))return false;
++    if(static_cast<uint64>(info->weight)*income+seller.weight>seller.max_weight)return false;
++    if(!income)return true;
++    std::array<item,MAX_INVENTORY> inventory;memcpy(inventory.data(),seller.inventory.u.items_inventory,sizeof(inventory));
++    return simulate_add(inventory,seller.status.inventory_slots,payment,income);
++}
++bool pay(map_session_data& buyer,map_session_data& seller,int64 gross){
++    if(!validate_payment(buyer,seller,gross))return false;
++    uint32 cost=static_cast<uint32>(gross),income=net(seller,cost),currency=seller.vend_currency;
++    if(!currency){if(pc_payzeny(&buyer,cost,LOG_TYPE_VENDING,seller.status.char_id))return false;pc_getzeny(&seller,income,LOG_TYPE_VENDING,buyer.status.char_id);achievement_update_objective(&buyer,AG_SPEND_ZENY,1,cost);return true;}
++    if(currency==cash){if(pc_paycash(&buyer,cost,0,LOG_TYPE_VENDING)<0)return false;return !income || pc_getcash(&seller,income,0,LOG_TYPE_VENDING)==static_cast<int32>(income);}
++    // All payment slots and seller capacity are validated before mutation.
++    // Commit the currency inventory changes together, then notify/log; native
++    // item-event scripts cannot observe a half-paid purchase or re-enter it.
++    std::array<item,MAX_INVENTORY> before;memcpy(before.data(),buyer.inventory.u.items_inventory,sizeof(before));
++    std::array<item,MAX_INVENTORY> credited;memcpy(credited.data(),seller.inventory.u.items_inventory,sizeof(credited));
++    item payment{};payment.nameid=currency;payment.identify=1;if(income && !simulate_add(credited,seller.status.inventory_slots,payment,income))return false;
++    uint32 remaining=cost;std::vector<std::pair<int,int>> removed;
++    for(int i=0;i<MAX_INVENTORY && remaining;++i)if(buyer.inventory_data[i] && plain(before[i],currency)){int amount=std::min<uint32>(remaining,before[i].amount);removed.emplace_back(i,amount);remaining-=amount;}
++    if(remaining)return false;
++    for(const auto& entry:removed){auto& it=buyer.inventory.u.items_inventory[entry.first];it.amount-=entry.second;if(!it.amount){it={};buyer.inventory_data[entry.first]=nullptr;}}
++    auto info=item_db.find(currency);buyer.weight-=info->weight*cost;seller.weight+=info->weight*income;
++    for(int i=0;i<MAX_INVENTORY;++i)if(credited[i].nameid==currency && credited[i].amount!=seller.inventory.u.items_inventory[i].amount){seller.inventory.u.items_inventory[i]=credited[i];seller.inventory_data[i]=info.get();seller.last_addeditem_index=i;}
++    for(const auto& entry:removed){log_pick_pc(&buyer,LOG_TYPE_VENDING,-entry.second,&before[entry.first]);clif_delitem(buyer,entry.first,entry.second,6);}
++    if(income){int i=seller.last_addeditem_index;log_pick_pc(&seller,LOG_TYPE_VENDING,income,&seller.inventory.u.items_inventory[i]);clif_additem(&seller,i,income,0);}
++    clif_updatestatus(buyer,SP_WEIGHT);clif_updatestatus(seller,SP_WEIGHT);pc_show_questinfo(&buyer);pc_show_questinfo(&seller);return true;
++}
++}
+diff --git a/db/item_vending_db.yml b/db/item_vending_db.yml
+new file mode 100644
+--- /dev/null
++++ b/db/item_vending_db.yml
+@@ -0,0 +1,18 @@
++# Extended Vending currencies. Zeny is always available; Cash is controlled by
++# extended_vending_cash. Use existing item AegisNames; no new item IDs are needed.
++# Tax: -1 uses vending_tax; 0 disables tax; other values are 1/100 percent.
++Header:
++  Type: ITEM_VENDING_DB
++  Version: 1
++Body:
++  - Item: TCG_Card
++    Tax: -1
++  - Item: Mithril_Coin
++    Tax: -1
++  - Item: Silver_Coin
++    Tax: -1
++  - Item: Copper_Coin
++    Tax: -1
++Footer:
++  Imports:
++    - Path: db/import/item_vending_db.yml
+diff --git a/db/import/item_vending_db.yml b/db/import/item_vending_db.yml
+new file mode 100644
+--- /dev/null
++++ b/db/import/item_vending_db.yml
+@@ -0,0 +1,5 @@
++# Add your item currencies here using their existing AegisName.
++Header:
++  Type: ITEM_VENDING_DB
++  Version: 1
++Body: []
+diff --git a/conf/import/extended_vending.txt b/conf/import/extended_vending.txt
+new file mode 100644
+--- /dev/null
++++ b/conf/import/extended_vending.txt
+@@ -0,0 +1,5 @@
++// Requires WARP VendingUI and the matching server build.
++// Enable after applying sql-files/upgrades/2026-10-12-extended-vending.sql.
++vending_ui: on
++extended_vending: on
++extended_vending_cash: on
+diff --git a/sql-files/upgrades/2026-10-12-extended-vending.sql b/sql-files/upgrades/2026-10-12-extended-vending.sql
+new file mode 100644
+--- /dev/null
++++ b/sql-files/upgrades/2026-10-12-extended-vending.sql
+@@ -0,0 +1,3 @@
++-- Apply once to the game database before enabling Extended Vending.
++-- 0 = Zeny, 4294967295 = Cash Points, other values = configured item ID.
++ALTER TABLE `vendings` ADD COLUMN `extended_vending_item` INT UNSIGNED NOT NULL DEFAULT 0;
+diff --git a/tools/test_extended_vending_server.cpp b/tools/test_extended_vending_server.cpp
+new file mode 100644
+--- /dev/null
++++ b/tools/test_extended_vending_server.cpp
+@@ -0,0 +1,81 @@
++// Offline: production vending module, actual compiler/VM and explicit I/O doubles.
++#include "feature_test_no_network.hpp"
++#define clif_send vending_base_send
++#define main accepted_battlepass_main
++#include "test_battlepass_server.cpp"
++#undef main
++#undef clif_send
++#include "../src/map/extended_vending.hpp"
++#include "../src/map/pc_groups.hpp"
++
++static std::vector<std::vector<uint8>> vending_packets;
++int32 clif_send(const void* data,int32 size,const block_list* bl,send_target target) {
++    if(size>=8 && RBUFW(data,0)==vending_ui_wire::snapshot_id && RBUFL(data,4)==vending_ui_wire::magic) {
++        auto* p=static_cast<const uint8*>(data);vending_packets.emplace_back(p,p+size);
++    }
++    return vending_base_send(data,size,bl,target);
++}
++// Inventory mutation is production code. Only external effects are suppressed.
++void clif_additem(const map_session_data*,int32,int32,unsigned char){}
++void clif_delitem(const map_session_data&,int32,int32,int16){}
++void clif_updatestatus(map_session_data&,_sp){}
++void pc_show_questinfo(map_session_data*){}
++void log_pick_pc(const map_session_data*,e_log_pick_type,int32,const item*){}
++int32 pc_get_group_level(const map_session_data*){return 0;}
++bool pc_can_give_items(const map_session_data*){return true;}
++bool pc_can_give_bounded_items(const map_session_data*){return false;}
++char pc_payzeny(map_session_data* sd,int32 amount,e_log_pick_type,uint32){if(amount<0 || sd->status.zeny<amount)return 1;sd->status.zeny-=amount;return 0;}
++char pc_getzeny(map_session_data* sd,int32 amount,e_log_pick_type,uint32){sd->status.zeny+=amount;return 0;}
++int32 pc_paycash(map_session_data* sd,int32 amount,int32,e_log_pick_type){if(amount<0 || sd->cashPoints<amount)return -1;sd->cashPoints-=amount;return amount;}
++int32 pc_getcash(map_session_data* sd,int32 amount,int32,e_log_pick_type){sd->cashPoints+=amount;return amount;}
++
++static void putitem(map_session_data& sd,int slot,uint32 id,int amount){auto& it=sd.inventory.u.items_inventory[slot];it={};it.nameid=id;it.identify=1;it.amount=amount;sd.inventory_data[slot]=item_db.find(id).get();}
++static void clear_items(map_session_data& sd){for(int i=0;i<MAX_INVENTORY;++i){sd.inventory.u.items_inventory[i]={};sd.inventory_data[i]=nullptr;}sd.weight=0;}
++static vending_ui_wire::Header header(){require(!vending_packets.empty(),"VNUI snapshot emitted");auto h=*reinterpret_cast<const vending_ui_wire::Header*>(vending_packets.back().data());require(h.length==vending_packets.back().size() && h.length==sizeof(h)+h.count*64+h.history_count*40,"exact wire framing");return h;}
++
++int main(){
++    require(!accepted_battlepass_main(),"Battle Pass regression baseline");
++    using namespace extended_vending;using namespace vending_ui_wire;
++    const char* names[]={"TCG_Card","Mithril_Coin","Silver_Coin","Copper_Coin","Test_Goods"};
++    for(unsigned i=0;i<5;++i){std::string yaml="Id: "+std::to_string(70000+i)+"\nAegisName: "+names[i]+"\nName: "+names[i]+"\nType: Etc\nWeight: 10\n";auto tree=ryml::parse_in_arena(ryml::to_csubstr(yaml));require(item_db.parseBodyNode(tree.rootref())==1,"currency item YAML parses");}
++    item_db.loadingFinished();extended_vending::load();battle_config.extended_vending=1;battle_config.extended_vending_cash=1;battle_config.vending_ui=1;battle_config.vending_max_value=1000000000;battle_config.vending_tax=250;battle_config.vending_tax_min=0;
++    require(allowed(0) && allowed(cash) && allowed(70000) && !allowed(999999),"configured currencies only, no virtual item collision");
++    auto buyer=new map_session_data();auto seller=new map_session_data();buyer->status.account_id=100;seller->status.account_id=101;
++    buyer->status.inventory_slots=seller->status.inventory_slots=100;buyer->max_weight=seller->max_weight=1000000;
++    buyer->status.zeny=10000;seller->status.zeny=0;seller->vend_currency=0;
++    require(pay(*buyer,*seller,1000) && buyer->status.zeny==9000 && seller->status.zeny==975,"Zeny and exact basis-point tax");
++    require(!pay(*buyer,*seller,9001) && buyer->status.zeny==9000 && seller->status.zeny==975,"insufficient Zeny is nonmutating");
++    seller->vend_currency=cash;buyer->cashPoints=1000;seller->cashPoints=0;
++    require(pay(*buyer,*seller,1000) && buyer->cashPoints==0 && seller->cashPoints==975,"Cash currency settlement");
++    buyer->cashPoints=1000;buyer->status.account_id=101;require(!pay(*buyer,*seller,100),"shared-account Cash rejected");buyer->status.account_id=100;
++    seller->cashPoints=MAX_CASHPOINT;require(!pay(*buyer,*seller,100) && buyer->cashPoints==1000,"seller Cash overflow rejected");
++    seller->vend_currency=70000;putitem(*buyer,0,70000,30);putitem(*buyer,1,70000,70);buyer->weight=1000;
++    require(pay(*buyer,*seller,100) && !buyer->inventory.u.items_inventory[0].nameid && !buyer->inventory.u.items_inventory[1].nameid && seller->inventory.u.items_inventory[0].amount==97 && buyer->weight==0 && seller->weight==970,"multi-stack debit and taxed item credit are atomic");
++    clear_items(*buyer);clear_items(*seller);putitem(*buyer,0,70000,100);buyer->weight=1000;
++    buyer->inventory.u.items_inventory[0].bound=1;require(!pay(*buyer,*seller,100),"bound currency excluded");buyer->inventory.u.items_inventory[0].bound=0;
++    buyer->inventory.u.items_inventory[0].option[0].id=1;require(!pay(*buyer,*seller,100),"optioned currency excluded");buyer->inventory.u.items_inventory[0].option[0].id=0;
++    buyer->inventory.u.items_inventory[0].card[0]=4001;require(!pay(*buyer,*seller,100),"carded currency excluded");buyer->inventory.u.items_inventory[0].card[0]=0;
++    seller->max_weight=969;require(!pay(*buyer,*seller,100) && buyer->inventory.u.items_inventory[0].amount==100,"seller weight preflight preserves buyer");seller->max_weight=1000000;
++    seller->status.inventory_slots=1;putitem(*seller,0,70004,1);require(!pay(*buyer,*seller,100) && buyer->inventory.u.items_inventory[0].amount==100,"seller full inventory preserves buyer");
++    putitem(*seller,0,70000,29950);require(!pay(*buyer,*seller,100),"seller stack overflow preserves buyer");
++    clear_items(*seller);auto currency=item_db.find(70000);currency->stack.inventory=true;currency->stack.amount=50;
++    require(!pay(*buyer,*seller,100),"configured inventory stack limit preflighted");currency->stack.inventory=false;
++    require(!pay(*buyer,*seller,-1) && !pay(*buyer,*seller,INT64_MAX),"negative/overflow costs rejected");
++    battle_config.extended_vending=0;require(!pay(*buyer,*seller,1) && allowed(0),"disabled item currency does not fall back to Zeny");battle_config.extended_vending=1;
++    // Full native goods preflight aggregates duplicate stacks before charging.
++    clear_items(*buyer);seller->cart.u.items_cart[0]={};seller->cart.u.items_cart[0].nameid=70004;seller->cart.u.items_cart[0].identify=1;seller->cart.u.items_cart[0].amount=100;
++    putitem(*buyer,0,70004,29900);uint16 goods[]={60,2,60,2};
++    require(!preflight_goods(*buyer,*seller,reinterpret_cast<uint8*>(goods),2),"cumulative duplicate goods cannot overflow buyer stack");goods[0]=goods[2]=50;require(preflight_goods(*buyer,*seller,reinterpret_cast<uint8*>(goods),2),"exact capacity succeeds");
++    seller->fd=1;seller->state.prevend=1;seller->status.skill[MC_VENDING].id=MC_VENDING;seller->status.skill[MC_VENDING].lv=10;
++    seller->cart.u.items_cart[0].id=1;
++    require(setup(*seller,12) && header().mode==Currency && header().count==6,"server-owned currency chooser");
++    Request request{request_id,sizeof(Request),magic,version,SelectCurrency,seller->vend_ui_nonce,70000,0,0,0};
++    auto bad=request;bad.nonce++;auto packets=vending_packets.size();process(*seller,bad);require(vending_packets.size()==packets && seller->vend_ui_phase==1,"stale selection rejected");
++    bad=request;bad.arg=999999;process(*seller,bad);require(seller->vend_ui_phase==1,"forged currency rejected");
++    process(*seller,request);require(seller->vend_currency==70000 && seller->vend_ui_phase==2 && header().mode==Setup && header().count==1,"cart snapshot after currency selection");
++    packets=vending_packets.size();process(*seller,request);require(vending_packets.size()==packets,"selection replay ignored");
++    request.action=Cancel;process(*seller,request);require(!seller->state.prevend && !seller->vend_currency && header().mode==Closed,"cancel releases preparation state");
++    seller->state.workinprogress=WIP_DISABLE_ALL;process(*seller,request);require(seller->state.workinprogress==WIP_DISABLE_ALL,"cancel replay cannot unlock unrelated work");
++    std::cout<<"PASS: Extended Vending actual payment module, Zeny/Cash/item tax, currency allowlist, multi-stack settlement, capacity/weight/overflow, decorated currency exclusion, duplicate goods and selection replay; no live database/network\n";
++    return 0;
++}
+diff --git a/doc/vending-ui.md b/doc/vending-ui.md
+new file mode 100644
+--- /dev/null
++++ b/doc/vending-ui.md
+@@ -0,0 +1,138 @@
++# VendingUI and Extended Vending
++
++For **2025-07-16 Ragexe**, implemented in `D:\warp\WARP DAN LATEST\WARP-DAN`.
++Restart WARP, select **Vending UI (market storefront and item currencies)**, and
++patch the original client together with your existing patch selections.
++
++The client uses the original `marketui` PNGs at their native 590 × 450 size:
++
++- Seller setup: canopy and editable sign, two columns of listings, a cart-item
++  pane, per-item price fields and quantity controls. Typing `1000000` displays
++  `1,000,000`; editing, selection and paste preserve numeric values and caret
++  positions. Prices clamp to the server's `vending_max_value`.
++- Buyer: storefront and buying bag, quantity controls, total and Buy/Cancel.
++- Owner: remaining stock and the last 16 sales from this store session.
++- Eight listings per page, 28 cart items per page, four selections per buying
++  page and three history entries per page. Arrows and the mouse wheel switch
++  pages. The Vending skill's server-side slot limit still applies.
++- Shift + quantity button changes 10; Ctrl changes 100. Right-click an item for
++  its native description, including refine, cards, options and enchant grade.
++
++Bundled artwork is copied only when missing under the target EXE's
++`data/texture/<client UI prefix>/marketui` and `genericsui` directories.
++Existing artwork is preserved. The patch changes no other UI's code or assets.
++
++## Required server installation
++
++The matching implementation is already in the local server checkout at
++`D:\AAARAGNAROK\Ragnarok`. The portable source patch is
++`server/Extended-Vending-VendingUI.diff`; it excludes unrelated Daily Rewards
++edits that were already present in that checkout. It is adapted for the current
++server from the supplied Lilith / Easycore `Extended_Vending_V3.01.diff`.
++Do not apply both diffs. Do not apply the packaged diff again to the already
++modified local server checkout.
++
++For the VPS, inspect/apply the source patch to its matching checkout:
++
++```sh
++git apply --check Extended-Vending-VendingUI.diff
++git apply Extended-Vending-VendingUI.diff
++```
++
++Before starting the new server binary, apply
++`sql-files/upgrades/2026-10-12-extended-vending.sql` **once to the game database**.
++It adds `vendings.extended_vending_item` without deleting stores or player data.
++If an older Extended Vending installation already supplied that column, inspect
++the schema first: this implementation needs an unsigned 32-bit column, with
++`0` for Zeny, `4294967295` for Cash Points, and actual IDs for item currencies.
++The new server requires this column even with the UI disabled, because autotrade
++save/load includes it. Fresh databases use the updated `sql-files/main.sql`.
++
++Rebuild the map-server on the VPS. A script reload does not install C++ changes.
++Deploy the matching patched client and server together, then restart map-server.
++Windows server EXEs in the local test output are offline build evidence, not
++Linux VPS binaries. No running server, database or installed client was replaced.
++
++`conf/import/battle_conf.txt` imports `conf/import/extended_vending.txt`:
++
++```text
++vending_ui: on
++extended_vending: on
++extended_vending_cash: on
++```
++
++Use the normal **Vending skill**, choose the store currency, select cart items,
++enter the title/prices/quantities, then press **Open Store**. This UI applies to
++player vending. NPC ShopUI and BarterUI are separate patches.
++
++## Editing currencies
++
++Edit `db/item_vending_db.yml` in the server. The initial choices are Zeny, Cash
++Points, TCG Card, Mithril Coin, Silver Coin and Copper Coin. The four item names
++already exist in both server modes. Add or remove entries using item AegisNames:
++
++```yaml
++Header:
++  Type: ITEM_VENDING_DB
++  Version: 1
++Body:
++  - Item: TCG_Card
++    Tax: 0
++  - Item: Mithril_Coin
++    Tax: -1
++```
++
++`Tax: -1` uses `vending_tax`; `0` disables tax; `250` means 2.50%.
++`vending_tax_min` is measured in the selected currency's units. An optional
++`db/import/item_vending_db.yml` overrides/adds entries by AegisName; remove a
++currency from the base list to stop offering it. Reboot or reload the item DB
++after changing currencies, with existing stores considered before removing one.
++
++One currency applies to the whole store. Cash uses **Cash Points**, not Kafra
++Points. Item payments use identified, plain, unbound, non-rental inventory stacks;
++decorated/equipped currency items are excluded. Buyer funds and goods capacity,
++seller currency capacity and weight, per-item stack limits and tax are checked
++on the server before payment. Same-account Cash trades are rejected. Autotrade
++restores the store currency. Native Zeny-only market searches omit non-Zeny
++stores because that packet has no currency field.
++
++## Implementation and validation
++
++This patch uses a private, versioned `VNUI` envelope on server-to-client `0x0BF3`.
++Other payloads on that opcode follow the original native receive arm. Requests
++use the existing `0x0BF8` CustomUI transport with an isolated magic and fixed
++32-byte framing. Battle Pass/Gacha `0x0BF6`, Daily Rewards `0x0BF4`, their state
++and their native helpers remain unchanged. Opening, purchasing and closing use
++the original vending request packets `0x01B2`, `0x0801` and `0x012E`.
++
++Client sources and reproducible payload builder:
++
++- `Scripts/Patches/VendingUI.qjs`
++- `Scripts/Runtime/VendingUI/runtime.cpp` and `wire.hpp`
++- `tools/build_vending_ui.py` → `Inputs/VendingUI/runtime.bin` / `runtime.json`
++- `tools/test_vending_ui.py` and `tools/test_vending_asset_install.js`
++
++The QJS validates the target date, native receive route, edit/frame vtables,
++profiled instruction bytes, payload framing and CRC before installing its
++private code and vtables. The runtime has no DLL imports. Only this window's
++native edit draw wrapper formats its price input. The alpha surface mode is
++initialized before the first texture upload and is not toggled during drawing.
++
++Offline checks exercise emitted x86, exact native request packets, title/price
++editing and caret preservation, all UI modes, pagination, item-instance
++description fields, malformed snapshots, duplicate submission and asset install
++preservation. The combined test client has 155 selected patches; the existing
++ChatUI, VIP, Battle Pass, Gacha, Daily Rewards, ShopUI, BarterUI, packet-routing
++and DATA.INI checks also passed. Server tests compile and execute the production
++payment module and current preserved-feature harnesses with explicit offline
++SQL/network boundaries. Current map-server, map-server-generator and char-server
++builds are staged under `Outputs/vending-ui-20261012/preserved-final/server`.
++
++The accepted September feature manifests already reported newer source before
++this work; they were not rewritten. The new shared server integration was
++reviewed separately and regression-tested. **Live acceptance remains pending:**
++check the native edit/caret, all store views, item details, two-account payments,
++tax, sold-out stock, close/reopen and autotrade after applying the SQL and matching
++server/client builds. Offline rendering is not an in-game screenshot.
++
++No commit, push, database migration or live deployment was performed.
