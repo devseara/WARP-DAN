@@ -125,7 +125,7 @@ CustomUI:
             title : RO Global Zero Inventory
             recommend : no
             author : Louis T Steinhil
-            desc : Uses the shared RO Global Zero theme state to select between the stock inventory and renewal tab_pri_%02d.bmp tabs, a native reserved footer row, expanded Zeny/weight panel, and vertical-tab balloons. Item drawing, hit targets, scrolling, paging, and resize calculations all honor the footer reservation. Open inventory windows are recreated when the setting changes. No inventory DLL import is added.
+            desc : Mutually exclusive with Inventory UI (search and category sidebar). Uses the shared RO Global Zero theme state to select between the stock inventory and renewal tab_pri_%02d.bmp tabs, a native reserved footer row, expanded Zeny/weight panel, and vertical-tab balloons. Item drawing, hit targets, scrolling, paging, and resize calculations all honor the footer reservation. Open inventory windows are recreated when the setting changes. No inventory DLL import is added.
 
         - ROGlobalZeroBasicInfo:
             title : RO Global Zero Basic Information HUD
@@ -673,7 +673,7 @@ StorageInventory:
             title : Inventory UI (search and category sidebar)
             recommend : no
             author : DevSeara
-            desc : Matching inventory grid with the original inventoryui artwork, search and category tabs on 2025-07-16. Keeps native item instances, use, drag, descriptions and favorites. Replaces the RO Global Zero Inventory layout patch; no server change.
+            desc : Matching inventory grid with the original inventoryui artwork, search and category tabs on 2025-07-16. Keeps native item instances, use, drag, descriptions and favorites. Automatically disables the conflicting RO Global Zero Inventory layout patch; no server change.
 
         - CartUI:
             title : Cart UI (search and category filter)

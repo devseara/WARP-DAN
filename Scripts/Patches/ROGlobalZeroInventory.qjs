@@ -812,6 +812,8 @@ ROGlobalZeroInventory = function(_)
 {
 	if (Exe.BuildDate !== InventoryTabsStatic.BuildDate)
 		throw Error("ROGlobalZeroInventory supports only the 2025-07-16 client");
+	// These layouts share draw/mouse vtable entries and cannot be combined.
+	if(!Warp.TestMode)Warp.SetPatchState("InventoryUI",false);
 	const theme = CACHE.get("ROGlobalZeroUITheme.State");
 	if (!theme || !Number.isInteger(theme.stateVir) ||
 		!Number.isInteger(theme.loadVir))

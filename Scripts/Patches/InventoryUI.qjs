@@ -7,6 +7,9 @@
 InventoryUI = function(_)
 {
 	if(!InventoryUI.validate())throw Error("InventoryUI requires 2025-07-16 Ragexe");
+	// WARP reads original bytes: vtable assertions cannot see another staged patch.
+	// Use its selection API to remove every legacy layout write before applying.
+	if(!Warp.TestMode)Warp.SetPatchState("ROGlobalZeroInventory",false);
 	const n=AutoCombatUI.nativeHelpers;
 	const read=path=>{const f=new BinFile(path,"r");if(!f.Valid)throw Error("InventoryUI: missing "+path);const h=f.ReadHex();f.Close();return(h.match(/[0-9a-fA-F]{2}/g)||[]).map(v=>parseInt(v,16));};
 	const u32=(b,o)=>(b[o]|b[o+1]<<8|b[o+2]<<16|b[o+3]<<24)>>>0;

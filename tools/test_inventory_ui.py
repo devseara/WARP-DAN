@@ -303,6 +303,16 @@ def restored_controls_test(exe,output):
     assert titles[-1]==bytes(m.u.mem_read(m.slots[3],248))
     m.w(0x15FBA90,1234567);m.w(0x15FBAA0,862);m.w(0x15FBA9C,5030);m.w(0x1602324,50)
     m.invoke(m.c['move'],obj,(160,262));assert tips[-1][0]=='Weight 17%'
+    # Tab names must follow both sidebar pages, including the fixed Favorites tab.
+    for page,labels in enumerate([
+        ['Search','Usable','Equipment','ETC','Card'],
+        ['Search','Ammunition','Costume','Shadow Gear','Pet'],
+    ]):
+        for row,label in enumerate(labels):
+            y=20+row*32;before=len(tips);m.invoke(m.c['move'],obj,(10,y))
+            assert len(tips)==before+1 and tips[-1]==(label,133,y+34,0xffffffff,manager),tips[-1]
+        m.invoke(m.c['move'],obj,(10,200));assert tips[-1][0]=='Favorites'
+        m.click(10,180)
     m.u.mem_write(m.slots[3]+0x5D,b'\1');m.w(m.slots[3]+0x68,1900000000);m.u.mem_write(m.slots[3]+0x88,b'\x02\0')
     m.u.mem_write(m.slots[3]+0x75,b'\1');m.rebuild()
     assert any(a[0]=='equipped' for a in m.actions)

@@ -4,6 +4,20 @@
 Each patch is independently selectable under **STORAGE, INVENTORY AND CART**.
 Select `InventoryUI` instead of `ROGlobalZeroInventory`.
 
+Inventory sidebar tooltips read Search, Usable, Equipment, ETC, Card,
+Ammunition, Costume, Shadow Gear, Pet and Favorites across the two pages.
+
+The two Inventory layouts now disable one another through WARP's patch-state
+API. Native-byte assertions alone cannot detect this conflict: WARP reads the
+original source while collecting separate staged writes. With both enabled,
+the new constructor could coexist with the legacy draw/mouse handlers, hiding
+the category sidebar and leaving a misplaced Search editor over the old grid.
+This exact mismatch was confirmed in the user's October 13 client. The saved
+session was corrected by removing only `ROGlobalZeroInventory`.
+
+Restart WARP and build from the original client after this correction. An
+already-built conflicting EXE retains the mixed handlers until rebuilt.
+
 The patches use the original `inventoryui` and `cartui` artwork and the shared
 `storageui/storagelock.png` control.
 The bundled files in `Assets/StorageInventoryUI` retain the supplied bytes.
