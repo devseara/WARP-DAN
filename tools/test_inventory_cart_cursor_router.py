@@ -1,5 +1,6 @@
 """Execute QJS-emitted cursor routing code, without generating a client EXE."""
 import argparse
+from itertools import product
 import json
 import struct
 from pathlib import Path
@@ -11,12 +12,12 @@ from unicorn.x86_const import (UC_X86_REG_EAX, UC_X86_REG_EBX, UC_X86_REG_ECX,
 
 def verify(case):
     route=case['route'];callbacks=case['callbacks'];count=0
-    for inventory_hand,cart_hand in [(False,False),(True,False),(False,True),(True,True)]:
+    for inventory_hand,cart_hand,storage_hand in product([False,True],repeat=3):
         for flags in [0x202,0x246,0xA97]:
             u=Uc(UC_ARCH_X86,UC_MODE_32)
             u.mem_map(0x400000,0x4000000);u.mem_map(0x60000000,0x10000)
             for blob in case['code']:u.mem_write(blob['address'],bytes.fromhex(blob['hex']))
-            for name in ['inventory','cart']:
+            for name in ['inventory','cart','storage']:
                 u.mem_write(route[name+'CellVir'],struct.pack('<I',callbacks.get(name,0)))
             # Preserve the thiscall mode pointer, registers and flags at dispatch.
             registers=[UC_X86_REG_EAX,UC_X86_REG_EBX,UC_X86_REG_ECX,UC_X86_REG_EDX,
@@ -37,6 +38,10 @@ def verify(case):
                 elif address==callbacks.get('cart'):
                     trace.append('cart')
                     if cart_hand:uc.emu_stop()
+                    else:uc.reg_write(UC_X86_REG_EIP,route['storageDispatchVir'])
+                elif address==callbacks.get('storage'):
+                    trace.append('storage')
+                    if storage_hand:uc.emu_stop()
                     else:uc.reg_write(UC_X86_REG_EIP,0xA74410)
                 else:trace.append('native/Battle Pass');uc.emu_stop()
             u.hook_add(UC_HOOK_CODE,reached);u.emu_start(route['routerVir'],0,count=100)
@@ -44,7 +49,9 @@ def verify(case):
             if 'inventory' in callbacks:expected.append('inventory')
             if not ('inventory' in callbacks and inventory_hand):
                 if 'cart' in callbacks:expected.append('cart')
-                if not ('cart' in callbacks and cart_hand):expected.append('native/Battle Pass')
+                if not ('cart' in callbacks and cart_hand):
+                    if 'storage' in callbacks:expected.append('storage')
+                    if not ('storage' in callbacks and storage_hand):expected.append('native/Battle Pass')
             assert trace==expected,(case['label'],trace,expected);count+=1
     return count
 

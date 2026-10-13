@@ -1,17 +1,29 @@
 {
-  "provenance": "Original user-supplied Inventory/Cart artwork and shared control PNGs; original Battle Pass Cursor_Hover.bmp copied byte-for-byte",
+  "provenance": "Original user-supplied storageui, inventoryui, cartui and genericsui PNG artwork, copied without pixel changes; original Battle Pass Cursor_Hover.bmp, copied byte-for-byte",
   "files": [
-    {
-      "path": "battlepassui/Cursor_Hover.bmp",
-      "sha256": "acf727e7a429768caebdef017d4f38cb2d4d8f823984336fb769358b3fef38cb",
-      "width": 26,
-      "height": 22
-    },
     {
       "path": "cartui/cart_bg.png",
       "sha256": "aa0cdf40d108044aca2fcea5dd5f3b055c43d65527aed4add22652e4ce828e86",
       "width": 280,
       "height": 208
+    },
+    {
+      "path": "genericsui/clos_out.png",
+      "sha256": "b2e4a62162b1a085983db3d813887954fb0108cc40586fbf85b76883582a64cd",
+      "width": 44,
+      "height": 18
+    },
+    {
+      "path": "genericsui/clos_over.png",
+      "sha256": "02a960335d4b35b40fea3d37b6697b6fb91666b997bf7efd15ddbf7b43745363",
+      "width": 44,
+      "height": 18
+    },
+    {
+      "path": "genericsui/clos_press.png",
+      "sha256": "95c03972233ad969ee18e2ada9d9257e9eccb0c701d72406e22228ca1a0987a3",
+      "width": 44,
+      "height": 18
     },
     {
       "path": "genericsui/cls_x_out.png",
@@ -152,16 +164,298 @@
       "height": 30
     },
     {
+      "path": "inventoryui/sticker_off.png",
+      "sha256": "abfc0c6abacacda7f2362bd706837a9a7c62ebf4be3db160e0affd20b79a6f3b",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/sticker_on.png",
+      "sha256": "4458d2aba525ebf353502207308a2f0fb8f60292fc07e25561ead1b202117093",
+      "width": 32,
+      "height": 30
+    },
+    {
       "path": "inventoryui/usable.png",
       "sha256": "a5d4e8518f0668c04199a5a801cf4068b6f408b25226c45d76d469ffd60e6a4e",
       "width": 32,
       "height": 30
     },
     {
+      "path": "inventoryui/vip_only.png",
+      "sha256": "4e6bd6fed3795048908015fe772824de12ea354e4e655cf8f475a6c5a10bfdb8",
+      "width": 245,
+      "height": 202
+    },
+    {
+      "path": "storageui/bg.png",
+      "sha256": "bccf4ef8695c6a9a2d6b726e1960870f92c35edefaf37f28ffeb40dbe73c39fe",
+      "width": 312,
+      "height": 442
+    },
+    {
+      "path": "storageui/bg_.png",
+      "sha256": "db2d6cf1d02ebff489a8c1e2c74c9f4869d3134515400d0975a960daabf067e4",
+      "width": 312,
+      "height": 442
+    },
+    {
+      "path": "storageui/menu_ammo.png",
+      "sha256": "d0242c387c6f9a09c3b263f358beabc207bba7f633e1c661aec0dcb5ded714d2",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_armor.png",
+      "sha256": "6517e0b3a3b6654a5291c0f0eb936c1ac84f8a09a6a52d9fe5729a170ba7cc64",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_cards.png",
+      "sha256": "a7be12d3a2472cedeb38a542d3356262db4b011de3dfb122eebf79a00c429b97",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_cash.png",
+      "sha256": "7311acd5d7c48ddf9411cccb235dd6d019602aefb6f9a44d3cc1861b41cd645b",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_costume.png",
+      "sha256": "a622d206cb4377568e2e71d5c7f292e70402edf64821270fef4f676e3b3d9a4d",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_misc.png",
+      "sha256": "600187d73125dfc00fca2e014b5c173a8c4e176ff927c3d00a3fa58470492ba6",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_pet.png",
+      "sha256": "093b4e0aab9936a5aa873febef5d7040e5d04552780c1250862f28f9d5442924",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_search.png",
+      "sha256": "bc6f89f008965b9699e9a52ee8e17288020f599f1cf5d444f151b0156fea6a69",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_shadow.png",
+      "sha256": "e064995132fa2754e8aa2c78cc3d243b3f4a23ceb38e3795593806ae111f077f",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_sticker.png",
+      "sha256": "a0e8bb633c74b0be0af7b07be9c9ac179d2c01b4a15a8007aca9fa881d433bbb",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_usable.png",
+      "sha256": "768bc790c3090dc8b2bfa1f927fed4fb5f21eacf5c27bc251f3321de90aab9b1",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/menu_weapon.png",
+      "sha256": "cb0a49724cbbafd8669ffb702c33b52a058f0d25411dddb6ae12b429b6977679",
+      "width": 33,
+      "height": 396
+    },
+    {
+      "path": "storageui/refine_order_down.png",
+      "sha256": "b4bd15fc2d0e72dbb76f37179fa7eeb117347470e5115a9def58ffef4d4a567e",
+      "width": 81,
+      "height": 9
+    },
+    {
+      "path": "storageui/refine_order_null.png",
+      "sha256": "6c2fb49d10e826b4d9c1ef2a10d23afdebc111d20a147660d9b98721c20d763e",
+      "width": 81,
+      "height": 9
+    },
+    {
+      "path": "storageui/refine_order_up.png",
+      "sha256": "4fdf1f5f4feab70b3d74efcb133d4646befc5135f74441a2c7a8ac70f9434fda",
+      "width": 81,
+      "height": 9
+    },
+    {
+      "path": "storageui/search.png",
+      "sha256": "00cc105e88d9d6db2341890ce1e058b8adc4b7017da82fa2a66dd10a0f47dfcf",
+      "width": 262,
+      "height": 37
+    },
+    {
+      "path": "storageui/storage10off.png",
+      "sha256": "c97ef169e817f478cabcc6ce8d7c6007d326f4fcddfaa85bf76e0696655aaae0",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage10on.png",
+      "sha256": "1c90f4f04ffd6d9465c7cfa6c01d1854a6eb4773bde089e2efcd29d2dac5192c",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage1off.png",
+      "sha256": "796e0abbadaf2e9824afcc9c0447df096d97c4c942cccd287ebe7e05538b038d",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage1on.png",
+      "sha256": "7805ec47c02f9772725a214f3a0b1b191ae81e22f7c116553144aa1c2fa5dbb3",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage2off.png",
+      "sha256": "fbd636a8fa52c1f708dd829f6afd1f7f10eeb21e07af795d47f68bd0d2ab496a",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage2on.png",
+      "sha256": "33ceeed497e581be2ae331c7a638f5fca36262c0ab3daa85333b0819052704e5",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage3off.png",
+      "sha256": "8b4ca27aaf6aee2e71a66605bf98c48c91e200bf573ecafa485b98e41e2d5360",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage3on.png",
+      "sha256": "76b32f28b7c236e55a3995d4d906f93caa873e915670d7e231df2891e1700b76",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage4off.png",
+      "sha256": "14ba7262e06f1a3f45661805057350dffcf774a14c44953eccf3d83a1a93d6dd",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage4on.png",
+      "sha256": "f02e8c7b8cb0d5b9d0a3c2f8ca21451808d9df0c58a71c1fd5cd489936b384ec",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage5off.png",
+      "sha256": "2045b543267a5ffc6b073c5e76791a0bb2ef14f6a88cdc702fb56befa63be499",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage5on.png",
+      "sha256": "91cce6c8681c603e8c9487110169d881ad4627275dd0e59ca24371db7452d726",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage6off.png",
+      "sha256": "3ccd29df6f719c01038afbf5705fb6a86386fbc0bfaf5d52ccd9526a0ae53e6d",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage6on.png",
+      "sha256": "b694395a339112acda18adaef49389373b861c80fe7c083f550021af3a0a2e8f",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage7off.png",
+      "sha256": "93852fbda6daefbc24284c4fda4ee582c77aa700be72469f80f9d9ab402ce53c",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage7on.png",
+      "sha256": "f8d0faaead2c66d416e743fa5d65ea8372e3c3644e7b1fb8860b0004b6d1b3dd",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage8off.png",
+      "sha256": "fcf3a51d914bbf411578d64b7b7205a60b706ef532c1e3f45278bcbee157c6de",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage8on.png",
+      "sha256": "244375ca3bb0f0b682d72373be692f2537a46429e62d3ef7fa2a6f078c905a44",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage9off.png",
+      "sha256": "e6c445d728b599e4af84e999bdd7f54153b1153a43a49104521f998f2cdb36e6",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storage9on.png",
+      "sha256": "c32e3373869a5eea3224f87d971a9dd1c13cba3cfb11cd808b0a1e2b0f91542b",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storageboff.png",
+      "sha256": "d763c4f990add39ff16bc63d53122423d0a0e2c58cb912196e9542cb5b4944e8",
+      "width": 17,
+      "height": 16
+    },
+    {
+      "path": "storageui/storagebon.png",
+      "sha256": "c26b59b81b8bfdf84674303d5b68e732e36e1dfe22aadad168a58aed603bf784",
+      "width": 17,
+      "height": 16
+    },
+    {
       "path": "storageui/storagelock.png",
       "sha256": "2b90bfc4e3731f6fc915a3a84c745b014a44f3819c1d000334770a357bfc3686",
       "width": 17,
       "height": 16
+    },
+    {
+      "path": "storageui/swapstorages.png",
+      "sha256": "6dabfe1915f9f8fa2ce0e5023c72978f65305667d825a9b92faab1c975043128",
+      "width": 312,
+      "height": 23
+    },
+    {
+      "path": "storageui/toggle_block.png",
+      "sha256": "562e7b8bfdb2fa7e7dc75681c3d23aa2896194f3f2ae5cbfd27ea0df069e13ce",
+      "width": 43,
+      "height": 12
+    },
+    {
+      "path": "storageui/toggle_list.png",
+      "sha256": "1be2ea1bba7d84a3140fd771f72b8b680f5f22e73f54e182420575d106b916c8",
+      "width": 43,
+      "height": 12
+    },
+    {
+      "path": "battlepassui/Cursor_Hover.bmp",
+      "sha256": "acf727e7a429768caebdef017d4f38cb2d4d8f823984336fb769358b3fef38cb",
+      "width": 26,
+      "height": 22
     }
   ]
 }

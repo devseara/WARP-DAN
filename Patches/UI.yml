@@ -669,6 +669,12 @@ StorageInventory:
     title : STORAGE, INVENTORY AND CART
     mutex : false
     patches:
+        - StorageUI:
+            title : Storage UI (search and category sidebar)
+            recommend : no
+            author : DevSeara
+            desc : Uses the original storageui artwork for a native storage list with search, category tabs, block view and refine ordering on 2025-07-16. Keeps native item instances and storage transfers. Installs missing bundled assets beside the patched EXE; no server change.
+
         - InventoryUI:
             title : Inventory UI (search and category sidebar)
             recommend : no

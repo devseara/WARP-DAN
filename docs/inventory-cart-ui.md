@@ -1,5 +1,10 @@
 # Native Inventory and Cart UI
 
+Storage integration now uses the three-window `StorageInventoryCartCursorV3`
+router. See [Storage UI revision](storage-ui.md) for the current routing,
+verification and reload instructions; the historical V2 notes below describe
+the earlier two-window fixes.
+
 `InventoryUI` and `CartUI` target the profiled **2025-07-16 Ragexe**.
 Each patch is independently selectable under **STORAGE, INVENTORY AND CART**.
 Select `InventoryUI` instead of `ROGlobalZeroInventory`.
@@ -14,6 +19,13 @@ the new constructor could coexist with the legacy draw/mouse handlers, hiding
 the category sidebar and leaving a misplaced Search editor over the old grid.
 This exact mismatch was confirmed in the user's October 13 client. The saved
 session was corrected by removing only `ROGlobalZeroInventory`.
+
+`test_inventory_cart_patch.cjs` now reproduces that collision with both real
+patch scripts. It checks both selection orders, legacy-write removal, every
+selected window's virtual handlers, and cursor cleanup while Cart and Storage
+stay active. `test_inventory_cart_storage_integration.py` restores only legacy
+patch sites in emulator memory and exercises all three current payloads against
+an existing client. These checks never generate or replace a client EXE.
 
 Restart WARP and build from the original client after this correction. An
 already-built conflicting EXE retains the mixed handlers until rebuilt.
