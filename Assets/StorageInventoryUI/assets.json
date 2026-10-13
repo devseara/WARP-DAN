@@ -1,0 +1,167 @@
+{
+  "provenance": "Original user-supplied Inventory/Cart artwork and shared control PNGs; original Battle Pass Cursor_Hover.bmp copied byte-for-byte",
+  "files": [
+    {
+      "path": "battlepassui/Cursor_Hover.bmp",
+      "sha256": "acf727e7a429768caebdef017d4f38cb2d4d8f823984336fb769358b3fef38cb",
+      "width": 26,
+      "height": 22
+    },
+    {
+      "path": "cartui/cart_bg.png",
+      "sha256": "aa0cdf40d108044aca2fcea5dd5f3b055c43d65527aed4add22652e4ce828e86",
+      "width": 280,
+      "height": 208
+    },
+    {
+      "path": "genericsui/cls_x_out.png",
+      "sha256": "4c7471215d8833ff9b1ac73f9a7422157114255d6168edc72d5eccb19e8f8c96",
+      "width": 9,
+      "height": 9
+    },
+    {
+      "path": "genericsui/cls_x_over.png",
+      "sha256": "164aa77acc9e8d855209be7da3ab500a9eb5fdd2ad7cbffafd00c2ae52711405",
+      "width": 9,
+      "height": 9
+    },
+    {
+      "path": "inventoryui/ammo_off.png",
+      "sha256": "49241dd8c75fb68eb4385737bb173ef2b92c5e2a90d20a74e8a4e2a02cb5dc53",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/ammo_on.png",
+      "sha256": "6758aff5d43acc32479733af0112bafb76a0fdf391b52c081e1c8010ca92d11a",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/bg.png",
+      "sha256": "e68370b97ec609a8595f116185ef3b472b4546d66feb8d748aca00dcee00b9b0",
+      "width": 280,
+      "height": 240
+    },
+    {
+      "path": "inventoryui/card_off.png",
+      "sha256": "431618d415bd70cc9ff1bba9199e26349defe5e4c2d03c3540842c93667c78fd",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/card_on.png",
+      "sha256": "f58b0ea6bf2406990eeb66f387c538bf47304b6d55a4134834d041793a38e8e9",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/costume_off.png",
+      "sha256": "fe2ce59c83767b238a162cd832712ef85f3b3ed715386dc548905fbd1c7f1b7d",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/costume_on.png",
+      "sha256": "beae16b34f8292478c10fd29b685525a02484738084384e35145c720f98013a3",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/favorite.png",
+      "sha256": "9c6a106b5944994350267c7afcca44f364ce0049345c2d0c128633854d502286",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/gear.png",
+      "sha256": "711fe4f5aa3c314c9984566de5e34b8472e8e09a39d496ec1f43f5033b8d5a93",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/icon_damaged.png",
+      "sha256": "408a8240317fb2b51cc1ccdb3097e73af76442d7940ead66fb4759ded4650d7f",
+      "width": 13,
+      "height": 13
+    },
+    {
+      "path": "inventoryui/menu_arrow.png",
+      "sha256": "9838b87d3e585bd97f801162f34d6246e43b0eabe9dfad72aee232eb8532a3d8",
+      "width": 9,
+      "height": 5
+    },
+    {
+      "path": "inventoryui/misc.png",
+      "sha256": "64afe387a2528f4f214a95d1cd02067e3524ff7f93547f036843034d303a854f",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/pet_off.png",
+      "sha256": "50ece2ca8f592e44527b0bd224d57201ae92fa658e58475ac3b9c3bc5afffde1",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/pet_on.png",
+      "sha256": "90d3e567ec187a4098bbcd4b23d8d7a2e5e12b7be58028382532f477e874f73e",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/rent_icon.png",
+      "sha256": "7276819103b3dc3cc80f8813d25900501a887265411b799f99b240367118bf13",
+      "width": 9,
+      "height": 12
+    },
+    {
+      "path": "inventoryui/search.png",
+      "sha256": "4fedca6a967ccb4c5612e4aa3339f1a048f795a1d2a2a170c2caf77b5094f975",
+      "width": 245,
+      "height": 29
+    },
+    {
+      "path": "inventoryui/search_off.png",
+      "sha256": "996eac9afa115e0c69a20b7c14b284979c0a5e4484e659fa2a7b9cf06550ab1d",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/search_on.png",
+      "sha256": "a471ea41bd36e46839dd0537fb824fbdd0065977fd33bdfabd32ed07aa9c6b3a",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/selected_bg.png",
+      "sha256": "41355ad16b8221b577d31a32f4442b83b334561a0c951c3bb9e5b1b302129fda",
+      "width": 32,
+      "height": 32
+    },
+    {
+      "path": "inventoryui/shadow_off.png",
+      "sha256": "b92676378d7a4f69d23a90c441f4cabe0d3dbae1546332e3e95a8669fbacfecb",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/shadow_on.png",
+      "sha256": "0f9bcea91dafc825ab0648a2fc84aab1d85e81885a5b77599ff058d2cc818621",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "inventoryui/usable.png",
+      "sha256": "a5d4e8518f0668c04199a5a801cf4068b6f408b25226c45d76d469ffd60e6a4e",
+      "width": 32,
+      "height": 30
+    },
+    {
+      "path": "storageui/storagelock.png",
+      "sha256": "2b90bfc4e3731f6fc915a3a84c745b014a44f3819c1d000334770a357bfc3686",
+      "width": 17,
+      "height": 16
+    }
+  ]
+}

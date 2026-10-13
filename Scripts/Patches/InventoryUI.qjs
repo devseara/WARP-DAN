@@ -1,0 +1,121 @@
+/*
+ * Description: Native searchable inventory grid for 2025-07-16 Ragexe.
+ * Uses the supplied inventoryui artwork with private native edit controls.
+ * Retains exact CItem instances and native drag/use/equip/description routes.
+ * Session inventory, packets, shared renderers and other windows are untouched.
+ */
+InventoryUI = function(_)
+{
+	if(!InventoryUI.validate())throw Error("InventoryUI requires 2025-07-16 Ragexe");
+	const n=AutoCombatUI.nativeHelpers;
+	const read=path=>{const f=new BinFile(path,"r");if(!f.Valid)throw Error("InventoryUI: missing "+path);const h=f.ReadHex();f.Close();return(h.match(/[0-9a-fA-F]{2}/g)||[]).map(v=>parseInt(v,16));};
+	const u32=(b,o)=>(b[o]|b[o+1]<<8|b[o+2]<<16|b[o+3]<<24)>>>0;
+	const put=(b,o,v)=>{for(let i=0;i<4;++i)b[o+i]=v>>>(i*8)&255;};
+	const bytes=read(Warp.Path+"/Inputs/InventoryUI/runtime.bin"),meta=JSON.parse(String.fromCharCode(...read(Warp.Path+"/Inputs/InventoryUI/runtime.json")));
+	const size=u32(bytes,8),count=u32(bytes,12),api=u32(bytes,16),start=32+count*4;
+	let crc=0xFFFFFFFF;for(let i=32;i<bytes.length;++i){crc^=bytes[i];for(let j=0;j<8;++j)crc=(crc>>>1)^((crc&1)?0xEDB88320:0);}
+	if(bytes.length<32 || u32(bytes,0)!==0x49564E49 || u32(bytes,4)!==1 || meta.version!==1 || meta.client!==20250716 || start+size!==bytes.length || size!==meta.size || api!==meta.exports.InventoryApi || meta.api_size!==172 || api+172>size || u32(bytes,20)!==172 || u32(bytes,24)!==20250716 || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))throw Error("InventoryUI: invalid payload");
+	const names=["InventoryApi","InventoryState","@InventoryCreate@16","@InventoryDestroy@12","@InventoryProcess@8","@InventoryDraw@8","@InventoryDown@16","@InventoryUp@16","@InventoryDouble@16","@InventoryRight@16","@InventoryMove@16","@InventoryDrag@16","@InventoryWheel@12","@InventoryEvent@32","@InventorySelect@20","@InventoryEditDraw@8","@InventoryEditEvent@32","_InventoryHit@8","_InventoryMatches@8","_InventoryRebuild@0","_InventorySlot@4","@InventoryDrop@20","@InventoryTooltipAnchor@16","@InventoryCursorDraw@8"];
+	for(const name of names)if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("InventoryUI: missing "+name);
+	const routes=[[0,0x936700,"@InventoryDestroy@12"],[10,0x938650,"@InventoryDrop@20"],[15,0x93F100,"@InventoryCreate@16"],[19,0x94E520,"@InventoryProcess@8"],[20,0x946DA0,"@InventoryDraw@8"],[25,0x94AFB0,"@InventoryDown@16"],[26,0x949FC0,"@InventoryDouble@16"],[27,0x880E00,"@InventoryDrag@16"],[28,0x94D450,"@InventoryMove@16"],[31,0x880BB0,"@InventoryUp@16"],[32,0x94F380,"@InventoryRight@16"],[35,0x9500C0,"@InventoryWheel@12"],[37,0x955530,"@InventoryEvent@32"]];
+	for(const [slot,expected] of routes)if(Exe.GetUint32(Exe.Vir2Phy(0x103D460+slot*4))!==expected)throw Error("InventoryUI: inventory vtable changed; deselect ROGlobalZeroInventory");
+	for(const [slot,expected] of [[20,0x824FC0],[37,0x82C4E0]])if(Exe.GetUint32(Exe.Vir2Phy(0x1028908+slot*4))!==expected)throw Error("InventoryUI: edit vtable changed");
+	n.assertCode("InventoryUI selector",0x939E30,"55 8B EC 6A FF 68 CE 25 EC 00");
+	n.assertCode("InventoryUI tooltip coordinates",0x94D4E1,"E8 8A 1A 0D 00");
+	n.assertCode("InventoryUI inventory count",0xD5CE30,"8B 81 F4 16 00 00 C3");
+	n.assertCode("InventoryUI inventory list",0xD5AAA8,"8B 89 F0 16 00 00 8B 01 3B C1");
+	const keys=Exe.FindFunc("GetAsyncKeyState","USER32.dll");if(keys<0)throw Error("InventoryUI: keyboard import missing");
+	const code=bytes.slice(start),[phy,vir]=Exe.Allocate(size,16);
+	for(let i=0;i<count;++i){const off=u32(bytes,32+i*4);if(off+4>size || u32(code,off)>=size)throw Error("InventoryUI: invalid relocation");put(code,off,u32(code,off)+vir);}
+	const e=name=>vir+meta.exports[name];
+	const edit=n.allocateBytes(new Array(4+58*4).fill(0),4);Exe.SetHex(edit.phy,Exe.GetHex(Exe.Vir2Phy(0x1028908-4),edit.size));
+	for(const [slot,name] of [[20,"@InventoryEditDraw@8"],[37,"@InventoryEditEvent@32"]])Exe.SetUint32(edit.phy+4+slot*4,e(name));
+	const original=n.asm();original.emit(0x55,0x8B,0xEC,0x6A,0xFF);original.jmp(0x939E35);const trampoline=n.allocateCode(original);
+	const fit=n.allocateCode(VipUI.nativeDrawing.fit(11,false,false)),paths=InventoryUI.runtimeAssets().map(p=>p.replace(/\//g,'\\'));
+	[1,edit.vir+4,fit.vir,trampoline.vir,keys,...paths.map(p=>n.buildResourcePath(p).vir),InventoryUI.cursorTarget()].forEach((v,i)=>put(code,api+i*4,v));
+	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
+	for(const [slot,,name] of routes)Exe.SetUint32(Exe.Vir2Phy(0x103D460+slot*4),e(name));
+	Exe.SetJMP(Exe.Vir2Phy(0x939E30),e("@InventorySelect@20"),0);
+	Exe.SetCALL(Exe.Vir2Phy(0x94D4E1),e("@InventoryTooltipAnchor@16"));
+	const record=[];for(const v of [n.allocateString("InventoryUI.v1").vir,...names.map(e)])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);n.allocateBytes(record,4);
+	InventoryUI.installCursor(e("@InventoryCursorDraw@8"));
+	InventoryUI.onApplied();return true;
+};
+InventoryUI.validate=()=>Exe.BuildDate===20250716;
+InventoryUI.assets=()=>[...['bg.png','search_off.png','search_on.png','usable.png','gear.png','misc.png','card_off.png','card_on.png','favorite.png','menu_arrow.png'].map(p=>'inventoryui/'+p),'storageui/storagelock.png','genericsui/cls_x_out.png','genericsui/cls_x_over.png','inventoryui/selected_bg.png',...['ammo_off.png','ammo_on.png','costume_off.png','costume_on.png','shadow_off.png','shadow_on.png','pet_off.png','pet_on.png','search.png','icon_damaged.png','rent_icon.png'].map(p=>'inventoryui/'+p),'cartui/cart_bg.png','battlepassui/Cursor_Hover.bmp'];
+InventoryUI.runtimeAssets=()=>[...InventoryUI.assets().filter(p=>p!=='cartui/cart_bg.png' && p!=='battlepassui/Cursor_Hover.bmp'),...[1,2,3,4,5].map(n=>'grade_enchant/grade_icon'+n+'.bmp'),'inventory/icon_weight.bmp',...['bt_sort','bt_sort_over','bt_sort_press'].map(n=>'inventory/'+n+'.bmp'),'btn_resize.bmp','cartui/cart_bg.png','battlepassui/Cursor_Hover.bmp'];
+InventoryUI.onApplied=function()
+{
+	if(Warp.TestMode)return;
+	const root=System.DirPath(Warp.TgtExe),folders=['data','texture',ModernChatUI.nativeHelpers.uiPrefix()],target=root+'/'+folders.join('/'),missing=[];
+	for(const file of InventoryUI.assets()){
+		const f=new BinFile(target+'/'+file,'r'),exists=f.Valid;f.Close();if(exists)continue;
+		const s=new BinFile(Warp.Path+'/Assets/StorageInventoryUI/'+file,'r'),valid=s.Valid;s.Close();if(!valid)throw Error('InventoryUI: missing bundled asset '+file);missing.push(file);
+	}
+	if(!missing.length)return;let path=root;for(const folder of folders){path+='/'+folder;if(!System.MkDir(path))throw Error('InventoryUI: cannot create '+path);}
+	for(const folder of ['inventoryui','storageui','genericsui','cartui','battlepassui'])if(!System.MkDir(target+'/'+folder))throw Error('InventoryUI: cannot create '+target+'/'+folder);
+	for(const file of missing)if(!System.Copy(Warp.Path+'/Assets/StorageInventoryUI/'+file,target+'/'+file,false))throw Error('InventoryUI: cannot copy '+file);
+};
+
+// WARP reads source bytes and serializes each patch separately. One global tag
+// owns these calls and both handler cells; no patch chains through pending bytes.
+// BeginTag erases earlier writes: every reopening must emit the complete route.
+InventoryUI.cursorRoute=function()
+{
+	const n=AutoCombatUI.nativeHelpers,key="InventoryCart.Cursor.Global.v2",cacheKey="InventoryCart.Cursor.v2";
+	for(const address of [0xC75165,0xD26DA0,0xD27471]){
+		const rel=(0xA74410-address-5)>>>0;
+		n.assertCode("Inventory/Cart original cursor call",address,n.bytesToHex([0xE8,rel&255,rel>>>8&255,rel>>>16&255,rel>>>24]));
+	}
+	let route=CACHE.get(cacheKey);
+	if(!route)CACHE.setup(key,"InventoryCartCursorV2",{cleanTag_after_userDel:false,dealloc_after_zeroUsers:false});
+	const previous=Exe.ActivePatch;
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag(key));
+	try {
+		if(!route){
+			const cells=n.allocateBytes(new Array(8).fill(0),4);
+			route={inventoryCellPhy:cells.phy,inventoryCellVir:cells.vir,cartCellPhy:cells.phy+4,cartCellVir:cells.vir+4,inventoryVir:0,cartVir:0,code:[]};
+			const dispatch=(cell,fallback)=>{
+				const a=n.asm();a.emit(0x9C,0x83,0x3D);a.dword(cell);a.emit(0);a.jcc(0x85,"selected");
+				a.emit(0x9D);a.jmp(fallback);a.label("selected");a.emit(0x9D,0xFF,0x25);a.dword(cell);
+				const stub=n.allocateCode(a);route.code.push({phy:stub.phy,hex:a.finish(stub.vir)});return stub.vir;
+			};
+			route.cartDispatchVir=dispatch(route.cartCellVir,0xA74410);
+			route.routerVir=dispatch(route.inventoryCellVir,route.cartDispatchVir);
+			CACHE.put(cacheKey,route);
+		}
+		InventoryUI.writeCursorRoute(route);
+	} finally {Exe.EndTag();Exe.ActivePatch=previous;}
+	CACHE.addUser(key,"InventoryUI");return route;
+};
+// Emit every byte owned by the open global tag, including both registrations.
+InventoryUI.writeCursorRoute=function(route)
+{
+	for(const stub of route.code)Exe.SetHex(stub.phy,stub.hex);
+	Exe.SetUint32(route.inventoryCellPhy,route.inventoryVir);
+	Exe.SetUint32(route.cartCellPhy,route.cartVir);
+	for(const address of [0xC75165,0xD26DA0,0xD27471])Exe.SetCALL(Exe.Vir2Phy(address),route.routerVir);
+};
+InventoryUI.cursorTarget=function()
+{
+	const route=InventoryUI.cursorRoute();return route.cartDispatchVir;
+};
+InventoryUI.installCursor=function(entry)
+{
+	const route=CACHE.get("InventoryCart.Cursor.v2"),previous=Exe.ActivePatch;
+	if(!route || !Number.isInteger(entry) || entry<=0)throw Error("InventoryUI: invalid cursor registration");
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("InventoryCart.Cursor.Global.v2"));
+	try {route.inventoryVir=entry;InventoryUI.writeCursorRoute(route);}
+	finally {Exe.EndTag();Exe.ActivePatch=previous;}
+};
+InventoryUI.cleanup=function()
+{
+	const key="InventoryCart.Cursor.Global.v2",cacheKey="InventoryCart.Cursor.v2",route=CACHE.get(cacheKey);
+	if(!route)return;
+	const previous=Exe.ActivePatch;
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag(key));
+	try {route.inventoryVir=0;InventoryUI.writeCursorRoute(route);}
+	finally {Exe.EndTag();Exe.ActivePatch=previous;}
+	CACHE.delUser(key,"InventoryUI");
+	if(!CACHE.hasUsers(key))CACHE.del(cacheKey);
+};

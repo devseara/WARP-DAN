@@ -1,0 +1,119 @@
+/*
+ * Description: Native searchable cart grid for 2025-07-16 Ragexe.
+ * Uses the supplied cartui artwork with private native edit controls.
+ * Retains exact CItem instances and native cart transfer/drag/description routes.
+ * Session cart, packets, shared renderers and other windows are untouched.
+ */
+CartUI = function(_)
+{
+	if(!CartUI.validate())throw Error("CartUI requires 2025-07-16 Ragexe");
+	const n=AutoCombatUI.nativeHelpers;
+	const read=path=>{const f=new BinFile(path,"r");if(!f.Valid)throw Error("CartUI: missing "+path);const h=f.ReadHex();f.Close();return(h.match(/[0-9a-fA-F]{2}/g)||[]).map(v=>parseInt(v,16));};
+	const u32=(b,o)=>(b[o]|b[o+1]<<8|b[o+2]<<16|b[o+3]<<24)>>>0;
+	const put=(b,o,v)=>{for(let i=0;i<4;++i)b[o+i]=v>>>(i*8)&255;};
+	const bytes=read(Warp.Path+"/Inputs/CartUI/runtime.bin"),meta=JSON.parse(String.fromCharCode(...read(Warp.Path+"/Inputs/CartUI/runtime.json")));
+	const size=u32(bytes,8),count=u32(bytes,12),api=u32(bytes,16),start=32+count*4;
+	let crc=0xFFFFFFFF;for(let i=32;i<bytes.length;++i){crc^=bytes[i];for(let j=0;j<8;++j)crc=(crc>>>1)^((crc&1)?0xEDB88320:0);}
+	if(bytes.length<32 || u32(bytes,0)!==0x54524143 || u32(bytes,4)!==1 || meta.version!==1 || meta.client!==20250716 || start+size!==bytes.length || size!==meta.size || api!==meta.exports.CartApi || meta.api_size!==48 || api+48>size || u32(bytes,20)!==48 || u32(bytes,24)!==20250716 || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))throw Error("CartUI: invalid payload");
+	const names=["CartApi","CartState","@CartCreate@16","@CartDestroy@12","@CartProcess@8","@CartDraw@8","@CartDown@16","@CartUp@16","@CartRight@16","@CartMove@16","@CartDrag@16","@CartWheel@12","@CartEvent@32","@CartSelect@20","@CartEditDraw@8","@CartEditEvent@32","_CartHit@8","_CartMatches@8","_CartRebuild@0","_CartSlot@4","@CartCursorDraw@8"];
+	for(const name of names)if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("CartUI: missing "+name);
+	const routes=[[0,0x9369F0,"@CartDestroy@12"],[15,0x941B80,"@CartCreate@16"],[19,0x5A8A20,"@CartProcess@8"],[20,0x948610,"@CartDraw@8"],[25,0x94B460,"@CartDown@16"],[27,0x880E00,"@CartDrag@16"],[28,0x94DF40,"@CartMove@16"],[31,0x880BB0,"@CartUp@16"],[32,0x94FAA0,"@CartRight@16"],[35,0x9500C0,"@CartWheel@12"],[37,0x9576A0,"@CartEvent@32"]];
+	for(const [slot,expected] of routes)if(Exe.GetUint32(Exe.Vir2Phy(0x103D538+slot*4))!==expected)throw Error("CartUI: cart vtable changed");
+	for(const [slot,expected] of [[20,0x824FC0],[37,0x82C4E0]])if(Exe.GetUint32(Exe.Vir2Phy(0x1028908+slot*4))!==expected)throw Error("CartUI: edit vtable changed");
+	n.assertCode("CartUI selector",0x939900,"55 8B EC 6A FF 68 CE 24 EC 00");
+	n.assertCode("CartUI cart count",0xD5CE50,"8B 81 24 17 00 00 C3");
+	n.assertCode("CartUI create",0x941B80,"55 8B EC 6A FF 68 69 37 EC 00");
+	const selectors=[[0x94B4BA,"E8 41 E4 FE FF"],[0x94DF7F,"E8 7C B9 FE FF"],[0x94FAD9,"E8 22 9E FE FF"]];
+	for(const [address,bytes] of selectors)n.assertCode("CartUI scoped selector",address,bytes);
+	const code=bytes.slice(start),[phy,vir]=Exe.Allocate(size,16);
+	for(let i=0;i<count;++i){const off=u32(bytes,32+i*4);if(off+4>size || u32(code,off)>=size)throw Error("CartUI: invalid relocation");put(code,off,u32(code,off)+vir);}
+	const e=name=>vir+meta.exports[name];
+	const edit=n.allocateBytes(new Array(4+58*4).fill(0),4);Exe.SetHex(edit.phy,Exe.GetHex(Exe.Vir2Phy(0x1028908-4),edit.size));
+	for(const [slot,name] of [[20,"@CartEditDraw@8"],[37,"@CartEditEvent@32"]])Exe.SetUint32(edit.phy+4+slot*4,e(name));
+	const fit=n.allocateCode(VipUI.nativeDrawing.fit(11,false,false)),paths=CartUI.runtimeAssets().map(p=>p.replace(/\//g,'\\'));
+	[1,edit.vir+4,fit.vir,...paths.map(p=>n.buildResourcePath(p).vir),CartUI.cursorTarget()].forEach((v,i)=>put(code,api+i*4,v));
+	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
+	for(const [slot,,name] of routes)Exe.SetUint32(Exe.Vir2Phy(0x103D538+slot*4),e(name));
+	for(const [address] of selectors)Exe.SetCALL(Exe.Vir2Phy(address),e("@CartSelect@20"));
+	const record=[];for(const v of [n.allocateString("CartUI.v1").vir,...names.map(e)])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);n.allocateBytes(record,4);
+	CartUI.installCursor(e("@CartCursorDraw@8"));
+	CartUI.onApplied();return true;
+};
+CartUI.validate=()=>Exe.BuildDate===20250716;
+CartUI.assets=()=>['cartui/cart_bg.png','genericsui/cls_x_out.png','genericsui/cls_x_over.png','inventoryui/selected_bg.png','inventoryui/search.png','battlepassui/Cursor_Hover.bmp'];
+CartUI.runtimeAssets=()=>[...CartUI.assets().slice(0,4),'inventory/icon_weight.bmp','btn_resize.bmp',...CartUI.assets().slice(4)];
+CartUI.onApplied=function()
+{
+	if(Warp.TestMode)return;
+	const root=System.DirPath(Warp.TgtExe),folders=['data','texture',ModernChatUI.nativeHelpers.uiPrefix()],target=root+'/'+folders.join('/'),missing=[];
+	for(const file of CartUI.assets()){
+		const f=new BinFile(target+'/'+file,'r'),exists=f.Valid;f.Close();if(exists)continue;
+		const s=new BinFile(Warp.Path+'/Assets/StorageInventoryUI/'+file,'r'),valid=s.Valid;s.Close();if(!valid)throw Error('CartUI: missing bundled asset '+file);missing.push(file);
+	}
+	if(!missing.length)return;let path=root;for(const folder of folders){path+='/'+folder;if(!System.MkDir(path))throw Error('CartUI: cannot create '+path);}
+	for(const folder of ['cartui','inventoryui','genericsui','battlepassui'])if(!System.MkDir(target+'/'+folder))throw Error('CartUI: cannot create '+target+'/'+folder);
+	for(const file of missing)if(!System.Copy(Warp.Path+'/Assets/StorageInventoryUI/'+file,target+'/'+file,false))throw Error('CartUI: cannot copy '+file);
+};
+
+// WARP reads source bytes and serializes each patch separately. One global tag
+// owns these calls and both handler cells; no patch chains through pending bytes.
+// BeginTag erases earlier writes: every reopening must emit the complete route.
+CartUI.cursorRoute=function()
+{
+	const n=AutoCombatUI.nativeHelpers,key="InventoryCart.Cursor.Global.v2",cacheKey="InventoryCart.Cursor.v2";
+	for(const address of [0xC75165,0xD26DA0,0xD27471]){
+		const rel=(0xA74410-address-5)>>>0;
+		n.assertCode("Inventory/Cart original cursor call",address,n.bytesToHex([0xE8,rel&255,rel>>>8&255,rel>>>16&255,rel>>>24]));
+	}
+	let route=CACHE.get(cacheKey);
+	if(!route)CACHE.setup(key,"InventoryCartCursorV2",{cleanTag_after_userDel:false,dealloc_after_zeroUsers:false});
+	const previous=Exe.ActivePatch;
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag(key));
+	try {
+		if(!route){
+			const cells=n.allocateBytes(new Array(8).fill(0),4);
+			route={inventoryCellPhy:cells.phy,inventoryCellVir:cells.vir,cartCellPhy:cells.phy+4,cartCellVir:cells.vir+4,inventoryVir:0,cartVir:0,code:[]};
+			const dispatch=(cell,fallback)=>{
+				const a=n.asm();a.emit(0x9C,0x83,0x3D);a.dword(cell);a.emit(0);a.jcc(0x85,"selected");
+				a.emit(0x9D);a.jmp(fallback);a.label("selected");a.emit(0x9D,0xFF,0x25);a.dword(cell);
+				const stub=n.allocateCode(a);route.code.push({phy:stub.phy,hex:a.finish(stub.vir)});return stub.vir;
+			};
+			route.cartDispatchVir=dispatch(route.cartCellVir,0xA74410);
+			route.routerVir=dispatch(route.inventoryCellVir,route.cartDispatchVir);
+			CACHE.put(cacheKey,route);
+		}
+		CartUI.writeCursorRoute(route);
+	} finally {Exe.EndTag();Exe.ActivePatch=previous;}
+	CACHE.addUser(key,"CartUI");return route;
+};
+// Emit every byte owned by the open global tag, including both registrations.
+CartUI.writeCursorRoute=function(route)
+{
+	for(const stub of route.code)Exe.SetHex(stub.phy,stub.hex);
+	Exe.SetUint32(route.inventoryCellPhy,route.inventoryVir);
+	Exe.SetUint32(route.cartCellPhy,route.cartVir);
+	for(const address of [0xC75165,0xD26DA0,0xD27471])Exe.SetCALL(Exe.Vir2Phy(address),route.routerVir);
+};
+CartUI.cursorTarget=function()
+{
+	const route=CartUI.cursorRoute();return 0xA74410;
+};
+CartUI.installCursor=function(entry)
+{
+	const route=CACHE.get("InventoryCart.Cursor.v2"),previous=Exe.ActivePatch;
+	if(!route || !Number.isInteger(entry) || entry<=0)throw Error("CartUI: invalid cursor registration");
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("InventoryCart.Cursor.Global.v2"));
+	try {route.cartVir=entry;CartUI.writeCursorRoute(route);}
+	finally {Exe.EndTag();Exe.ActivePatch=previous;}
+};
+CartUI.cleanup=function()
+{
+	const key="InventoryCart.Cursor.Global.v2",cacheKey="InventoryCart.Cursor.v2",route=CACHE.get(cacheKey);
+	if(!route)return;
+	const previous=Exe.ActivePatch;
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag(key));
+	try {route.cartVir=0;CartUI.writeCursorRoute(route);}
+	finally {Exe.EndTag();Exe.ActivePatch=previous;}
+	CACHE.delUser(key,"CartUI");
+	if(!CACHE.hasUsers(key))CACHE.del(cacheKey);
+};

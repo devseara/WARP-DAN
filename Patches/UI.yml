@@ -664,3 +664,19 @@ DailyRewards:
             recommend : no
             author : DevSeara
             desc : Replaces the Attendance menu action with Battle Pass-style attendance and quest grids, Available/Claimed stamps, and Gacha-style Daily Roll cards with paginated possible rewards. Supports six items per attendance day and quest with the DRUI v2 server; older DRUI v1 single-item servers remain compatible. 2025-07-16 only; uses the existing Attendance menu icon.
+
+StorageInventory:
+    title : STORAGE, INVENTORY AND CART
+    mutex : false
+    patches:
+        - InventoryUI:
+            title : Inventory UI (search and category sidebar)
+            recommend : no
+            author : DevSeara
+            desc : Matching inventory grid with the original inventoryui artwork, search and category tabs on 2025-07-16. Keeps native item instances, use, drag, descriptions and favorites. Replaces the RO Global Zero Inventory layout patch; no server change.
+
+        - CartUI:
+            title : Cart UI (search and category filter)
+            recommend : no
+            author : DevSeara
+            desc : Uses the original cartui artwork for a native six-column cart grid with search, category filtering, item count and weight on 2025-07-16. Keeps native item instances, cart transfers and descriptions. Installs missing bundled assets beside the patched EXE; no server change.

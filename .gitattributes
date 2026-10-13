@@ -78,3 +78,16 @@ Assets/ModernChatUI/** binary
 Assets/ModernChatUI/ModernChatDefaults.lub text eol=crlf diff
 Assets/ModernNpcDialog/** binary
 Assets/VipUI/** binary
+
+# Inventory and Cart native UI package.
+Scripts/Patches/InventoryUI.qjs text eol=crlf
+Scripts/Patches/CartUI.qjs text eol=crlf
+Scripts/Runtime/InventoryUI/*.cpp text eol=crlf
+Scripts/Runtime/CartUI/*.cpp text eol=crlf
+Scripts/Runtime/InventoryCartCursor.h text eol=crlf
+Inputs/InventoryUI/*.bin binary
+Inputs/CartUI/*.bin binary
+Inputs/InventoryUI/*.json text eol=lf
+Inputs/CartUI/*.json text eol=lf
+Assets/StorageInventoryUI/**/*.png binary
+Assets/StorageInventoryUI/**/*.bmp binary

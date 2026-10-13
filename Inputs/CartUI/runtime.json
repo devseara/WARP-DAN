@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "client": 20250716,
+  "size": 73992,
+  "api_size": 48,
+  "exports": {
+    "@CartCreate@16": 2848,
+    "@CartCursorDraw@8": 3232,
+    "@CartDestroy@12": 3520,
+    "@CartDown@16": 3680,
+    "@CartDrag@16": 4016,
+    "@CartDraw@8": 4368,
+    "@CartEditDraw@8": 6176,
+    "@CartEditEvent@32": 6272,
+    "@CartEvent@32": 6368,
+    "@CartMove@16": 6656,
+    "@CartProcess@8": 6720,
+    "@CartRight@16": 6768,
+    "@CartSelect@20": 6880,
+    "@CartUp@16": 7056,
+    "@CartWheel@12": 7344,
+    "CartApi": 16384,
+    "CartState": 16472,
+    "_CartHit@8": 7456,
+    "_CartMatches@8": 7664,
+    "_CartRebuild@0": 7824,
+    "_CartSlot@4": 8528
+  },
+  "source_sha256": "b04ab50ca1a48804fe77b2ba8c586cc09db815342e880172bcb43456ea96930e",
+  "cursor_source_sha256": "d40c8be39c8e5411a5382637ef3a4bb4b839d06130235d9cce6c6006c020a407",
+  "payload_sha256": "9e4a926ef0fb3698fb2b7069a84546af1c1af9259b7f82b670d9a1f1b1e327c9",
+  "runtime_imports": []
+}
