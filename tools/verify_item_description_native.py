@@ -60,6 +60,8 @@ class VM:
         self.stub(m['config'][57],8,self.scope_event);self.stub(m['config'][58],8,self.scope_event)
         self.stub(0xa39340,4,lambda ecx,args:0)
         self.stub(0x6a1b20,0,lambda ecx,args:0)
+        self.stub(0x6a25f0,4,lambda ecx,args:self.u.mem_write(ecx,bytes(self.u.mem_read(args[0],0xb8))) or ecx)
+        self.stub(0x6a2a70,0,lambda ecx,args:0x5010b000)
         self.stub(0x6a6570,4,lambda ecx,args:self.u.mem_write(ecx+0x2c,str(args[0]).encode()+b'\0'))
         self.stub(0x4f08f0,0,lambda ecx,args:0)
         if m.get('headerHook'):

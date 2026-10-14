@@ -119,7 +119,8 @@ def verify(directory):
     plain=[(y,row,kind,text.split(b'\0')[0].decode()) for y,row,kind,style,x,text in lines]
     assert [x[3] for x in plain if x[2]==3]==['Item','Item']
     subs=[x[3] for x in plain if x[2]==2]
-    assert 'Slot 1  -  Installed card' in subs and 'Slot 2  -  Installed card' in subs and 'Slot 3  Empty' in subs
+    assert not any('Installed card' in value or value.startswith(('Slot 1', 'Slot 2')) for value in subs)
+    assert 'Slot 3  Empty' in subs
     hits=[struct.unpack('<5i',t.u.mem_read(t.state+HITS+i*20,20)) for i in range(2)]
     effect1=next(x for x in plain if 'LUK +2' in x[3]);effect2=next(x for x in plain if x[3]=='DEX +1')
     assert effect1[2]==effect2[2]==2

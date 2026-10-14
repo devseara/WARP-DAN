@@ -10,6 +10,66 @@ The accepted client was `Banquet_ItemDescription_Test_v5_20260916.exe`, SHA-256 
 
 **Card redesign (2026-10-10, not live-accepted).** The user approved a grade-tinted card design and asked for no Original/Compare/Refresh footer. The same change fixes the reported stock-description flash: the old client kept the stock body (and stock geometry) on screen for one server round trip, then swapped. That behavior was intentional in the previous verifier. It also fixes stock children created after activation staying visible over the body. The emitted-code suites pass; live screenshots are still required before this is marked accepted.
 
+**Approved preview changes (2026-10-14; live verification pending).** The title backing is separated from the illustration, and the close-button backing is centered on the native 11×11 button. Card and Grade panels use one uniform peach background. Installed cards/enchantments show their name and effects without the redundant `Slot N · Installed card` subtitle; empty-slot labels and actual warning text remain. Header squares have no numbers, tooltip, hover highlight or component-click handler. A checked square means a server-classified card/enchantment occupies that slot; forged-item metadata is excluded. Only hovering a component panel highlights it.
+
+**Component windows and header dragging (2026-10-14; live verification pending).** Clicking a card/enchantment panel opens the redesigned window beside its source, keeping the equipment description visible. The existing native component factory (window 82, vtable `0x1032B84`, `OnMessage` `0x8BF3B0`) retains its native item/artwork and close behavior, with an independent snapshot, layout, thumbnail cache and scrollbar. Reopening a component preserves its dragged position. The header's free/title/stat areas capture dragging; item artwork, close and the four passive slot indicators are excluded. Motion uses the native position setter without rebuilding or painting the description. Releasing outside, losing capture, hiding or destroying the window ends dragging. Equipped comparison panes retain their paired alignment.
+
+Component request tokens use top bits `11`; main and comparison use `00` and `10`. Existing servers still have two channels, so component catalog requests share the comparison channel with coordinated 160ms spacing. A component send queues one comparison reinspection to restore its owned-item watch; an identical response preserves the cached surface/layout. This requires no server protocol change. The native Config appends a third 53-slot vtable (166 words total); each of the three States remains 123,664 bytes. The generated payload and QJS must be updated together.
+
+**Requirements and trade wording (2026-10-14).** Presentation maps `Allowed by item policy` to `Allowed`, `Discard` to `Drop`, and the server's checked equip eligibility to `Equipable: Yes` or `Equipable: No`. Requirements shows `Base Level: Any` for the database default minimum of zero (omitted `EquipLevelMin`), otherwise the supplied minimum. The compact header level uses the same value. Maximum level is omitted from layout; server equip restrictions remain enforced. Raw snapshots and eligibility flags are unchanged. Catalog/unsupported eligibility stays explicitly unknown rather than claiming a checked result. These are WARP presentation changes and require no server rebuild.
+
+Current Trade Information names and values, after these changes:
+
+| Label | Possible displayed values |
+|---|---|
+| Trade | Allowed, No, No (bound), Same guild only |
+| Storage | Allowed, No |
+| Drop | Yes, No |
+| Instance restrictions | Inspect an owned item (catalog-only notice) |
+
+The generated-code component suite checks independent click routing, late replies, scrolling, capture/viewport limits, no repaint or requests during header motion, comparison-watch restoration, and rendered wording for minimum zero/85 and eligibility Yes/No. Lifecycle tests also execute the real component open path and its shared optimized base handler. Automated engine-boundary tests do not establish live walking frame times.
+
+### Owner setting: show or hide Grade
+
+Edit **`Settings.ShowGrade` in the server's `db/import/item_description_db.yml`**:
+
+```yaml
+Settings:
+  ShowGrade: false
+```
+
+`false` (the default) makes the server omit the complete **Grade** section: heading, current grade, tier names, bonuses and notes. Effects with grade predicates are also omitted, including effects rendered under cards or random options. Normal base/refine effects remain. The client reserves no space for an absent section in either pane. Change it to `true` when ready, save, run **`@reloaditemdb`**, and reopen the item description. Both watched panes are invalidated by a successful reload. Invalid settings/imports retain the last valid descriptors and setting; check the map-server log if a reload is rejected.
+
+The server needs one initial rebuild/deployment containing this setting support. Subsequent toggles require **no WARP repatch, client distribution or server restart**. Clients display the rows sent by the server, without a patch-time `ShowGrade` switch or wire-format change. This controls description visibility only; it does not enable grading gameplay or alter item-name/grade coloring. `Settings` may be supplied in any descriptor DB import; the last explicitly supplied `ShowGrade` wins. Omitted settings retain the earlier value, defaulting to false on a fresh load.
+
+This setting is separate from `ShowGradeBonuses` in the client's active `SystemEN/LuaFiles514/itemInfo_f.lua`, which controls the legacy Lua description's `[Bonus by Grade]` text. Keep that false until the legacy presentation should also be visible.
+
+Component artwork is copied and scaled once into a bounded eight-entry cache per pane. Hover reuses these pixels; close/reopen, a new item identity or a changed catalog invalidates the cache. Resource pointers are never retained. Flat panels also reduce fill calls.
+
+**Walking/hover stutter fix (2026-10-14; user confirmed fixed).** Moving between component panels queues a partial paint of the old and new panel rectangles on the existing native surface. Mouse events coalesce until the native compositor paints; its normal dirty-window transaction and the DIB upload flag (`CSurface+0x1C`) keep cached composition current. The native title/artwork, frame and scrollbar are reused. Full invalidations cancel the optimization, and an already-dirty window, changed surface/identity or invalid layout retains the full-paint path. Repeated movement within the same panel does no painting. The main/comparison native handlers were profiled at `0x8C18B0`/`0x8C3540`: ordinary notifications now pass through without releasing the view; open/close and content-changing messages retain the existing child-restoration path. This prevents needless layout/cache resets. Header slot indicators remain passive, and card clicks keep their existing behavior.
+
+**Walking while scrolling/clicking/opening (2026-10-14; live verification pending).** Wheel, arrow, page and thumb changes now coalesce into a body-only repaint, preserving the header, illustration, title and info strip. The native scrollbar's visual-state changes repaint just the bar; stationary movement and scrolling past a bound do no work. Content/geometry/identity/surface changes still take the complete draw path. Component press/release no longer invalidates the parent, while left/right clicks still open native window 82 exactly once and destroy the temporary CItem strings. Opening/layout uses a binary search over UTF-8 character boundaries instead of measuring every growing prefix. Original line breaks matched in normal/small-window fixtures, including long words, whitespace, newlines and multibyte text; font measurements dropped from 520 to 84 in the normal mixed-text case. Eight emitted-code groups pass, including partial/full pixel and text parity, capture, bounds and pane isolation. These checks do not measure live game frame times or remove native first-load resource costs.
+
+**Opening and switching lifecycle (2026-10-14; live verification pending).** The user confirmed the preceding fixes, then reported another hitch when changing items while walking. The native `OnMessage(24)` still built a hidden legacy random-option tree, fetched Lua description lines, parsed the old text viewer, and resized parent/child surfaces before the custom card replaced them. Native `SetSize` destroys/reallocates its surface even for unchanged dimensions. Eligible opens now skip that hidden work, and item switches retain the current surface. Initial opens take final geometry once; paired panes select their shared width before allocation. Changes in geometry or a missing surface still allocate normally.
+
+The optimization is scoped to the exact native receiver and unwinds across recursive equipped-comparison opens. Native CItem assignment, collection-art resource ownership, decorated title, window ordering and comparison selection still execute. The six exact-byte-guarded 2025-07-16 detours are `0x8C1D69` (option construction), `0x8C2238` (intermediate geometry), `0x8C2554` (text parsing), `0x8C2B53` (legacy final sizing), `0x8B4230` (hidden background paint) and `0x8B43FD` (hidden body paint after the native title). The description lookup call at `0x8C23E2` returns an empty vector only for the scoped window's inline CItem. All other lookups use the original getter. The native title instruction span is unchanged. The Size vtable adapter preserves normal sizing outside that scope and avoids identical-size surface replacement.
+
+Unidentified items, unprofiled containers, disabled rendering, small viewports and an already-silent server retain the stock path. If an optimized request times out, is rejected or cannot allocate its outgoing packet, the omitted stock body is rebuilt once using a native owned CItem copy. Forced refresh avoids same-item toggle-close while retaining native comparison behavior. Queued send failures also restore the original view. Destruction skips unnecessary surface resizing/body reconstruction; an epoch guard prevents native same-item close from reactivating a destroyed pane. Existing hover, scroll and component-click optimizations remain in place.
+
+The lifecycle suite executes the real profiled main/comparison open bodies and native draw body with mocked engine/resource boundaries, plus the actual QJS-emitted detours. It verifies twelve successive item switches with zero parent surface reallocations or hidden description lookups, nested comparison dispatch, stale responses, exact displaced-instruction/flag/stack replay, one native illustration/title call, same-item destruction, eligibility and immediate/deferred fallback failures. This is bounded native-code regression evidence, not a live frame-time measurement. Necessary first-time resource loads can still cost time.
+
+To test freshly compiled native code without creating a game EXE:
+
+```powershell
+python tools/build_item_description_native.py --compiler <path-to-x86-cl.exe>
+python tools/verify_item_description_qjs.py --engine <existing-2025-07-16-client.exe> --output Outputs/item-description-qjs-check
+python tools/verify_item_description_payload.py --engine <existing-2025-07-16-client.exe> --node <path-to-node.exe> --output Outputs/item-description-payload-check
+```
+
+The first command regenerates the embedded QJS payload using a build-time DLL container. The final command executes that fresh payload in memory with the existing native, edges, artwork, comparison, skin and header suites plus Grade/hover, scroll/click and lifecycle regressions. Node emits the real patch bridges from QJS for the lifecycle tests. It reads the existing client only for native engine code. It does not write a game EXE or establish live acceptance/full WARP integration.
+
+The QJS check uses the actual WARP Qt engine in an isolated fixture and stops deliberately before patching/export. It reproduces Qt's object-spread rejection and verifies that the complete current module evaluates. Use `Object.assign({}, spec, {bridge:bridge})` for lifecycle manifest copies: object spread (`{...spec}`) is unsupported by this WARP build, even though Node accepts it. Existing array/argument spread is supported. Node-only syntax checking cannot establish WARP parser compatibility.
+
 ## Architecture and ownership
 
 | Layer | Responsibility |
@@ -75,7 +135,7 @@ Item Collection and Bestiary share the existing packet fallback through the sele
 - **Header:** a gradient tinted by the native item grade (none blue, D rose, C amber, B green, A violet, taken from `grade_icon{1..4}.bmp` inks). It has a white medallion under the native 75×100 art, a frosted bar under the native title spans, the type label, and a headline (Weapon ATK, Weapon MATK or Armor DEF) with the refine ATK bonus in yellow. The candidate pane shows an up/down arrow against the equipped pane's base+refine total. It also has a binding chip with an open/closed lock, socket pips (enchant slots in violet), an `Equipped` pill on the comparison pane, and the native grade icon at 2× over the art corner. Native art, name spans and grade colors remain native; no grade label text is drawn.
 - **Body:** an info strip (`Lv.`, `Weapon Lv.`, `Weight`), then sections with blue diamond headings and thin dividers: Base Stats (with red/green deltas against the equipped pane), Special Effects, Cards & Enchantments, Card Set Bonuses, Grade, Random Options, Requirements (check/cross), and Trade Information as green/red chips. Numeric tokens in effect text are orange. Every rectangle is clipped by the payload, because the shared fill helper rejects rather than clips negative origins.
 - **Components:** each card/enchant slot is one peach panel with a 40×52 thumbnail, the catalog name, the slot line and its own effects. Empty slots are compact strips. Partial panels clip to the scrolling body. Missing collection art falls back to the item icon. Hovering a known component highlights it; clicking or right-clicking opens it through the native component-description route.
-- **Grade:** one panel with the current grade and every tier; the active tier is checked, unmet tiers are locked and muted.
+- **Grade:** hidden by default by the server's `Settings.ShowGrade: false`. When enabled and the server sends grade rows, one uniform panel contains the current grade and every tier; the active tier is checked, unmet tiers are locked and muted.
 - **Scrolling:** each pane owns a normally constructed native `UIScrollBar`, created only when the body overflows; close destroys it and releases its mouse capture. The legacy text viewer's scrollbar is not borrowed.
 - **No footer actions:** there is no Original, Compare or Refresh. Unidentified items and unprofiled indexed containers retain stock disclosure and behavior.
 

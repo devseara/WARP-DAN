@@ -4,19 +4,23 @@ import argparse,subprocess,os,json,hashlib,shutil
 from generate_item_description_data import load_db
 ROOT=Path(__file__).resolve().parents[1]
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--server',type=Path,default=ROOT.parent/'BanquetOfHeroes');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--server',type=Path,default=ROOT.parent/'BanquetOfHeroes')
+    ap.add_argument('--compiler',type=Path,default=Path('C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe'))
+    ap.add_argument('--sdk-version',default='10.0.26100.0')
+    ap.add_argument('--debug-runtime',action='store_true',help='Match a /MTd, iterator-level-0 server ryml.lib');args=ap.parse_args()
     server=args.server.resolve();out=ROOT/'Outputs/ItemDescription/server-tests';out.mkdir(parents=True,exist_ok=True)
     source=(server/'src/map/item_description.cpp').read_text(encoding='utf8')
     parts=[]
     for start,end in [('struct Effect {','template<size_t N> void copy'),('template<size_t N> void copy','const char* type_name'),('w::u64 fingerprint(','void initialize('),('struct Builder {','void append_refine(')]:
         parts.append(source[source.index(start):source.index(end)])
-    (out/'item_description_watch_under_test.inc').write_text(source[source.index('void invalidate(map_session_data*'):source.index('void process_request(')],encoding='utf8')
+    (out/'item_description_watch_under_test.inc').write_text(source[source.index('void reload()'):source.index('void process_request(')],encoding='utf8')
     (out/'item_description_under_test.inc').write_text('\n'.join(parts),encoding='utf8')
-    vc=Path('C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231');sdk=Path('C:/Program Files (x86)/Windows Kits/10');ver='10.0.26100.0'
+    compiler=args.compiler.resolve();vc=compiler.parents[3];sdk=Path('C:/Program Files (x86)/Windows Kits/10');ver=args.sdk_version
     env=os.environ.copy();env['INCLUDE']=';'.join(str(p)for p in[vc/'include',sdk/'Include'/ver/'ucrt',sdk/'Include'/ver/'shared',sdk/'Include'/ver/'um'])
     env['LIB']=';'.join(str(p)for p in[vc/'lib/x64',sdk/'Lib'/ver/'ucrt/x64',sdk/'Lib'/ver/'um/x64'])
     includes=[out,server/'src',server/'3rdparty/rapidyaml/src',server/'3rdparty/rapidyaml/ext/c4core/src',server/'3rdparty/libconfig']
-    cmd=[str(vc/'bin/Hostx64/x64/cl.exe'),'/nologo','/std:c++17','/EHsc','/MT','/O2','/DWIN32','/D_CRT_SECURE_NO_WARNINGS',*[f'/I{p}'for p in includes],str(ROOT/'tools/native/item_description_server_test.cpp'),str(server/'src/common/database.cpp'),str(server/'.vs/build/ryml.lib'),f'/Fe:{out}/server-test.exe',f'/Fo:{out}/']
+    runtime=['/MTd','/D_ITERATOR_DEBUG_LEVEL=0'] if args.debug_runtime else ['/MT']
+    cmd=[str(compiler),'/nologo','/std:c++17','/EHsc',*runtime,'/O2','/DWIN32','/D_CRT_SECURE_NO_WARNINGS',*[f'/I{p}'for p in includes],str(ROOT/'tools/native/item_description_server_test.cpp'),str(server/'src/common/database.cpp'),str(server/'.vs/build/ryml.lib'),f'/Fe:{out}/server-test.exe',f'/Fo:{out}/']
     result=subprocess.run(cmd,cwd=out,env=env,capture_output=True,text=True);(out/'build.log').write_text(result.stdout+result.stderr)
     if result.returncode:raise RuntimeError((result.stdout+result.stderr)[-5000:])
     metadata=out/'metadata';metadata.mkdir(exist_ok=True)

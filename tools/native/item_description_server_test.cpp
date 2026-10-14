@@ -36,7 +36,15 @@ struct map_session_data {
 std::vector<w::Snapshot> invalidations;
 void initialize(w::Snapshot& s,const w::Request& r) { w::zero(s);s.request_id=r.request_id;s.item_id=r.item_id;s.client_index=r.client_index;s.scope=r.scope; }
 void send(map_session_data*,const w::Snapshot& s) { invalidations.push_back(s); }
+std::vector<map_session_data*> sessions;
+void map_foreachpc(int32 (*callback)(map_session_data*, va_list)) {
+    for (auto* session : sessions) { va_list unused{}; callback(session, unused); }
+}
+namespace item_description {
+void invalidate(map_session_data*, int, bool);
 #include "item_description_watch_under_test.inc"
+}
+using item_description::invalidate;
 static void write(const std::string& text){std::ofstream("item_description_db.yml",std::ios::binary)<<text;}
 int main(int argc,char**argv){
     assert(argc==3);std::filesystem::current_path(argv[1]);do_init_database();
@@ -77,6 +85,49 @@ int main(int argc,char**argv){
         write(bad);auto candidate=std::make_unique<DescriptionDatabase>();if(!candidate->load()||!candidate->valid)++rejected;else assert(false&&"invalid descriptor accepted");
         assert(current->find(1201)->effects[0].text=="Accurate configured effect");}
     assert(rejected==10);write(good);auto recovery=std::make_unique<DescriptionDatabase>();assert(recovery->load());
+    // Execute the production reload path: a setting change must be atomic and
+    // invalidate both watched panes; malformed settings retain the active data.
+    item_description::reload();assert(descriptions&&!show_grade());
+    map_session_data watcher;sessions.push_back(&watcher);
+    watcher.item_description_request_id[0]=11;watcher.item_description_request_id[1]=0x8000000b;
+    write(good+"Settings:\n  ShowGrade: true\n");item_description::reload();
+    assert(show_grade()&&invalidations.size()==2);
+    assert(invalidations[0].request_id==11&&invalidations[1].request_id==0x8000000b);
+    const auto accepted_revision=revision;const auto* accepted=descriptions.get();
+    watcher.item_description_request_id[0]=12;
+    for (const auto& settings : std::vector<std::string>{
+        "Settings: false\n", "Settings: []\n", "Settings:\n  ShowGrade: typo\n",
+        "Settings:\n  ShowGrade: []\n", "Settings:\n  ShowGrade: {}\n", "Settings:\n  ShowGrade:\n"}) {
+        write(good+settings);item_description::reload();
+        assert(descriptions.get()==accepted&&revision==accepted_revision&&show_grade());
+        assert(watcher.item_description_request_id[0]==12&&invalidations.size()==2);
+    }
+    write(good+"Settings:\n  ShowGrade: false\n");item_description::reload();
+    assert(!show_grade()&&revision!=accepted_revision&&invalidations.size()==3);
+    // Last explicit setting wins; an import without Settings retains the root.
+    std::ofstream("grade-import.yml")<<header+"Settings:\n  ShowGrade: true\nBody: []\n";
+    const auto imported=good+"Settings:\n  ShowGrade: false\nFooter:\n  Imports:\n    - Path: grade-import.yml\n";
+    write(imported);item_description::reload();assert(show_grade());
+    std::ofstream("grade-import.yml")<<header+"Body: []\n";
+    item_description::reload();assert(!show_grade());
+    std::ofstream("grade-import.yml")<<header+"Settings:\n  ShowGrade: invalid\nBody: []\n";
+    const auto before_bad_import=revision;item_description::reload();assert(!show_grade()&&revision==before_bad_import);
+    sessions.clear();invalidations.clear();
+    std::cout<<"PASS: ShowGrade defaults off; live reload toggles and invalidates both panes; invalid scalars/containers/imports roll back; explicit import precedence.\n";
+    w::Snapshot hidden{};Builder hidden_builder{hidden};
+    hidden_builder.row(w::grade,"Current grade","Epic");
+    hidden_builder.long_effect(w::grade,"Epic",std::string(2048,'g'),w::active);
+    assert(!hidden.row_count&&!hidden.flags);
+    Descriptor mixed;Effect base;base.text="Base ATK +10";mixed.effects.push_back(base);
+    Effect grade;grade.section=w::grade;grade.text="Grade preview";mixed.effects.push_back(grade);
+    Effect conditional;conditional.min_grade=1;conditional.text="Grade conditional";mixed.effects.push_back(conditional);
+    conditional.min_grade=0;conditional.max_grade=2;mixed.effects.push_back(conditional);
+    Effect refined;refined.min_refine=1;refined.text="Refine bonus";mixed.effects.push_back(refined);
+    for (auto section : {static_cast<w::Section>(0), w::cards, w::random_options}) {
+        w::zero(hidden);Builder hb{hidden};append_effects(hb,mixed,actual,true,section);
+        assert(hidden.row_count==2&&std::string(hidden.rows[0].text)=="Base ATK +10");
+        assert(std::string(hidden.rows[1].text).find("Refine bonus")!=std::string::npos);
+    }
     w::Snapshot snapshot{};Builder builder{snapshot};Descriptor descriptor;Effect effect;effect.text=std::string(2048,'x');descriptor.effects.assign(64,effect);
     append_effects(builder,descriptor,actual,true);assert(snapshot.row_count<=44&&(snapshot.flags&w::truncated));
     builder.row(w::restrictions,"Storage","No");assert(snapshot.rows[snapshot.row_count-1].section==w::restrictions);
@@ -87,6 +138,13 @@ int main(int argc,char**argv){
     while(item_ids>>id)item_db.ids.insert(id);
     std::getline(ids,line);std::istringstream option_ids(line);while(option_ids>>id)random_option_db.ids.insert(id);
     DescriptionDatabase generated;assert(generated.load()&&generated.valid&&generated.size()>2000);
+    assert(!show_grade());
+    // Every descriptor must omit grade rows and grade predicates while hidden.
+    for (uint32 item_id : item_db.ids) if (auto d=generated.find(item_id)) {
+        w::zero(hidden);Builder hb{hidden};append_effects(hb,*d,actual,true);
+        for (unsigned n=0;n<hidden.row_count;++n) assert(hidden.rows[n].section!=w::grade);
+    }
+    descriptions->show_grade=true;
     auto knife=generated.find(1201);assert(knife&&knife->effects.size()==4&&!knife->legacy);
     auto armor=generated.find(2315);assert(armor&&armor->effects.size()==4);
     for (int grade=0;grade<=5;++grade) {
