@@ -138,6 +138,7 @@ RedesignedEquipmentWindow = function(_)
 	RedesignedEquipmentWindow.patchAmmunitionSlot(_);
 	RedesignedEquipmentWindow.patchFooterControls(_);
 	RedesignedEquipmentWindow.patchEquipmentHitTest(_);
+	RedesignedEquipmentWindow.patchEquipmentTooltipAnchor(_);
 	RedesignedEquipmentWindow.patchLeftRailSelectors(_);
 	RedesignedEquipmentWindow.patchSwapPane(_, swapVir);
 
@@ -1651,6 +1652,46 @@ RedesignedEquipmentWindow.patchEquipmentHitTest = function(_)
 		'Equipment click-picker side divisor'
 	);
 	Exe.SetUint32(addr + 1, 0x905A3864);
+};
+
+RedesignedEquipmentWindow.patchEquipmentTooltipAnchor = function(_)
+{
+	$$(_, 4.25, 'Keep one native item balloon anchor per renewal equipment slot');
+	// The picker uses 35px rows starting at 29, but stock tooltip positioning
+	// divides by 24 and multiplies by 26. That moves the same item's balloon
+	// halfway through a slot. Keep native item/text ownership; fix coordinates.
+	const original = '8B B7 F4 00 00 00 B8 AB AA AA 2A 8B 8D B8 FD FF FF 2B CE C6 85 2C FE FF FF 01 83 E9 11 C7 85 C0 FD FF FF 06 00 00 00 F7 E9 C1 FA 02 8B C2 C1 E8 1F 03 C2 6B C0 1A 83 C0 FD 03 C6 89 85 BC FD FF FF';
+	const hookAddr = RedesignedEquipmentWindow.findUnique(original, 'Equipment item balloon row anchor');
+	const parts = [
+		[
+			'8B B7 F4 00 00 00',                // native window vertical offset
+			'B8 3B A8 83 3A',                   // signed divide by 35 (with SAR 3)
+			'8B 8D B8 FD FF FF 2B CE',
+			'C6 85 2C FE FF FF 01',             // replay native identified-item flag
+			'83 E9 1D',                         // first picker row starts at y=29
+			'C7 85 C0 FD FF FF 38 00 00 00',    // left slot column x=56
+			'F7 E9 C1 FA 03 8B C2 C1 E8 1F 03 C2',
+			'6B C0 23 83 C0 09 03 C6',          // row*35 + 9, above the slot
+			'89 85 BC FD FF FF',
+			'83 FB 75',
+			JL(Filler(1)),
+			'81 FB 8D 00 00 00',
+			JGE(Filler(1)),
+			'8D 86 AB 00 00 00',                // fixed footer Arrow anchor y=171
+			'89 85 BC FD FF FF'
+		].join(' '),
+		' ' + JMP(Filler(2))
+	];
+	const [, doneTarget] = MapAddrs(parts);
+	AutoHook(hookAddr, parts, {
+		nops: 60,
+		localTgts: {1: doneTarget},
+		targets: {2: Exe.Phy2Vir(hookAddr + 65, CODE)}
+	});
+	const rightAddr = RedesignedEquipmentWindow.findUnique(
+		'C7 85 C0 FD FF FF AF 00 00 00 EB 16', 'Equipment item balloon right column'
+	);
+	Exe.SetUint32(rightAddr + 6, 225);
 };
 
 RedesignedEquipmentWindow.patchLeftRailSelectors = function(_)

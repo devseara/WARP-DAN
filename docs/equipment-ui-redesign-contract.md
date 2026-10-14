@@ -33,6 +33,19 @@ footer-control coordinates, and asset deployment. It does not replace native
 item identity, tooltip construction, drag/drop handlers, equip/unequip packets,
 swap packets, or the shared item-name text bridge.
 
+### Stable item tooltip anchor (2026-10-14; live verification pending)
+
+The native item picker already uses 35px rows starting at y=29. Its tooltip
+anchor still divided by 24 and advanced by 26, so moving inside one equipment
+slot could move the same item balloon between several positions. The anchor
+now uses the picker's row formula, with x=56/225 and y=9+35*row. The footer
+ammunition cell has a fixed y=171 anchor and retains x=120. Native item
+selection, label formatting, color bridges and tooltip calls are unchanged.
+The actual emitted coordinate code passes 4,368 positions across both columns,
+all five rows, normal/expanded widths, vertical offsets and the Arrow cell.
+`tools/verify_equipment_tooltip_anchor.py` reads an existing client and executes
+the patch in memory; it creates no game EXE and does not establish live acceptance.
+
 The supplied assets are copied to:
 
 `data/texture/<client UI prefix>/uirenewal/equipmentui`
