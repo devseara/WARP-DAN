@@ -1,0 +1,13 @@
+# Keep the local index focused on maintained source and patch metadata.
+# Build with --code-only so documents and media never invoke a model backend.
+/*
+!/Scripts/
+!/CustomDLL/
+!/tools/
+!/BuyerPatches/
+!/Patches/
+!/Tables/
+**/__pycache__/
+**/node_modules/
+**/graphify-out/
+

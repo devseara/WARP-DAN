@@ -1,0 +1,4 @@
+# WARP QuickJS scripts use JavaScript syntax; preserve their original paths.
+language.qjs=javascript
+language.inl=cpp
+
