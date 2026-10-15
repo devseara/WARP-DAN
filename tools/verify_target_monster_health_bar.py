@@ -1,7 +1,7 @@
 """Execute the emitted HUD x86 against bounded native-call fixtures."""
 import argparse,struct,json,re,hashlib
 from pathlib import Path
-from PIL import Image,ImageDraw,ImageFont
+from PIL import Image,ImageDraw,ImageFont,ImageFilter
 import pefile
 from unicorn import Uc, UC_ARCH_X86, UC_MODE_32, UC_HOOK_CODE
 from unicorn.x86_const import *
@@ -24,7 +24,7 @@ class Harness:
  def __init__(self):
   u=self.u=Uc(UC_ARCH_X86,UC_MODE_32);u.mem_map(ib,(p.OPTIONAL_HEADER.SizeOfImage+4095)&~4095);u.mem_write(ib,p.get_memory_mapped_image())
   for a,n in [(MODE,0x120000),(STACK,0x10000),(STOP,0x1000)]:u.mem_map(a,n)
-  self.text_draws=[];self.native_hp_calls=0;self.native_refreshes=[];self.icon_draws=[];self.icon_exists=True;self.cursor=0;self.ui_block=0;self.modal=0;self.allocs=0;self.actor=True;self.original=0;self.opens=[];self.closes=[];self.missing=set();self.corrupt={};self.option=True;
+  self.text_draws=[];self.text_calls=[];self.native_hp_calls=0;self.native_refreshes=[];self.icon_draws=[];self.icon_exists=True;self.cursor=0;self.ui_block=0;self.modal=0;self.allocs=0;self.actor=True;self.original=0;self.opens=[];self.closes=[];self.missing=set();self.corrupt={};self.option=True;
   for a,v in [(MODE,0x10904b8),(MODE+0xcc,WORLD),(WORLD+0x2c,PLAYER),(PLAYER+0x500,1),(PLAYER+0x514,101),(MOB+0x300,GAUGE),(MOB+0x314,5),(MOB+0x110,101),(GAUGE,0x102be50),(GAUGE+0xa0,680),(GAUGE+0xa4,1000),(0x12515f8,VIEW),(VIEW+0x28,1280),(INFO+0x18,15),(HUD+0x24,MODE+0x8000),(MODE+0x8018,MODE+0x10000),(MODE+0x8004,W)]:self.put(a,v)
   u.mem_write(INFO+0x98,b'\1');u.mem_write(INFO+4,b'Baphomet\0');self.files={f.name:f.read_bytes() for f in (Path(__file__).resolve().parents[1]/MANIFEST['resource_root']).glob('target_mob_*.bmp')}
   self.handles={}
@@ -119,14 +119,21 @@ class Harness:
    font=ImageFont.truetype('C:/Windows/Fonts/segoeui.ttf',arg(4));self.ret(6,round(font.getlength(text)))
   elif pc==0xa25a70:
    assert ecx==HUD and arg(4)==0 and arg(5)==1 and arg(6) in (12,14) and arg(8)==arg(9)==0
-   text=bytes(u.mem_read(arg(3),128)).split(b'\0')[0].decode('utf8');x=arg(1);x=x-0x100000000 if x&0x80000000 else x;y=arg(2)
-   self.text_draws.append(text)
+   text=bytes(u.mem_read(arg(3),128)).split(b'\0')[0].decode('utf8');x=arg(1);x=x-0x100000000 if x&0x80000000 else x;y=arg(2);y=y-0x100000000 if y&0x80000000 else y
    img=Image.frombytes('RGBA',(W,H),bytes(u.mem_read(MODE+0x10000,W*H*4)),'raw','BGRA');c=arg(7)
-   ImageDraw.Draw(img).text((x,y),text,font=ImageFont.truetype('C:/Windows/Fonts/segoeui.ttf',arg(6)),fill=(c&255,(c>>8)&255,(c>>16)&255,255))
+   self.text_calls.append((text,x,y,arg(6),c))
+   if c!=0x00010101:self.text_draws.append(text)
+   # GDI's RGB-only glyph writes clear destination alpha. An opaque fixture
+   # would hide missing alpha repair, especially for the outline's extra rows.
+   painter=ImageDraw.Draw(img);painter.fontmode='1'
+   painter.text((x,y),text,font=ImageFont.truetype('C:/Windows/Fonts/segoeui.ttf',arg(6)),fill=(c&255,(c>>8)&255,(c>>16)&255,0))
    u.mem_write(MODE+0x10000,img.tobytes('raw','BGRA'));self.ret(9,1)
   elif pc==0x83bd30:self.ret(1)
- def run(self,addr,ecx=MODE,argc=0):
+ def run(self,addr,ecx=MODE,argc=0,arguments=None):
   sp=STACK+0x8000;self.put(sp,STOP);self.put(sp+4,1)
+  if arguments is not None:
+   assert len(arguments)==argc
+   for index,value in enumerate(arguments,1):self.put(sp+index*4,value)
   self.u.reg_write(UC_X86_REG_ESP,sp);self.u.reg_write(UC_X86_REG_ECX,ecx)
   expected={reg:0x12340000+reg for reg in (UC_X86_REG_EBX,UC_X86_REG_ESI,UC_X86_REG_EDI,UC_X86_REG_EBP)}
   if addr==base:
@@ -165,6 +172,33 @@ for token in ('/targethudtest','target_monster_hud_trace.log','HUD TEST - 68% pr
  assert token.encode('utf-16le') not in PE.read_bytes()
 assert r(base+0x8000,0x800)==bytes(0x800)
 assert r(base+0x9000,0x100)==bytes(0x100)
+
+# Execute the actual relocated helper for every label style. Compare the whole
+# surface to a one-pixel dilation of the foreground glyph mask, including
+# clipped/empty labels, icon-row positioning and translucent artwork beneath.
+for kind,text,font_size,color in [(0,'BAPHOMET',14,0xd7e7ee),(1,'680/1,000 ♦ 68%',12,0xffffff),(2,'MINI BOSS',12,0xb7d7e7),(3,'Mob Level: 81 ♦ Mob ID: 1039',12,0xd7e7ee),(4,'Mob Element: Dark Level: 3 ♦ ',12,0xd7e7ee)]:
+ for y in (20,-3,H-12):
+  outlined=Harness();dst=MODE+0x10000;label=INFO+0x200
+  outlined.u.mem_write(label,text.encode()+b'\0');outlined.put(LAYOUT['icon_state']+12,-2)
+  background=Image.new('RGBA',(W,H),(24,48,72,96))
+  outlined.u.mem_write(dst,background.tobytes('raw','BGRA'))
+  outlined.u.mem_write(dst-4,b'HEAD');outlined.u.mem_write(dst+W*H*4,b'TAIL')
+  outlined.run(base+0x4000,HUD,4,[HUD,label,y,kind])
+  font=ImageFont.truetype('C:/Windows/Fonts/segoeui.ttf',font_size)
+  x=(W-round(font.getlength(text)))//2 if kind!=4 else -2
+  mask=Image.new('L',(W+2,H+2));painter=ImageDraw.Draw(mask);painter.fontmode='1'
+  painter.text((x+1,y+1),text,font=font,fill=255)
+  contour=mask.filter(ImageFilter.MaxFilter(3)).crop((1,1,W+1,H+1))
+  glyphs=mask.crop((1,1,W+1,H+1))
+  expected=background.copy();expected.paste((1,1,1,255),(0,0,W,H),contour)
+  expected.paste((color&255,(color>>8)&255,(color>>16)&255,255),(0,0,W,H),glyphs)
+  actual=bytes(outlined.u.mem_read(dst,W*H*4))
+  assert actual==expected.tobytes('raw','BGRA'),('outline pixels/alpha',kind,y)
+  assert outlined.text_calls[-1]==(text,x,y,font_size,color)
+  assert bytes(outlined.u.mem_read(dst-4,4))==b'HEAD' and bytes(outlined.u.mem_read(dst+W*H*4,4))==b'TAIL'
+  outlined.u.mem_write(label,b'\0');before=actual
+  outlined.run(base+0x4000,HUD,4,[HUD,label,y,kind])
+  assert bytes(outlined.u.mem_read(dst,W*H*4))==before
 
 assert struct.unpack('<I',r(0xcac6f0,4))[0]==0xca8a9b
 hp_entry=target(0xca8aa2)
@@ -289,7 +323,14 @@ for tier in range(3):
  h.put(INFO+0x94,[1102,1137,1128][tier])
  h.packet(['#1002 680/1000 68% Lv.1 Neutral Lv.1 Plant','#1096 680/1000 68% Lv.20 Holy Lv.4 Angel','#1039 680/1000 68% Lv.81 Dark Lv.3 Demon'][tier])
  h.u.mem_write(INFO+4,[b'Poring\0',b'Angeling\0',b'Baphomet\0'][tier]);h.put(GAUGE+0xa0,680);h.put(GAUGE+0xa4,1000);h.u.mem_write(MOB+0x304,bytes([tier]));h.update();h.run(base+0x1000,HUD);rendered_surfaces.append(bytes(h.u.mem_read(MODE+0x10000,W*H*4)));assert h.get(MODE+0x10000)==0
- # Partial alpha must survive both the BMP blit and all three native text passes.
+ # All tier/name/HP/detail labels retain their foreground and eight outline
+ # neighbours; native icon placement must not shift the combined element row.
+ for start in range(0,len(h.text_calls),9):
+  passes=h.text_calls[start:start+9];assert len(passes)==9
+  text,x,y,size,color=passes[-1];assert color!=0x00010101
+  assert {(px-x,py-y) for _,px,py,_,_ in passes[:-1]}=={(dx,dy) for dy in (-1,0,1) for dx in (-1,0,1) if dx or dy}
+  assert all(label==text and font==size and c==0x00010101 for label,_,_,font,c in passes[:-1])
+ # Partial artwork alpha must survive both the BMP blit and outlined text.
  from io import BytesIO
  fixture=Image.open(BytesIO(h.files[MANIFEST['tiers'][tier]['empty']])).convert('RGBA')
  actual=Image.frombytes('RGBA',(W,H),rendered_surfaces[-1],'raw','BGRA')
@@ -384,7 +425,7 @@ report={
  'design':DESIGN,
  'asset_sha256':{name:hashlib.sha256(data).hexdigest() for name,data in h.files.items()},
  'rendered_surface_sha256':[hashlib.sha256(data).hexdigest() for data in rendered_surfaces],
- 'checks':'independent native HP, per-field HP text visibility, label-only metadata, resource/alpha/formatting, icons, option restoration and dead-player hover',
+ 'checks':'one-pixel text outlines and clipped RGB-only glyph alpha, independent native HP, per-field HP text visibility, label-only metadata, resource/alpha/formatting, icons, option restoration and dead-player hover',
 }
 if args.report:
  args.report.parent.mkdir(parents=True,exist_ok=True)
