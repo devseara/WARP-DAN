@@ -78,3 +78,10 @@ Assets/ModernChatUI/** binary
 Assets/ModernChatUI/ModernChatDefaults.lub text eol=crlf diff
 Assets/ModernNpcDialog/** binary
 Assets/VipUI/** binary
+
+# GrayMap: WARP requires CRLF; generated payload/atlas are binary.
+Scripts/Patches/GrayMap*.qjs text eol=crlf
+Scripts/Runtime/GrayMap/*.cpp text eol=crlf
+Assets/GrayMap/*.bin binary
+Assets/GrayMap/*.tga binary
+Assets/GrayMap/*.json text eol=lf
