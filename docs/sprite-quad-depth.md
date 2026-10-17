@@ -47,6 +47,26 @@ is the2026-10-18 paired EXE/manifest/signature release entrypoint, with a closed
 client check, rollback checkpoint and independent manifest verification. It
 does not modify GRFs or sprite artwork.
 
+### Installed current-client upgrade
+
+Source integration is on main through merge `8a624947` and compatibility/
+regression commit `a98bbbfb`. On2026-10-18 the current signed
+`2025-07-16_Ragexe_175220998_clientinfo_patched.exe` was upgraded in place
+from SHA-256 `5d1d4faf3065a27655e9404357af8beb697ede907959fa9c39ccc15aba3cbc36`
+to `601fa320dceb31f016649d8183f8f8604668901acc5f81caf25d0a15d6fcce00`.
+The two renderer fixes are present, the old clan hook is retired, and the
+Celestial player-draw wrapper plus all other existing PE section bytes were
+preserved. All GRFs, DLLs and DATA.INI remain byte-identical. Riftlock signing
+and an independent complete asset-manifest comparison pass.
+
+`Outputs/sprite-depth-main-20261018/deployment/before/` holds the previous EXE,
+manifest and signature as a paired rollback checkpoint. Verification is in
+`docs/evidence/rhw-depth-regression-20261018/installed-release.json`.
+The source/export matrix covers11 scenarios plus the current-client upgrade,
+483 body/shadow emulation cases, four bad-input rejection gates and three
+native weather-shadow execution checks. These are offline results; new live
+zoom, collar/headgear, floor/wall and effect acceptance is still pending.
+
 ## Native pipeline
 
 | Address | Role |
