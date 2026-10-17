@@ -49,11 +49,15 @@ def main():
     kernel.ReadProcessMemory.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_size_t, c.POINTER(c.c_size_t)]
     kernel.GetProcessTimes.argtypes = [c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p, c.c_void_p]
     kernel.GetProcessHandleCount.argtypes = [c.c_void_p, c.POINTER(c.c_uint32)]
+    kernel.QueryPerformanceCounter.argtypes = [c.POINTER(c.c_int64)]
+    kernel.QueryPerformanceFrequency.argtypes = [c.POINTER(c.c_int64)]
     kernel.CloseHandle.argtypes = [c.c_void_p]
     psapi = c.WinDLL('psapi', use_last_error=True)
     psapi.GetProcessMemoryInfo.argtypes = [c.c_void_p, c.c_void_p, c.c_uint32]
     handle = kernel.OpenProcess(0x1010, False, args.pid)
     assert handle, c.get_last_error()
+    qpc_frequency = c.c_int64()
+    assert kernel.QueryPerformanceFrequency(c.byref(qpc_frequency))
 
     def read(address, size):
         data = c.create_string_buffer(size)
@@ -64,6 +68,18 @@ def main():
 
     def u32(address):
         return struct.unpack('<I', read(address, 4))[0]
+
+    # The code/constant region precedes CelestialApi, the first mutable data
+    # section. Bind this read-only sample to the actual payload on disk, even
+    # if an EXE was renamed/replaced while an older process remained alive.
+    immutable_size = meta['exports']['CelestialApi']
+    expected_code = image[runtime - pe.OPTIONAL_HEADER.ImageBase:api - pe.OPTIONAL_HEADER.ImageBase]
+    try:
+        assert len(expected_code) == immutable_size and read(runtime, immutable_size) == expected_code, \
+            'Loaded weather payload differs from the selected EXE'
+    except BaseException:
+        kernel.CloseHandle(handle)
+        raise
 
     def cpu():
         values = [c.c_uint64() for _ in range(4)]
@@ -108,14 +124,25 @@ def main():
     try:
         while time.perf_counter() - started < args.seconds:
             try:
+                qpc_before = c.c_int64()
+                assert kernel.QueryPerformanceCounter(c.byref(qpc_before))
                 data = read(state, 204)
                 world, tick, ready = (struct.unpack_from('<I', data, offset)[0] for offset in [8, 32, 44])
                 row = {'elapsed': time.perf_counter() - started, 'frame_tick': tick, 'ready': ready,
                        'weather': struct.unpack_from('<I', data, 132)[0],
                        'protocol': struct.unpack_from('<I', data, 136)[0],
+                       'snapshot_flags': struct.unpack_from('<H', data, 70)[0],
                        'rain_effect': struct.unpack_from('<I', data, 144)[0],
                        'lease_ms': struct.unpack_from('<I', data, 160)[0],
                        'snapshot_age_ms': (tick - struct.unpack_from('<I', data, 28)[0]) & 0xffffffff}
+                qpc_after = c.c_int64()
+                assert kernel.QueryPerformanceCounter(c.byref(qpc_after))
+                row['qpc_before'], row['qpc_after'] = qpc_before.value, qpc_after.value
+                renderer = u32(0x12515F8)
+                if renderer:
+                    row['viewport'] = list(struct.unpack('<2I', read(renderer + 0x28, 8)))
+                flash_tick = struct.unpack_from('<I', data, 200)[0]
+                row['flash_active'] = bool(flash_tick and ((tick - flash_tick) & 0xffffffff) < 350 and row['weather'] & 256)
                 if world:
                     player = u32(world + 0x2c)
                     row.update(world=world, world_effects=u32(world + 12), world_primitives=u32(world + 20))
@@ -157,6 +184,8 @@ def main():
     positions = [row['position'] for row in samples if 'position' in row]
     summary = {'pid': args.pid, 'client_sha256': hashlib.sha256(args.client.read_bytes()).hexdigest(),
                'read_only': True, 'seconds': elapsed, 'cpu_percent_one_core': cpu_seconds / elapsed * 100,
+               'weather_payload_matches_disk': True,
+               'qpc_frequency': qpc_frequency.value,
                'private_bytes': counters.PrivateUsage, 'working_set_bytes': counters.WorkingSetSize,
                'handles': handles.value, 'world_effects_range': bounds('world_effects'),
                'world_primitives_range': bounds('world_primitives'), 'actor_effects_range': bounds('player_effects'),

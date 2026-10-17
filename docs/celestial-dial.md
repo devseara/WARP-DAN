@@ -26,7 +26,7 @@ V3 appends `rain_generation` and `rain_remaining_ms` to the v2 prefix, for exact
 
 ## Per-map profiles (WENV v6)
 
-`conf/world_environment.yml` is the weather authority; `conf/import/world_environment.yml` supplies rAthena-style overrides. Legacy global `rain_*` battle settings have been removed. Native `day_duration` and `night_duration` remain 3600000 milliseconds each.
+`db/world_environment.yml` is the weather authority; `db/import/world_environment.yml` supplies rAthena-style overrides. Legacy global `rain_*` battle settings have been removed. Native `day_duration` and `night_duration` remain 3600000 milliseconds each.
 
 ```yaml
 Header:
@@ -350,3 +350,44 @@ The new client completed a 60.05-minute read-only run on `prt_fild08`, using WEN
 After warmup, comparable clear-window private-memory medians were 850.688, 853.012, 854.836, 854.902 and 854.797 MiB. The last minus first median was 4.109 MiB; the final two differed by -0.105 MiB. Median clear-window handles fell from 681 to 589. Transient clear-period peaks subsided. This passes the bounded cleanup/memory screening gates; it does not establish universal heap-leak freedom or GPU frame-time performance. Sampling used 250 ms polls in 109 approximately 30-second windows, with process-launch gaps between them.
 
 Durable summary: `docs/evidence/celestial-weather-soak-20261017.json`. Raw journal, collection and analysis: `Outputs/CelestialDial/long-soak/profiles-v6-header-run-20261017/`. The official rAthena YAML GPL/banner/schema headers were corrected before this accepted run, with the complete YAML bodies preserved byte for byte. The original interrupted runs remain incomplete historical evidence.
+
+## Expanded map profiles and short showcases
+
+The generated `db/world_environment.yml` now contains 49 towns, 174 fields and 226 dungeons from the configured non-instance map list and rAthena NPC categories. Entries are alphabetical. The standard town flags and Warper town list identify towns; active field/dungeon spawn files and dungeon warps provide category evidence. Unknown interiors, instances and arenas are not automatically given rain. `tools/generate_world_environment_profiles.py` in the server repository regenerates the base database; keep local edits in its import file. The inventory and source hashes are under `Outputs/CelestialDial/map-profiles/inventory.json`.
+
+`NightLighting` is an optional boolean. Omitted values retain native `nightenabled` behavior. Enabled profiles with `NightLighting: true` permit the existing custom night tint even where the native flag is absent. `false` suppresses the custom tint while retaining global Day/Night on the dial. Native flags and original lighting remain untouched. Towns and fields use `true` with automatic rain/storms; dungeons use `false`, `Automatic: false`, and both managed weather types disabled. Lighting-only reloads preserve active precipitation deadlines, generation and the shower counter. The bounded sunny-shadow renderer remains scoped to `prt_fild08`.
+
+The native battle configuration floor for positive day/night durations and the profile clear-interval floor are now 30000 ms. Zero still disables the native global cycle. Normal base weather defaults remain 600000 ms clear, 180000 ms rain/storm, every third shower a storm. The completed showcase temporarily selected 30000 ms clear/rain/storm and day/night. Those overrides have been removed: both phases are now 3600000 ms and the local weather import is empty. Restart the map-server for native phase timer intervals; profile changes alone support `@reloadweatherprofiles`. No client EXE or WENV packet change is required.
+
+Build, schema/default/override, native cycle-clamp, independent lighting/cadence and load-check receipts are under `Outputs/CelestialDial/map-profiles/`. Existing weather flags are observed and composed without being overwritten.
+
+## Frame-time capture
+
+`tools/capture_celestial_frame_times.py` uses the pinned standalone Intel PresentMon 2.3.1 console (official SHA-256 `364e5d98d4d134bd54dd25c22ed2ca2f4883f8bc3ed6502bee0c151e3436d30c`) for PID-scoped D3D9 ETW presentation data. It installs no service, injects no code and changes no game state. Input tracking is disabled. Obtain the console from the official `GameTechDev/PresentMon` v2.3.1 release; the captured preflight confirmed its Intel Authenticode signature. The binary is an ignored local tool, not a source-control artifact.
+
+The helper records WENV state through the existing read-only sampler and correlates guard samples with PresentMon's QPC clock. It checks map, weather, global phase, viewport and player position, rejects mixed/partial captures, preserves raw CSV/state files, and can compare context with an earlier report through `--reference`. Camera and foreground focus remain operator controls. It requires normal prototype/phase timings unless `--allow-showcase` is explicitly supplied. Showcase results must be labeled separately from the normal benchmark.
+
+Reports distinguish application presentation FPS from compositor/display intervals and dropped presents. Frame-time summaries include median, p95, p99, maximum and stall counts. The 1% low FPS calculation uses the mean of the slowest 1% of presentation intervals. No stalls are trimmed. The five-second setup preflight under `Outputs/CelestialDial/frame-times/` is excluded from benchmarking because desktop interaction and timer edits occurred during setup. The matched normal-timing captures are recorded below.
+
+Live short-cycle verification passed after deployment: the unchanged signed v6 client reported 30000 ms global phases, both day and night, and clear/rain/storm/flash states. Complete observed weather intervals were approximately 30 seconds, with private owned counts returning to zero in clear samples and remaining bounded during active weather. Read-only evidence is under `Outputs/CelestialDial/map-profiles/live-showcase/`. The user subsequently finished the showcase and requested normal timings and a frame-time benchmark. These map/timer/tooling changes are currently uncommitted.
+
+## Database location and normal timing restoration
+
+The expanded per-map dataset now lives in `db/world_environment.yml`, with `db/import/world_environment.yml` overrides and a `db/import-tmpl/world_environment.yml` template. The loader follows the standard `db_path` setting; explicit file arguments remain available for isolated tests. The obsolete `conf/` copies are removed with a rollback backup, leaving one active data source. Operational global phase durations remain in `conf/import/battle_conf.txt`. The migration preserves all 449 base records, profile inheritance, manual controls, lighting policy and native map weather.
+
+The showcase is finished: global day/night settings are restored to 3600000 ms each, and the local weather override is empty so the base 600000 ms clear / 180000 ms rain/storm durations apply. Every third automatic shower remains a storm. The 30000 ms supported minimum remains available for future tests. Matching binaries, default/custom-db_path parser tests, regression evidence and rollback are under `Outputs/CelestialDial/db-weather/`. Older audit receipts retain their original historical `conf/` paths and hashes.
+
+## Normal-timing frame-time benchmark (2026-10-17)
+
+Seven accepted 60-second captures used the same signed client, process/session, daytime phase, stationary position and 1920x1093 viewport on `prt_fild08`. Two clear captures preceded two rain and two storm captures; one clear capture followed natural storm expiry. The DB/import hashes remained unchanged, global phases were 3600000 ms, and the native weather mask stayed zero. Manual rain/storm commands used 180-second leases; the storm lease was renewed between captures. Automatic settings remained 600000 ms clear / 180000 ms rain and storm, every third shower a storm.
+
+| Condition | Captures | Application FPS | 1% low FPS | Median / p99 frame time | Maximum frame time |
+| --- | --- | --- | --- | --- | --- |
+| Clear before | 2 | 142.10 | 69.89 | 6.98 / 12.41 ms | 47.39 ms |
+| Rain | 2 | 139.65 | 62.40 | 6.99 / 13.63 ms | 136.93 ms |
+| Storm | 2 | 143.03 | 84.95 | 6.97 / 8.42 ms | 18.57 ms |
+| Clear after | 1 | 142.47 | 75.67 | 6.97 / 11.28 ms | 19.73 ms |
+
+Aggregates pool presentation intervals within trials and never join capture gaps. Rain averaged 1.72% below the initial clear baseline; the final clear sample was 0.26% above it. Rain contained three frames over 50 ms, including one over 100 ms; these are retained and their cause is not established. Storm samples included active lightning, with no frames over 33.333 ms. The final read-only census found zero owned emitters/particles and no active flash after natural expiry. A second rain attempt crossed its lease deadline and was rejected as mixed weather; its raw files remain available and are excluded from all aggregate values.
+
+This is a stationary daytime screening result on a 144 Hz desktop, not a measurement of uncapped renderer throughput or proof of zero weather cost. Presentation used D3D9 `Composed: Copy with GPU GDI`; display rates closely tracked application rates. Camera and foreground focus were operator controls; actors and sun shadows continued to evolve. The hybrid rendering adapter was not identified. Capture/sampling overhead was common to all conditions. Durable evidence is `docs/evidence/celestial-weather-frame-times-20261017.json`; raw CSVs, state, hardware inventory, per-trial hashes and the aggregation script are under `Outputs/CelestialDial/frame-times/normal-20261017/`.

@@ -44,8 +44,8 @@ def main():
              'src/common/world_environment_wire.hpp', 'tools/world_environment_test_boundary.hpp',
              'tools/test_world_environment.cpp', 'tools/test_world_environment_rain_schedule.cpp',
              'tools/test_world_environment_auto_storm.cpp', 'tools/test_world_environment_storm.cpp',
-             'src/map/atcommand.cpp', 'conf/import/battle_conf.txt', 'conf/world_environment.yml',
-             'conf/import/world_environment.yml', 'src/map/world_environment_profiles.cpp',
+             'src/map/atcommand.cpp', 'conf/import/battle_conf.txt', 'db/world_environment.yml',
+             'db/import/world_environment.yml', 'src/map/world_environment_profiles.cpp',
              'src/map/world_environment_profiles.hpp', 'tools/test_world_environment_profiles.cpp']
     sources = {name: sha(server / name) for name in names}
     for name, command in commands:

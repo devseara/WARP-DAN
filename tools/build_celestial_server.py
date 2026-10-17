@@ -52,7 +52,7 @@ def main():
     names += ['src/map/battle.cpp','src/map/battle.hpp','conf/battle/misc.conf','conf/import/battle_conf.txt']
     names += ['src/map/pincode_ui.cpp','src/map/pincode_ui.hpp']
     names += [name for name in ['src/map/world_environment_profiles.cpp','src/map/world_environment_profiles.hpp',
-              'conf/world_environment.yml','conf/import/world_environment.yml'] if (server/name).exists()]
+              'db/world_environment.yml','db/import/world_environment.yml','db/import-tmpl/world_environment.yml'] if (server/name).exists()]
     hashes={name:hashlib.sha256((server/name).read_bytes()).hexdigest() for name in names}
     msbuild='C:/Program Files/Microsoft Visual Studio/18/Community/MSBuild/Current/Bin/MSBuild.exe'
     results=[]

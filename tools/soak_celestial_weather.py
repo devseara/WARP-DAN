@@ -27,7 +27,7 @@ def main():
     failures = []
     stationary_position = None
     server = ROOT.parent / 'BanquetOfHeroes'
-    configs = ['conf/import/battle_conf.txt', 'conf/world_environment.yml', 'conf/import/world_environment.yml']
+    configs = ['conf/import/battle_conf.txt', 'db/world_environment.yml', 'db/import/world_environment.yml']
     config_hashes = {name: hashlib.sha256((server/name).read_bytes()).hexdigest() for name in configs}
     try:
         with journal.open('x', encoding='utf8') as log:
