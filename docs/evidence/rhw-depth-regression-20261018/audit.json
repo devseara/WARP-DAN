@@ -1,0 +1,72 @@
+{
+  "date": "2026-10-18",
+  "audited_main": "8eb2a2199ee92d050333abee1f5d87d04f4aa8d4",
+  "checkout_at_start": "main",
+  "checkout_at_completion": "feat/sprite-quad-depth",
+  "checkout_change": "External checkout to feature branch observed during read-only audit; no checkout/stash/merge performed by this audit.",
+  "implementation_commit": "e84d442e623ad19d9a134f9d065511da265d9ec7",
+  "release_merge_commit": "388e5c3d5f4141c28c52e39db7560b933551ba88",
+  "implementation_in_main": false,
+  "branches_containing_fix": [
+    "* feat/sprite-quad-depth",
+    "  release/riftlock-main-20261012-idui-v2",
+    "  remotes/origin/feat/sprite-quad-depth"
+  ],
+  "current_client": {
+    "path": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+    "sha256": "5d1d4faf3065a27655e9404357af8beb697ede907959fa9c39ccc15aba3cbc36",
+    "sites": {
+      "0xc4a5b1": "f30f1055e0",
+      "0xc40f9f": "f30f5c6d1c",
+      "0xc49fee": "f30f593d7cd41d0103c80fb64712f30f59357cd41d01",
+      "0xc4a63e": "e9adbad30090909090",
+      "0xc4a647": "e944d4d200"
+    },
+    "uniform_rhw_present": false,
+    "floor_body_hook_present": false,
+    "floor_shadow_hook_present": false,
+    "legacy_clan_bridge": {
+      "target": "0x19860f0",
+      "matches_main_legacy_payload": true,
+      "namespace_guard": "sprite\\clan_skins\\<1..255>\\",
+      "standard_HD_and_native_heads_excluded": true
+    }
+  },
+  "old_accepted_client": {
+    "path": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\Riftlock-20261012-main-floorsafe\\2025-07-16_Ragexe_riftlock_main.exe",
+    "sha256": "bb3094171ac7969474753d5865d43c647d1fa74178681fae8c1c9f66ebf0b640",
+    "sites": {
+      "0xc4a5b1": "0f1f440000",
+      "0xc40f9f": "e9bc6cd300",
+      "0xc49fee": "e9c9dcd2009090909090909090909090909090909090",
+      "0xc4a63e": "8b45d80b8824010000",
+      "0xc4a647": "e924d4d200"
+    },
+    "uniform_rhw_present": true,
+    "floor_body_hook_present": true,
+    "floor_shadow_hook_present": true,
+    "legacy_clan_bridge": null
+  },
+  "main_source": {
+    "uniform_qjs_exists": false,
+    "floor_qjs_exists": false,
+    "main_profile_selects_uniform": false,
+    "main_profile_selects_floor": false,
+    "id_collisions": {
+      "388": {
+        "historical": "UniformSpriteRHW",
+        "main": "GrayMap",
+        "introduced_by": "7a9ad7ae"
+      },
+      "389": {
+        "historical": "FloorSafeSpriteDepth",
+        "main": "CelestialDial",
+        "introduced_by": "552116a7"
+      }
+    }
+  },
+  "conclusion": "Current signed client lacks known universal RHW anti-warp and floor-safe depth fixes. Their feature/release commits never reached audited main. The present legacy clan-only hook excludes standard HD and Fox assets.",
+  "next_step": "Port the complete feature and legacy-bridge removal into main with distinct IDs, preserve weather/GrayMap features, verify rebuilt client bytes and patch-order matrix, sign paired release, then repeat live zoom/contact checks.",
+  "scope": "Read-only binary/history audit; historical source copies and report only. No active QJS, EXE, GRF or signing changes.",
+  "live_client_observed": false
+}

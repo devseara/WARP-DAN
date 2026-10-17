@@ -59,8 +59,15 @@ FloorSafeSpriteDepth = function(_)
 		throw Error('FloorSafeSpriteDepth: shadow builder differs from the 2025-07-16 profile');
 	for (const actor of self.actors)
 	{
+		// CelestialDial may already own CPlayer's draw slot. Its registered
+		// wrapper still runs the native draw exactly once; retain that owner.
+		const weather = CACHE.get("CelestialDial.Contract.v3");
+		const render = read(actor.vtable + 0x0C, 4);
+		const weatherPlayer = actor.name === "CPlayer" && weather &&
+			Number.isInteger(weather.playerDraw) &&
+			render === le32(weather.playerDraw).replace(/ /g, '');
 		if (read(actor.vtable + 0x24, 4) !== le32(0x00C40C20).replace(/ /g, '') ||
-			read(actor.vtable + 0x0C, 4) !== le32(actor.render).replace(/ /g, ''))
+			(render !== le32(actor.render).replace(/ /g, '') && !weatherPlayer))
 			throw Error('FloorSafeSpriteDepth: unexpected ' + actor.name + ' vtable');
 	}
 

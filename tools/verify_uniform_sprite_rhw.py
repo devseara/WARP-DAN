@@ -54,6 +54,7 @@ def call_census(pe):
 
 
 def static_gate():
+    integration = integration_gate()
     text = QJS.read_bytes()
     assert text.startswith(b'/*') and b'\n' not in text.replace(b'\r\n', b''), 'QJS must be CRLF without BOM'
     tail = int(re.search(rb'UniformSpriteRHW\.tail = 0x([0-9A-F]+);', text).group(1), 16)
@@ -67,7 +68,36 @@ def static_gate():
     census = call_census(pe)
     assert census == {EMITTER: EMITTER_CALLS, SHADOW_WRAPPER: SHADOW_CALLS}, census
     return dict(tail=hex(tail), tail_bytes=len(tail_hex), sort_key_sites=sort_sites,
-                emitter_calls=census[EMITTER], shadow_wrapper_calls=census[SHADOW_WRAPPER])
+                emitter_calls=census[EMITTER], shadow_wrapper_calls=census[SHADOW_WRAPPER],
+                integration=integration)
+
+
+def integration_gate():
+    """Catch the missing-source/profile and reused-ID regression before export."""
+    entries = re.findall(r'^([0-9]+)\s*:\s*(\w+)\s*$',
+                         (ROOT / 'Tables/Patch.yml').read_text(encoding='utf-8'), re.M)
+    assert len(entries) == len({n for n, _ in entries}), 'Duplicate patch ID'
+    catalog = {name: int(number) for number, name in entries}
+    required = {'GrayMap': 388, 'CelestialDial': 389,
+                'UniformSpriteRHW': 390, 'FloorSafeSpriteDepth': 391}
+    # Older unrelated symbols have compatibility aliases; these four must not.
+    assert all(sum(symbol == name for _, symbol in entries) == 1 for name in required)
+    assert all(catalog.get(name) == number for name, number in required.items()), required
+    profile = (ROOT / 'profiles/2025-07-16 PROFILE MAIN.yml').read_text(encoding='utf-8')
+    selected = re.findall(r'^\s*-\s+(\w+)\s*$', profile, re.M)
+    tree = (ROOT / 'Patches/Special.yml').read_text(encoding='utf-8')
+    for name in ['UniformSpriteRHW', 'FloorSafeSpriteDepth']:
+        assert selected.count(name) == 1, f'MAIN must select {name} exactly once'
+        assert re.search(r'^\s*- ' + name + r':\s*$', tree, re.M), f'Missing tree entry: {name}'
+        assert (ROOT / 'Scripts/Patches' / (name + '.qjs')).is_file(), name
+    for name in ['Scripts/Patches/ClanBodySkins.qjs', 'tools/build_clan_skin_runtime.py',
+                 'tools/verify_clan_body_skins.py', 'tools/verify_clan_release_warp.py']:
+        text = (ROOT / name).read_text(encoding='utf-8')
+        assert not re.search(r'preparePerspective|installPerspective|clan_perspective|perspective\.bin', text), name
+    assert not (ROOT / 'Inputs/ClanBodySkins/perspective.bin').exists()
+    assert not (ROOT / 'Inputs/ClanBodySkins/perspective.json').exists()
+    assert not (ROOT / 'profiles/2025-07-16 PROFILE RIFTLOCK CLASSIC NPC.yml').exists()
+    return dict(patch_ids=required,main_selects_both=True,legacy_clan_owner_removed=True)
 
 
 def changed_code(source, target):

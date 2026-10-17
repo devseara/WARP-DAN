@@ -1,0 +1,25 @@
+{
+  "cases": [
+    {
+      "case": "bad-emitter",
+      "rejected": true,
+      "renderer_hook_writes": 0
+    },
+    {
+      "case": "bad-body",
+      "rejected": true,
+      "renderer_hook_writes": 0
+    },
+    {
+      "case": "bad-shadow",
+      "rejected": true,
+      "renderer_hook_writes": 0
+    },
+    {
+      "case": "bad-player-vtable",
+      "rejected": true,
+      "renderer_hook_writes": 0
+    }
+  ],
+  "status": "pass"
+}

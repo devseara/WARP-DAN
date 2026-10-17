@@ -1,0 +1,155 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-10-12                                             *
+*                                                                          *
+*   Description   : Stops character sprites and shadows sinking into the   *
+*                   floor below their feet on 2025-07-16 Ragexe. Rect      *
+*                   builder 0x00C40C20 gives each layer row depth          *
+*                   z+0.16*(y-anchorY) (0.06 on one path), so rows below   *
+*                   the anchor fall behind the floor in front and a hard   *
+*                   line slices boots, robes and the shadow; the margin    *
+*                   shrinks with zoom and low camera pitch. For CPlayer,   *
+*                   CPc, CNpc, CCharacterNpc, CHallu* and CBlurPC this     *
+*                   clamps (y-anchorY) to <= 0 so such rows keep the       *
+*                   anchor plane; the reversed 0x9C path and effects stay  *
+*                   stock. The shadow 0x00C49D20 is drawn 180 degrees      *
+*                   through the anchor, so its pre-rotation offset is      *
+*                   clamped to >= 0. Rows above the anchor, XY, UV,        *
+*                   color and the stock contact bias are unchanged.        *
+*                                                                          *
+*   Evidence      : docs/sprite-quad-depth.md                              *
+*   Verifier      : tools/verify_floor_safe_sprite_depth.py                *
+*                                                                          *
+\**************************************************************************/
+
+FloorSafeSpriteDepth = function(_)
+{
+	const self = FloorSafeSpriteDepth;
+	if (!self.validate())
+		throw Error('FloorSafeSpriteDepth: only profiled for 2025-07-16');
+	const read = (va, count) =>
+	{
+		const phy = Exe.Vir2Phy(va);
+		if (phy < 0) throw Error('FloorSafeSpriteDepth: unmapped native address ' + va.toString(16));
+		return Exe.GetHex(phy, count).replace(/\s+/g, '').toLowerCase();
+	};
+	const le32 = value => [0, 8, 16, 24].map(n => ((value >>> n) & 255).toString(16).padStart(2, '0')).join(' ');
+
+	$$(_, 1, 'Verify the actor rect builder, shadow builder and actor vtables');
+	if (read(self.bodySig, self.bodyHex.length / 2) !== self.bodyHex)
+		throw Error('FloorSafeSpriteDepth: actor rect builder differs from the 2025-07-16 profile');
+	if (read(self.shadowSig, self.shadowHex.length / 2) !== self.shadowHex)
+		throw Error('FloorSafeSpriteDepth: shadow builder differs from the 2025-07-16 profile');
+	for (const actor of self.actors)
+	{
+		if (read(actor.vtable + 0x24, 4) !== le32(0x00C40C20).replace(/ /g, '') ||
+			read(actor.vtable + 0x0C, 4) !== le32(actor.render).replace(/ /g, ''))
+			throw Error('FloorSafeSpriteDepth: unexpected ' + actor.name + ' vtable');
+	}
+
+	$$(_, 2, 'Build the floor-safe depth caves');
+	// Items: hex text, {label}, {jcc8, to} or {jmp32: absolute target}.
+	const assemble = (origin, items) =>
+	{
+		const size = item => typeof item === 'string' ? item.trim().split(/\s+/).length :
+			item.label !== undefined ? 0 : item.jcc8 ? 2 : 5;
+		const labels = {};
+		let at = origin;
+		for (const item of items)
+		{
+			if (typeof item !== 'string' && item.label !== undefined) labels[item.label] = at;
+			at += size(item);
+		}
+		const out = [];
+		at = origin;
+		for (const item of items)
+		{
+			if (typeof item === 'string') out.push(item.trim());
+			else if (item.jcc8)
+			{
+				const rel = labels[item.to] - (at + 2);
+				if (!(rel >= -128 && rel <= 127)) throw Error('FloorSafeSpriteDepth: rel8 out of range');
+				out.push(item.jcc8 + ' ' + ((rel + 256) & 255).toString(16).padStart(2, '0'));
+			}
+			else if (item.jmp32 !== undefined) out.push('E9 ' + le32((item.jmp32 - (at + 5)) >>> 0));
+			at += size(item);
+		}
+		return out.join(' ');
+	};
+	const [phy, vir] = Exe.Allocate(self.caveSize, 0x10);
+	const zero = le32(vir);
+	const bodyVir = vir + 0x10;
+	// Entered from 0x00C40F9F after cmp byte [edi+0x9C],0. SSE ops keep EFLAGS,
+	// and the actor test is wrapped in pushfd/popfd so the native je still sees
+	// that comparison. EAX holds the native depth-bias index and is preserved.
+	const bodyCave = ['F3 0F 5C 6D 1C', {jcc8: '75', to: 'back'}, '9C 50 8B 07'];
+	for (const actor of self.actors)
+		bodyCave.push('3D ' + le32(actor.vtable), {jcc8: '74', to: 'clamp'});
+	bodyCave.push(
+		{jcc8: 'EB', to: 'restore'},
+		{label: 'clamp'},
+		'F3 0F 5D 25 ' + zero,
+		'F3 0F 5D 2D ' + zero,
+		{label: 'restore'},
+		'58 9D',
+		{label: 'back'},
+		{jmp32: 0x00C40FA4}
+	);
+	const bodyCode = assemble(bodyVir, bodyCave);
+	const shadowVir = bodyVir + bodyCode.split(' ').length;
+	// Replays 0x00C49FEE..0x00C4A003 with both pre-rotation offsets clamped.
+	const shadowCode = assemble(shadowVir, [
+		'F3 0F 5F 3D ' + zero,
+		'F3 0F 59 3D 7C D4 1D 01',
+		'03 C8 0F B6 47 12',
+		'F3 0F 5F 35 ' + zero,
+		'F3 0F 59 35 7C D4 1D 01',
+		{jmp32: 0x00C4A004}
+	]);
+	const caveBytes = 0x10 + bodyCode.split(' ').length + shadowCode.split(' ').length;
+	if (caveBytes > self.caveSize)
+		throw Error('FloorSafeSpriteDepth: cave overflow ' + caveBytes);
+	Exe.SetHex(phy, '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ' + bodyCode + ' ' + shadowCode);
+
+	$$(_, 3, 'Route the below-anchor depth rows through the caves');
+	Exe.SetHex(Exe.Vir2Phy(0x00C40F9F), 'E9 ' + le32((bodyVir - 0x00C40FA4) >>> 0));
+	Exe.SetHex(Exe.Vir2Phy(0x00C49FEE), 'E9 ' + le32((shadowVir - 0x00C49FF3) >>> 0) + ' 90'.repeat(17));
+	return true;
+};
+FloorSafeSpriteDepth.validate = () => Exe.BuildDate === 20250716;
+
+FloorSafeSpriteDepth.caveSize = 0xA0;
+FloorSafeSpriteDepth.actors = [
+	{name: "CPlayer", vtable: 0x01094810, render: 0x00D3A220},
+	{name: "CPc", vtable: 0x010943A8, render: 0x00D3A220},
+	{name: "CNpc", vtable: 0x010939D4, render: 0x00D32600},
+	{name: "CCharacterNpc", vtable: 0x00FD8CE8, render: 0x00598AD0},
+	{name: "CHalluPC", vtable: 0x01093C44, render: 0x00D32470},
+	{name: "CHalluPC2", vtable: 0x01093D40, render: 0x00D323F0},
+	{name: "CHalluNPC", vtable: 0x01093E3C, render: 0x00D32290},
+	{name: "CBlurPC", vtable: 0x01093B48, render: 0x00D32100}
+];
+// 0x00C40F7B..0x00C41078: bias index, (bottom/top - anchorY) in XMM4/XMM5,
+// the 0x9C branch and both +0.16/+0.06 reciprocal-depth paths.
+FloorSafeSpriteDepth.bodySig = 0x00C40F7B;
+FloorSafeSpriteDepth.bodyHex = '8b87800000000f28e7f30f5c651c8b752083c00303450c0f28ee80bf9c000000000f28cbf30f5c6d1c7448f30f59257cd41d01f30f104608f30f5cc4f30f5ec80f57c0f30f2ac0f30f5905948a2201f30f58c8f30f584dfcf30f110af30f592d7cd41d01f30f104608f30f5cc5f30f5ed8eb6c807d48000f57c0f30f2ac0f30f5905948a22017428f30f592594ed0801f30f592d94ed0801f30f586608f30f5eccf30f58c8f30f584dfcf30f110aeb26f30f592578d41d01f30f586608f30f5eccf30f58c8f30f584dfcf30f110af30f592d78d41d01f30f586e08f30f5edd8b87800000000f57c083c00303450cf30f2ac0f30f5905948a2201f30f58d8';
+// 0x00C49FB3..0x00C4A05E: shadow rows, z-0.16*(y-anchorY) and RHW stores.
+FloorSafeSpriteDepth.shadowSig = 0x00C49FB3;
+FloorSafeSpriteDepth.shadowHex = '0fb64f130fb64710c1e10803c80fb64711f30f117dacf30f5c7dfc0f28c1f30f1175b4f30f5c75fcf30f58c3c1e108f30f101d085bfd00f30f58caf30f593d7cd41d0103c80fb64712f30f59357cd41d01c1e108f30f1145b00f28c4f30f114db803c8f30f5cc6894dc4f30f5ce7895dd80f28cbb9c0a35f01f30f5ec8660f6e471cf30f5edc8b7de881c710010000f30f580de46afd00f30f581de46afd000f5bc0f30f114dbcf30f115dc0';

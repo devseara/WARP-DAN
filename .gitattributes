@@ -93,3 +93,7 @@ Inputs/CelestialDial/*.bin binary
 Inputs/CelestialDial/*.bmp binary
 Inputs/CelestialDial/*.wav binary
 Inputs/CelestialDial/audio-source/*.mp3 binary
+
+# Sprite renderer patch source must load in WARP after every checkout.
+Scripts/Patches/UniformSpriteRHW.qjs text eol=crlf
+Scripts/Patches/FloorSafeSpriteDepth.qjs text eol=crlf

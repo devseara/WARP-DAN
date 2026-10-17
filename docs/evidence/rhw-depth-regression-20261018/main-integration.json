@@ -1,0 +1,27 @@
+{
+  "status": "source_merge_verified_client_candidate_ready",
+  "original_feature": "e84d442e623ad19d9a134f9d065511da265d9ec7",
+  "base_main": "8eb2a2199ee92d050333abee1f5d87d04f4aa8d4",
+  "catalog_ids": {
+    "GrayMap": 388,
+    "CelestialDial": 389,
+    "UniformSpriteRHW": 390,
+    "FloorSafeSpriteDepth": 391
+  },
+  "export_scenarios": 11,
+  "existing_client_upgrade_passed": true,
+  "floor_body_shadow_emulation_cases": 483,
+  "invalid_client_rejections": 4,
+  "native_celestial_shadow_execution_checks": 3,
+  "candidate_sha256": "601fa320dceb31f016649d8183f8f8604668901acc5f81caf25d0a15d6fcce00",
+  "source_sha256": "5d1d4faf3065a27655e9404357af8beb697ede907959fa9c39ccc15aba3cbc36",
+  "all_other_existing_PE_section_bytes_preserved": true,
+  "live_client_visual_tested": false,
+  "report_files": [
+    "uniform-verification.json",
+    "floor-verification.json",
+    "celestial-orders.json",
+    "rejection-gates.json",
+    "current-client-upgrade.json"
+  ]
+}

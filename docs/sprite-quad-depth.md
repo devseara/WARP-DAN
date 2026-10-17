@@ -1,7 +1,7 @@
 # Sprite quad RHW and floor depth (2025-07-16 Ragexe)
 
-Runtime contract for `UniformSpriteRHW` (ID 388) and `FloorSafeSpriteDepth`
-(ID 389). Both are build-specific to the profiled 2025-07-16 client, are
+Runtime contract for `UniformSpriteRHW` (ID 390) and `FloorSafeSpriteDepth`
+(ID 391). Both are build-specific to the profiled 2025-07-16 client, are
 selected in `profiles/2025-07-16 PROFILE MAIN.yml`, and fail closed on any
 signature mismatch. Static RE, cave emulation and WARP exports pass. The user
 accepted both live on 2026-10-12 with the signed MAIN build
@@ -10,6 +10,42 @@ accepted both live on 2026-10-12 with the signed MAIN build
 release 1791789858). Head/collar alignment held across zoom, and boots and
 shadow were no longer sliced by the floor. Any change to these hooks or the
 shared emitter needs a fresh live pass.
+
+## Main integration - 2026-10-18
+
+The original `e84d442e` implementation reached only the historical release
+branch through `388e5c3d`. Current main had neither patch, and its signed
+client retained stock emitter/depth instructions. The missing fixes explain
+the recurring zoom warp on standard HD Mage/Fox bodies; the old clan-only
+bridge excluded those resource paths. The complete feature is now merged
+into main with IDs390/391, preserving GrayMap388 and CelestialDial389.
+The retired classic-NPC profile stays deleted; MAIN selects both fixes.
+Historical binary and branch evidence is in
+`docs/evidence/rhw-depth-regression-20261018/`. The earlier live acceptance
+is evidence for the old release; a rebuilt or upgraded client needs new live
+zoom, head-contact, floor/wall and effect checks.
+
+CelestialDial now registers its player-draw wrapper in its WARP cache contract.
+FloorSafeSpriteDepth accepts that exact registered CPlayer owner while keeping
+the native vf0x24 requirement and rejecting unknown draw owners. Both patch
+orders are verified; the native weather wrapper is never replaced.
+
+`tools/verify_uniform_sprite_rhw.py` also gates the active profile, catalog IDs,
+tree entries and legacy-owner removal. `tools/verify_sprite_depth_rejections.py`
+checks bad emitter/body/shadow signatures and an unknown player vtable.
+`tools/verify_sprite_depth_celestial.py --out <new-folder>` exports both weather
+orders with the required controller assets. Use the Python environment containing
+Unicorn for `tools/test_celestial_sun_shadow.py` native execution checks.
+
+`tools/upgrade_sprite_quad_depth.py --source <client> --out <new-folder>` builds
+a separate upgrade while comparing all original PE section bytes. It retires
+only the positively identified old clan hook, preserves the registered weather
+owner, and adds the two renderer fixes. Existing weather-hook support is pinned
+to the audited signed input hash, not an arbitrary vtable pointer. Unknown
+prepatched owners fail closed. `tools/release_sprite_quad_depth.py install verify`
+is the2026-10-18 paired EXE/manifest/signature release entrypoint, with a closed-
+client check, rollback checkpoint and independent manifest verification. It
+does not modify GRFs or sprite artwork.
 
 ## Native pipeline
 

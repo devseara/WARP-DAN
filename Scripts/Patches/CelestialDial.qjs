@@ -100,7 +100,7 @@ CelestialDial = function(_)
 	const record=[];for(const value of [n.allocateString("CelestialDial.v3").vir,...names.map(e),bridge.vir,receiver.vir,top.vir,table.vir+4])
 		record.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
 	n.allocateBytes(record,4);
-	CACHE.put("CelestialDial.Contract.v3",{state:e("CelestialState"),api:e("CelestialApi"),frame:bridge.vir,receiver:receiver.vir,top:top.vir,lifecycle,
+	CACHE.put("CelestialDial.Contract.v3",{state:e("CelestialState"),api:e("CelestialApi"),playerDraw:e("@CelestialPlayerShadowDraw@12"),frame:bridge.vir,receiver:receiver.vir,top:top.vir,lifecycle,
 		hooks:[{site:0xC74FB0,size:5},...lifecycle.map(h=>({site:h.entry,size:4})),{site:n.packetTableEntryVir(0xBF6),size:4}]});
 	CelestialDial.onApplied();
 	return true;
