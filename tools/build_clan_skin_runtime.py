@@ -35,15 +35,6 @@ def build(tool_dir=TOOL_DIR):
     out=ROOT/'Inputs/ClanBodySkins/runtime.cskb';out.parent.mkdir(parents=True,exist_ok=True);out.write_bytes(header+body)
     report={'schema':'clan-body-skins-v2','api_version':2,'api_size':40,'source':str(SOURCE.relative_to(ROOT)),'source_sha256':hashlib.sha256(SOURCE.read_bytes()).hexdigest(),'payload_sha256':hashlib.sha256(out.read_bytes()).hexdigest(),'code_size':len(code),'relocations':relocs,'exports':exports,'runtime_imports':[],'native_client':20250716,'compiler':str(tool_dir)}
     out.with_suffix('.json').write_text(json.dumps(report,indent=2),encoding='utf8')
-    from clan_perspective_bridge import bridge
-    perspective,_=bridge(0)
-    perspective_path=out.with_name('perspective.bin')
-    perspective_path.write_bytes(perspective)
-    perspective_meta={'version':1,'client':20250716,'bytes':len(perspective),
-                      'crc32':zlib.crc32(perspective),'sha256':hashlib.sha256(perspective).hexdigest(),
-                      'source':'tools/clan_perspective_bridge.py',
-                      'source_sha256':hashlib.sha256((ROOT/'tools/clan_perspective_bridge.py').read_bytes()).hexdigest()}
-    perspective_path.with_suffix('.json').write_text(json.dumps(perspective_meta,indent=2),encoding='utf8')
     print(json.dumps({'payload':str(out),'code_size':len(code),'exports':exports}))
     return report
 if __name__=='__main__':

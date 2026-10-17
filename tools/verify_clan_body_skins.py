@@ -43,8 +43,6 @@ def verify(path,source=None,verbose=True,payload_path=None,runtime_source=None):
     for va,stock in PREVIEW_CALLS:
         assert read(va,5)==bytes.fromhex(stock),'Clan patch changed a UI resource call'
     assert read(payload,size)==expected,'Relocated payload or native API table differs'
-    from verify_clan_perspective import verify as verify_perspective
-    perspective=verify_perspective(pe,data)
     if source:
         old=pefile.PE(str(source));olddata=source.read_bytes()
         s0=next(s for s in old.sections if s.Name.startswith(b'.text'));s1=next(s for s in pe.sections if s.Name.startswith(b'.text'))
@@ -53,12 +51,8 @@ def verify(path,source=None,verbose=True,payload_path=None,runtime_source=None):
             off=old.get_offset_from_rva(va-base);original=olddata[off:off+stolen]
             assert read(native_api[i+1],stolen)==original
             relative=va-base-s0.VirtualAddress;after[relative:relative+stolen]=original
-        if perspective:
-            relative=0xc4a63e-base-s0.VirtualAddress
-            after[relative:relative+9]=before[relative:relative+9]
         assert bytes(after)==before,'Unrelated native code changed'
     result={'client':str(path),'sha256':hashlib.sha256(data).hexdigest(),'payload_va':hex(payload),'payload_bytes':size,'hooks':4,'preview_calls':0,'stock_ui_calls_verified':len(PREVIEW_CALLS),'native_api':native_api,'relocated_payload_matches':True,'unrelated_native_code_unchanged':bool(source),'live_game_tested':False}
-    result['perspective']=perspective
     if verbose:print(json.dumps(result,indent=2))
     return result
 if __name__=='__main__':
