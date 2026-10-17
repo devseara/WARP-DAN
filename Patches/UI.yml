@@ -638,7 +638,7 @@ TargetMonsterHUD:
         - TargetMonsterHealthBar:
             title : Tiered Monster Target Health Bar
             recommend : no
-            author : Codex
+            author : Louis T Steinhil
             desc : Choose Classic or Wings and Stars artwork for the top-center monster HP bar, with Normal, Mini Boss and MVP tiers. Shows native HP while hovering or attacking. Respects /monsterhp and optional Show Mob Info text. 2025-07-16 only.
 
 CelestialHUD:
@@ -656,7 +656,7 @@ Bestiary:
         - BestiaryUI:
             title : Bestiary (native journal)
             recommend : no
-            author : Codex
+            author : Louis T Steinhil
             desc : Native 760x500 Bestiary for 2025-07-16. BSUI v3 supplies resolved stats, server rates, native sprites, minimaps and Navigation. Includes account-wide research, groups, tracking, cabinet, Claim All and cosmetic/utility rewards. Requires matching map/char backends and SQL migration. Open with /bestiary or the dedicated New/Classic RO Global menu button. Hide/Show New Buttons includes Bestiary.
 
 DailyRewards:
