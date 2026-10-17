@@ -739,6 +739,19 @@ AutoCombatUIStatic.packetTableEntryVir = function(packetId)
 	return AutoCombatUIStatic.PacketSwitchTable + (packetId - 0x73) * 4;
 };
 
+// The target monster HUD reads this cell on every frame. CelestialDial owns
+// the reservation only while its server-synchronized UIWindow is visible.
+AutoCombatUIStatic.topHudY = function(patchName)
+{
+	const key="TopHudLayout.Global.v1",owner=Exe.ActivePatch;
+	CACHE.addUser(key,patchName); Exe.ActivateGlobal(); Exe.BeginTag(CACHE.getTag(key));
+	try {
+		let cell=CACHE.get(key);
+		if(!cell) { cell=AutoCombatUIStatic.allocateBytes([24,0,0,0],4); CACHE.put(key,cell); }
+		return cell;
+	} finally { Exe.EndTag(); Exe.ActivePatch=owner; }
+};
+
 // BPUI and GCHA share one native receive opcode. Per-patch writes to that
 // dispatch slot do not compose: WARP can serialize the independent patch
 // records in a different order, and ordinary reads see the original handler.
@@ -746,7 +759,7 @@ AutoCombatUIStatic.packetTableEntryVir = function(packetId)
 AutoCombatUIStatic.registerPacket0BF6 = function(patchName, protocol, handlerVir)
 {
 	const n=AutoCombatUIStatic;
-	if(protocol!=="bpui" && protocol!=="gcha") throw Error("Unknown shared 0x0BF6 protocol");
+	if(protocol!=="bpui" && protocol!=="gcha" && protocol!=="wenv") throw Error("Unknown shared 0x0BF6 protocol");
 	if(!Number.isInteger(handlerVir) || handlerVir<=0) throw Error("Missing shared 0x0BF6 handler");
 	const key="SharedPacket0BF6.Router.Global.v1", cacheKey="SharedPacket0BF6.Router.v1";
 	CACHE.addUser(key,patchName); Exe.ActivateGlobal(); Exe.BeginTag(CACHE.getTag(key));
@@ -757,19 +770,20 @@ AutoCombatUIStatic.registerPacket0BF6 = function(patchName, protocol, handlerVir
 		if(!route) {
 			const stock=Exe.GetUint32(entryPhy);
 			if(Exe.Vir2Phy(stock,CODE)<0) throw Error("Shared 0x0BF6 stock fallback is not executable");
-			const cells=n.allocateBytes(new Array(12).fill(0),4);
+			const cells=n.allocateBytes(new Array(16).fill(0),4);
 			route={entryVir,entryPhy,bpuiCellPhy:cells.phy,bpuiCellVir:cells.vir,
 				gchaCellPhy:cells.phy+4,gchaCellVir:cells.vir+4,fallbackCellVir:cells.vir+8,
+				wenvCellPhy:cells.phy+12,wenvCellVir:cells.vir+12,
 				fallbackVir:stock===n.PacketDefaultHandler?n.PacketMainLoopReturn:stock};
 			Exe.SetUint32(cells.phy+8,route.fallbackVir);
 			const a=n.asm(); a.emit(0x9C,0x60,0xBE); a.dword(n.PacketBuffer);
 			a.emit(0x66,0x81,0x3E); a.word(0x0BF6); a.jcc(0x85,"stock");
 			a.emit(0x66,0x83,0x7E,2,8); a.jcc(0x82,"stock");
-			for(const [name,magic] of [["bpui",0x49555042],["gcha",0x41484347]]) {
+			for(const [name,magic] of [["bpui",0x49555042],["gcha",0x41484347],["wenv",0x564E4557]]) {
 				a.emit(0x81,0x7E,4); a.dword(magic); a.jcc(0x84,name);
 			}
 			a.jmp("stock");
-			for(const name of ["bpui","gcha"]) {
+			for(const name of ["bpui","gcha","wenv"]) {
 				a.label(name); a.emit(0x83,0x3D); a.dword(route[name+"CellVir"]); a.emit(0); a.jcc(0x84,"unselected");
 				a.emit(0x61,0x9D,0xFF,0x25); a.dword(route[name+"CellVir"]);
 			}
@@ -777,11 +791,13 @@ AutoCombatUIStatic.registerPacket0BF6 = function(patchName, protocol, handlerVir
 			a.label("stock"); a.emit(0x61,0x9D,0xFF,0x25); a.dword(route.fallbackCellVir);
 			const code=n.allocateCode(a); route.routerVir=code.vir;
 			const marker=n.allocateString("SharedPacket0BF6.v1"),record=[];
-			for(const value of [marker.vir,entryVir,route.routerVir,route.bpuiCellVir,route.gchaCellVir,route.fallbackCellVir])
+			for(const value of [marker.vir,entryVir,route.routerVir,route.bpuiCellVir,route.gchaCellVir,route.fallbackCellVir,route.wenvCellVir])
 				record.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
 			n.allocateBytes(record,4); CACHE.put(cacheKey,route);
 		}
 		if(route.entryVir!==entryVir) throw Error("Shared 0x0BF6 route belongs to a different dispatcher");
+		if(!Number.isInteger(route[protocol+"CellPhy"]) || route[protocol+"CellPhy"]<=0)
+			throw Error("Shared 0x0BF6 route predates this protocol; reload the source EXE after updating WARP scripts");
 		Exe.SetUint32(route[protocol+"CellPhy"],handlerVir);
 		Exe.SetUint32(entryPhy,route.routerVir);
 		return route;

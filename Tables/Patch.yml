@@ -259,6 +259,7 @@
 386 : ClanBodySkins
 387 : ItemDescriptionUI
 388 : GrayMap
+389 : CelestialDial
 
 # Personal UI extensions: stable IDs preserve saved profile compatibility.
 10001 : ModernChatUI

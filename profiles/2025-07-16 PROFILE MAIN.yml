@@ -433,6 +433,7 @@ patches:
     - NoGravityLogo
     - CustomCodePage
     - TargetMonsterHealthBar
+    - CelestialDial
     - BestiaryUI
     - ShowNewButtons
     - FixLatestNCWin

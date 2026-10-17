@@ -641,6 +641,15 @@ TargetMonsterHUD:
             author : Codex
             desc : Choose Classic or Wings and Stars artwork for the top-center monster HP bar, with Normal, Mini Boss and MVP tiers. Shows native HP while hovering or attacking. Respects /monsterhp and optional Show Mob Info text. 2025-07-16 only.
 
+CelestialHUD:
+    title : CELESTIAL DIAL
+    patches:
+        - CelestialDial:
+            title : Celestial Dial and Server Time
+            recommend : no
+            author : Louis T Steinhil
+            desc : Ragnarok-themed top-center dial showing server time, day/night and map weather. WENV v6 adds server-owned rain/storms, lightning, thunder, darker nights and bounded directional ground shadows. Coordinates with the monster HUD and preserves native map weather. Requires the matching WENV map-server bridge. 2025-07-16 only.
+
 Bestiary:
     title : BESTIARY
     patches:

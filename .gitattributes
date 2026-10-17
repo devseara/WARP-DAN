@@ -85,3 +85,11 @@ Scripts/Runtime/GrayMap/*.cpp text eol=crlf
 Assets/GrayMap/*.bin binary
 Assets/GrayMap/*.tga binary
 Assets/GrayMap/*.json text eol=lf
+
+# Celestial dial: preserve WARP syntax and native weather assets.
+Scripts/Patches/CelestialDial.qjs text eol=crlf
+Inputs/CelestialDial/*.json text eol=lf
+Inputs/CelestialDial/*.bin binary
+Inputs/CelestialDial/*.bmp binary
+Inputs/CelestialDial/*.wav binary
+Inputs/CelestialDial/audio-source/*.mp3 binary

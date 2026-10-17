@@ -11,20 +11,22 @@ from test_modern_chat_ui import Machine, pack
 from test_gacha_ui import GachaMachine, snapshot
 
 
-def route_contract(m):
+def route_contract(m,with_wenv=False):
     data=m.pe.get_memory_mapped_image();marker=data.find(b'SharedPacket0BF6.v1\0')
     assert marker>=0, 'No shared 0x0BF6 route: independently installed feature handlers can overwrite each other'
     key=pack(m.base+marker);positions=[];at=0
     while (at:=data.find(key,at))>=0:positions.append(at);at+=1
     assert len(positions)==1,positions
-    return dict(zip(('entry','router','bpuiCell','gchaCell','fallbackCell'),struct.unpack_from('<5I',data,positions[0]+4)))
+    names=('entry','router','bpuiCell','gchaCell','fallbackCell','wenvCell') if with_wenv else ('entry','router','bpuiCell','gchaCell','fallbackCell')
+    return dict(zip(names,struct.unpack_from('<'+str(len(names))+'I',data,positions[0]+4)))
 
 
-def verify(exe,expected):
-    m=Machine(exe,Path('.'));r=route_contract(m)
+def verify(exe,expected,with_wenv=False):
+    m=Machine(exe,Path('.'));r=route_contract(m,with_wenv)
     assert r['entry']==0xCAD0EC and m.r(r['entry'])==r['router'],'dispatcher was overwritten after shared-route installation'
     selected=set(expected.split(','))
-    for name in ('gcha','bpui'):
+    if with_wenv:selected.add('wenv')
+    for name in (('gcha','bpui','wenv') if with_wenv else ('gcha','bpui')):
         assert bool(m.r(r[name+'Cell']))==(name in selected),(name,'wrong selected feature registration')
     called=[]
     def boundary(name):
@@ -40,7 +42,8 @@ def verify(exe,expected):
         p=struct.pack('<HHI',opcode,length,magic)
         m.u.mem_write(0x15E8198,p);m.u.reg_write(UC_X86_REG_EAX,0x12345678)
         m.invoke(m.r(r['entry']),0x23456789)
-    for name,magic in [('gcha',0x41484347),('bpui',0x49555042)]:
+    protocols=[('gcha',0x41484347),('bpui',0x49555042)]+([('wenv',0x564E4557)] if with_wenv else [])
+    for name,magic in protocols:
         receive(magic);assert called[-1]==(name if name in selected else 'ignored')
     for magic,length,opcode in [(0x54534554,8,0xBF6),(0x41484347,7,0xBF6),(0x49555042,8,0xBEF)]:
         receive(magic,length,opcode);assert called[-1]=='stock'
@@ -61,4 +64,5 @@ def verify(exe,expected):
 if __name__=='__main__':
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('exe')
     parser.add_argument('--expect',choices=('gcha','bpui','bpui,gcha'),required=True)
-    args=parser.parse_args();verify(args.exe,args.expect)
+    parser.add_argument('--with-wenv',action='store_true',help='Also verify the selected Celestial dial route')
+    args=parser.parse_args();verify(args.exe,args.expect,args.with_wenv)

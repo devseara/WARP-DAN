@@ -1,0 +1,11 @@
+Thunder field recording
+Credit: National Park Service, Natural Sounds and Night Skies Division.
+Public domain, as identified by the NPS Sound Gallery and the recording's usage information.
+
+Recording page: https://www.nps.gov/subjects/sound/sounds-thunder.htm
+Media page: https://www.nps.gov/media/video/view.htm?id=142AF441-6FAB-42B3-A1CE-30733A11DA7B
+Usage information: https://www.nps.gov/subjects/sound/gallery.htm
+Original: https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-Thunder.mp3
+
+The game cue is a mono PCM excerpt from 2.9 to 11.4 seconds, with boundary fades,
+peak normalization and band-limited conversion to 22050 Hz. No endorsement is implied.

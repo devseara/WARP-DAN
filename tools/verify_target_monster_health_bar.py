@@ -11,6 +11,7 @@ from target_monster_hud_designs import identify_design
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('exe',nargs='?',type=Path,default=ROOT/'Outputs/TargetMonsterHUD-test.exe')
 parser.add_argument('--report',type=Path,help='Write the verification results as JSON')
+parser.add_argument('--assets-root',type=Path,default=ROOT,help='Root containing the packaged data/texture tree')
 args=parser.parse_args()
 PE=args.exe
 p=pefile.PE(str(PE)); ib=p.OPTIONAL_HEADER.ImageBase
@@ -26,7 +27,7 @@ class Harness:
   for a,n in [(MODE,0x120000),(STACK,0x10000),(STOP,0x1000)]:u.mem_map(a,n)
   self.text_draws=[];self.text_calls=[];self.native_hp_calls=0;self.native_refreshes=[];self.icon_draws=[];self.icon_exists=True;self.cursor=0;self.ui_block=0;self.modal=0;self.allocs=0;self.actor=True;self.original=0;self.opens=[];self.closes=[];self.missing=set();self.corrupt={};self.option=True;
   for a,v in [(MODE,0x10904b8),(MODE+0xcc,WORLD),(WORLD+0x2c,PLAYER),(PLAYER+0x500,1),(PLAYER+0x514,101),(MOB+0x300,GAUGE),(MOB+0x314,5),(MOB+0x110,101),(GAUGE,0x102be50),(GAUGE+0xa0,680),(GAUGE+0xa4,1000),(0x12515f8,VIEW),(VIEW+0x28,1280),(INFO+0x18,15),(HUD+0x24,MODE+0x8000),(MODE+0x8018,MODE+0x10000),(MODE+0x8004,W)]:self.put(a,v)
-  u.mem_write(INFO+0x98,b'\1');u.mem_write(INFO+4,b'Baphomet\0');self.files={f.name:f.read_bytes() for f in (Path(__file__).resolve().parents[1]/MANIFEST['resource_root']).glob('target_mob_*.bmp')}
+  u.mem_write(INFO+0x98,b'\1');u.mem_write(INFO+4,b'Baphomet\0');self.files={f.name:f.read_bytes() for f in (args.assets_root/MANIFEST['resource_root']).glob('target_mob_*.bmp')}
   self.handles={}
   self.ring=self.get(base+0xe0c0)
   for pc in [0xcf33f0,0xa90350,0xa8e500,0xa9f030,0xa8d4a0,0xa1d260,0xc6d1d0,0xc43230,0xd8e9d0,0x4f1940,0xa47b90,0xa69eb0,0x5a1460,0xdbbc4f,0x8361b0,0xa1cb70,0xa2d240,0xa23450,0x863f10,0xa1cb30,0xa21c90,0xa25a70,0x529850,0x83bd30,0x573750,0x573980,0x519200,0x68ea70,0xc14d60,0xc14920]:u.hook_add(UC_HOOK_CODE,self.hook,begin=pc,end=pc)
@@ -205,6 +206,11 @@ hp_entry=target(0xca8aa2)
 if r(hp_entry,1)==b'\xe9':hp_entry=target(hp_entry)
 assert hp_entry==base+0x2900
 h=Harness();h.update();assert h.visible()==1 and h.allocs==1 and h.original==1 and len(h.opens)==len(h.closes)==2
+# Execute the actual monster update against both shared top-HUD reservations.
+layout_cell=h.get(base+0xe0ec)
+if layout_cell:
+ for reserved_y in (114,24):
+  h.put(layout_cell,reserved_y);h.update();assert h.get(HUD+0x20)==reserved_y,'Monster HUD ignored the live dial reservation'
 for mode in (0,2,4,6):
  h.put(PLAYER+0x500,mode);h.update();assert h.visible()==0
 for mode in (1,3,5):

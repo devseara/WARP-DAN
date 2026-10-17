@@ -1,0 +1,14 @@
+{
+  "source_sha256": "54d6a7fc85b5c7b0c65dd36ff3c5f398d698c37e733bfc98a234a6724c2d0a49",
+  "output_sha256": "7a571fd21298a114c915439cbe49c98711a8e922f839a744fd37a5a44143b980",
+  "start_seconds": 2.9,
+  "end_seconds": 11.4,
+  "rate": 22050,
+  "channels": 1,
+  "frames": 187425,
+  "source_page": "https://www.nps.gov/subjects/sound/sounds-thunder.htm",
+  "download": "https://www.nps.gov/nps-audiovideo/legacy/mp3/nri/avElement/nri-Thunder.mp3",
+  "credit": "National Park Service, Natural Sounds and Night Skies Division",
+  "license": "Public domain",
+  "license_page": "https://www.nps.gov/subjects/sound/gallery.htm"
+}

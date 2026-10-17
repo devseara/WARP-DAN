@@ -1,0 +1,43 @@
+{
+  "version": 3,
+  "client": 20250716,
+  "size": 46616,
+  "api_size": 20,
+  "snapshot_sizes": [
+    68,
+    72,
+    80
+  ],
+  "exports": {
+    "@CelestialDestroy@12": 10128,
+    "@CelestialDraw@8": 10176,
+    "@CelestialHit@16": 11152,
+    "@CelestialPlayerShadowDraw@12": 11168,
+    "@CelestialRainGroundDraw@12": 11248,
+    "@CelestialRainGroundProcess@8": 12560,
+    "@CelestialRainParticles@8": 13008,
+    "@CelestialRainProcess@8": 13920,
+    "@CelestialShadowActor@16": 14032,
+    "@CelestialShadowProject@20": 14352,
+    "@CelestialShadowSubmit@16": 14768,
+    "@CelestialSpriteShadowSubmit@28": 14896,
+    "@CelestialWeatherProcess@8": 15680,
+    "CelestialApi": 24576,
+    "CelestialRainPrimVtable": 24920,
+    "CelestialRainVtable": 24840,
+    "CelestialShadowState": 24984,
+    "CelestialSpriteShadows": 25112,
+    "CelestialSpriteSubmitBridge": 18816,
+    "CelestialState": 24632,
+    "_CelestialFrame@4": 16128,
+    "_CelestialReceive@4": 17584,
+    "_CelestialReset@0": 18496
+  },
+  "source_sha256": "cd9dd897b4a097b46a0e16abab17d9d65f2a8c4208d76c535e81208a2a1a6d78",
+  "wire_sha256": "efb9ddfeb1180da230f374e2117c4ce424f9a944d4b18844e7b4b74ef151e55a",
+  "payload_sha256": "86a72bfda84cf3034e96f14fc1bc3c7e4e0feecbdf436ab642efeb6f222507d8",
+  "runtime_imports": [],
+  "ground_sha256": "8a17b1e85c73d5d652cb0aacd09c1d6433a2cd1744478961d1a23cdf317efd91",
+  "weather_art_sha256": "0bf95b9b4343acc036b671361dc59b0019bbc9524ba20e7b9821534c73f34825",
+  "sun_shadow_sha256": "9ca19bc9bd0a7fd6d1e90075a83a8b9c769f475d9beed11269dcf9682f14fd06"
+}
