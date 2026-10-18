@@ -30,6 +30,8 @@ if (!rejected) throw Error("Expected legacy Qt object-spread rejection");
 const ui = new Function(source + "\\nreturn ItemDescriptionNative;")();
 if (!ui.Blob || !ui.Blob.exports.ItemDescriptionNativeOpen || ui.LifecycleSites.length !== 6)
     throw Error("IDUI module was not fully evaluated");
+if (ui.SourceEntries.length !== 3 || !ui.Blob.exports.ItemDescriptionCartRight || !ui.Blob.exports.ItemDescriptionStorageRight)
+    throw Error("Missing container source entries");
 const spec = ui.LifecycleSites[0], bridge = {vir:123,size:45};
 const copied = Object.assign({}, spec, {bridge:bridge});
 if (copied === spec || copied.address !== spec.address || copied.fastHex !== spec.fastHex || copied.bridge !== bridge || spec.bridge)

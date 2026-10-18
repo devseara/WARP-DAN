@@ -1,5 +1,132 @@
 # Item Description UI
 
+## Hide authored Weight fields (2026-10-16)
+
+The Description body omits itemInfo lines starting with the `Weight:` label,
+including colored text, case variants and whitespace before the colon. This
+also applies outside a `[Stat]` section, such as usable-box descriptions.
+The top information strip continues to show the server's item-db weight.
+Other text, including weight-related effect sentences, remains visible.
+Repatch Item Description UI to apply; no server rebuild or itemInfo edit is needed.
+
+## Equipment level range (2026-10-15)
+
+The top information strip displays `Lv.: 1 - 98` when the existing server
+requirements rows contain `EquipLevelMin: 1` and `EquipLevelMax: 98`. The label
+retains its dark bold 12px font; the range is blue when the character meets both
+bounds and red when either bound is unmet. A maximum-only item starts at 1.
+Without a positive maximum, the existing minimum/Any display is unchanged.
+
+The range is cached separately for main, comparison and component panes when
+their snapshots arrive. Switching items clears any old range. The separate
+Maximum Level body row remains hidden. This requires a client repatch only:
+the server already sends both bounds and their eligibility flags.
+
+## Fixed Item ID footer (2026-10-15)
+
+Every modern description pane shows **ItemID: <number>** at the bottom-right in
+black, regular 10px text, with a 6px right inset. The number comes from that
+pane's accepted snapshot, independently for main, comparison and component
+descriptions. Loading and stock-fallback panes do not display a stale ID.
+
+An 18px strip stays outside the scrolling body and scrollbar. Partial hover and
+scroll repaints retain it without extra font measurements or footer rendering;
+the footer has no click action. Legacy Item ID lines and separators remain
+filtered out of Description and Requirements. This needs one client repatch,
+with no server rebuild or data changes. The native content tests cover all four
+source scopes, three panes, compact geometry, full unsigned IDs, stale replies,
+and unchanged footer pixels during scrolling.
+
+## Approved title styling (2026-10-14)
+
+The redesigned main, equipped-comparison and card/enchantment headers now draw
+item names in **white, bold, 14px** (native 12px +2), directly on the tinted
+header. The white title box is removed; the illustration backing remains.
+Long names wrap within two lines and use an ellipsis when necessary.
+
+Only the title call at `0x008B43F1` is redirected. The native CItem formatter
+still supplies the full decorated name, including refine, grade, card and slot
+labels. The user's approved white caption overrides item/grade colors in these
+modern headers only. The implementation uses the client's font cache and surface
+DC with the stable GDI imports; it does not change the shared item-color,
+entity-name, balloon or TextOut bridges. It restores font and color state, frees
+the native formatter's temporary endpoint vector, and retains the original title
+routine for disabled, unowned, stale or stock-fallback windows. Partial body
+repaints do not reformat or repaint the title.
+
+This change requires a client repatch only. `verify_item_description_title.py`
+checks short, long, decorated and Unicode names at normal/narrow widths, all
+three panes, stock fallback and DC state restoration. The complete payload and
+WARP parser checks remain required; automated checks do not establish live
+in-game acceptance.
+
+## Authored descriptions and fast dragging (2026-10-14)
+
+The modern panes now read the existing native ItemInfo description cache once
+when a snapshot arrives. `identifiedDescriptionName` remains the authoring
+source: flavor text, effects and complete conditional/combo paragraphs appear
+under **Description**, with their inline colors. No Lua files are parsed by
+render/input hooks and no hidden native text viewer is built. Cached colored
+runs are reused during scrolling and hovering.
+
+Bracket-only headings are omitted. Equipment Stat blocks, redundant Type/Weight/
+Item ID rows, Maximum Level, and sentences saying an item doesn't have bonus
+effects are omitted. The existing modern header, Cards & Enchantments, Grade,
+Random Options, Requirements and Trade Information remain. Separate Base Stats,
+Special Effects and Set Bonuses are suppressed when authored text is available;
+the previous server rows remain the fallback if the native cache has no entry.
+Requirement job text moves to **Job:**, colored from the server's independent
+job/class eligibility result. This color does not depend on failing Base Level.
+For cards, **Compound On:** and its destination occupy the middle information
+strip in place of Weapon Lv.; the duplicate body row is omitted. The label uses
+the same dark, bold 12px font as Lv./Weight, with a blue destination. It shares
+their baseline when it fits; longer destinations use two lines at the same size.
+
+The native cache also includes the legacy loader's generated footer. Standalone
+underscore/dash/equal dividers and numeric Item ID labels are filtered before
+section routing, so they cannot leak into either Description or Job. Item ID
+labels allow case and spacing variations without removing ordinary prose.
+
+Grade effect continuations from the server's 120-byte wire chunks are joined
+before wrapping. Each tier has one icon and one aligned paragraph; this preserves
+the configured percentages (Valkyrie Shield: 21/22/23/25%) and gameplay. The
+footer, font and Grade layout fixes require a client repatch only, with no server
+rebuild or data changes.
+
+`[Item Collection]` content moves into its own **Item Collection** panel.
+Configure it independently from Grade in the server's
+`db/import/item_description_db.yml`:
+
+```yaml
+Settings:
+  ShowGrade: true
+  ShowItemCollection: true
+```
+
+Set either to `false` to hide that whole section, run `@reloaditemdb`, and reopen
+the item. Both default to false on a fresh load; imports retain earlier values
+unless explicitly overridden. Invalid settings retain the last valid database.
+One initial client repatch and server rebuild/deployment are required for the
+new content layout, collection setting and Job result. Subsequent visibility
+changes need no client repatch or server restart. Packet v1 and its sizes stay
+unchanged; Collection visibility travels as a core metadata row. These settings
+only control descriptions, not gameplay.
+
+Fast drag repair: vtable slot 27 is held-button movement, separate from hover
+slot 28. Forwarding slot 27 to stock code let it use stale native drag anchors
+and move a pane offscreen before a rapid release. All three panes now route it
+through the bounded header drag handler. Capture loss stops movement but retains
+gesture ownership until release, preventing a late Up from reaching stock
+handlers. Native close-button handling and same-item close behavior are retained.
+
+Verification includes the fresh x86 regression suites, seven actual itemInfo
+samples, inline-color/section filtering, Collection visibility, card destination,
+all three fast-drag paths and lost capture. Server tests exercise real YAML
+reload/rollback and compare Job eligibility against the actual pc.cpp job/class
+predicates in both modes. Native engine boundaries are mocked; in-game walking
+and fast dragging still require live verification. No game EXE is produced by
+these checks.
+
 ## Status and scope
 
 The user accepted the initial implementation on **2026-09-16**: “i think its all good for initial implementation”. This is the single implementation, resource, configuration and maintenance reference for the feature.
@@ -14,9 +141,19 @@ The accepted client was `Banquet_ItemDescription_Test_v5_20260916.exe`, SHA-256 
 
 **Component windows and header dragging (2026-10-14; live verification pending).** Clicking a card/enchantment panel opens the redesigned window beside its source, keeping the equipment description visible. The existing native component factory (window 82, vtable `0x1032B84`, `OnMessage` `0x8BF3B0`) retains its native item/artwork and close behavior, with an independent snapshot, layout, thumbnail cache and scrollbar. Reopening a component preserves its dragged position. The header's free/title/stat areas capture dragging; item artwork, close and the four passive slot indicators are excluded. Motion uses the native position setter without rebuilding or painting the description. Releasing outside, losing capture, hiding or destroying the window ends dragging. Equipped comparison panes retain their paired alignment.
 
-Component request tokens use top bits `11`; main and comparison use `00` and `10`. Existing servers still have two channels, so component catalog requests share the comparison channel with coordinated 160ms spacing. A component send queues one comparison reinspection to restore its owned-item watch; an identical response preserves the cached surface/layout. This requires no server protocol change. The native Config appends a third 53-slot vtable (166 words total); each of the three States remains 123,664 bytes. The generated payload and QJS must be updated together.
+Component request tokens use top bits `11`; main and comparison use `00` and `10`. Existing servers still have two channels, so component catalog requests share the comparison channel with coordinated 160ms spacing. A component send queues one comparison reinspection to restore its owned-item watch; an identical response preserves the cached surface/layout. This requires no server protocol change. The native Config contains three 53-slot vtables and now appends Cart/Storage entry trampolines (168 words total); each of the three States remains 123,664 bytes. The generated payload and QJS must be updated together.
 
-**Requirements and trade wording (2026-10-14).** Presentation maps `Allowed by item policy` to `Allowed`, `Discard` to `Drop`, and the server's checked equip eligibility to `Equipable: Yes` or `Equipable: No`. Requirements shows `Base Level: Any` for the database default minimum of zero (omitted `EquipLevelMin`), otherwise the supplied minimum. The compact header level uses the same value. Maximum level is omitted from layout; server equip restrictions remain enforced. Raw snapshots and eligibility flags are unchanged. Catalog/unsupported eligibility stays explicitly unknown rather than claiming a checked result. These are WARP presentation changes and require no server rebuild.
+**All description entry routes (2026-10-14; live verification pending).** InventoryUI replaced the same virtual right-click slot used by IDUI, so the candidate description lost its owned-item scope while the equipped comparison still worked. IDUI now hooks the shared native Inventory/Cart/Storage function entries, which both stock and redesigned windows call. The window patches retain their own virtual callbacks, selection, search and transfer guards. Alt+Q keeps its existing equipment wrapper. All identified catalog descriptions entering the main window also use the redesigned body, even when their source has a local index; they request base catalog information without claiming ownership of that index or its rolled properties. Unidentified items retain native disclosure.
+
+Cart and active personal/premium/guild Storage requests now resolve the exact server container item, including refine, grade, cards and options. **This part requires rebuilding/restarting the server from the updated `src/map/item_description.cpp` and `src/common/item_description_wire.hpp`, as well as repatching the client.** Older IDUI servers continue to handle Catalog/Inventory but reject the new Cart/Storage scopes and fall back to native descriptions. No packet registration, session layout, Battle Pass or Gacha code changes are required. Container eligibility is left unknown where the server's inventory-only equip check cannot be applied safely.
+
+The new source-route suite executes the actual QJS entry bridges and all three redesigned right-click payloads, checks first-slot indexing, exact instance fields, nested inventory comparisons and late replies. Server tests exercise the production dispatcher/resolver, first/last/out-of-range slots, storage authorization, fingerprint rejection, watches and throttling. These use mocked engine boundaries; no game EXE is generated, and live client verification remains required.
+
+**Open Inventory description during a Storage deposit (2026-10-14; live verification pending).** An Inventory invalidation can arrive before the Storage addition. The main pane now retains its redesigned view during that interval, then reinspects the matching Storage instance with its new index and a cleared fingerprint. A bounded baseline excludes unchanged identical copies already in Storage; only a new slot or increased matching stack qualifies. Matching includes item ID, identification, refine, grade, cards and random options. A partial deposit keeps the remaining Inventory stack. Ambiguous or missing destinations use catalog data after one second rather than guessing ownership. Recovery polls at most once per 160 ms while active, stops on item switch/close and does no steady-frame scanning. Cart and the comparison/component panes keep their existing behavior. The transfer/text suite covers delayed packets, stacks, identical copies, ambiguous arrivals, canceled recovery and late replies.
+
+**Requirements and trade wording (2026-10-14).** Presentation maps `Allowed by item policy` to `Allowed`, `Discard` to `Drop`, and the server's checked equip eligibility to `Equipable: Yes` or `Equipable: No`. Requirements shows `Base Level: Any` for the database default minimum of zero (omitted `EquipLevelMin`), otherwise the supplied minimum. The compact header level uses the same value. Maximum level is omitted from layout; server equip restrictions remain enforced. Raw snapshots and eligibility flags are unchanged. Catalog/unsupported eligibility is omitted rather than claiming a checked result. These are WARP presentation changes and require no server rebuild.
+
+**Requested notice cleanup (2026-10-14).** The client hides the Original/legacy fallback notes, instance-required/inspect-owned-item notices, unknown-component and unconfigured modifier/rolled-property messages, forged metadata note and no-direct-ATK/DEF note. It also hides the truncated-effects footer. Numeric DEF remains, with only `before rounding` removed; actual bonuses remain, with only generated refine/grade requirement prefixes removed. Their active/unmet/unknown flags are preserved. Known component artwork and passive occupied indicators remain even when their technical subtitle is hidden. Fully hidden sections reserve no heading or spacing. Main, comparison and component panes share this presentation filter, including replies from existing servers. This does not create descriptions for effects that lack authored records.
 
 Current Trade Information names and values, after these changes:
 
@@ -25,7 +162,6 @@ Current Trade Information names and values, after these changes:
 | Trade | Allowed, No, No (bound), Same guild only |
 | Storage | Allowed, No |
 | Drop | Yes, No |
-| Instance restrictions | Inspect an owned item (catalog-only notice) |
 
 The generated-code component suite checks independent click routing, late replies, scrolling, capture/viewport limits, no repaint or requests during header motion, comparison-watch restoration, and rendered wording for minimum zero/85 and eligibility Yes/No. Lifecycle tests also execute the real component open path and its shared optimized base handler. Automated engine-boundary tests do not establish live walking frame times.
 
@@ -52,7 +188,7 @@ Component artwork is copied and scaled once into a bounded eight-entry cache per
 
 **Opening and switching lifecycle (2026-10-14; live verification pending).** The user confirmed the preceding fixes, then reported another hitch when changing items while walking. The native `OnMessage(24)` still built a hidden legacy random-option tree, fetched Lua description lines, parsed the old text viewer, and resized parent/child surfaces before the custom card replaced them. Native `SetSize` destroys/reallocates its surface even for unchanged dimensions. Eligible opens now skip that hidden work, and item switches retain the current surface. Initial opens take final geometry once; paired panes select their shared width before allocation. Changes in geometry or a missing surface still allocate normally.
 
-The optimization is scoped to the exact native receiver and unwinds across recursive equipped-comparison opens. Native CItem assignment, collection-art resource ownership, decorated title, window ordering and comparison selection still execute. The six exact-byte-guarded 2025-07-16 detours are `0x8C1D69` (option construction), `0x8C2238` (intermediate geometry), `0x8C2554` (text parsing), `0x8C2B53` (legacy final sizing), `0x8B4230` (hidden background paint) and `0x8B43FD` (hidden body paint after the native title). The description lookup call at `0x8C23E2` returns an empty vector only for the scoped window's inline CItem. All other lookups use the original getter. The native title instruction span is unchanged. The Size vtable adapter preserves normal sizing outside that scope and avoids identical-size surface replacement.
+The optimization is scoped to the exact native receiver and unwinds across recursive equipped-comparison opens. Native CItem assignment, collection-art resource ownership, decorated title, window ordering and comparison selection still execute. The six exact-byte-guarded 2025-07-16 detours are `0x8C1D69` (option construction), `0x8C2238` (intermediate geometry), `0x8C2554` (text parsing), `0x8C2B53` (legacy final sizing), `0x8B4230` (hidden background paint) and `0x8B43FD` (hidden body paint after the native title). The description lookup call at `0x8C23E2` returns an empty vector only for the scoped window's inline CItem. All other lookups use the original getter. The native CItem formatter is preserved; only the description title call is redirected for the approved white/bold header. The Size vtable adapter preserves normal sizing outside that scope and avoids identical-size surface replacement.
 
 Unidentified items, unprofiled containers, disabled rendering, small viewports and an already-silent server retain the stock path. If an optimized request times out, is rejected or cannot allocate its outgoing packet, the omitted stock body is rebuilt once using a native owned CItem copy. Forced refresh avoids same-item toggle-close while retaining native comparison behavior. Queued send failures also restore the original view. Destruction skips unnecessary surface resizing/body reconstruction; an epoch guard prevents native same-item close from reactivating a destroyed pane. Existing hover, scroll and component-click optimizations remain in place.
 
@@ -76,7 +212,7 @@ The QJS check uses the actual WARP Qt engine in an isolated fixture and stops de
 |---|---|
 | `Scripts/Patches/ItemDescriptionUI.qjs` | Patch 387; validates native contracts and embeds the freestanding x86 payload |
 | `tools/native/item_description.cpp` | Main/comparison lifetime, layout, native UI interactions and bounded drawing |
-| Banquet `src/map/item_description.cpp` | Validates the inspected inventory instance and builds read-only snapshots |
+| Banquet `src/map/item_description.cpp` | Validates the inspected inventory/cart/active-storage instance and builds read-only snapshots |
 | Banquet description DBs | Server-authored effect text and supported predicates |
 | Existing client catalog | Numeric ItemId to localized name/resource mapping and native title formatting |
 
@@ -95,14 +231,15 @@ The QJS check uses the actual WARP Qt engine in an isolated fixture and stops de
 | Main/comparison per-frame process | Slot 19 `0x008BAEC0` (both); the manager loop at `0xA44219` calls it every frame. OnDraw runs only for dirty windows and the flag is cleared after the call (`0xA1CE3D`), so request spacing and timeouts live here |
 | Main position | `0x008A0E70`; stock positioning subtracts the main width |
 | Header underlay | Guarded seven-byte detour at `0x008B438A`, resume `0x008B4391` |
-| Native title instructions | `0x008B43CA..0x008B43F6`, preserved against the accepted fixture |
+| Native title instructions | `0x008B43CA..0x008B43F6`; only the call at `0x008B43F1` changes, with surrounding bytes checked against the accepted fixture |
 | Owned `CItem` | Window `+0xB8`; numeric ID getter `0x005D98A0` |
 | Instance fields | Index `+4`, refine `+0x60`, grade `+0x88`, cards `+0x1C`, option count `+0x98`, packed options `+0x9C` |
-| Inventory/equipment right-click | Vtables `0x0103D460` / `0x0103223C`, slot 32 |
+| Inventory/Cart/Storage right-click | Entry detours `0x0094F380` / `0x0094FAA0` / `0x0094F200`; replay `55 8B EC 6A FF` through separate trampolines |
+| Equipment right-click | Vtable `0x0103223C`, slot 32 |
 | Native `UIScrollBar` | Vtable `0x0102AEF4`; constructor `0x00836870`, draw `0x00856560` |
 | Catalog lookup | Manager pointer `0x0159C088`, lookup `0x00A7E780`; name `+0x40`, resource stem `+0x58` |
 
-Native receivers and calling conventions must be preserved. The header detour saves registers/flags, paints only the exact registered ready window, and replays `CMP [EDI+0x1D4],0`. It runs after stock backing and before untouched native art/title drawing. Comparison paint briefly selects the normal skin branch, then restores its real ID. No title span, foreground color or shared TextOut ownership is changed.
+Native receivers and calling conventions must be preserved. The header detour saves registers/flags, paints only the exact registered ready window, and replays `CMP [EDI+0x1D4],0`. It runs after stock backing and before native artwork and the scoped title callback. Comparison paint briefly selects the normal skin branch, then restores its real ID. The CItem formatter and shared TextOut bridges remain intact; only the modern description caption uses the approved white/bold style.
 
 The main and equipped panes have independent snapshots, layout, scrollbars and child restoration. Their actual widths plus an 8-pixel gap determine adjacency; the pair is clamped to the viewport. Each pane is at most 360×560. On screens at least 600 pixels wide, both active panes fit side by side; smaller screens can overlap.
 
@@ -119,12 +256,14 @@ Shared byte-for-byte header: WARP `tools/native/item_description_wire.hpp` and B
 | Request / snapshot size | 96 / 12,416 bytes |
 | Snapshot rows | At most 64 rows of 192 bytes, after a 128-byte header |
 | Actions | Inspect 1, snapshot 2, compare 3 |
-| Scope | Catalog 0, inventory 1 |
+| Scope | Catalog 0, inventory 1, cart 2, active storage 3 |
 | Results | OK 0, invalid 1, stale 2, unavailable 3, throttled 4 |
 
-The high request-token bit distinguishes candidate and equipped views. It grants no authority: both requests must match the actual inventory index, ItemId, identified state, refine, grade, cards and options. The server index is the native client index minus two. Refresh/Compare also carry the accepted semantic fingerprint.
+The high request-token bit distinguishes candidate and equipped views. It grants no authority: owned requests must match the selected container index, ItemId, identified state, refine, grade, cards and options. Inventory/Cart use native client index minus two; Storage uses minus one. Storage is resolved only against the character's currently open personal/premium storage or unlocked guild storage for that character's guild. Catalog requests carry no instance fields. Reopening an owned item also carries its accepted semantic fingerprint. Legacy Compare requests remain inventory-only.
 
 Each player has two fixed watches, each rate-limited to one request per 150 ms. Excess requests are dropped silently before allocating the large response, so the client queues any request issued within 160 ms of that pane's previous one and sends it from OnProcess. The client no longer sends compare (3); the server path remains for compatibility. Item addition/removal, inventory refresh, equip changes, refinement, grading, card insertion and descriptor reload invalidate affected watches. Item replacement, malformed replies and stale responses cannot populate a different pane.
+
+Cart/Storage watches encode the scope in unused high bits of the existing watch index, preserving the session ABI. Existing invalidation events also recheck these container fingerprints; reopening always revalidates. No new mutation hooks are installed in shared storage/transfer code, so a mutation that emits none of the existing invalidation events is reflected on reinspection rather than promised as a live update.
 
 Item Collection and Bestiary share the existing packet fallback through the selected-owner magic registry in `ItemCollectionUI.qjs`. The routing chain preserves AHUI, ASUI, PINC, COUI, BSUI, IDUI and the native unknown-packet fallback; selection order must not steal another module's handler.
 
@@ -132,12 +271,12 @@ Item Collection and Bestiary share the existing packet fallback through the sele
 
 - **Opening:** an inspectable item takes its final card geometry in the same frame as the native open and shows a loading skeleton until its snapshot arrives. The stock body is never painted first. Reopening the identical instance paints its last accepted snapshot immediately while the server revalidates it.
 - **Fallback:** if no reply arrives within 3 s, the pane returns to the stock description. Until a later reply proves the server module, later opens skip the skeleton and keep the stock body until a snapshot arrives. A non-OK reply also restores stock. An unsolicited stale notice (refine, card or bound change) reinspects in place behind the skeleton.
-- **Header:** a gradient tinted by the native item grade (none blue, D rose, C amber, B green, A violet, taken from `grade_icon{1..4}.bmp` inks). It has a white medallion under the native 75×100 art, a frosted bar under the native title spans, the type label, and a headline (Weapon ATK, Weapon MATK or Armor DEF) with the refine ATK bonus in yellow. The candidate pane shows an up/down arrow against the equipped pane's base+refine total. It also has a binding chip with an open/closed lock, socket pips (enchant slots in violet), an `Equipped` pill on the comparison pane, and the native grade icon at 2× over the art corner. Native art, name spans and grade colors remain native; no grade label text is drawn.
+- **Header:** a gradient tinted by the native item grade (none blue, D rose, C amber, B green, A violet, taken from `grade_icon{1..4}.bmp` inks). It has a white medallion under the native 75×100 art, a bold white title at native size +2 directly on the tint, the type label, and a headline (Weapon ATK, Weapon MATK or Armor DEF) with the refine ATK bonus in yellow. The candidate pane shows an up/down arrow against the equipped pane's base+refine total. It also has a binding chip with an open/closed lock, socket pips (enchant slots in violet), an `Equipped` pill on the comparison pane, and the native grade icon at 2× over the art corner. Native art and decorated name formatting remain native; the description caption is uniformly white. No separate grade label is added.
 - **Body:** an info strip (`Lv.`, `Weapon Lv.`, `Weight`), then sections with blue diamond headings and thin dividers: Base Stats (with red/green deltas against the equipped pane), Special Effects, Cards & Enchantments, Card Set Bonuses, Grade, Random Options, Requirements (check/cross), and Trade Information as green/red chips. Numeric tokens in effect text are orange. Every rectangle is clipped by the payload, because the shared fill helper rejects rather than clips negative origins.
 - **Components:** each card/enchant slot is one peach panel with a 40×52 thumbnail, the catalog name, the slot line and its own effects. Empty slots are compact strips. Partial panels clip to the scrolling body. Missing collection art falls back to the item icon. Hovering a known component highlights it; clicking or right-clicking opens it through the native component-description route.
 - **Grade:** hidden by default by the server's `Settings.ShowGrade: false`. When enabled and the server sends grade rows, one uniform panel contains the current grade and every tier; the active tier is checked, unmet tiers are locked and muted.
 - **Scrolling:** each pane owns a normally constructed native `UIScrollBar`, created only when the body overflows; close destroys it and releases its mouse capture. The legacy text viewer's scrollbar is not borrowed.
-- **No footer actions:** there is no Original, Compare or Refresh. Unidentified items and unprofiled indexed containers retain stock disclosure and behavior.
+- **No footer actions:** there is no Original, Compare or Refresh. Unidentified items retain stock disclosure and behavior. Unprofiled sources use base catalog details in the new UI without fabricated instance information.
 
 ## Native resources and alignment
 
@@ -163,7 +302,7 @@ The audit identified **107 fixed or connected BMPs** with no missing required en
 | `scroll0*` / `scroll1*` | 12 | Native vertical/horizontal track and thumb families |
 | `basic_interface/dialscr_{up,down,up1,down1}.bmp` | 4 | Alternative scrollbar classes, not the chosen text-viewer scrollbar |
 
-The original text viewer begins at `(91,31)`, and its main art at `(10,11)` is 75×100. The card header is y=0..115 and the info strip y=116..153. The scrolling body runs from y=154 to height−12, so the visible height stays height−166. The native scrollbar sits at x=width−27, and content stops at width−32. The frame is a 1px grade-tone edge with an 11px radius and keyed corners, drawn with fills; the card no longer loads `sysbox_*` or footer `btn_*` BMPs. Native scrollbar, text wrapping, image clipping and component hit rectangles use the same layout coordinates. Text is drawn at 11–13px with a 20px headline. The native text call stores the height raw (`0x546F60`), and only the face is a table index, but sizes other than 11/12 still need live confirmation.
+The original text viewer begins at `(91,31)`, and its main art at `(10,11)` is 75×100. The card header is y=0..115 and the info strip y=116..153. The scrolling body runs from y=154 to height−18, so its visible height is height−172; the remaining 18px holds the fixed Item ID footer. The native scrollbar sits at x=width−27, and content stops at width−32. The frame is a 1px grade-tone edge with an 11px radius and keyed corners, drawn with fills; the card no longer loads `sysbox_*` or footer `btn_*` BMPs. Native scrollbar, text wrapping, image clipping and component hit rectangles use the same layout coordinates. Body text is drawn at 11–13px with a 20px headline; the footer uses 10px. The native text call stores the height raw (`0x546F60`), and only the face is a table index, but sizes other than 11/12 still need live confirmation.
 
 Dynamic artwork uses `item/<resource>.bmp`, `collection/<resource>.bmp`, and separate full card art in `cardBmp/<resource>.bmp`. The audit indexed 29,474 candidate paths; presence in an archive is not proof of runtime selection. The inspected loader gave priority to update, maindata, mapdata, palettedata, spritedata, data and greyworld. Loose-file/skin selection remains controlled by the native resource resolver and current client configuration.
 
@@ -224,12 +363,12 @@ Run the resulting client from the existing game folder. A new server installatio
 
 - This patch targets 2025-07-16; it does not enable the 2026 client.
 - Comparison shows base values, not complete character damage or scripted final totals. Headline arrows and stat deltas compare the two panes' server base ATK/DEF/MATK and refine ATK rows only.
-- With no Original button, legacy-only text is not reachable from the card. Three server strings still say "Original": two Banquet notes in `src/map/item_description.cpp` and the generator's grade note (113 items). Reword them with the next server/data deploy.
+- With no Original button, legacy-only text is not reachable from the card. The two requested server fallback notes are now hidden by the client; missing story and equipment-combo records still need authored display data. The generator's separate conditional-grade note remains outside this requested removal list.
 - Four native card-backed positions are shared by cards/enchants; five random options remain the gameplay limit.
 - Character-dependent effects can still require Original/manual descriptors. At initial acceptance, 113 items retained additional conditional grade fallbacks.
 - Options 260/261 contain one-argument HP/SP-drain definitions, while those bonuses require chance and amount. They remain explicitly unavailable rather than inventing gameplay values.
 - Snapshot output has a 64-row budget and marks overflow. Arbitrarily long descriptions need a future paging extension.
-- Unprofiled storage/shop/trade/book routes retain stock behavior. No complete specialized-window matrix is claimed.
+- Cart and active Storage use their profiled owned-item scopes. Other sources entering the main description window use catalog scope. No complete specialized-window matrix is claimed.
 
 For future changes, test inventory and Alt+Q, two customized copies of the same ID, graded/long titles, empty and multiple occupied slots, cards/enchants/options, forged metadata, both comparison panes, edge dragging, wheel/arrows/thumb capture, component opening, opening without any stock flash, quick successive opens, same-item reopen, server silence fallback, invalidation/reload, relog/map changes/themes and clean exit. Preserve Item Collection, Bestiary, AutoHunt, AutoSupport, pincode and native title/balloon behavior. Initial acceptance does not retroactively mark unrecorded individual vectors as tested.
 

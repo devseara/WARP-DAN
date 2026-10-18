@@ -99,6 +99,7 @@ static void sprite(int texture,int x,int y){reinterpret_cast<void (__thiscall *)
 static void grouped(char* out,u32 n){char value[128]={};number(value,n);int len=length(value),pos=length(out);for(int i=0;i<len && pos<125;++i){if(i && (len-i)%3==0)out[pos++]=',';out[pos++]=value[i];}out[pos]=0;}
 static void rightText(const char* value,int right,int y,u32 color=0x232323){int size=reinterpret_cast<int (__thiscall *)(void*,const char*,int,int,int,int,int)>(0xA21C90)(InventoryState.window,value,0,0,11,0,0);text(value,right-size,y,size+2,color);}
 static int weightPercent(){int value=*reinterpret_cast<int*>(0x15FBAA0),limit=*reinterpret_cast<int*>(0x15FBA9C);return limit>0?static_cast<int>((static_cast<double>(value)*100.0)/limit):0;}
+#include "../ItemSlotQuantity.h"
 static void panel(int width,int height){int x=width-139,y=height-52;fill(x,y,133,31,0xFFE8E7F0);text("Zeny",x+6,y+3,35,0x232323);char zeny[128]={},weight[128]={};grouped(zeny,*reinterpret_cast<u32*>(0x15FBA90));grouped(weight,*reinterpret_cast<u32*>(0x15FBAA0));append(weight," / ");grouped(weight,*reinterpret_cast<u32*>(0x15FBA9C));rightText(zeny,width-10,y+3);rightText(weight,width-10,y+17,weightPercent()>=*reinterpret_cast<int*>(0x1602324)?0x0000FF:0x232323);sprite(30,x+6,y+17);}
 EXPORT void __fastcall InventoryDraw(void* w,void*){auto& s=InventoryState;if(w!=s.window || !s.ready){reinterpret_cast<void (__thiscall *)(void*)>(0x946DA0)(w);return;}layout(w);sync();InventoryRebuild();int width=at<int>(w,0x14),height=at<int>(w,0x18);if(!at<void*>(w,0x24) || !pixels())return;fill(0,0,width,height,0xFFF5FDFF);slice(0,0,0,17,17,0,0);slice(0,17,0,1,17,17,0,width-34,17);slice(0,263,0,17,17,width-17,0);text("Inventory",18,1,width-56,0x766449);text("-",width-30,1,12);slice(inside(s.mouseX,s.mouseY,width-17,0,17,17)?12:11,0,0,9,9,width-13,4);if(height==17)return;
     slice(0,0,17,34,10,0,17,34,height-38);slice(0,34,17,100,10,34,17,width-35,height-38);slice(0,0,220,280,20,0,height-21,width,21);
@@ -121,7 +122,7 @@ EXPORT void __fastcall InventoryDraw(void* w,void*){auto& s=InventoryState;if(w!
         if(item){
             if(at<u8>(item,0x75))reinterpret_cast<void (__thiscall *)(void*,int,int)>(0x872B30)(w,x,y);
             // Native item art is 24x24; its center matches the shadow at (16,17).
-            reinterpret_cast<void (__thiscall *)(void*,int,int,void*,int,int)>(0x8711A0)(w,x+4,y+5,item,0,0);
+            drawSlotItem(w,x+4,y+5,item);
             int grade=at<short>(item,0x88);if(grade>0 && grade<=5)sprite(24+grade,x+4,y+17);
             if(equipment(at<u32>(item,0)) && at<u8>(item,0x5D))slice(23,0,0,13,13,x+19,y);
             if(at<u32>(item,0x68))slice(24,0,0,9,12,x+23,y+(equipment(at<u32>(item,0)) && at<u8>(item,0x5D)?13:0));

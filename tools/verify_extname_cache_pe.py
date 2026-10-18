@@ -174,10 +174,10 @@ def main():
         uc.emu_start(packet_store_va, stop, count=300000)
         if version == 4:
             name, party, guild, position, title = fields
-            composed = title + b" " + name + b" [" + party + b"] {" + guild + b"} (" + position + b")"
-            expected = [(name, composed)] + [(field, field) for field in fields[1:]]
-            check("V4 five exact full-name records", calls == expected,
-                  f"calls={len(calls)}; composed bytes={len(composed)}")
+            # Names stay canonical; social fields have independent cache records.
+            expected = [(name, name)] + [(field, field) for field in fields[1:]]
+            check("V4 real name plus four independent social records", calls == expected,
+                  f"calls={len(calls)}; name bytes={len(name)}")
             intact = True
             for key_bytes, value_bytes in expected:
                 bucket = table_va + (fnv(key_bytes) & 2047) * entry_size
@@ -185,7 +185,7 @@ def main():
                 intact = intact and bytes(uc.mem_read(bucket + 16, len(key_bytes) + 1)) == key_bytes + b"\0"
                 intact = intact and bytes(uc.mem_read(bucket + 144, len(value_bytes) + 1)) == value_bytes + b"\0"
             check("V4 packet cache keys and values intact", intact,
-                  "127-byte canonical name and 645-byte composition")
+                  "127-byte real name and separate social fields")
         else:
             expected_keys = [fields[0], short_values[0]] + short_values[1:]
             check("V3 packet never parsed as V4", [item[0] for item in calls] == expected_keys,

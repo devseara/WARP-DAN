@@ -57,6 +57,7 @@ static void fill(int x,int y,int w,int h,u32 c){u32* p=pixels();for(int yy=max(0
 static void slice(int tex,int sx,int sy,int sw,int sh,int dx,int dy,int dw=0,int dh=0){if(!dw)dw=sw;if(!dh)dh=sh;int w=width(),h=height(),tw=at<int>(textures[tex],0x114);u32* source=at<u32*>(textures[tex],0x11C),*dest=pixels();for(int y=0;y<dh;++y)for(int x=0;x<dw;++x){if(dx+x<0 || dy+y<0 || dx+x>=w || dy+y>=h)continue;u32 c=source[(sy+y*sh/dh)*tw+sx+x*sw/dw],a=c>>24;u32& d=dest[(dy+y)*w+dx+x];if(a==255)d=c;else if(a){u32 rb=(((c&0xFF00FF)*a+(d&0xFF00FF)*(255-a))>>8)&0xFF00FF,g=(((c&0xFF00)*a+(d&0xFF00)*(255-a))>>8)&0xFF00;d=0xFF000000|rb|g;}}}
 static void sprite(int tex,int x,int y){reinterpret_cast<void (__thiscall *)(void*,int,int,void*,int)>(0xA1D260)(CartState.window,x,y,textures[tex],1);}
 static void text(const char* s,int x,int y,int w,u32 color=0x797979){CartApi.text(CartState.window,s,x,y,w,color);}
+#include "../ItemSlotQuantity.h"
 static void grouped(char* out,u32 n){char value[128]={};number(value,n);int len=length(value),pos=length(out);for(int i=0;i<len && pos<125;++i){if(i && (len-i)%3==0)out[pos++]=',';out[pos++]=value[i];}out[pos]=0;}
 EXPORT void __fastcall CartDraw(void* w,void*){auto& s=CartState;if(!own(w)){reinterpret_cast<void (__thiscall *)(void*)>(0x948610)(w);return;}layout(w);sync();CartRebuild();if(!at<void*>(w,0x24) || !pixels())return;int ww=width(),hh=height(),c=columns(),r=rows();
     fill(0,0,ww,hh,0xFFF5FDFF);slice(0,0,0,17,17,0,0);slice(0,17,0,1,17,17,0,ww-34,17);slice(0,263,0,17,17,ww-17,0);slice(0,0,52,34,10,0,17,34,hh-38);slice(0,34,17,30,10,34,17,ww-35,hh-38);slice(0,0,18,34,35,0,18);slice(0,0,188,280,20,0,hh-21,ww,21);
@@ -65,7 +66,7 @@ EXPORT void __fastcall CartDraw(void* w,void*){auto& s=CartState;if(!own(w)){rei
     for(int row=0;row<r;++row)for(int col=0;col<c;++col){u32 n=s.scroll*c+row*c+col;void* item=n<s.count?CartSlot(s.rows[n].slot):0;if(item && fingerprint(item)!=s.rows[n].fingerprint)item=0;int x=56+col*32,y=58+row*32;bool hover=item && !s.menu && inside(s.mouseX,s.mouseY,x,y,32,32);
         if(hover){slice(3,0,0,28,32,x,y);for(int edge=0;edge<4;++edge)slice(3,edge,0,1,32,x+31-edge,y);}
         slice(0,hover?58:57,64,hover?30:32,20,x+(hover?1:0),y+8);
-        if(item)reinterpret_cast<void (__thiscall *)(void*,int,int,void*,int,int)>(0x8711A0)(w,x+4,y+5,item,0,0);
+        if(item)drawSlotItem(w,x+4,y+5,item);
     }
     s.presented=1;
     char count[128]={},weight[128]={};number(count,*reinterpret_cast<u32*>(0x15FB2D4));append(count," / ");number(count,*reinterpret_cast<u32*>(0x15FB2D8));grouped(weight,*reinterpret_cast<u32*>(0x15FB2DC));append(weight," / ");grouped(weight,*reinterpret_cast<u32*>(0x15FB2E0));text(count,8,hh-16,90,*reinterpret_cast<u32*>(0x15FB2D4)>=*reinterpret_cast<u32*>(0x15FB2D8)?0x3030CC:0x797979);sprite(4,101,hh-16);text(weight,120,hh-16,ww-140,*reinterpret_cast<u32*>(0x15FB2DC)>=*reinterpret_cast<u32*>(0x15FB2E0)?0x3030CC:0x797979);sprite(5,ww-15,hh-15);

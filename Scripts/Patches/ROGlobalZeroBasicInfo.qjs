@@ -18,14 +18,14 @@
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
 *   Created Date  : 2026-07-18                                             *
-*   Last Modified : 2026-08-12                                             *
+*   Last Modified : 2026-10-18                                             *
 *                                                                          *
 *   Description   : Replaces the classic and AP-class compact              *
 *                   UIBasicInfoWnd draw branches in the 2025-07-16         *
-*                   Ragexe with the RO Global Zero 252x74 HP/SP/AP HUD.    *
+*                   Ragexe with the supplied 280x70 HP/SP/AP HUD.           *
 *                   It draws the live Base Level, character name, all      *
 *                   three gauge values and percentages, creates a native   *
-*                   66x66 Job icon child, adds native Job/gauge hover      *
+*                   67x70 Job icon child, adds native Job/gauge hover      *
 *                   tooltips, preserves the two legacy title buttons in    *
 *                   Classic UI, suppresses them only in New UI, and forces *
 *                   Alt+V to retain the compact layout. The AP             *
@@ -114,6 +114,7 @@ const BasicInfoZeroStatic = {
 	Session: 0x015FA3C0,
 	CurrentJob: 0x015FB9C8,
 	BaseLevel: 0x015FB9F0,
+	JobLevel: 0x015FB9F8,
 	CurrentHP: 0x015FF908,
 	MaximumHP: 0x015FF90C,
 	CurrentSP: 0x015FF910,
@@ -123,7 +124,8 @@ const BasicInfoZeroStatic = {
 	MissingAPMaximum: 200,
 	TabItmFormat: 0x0102AC48,
 	NameControlOffset: 0xC0,
-	LocalSize: 0x188,
+	LocalSize: 0x190,
+	TextHeight: 0x188,
 	NameBuffer: 0x00,
 	ValueBuffer: 0x100,
 	PercentBuffer: 0x140,
@@ -133,20 +135,24 @@ const BasicInfoZeroStatic = {
 	APWidth: 0x17C,
 	CurrentAP: 0x180,
 	MaximumAP: 0x184,
-	PanelWidth: 252,
-	PanelHeight: 74,
+	PanelWidth: 280,
+	PanelHeight: 70,
 	ClassicPanelWidth: 220,
-	JobIconX: 1,
-	JobIconY: 7,
-	JobIconSize: 66,
-	StockJobIconSize: 25,
-	StockJobIconOffset: 20,
+	JobIconX: 0,
+	JobIconY: 0,
+	JobIconSize: 67,
 	// Reuse the supplied framed RO Global class art by lineage. Newer and
-	// mounted IDs intentionally resolve to an original pointed-ellipse icon;
-	// stock renewalparty art is only the last resort for unmapped jobs.
+	// mounted IDs resolve to the supplied circular lineage icons. Unknown
+	// classes retain a circular Novice fallback.
 	JobAliases: [
+		[4001, 0], [4002, 1], [4003, 2], [4004, 3], [4005, 4],
+		[4006, 5], [4007, 6], [23, 0], [4045, 0],
+		[4023, 0], [4024, 1], [4025, 2], [4026, 3], [4027, 4],
+		[4028, 5], [4029, 6], [4030, 7], [4031, 8], [4032, 9],
+		[4033, 10], [4034, 11], [4035, 12], [4037, 14], [4038, 15],
+		[4039, 16], [4040, 17], [4041, 18], [4042, 19], [4043, 20],
 		[13, 7], [21, 14], [4014, 4008], [4022, 4015],
-		[4036, 4030], [4044, 4037], [4048, 1],
+		[4036, 7], [4044, 14], [4048, 1],
 		[4054, 4008], [4055, 4010], [4056, 4012], [4057, 4009],
 		[4058, 4011], [4059, 4013], [4060, 4008], [4061, 4010],
 		[4062, 4012], [4063, 4009], [4064, 4011], [4065, 4013],
@@ -174,22 +180,22 @@ const BasicInfoZeroStatic = {
 		[4335, 4010], [4336, 4009], [4337, 4012], [4338, 4015],
 		[4339, 4019], [4340, 4018], [4341, 4017], [4342, 4016],
 		[4343, 4020], [4344, 4021]
-	],	GaugeFrameX: 56,
-	GaugeFrameY: 16,
-	GaugeX: 61,
-	GaugeWidth: 182,
-	TitleX: 66,
-	TitleY: 1,
-	HPY: 17,
-	HPHeight: 18,
-	SPY: 36,
-	SPHeight: 11,
-	APY: 50,
-	APHeight: 11,
+	],	GaugeFrameX: 32,
+	GaugeFrameY: 10,
+	GaugeX: 64,
+	GaugeWidth: 213,
+	TitleX: 70,
+	TitleY: 10,
+	HPY: 26,
+	HPHeight: 14,
+	SPY: 41,
+	SPHeight: 14,
+	APY: 56,
+	APHeight: 12,
 	TooltipXOffset: 16,
 	TooltipYOffset: -16,
-	White: 0x00FFFFFF,
-	Shadow: 0x00000000
+	White: 0x00634430, // COLORREF for #304463
+	Shadow: 0x00FFFFFF
 };
 
 BasicInfoZeroStatic.hexNorm = function(hex)
@@ -415,7 +421,7 @@ BasicInfoZeroStatic.emitDrawFull = function(a, pathVir, x, y, label)
 {
 	const done = `${label}_done`;
 	BasicInfoZeroStatic.emitLoadSurface(a, {local: false, value: pathVir}, done);
-	BasicInfoZeroStatic.pushImm(a, 0);          // alpha/default blend
+	BasicInfoZeroStatic.pushImm(a, 0);          // fixed-size PNG (no stretching)
 	a.emit(0x50);                              // surface
 	BasicInfoZeroStatic.pushImm(a, y);
 	BasicInfoZeroStatic.pushImm(a, x);
@@ -424,59 +430,105 @@ BasicInfoZeroStatic.emitDrawFull = function(a, pathVir, x, y, label)
 	a.label(done);
 };
 
-BasicInfoZeroStatic.emitDrawPart = function(
-	a, pathVir, x, y, widthOffset, height, label
-)
+// Private source-over crop for the live gradient strips. Shared PNG helpers
+// remain unchanged; this routine also handles one-pixel near-empty gauges.
+BasicInfoZeroStatic.buildGaugeDraw = function(blend)
 {
-	const done = `${label}_done`;
-	a.emit(0x83, 0xBD); a.dword(widthOffset); a.emit(0x00); // CMP [EBP+width],0
-	a.jcc(0x8E, done);                         // JLE done
+	const a = BasicInfoZeroStatic.asm();
+	// thiscall(x,y,texture,width,height), source x/y=0, preserve source stride.
+	a.emit(0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x18, 0x53, 0x56, 0x57);
+	a.emit(0x8B, 0x71, 0x24, 0x85, 0xF6); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x4D, 0x10, 0x85, 0xC9); a.jcc(0x84, "done");
+	a.emit(0x8B, 0x46, 0x18, 0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x83, 0x7D, 8, 0); a.jcc(0x8C, "done");
+	a.emit(0x83, 0x7D, 12, 0); a.jcc(0x8C, "done");
+	a.emit(0x8B, 0x81); a.dword(0x114);
+	a.emit(0xC1, 0xE0, 2, 0x89, 0x45, 0xF4); // source stride
+	a.emit(0x8B, 0x81); a.dword(0x11C);
+	a.emit(0x85, 0xC0); a.jcc(0x84, "done");
+	a.emit(0x89, 0x45, 0xF8);
+	a.emit(0x8B, 0x56, 4, 0x2B, 0x55, 8); // available destination width
+	a.emit(0x3B, 0x91); a.dword(0x114); a.jcc(0x8E, "source_width_ready");
+	a.emit(0x8B, 0x91); a.dword(0x114);
+	a.label("source_width_ready");
+	a.emit(0x3B, 0x55, 0x14); a.jcc(0x8E, "width_ready");
+	a.emit(0x8B, 0x55, 0x14);
+	a.label("width_ready"); a.emit(0x85, 0xD2); a.jcc(0x8E, "done");
+	a.emit(0x89, 0x55, 0xF0);
+	a.emit(0x8B, 0x56, 8, 0x2B, 0x55, 12);
+	a.emit(0x3B, 0x91); a.dword(0x118); a.jcc(0x8E, "source_height_ready");
+	a.emit(0x8B, 0x91); a.dword(0x118);
+	a.label("source_height_ready");
+	a.emit(0x3B, 0x55, 0x18); a.jcc(0x8E, "height_ready");
+	a.emit(0x8B, 0x55, 0x18);
+	a.label("height_ready"); a.emit(0x85, 0xD2); a.jcc(0x8E, "done");
+	a.emit(0x89, 0x55, 0xEC, 0x8B, 0x46, 4, 0xC1, 0xE0, 2, 0x89, 0x45, 0xE8);
+	a.emit(0x0F, 0xAF, 0x45, 12, 0x03, 0x46, 0x18, 0x8B, 0x55, 8);
+	a.emit(0x8D, 0x04, 0x90, 0x89, 0x45, 0xFC);
+	a.label("row"); a.emit(0x8B, 0x7D, 0xFC, 0x33, 0xDB);
+	a.label("pixel");
+	a.emit(0x8B, 0x55, 0xF8, 0xFF, 0x37, 0xFF, 0x34, 0x9A); a.call(blend);
+	a.emit(0x89, 0x07, 0x83, 0xC7, 4, 0x43, 0x3B, 0x5D, 0xF0); a.jcc(0x8C, "pixel");
+	a.emit(0x8B, 0x45, 0xF4, 0x01, 0x45, 0xF8, 0x8B, 0x45, 0xE8, 0x01, 0x45, 0xFC);
+	a.emit(0xFF, 0x4D, 0xEC); a.jcc(0x85, "row");
+	a.emit(0xC6, 0x46, 0x28, 1, 0xC6, 0x46, 0x1C, 1);
+	a.label("done"); a.emit(0x5F, 0x5E, 0x5B, 0x8B, 0xE5, 0x5D, 0xC2, 0x14, 0);
+	return a;
+};
+
+BasicInfoZeroStatic.emitDrawPart = function(a, pathVir, x, y, widthOffset, height, label)
+{
+	const done = label + "_done";
+	a.emit(0x83, 0xBD); a.dword(widthOffset); a.emit(0);
+	a.jcc(0x8E, done);
 	BasicInfoZeroStatic.emitLoadSurface(a, {local: false, value: pathVir}, done);
-	BasicInfoZeroStatic.pushImm(a, height);     // source height
-	a.emit(0xFF, 0xB5); a.dword(widthOffset); // source width
-	BasicInfoZeroStatic.pushImm(a, 0);          // source y
-	BasicInfoZeroStatic.pushImm(a, 0);          // source x
-	BasicInfoZeroStatic.pushImm(a, 0);          // use explicit source rectangle
-	BasicInfoZeroStatic.pushImm(a, 0);          // alpha/default blend
-	a.emit(0x50);                              // surface
+	BasicInfoZeroStatic.pushImm(a, height);
+	a.emit(0xFF, 0xB5); a.dword(widthOffset);
+	a.emit(0x50);
 	BasicInfoZeroStatic.pushImm(a, y);
 	BasicInfoZeroStatic.pushImm(a, x);
-	a.emit(0x8B, 0xCE);
-	a.call(BasicInfoZeroStatic.ImageDrawPart);
+	a.emit(0x8B, 0xCE); a.call(BasicInfoZeroStatic.ImageDrawPart);
 	a.label(done);
 };
 
-BasicInfoZeroStatic.emitRatioWidth = function(
-	a, currentSource, maximumSource, outputOffset, label
-)
+// Use a full-width product before division: large live HP values must not
+// overflow the signed 32-bit multiplication used by the old narrow HUD.
+BasicInfoZeroStatic.emitScaledValue = function(a, current, maximum, scale, label, round = false)
 {
-	const zero = `${label}_zero`;
-	const clamp = `${label}_clamp`;
-	const done = `${label}_done`;
-	BasicInfoZeroStatic.emitLoadEax(a, currentSource);
-	a.emit(0x85, 0xC0);
-	a.jcc(0x8E, zero);                         // JLE zero
-	BasicInfoZeroStatic.emitLoadEcx(a, maximumSource);
-	a.emit(0x85, 0xC9);
-	a.jcc(0x8E, zero);
-	a.emit(0x69, 0xC0); a.dword(BasicInfoZeroStatic.GaugeWidth);
-	a.emit(0x99, 0xF7, 0xF9);                 // CDQ / IDIV ECX
-	a.emit(0x3D); a.dword(BasicInfoZeroStatic.GaugeWidth);
-	a.jcc(0x8E, clamp);                        // JLE clamp
-	a.emit(0xB8); a.dword(BasicInfoZeroStatic.GaugeWidth);
-	a.label(clamp);
-	a.emit(0x89, 0x85); a.dword(outputOffset); // MOV [EBP+output],EAX
-	a.jmp(done);
-	a.label(zero);
-	a.emit(0xC7, 0x85); a.dword(outputOffset); a.dword(0);
-	a.label(done);
+	BasicInfoZeroStatic.emitLoadEax(a, current);
+	a.emit(0x85, 0xC0); a.jcc(0x8E, label + "_zero");
+	BasicInfoZeroStatic.emitLoadEcx(a, maximum);
+	a.emit(0x85, 0xC9); a.jcc(0x8E, label + "_zero");
+	a.emit(0x3B, 0xC1); a.jcc(0x8D, label + "_full");
+	a.emit(0xBA); a.dword(scale);
+	a.emit(0xF7, 0xE2); // MUL EDX -> EDX:EAX
+	if (round)
+	{
+		a.emit(0x8B, 0xF9, 0xD1, 0xEF, 0x03, 0xC7, 0x83, 0xD2, 0x00);
+	}
+	a.emit(0xF7, 0xF1); // DIV ECX
+	a.jmp(label + "_done");
+	a.label(label + "_full"); a.emit(0xB8); a.dword(scale);
+	a.jmp(label + "_done");
+	a.label(label + "_zero"); a.emit(0x33, 0xC0);
+	a.label(label + "_done");
+};
+
+BasicInfoZeroStatic.emitRatioWidth = function(a, current, maximum, output, label)
+{
+	BasicInfoZeroStatic.emitScaledValue(a, current, maximum,
+		BasicInfoZeroStatic.GaugeWidth, label, true);
+	a.emit(0x89, 0x85); a.dword(output);
 };
 
 BasicInfoZeroStatic.emitTextWidth = function(a, bufferOffset, height, bold)
 {
 	BasicInfoZeroStatic.pushImm(a, 0);
 	BasicInfoZeroStatic.pushImm(a, 0);
-	BasicInfoZeroStatic.pushImm(a, height);
+	if (typeof height === "number")
+		BasicInfoZeroStatic.pushImm(a, height);
+	else
+		BasicInfoZeroStatic.emitPushDword(a, height);
 	BasicInfoZeroStatic.pushImm(a, bold);
 	BasicInfoZeroStatic.pushImm(a, 0);
 	BasicInfoZeroStatic.pushLocal(a, bufferOffset);
@@ -491,7 +543,10 @@ BasicInfoZeroStatic.emitText = function(
 	BasicInfoZeroStatic.pushImm(a, 0);
 	BasicInfoZeroStatic.pushImm(a, 0);
 	BasicInfoZeroStatic.pushImm(a, color);
-	BasicInfoZeroStatic.pushImm(a, height);
+	if (typeof height === "number")
+		BasicInfoZeroStatic.pushImm(a, height);
+	else
+		BasicInfoZeroStatic.emitPushDword(a, height);
 	BasicInfoZeroStatic.pushImm(a, bold);
 	BasicInfoZeroStatic.pushImm(a, 0);
 	BasicInfoZeroStatic.pushLocal(a, bufferOffset);
@@ -507,78 +562,49 @@ BasicInfoZeroStatic.emitText = function(
 };
 
 BasicInfoZeroStatic.emitValueRow = function(
-	a, currentSource, maximumSource, valueFormatVir, percentFormatVir, y, label
+	a, currentSource, maximumSource, formats, y, label
 )
 {
-	// Current / maximum.
+	// Draw the HP/SP/AP label separately from the centered live values.
+	a.emit(0x68); a.dword(formats[label]);
+	BasicInfoZeroStatic.pushLocal(a, BasicInfoZeroStatic.ValueBuffer);
+	a.call(BasicInfoZeroStatic.Sprintf); a.emit(0x83, 0xC4, 0x08);
+	BasicInfoZeroStatic.emitText(a, BasicInfoZeroStatic.ValueBuffer,
+		70, y, BasicInfoZeroStatic.White, 11, 0);
 	BasicInfoZeroStatic.emitPushDword(a, maximumSource);
 	BasicInfoZeroStatic.emitPushDword(a, currentSource);
-	a.emit(0x68); a.dword(valueFormatVir);
+	a.emit(0x68); a.dword(formats.value);
 	BasicInfoZeroStatic.pushLocal(a, BasicInfoZeroStatic.ValueBuffer);
-	a.call(BasicInfoZeroStatic.Sprintf);
-	a.emit(0x83, 0xC4, 0x10);
-	BasicInfoZeroStatic.emitTextWidth(
-		a, BasicInfoZeroStatic.ValueBuffer, 14, 1
-	);
-	a.emit(0xD1, 0xF8);                       // SAR EAX,1
-	a.emit(0xBA); a.dword(
-		BasicInfoZeroStatic.GaugeX + (BasicInfoZeroStatic.GaugeWidth >> 1)
-	);
-	a.emit(0x2B, 0xD0);                       // SUB EDX,EAX
-	a.emit(0x89, 0x95); a.dword(BasicInfoZeroStatic.TextX);
-	a.emit(0xFF, 0x85); a.dword(BasicInfoZeroStatic.TextX);
-	BasicInfoZeroStatic.emitText(
-		a, BasicInfoZeroStatic.ValueBuffer, BasicInfoZeroStatic.TextX,
-		y + 1, BasicInfoZeroStatic.Shadow, 14, 1, true
-	);
-	a.emit(0xFF, 0x8D); a.dword(BasicInfoZeroStatic.TextX);
-	BasicInfoZeroStatic.emitText(
-		a, BasicInfoZeroStatic.ValueBuffer, BasicInfoZeroStatic.TextX,
-		y, BasicInfoZeroStatic.White, 14, 1, true
-	);
-
-	// Percentage, clamped to the visible 0..100 range.
-	BasicInfoZeroStatic.emitLoadEcx(a, maximumSource);
-	a.emit(0x85, 0xC9);
-	a.jcc(0x8E, `${label}_zero_percent`);
-	BasicInfoZeroStatic.emitLoadEax(a, currentSource);
-	a.emit(0x85, 0xC0);
-	a.jcc(0x8E, `${label}_zero_percent`);
-	a.emit(0x6B, 0xC0, 0x64, 0x99, 0xF7, 0xF9);
-	a.emit(0x83, 0xF8, 0x64);
-	a.jcc(0x8E, `${label}_format_percent`);
-	a.emit(0xB8); a.dword(100);
-	a.jmp(`${label}_format_percent`);
-	a.label(`${label}_zero_percent`);
-	a.emit(0x33, 0xC0);
-	a.label(`${label}_format_percent`);
-	a.emit(0x50);
-	a.emit(0x68); a.dword(percentFormatVir);
+	a.call(BasicInfoZeroStatic.Sprintf); a.emit(0x83, 0xC4, 0x10);
+	const font = {local: BasicInfoZeroStatic.TextHeight};
+	a.emit(0xC7, 0x85); a.dword(font.local); a.dword(11);
+	a.label(label + "_fit_value");
+	BasicInfoZeroStatic.emitTextWidth(a, BasicInfoZeroStatic.ValueBuffer, font, 0);
+	a.emit(0x3D); a.dword(142); a.jcc(0x8E, label + "_value_ready");
+	a.emit(0x83, 0xBD); a.dword(font.local); a.emit(8);
+	a.jcc(0x8E, label + "_value_ready");
+	a.emit(0xFF, 0x8D); a.dword(font.local);
+	a.jmp(label + "_fit_value");
+	a.label(label + "_value_ready");
+	a.emit(0xD1, 0xF8, 0xBA); a.dword(165); // center of x=94..236
+	a.emit(0x2B, 0xD0, 0x89, 0x95); a.dword(BasicInfoZeroStatic.TextX);
+	BasicInfoZeroStatic.emitText(a, BasicInfoZeroStatic.ValueBuffer,
+		BasicInfoZeroStatic.TextX, y, BasicInfoZeroStatic.White, font, 0, true);
+	BasicInfoZeroStatic.emitScaledValue(a, currentSource, maximumSource, 100,
+		label + "_percent");
+	a.emit(0x50, 0x68); a.dword(formats.percent);
 	BasicInfoZeroStatic.pushLocal(a, BasicInfoZeroStatic.PercentBuffer);
-	a.call(BasicInfoZeroStatic.Sprintf);
-	a.emit(0x83, 0xC4, 0x0C);
-	BasicInfoZeroStatic.emitTextWidth(
-		a, BasicInfoZeroStatic.PercentBuffer, 14, 1
-	);
-	a.emit(0xBA); a.dword(
-		BasicInfoZeroStatic.GaugeX + BasicInfoZeroStatic.GaugeWidth - 2
-	);
-	a.emit(0x2B, 0xD0);
-	a.emit(0x89, 0x95); a.dword(BasicInfoZeroStatic.TextX);
-	a.emit(0xFF, 0x85); a.dword(BasicInfoZeroStatic.TextX);
-	BasicInfoZeroStatic.emitText(
-		a, BasicInfoZeroStatic.PercentBuffer, BasicInfoZeroStatic.TextX,
-		y + 1, BasicInfoZeroStatic.Shadow, 14, 1, true
-	);
-	a.emit(0xFF, 0x8D); a.dword(BasicInfoZeroStatic.TextX);
-	BasicInfoZeroStatic.emitText(
-		a, BasicInfoZeroStatic.PercentBuffer, BasicInfoZeroStatic.TextX,
-		y, BasicInfoZeroStatic.White, 14, 1, true
-	);
+	a.call(BasicInfoZeroStatic.Sprintf); a.emit(0x83, 0xC4, 0x0C);
+	BasicInfoZeroStatic.emitTextWidth(a, BasicInfoZeroStatic.PercentBuffer, 11, 0);
+	a.emit(0xBA); a.dword(274);
+	a.emit(0x2B, 0xD0, 0x89, 0x95); a.dword(BasicInfoZeroStatic.TextX);
+	BasicInfoZeroStatic.emitText(a, BasicInfoZeroStatic.PercentBuffer,
+		BasicInfoZeroStatic.TextX, y, BasicInfoZeroStatic.White, 11, 0, true);
 };
 
 BasicInfoZeroStatic.buildCompactDraw = function(
-	paths, formats, exitVir, fallbackVir, fallbackKind, themeStateVir, loadThemeVir
+	paths, formats, exitVir, fallbackVir, fallbackKind, themeStateVir, loadThemeVir,
+	jobChildOffset, basicInfoOffset
 )
 {
 	const a = BasicInfoZeroStatic.asm();
@@ -633,46 +659,33 @@ BasicInfoZeroStatic.buildCompactDraw = function(
 	a.dword(BasicInfoZeroStatic.MissingAPMaximum);
 	a.label("ap_values_ready");
 
-	// ImageDraw has no destination-size arguments: the precomposited frame
-	// remains at its intrinsic 194x50 dimensions with no scaling, stretching,
-	// or cropping. Its divider decoration is below the live HP layer.
-	BasicInfoZeroStatic.emitDrawFull(
-		a, paths.gauge, BasicInfoZeroStatic.GaugeFrameX,
-		BasicInfoZeroStatic.GaugeFrameY, "gauge"
-	);
-
-	// Live fills use the client's cropped-image draw path. The frame's true
-	// interior spans source x=5..186 (182 pixels); clipping the nominal 184px
-	// textures to that width preserves its x=187..189 right border/cap.
-	BasicInfoZeroStatic.emitRatioWidth(
-		a, BasicInfoZeroStatic.CurrentHP, BasicInfoZeroStatic.MaximumHP,
-		BasicInfoZeroStatic.HPWidth, "hp_width"
-	);
-	BasicInfoZeroStatic.emitDrawPart(
-		a, paths.hp, BasicInfoZeroStatic.GaugeX, BasicInfoZeroStatic.HPY,
-		BasicInfoZeroStatic.HPWidth, BasicInfoZeroStatic.HPHeight, "hp"
-	);
-	BasicInfoZeroStatic.emitRatioWidth(
-		a, BasicInfoZeroStatic.CurrentSP, BasicInfoZeroStatic.MaximumSP,
-		BasicInfoZeroStatic.SPWidth, "sp_width"
-	);
-	// SP begins immediately below divider row 19 and occupies frame-local rows
-	// 20..30. Frame rows 31..33 retain the separator above the new AP slot.
-	BasicInfoZeroStatic.emitDrawPart(
-		a, paths.sp, BasicInfoZeroStatic.GaugeX, BasicInfoZeroStatic.SPY,
-		BasicInfoZeroStatic.SPWidth, BasicInfoZeroStatic.SPHeight, "sp"
-	);
-	BasicInfoZeroStatic.emitRatioWidth(
-		a, {local: BasicInfoZeroStatic.CurrentAP},
-		{local: BasicInfoZeroStatic.MaximumAP},
-		BasicInfoZeroStatic.APWidth, "ap_width"
-	);
-	// The AP slot starts at frame-local row 34. The supplied bright 184x11
-	// layer keeps AP visually distinct from the normal blue SP row.
-	BasicInfoZeroStatic.emitDrawPart(
-		a, paths.ap, BasicInfoZeroStatic.GaugeX, BasicInfoZeroStatic.APY,
-		BasicInfoZeroStatic.APWidth, BasicInfoZeroStatic.APHeight, "ap"
-	);
+	// Recompose from transparent pixels, so old values/fills cannot persist.
+	BasicInfoZeroStatic.pushImm(a, 0);
+	a.emit(0x8B, 0xCE); a.call(BasicInfoZeroStatic.ClearSurface);
+	BasicInfoZeroStatic.emitDrawFull(a, paths.background, 0, 0, "background");
+	BasicInfoZeroStatic.emitRatioWidth(a, BasicInfoZeroStatic.CurrentHP,
+		BasicInfoZeroStatic.MaximumHP, BasicInfoZeroStatic.HPWidth, "hp_width");
+	BasicInfoZeroStatic.emitScaledValue(a, BasicInfoZeroStatic.CurrentHP,
+		BasicInfoZeroStatic.MaximumHP, 100, "hp_color");
+	a.emit(0x83, 0xF8, 25); a.jcc(0x8F, "hp_green");
+	BasicInfoZeroStatic.emitDrawPart(a, paths.hpRed, BasicInfoZeroStatic.GaugeX,
+		BasicInfoZeroStatic.HPY, BasicInfoZeroStatic.HPWidth, BasicInfoZeroStatic.HPHeight, "hp_red");
+	a.jmp("hp_ready");
+	a.label("hp_green");
+	BasicInfoZeroStatic.emitDrawPart(a, paths.hp, BasicInfoZeroStatic.GaugeX,
+		BasicInfoZeroStatic.HPY, BasicInfoZeroStatic.HPWidth, BasicInfoZeroStatic.HPHeight, "hp_green");
+	a.label("hp_ready");
+	BasicInfoZeroStatic.emitRatioWidth(a, BasicInfoZeroStatic.CurrentSP,
+		BasicInfoZeroStatic.MaximumSP, BasicInfoZeroStatic.SPWidth, "sp_width");
+	BasicInfoZeroStatic.emitDrawPart(a, paths.sp, BasicInfoZeroStatic.GaugeX,
+		BasicInfoZeroStatic.SPY, BasicInfoZeroStatic.SPWidth, BasicInfoZeroStatic.SPHeight, "sp");
+	BasicInfoZeroStatic.emitRatioWidth(a, {local: BasicInfoZeroStatic.CurrentAP},
+		{local: BasicInfoZeroStatic.MaximumAP}, BasicInfoZeroStatic.APWidth, "ap_width");
+	BasicInfoZeroStatic.emitDrawPart(a, paths.ap, BasicInfoZeroStatic.GaugeX,
+		BasicInfoZeroStatic.APY, BasicInfoZeroStatic.APWidth, BasicInfoZeroStatic.APHeight, "ap");
+	// Restore the supplied rounded borders over the clipped gradient fills.
+	BasicInfoZeroStatic.emitDrawFull(a, paths.gauge,
+		BasicInfoZeroStatic.GaugeFrameX, BasicInfoZeroStatic.GaugeFrameY, "gauge");
 
 	// The stock compact name child at +C0 is drawn after this parent and would
 	// overlap the custom level/name title. Keep that child off-canvas while the
@@ -686,51 +699,47 @@ BasicInfoZeroStatic.buildCompactDraw = function(
 	a.emit(0xFF, 0x50, 0x10);                 // CALL [EAX+10] (SetPosition)
 	a.label("stock_name_hidden");
 
-	// "Lv.<base> <character>" title. GetCharacterName returns the client's
-	// decoded session-name buffer, so the active codepage remains authoritative.
+	// The decoded native name remains authoritative. Fit a long UTF-8 name
+	// to the 132px name strip, trimming only at character boundaries.
 	a.emit(0xB9); a.dword(BasicInfoZeroStatic.Session);
 	a.call(BasicInfoZeroStatic.GetCharacterName);
-	a.emit(0x50);
-	a.emit(0xFF, 0x35); a.dword(BasicInfoZeroStatic.BaseLevel);
-	a.emit(0x68); a.dword(formats.name);
+	a.emit(0x50, 0x68); a.dword(formats.name);
 	BasicInfoZeroStatic.pushLocal(a, BasicInfoZeroStatic.NameBuffer);
-	a.call(BasicInfoZeroStatic.Sprintf);
-	a.emit(0x83, 0xC4, 0x10);
-	// Match the readable hovered-world-name treatment: one bold white glyph
-	// pass surrounded by a one-pixel black outline. This avoids the merged
-	// horizontal strokes produced by the previous double-strike.
-	for (const [dx, dy] of [
-		[-1, -1], [0, -1], [1, -1],
-		[-1, 0],            [1, 0],
-		[-1, 1],  [0, 1],  [1, 1]
-	])
-	{
-		BasicInfoZeroStatic.emitText(
-			a, BasicInfoZeroStatic.NameBuffer,
-			BasicInfoZeroStatic.TitleX + dx,
-			BasicInfoZeroStatic.TitleY + dy,
-			BasicInfoZeroStatic.Shadow, 14, 1
-		);
-	}
-	BasicInfoZeroStatic.emitText(
-		a, BasicInfoZeroStatic.NameBuffer,
+	a.call(BasicInfoZeroStatic.Sprintf); a.emit(0x83, 0xC4, 0x0C);
+	BasicInfoZeroStatic.emitTextWidth(a, BasicInfoZeroStatic.NameBuffer, 11, 0);
+	a.emit(0x3D); a.dword(132); a.jcc(0x8E, "name_ready");
+	a.emit(0x33, 0xFF); // EDI=byte length
+	a.label("name_length");
+	a.emit(0x80, 0x7C, 0x3D, 0x00, 0x00); a.jcc(0x84, "name_trim");
+	a.emit(0x47); a.jmp("name_length");
+	a.label("name_trim");
+	a.emit(0x4F, 0x85, 0xFF); a.jcc(0x8E, "name_ellipsis");
+	a.emit(0x8A, 0x44, 0x3D, 0x00, 0x24, 0xC0, 0x3C, 0x80);
+	a.jcc(0x84, "name_trim");
+	a.label("name_ellipsis");
+	a.emit(0xC7, 0x44, 0x3D, 0x00); a.dword(0x002E2E2E);
+	BasicInfoZeroStatic.emitTextWidth(a, BasicInfoZeroStatic.NameBuffer, 11, 0);
+	a.emit(0x3D); a.dword(132); a.jcc(0x8F, "name_trim");
+	a.label("name_ready");
+	BasicInfoZeroStatic.emitText(a, BasicInfoZeroStatic.NameBuffer,
 		BasicInfoZeroStatic.TitleX, BasicInfoZeroStatic.TitleY,
-		BasicInfoZeroStatic.White, 14, 1
-	);
+		BasicInfoZeroStatic.White, 11, 0);
+	BasicInfoZeroStatic.emitValueRow(a, BasicInfoZeroStatic.CurrentHP,
+		BasicInfoZeroStatic.MaximumHP, formats, 25, "hp");
+	BasicInfoZeroStatic.emitValueRow(a, BasicInfoZeroStatic.CurrentSP,
+		BasicInfoZeroStatic.MaximumSP, formats, 40, "sp");
+	BasicInfoZeroStatic.emitValueRow(a, {local: BasicInfoZeroStatic.CurrentAP},
+		{local: BasicInfoZeroStatic.MaximumAP}, formats, 54, "ap");
 
-	BasicInfoZeroStatic.emitValueRow(
-		a, BasicInfoZeroStatic.CurrentHP, BasicInfoZeroStatic.MaximumHP,
-		formats.value, formats.percent, 19, "hp"
-	);
-	BasicInfoZeroStatic.emitValueRow(
-		a, BasicInfoZeroStatic.CurrentSP, BasicInfoZeroStatic.MaximumSP,
-		formats.value, formats.percent, 35, "sp"
-	);
-	BasicInfoZeroStatic.emitValueRow(
-		a, {local: BasicInfoZeroStatic.CurrentAP},
-		{local: BasicInfoZeroStatic.MaximumAP},
-		formats.value, formats.percent, 49, "ap"
-	);
+	a.emit(0x8B, 0xCE); a.call(BasicInfoZeroStatic.FinalizePixels);
+
+	// Refresh the live level badge when the parent redraws (including level-up).
+	// Only touch the child belonging to this exact Basic Info instance.
+	a.emit(0x3B, 0x35); a.dword(themeStateVir + basicInfoOffset);
+	a.jcc(0x85, "restore");
+	a.emit(0x8B, 0x0D); a.dword(themeStateVir + jobChildOffset);
+	a.emit(0x85, 0xC9); a.jcc(0x84, "restore");
+	a.emit(0x8B, 0x01, 0xFF, 0x50, 0x50);
 
 	a.label("restore");
 	a.emit(0x8B, 0xE5);                       // MOV ESP,EBP
@@ -761,7 +770,7 @@ BasicInfoZeroStatic.emitJobSurfaceTry = function(
 	a.call(BasicInfoZeroStatic.LoadSurface);
 	a.emit(0x85, 0xC0);
 	a.jcc(0x84, missingLabel);
-	a.emit(0xBE); a.dword(drawOffset);           // centered offset for stock 25x25
+	a.emit(0xBE); a.dword(drawOffset);           // supplied artwork is drawn at its intrinsic size
 	a.jmp("draw_surface");
 };
 
@@ -775,7 +784,7 @@ BasicInfoZeroStatic.buildJobChildDraw = function(jobFormats, themeStateVir)
 	a.emit(0x53, 0x56, 0x57, 0x8B, 0xF9);     // preserve regs / EDI=this child
 	// The Job icon owns a persistent child surface. Clear it on every draw so
 	// switching to Classic cannot leave the last renewal icon cached onscreen.
-	BasicInfoZeroStatic.pushImm(a, 0xFFFF00FF);
+	BasicInfoZeroStatic.pushImm(a, 0);
 	a.emit(0x8B, 0xCF);
 	a.call(BasicInfoZeroStatic.ClearSurface);
 	a.emit(0x83, 0x3D); a.dword(themeStateVir); a.emit(0x00);
@@ -789,9 +798,7 @@ BasicInfoZeroStatic.buildJobChildDraw = function(jobFormats, themeStateVir)
 	a.emit(0x8B, 0xD8, 0x85, 0xDB);            // EBX=TexMgr
 	a.jcc(0x84, "done");
 
-	// Resolution order: exact framed art, framed lineage alias, exact stock,
-	// alias stock, then Novice. This keeps 3rd/4th and mounted variants in the
-	// original pointed-ellipse RO Global design.
+	// Supplied circular art: exact job, lineage alias, then Novice.
 	BasicInfoZeroStatic.emitJobSurfaceTry(
 		a, jobFormats.big, rawJob, 0, "resolve_alias"
 	);
@@ -816,43 +823,40 @@ BasicInfoZeroStatic.buildJobChildDraw = function(jobFormats, themeStateVir)
 	a.label("alias_ready");
 	a.emit(0x89, 0x85); a.dword(aliasJob);
 	a.emit(0x85, 0xC0);
-	a.jcc(0x84, "raw_stock");
+	a.jcc(0x84, "novice_fallback");
 	BasicInfoZeroStatic.emitJobSurfaceTry(
-		a, jobFormats.big, aliasJob, 0, "raw_stock"
+		a, jobFormats.big, aliasJob, 0, "novice_fallback"
 	);
 
-	a.label("raw_stock");
-	BasicInfoZeroStatic.emitJobSurfaceTry(
-		a, jobFormats.stock, rawJob,
-		BasicInfoZeroStatic.StockJobIconOffset, "alias_stock"
-	);
-	a.label("alias_stock");
-	a.emit(0x8B, 0x85); a.dword(aliasJob);
-	a.emit(0x85, 0xC0);
-	a.jcc(0x84, "generic_big");
-	BasicInfoZeroStatic.emitJobSurfaceTry(
-		a, jobFormats.stock, aliasJob,
-		BasicInfoZeroStatic.StockJobIconOffset, "generic_big"
-	);
-	a.label("generic_big");
+	a.label("novice_fallback");
 	a.emit(0xC7, 0x85); a.dword(aliasJob); a.dword(0);
-	BasicInfoZeroStatic.emitJobSurfaceTry(
-		a, jobFormats.big, aliasJob, 0, "generic_stock"
-	);
-	a.label("generic_stock");
-	BasicInfoZeroStatic.emitJobSurfaceTry(
-		a, jobFormats.stock, aliasJob,
-		BasicInfoZeroStatic.StockJobIconOffset, "done"
-	);
+	BasicInfoZeroStatic.emitJobSurfaceTry(a, jobFormats.big, aliasJob, 0, "level_badge");
 
 	a.label("draw_surface");
-	BasicInfoZeroStatic.pushImm(a, 1);           // alpha-enabled
+	BasicInfoZeroStatic.pushImm(a, 0);           // fixed-size PNG
 	a.emit(0x50);                                // surface
 	a.emit(0x56, 0x56);                          // centered Y / X
 	a.emit(0x8B, 0xCF);                         // MOV ECX,EDI
 	a.call(BasicInfoZeroStatic.ImageDraw);
 
+	// Draw badge after the circle in the same child, so it cannot be covered
+	// by the later native child composition. Its height includes the badge.
+	a.label("level_badge");
+	a.emit(0x8B, 0xF7); // ESI=this child for shared image/text helpers
+	BasicInfoZeroStatic.emitDrawFull(a, jobFormats.level, 10, 51, "level_frame");
+	a.emit(0xFF, 0x35); a.dword(BasicInfoZeroStatic.JobLevel);
+	a.emit(0xFF, 0x35); a.dword(BasicInfoZeroStatic.BaseLevel);
+	a.emit(0x68); a.dword(jobFormats.levelFormat);
+	BasicInfoZeroStatic.pushLocal(a, -0x100);
+	a.call(BasicInfoZeroStatic.Sprintf); a.emit(0x83, 0xC4, 0x10);
+	BasicInfoZeroStatic.emitTextWidth(a, -0x100, 11, 0);
+	a.emit(0xD1, 0xF8, 0xBA); a.dword(33);
+	a.emit(0x2B, 0xD0, 0x89, 0x95); a.dword(-0x110);
+	BasicInfoZeroStatic.emitText(a, -0x100, -0x110, 53,
+		BasicInfoZeroStatic.White, 11, 0, true);
+
 	a.label("done");
+	a.emit(0x8B, 0xCF); a.call(BasicInfoZeroStatic.FinalizePixels);
 	a.emit(0x5F, 0x5E, 0x5B);                   // POP EDI / ESI / EBX
 	a.emit(0x8B, 0xE5, 0x5D, 0xC3);             // restore frame / RET
 	return a;
@@ -962,7 +966,7 @@ BasicInfoZeroStatic.buildCreateWrapper = function(
 	a.emit(0x8B, 0xF8);
 	a.emit(0xC7, 0x07); a.dword(jobVtableVir);
 
-	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconSize);
+	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.PanelHeight);
 	BasicInfoZeroStatic.pushImm(a, BasicInfoZeroStatic.JobIconSize);
 	a.emit(0x8B, 0xCF);
 	a.call(BasicInfoZeroStatic.SetWindowSize);
@@ -1111,7 +1115,7 @@ BasicInfoZeroStatic.buildJobChildHover = function(themeStateVir, tooltips)
 	a.emit(0x8B, 0x45, 0x0C);                   // Y
 	a.emit(0x85, 0xC0);
 	a.jcc(0x88, "done");
-	a.emit(0x83, 0xF8, BasicInfoZeroStatic.JobIconSize);
+	a.emit(0x83, 0xF8, BasicInfoZeroStatic.PanelHeight);
 	a.jcc(0x8D, "done");
 
 	// The enlarged Job child overlaps the left edge of all three gauges. Parent
@@ -1425,37 +1429,27 @@ ROGlobalZeroBasicInfo = function(_)
 		BasicInfoZeroStatic.TitleButtonsSecondCreate,
 		BasicInfoZeroStatic.TitleButtonsSecondBytes
 	);
+	// Reuse the existing independent PNG builders without applying or changing
+	// the chat feature. Only these private HUD call sites use the allocations.
+	const n = AutoCombatUI.nativeHelpers;
+	const png = ModernChatUI.nativeHelpers;
+	const blend = n.allocateCode(png.buildBlendPixel());
+	BasicInfoZeroStatic.ImageDraw = n.allocateCode(png.buildPngDraw(blend.vir)).vir;
+	BasicInfoZeroStatic.ImageDrawPart = n.allocateCode(BasicInfoZeroStatic.buildGaugeDraw(blend.vir)).vir;
+	BasicInfoZeroStatic.FinalizePixels = n.allocateCode(png.buildFinalizePixels()).vir;
 	$$(_, 2, "Build RO Global Zero Basic Info resource paths");
+	const resource = file => BasicInfoZeroStatic.buildResourcePath("eitr_basicinfo\\" + file);
 	const paths = {
-		gauge: BasicInfoZeroStatic.buildResourcePath(
-			"uirenewal\\basicinfo\\gze_bg_ap.bmp"
-		),
-		hp: BasicInfoZeroStatic.buildResourcePath(
-			"uirenewal\\basicinfo\\gze_hp_normal_deco.bmp"
-		),
-		sp: BasicInfoZeroStatic.buildResourcePath(
-			"uirenewal\\basicinfo\\gze_sp_normal.bmp"
-		),
-		ap: BasicInfoZeroStatic.buildResourcePath(
-			"uirenewal\\basicinfo\\gze_ap_normal.bmp"
-		),
-		jobBigFormat: BasicInfoZeroStatic.buildResourcePath(
-			"uirenewal\\jobicon\\big2\\icon_job_%d.bmp"
-		),
-		jobStockFormat: BasicInfoZeroStatic.buildResourcePath(
-			"renewalparty\\icon_jobs_%d.bmp"
-		)
+		background: resource("bg.png"), gauge: resource("bg_barover.png"),
+		hp: resource("bar_hp_g_wide.png"), hpRed: resource("bar_hp_r_wide.png"),
+		sp: resource("bar_sp_wide.png"), ap: resource("bar_ap_wide.png"),
+		level: resource("bg_level.png"), jobBigFormat: resource("class\\%d.png")
 	};
+	const string = value => BasicInfoZeroStatic.allocateBytes(BasicInfoZeroStatic.asciiBytes(value))[1];
 	const formats = {
-		name: BasicInfoZeroStatic.allocateBytes(
-			BasicInfoZeroStatic.asciiBytes("Lv.%d %s")
-		)[1],
-		value: BasicInfoZeroStatic.allocateBytes(
-			BasicInfoZeroStatic.asciiBytes("%d / %d")
-		)[1],
-		percent: BasicInfoZeroStatic.allocateBytes(
-			BasicInfoZeroStatic.asciiBytes("%d%%")
-		)[1]
+		name: string("%.96s"), level: string("%d/%d"),
+		value: string("%d / %d"), percent: string("%d%%"),
+		hp: string("HP"), sp: string("SP"), ap: string("AP")
 	};
 	const tooltips = {
 		hp: BasicInfoZeroStatic.allocateBytes(
@@ -1473,7 +1467,7 @@ ROGlobalZeroBasicInfo = function(_)
 	const classicCode = BasicInfoZeroStatic.buildCompactDraw(
 		paths, formats, BasicInfoZeroStatic.ClassicCompactExit,
 		BasicInfoZeroStatic.ClassicCompactStockResume,
-		"classic", theme.stateVir, theme.loadVir
+		"classic", theme.stateVir, theme.loadVir, theme.jobChildOffset, theme.basicInfoOffset
 	);
 	const [classicCodePhy, classicCodeVir] = Exe.Allocate(
 		classicCode.bytes.length, 0x10
@@ -1482,7 +1476,7 @@ ROGlobalZeroBasicInfo = function(_)
 	const specialCode = BasicInfoZeroStatic.buildCompactDraw(
 		paths, formats, BasicInfoZeroStatic.SpecialCompactExit,
 		BasicInfoZeroStatic.SpecialCompactExit,
-		"special", theme.stateVir, theme.loadVir
+		"special", theme.stateVir, theme.loadVir, theme.jobChildOffset, theme.basicInfoOffset
 	);
 	const [specialCodePhy, specialCodeVir] = Exe.Allocate(
 		specialCode.bytes.length, 0x10
@@ -1491,7 +1485,7 @@ ROGlobalZeroBasicInfo = function(_)
 
 	$$(_, 4, "Create the native Job icon child renderer and vtable");
 	const childDrawCode = BasicInfoZeroStatic.buildJobChildDraw(
-		{big: paths.jobBigFormat, stock: paths.jobStockFormat},
+		{big: paths.jobBigFormat, level: paths.level, levelFormat: formats.level},
 		theme.stateVir
 	);
 	const [childDrawCodePhy, childDrawCodeVir] = Exe.Allocate(
@@ -1656,17 +1650,19 @@ ROGlobalZeroBasicInfo = function(_)
 			specialInsertVir: BasicInfoZeroStatic.SpecialCompactInsert,
 			specialExitVir: BasicInfoZeroStatic.SpecialCompactExit,
 			paths,
+			formats,
+			pngDrawVir: BasicInfoZeroStatic.ImageDraw,
+			gaugeDrawVir: BasicInfoZeroStatic.ImageDrawPart,
+			finalizeVir: BasicInfoZeroStatic.FinalizePixels,
 			tooltips: ["Health Pool", "Mana Pool", "Activity Points"],
 			tooltipAnchor: "live mouse +16,-16",
 			apMissingMaximumFallback: BasicInfoZeroStatic.MissingAPMaximum,
-			titleStyle: "bold white with one-pixel black outline",
+			titleStyle: "11px dark blue; bounded name strip; base/job badge",
 			childDrawCodeVir,
 			childDrawCodeSize: childDrawCode.bytes.length,
 			jobIconResolution:
-				"exact framed, framed lineage alias, stock, Novice fallback",
+				"exact circular art, circular lineage alias, circular Novice fallback",
 			jobAliasCount: BasicInfoZeroStatic.JobAliases.length,
-			stockJobIconSize: BasicInfoZeroStatic.StockJobIconSize,
-			stockJobIconOffset: BasicInfoZeroStatic.StockJobIconOffset,
 			childHoverCodeVir,
 			childHoverCodeSize: childHoverCode.bytes.length,
 			barHoverCodeVir,
@@ -1770,5 +1766,23 @@ ROGlobalZeroBasicInfo.validate = function()
 	catch (error)
 	{
 		return false;
+	}
+};
+
+// Package the supplied artwork beside each newly patched client. A private
+// asset folder preserves the user's original basicinfoui files byte-for-byte.
+ROGlobalZeroBasicInfo.onApplied = function()
+{
+	if (Warp.TestMode) return;
+	const prefix = String.fromCharCode(0xC0, 0xAF, 0xC0, 0xFA, 0xC0, 0xCE,
+		0xC5, 0xCD, 0xC6, 0xE4, 0xC0, 0xCC, 0xBD, 0xBA);
+	const target = System.DirPath(Warp.TgtExe) + '/data/texture/' + prefix + '/eitr_basicinfo';
+	if (!System.MkDir(target + '/class'))
+		throw Error('ROGlobalZeroBasicInfo: unable to create HUD asset directory');
+	const source = Warp.Path + 'Inputs/BasicInfoUI/assets/';
+	for (const file of ["bar_ap.png", "bar_ap_wide.png", "bar_hp_g.png", "bar_hp_g_wide.png", "bar_hp_r.png", "bar_hp_r_wide.png", "bar_sp.png", "bar_sp_wide.png", "bg.png", "bg_bar.png", "bg_barover.png", "bg_level.png", "class/0.png", "class/1.png", "class/10.png", "class/11.png", "class/12.png", "class/14.png", "class/15.png", "class/16.png", "class/17.png", "class/18.png", "class/19.png", "class/2.png", "class/20.png", "class/3.png", "class/4.png", "class/4008.png", "class/4009.png", "class/4010.png", "class/4011.png", "class/4012.png", "class/4013.png", "class/4015.png", "class/4016.png", "class/4017.png", "class/4018.png", "class/4019.png", "class/4020.png", "class/4021.png", "class/5.png", "class/6.png", "class/7.png", "class/8.png", "class/9.png", "class/icon_acolyte.png", "class/icon_archer.png", "class/icon_mage.png", "class/icon_merchant.png", "class/icon_novice.png", "class/icon_swordman.png", "class/icon_thief.png", "class/null.png"])
+	{
+		if (!System.Copy(source + file, target + '/' + file, true))
+			throw Error('ROGlobalZeroBasicInfo: unable to copy ' + file);
 	}
 };

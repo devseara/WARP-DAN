@@ -17,6 +17,10 @@ the user builds the client in WARP.
   Native 24-pixel item canvases are centered on those cells. Native grade, card,
   quantity and description rendering is retained. Hover uses the completed
   `inventoryui/selected_bg.png` frame; tooltip anchors follow the displayed cell.
+- Quantity labels fit inside their 32-pixel cells through 30000, including
+  three-digit stacks previously covered by the next cell. Native black text and
+  its white outline remain. This applies to personal and guild storage, in list
+  and block views, without changing the stored amount or transfer behavior.
 - The grip changes height from 445 to 701 pixels in 32-pixel rows. Width remains
   312. A diagonal drag cannot widen the window or scale its shadows.
 - Scroll controls are drawn and hit-tested only when the filtered view exceeds
@@ -32,6 +36,9 @@ the user builds the client in WARP.
 - Sidebar and dropdown expose All Items, Usable, Weapon, Armor, Miscelleneous,
   Card, Ammunition, Costume, Shadow Gear, Pet and Cash. The newer artwork's
   unsupported Sticker row is omitted for this client.
+- Weapon and Armor filters use the native item kinds `5` and `4`, respectively.
+  This corrects their reversed contents in both sidebar/dropdown selection and
+  list/block view. Knife belongs to Weapon; headgear and armor belong to Armor.
 
 The lock defaults to unlocked and is local to this Storage session. It blocks
 new item drags, Shift-right-click withdrawal, deposits and pending native deposit

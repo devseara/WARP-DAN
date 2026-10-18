@@ -2,7 +2,7 @@
  * Author: DevSeara.
  * Description: Replaces the existing Attendance menu action with a native
  * Attendance / Daily Quest / Daily Roll window on 2025-07-16 Ragexe.
- * DRUI v1/v2/v3 use independent server state, 0BF8 requests and a magic-gated
+ * DRUI v1/v2/v3/v4/v5 use independent server state, 0BF8 requests and a magic-gated
  * variable-length 0BF4 receive envelope. Stock quest replies pass through.
  * No external DLL, Lua replacements, new menu child, or Battle Pass changes.
  */
@@ -16,8 +16,8 @@ DailyRewardsUI = function(_)
 	const bytes=read(Warp.Path+"/Inputs/DailyRewardsUI/runtime.bin"),meta=JSON.parse(String.fromCharCode(...read(Warp.Path+"/Inputs/DailyRewardsUI/runtime.json")));
 	const size=u32(bytes,8),count=u32(bytes,12),api=u32(bytes,16),start=32+count*4;
 	let crc=0xFFFFFFFF;for(let i=32;i<bytes.length;++i){crc^=bytes[i];for(let j=0;j<8;++j)crc=(crc>>>1)^((crc&1)?0xEDB88320:0);}
-	if(bytes.length<32 || u32(bytes,0)!==0x49555244 || u32(bytes,4)!==3 || meta.version!==3 || meta.client!==20250716 ||
-		start+size!==bytes.length || size!==meta.size || api!==meta.exports.DailyApi || meta.api_size!==44 || api+44>size || u32(bytes,20)!==44 || u32(bytes,24)!==9364 || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))throw Error("DailyRewardsUI: invalid payload");
+	if(bytes.length<32 || u32(bytes,0)!==0x49555244 || u32(bytes,4)!==5 || meta.version!==5 || meta.client!==20250716 ||
+		start+size!==bytes.length || size!==meta.size || api!==meta.exports.DailyApi || meta.api_size!==44 || api+44>size || u32(bytes,20)!==44 || u32(bytes,24)!==9440 || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))throw Error("DailyRewardsUI: invalid payload");
 	const names=["DailyApi","DailyState","_DailyToggle@0","_DailyReceive@4","_DailyHit@8","@DailyDraw@8","@DailyDown@16","@DailyUp@16","@DailyMove@16","@DailyDrag@16","@DailyCursor@16","@DailyDestroy@12","_DailyTick@16","@DailyRightDown@16","@DailyRightUp@16","@DailyWheel@12"];
 	if(!Number.isInteger(meta.exports["_BestiaryPreview@32"]) || meta.exports["_BestiaryPreview@32"]<0 || meta.exports["_BestiaryPreview@32"]>=size)throw Error("DailyRewardsUI: missing monster renderer");
 	for(const name of names)if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("DailyRewardsUI: missing "+name);
@@ -52,11 +52,13 @@ DailyRewardsUI = function(_)
 	a.emit(0x66,0x83,0x7E,2,8);a.jcc(0x82,"stock");a.emit(0x81,0x7E,4);a.dword(0x49555244);a.jcc(0x85,"stock");
 	a.emit(0x66,0x81,0x7E,2);a.word(3308);a.jcc(0x84,"receive");
 	a.emit(0x66,0x81,0x7E,2);a.word(5268);a.jcc(0x84,"receive");
-	a.emit(0x66,0x81,0x7E,2);a.word(9364);a.jcc(0x85,"done");a.label("receive");a.emit(0x56);a.call(e("_DailyReceive@4"));
+	a.emit(0x66,0x81,0x7E,2);a.word(9364);a.jcc(0x84,"receive");
+	a.emit(0x66,0x81,0x7E,2);a.word(9420);a.jcc(0x84,"receive");
+	a.emit(0x66,0x81,0x7E,2);a.word(9440);a.jcc(0x85,"done");a.label("receive");a.emit(0x56);a.call(e("_DailyReceive@4"));
 	a.label("done");a.emit(0x61,0x9D);a.jmp(n.PacketMainLoopReturn);
 	a.label("stock");a.emit(0x61,0x9D);a.jmp(fallback);
 	const receiver=n.allocateCode(a);Exe.SetUint32(entryPhy,receiver.vir);
-	const record=[];for(const v of [n.allocateString("DailyRewardsUI.v3").vir,...names.map(e),receiver.vir,launcher.vir,fallback,e("DailyAnimation")])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);n.allocateBytes(record,4);
+	const record=[];for(const v of [n.allocateString("DailyRewardsUI.v5").vir,...names.map(e),receiver.vir,launcher.vir,fallback,e("DailyAnimation")])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);n.allocateBytes(record,4);
 	return true;
 };
 DailyRewardsUI.validate=()=>Exe.BuildDate===20250716;

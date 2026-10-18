@@ -14,6 +14,7 @@ def main():
     for start,end in [('struct Effect {','template<size_t N> void copy'),('template<size_t N> void copy','const char* type_name'),('w::u64 fingerprint(','void initialize('),('struct Builder {','void append_refine(')]:
         parts.append(source[source.index(start):source.index(end)])
     (out/'item_description_watch_under_test.inc').write_text(source[source.index('void reload()'):source.index('void process_request(')],encoding='utf8')
+    (out/'item_description_request_under_test.inc').write_text(source[source.index('void process_request('):source.rindex('} // namespace item_description')],encoding='utf8')
     (out/'item_description_under_test.inc').write_text('\n'.join(parts),encoding='utf8')
     compiler=args.compiler.resolve();vc=compiler.parents[3];sdk=Path('C:/Program Files (x86)/Windows Kits/10');ver=args.sdk_version
     env=os.environ.copy();env['INCLUDE']=';'.join(str(p)for p in[vc/'include',sdk/'Include'/ver/'ucrt',sdk/'Include'/ver/'shared',sdk/'Include'/ver/'um'])
@@ -29,7 +30,7 @@ def main():
     shutil.copy2(server/'db/item_description_db.yml',metadata/'item_description_db.yml')
     sources={};items=load_db(server,'db/item_db.yml','Prerenewal',sources);options=load_db(server,'db/item_randomopt_db.yml','Prerenewal',sources)
     (metadata/'ids.txt').write_text(' '.join(str(i) for i in items)+'\n'+' '.join(str(i) for i in options)+'\n')
-    result=subprocess.run([str(out/'server-test.exe'),str(out),str(metadata)],capture_output=True,text=True)
+    result=subprocess.run([str(out/'server-test.exe'),str(out),str(metadata)],capture_output=True,text=True,timeout=90)
     if result.returncode:raise RuntimeError(f'Server tests failed ({result.returncode}): '+result.stdout+result.stderr)
     report={'passed':True,'checks':result.stdout.strip(),'engine_boundaries_mocked':True,'source_sha256':hashlib.sha256((server/'src/map/item_description.cpp').read_bytes()).hexdigest()}
     (out/'verification.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))

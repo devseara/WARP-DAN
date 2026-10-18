@@ -27,6 +27,14 @@ the server tag adds preservation docs/checks without changing gameplay.
 
 ## Guards and testing
 
+**Local workflow update, October 15, 2026:** follow the all-feature preservation
+and test-scope rules in `AGENTS.md`. Unrelated work uses quick preservation/hash
+checks and tests its own changed behavior. Do not rerun Battle Pass/Gacha suites
+for unrelated changes, new EXE output, or pre-existing accepted-baseline
+differences. Run dependent feature checks only when the actual change can affect
+them. The broader regression/deployment guidance below has that scope; accepted
+restore points and existing CI jobs remain unchanged.
+
 The JSON manifest records accepted binary hashes and normalized source/raw
 artwork hashes. GitHub Actions checks protected files and asset installers on
 pushes/PRs. It detects changes; it does not prove gameplay compatibility or

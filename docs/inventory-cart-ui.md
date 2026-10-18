@@ -108,7 +108,13 @@ fingerprint, translates the target to the hidden native tab and calls the stock
 the adapter does not optimistically mutate the session. Replayed, stale and
 out-of-target drops cannot issue another favorite change.
 
-The grid retains native quantities and equipped indication. Original enchant
+The grid retains native quantities and equipped indication.
+Quantity text that would cross a 32-pixel cell is measured and moved inside its
+right edge, retaining the native black foreground and white outline. Counts
+through 30000 fit; already-fitting four-digit counts retain their native position.
+The correction uses a borrowed draw-only CItem copy and never changes session
+quantities, icons, selection, or transfer amounts.
+Original enchant
 grade bitmaps 1 through 5 appear at the lower left. `icon_damaged.png` uses the
 equipment damage flag; `rent_icon.png` uses the native expiration timestamp at
 CItem +0x68, also consumed by Item Description's date formatter. Both badges fit

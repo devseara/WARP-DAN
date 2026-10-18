@@ -61,7 +61,7 @@ const GlobalUIThemeStatic = {
 	BasicInfoResize: 0x0095DFB0,
 	BasicInfoCompactHeightOffset: 0xB4,
 	BasicInfoExpandedHeightOffset: 0xB8,
-	RenewalBasicInfoWidth: 252,
+	RenewalBasicInfoWidth: 280,
 	ClassicBasicInfoWidth: 220,
 	CreateFileIat: 0x00FC1224,
 	ReadFileIat: 0x00FC122C,

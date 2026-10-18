@@ -37,20 +37,21 @@ def verify(directory):
     v=VM(pe,m);v.open();assert v.receive(long_response(v))==1;v.run('Draw')
     expected_bmps={'scroll0up.bmp','scroll0mid.bmp','scroll0down.bmp','scroll0bar_up.bmp','scroll0bar_mid.bmp','scroll0bar_down.bmp'}
     assert expected_bmps <= {p.rsplit('\\',1)[-1] for p in v.loaded_paths}
-    assert bytes(v.u.mem_read(v.scroll_pixels+13*394*4,64))==b'\xcd'*64
+    assert bytes(v.u.mem_read(v.scroll_pixels+13*388*4,64))==b'\xcd'*64
     sx=v.read32(WIN+0x14)-27+7
     # Exercise actual native arrow and page input through our parent-message bridge.
     v.s('scroll',50);v.run('Draw');v.run('Down',[sx,BODY_TOP+2]);assert v.s('scroll')==2
-    v.run('Up',[sx,BODY_TOP+2]);v.run('Down',[sx,BODY_TOP+392]);assert v.s('scroll')==50
-    v.run('Up',[sx,BODY_TOP+392]);v.s('scroll',0);v.run('Draw')
+    v.run('Up',[sx,BODY_TOP+2]);v.run('Down',[sx,BODY_TOP+386]);assert v.s('scroll')==50
+    v.run('Up',[sx,BODY_TOP+386]);v.s('scroll',0);v.run('Draw')
     v.run('Down',[sx,BODY_TOP+16]);assert v.read32(0x131f4e8+0x19c)==v.scrollbar
-    v.run('Move',[sx,5000]);assert v.s('scroll')==v.s('content')-394
+    v.run('Move',[sx,5000]);assert v.s('scroll')==v.s('content')-388
     # Native drag receiver and private storage are released on close while captured.
     v.run('Message',[int(v.scrollbar),7,(-10000)&0xffffffff,0,0,0]);assert v.s('scroll')==0
     v.run('Message',[0,5,0,0,0,0]);assert v.scroll_destroyed==1
     assert v.read32(0x131f4e8+0x19c)==0 and not v.s('ready')
     # A short body needs no scrollbar control at all.
-    s=VM(pe,m);s.open();s.receive(s.response());s.run('Draw');assert not s.read32(s.state+119524)
+    s=VM(pe,m);s.open();short=s.response();struct.pack_into('<H',short,38,1) # base-stat row only
+    s.receive(short);s.run('Draw');assert not s.read32(s.state+119524)
     report={'passed':True,'checks':['collection art preferred over item icon; catalog name titles the card',
         'one nearest-neighbour 40x52 card thumbnail per slot, clipped at the viewport, exact magenta key',
         'native six-BMP UIScrollBar renderer with bounded surface writes, only when the body overflows',

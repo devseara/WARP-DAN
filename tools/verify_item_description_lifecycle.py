@@ -21,19 +21,20 @@ const helpers={asm:native.asm,assertCode(label,address,expected){
 const source=fs.readFileSync(input.root+'/Scripts/Patches/ItemDescriptionUI.qjs','utf8');
 const ui=new Function('Exe','ItemCollectionUI',source.slice(0,source.indexOf('ItemDescriptionUI = function'))+'\nreturn ItemDescriptionNative;')(Exe,{nativeFrameV1:helpers});
 const manifest=ui.installLifecycleHooks(helpers,input.entries);
-console.log(JSON.stringify({writes,manifest,end:next}));
+const sourceHooks=ui.installSourceHooks(helpers,input.entries);
+console.log(JSON.stringify({writes,manifest,sourceHooks,end:next}));
 '''
 
 def install(image,entries,node):
     base=0x8b4000
-    args=dict(root=str(ROOT),base=base,hex=image[base-0x400000:0x8c3500-0x400000].hex(),
+    args=dict(root=str(ROOT),base=base,hex=image[base-0x400000:0x94fb00-0x400000].hex(),
               next=0x400000+len(image),entries=entries)
     result=subprocess.run([node,'-e',NODE],input=json.dumps(args),text=True,capture_output=True)
     if result.returncode:raise AssertionError(result.stderr)
     output=json.loads(result.stdout);image.extend(bytes(output['end']-0x400000-len(image)))
     for write in output['writes']:
         raw=bytes.fromhex(write['hex']);start=write['address']-0x400000;image[start:start+len(raw)]=raw
-    return output['manifest']
+    return output['manifest'],output['sourceHooks']
 
 def checks(pe, m):
     from unicorn import UC_HOOK_CODE
@@ -143,8 +144,8 @@ def checks(pe, m):
     closed.open();assert not closed.s('owner') and not closed.s('ready') and len(closed.sent)==sent
     assert not [a for a in closed.allocations if a[0]==WIN]
 
-    # Dispatch-time eligibility: disabled, unidentified and unknown containers
-    # keep native work. A small callback records the scoped predicate in x86.
+    # Unscoped sources use a catalog preview. Disabled/unidentified items retain
+    # native work. A small callback records the scoped predicate in x86.
     eligibility=[]
     for mode,options in [('owned',{}),('catalog',dict(scope=0,index=0)),('unidentified',dict(identified=0)),
                          ('unprofiled',dict(scope=0)),('disabled',{}),('small_viewport',{})]:
@@ -157,7 +158,7 @@ def checks(pe, m):
         code+=b'\xa3'+struct.pack('<I',0x50157000)+b'\x59\xff\x74\x24\x0c\x81\xc1\xb8\x00\x00\x00'
         code+=b'\xe8'+struct.pack('<i',0x6a25f0-(address+len(code)+5))+b'\xc2\x18\x00'
         t.u.mem_write(address,code);t.open(**options)
-        expected=int(mode in ('owned','catalog'))
+        expected=int(mode in ('owned','catalog','unprofiled'))
         assert t.read32(0x50157000)==expected,(mode,t.read32(0x50157000))
         eligibility.append(mode)
 
@@ -168,7 +169,7 @@ def checks(pe, m):
     drawn.u.mem_write(WIN+0x1c4,b'art.bmp\0');drawn.write32(WIN+0x1d4,7);drawn.write32(WIN+0x1d8,15)
     drawn.stub(m['config'][2],24,lambda ecx,args:0)
     titles=[];arts=[]
-    drawn.stub(0x8972c0,28,lambda ecx,args:titles.append((ecx,args)) or 0)
+    drawn.stub(m['entries']['ItemDescriptionTitle'],28,lambda ecx,args:titles.append((ecx,args)) or 0)
     drawn.stub(0xdbbbd4,0,lambda ecx,args:0)
     saved_loader=drawn.stubs[0xa8d4a0];saved_blit=drawn.stubs[0xa1d260]
     def draw_edges(u,pc,size,_):
@@ -244,5 +245,5 @@ def checks(pe, m):
                         'real native draw calls illustration and decorated title once; skips hidden background/body',
                         'all displaced stock branches replay with original flags, registers and stack',
                         'native same-item destruction cannot reactivate the freed description or send another request',
-                        'owned/catalog eligibility is scoped; unidentified/unprofiled/disabled/small views remain native',
+                        'owned/catalog eligibility is scoped; unprofiled sources use catalog; unidentified/disabled/small views remain native',
                         'timeout/rejected/failed-send rebuild original body once with independent CItem strings'])

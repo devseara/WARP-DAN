@@ -12,8 +12,9 @@ def long_response(v,rows=64):
 def verify(directory):
     m=json.loads((directory/'native-manifest.json').read_text(encoding='utf8'))['itemDescription'];pe=pefile.PE(str(directory/'item-description.exe'))
     fresh=lambda:VM(pe,m);checks=[]
-    v=fresh();v.open(scope=0,index=7);assert not v.sent and not v.s('ready') and v.u.mem_read(v.child+0x28,1)==b'\1'
-    checks.append('Unprofiled indexed containers retain the complete native view instead of claiming inventory or catalog ownership')
+    v=fresh();v.open(scope=0,index=7);assert v.sent and v.s('ready')
+    assert struct.unpack_from('<I',v.sent[-1],20)[0]==0,'unscoped index must not claim inventory ownership'
+    checks.append('Unprofiled indexed sources use a catalog preview without claiming owned instance metadata')
     v=fresh();v.open();first=v.response();v.open(index=8,refine=9);assert v.receive(first)==0
     checks.append('Two customized copies of the same item ID cannot exchange responses')
     v=fresh();v.open();data=v.response();struct.pack_into('<Q',data,52,0x1122334455667788);v.receive(data);v.run('Draw')
@@ -28,7 +29,7 @@ def verify(directory):
     v.run('Wheel',[-120]);assert v.s('scroll')==48;v.run('Wheel',[120]);assert v.s('scroll')==0
     sx=v.read32(WIN+0x14)-27+7
     v.run('Down',[sx,BODY_TOP+16]);assert v.read32(0x131f4e8+0x19c)==v.scrollbar
-    v.run('Move',[sx,3000]);assert v.s('scroll')==v.s('content')-(560-166)
+    v.run('Move',[sx,3000]);assert v.s('scroll')==v.s('content')-(560-172)
     v.run('Up',[sx,3000]);assert not v.read32(0x131f4e8+0x19c)
     v.run('Draw');assert bytes(v.u.mem_read(PIXELS+v.surface_size,64))==b'\xcd'*64
     v.write32(0x131f4e8+0x19c,0x50107000);v.run('Down',[sx,BODY_TOP+56]);v.run('Up',[sx,BODY_TOP+56]);assert v.read32(0x131f4e8+0x19c)==0x50107000

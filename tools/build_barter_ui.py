@@ -51,11 +51,11 @@ def main():
             relocs.append(offset)
     exports = {s.name.decode():s.address-first for s in pe.DIRECTORY_ENTRY_EXPORT.symbols}
     body = struct.pack('<'+'I'*len(relocs), *relocs)+code
-    header = struct.pack('<8I', 0x49555242, 3, len(code), len(relocs), exports['BarterApi'], 108, 20250716, zlib.crc32(body))
+    header = struct.pack('<8I', 0x49555242, 5, len(code), len(relocs), exports['BarterApi'], 108, 20250716, zlib.crc32(body))
     out = ROOT/'Inputs/BarterUI/runtime.bin'
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_bytes(header+body)
-    meta = {'version':3, 'client':20250716, 'size':len(code), 'api_size':108, 'exports':exports,
+    meta = {'version':5, 'client':20250716, 'size':len(code), 'api_size':108, 'exports':exports,
             'source_sha256':hashlib.sha256(source.read_bytes().replace(b'\r\n', b'\n')).hexdigest(),
             'payload_sha256':hashlib.sha256(out.read_bytes()).hexdigest(), 'runtime_imports':[]}
     out.with_suffix('.json').write_text(json.dumps(meta, indent=2)+'\n', encoding='utf8')

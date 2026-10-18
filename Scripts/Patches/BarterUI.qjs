@@ -3,7 +3,8 @@
  * Uses barter/*.png and genericsui/buy_* and cancel_* at their original sizes.
  * Replaces only validated 0B78/0B79 shop displays. Recipes, stock, currencies
  * and purchase/close packets remain native; the server validates every trade.
- * No global draw hooks, archive edits, DLL, server diff or other UI changes.
+ * BRTR metadata supplies server crafting rates/results through the owned router.
+ * No global draw hooks, archive edits, DLL or other gameplay changes.
  */
 BarterUI = function(_)
 {
@@ -15,9 +16,9 @@ BarterUI = function(_)
 	const bytes=read(Warp.Path+"/Inputs/BarterUI/runtime.bin"),meta=JSON.parse(String.fromCharCode(...read(Warp.Path+"/Inputs/BarterUI/runtime.json")));
 	const size=u32(bytes,8),count=u32(bytes,12),api=u32(bytes,16),start=32+count*4;
 	let crc=0xFFFFFFFF;for(let i=32;i<bytes.length;++i){crc^=bytes[i];for(let j=0;j<8;++j)crc=(crc>>>1)^((crc&1)?0xEDB88320:0);}
-	if(bytes.length<32 || u32(bytes,0)!==0x49555242 || u32(bytes,4)!==3 || meta.version!==3 || meta.client!==20250716 ||
+	if(bytes.length<32 || u32(bytes,0)!==0x49555242 || u32(bytes,4)!==5 || meta.version!==5 || meta.client!==20250716 ||
 		start+size!==bytes.length || size!==meta.size || api!==meta.exports.BarterApi || meta.api_size!==108 || api+108>size || u32(bytes,20)!==108 || u32(bytes,24)!==20250716 || ((crc^0xFFFFFFFF)>>>0)!==u32(bytes,28))throw Error("BarterUI: invalid payload");
-	const names=["BarterApi","BarterState","_BarterReceive@4","_BarterResult@4","_BarterHit@8","@BarterDraw@8","@BarterDown@16","@BarterUp@16","@BarterMove@16","@BarterDrag@16","@BarterCursor@16","@BarterDestroy@12","@BarterRightDown@16","@BarterRightUp@16","@BarterWheel@12","_BarterOwned@8"];
+	const names=["BarterApi","BarterState","_BarterReceive@8","_BarterResult@4","_BarterHit@8","@BarterDraw@8","@BarterDown@16","@BarterUp@16","@BarterMove@16","@BarterDrag@16","@BarterCursor@16","@BarterDestroy@12","@BarterRightDown@16","@BarterRightUp@16","@BarterWheel@12","_BarterOwned@8","_BarterContact@8","_BarterMetadata@4"];
 	for(const name of names)if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("BarterUI: missing "+name);
 	// Complete native receive arms and read-only inventory layout evidence.
 	n.assertCode("BarterUI normal receive",0xCA14EC,"68 98 81 5E 01 8B CF E8 28 57 01 00 E9 E0 CC FF FF");
@@ -26,6 +27,16 @@ BarterUI = function(_)
 	n.assertCode("BarterUI inventory count",0xD5CE30,"8B 81 F4 16 00 00 C3");
 	n.assertCode("BarterUI inventory list",0xD5AAA8,"8B 89 F0 16 00 00 8B 01 3B C1");
 	n.assertCode("BarterUI inventory ItemId",0x811A86,"8D 85 D4 FE FF FF 83 BD E8 FE FF FF 10 0F 43 85 D4 FE FF FF");
+	// Dialogue close2 retains its source NPC GID; both contact producers have
+	// CGameMode in EDI, with the clicked GID at [EBX] / [EDX].
+	n.assertCode("BarterUI dialogue NPC",0xCA06C5,"A1 9C 81 5E 01 89 87 DC 02 00 00");
+	n.assertCode("BarterUI dialogue close",0xCBAF62,"8B 43 02 6A 10 89 87 DC 02 00 00");
+	n.assertCode("BarterUI dialogue close alternate",0xCBAFD9,"8B 43 02 68 E2 00 00 00 89 87 DC 02 00 00");
+	n.assertCode("BarterUI NPC name cache",0xC6D232,"FF B7 10 01 00 00 8D 8E 60 01 00 00 E8 1D 42 93 FF");
+	n.assertCode("BarterUI name tree",0x5A0573,"8B 09 8B 55 08 8B 41 04");
+	n.assertCode("BarterUI resolved name",0x5A14B3,"80 B8 AC 00 00 00 01 75 16 83 C0 14");
+	n.assertCode("BarterUI NPC contact click",0xC789B2,"B8 90 00 00 00 C6 45 F2 01 66 89 45 EC 8B 03 89 45 EE");
+	n.assertCode("BarterUI NPC contact action",0xC8BF2E,"B8 90 00 00 00 66 89 85 E4 FA FE FF 8B 02 89 85 E6 FA FE FF");
 	n.assertCode("BarterUI frame ctor",n.FrameConstructor,"55 8B EC 6A FF 68 F9 45 EA 00");
 	for(const [slot,expected] of [[0,n.FrameDeletingDestructor],[20,n.FrameVtableDraw],[25,n.FrameMouseDown],[27,0x880E00],[31,n.FrameMouseUp],[32,0x5A8A50],[33,0x5A8A60],[35,0x5A8AF0]])n.assertVtableSlot("BarterUI frame",slot,expected);
 	const routes=[[0xB78,0xCA14EC],[0xB79,0xCA14FD],[0xCA,0xCA10EC]].map(([op,original])=>{
@@ -49,15 +60,26 @@ BarterUI = function(_)
 	draw.emit(0x0F,0xB6,0x5E,0x28);for(const off of [20,16,12,8])draw.emit(0xFF,0x75,off);
 	draw.call(rawPng.vir);draw.emit(0x88,0x5E,0x28);draw.label("done");draw.emit(0x5E,0x5B,0x5D,0xC2,16,0);
 	const png=n.allocateCode(draw),paths=BarterUI.assets().map(p=>p.replace(/\//g,'\\'));
-	[3,table.vir+4,refs.packetCtorA,refs.packetSend,fit.vir,item.vir,describe.vir,name.vir,png.vir,keys,...paths.map(p=>n.buildResourcePath(p).vir)].forEach((v,i)=>put(code,api+i*4,v));
+	[5,table.vir+4,refs.packetCtorA,refs.packetSend,fit.vir,item.vir,describe.vir,name.vir,png.vir,keys,...paths.map(p=>n.buildResourcePath(p).vir)].forEach((v,i)=>put(code,api+i*4,v));
 	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
 	const receivers=[];
 	for(const r of routes){
-		const a=n.asm();a.emit(0x9C,0x60,0x68);a.dword(n.PacketBuffer);a.call(e(r.op===0xCA?"_BarterResult@4":"_BarterReceive@4"));
+		const a=n.asm();a.emit(0x9C,0x60);if(r.op!==0xCA)a.emit(0x57);
+		a.emit(0x68);a.dword(n.PacketBuffer);a.call(e(r.op===0xCA?"_BarterResult@4":"_BarterReceive@8"));
 		if(r.op!==0xCA){a.emit(0x85,0xC0);a.jcc(0x84,"stock");a.emit(0x61,0x9D);a.jmp(n.PacketMainLoopReturn);}
 		a.label("stock");a.emit(0x61,0x9D);a.jmp(r.original);const handler=n.allocateCode(a);Exe.SetUint32(r.phy,handler.vir);receivers.push(handler.vir);
 	}
-	const record=[];for(const v of [n.allocateString("BarterUI.v3").vir,...names.map(e),...receivers])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);n.allocateBytes(record,4);
+	const metadata=n.asm();metadata.emit(0x9C,0x60,0x68);metadata.dword(n.PacketBuffer);metadata.call(e("_BarterMetadata@4"));
+	metadata.emit(0x61,0x9D);metadata.jmp(n.PacketMainLoopReturn);
+	n.registerPacket0BF6(_,"brtr",n.allocateCode(metadata).vir);
+	// Observe only NPC contact construction, then replay the exact MOV EAX,90.
+	// PUSHAD/PUSHFD keep the native packet bytes, registers and flags intact.
+	for(const [site,operand] of [[0xC789B2,0x33],[0xC8BF2E,0x32]]){
+		const a=n.asm();a.emit(0x9C,0x60,0xFF,operand,0x57);a.call(e("_BarterContact@8"));
+		a.emit(0x61,0x9D,0xB8);a.dword(0x90);a.jmp(site+5);
+		const hook=n.allocateCode(a);Exe.SetJMP(Exe.Vir2Phy(site,CODE),hook.vir);
+	}
+	const record=[];for(const v of [n.allocateString("BarterUI.v5").vir,...names.map(e),...receivers])record.push(v&255,v>>>8&255,v>>>16&255,v>>>24);n.allocateBytes(record,4);
 	BarterUI.onApplied();return true;
 };
 BarterUI.validate=()=>Exe.BuildDate===20250716;

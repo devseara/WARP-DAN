@@ -20,6 +20,7 @@ struct Config {
     u32 enabled;
     u32 comparison_original[53];
     u32 component_original[53];
+    u32 cart_right, storage_right;
 };
 struct Child { void* window; u32 visible; int x, y; };
 // Keeps the accepted 204-byte stride; kind/style/x replace the old heading int.
@@ -68,6 +69,31 @@ static bool stock_body_missing[3] = {};
 static u32 destroy_epochs[3] = {};
 struct HeaderDrag { void* owner; int x, y; };
 static HeaderDrag header_drag = {};
+static bool header_release[3] = {};
+// Copies from the native, already-loaded description map, once per inspected
+// item. No Lua/files, native text-viewer construction, or input-path parsing.
+struct ItemText {
+    u32 id, count, used;
+    bool available;
+    u32 offsets[256]; u8 sections[256];
+    char bytes[32768], jobs[1024], compound[96];
+};
+static ItemText item_texts[3] = {};
+// Derived once per accepted snapshot, without changing the pane-state ABI.
+struct LevelRange { char text[32]; bool unmet; };
+static LevelRange level_ranges[3] = {};
+static char description_plain[2048];
+static u32 description_colors[2048];
+// Only the main Inventory description follows a deposit into Storage. Keep a
+// bounded baseline so an older identical item cannot be mistaken for the move.
+struct StoredMatch { u32 index, amount; };
+struct StorageTransfer {
+    bool eligible, active, overflow;
+    unsigned count;
+    u32 started, checked;
+    StoredMatch before[64];
+};
+static StorageTransfer storage_transfer = {};
 struct NativeOpenScope {
     void* previous;
     explicit NativeOpenScope(void* window) : previous(native_open_window) { native_open_window = window; }
@@ -84,6 +110,7 @@ struct ViewScope {
 static u32 server_proven = 0, server_silent = 0;
 
 constexpr int header_bottom = 116, body_top = 154, pane_width = 360, pane_height = 560, pane_gap = 8;
+constexpr int footer_height = 18;
 constexpr u32 load_timeout = 3000, request_spacing = 160;
 constexpr u32 key = 0xFFFF00FF, white = 0xFFFFFFFF, black = 0xFF000000;
 // Text colors are RGB; fills are opaque ARGB.
@@ -107,7 +134,7 @@ static const Style styles[] = {
     {12, 1, faded, 0}, {12, 0, faded, 0}, {11, 0, brown, 0}, {11, 0, muted, 0}, {11, 1, green, 0},
     {11, 1, red, 0}, {11, 1, ink, 0}};
 static_assert(sizeof(styles) / sizeof(styles[0]) == t_style_end, "style table");
-enum : u8 { k_text = 0, k_heading = 1, k_component_text = 2, k_component_title = 3 };
+enum : u8 { k_text = 0, k_heading = 1, k_component_text = 2, k_component_title = 3, k_description = 4 };
 enum : u16 { s_divider = 1, s_diamond, s_sparkle, s_check, s_cross, s_lock, s_info, s_card, s_slot,
     s_tiers, s_chip_good, s_chip_bad, s_chip_plain, s_art };
 
@@ -148,6 +175,113 @@ static bool digit(char c) { return c >= '0' && c <= '9'; }
 static bool alnum(char c) { return digit(c) || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'; }
 static bool same(const char* a, const char* b) { unsigned i = 0; while (a[i] && a[i] == b[i]) ++i; return a[i] == b[i]; }
 static bool starts(const char* a, const char* prefix) { for (unsigned i = 0; prefix[i]; ++i) if (a[i] != prefix[i]) return false; return true; }
+static char lower(char c) { return c >= 'A' && c <= 'Z' ? c + ('a' - 'A') : c; }
+static bool contains_ci(const char* value, const char* needle) {
+    for (unsigned i = 0; value[i]; ++i) {
+        unsigned j = 0; while (needle[j] && value[i + j] && lower(value[i + j]) == lower(needle[j])) ++j;
+        if (!needle[j]) return true;
+    }
+    return false;
+}
+static int hex_digit(char c) { c = lower(c); return digit(c) ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10 : -1; }
+static unsigned plain_description(const char* raw) {
+    unsigned out = 0; u32 color = ink;
+    const unsigned n = length(raw, 2047);
+    for (unsigned i = 0; i < n && out < 2047;) {
+        if (raw[i] == '^' && i + 6 < n) {
+            u32 parsed = 0; unsigned j = 1;
+            for (; j <= 6 && hex_digit(raw[i + j]) >= 0; ++j) parsed = (parsed << 4) | hex_digit(raw[i + j]);
+            if (j == 7) { color = parsed ? parsed : ink; i += 7; continue; }
+        }
+        description_plain[out] = raw[i++]; description_colors[out++] = color;
+    }
+    while (out && (description_plain[out - 1] == ' ' || description_plain[out - 1] == '\r')) --out;
+    description_plain[out] = 0; return out;
+}
+static bool description_weight(const char* value) {
+    // The info strip already uses the server's item-db weight. Hide authored
+    // Weight fields even outside a [Stat] section, after color codes are stripped.
+    const char* label = "weight";
+    for (unsigned i = 0; label[i]; ++i) if (lower(value[i]) != label[i]) return false;
+    value += 6;
+    while (*value == ' ' || *value == '\t') ++value;
+    return *value == ':';
+}
+static bool legacy_decoration(const char* value) {
+    // itemInfo_f appends these after the authored sections. Filter before
+    // routing requirements, otherwise the footer becomes part of Job.
+    unsigned marks = 0; bool divider = true;
+    for (const char* p = value; *p; ++p) {
+        if (*p == '_' || *p == '-' || *p == '=') ++marks;
+        else if (*p != ' ' && *p != '\t' && *p != '\r') { divider = false; break; }
+    }
+    if (divider && marks >= 3) return true;
+    const char* label = "item";
+    for (unsigned i = 0; label[i]; ++i) if (lower(*value++) != label[i]) return false;
+    while (*value == ' ' || *value == '\t') ++value;
+    if (lower(*value++) != 'i' || lower(*value++) != 'd') return false;
+    while (*value == ' ' || *value == '\t') ++value;
+    if (*value++ != ':') return false;
+    while (*value == ' ' || *value == '\t') ++value;
+    if (!digit(*value)) return false;
+    while (digit(*value)) ++value;
+    while (*value == ' ' || *value == '\t' || *value == '\r') ++value;
+    return !*value;
+}
+static void load_item_text() {
+    auto& out = item_texts[pane_index()]; const u32 id = state.snapshot.item_id;
+    if (out.id == id && out.available) return;
+    memset(&out, 0, sizeof(out)); out.id = id;
+    // Profiled std::map<int, ItemInfo> at 01255130. Native GetDescription
+    // (006A2A70 -> 006A0D40) selects payload+0C for identified items: a
+    // vector<const char*>. Read the existing tree; never insert missing items.
+    auto head = *reinterpret_cast<void**>(0x01255130);
+    if (!head || !id || !state.request.identified) return;
+    auto node = field<void*>(head, 4); void* found = nullptr;
+    for (unsigned depth = 0; node && node != head && depth < 64 && !field<u8>(node, 0xD); ++depth) {
+        const auto key_id = field<u32>(node, 0x10);
+        if (id == key_id) { found = node; break; }
+        node = field<void*>(node, id < key_id ? 0 : 8);
+    }
+    if (!found) return;
+    const auto first = field<const char**>(found, 0x20), last = field<const char**>(found, 0x24);
+    const auto a = reinterpret_cast<u32>(first), b = reinterpret_cast<u32>(last);
+    if (!a || b < a || (b - a) % 4 || b - a > 4096) return;
+    const bool equipment = same(state.snapshot.type_label, "Weapon") || contains_ci(state.snapshot.type_label, "Equipment") ||
+        contains_ci(state.snapshot.type_label, "Armor") || contains_ci(state.snapshot.type_label, "Headgear");
+    unsigned section = 0;
+    for (unsigned i = 0; i < (b - a) / 4 && out.count < 256; ++i) {
+        const char* raw = first[i]; if (!raw || length(raw, 2048) >= 2048) continue;
+        const auto n = plain_description(raw); const char* value = description_plain;
+        while (*value == ' ' || *value == '\t') ++value;
+        if (legacy_decoration(value) || description_weight(value)) continue;
+        if (value[0] == '[' && n && description_plain[n - 1] == ']') {
+            section = contains_ci(value, "collection") ? 1 : contains_ci(value, "grade") ? 2 :
+                contains_ci(value, "requirement") ? 3 : contains_ci(value, "stat]") ? 4 : 0;
+            continue;
+        }
+        if (contains_ci(value, "bonus effect") && (contains_ci(value, "doesn't have") ||
+            contains_ci(value, "does not have") || contains_ci(value, "doesn\xE2\x80\x99t have"))) continue;
+        if (starts(value, "Compound on:")) {
+            const char* target = value + 12; while (*target == ' ') ++target;
+            copy(out.compound, sizeof(out.compound), target); continue;
+        }
+        if (section == 2) continue; // Server Grade visibility remains authoritative.
+        if (section == 3) {
+            if (*value && !contains_ci(value, "base level") && !contains_ci(value, "job level") &&
+                !contains_ci(value, "maximum level") && !contains_ci(value, "level required")) {
+                if (out.jobs[0]) append(out.jobs, sizeof(out.jobs), ", ");
+                append(out.jobs, sizeof(out.jobs), value);
+            }
+            continue;
+        }
+        if (section == 4 && (equipment || starts(value, "Type:"))) continue;
+        const auto size = length(raw) + 1; if (out.used + size > sizeof(out.bytes)) break;
+        out.offsets[out.count] = out.used; out.sections[out.count++] = section == 1 ? 1 : 0;
+        copy(out.bytes + out.used, size, raw); out.used += size;
+    }
+    out.available = true;
+}
 // Parses a whole signed integer prefix; decimals are rejected rather than truncated.
 static const char* leading_int(const char* s, int& value) {
     unsigned i = 0; bool negative = false;
@@ -216,6 +350,7 @@ extern "C" __declspec(dllexport) void __fastcall ItemDescriptionSize(void* windo
 }
 static void* capture() { return reinterpret_cast<void*(__thiscall*)(void*)>(0x00A32E00)(reinterpret_cast<void*>(0x0131F4E8)); }
 static void end_header_drag(void* window) {
+    header_release[pane_index()] = false;
     if (header_drag.owner != window) return;
     if (capture() == window) reinterpret_cast<void(__thiscall*)(void*)>(0x00A482E0)(reinterpret_cast<void*>(0x0131F4E8));
     header_drag.owner = nullptr;
@@ -413,8 +548,7 @@ extern "C" __declspec(dllexport) void __stdcall ItemDescriptionHeader(void* wind
     rounded(window, 10, 14, 77, 102, 7, deep, deep);           // illustration drop shadow
     rounded(window, 8, 9, 79, 104, 7, lift(top, 5), white);    // illustration medallion
     fill(window, 10, 11, 75, 100, white);                      // the native 75x100 art lands here
-    // Frosted bar keeps native title colors readable, including a wrapped second span.
-    rounded(window, 90, 7, w - 116, 32, 8, white, lift(top, 6));
+    // The approved white title is drawn directly on the tinted header.
     // The native 11x11 close child is at (w-16,3); leave 3px on every side.
     rounded(window, w - 19, 0, 17, 17, 6, lift(top, 4), lift(top, 4));
 }
@@ -487,7 +621,8 @@ static void close_scrollbar() {
     reinterpret_cast<void*(__thiscall*)(void*, int)>(0x0083C2C0)(state.scrollbar, 0);
     state.scrollbar_live = 0;
 }
-static int visible_height(void* window) { return height(window) - 166; }
+static int body_bottom(void* window) { return height(window) - footer_height; }
+static int visible_height(void* window) { return body_bottom(window) - body_top; }
 static bool scrollable(void* window) { return state.content_height > visible_height(window); }
 static void sync_scrollbar(void* window) {
     if (!state.scrollbar_live) {
@@ -568,6 +703,7 @@ static void release_view(void* window, bool keep_surface = false) {
 }
 static void restore(void* window, bool destroying = false) {
     if (!owner(window)) return;
+    if (!comparison_view() && !component_view()) storage_transfer = {};
     release_view(window, destroying);
     state.pending = state.deferred = state.loading = 0;
     auto& missing = stock_body_missing[pane_index()];
@@ -634,13 +770,13 @@ static bool read_identity(void* item, w::Request& request, u16 scope) {
     if (!item || !field<u8>(item, 0x5C)) return false;
     const auto id = reinterpret_cast<u32(__thiscall*)(void*)>(0x005D98A0)(item);
     if (!id) return false;
-    // A positive index outside a profiled inventory/equipment event is an
-    // unprofiled container/update, not a template. Preserve its native view.
-    if (scope == w::catalog && field<int>(item, 4) >= 2) return false;
     request.item_id = id; request.identified = 1; request.scope = scope;
-    if (scope == w::inventory) {
+    // Indexed containers are marked at their native right-click entry, which
+    // both the stock and redesigned interfaces call. Other sources request a
+    // catalog preview without claiming their indices or rolls belong to us.
+    if (scope != w::catalog) {
         const int index = field<int>(item, 4), refine = field<int>(item, 0x60), option_count = field<int>(item, 0x98);
-        if (index < 2 || index > 65535 || refine < 0 || refine > 255 || option_count < 0 || option_count > 5) return false;
+        if (index < static_cast<int>(w::index_base(scope)) || index > 65535 || refine < 0 || refine > 255 || option_count < 0 || option_count > 5) return false;
         request.client_index = index; request.refine = static_cast<u16>(refine); request.grade = field<u16>(item, 0x88);
         if (request.grade > 255) return false;
         for (unsigned i = 0; i < 4; ++i) request.cards[i] = field<u32>(item, 0x1C + i * 4);
@@ -655,6 +791,65 @@ static bool same_identity(const w::Request& a, const w::Request& b) {
     const auto p = reinterpret_cast<const u8*>(&x), q = reinterpret_cast<const u8*>(&y);
     for (unsigned i = 0; i < sizeof(x); ++i) if (p[i] != q[i]) return false;
     return true;
+}
+static bool matching_instance(void* item) {
+    if (!item || !field<u32>(item, 0x10)) return false;
+    w::Request candidate{};
+    if (!read_identity(item, candidate, w::storage)) return false;
+    const auto& expected = state.request;
+    if (candidate.item_id != expected.item_id || candidate.refine != expected.refine ||
+        candidate.grade != expected.grade || candidate.identified != expected.identified) return false;
+    for (unsigned i = 0; i < w::card_limit; ++i) if (candidate.cards[i] != expected.cards[i]) return false;
+    for (unsigned i = 0; i < w::option_limit; ++i)
+        if (candidate.options[i].id != expected.options[i].id || candidate.options[i].value != expected.options[i].value ||
+            candidate.options[i].param != expected.options[i].param) return false;
+    return true;
+}
+static void* original_inventory_item() {
+    auto session = reinterpret_cast<void*>(0x015FA3C0);
+    const unsigned count = field<u32>(session, 0x16F4); auto head = field<void*>(session, 0x16F0);
+    if (!head || count > 4096) return nullptr;
+    auto node = field<void*>(head, 0);
+    for (unsigned i = 0; i < count && node && node != head; ++i, node = field<void*>(node, 0)) {
+        auto item = static_cast<u8*>(node) + 8;
+        if (field<u32>(item, 4) == state.request.client_index && matching_instance(item)) return item;
+    }
+    return nullptr;
+}
+static void capture_storage_baseline() {
+    storage_transfer = {};
+    if (state.request.scope != w::inventory || !original_inventory_item()) return;
+    storage_transfer.eligible = true;
+    auto session = reinterpret_cast<void*>(0x015FA3C0);
+    const unsigned count = field<u32>(session, 0x171C); auto head = field<void*>(session, 0x1718);
+    if (count > 10000) { storage_transfer.overflow = true; return; }
+    if (!head) return;
+    auto node = field<void*>(head, 0);
+    for (unsigned i = 0; i < count && node && node != head; ++i, node = field<void*>(node, 0)) {
+        auto item = static_cast<u8*>(node) + 8;
+        if (!matching_instance(item)) continue;
+        if (storage_transfer.count == 64) { storage_transfer.overflow = true; return; }
+        storage_transfer.before[storage_transfer.count++] = {field<u32>(item, 4), field<u32>(item, 0x10)};
+    }
+}
+static void* deposited_storage_item() {
+    if (storage_transfer.overflow) return nullptr;
+    auto session = reinterpret_cast<void*>(0x015FA3C0);
+    const unsigned count = field<u32>(session, 0x171C); auto head = field<void*>(session, 0x1718);
+    if (!head || count > 10000) return nullptr;
+    auto node = field<void*>(head, 0); void* match = nullptr;
+    for (unsigned i = 0; i < count && node && node != head; ++i, node = field<void*>(node, 0)) {
+        auto item = static_cast<u8*>(node) + 8;
+        if (!matching_instance(item)) continue;
+        bool changed = true;
+        for (unsigned j = 0; j < storage_transfer.count; ++j)
+            if (storage_transfer.before[j].index == field<u32>(item, 4))
+                changed = field<u32>(item, 0x10) > storage_transfer.before[j].amount;
+        if (!changed) continue;
+        if (match) return nullptr; // Ambiguous copies: never pick an arbitrary slot.
+        match = item;
+    }
+    return match;
 }
 static bool snapshot_current() {
     return state.snapshot.magic == w::magic && state.snapshot.result == w::ok && state.snapshot.request_id == state.request.request_id;
@@ -680,6 +875,7 @@ static bool transmit() {
 // instance keeps its snapshot on screen while the server revalidates it.
 static bool request_view(void* window, bool from_message) {
     if (!owner(window) || !field<u8>(window, 0x28) || !config.enabled) return false;
+    if (!from_message && !comparison_view() && !component_view() && storage_transfer.active) return true;
     if (comparison_view()) comparison_rewatch = false;
     w::Request request{}; request.packet_type = w::request_packet; request.packet_length = sizeof(request);
     request.magic = w::magic; request.version = w::version; request.message = w::inspect;
@@ -687,11 +883,12 @@ static bool request_view(void* window, bool from_message) {
     if (!read_identity(static_cast<u8*>(window) + 0xB8, request, scope)) return false;
     const bool keep = snapshot_current() && same_identity(request, state.request);
     if (!keep) clear_artwork();
-    if (keep && scope == w::inventory) request.known_fingerprint = state.snapshot.fingerprint;
+    if (keep && scope != w::catalog) request.known_fingerprint = state.snapshot.fingerprint;
     state.sequence = (state.sequence + 1) & 0x3FFFFFFF; if (!state.sequence) ++state.sequence;
     request.request_id = state.sequence | (component_view() ? 0xC0000000u : comparison_view() ? 0x80000000u : 0);
     if (!w::request_valid(request)) return false;
     state.request = request;
+    if (from_message && !comparison_view() && !component_view()) capture_storage_baseline();
     if (keep) state.snapshot.request_id = request.request_id;
     state.loading = keep ? 0 : 1;
     if (!keep) state.layout_width = 0;
@@ -699,6 +896,32 @@ static bool request_view(void* window, bool from_message) {
     if (send_ready()) return transmit();
     state.deferred = 1; state.pending = 0;
     return true;
+}
+static bool recover_storage_transfer(void* window) {
+    auto& transfer = storage_transfer;
+    if (!transfer.active || comparison_view() || component_view()) return false;
+    if (now() - transfer.checked < request_spacing) return true;
+    transfer.checked = now();
+    // A partial stack deposit stays attached to the remaining Inventory stack.
+    auto item = original_inventory_item(); const bool inventory = item != nullptr;
+    if (!item) item = deposited_storage_item();
+    if (!item && now() - transfer.started < 1000) return true;
+    transfer.active = false; transfer.eligible = false;
+    if (item) {
+        // Only location/quantity changed; artwork, decorated name, rolls and
+        // component windows remain owned by the existing description.
+        auto shown = static_cast<u8*>(window) + 0xB8;
+        field<u32>(shown, 4) = field<u32>(item, 4);
+        field<u32>(shown, 0x10) = field<u32>(item, 0x10);
+        state.request.scope = inventory ? w::inventory : w::storage;
+    } else {
+        // Deleted/ambiguous instances still get the new catalog UI. Do not
+        // attach to an older identical item or invent instance restrictions.
+        state.request.scope = w::catalog;
+    }
+    state.snapshot.request_id = 0; // The former inventory fingerprint is stale.
+    if (!request_view(window, false)) restore(window);
+    dirty(window); return true;
 }
 static bool current_identity(void* window) {
     w::Request current = state.request;
@@ -713,6 +936,71 @@ static bool current_identity(void* window) {
 extern "C" __declspec(dllexport) int __stdcall ItemDescriptionCustomDraw(void* window) {
     ViewScope context(view_for(window));
     return owner(window) && state.ready && !state.force_stock && config.enabled && current_identity(window);
+}
+extern "C" __declspec(dllexport) int __fastcall ItemDescriptionTitle(void* window, void*, int x, int y,
+    void* item, u32 color, int font, int size, int flags) {
+    if (!ItemDescriptionCustomDraw(window))
+        return reinterpret_cast<int(__thiscall*)(void*, int, int, void*, u32, int, int, int)>(0x008972C0)
+            (window, x, y, item, color, font, size, flags);
+    // Retain the native CItem formatter (including refine, grade, cards and
+    // custom grade labels). Only this description call site owns white text.
+    char name[256]{}; char* cursor = name; char* special = nullptr; int remaining = sizeof(name);
+    struct Endpoints { char** first; char** last; char** capacity; } endpoints{};
+    reinterpret_cast<void(__thiscall*)(void*, void*, u32*, Endpoints*, char**, int*, char**, int, int)>(0x008A0570)
+        (window, item, &color, &endpoints, &cursor, &remaining, &special, 0, flags);
+    if (endpoints.first) reinterpret_cast<void(__cdecl*)(void*, unsigned)>(0x00DBBC7F)
+        (endpoints.first, reinterpret_cast<u32>(endpoints.capacity) - reinterpret_cast<u32>(endpoints.first));
+    name[255] = 0; const int count = length(name, 255); if (!count) return 0;
+    // Use the client's font cache and surface DC, but the stable GDI import
+    // directly. Shared item/entity/balloon TextOut bridges remain untouched and
+    // cannot replace the explicitly requested white description caption.
+    u32 dc[8]{};
+    reinterpret_cast<void(__thiscall*)(void*, void*)>(0x005443C0)(dc, field<void*>(window, 0x24));
+    reinterpret_cast<void(__thiscall*)(void*, int, int, int, int)>(0x00546F60)(dc, font, size + 2, 1, 0);
+    const auto convert = *reinterpret_cast<int(__stdcall**)(u32, u32, const char*, int, u16*, int)>(0x00FC1200);
+    const auto select = *reinterpret_cast<void*(__stdcall**)(void*, void*)>(0x00FC1120);
+    const auto set_color = *reinterpret_cast<u32(__stdcall**)(void*, u32)>(0x00FC10E0);
+    const auto measure = *reinterpret_cast<int(__stdcall**)(void*, const u16*, int, int*)>(0x00FC112C);
+    const auto paint = *reinterpret_cast<int(__stdcall**)(void*, int, int, const u16*, int)>(0x00FC10DC);
+    auto hdc = reinterpret_cast<void*>(dc[0]); u16 wide[260]{}; int result = 0;
+    const int codepage = reinterpret_cast<int(__cdecl*)(int)>(0x00A6F060)(dc[5]);
+    const int chars = hdc ? convert(codepage, 0, name, count, wide, 256) : 0;
+    if (chars > 0) {
+        auto face = reinterpret_cast<void*(__thiscall*)(void*, int, int, int, int, int)>(0x00546270)
+            (reinterpret_cast<void*>(0x0124F3CC), dc[3], dc[4], dc[5], 1, 0);
+        select(hdc, face); const auto previous_color = set_color(hdc, 0xFFFFFF);
+        const int available = width(window) - 24 - x;
+        const auto measured = [&](const u16* value, int n) { int bounds[2]{}; measure(hdc, value, n, bounds); return bounds[0]; };
+        int at = 0;
+        for (int line = 0; line < 2 && at < chars && available > 0; ++line) {
+            int low = 0, high = chars - at;
+            while (low < high) {
+                const int mid = (low + high + 1) / 2;
+                if (measured(wide + at, mid) <= available) low = mid; else high = mid - 1;
+            }
+            int fit = low;
+            if (at + fit < chars && fit && wide[at + fit] >= 0xDC00 && wide[at + fit] <= 0xDFFF) --fit;
+            if (!fit) break;
+            if (!line && at + fit < chars) {
+                int space = fit; while (space && wide[at + space] != ' ') --space;
+                if (space) fit = space;
+            }
+            if (line && at + fit < chars) {
+                // Keep long names inside the title area without shrinking them.
+                const u16 dots[] = {'.', '.', '.', 0}; const int dots_width = measured(dots, 3);
+                while (fit && measured(wide + at, fit) + dots_width > available) --fit;
+                if (fit && wide[at + fit] >= 0xDC00 && wide[at + fit] <= 0xDFFF) --fit;
+                wide[at + fit++] = '.'; wide[at + fit++] = '.'; wide[at + fit++] = '.';
+            }
+            result = maximum(result, measured(wide + at, fit));
+            paint(hdc, x, y + line * (size + 4), wide + at, fit);
+            at += fit; while (at < chars && wide[at] == ' ') ++at;
+        }
+        set_color(hdc, previous_color);
+    }
+    // The native DC destructor restores the original font and releases the DC.
+    reinterpret_cast<void(__thiscall*)(void*)>(0x005446F0)(dc);
+    return result;
 }
 static bool optimize_open(void* window, void* item) {
     if (!config.enabled || server_silent || !item || !field<u8>(window, 0x28)) return false;
@@ -740,7 +1028,8 @@ static void begin_view(void* window, bool retained = false) {
 static void scan_snapshot() {
     state.headline_kind = state.headline = state.headline_bonus = 0;
     state.info_level = state.info_weapon = state.info_weight = -1;
-    int atk = -1, matk = -1, def = -1, bonus = 0;
+    auto& range = level_ranges[pane_index()]; range.text[0] = 0; range.unmet = false;
+    int atk = -1, matk = -1, def = -1, bonus = 0, level_max = -1;
     for (unsigned i = 0; i < state.snapshot.row_count; ++i) {
         const auto& row = state.snapshot.rows[i]; int value = 0; const char* rest;
         if (row.kind != w::value || (row.flags & w::unknown)) continue;
@@ -752,8 +1041,20 @@ static void scan_snapshot() {
                 else if (same(row.label, "Base MATK")) matk = value;
                 else if (same(row.label, "Base DEF")) def = value;
             }
-        } else if (row.section == w::requirements && same(row.label, "Base level")) state.info_level = i;
+        } else if (row.section == w::requirements) {
+            if (same(row.label, "Base level")) state.info_level = i;
+            else if (same(row.label, "Maximum level") && (rest = leading_int(row.text, value)) && !*rest && value > 0) level_max = i;
+        }
         else if (row.section == w::refine && same(row.label, "Refine bonus") && (rest = leading_int(row.text, value)) && same(rest, " ATK")) bonus = value;
+    }
+    if (level_max >= 0) {
+        int level_min = 1, parsed = 0;
+        const char* rest = state.info_level >= 0 ? leading_int(state.snapshot.rows[state.info_level].text, parsed) : nullptr;
+        if (rest && !*rest && parsed > 0) level_min = parsed;
+        integer(range.text, sizeof(range.text), level_min);
+        append(range.text, sizeof(range.text), " - ");
+        append(range.text, sizeof(range.text), state.snapshot.rows[level_max].text);
+        range.unmet = (state.snapshot.rows[level_max].flags & w::unmet) != 0;
     }
     if (atk > 0 || (atk == 0 && matk <= 0)) { state.headline_kind = 1; state.headline = atk; state.headline_bonus = bonus; }
     else if (matk > 0) { state.headline_kind = 2; state.headline = matk; }
@@ -785,10 +1086,10 @@ static unsigned add_shape(u16 kind, int x, int y, int w = 0, int h = 0, int row 
     return state.shape_count++;
 }
 static void set_shape_height(unsigned shape, int h) { if (shape < state.shape_count) state.shapes[shape].h = h; }
-static int wrap(void* window, int x, int y, int available, const char* value, u8 style, int row, u8 kind, int advance) {
+static int wrap(void* window, int x, int y, int available, const char* value, u8 style, int row, u8 kind, int advance, unsigned limit = 2047) {
     const auto& s = styles[style];
     if (s.accent) available -= 8; // Bold numeric runs are slightly wider than the measured base face.
-    const unsigned n = length(value, 512); unsigned at = 0;
+    const unsigned n = length(value, limit); unsigned at = 0;
     while (at < n && state.line_count < 512) {
         char candidate[192]; u16 boundaries[192]; unsigned count = 0, next = at;
         while (next < n && value[next] != '\n') {
@@ -841,7 +1142,37 @@ static const char* display_value(const w::Row& row) {
         }
         if (row.section == w::restrictions && same(row.text, "Allowed by item policy")) return "Allowed";
     }
+    // Condition flags still control the muted/locked presentation. Hide only
+    // the generated technical prefix, retaining the actual bonus text.
+    if (starts(row.text, "Requires refine +") || starts(row.text, "requires grade ")) {
+        for (unsigned i = 0; row.text[i] && i + 1 < sizeof(row.text); ++i)
+            if (row.text[i] == ':' && row.text[i + 1] == ' ') return row.text + i + 2;
+    }
     return row.text;
+}
+static bool hidden_notice(const w::Row& row) {
+    static const char* messages[] = {
+        "Use Original for the full legacy description; server descriptors are not configured",
+        "See Original for character-dependent or conditional effects.",
+        "Inspect component for its legacy description", "Instance required",
+        "Instance and compatible equipment required", "Inspect an owned item",
+        "Unknown component", "Extra slot modifier (type not configured)",
+        "Forged / created item metadata; not card sockets", "No direct ATK/DEF contribution",
+        "No direct ATK/DEF contribution total"
+    };
+    for (const auto message : messages) if (same(row.text, message)) return true;
+    if (starts(row.label, "Rolled property ") && (row.flags & w::unknown)) {
+        for (unsigned i = 0; row.text[i]; ++i) if (same(row.text + i, " (label not configured)")) return true;
+    }
+    return false;
+}
+static void player_value(const w::Row& row, char* value, unsigned capacity) {
+    copy(value, capacity, display_value(row));
+    // Keep the numeric DEF bonus and optional "total", only drop this note.
+    const char* note = " before rounding"; const unsigned n = length(note);
+    for (unsigned i = 0; value[i]; ++i) if (starts(value + i, note)) {
+        unsigned j = i; do { value[j] = value[j + n]; } while (value[j++]); break;
+    }
 }
 static void compose(const w::Row& row, char* value, unsigned capacity) {
     value[0] = 0; int number = 0; const char* rest = leading_int(row.text, number);
@@ -849,7 +1180,7 @@ static void compose(const w::Row& row, char* value, unsigned capacity) {
         append(value, capacity, display_label(row));
         append(value, capacity, row.section != w::requirements && rest && !*rest ? " " : ": ");
     }
-    append(value, capacity, display_value(row));
+    char shown[128]; player_value(row, shown, sizeof(shown)); append(value, capacity, shown);
 }
 static bool is_note(const w::Row& row) { return row.kind == w::note || (row.flags & w::unknown); }
 static int right_edge(void* window) { return width(window) - 32; }
@@ -862,6 +1193,62 @@ static void heading(void* window, int& y, const char* title, int count = -1, int
         add_line(34 + extent(window, title, 13, 1), y + 2, -1, k_heading, t_count, number);
     }
     y += 22;
+}
+static Line rich_lines[128];
+static void description_row(void* window, int& y, const char* raw, int x, int available) {
+    const unsigned n = plain_description(raw); if (!n) return;
+    const unsigned begin = state.line_count;
+    y = wrap(window, x, y, available, description_plain, t_plain, -1, k_text, 19);
+    const unsigned count = minimum(state.line_count - begin, 128);
+    for (unsigned i = 0; i < count; ++i) rich_lines[i] = state.lines[begin + i];
+    state.line_count = begin; unsigned offset = 0;
+    for (unsigned i = 0; i < count; ++i) {
+        const auto& line = rich_lines[i]; const unsigned size = length(line.text); int left = x;
+        for (unsigned at = 0; at < size;) {
+            unsigned end = at + 1;
+            while (end < size && description_colors[offset + end] == description_colors[offset + at]) ++end;
+            char run[192]; for (unsigned j = at; j < end; ++j) run[j - at] = line.text[j]; run[end - at] = 0;
+            add_line(left, line.y, description_colors[offset + at], k_description, t_plain, run);
+            left += extent(window, run, 12); at = end;
+        }
+        offset += size;
+        while (offset < n && (description_plain[offset] == ' ' || description_plain[offset] == '\n')) ++offset;
+    }
+}
+static bool collection_visible() {
+    for (unsigned i = 0; i < state.snapshot.row_count; ++i) {
+        const auto& row = state.snapshot.rows[i];
+        if (row.section == w::core && same(row.label, "Item Collection")) return same(row.text, "Yes");
+    }
+    return false;
+}
+static void description_section(void* window, int& y, unsigned section) {
+    const auto& source = item_texts[pane_index()]; bool started = false, gap = false;
+    unsigned panel = 256;
+    for (unsigned i = 0; i < source.count; ++i) {
+        if (source.sections[i] != section) continue;
+        const char* raw = source.bytes + source.offsets[i];
+        if (!plain_description(raw)) { if (started) gap = true; continue; }
+        if (!started) {
+            heading(window, y, section ? "Item Collection:" : "Description:");
+            if (section) { panel = add_shape(s_tiers, 16, y, right_edge(window) - 16); y += 9; }
+            started = true;
+        } else if (gap) y += 7;
+        gap = false; description_row(window, y, raw, section ? 26 : 28, right_edge(window) - (section ? 36 : 34));
+    }
+    if (section && started) { if (panel < 256) set_shape_height(panel, y - state.shapes[panel].y + 9); y += 14; }
+}
+static void job_requirement(void* window, int& y) {
+    const auto& source = item_texts[pane_index()]; if (!source.jobs[0]) return;
+    int flags = 0;
+    for (unsigned i = 0; i < state.snapshot.row_count; ++i) {
+        const auto& row = state.snapshot.rows[i];
+        if (row.section == w::requirements && same(row.label, "Job")) flags = row.flags;
+    }
+    const bool bad = flags & w::unmet, good = flags & w::active;
+    add_shape(bad ? s_cross : good ? s_check : s_sparkle, 15, y);
+    char value[1080]; copy(value, sizeof(value), "Job: "); append(value, sizeof(value), source.jobs);
+    y = wrap(window, 30, y, right_edge(window) - 36, value, bad ? t_bad : good ? t_good : t_plain, -1, k_text, 17) + 2;
 }
 static void bullet_row(void* window, int& y, unsigned index) {
     const auto& row = state.snapshot.rows[index]; char value[256]; compose(row, value, sizeof(value));
@@ -892,11 +1279,12 @@ static void stat_row(void* window, int& y, unsigned index) {
     }
     const bool next = row.section == w::refine && starts(row.label, "Next +");
     char delta[24]; stat_delta(row, delta, sizeof(delta));
-    const int lw = extent(window, label, 12), vw = extent(window, row.text, 12, 1);
+    char shown[128]; player_value(row, shown, sizeof(shown));
+    const int lw = extent(window, label, 12), vw = extent(window, shown, 12, 1);
     if (30 + lw + 5 + vw + (delta[0] ? 5 + extent(window, delta, 12) : 0) > right_edge(window) - 6) { bullet_row(window, y, index); return; }
     add_shape(s_sparkle, 17, y, 0, 0, index);
     add_line(30, y, index, k_text, t_plain, label);
-    add_line(35 + lw, y, index, k_text, next ? t_muted : t_value, row.text);
+    add_line(35 + lw, y, index, k_text, next ? t_muted : t_value, shown);
     if (delta[0]) add_line(40 + lw + vw, y, index, k_text, delta[1] == '+' ? t_good : t_bad, delta);
     y += 18;
 }
@@ -917,7 +1305,7 @@ static void component(void* window, int& y, unsigned index, bool* consumed) {
     int ty = wrap(window, 78, y + 7, right - 86, name ? name : "Item", t_card_title, index, k_component_title, 17);
     // Card/enchant names and effects suffice. Keep actual warnings and comparison
     // descriptions, but omit the redundant "Slot N - Installed card" subtitle.
-    if (row.section == w::comparison || is_note(row)) {
+    if (!hidden_notice(row) && (row.section == w::comparison || is_note(row))) {
         copy(value, sizeof(value), row.text);
         ty = wrap(window, 78, ty, right - 86, value, t_card_sub, index, k_component_text, 15) + 2;
     }
@@ -926,6 +1314,7 @@ static void component(void* window, int& y, unsigned index, bool* consumed) {
         const auto& effect = state.snapshot.rows[j];
         if (effect.section != row.section) continue;
         if (effect.kind == w::component || starts(effect.label, "Slot ")) break;
+        if (consumed[j]) continue;
         if (effect.slot && effect.slot != row.slot) continue;
         compose(effect, value, sizeof(value));
         ty = wrap(window, 78, ty, right - 86, value, is_note(effect) ? t_note : (effect.flags & w::unmet) ? t_muted : t_card_body, j, k_component_text, 17);
@@ -945,19 +1334,34 @@ static void grade_panel(void* window, int& y, bool* consumed) {
     }
     name_w = minimum(name_w + 14, (right - 56) / 2);
     add_line(26, y + 7, title_row, k_text, t_card_title, title); int ty = y + 30;
-    char value[256];
+    // A wire effect is split into <=120-byte rows. Reassemble a labeled tier
+    // once during layout so its continuations share one icon and text column.
+    // This holds even the full bounded snapshot, including inserted spaces.
+    static char value[w::row_limit * sizeof(w::Row::text)];
     for (unsigned i = 0; i < state.snapshot.row_count; ++i) {
         const auto& row = state.snapshot.rows[i]; if (row.section != w::grade || consumed[i]) continue;
         consumed[i] = true;
+        if (is_note(row)) compose(row, value, sizeof(value));
+        else player_value(row, value, sizeof(value));
+        if (row.kind == w::effect && row.label[0]) {
+            for (unsigned j = i + 1; j < state.snapshot.row_count; ++j) {
+                const auto& next = state.snapshot.rows[j];
+                if (consumed[j] || next.section != row.section || next.kind != row.kind || next.label[0] ||
+                    next.flags != row.flags || next.item_id != row.item_id || next.slot != row.slot) break;
+                char part[128]; player_value(next, part, sizeof(part));
+                if (value[0] && part[0]) append(value, sizeof(value), " ");
+                append(value, sizeof(value), part); consumed[j] = true;
+            }
+        }
         if (is_note(row)) {
-            add_shape(s_info, 26, ty, 0, 0, i); compose(row, value, sizeof(value));
-            ty = wrap(window, 42, ty, right - 50, value, t_tier_note, i, k_text, 16); continue;
+            add_shape(s_info, 26, ty, 0, 0, i);
+            ty = wrap(window, 42, ty, right - 50, value, t_tier_note, i, k_text, 16, sizeof(value) - 1); continue;
         }
         const bool on = !(row.flags & w::unmet);
         add_shape((row.flags & w::active) ? s_check : (row.flags & w::unmet) ? s_lock : s_sparkle, 26, ty, 0, 0, i);
         int x = 40;
         if (row.label[0]) { add_line(x, ty, i, k_text, on ? t_tier_name : t_tier_off_name, row.label); x += name_w; }
-        ty = wrap(window, x, ty, right - 8 - x, row.text, on ? t_tier_text : t_tier_off, i, k_text, 18);
+        ty = wrap(window, x, ty, right - 8 - x, value, on ? t_tier_text : t_tier_off, i, k_text, 18, sizeof(value) - 1);
     }
     set_shape_height(panel, ty - y + 6); y = ty + 14;
 }
@@ -981,19 +1385,29 @@ static void chips(void* window, int& y, unsigned first, bool* consumed) {
 }
 static void layout(void* window) {
     state.line_count = state.hit_count = state.shape_count = 0; int y = 0;
+    const bool authored = item_texts[pane_index()].available;
+    if (authored) description_section(window, y, 0);
     bool consumed[w::row_limit]{};
     // The info strip and native title already carry these values.
     if (state.info_weight >= 0) consumed[state.info_weight] = true;
     if (state.info_weapon >= 0) consumed[state.info_weapon] = true;
     for (unsigned i = 0; i < state.snapshot.row_count; ++i) {
         const auto& row = state.snapshot.rows[i];
+        // Keep known occupied sockets and their artwork even if their old
+        // classification subtitle was one of the removed messages.
+        if (hidden_notice(row) && !(row.kind == w::component && row.item_id)) consumed[i] = true;
         if ((row.section == w::refine && same(row.label, "Refine level")) ||
             (row.section == w::requirements && same(row.label, "Maximum level"))) consumed[i] = true;
+        if (row.section == w::core && same(row.label, "Item Collection")) consumed[i] = true;
+        if (row.section == w::requirements && same(row.label, "Job") && item_texts[pane_index()].jobs[0]) consumed[i] = true;
+        if (authored && (row.section == w::core || row.section == w::attributes || row.section == w::refine ||
+            row.section == w::native_effects || row.section == w::card_sets)) consumed[i] = true;
     }
     static const u8 groups[][3] = {{w::core, w::attributes, w::refine}, {w::native_effects, 0, 0}, {w::cards, w::enchantments, 0},
         {w::card_sets, 0, 0}, {w::grade, 0, 0}, {w::random_options, 0, 0}, {w::requirements, 0, 0}, {w::restrictions, 0, 0},
         {w::comparison, 0, 0}};
     for (const auto& group : groups) {
+        if (group[0] == w::random_options && authored && collection_visible()) description_section(window, y, 1);
         int first = -1;
         for (unsigned i = 0; i < state.snapshot.row_count && first < 0; ++i) {
             const auto section = state.snapshot.rows[i].section;
@@ -1009,6 +1423,7 @@ static void layout(void* window) {
         else heading(window, y, section_name(lead));
         if (lead == w::grade) { grade_panel(window, y, consumed); continue; }
         if (lead == w::restrictions) chips(window, y, first, consumed);
+        bool job_shown = false;
         for (unsigned i = first; i < state.snapshot.row_count; ++i) {
             const auto& row = state.snapshot.rows[i];
             if (consumed[i] || !row.section || (row.section != group[0] && row.section != group[1] && row.section != group[2])) continue;
@@ -1017,10 +1432,9 @@ static void layout(void* window) {
                 component(window, y, i, consumed);
             else if (lead == w::core) stat_row(window, y, i);
             else bullet_row(window, y, i);
+            if (lead == w::requirements && !job_shown && same(row.label, "Base level")) { job_requirement(window, y); job_shown = true; }
         }
-    }
-    if (state.snapshot.flags & w::truncated) {
-        if (y) y += 4; add_shape(s_info, 15, y); add_line(30, y, -1, k_text, t_note, "Some effects were omitted."); y += 18;
+        if (lead == w::requirements && !job_shown) job_requirement(window, y);
     }
     state.content_height = y + 10; state.layout_width = width(window);
     state.scroll = clamp(state.scroll, 0, state.content_height - visible_height(window));
@@ -1060,6 +1474,7 @@ static void draw_shape(void* window, const Shape& s, int y) {
     }
 }
 static void draw_line(void* window, const Line& line, int y) {
+    if (line.kind == k_description) { text(window, line.x, y, line.text, static_cast<u32>(line.row), 0, 12); return; }
     const auto& s = styles[line.style < t_style_end ? line.style : 0];
     if (!s.accent) { text(window, line.x, y, line.text, s.color, s.bold, s.size); return; }
     // Numeric tokens ([+-]digits[.digits][%]) take the accent, as in card effects.
@@ -1086,7 +1501,7 @@ static void draw_line(void* window, const Line& line, int y) {
 }
 static void draw_body(void* window, int left, int top, int right, int bottom) {
     ClipScope scope(left, top, right, bottom);
-    const int visible_bottom = height(window) - 12;
+    const int visible_bottom = body_bottom(window);
     for (unsigned i = 0; i < state.shape_count; ++i) {
         const auto& s = state.shapes[i]; const int y = body_top + s.y - state.scroll;
         if (y + maximum(s.h, 16) <= top || y >= bottom) continue;
@@ -1112,7 +1527,7 @@ static bool repaint_hover(void* window, int previous, int hovered) {
         const auto& h = state.hits[i];
         if (100 + h.row != previous && 100 + h.row != hovered) continue;
         const int y = body_top + h.y - state.scroll;
-        const int top = maximum(body_top, y), bottom = minimum(height(window) - 12, y + h.height);
+        const int top = maximum(body_top, y), bottom = minimum(body_bottom(window), y + h.height);
         if (top >= bottom) continue;
         draw_body(window, h.x, top, h.x + h.width, bottom); painted = true;
     }
@@ -1130,7 +1545,7 @@ static bool repaint_partial(void* window, unsigned regions, int previous) {
         // The body lies inside the straight frame edges, above the rounded footer.
         // Clear old text/panels while retaining the native title/art and info strip.
         fill(window, 1, body_top, width(window) - 2, visible_height(window), white);
-        draw_body(window, 0, body_top, width(window), height(window) - 12);
+        draw_body(window, 0, body_top, width(window), body_bottom(window));
     } else if (regions & paint_hover) {
         if (!repaint_hover(window, previous, state.hover)) return false;
     }
@@ -1153,14 +1568,42 @@ static void info_strip(void* window) {
     };
     const auto pair_width = [&](const char* label, const char* value) { return extent(window, label, 12, 1) + 3 + extent(window, value, 12, 1); };
     const auto& rows = state.snapshot.rows;
-    const bool unmet = state.info_level >= 0 && (rows[state.info_level].flags & w::unmet);
-    pair(16, "Lv.:", state.info_level >= 0 ? display_value(rows[state.info_level]) : "-", unmet ? red : blue);
-    if (state.info_weapon >= 0) pair(w / 2 - pair_width("Weapon Lv.:", rows[state.info_weapon].text) / 2, "Weapon Lv.:", rows[state.info_weapon].text, blue);
-    if (state.info_weight >= 0) pair(w - 18 - pair_width("Weight:", rows[state.info_weight].text), "Weight:", rows[state.info_weight].text, blue);
+    const auto& range = level_ranges[pane_index()];
+    const bool unmet = range.unmet || (state.info_level >= 0 && (rows[state.info_level].flags & w::unmet));
+    const char* level = range.text[0] ? range.text : state.info_level >= 0 ? display_value(rows[state.info_level]) : "-";
+    const int weight_x = state.info_weight >= 0 ? w - 18 - pair_width("Weight:", rows[state.info_weight].text) : w - 18;
+    pair(16, "Lv.:", level, unmet ? red : blue);
+    const auto& compound = item_texts[pane_index()].compound;
+    if (compound[0]) {
+        const int left = 16 + pair_width("Lv.:", level) + 8, right = weight_x - 8;
+        const int span = pair_width("Compound On:", compound);
+        if (span <= right - left) pair(left + (right - left - span) / 2, "Compound On:", compound, blue);
+        else {
+            // Long destinations use two lines, retaining the same font/weight
+            // as both neighboring fields instead of shrinking the card text.
+            const auto center = [&](const char* value, int top, u32 color) {
+                text(window, left + maximum(0, (right - left - extent(window, value, 12, 1)) / 2), top, value, color, 1, 12);
+            };
+            center("Compound On:", 118, ink); center(compound, 132, blue);
+        }
+    } else if (state.info_weapon >= 0) pair(w / 2 - pair_width("Weapon Lv.:", rows[state.info_weapon].text) / 2, "Weapon Lv.:", rows[state.info_weapon].text, blue);
+    if (state.info_weight >= 0) pair(weight_x, "Weight:", rows[state.info_weight].text, blue);
     rounded(window, 14, 145, 4, 4, 2, rule, rule); fill(window, 19, 146, w - 38, 1, rule); rounded(window, w - 18, 145, 4, 4, 2, rule, rule);
 }
+static void item_id_footer(void* window) {
+    // Full paints only: retain this strip during body/hover/scrollbar updates.
+    // The accepted snapshot belongs to this pane; legacy ItemInfo footer text
+    // remains filtered out of Description and Requirements.
+    char label[24] = "ItemID: ", digits[10]; unsigned count = 0, at = 8;
+    u32 id = state.snapshot.item_id;
+    do { digits[count++] = '0' + id % 10; id /= 10; } while (id);
+    while (count) label[at++] = digits[--count];
+    label[at] = 0;
+    text(window, maximum(6, width(window) - 6 - extent(window, label, 10)),
+        body_bottom(window) + 3, label, 0x000000, 0, 10);
+}
 static void skeleton_body(void* window) {
-    const int w = width(window), bottom = height(window) - 12, right = right_edge(window);
+    const int w = width(window), bottom = body_bottom(window), right = right_edge(window);
     rounded(window, 16, 126, 56, 11, 5, skeleton, skeleton); rounded(window, w / 2 - 40, 126, 80, 11, 5, skeleton, skeleton);
     rounded(window, w - 88, 126, 70, 11, 5, skeleton, skeleton);
     rounded(window, 14, 145, 4, 4, 2, rule, rule); fill(window, 19, 146, w - 38, 1, rule); rounded(window, w - 18, 145, 4, 4, 2, rule, rule);
@@ -1180,7 +1623,9 @@ static bool header_space(void* window, int x, int y) {
 }
 static bool move_header(void* window, int x, int y) {
     if (header_drag.owner != window) return false;
-    if (capture() != window) { header_drag.owner = nullptr; return false; }
+    // End movement on capture loss, but consume any late Up separately. Keeping
+    // movement active here would suppress hover forever if Up goes elsewhere.
+    if (capture() != window) { header_drag.owner = nullptr; return true; }
     int left = field<int>(window, 0x1C) + x - header_drag.x;
     int top = field<int>(window, 0x20) + y - header_drag.y;
     auto moving = window;
@@ -1201,7 +1646,7 @@ static bool move_header(void* window, int x, int y) {
 static int hit(void* window, int x, int y) {
     if (state.loading) return 0;
     if (scrollable(window) && inside(x, y, width(window) - 27, body_top, 13, visible_height(window))) return 6;
-    if (y >= body_top && y < height(window) - 12) for (unsigned i = 0; i < state.hit_count; ++i) {
+    if (y >= body_top && y < body_bottom(window)) for (unsigned i = 0; i < state.hit_count; ++i) {
         const auto& h = state.hits[i]; if (inside(x, y - body_top + state.scroll, h.x, h.y, h.width, h.height)) return 100 + h.row;
     }
     return 0;
@@ -1243,6 +1688,14 @@ extern "C" __declspec(dllexport) int __stdcall ItemDescriptionReceive(const void
     const auto& response = *static_cast<const w::Snapshot*>(packet);
     if (!state.pending && !(state.ready && response.result == w::stale)) return 0;
     server_proven = 1; server_silent = 0;
+    if (response.result == w::stale && !comparison_view() && !component_view() && state.request.scope == w::inventory &&
+        storage_transfer.eligible && (state.pending || !original_inventory_item())) {
+        if (!storage_transfer.active) {
+            storage_transfer.active = true; storage_transfer.started = storage_transfer.checked = now();
+            state.pending = state.deferred = 0;
+        }
+        return 1;
+    }
     if (response.result == w::stale && !state.pending) {
         // The server invalidated this watched instance: reinspect in place.
         state.snapshot.request_id = 0;
@@ -1259,7 +1712,7 @@ extern "C" __declspec(dllexport) int __stdcall ItemDescriptionReceive(const void
     }
     memcpy(&state.snapshot, &response, sizeof(response)); state.pending = 0; state.loading = 0;
     if (!activate(window)) { restore(window); return 0; }
-    scan_snapshot(); state.layout_width = 0;
+    scan_snapshot(); load_item_text(); state.layout_width = 0;
     // The other pane's header arrow and stat deltas compare against this snapshot.
     State& other = comparison_view() ? ItemDescriptionState : ItemDescriptionComparisonState;
     if (!component_view()) { other.layout_width = 0; if (other.owner) dirty(other.owner); }
@@ -1289,6 +1742,7 @@ extern "C" __declspec(dllexport) int __fastcall ItemDescriptionMessage(void* win
         message != 14 && message != 24 && message != 29 && message != 34 && message != 98)
         return reinterpret_cast<int(__thiscall*)(void*, int, int, void*, int, int, int)>(native(37))(window, a, message, data, d, e, f);
     const bool opening = ours && message == 24 && data && config.enabled;
+    if (!comparison_view() && !component_view() && (opening || message == 5)) storage_transfer = {};
     const bool optimized = opening && optimize_open(window, data);
     const bool retained = optimized && owner(window) && state.ready;
     const unsigned pane = pane_index();
@@ -1325,6 +1779,7 @@ extern "C" __declspec(dllexport) void __fastcall ItemDescriptionProcess(void* wi
     ViewScope context(view_for(window));
     reinterpret_cast<void(__thiscall*)(void*)>(native(19))(window);
     if (!owner(window) || state.force_stock || !field<u8>(window, 0x28)) { end_header_drag(window); return; }
+    if (recover_storage_transfer(window)) return;
     if (comparison_view() && comparison_rewatch && !request_view(window, false)) { restore(window); return; }
     if (state.deferred && send_ready() && !transmit()) { restore(window); return; }
     if (state.pending && now() - state.sent_at >= load_timeout) {
@@ -1355,7 +1810,7 @@ extern "C" __declspec(dllexport) void __fastcall ItemDescriptionDraw(void* windo
     // Direct pixel writes must upload even if native item art/title is empty.
     auto surface = field<void*>(window, 0x24); if (surface) field<u32>(surface, 0x1C) |= 1;
     hide_children(window);
-    const int w = width(window), h = height(window), bottom = h - 12;
+    const int w = width(window), bottom = body_bottom(window);
     card_frame(window);
     header_details(window);
     if (state.loading) { skeleton_body(window); return; }
@@ -1363,11 +1818,14 @@ extern "C" __declspec(dllexport) void __fastcall ItemDescriptionDraw(void* windo
     info_strip(window);
     draw_body(window, 0, body_top, w, bottom);
     if (scrollable(window)) draw_scrollbar(window);
+    item_id_footer(window);
 }
 extern "C" __declspec(dllexport) void __fastcall ItemDescriptionDown(void* window, void*, int x, int y) {
     ViewScope context(view_for(window));
+    header_release[pane_index()] = false;
     if (owner(window) && state.ready && header_space(window, x, y) && (!capture() || capture() == window)) {
         state.pressed = 0; header_drag = {window, x, y};
+        header_release[pane_index()] = true;
         reinterpret_cast<void(__thiscall*)(void*, void*)>(0x00A4B750)(reinterpret_cast<void*>(0x0131F4E8), window);
         return;
     }
@@ -1396,9 +1854,18 @@ extern "C" __declspec(dllexport) void __fastcall ItemDescriptionMove(void* windo
         if (before != field<int>(state.scrollbar, 0x7C)) queue_paint(window, paint_bar);
     }
 }
+extern "C" __declspec(dllexport) void __fastcall ItemDescriptionDrag(void* window, void*, int x, int y) {
+    ViewScope context(view_for(window));
+    // UISingleWindow dispatches held-button motion through slot 27, separately
+    // from hover (28). Its stock drag uses +7C/+80/+84/+88, which this custom
+    // gesture never initialized; a fast release could leave the pane offscreen.
+    if (move_header(window, x, y)) return;
+    if (header_release[pane_index()]) return;
+    reinterpret_cast<void(__thiscall*)(void*, int, int)>(native(27))(window, x, y);
+}
 extern "C" __declspec(dllexport) void __fastcall ItemDescriptionUp(void* window, void*, int x, int y) {
     ViewScope context(view_for(window));
-    if (header_drag.owner == window) { end_header_drag(window); state.pressed = 0; return; }
+    if (header_release[pane_index()] || header_drag.owner == window) { end_header_drag(window); state.pressed = 0; return; }
     if (capture() == window) { reinterpret_cast<void(__thiscall*)(void*, int, int)>(0x00880BB0)(window, x, y); return; }
     if (!owner(window) || !state.ready || (y < header_bottom && !state.pressed)) { reinterpret_cast<void(__thiscall*)(void*, int, int)>(native(31))(window, x, y); return; }
     const int pressed = state.pressed; state.pressed = 0;
@@ -1437,6 +1904,16 @@ extern "C" __declspec(dllexport) void __fastcall ItemDescriptionEquipmentRight(v
     ViewScope context(view_for(window));
     const auto previous = state.origin_scope; state.origin_scope = w::inventory;
     reinterpret_cast<void(__thiscall*)(void*, int, int)>(config.equipment_right)(window, x, y); state.origin_scope = previous;
+}
+extern "C" __declspec(dllexport) void __fastcall ItemDescriptionCartRight(void* window, void*, int x, int y) {
+    ViewScope context(&ItemDescriptionState);
+    const auto previous = state.origin_scope; state.origin_scope = w::cart;
+    reinterpret_cast<void(__thiscall*)(void*, int, int)>(config.cart_right)(window, x, y); state.origin_scope = previous;
+}
+extern "C" __declspec(dllexport) void __fastcall ItemDescriptionStorageRight(void* window, void*, int x, int y) {
+    ViewScope context(&ItemDescriptionState);
+    const auto previous = state.origin_scope; state.origin_scope = w::storage;
+    reinterpret_cast<void(__thiscall*)(void*, int, int)>(config.storage_right)(window, x, y); state.origin_scope = previous;
 }
 
 extern "C" __declspec(dllexport) void __fastcall ItemDescriptionPosition(void* window, void*, int x, int y) {

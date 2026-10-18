@@ -1,5 +1,37 @@
 # AGENTS.md — WARP0716
 
+## Preserve all verified features; test only affected behavior
+
+User-directed workflow, October 15, 2026. Applies to every existing and future
+feature, including Battle Pass, Gacha, item descriptions, inventory, cart,
+storage, Barter and other client/server systems.
+
+- Treat previously verified features as frozen during unrelated work. Do not
+  refactor, rewrite or alter them to add another feature. A requested fix or
+  enhancement authorizes changes to that feature.
+- Choose tests from the actual diff and dependencies. Test the changed feature;
+  test another feature only when the change can affect it. Creating a new EXE,
+  adding a system or fixing an unrelated feature does not require all suites.
+- Use quick source/hash comparisons for preservation. If the accepted baseline
+  already differs, record relevant current hashes before work and compare them
+  afterward. Existing baseline differences alone do not justify rerunning tests.
+  Keep accepted tags/manifests unchanged.
+- Shared transport, record layouts, state, rendering and build integration need
+  impact analysis. Run only the affected dependent features' checks and explain
+  the specific dependency. Run both Battle Pass/Gacha suites only when both
+  are affected; do not automatically run them for every client patch.
+- Reuse passing results while relevant code/dependencies remain unchanged.
+  Repeat checks only after a relevant change, failure or new concern.
+  Documentation-only workflow edits need no runtime suites.
+- Stage binaries, preserve installed copies, and validate affected behavior.
+  Do not require fresh acceptance of unaffected features for unrelated changes.
+  State test limitations; offline checks are not live acceptance. Never use
+  live player data or reset player progress as a regression test.
+
+These scope rules take precedence over broader "test everything" language in
+older workflow documents. Feature-specific tests still apply when that feature
+or a dependency that can affect it is changed.
+
 Win App Revamp Package for Ragnarok Online — Qt-based GUI patching tool using QuickJS scripts to modify 32-bit PE binaries.
 
 ## Role

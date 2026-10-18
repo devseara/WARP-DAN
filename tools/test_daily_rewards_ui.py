@@ -7,14 +7,17 @@ from test_gacha_ui import GachaMachine
 
 FIELDS='api state toggle receive hit draw down up move drag cursor destroy timer rightdown rightup wheel receiver menu fallback animation'.split()
 def contract(m):
-    data=m.pe.get_memory_mapped_image(); pos=data.find(b'DailyRewardsUI.v3\0'); assert pos>=0
+    data=m.pe.get_memory_mapped_image(); pos=data.find(b'DailyRewardsUI.v5\0');m.daily_version=5
+    if pos<0:pos=data.find(b'DailyRewardsUI.v4\0');m.daily_version=4
+    if pos<0:pos=data.find(b'DailyRewardsUI.v3\0');m.daily_version=3
+    assert pos>=0
     record=data.find(pack(m.base+pos));assert record>=0
     return {name:m.r(m.base+record+4+i*4) for i,name in enumerate(FIELDS)}
 
-def snapshot(seq=1,page=0,total=24,attpage=0,roll=0,legacy=False,catalog=False,pool=None):
+def snapshot(seq=1,page=0,total=24,attpage=0,roll=0,legacy=False,catalog=False,pool=None,six=False):
     if pool is not None:total=len(pool)
-    p=bytearray(3308 if legacy else 9364 if catalog else 5268)
-    struct.pack_into('<HHIHH9I',p,0,0xbf4,len(p),0x49555244,1 if legacy else 3 if catalog else 2,1|(2 if roll else 0),seq,20261008,86400,attpage,page,(total+5)//6,total,2,roll)
+    p=bytearray(9420 if six else 3308 if legacy else 9364 if catalog else 5268)
+    struct.pack_into('<HHIHH9I',p,0,0xbf4,len(p),0x49555244,4 if six else 1 if legacy else 3 if catalog else 2,1|(2 if roll else 0),seq,20261008,86400,attpage,page,(total+5)//6,total,2,roll)
     p[48:144]=b'Rewards are delivered by RODEX. Daily reset: midnight server time.'.ljust(96,b'\0')
     def item(off,id,qty=1):
         struct.pack_into('<II',p,off,id,qty);p[off+8:off+56]=('Reward '+str(id)).encode().ljust(48,b'\0')
@@ -25,9 +28,9 @@ def snapshot(seq=1,page=0,total=24,attpage=0,roll=0,legacy=False,catalog=False,p
     for i,name in enumerate(['Defeat any monsters','Hunt Poring','Collect Jellopy','Use Blue Potion','Defeat players in PvP']):
         off=592+i*420;struct.pack_into('<5I',p,off,i+1,1002,20,20 if i<2 else 15,1 if i==1 else 0);p[off+20:off+84]=name.encode().ljust(64,b'\0')
         for j in range(6):item(off+84+j*56,501+j,j+1)
-    for i in range(roll):item(2692+i*56,501+i,5)
+    for i in range(roll):item(9364 if i==5 and six else 2692+i*56,501+i,5)
     for i in range(min(6,max(0,total-page*6))):item(2972+i*56,pool[page*6+i] if pool is not None else 501+page*6+i)
-    if catalog:
+    if catalog or six:
         for i in range(total):struct.pack_into('<I',p,5268+i*4,pool[i] if pool is not None else 501+i)
     return p
 
@@ -36,6 +39,9 @@ class DailyMachine(Machine):
     text=GachaMachine.text
     def __init__(self,exe):
         self.text_colors=[];super().__init__(exe,Path('.'));self.c=contract(self)
+        self.anim_icons=32 if self.daily_version>=4 else 28
+        self.anim_count=56 if self.daily_version>=4 else 48
+        self.anim_revealed=4156 if self.daily_version>=4 else 4148
         self.now=1000;self.sent=[];self.timers=[];self.stock=[];self.described=[];self.monsters=[];self.icons=[]
         self.stub(0xA21C90,self.measure)
         self.stub(0xDBBC4F,lambda:self.ret(0,self.alloc(self.args(1)[0])))
@@ -140,19 +146,19 @@ def tooltip_checks(m,output):
 
 def animation_checks(exe,output):
     m=DailyMachine(exe);c=m.c;s=c['state'];a=c['animation']
-    icons=lambda:tuple(m.r(a+28+i*4) for i in range(5))
+    icons=lambda:tuple(m.r(a+m.anim_icons+i*4) for i in range(5))
     def begin(pool,roll=None,page=0):
         if m.r(s+28):m.click(906,11)
         m.invoke(c['toggle'],0);request=m.sent[-1]
-        assert struct.unpack_from('<H',request,8)[0]==1
-        assert struct.unpack_from('<II',request,16)==(0x33555244,0x32555244)
+        assert struct.unpack_from('<H',request,8)[0]==(4 if m.daily_version>=5 else 1)
+        assert struct.unpack_from('<II',request,16)==(0x35555244 if m.daily_version>=5 else 0x34555244 if m.daily_version==4 else 0x33555244,0x32555244)
         m.reply(catalog=True,pool=pool,page=page);m.click(338,44);m.click(790,366)
         assert struct.unpack_from('<HH',m.sent[-1],8)==(3,4)
         assert struct.unpack_from('<I',m.sent[-1],16)[0]==20261008, 'claim must carry date, not capability'
         if roll is not None:m.reply(catalog=True,pool=pool,roll=roll,page=page)
     pool=list(range(501,541))
     begin(pool,page=6)
-    assert m.r(a+48)==40, 'catalog truncated to visible page'
+    assert m.r(a+m.anim_count)==40, 'catalog truncated to visible page'
     seen=set();previous=icons();seen.update(previous);sent=len(m.sent)
     m.advance(99);assert icons()==previous, 'cycling faster than Gacha'
     m.advance(1);assert all(x!=y for x,y in zip(icons(),previous)), 'repeated frame with adequate pool'
@@ -172,13 +178,13 @@ def animation_checks(exe,output):
     assert [(x,y) for _,x,y in rolling]==[(113+i%4*222,211+i//4*80) for i in range(5)]
     assert not any(t[0]=='Received' for t in m.texts)
     # Server Gacha's first deadline is 1020 ms; following deadlines are 220 ms.
-    m.advance(1019);assert m.r(a+4148)==0 and m.r(s+52)
-    m.advance(1);assert m.r(a+4148)==1
+    m.advance(1019);assert m.r(a+m.anim_revealed)==0 and m.r(s+52)
+    m.advance(1);assert m.r(a+m.anim_revealed)==1
     m.preview(output/'daily-roll-first-reveal.png')
     assert sum(t[0]=='Received' for t in m.texts)==1
     for expected in range(2,6):
-        m.advance(219);assert m.r(a+4148)==expected-1
-        m.advance(1);assert m.r(a+4148)==expected
+        m.advance(219);assert m.r(a+m.anim_revealed)==expected-1
+        m.advance(1);assert m.r(a+m.anim_revealed)==expected
     assert not m.r(s+52)
     m.preview(output/'daily-roll-five-revealed.png')
     assert sum(t[0]=='Received' for t in m.texts)==5
@@ -188,12 +194,12 @@ def animation_checks(exe,output):
         for frame in range(1,12+3*(count-1)):
             m.advance(100)
             expected=0 if frame<11 else min(count,1+(frame-11)//3)
-            assert m.r(a+4148)==expected
+            assert m.r(a+m.anim_revealed)==expected
         assert not m.r(s+52)
     # Small/duplicate pools cannot manufacture distinct unavailable items.
     for small in ([505],[505,505,505],[501,502],[501,502,503,504,505]):
         begin(small)
-        assert m.r(a+48)==len(set(small))
+        assert m.r(a+m.anim_count)==len(set(small))
         for _ in range(12):
             m.advance(100);current=icons()
             assert set(current)<=set(small)
@@ -201,7 +207,7 @@ def animation_checks(exe,output):
     # Maximum catalog, last partial page and tick wrap are bounded.
     maximum=list(range(10000,11024));m.now=0xffffffc0
     begin(maximum,page=170)
-    assert m.r(a+48)==1024
+    assert m.r(a+m.anim_count)==1024
     m.advance(100);assert all(item in maximum for item in icons())
     m.reply(catalog=True,pool=maximum,roll=1,page=170)
     m.advance(1020);assert not m.r(s+52)
@@ -216,7 +222,7 @@ def animation_checks(exe,output):
         assert m.r(s+8), 'malformed catalog accepted'
         m.reply(catalog=True)
     m.click(815,43);m.reply(catalog=True,total=0);m.click(338,44)
-    old=len(m.sent);m.click(790,366);assert len(m.sent)==old and m.r(a+48)==0
+    old=len(m.sent);m.click(790,366);assert len(m.sent)==old and m.r(a+m.anim_count)==0
     m.click(906,11)
     print('PASS: independent full-pool cosmetic streams, no extra requests, 100 ms cadence, Gacha 1020/220 ms deadlines, centered icons, 1-5 reveals, delayed replies, no prize leaks, duplicate/small/1024-item pools, tick wrap, invalid catalogs and v1/v2 compatibility.')
 
@@ -260,7 +266,7 @@ def main():
     m.advance(6000);m.reply(roll=3);m.preview(a.output/'daily-roll-slow-reply.png')
     assert not any(t[0]=='Received' for t in m.texts),'slow server response skipped the reveal'
     m.advance(1020);m.advance(220);m.preview(a.output/'daily-roll-revealing.png')
-    assert sum(t[0]=='Received' for t in m.texts)==2 and m.r(c['animation']+4148)==2
+    assert sum(t[0]=='Received' for t in m.texts)==2 and m.r(c['animation']+m.anim_revealed)==2
     old=len(m.sent);m.click(160,370);assert len(m.sent)==old,'skip reveal sent another roll'
     m.preview(a.output/'daily-roll-result.png');assert sum(t[0]=='Received' for t in m.texts)==3 and sum(t[0]=='No reward' for t in m.texts)==2
     m.click(790,366);assert len(m.sent)==old,'claimed roll sent again'

@@ -60,8 +60,9 @@ EXPORT int __stdcall StorageCategory(void* item,u32 id,int category){
     if(category==9)return pet;
     if(costume || shadow || pet)return 0;
     if(category==1)return type==0 || type==1 || type==2;
-    if(category==2)return type==4 || (type>=11 && type<=14);
-    if(category==3)return type==5 || type==8 || type==9 || type==15;
+    // Base native kinds are 5 = weapon, 4 = armor (including headgear).
+    if(category==2)return type==5 || (type>=11 && type<=14);
+    if(category==3)return type==4 || type==8 || type==9 || type==15;
     if(category==4)return type==3 || type==7;
     if(category==5)return type==6;
     if(category==6)return type==10 || type==16 || type==17 || type==19;
@@ -172,6 +173,7 @@ static void slice(int tex,int sx,int sy,int width,int h,int dx,int dy){
 static void png(void* w,int i,int x,int y){StorageApi.png(w,x,y,textures[i],0);}
 static void sprite(void* w,int i,int x,int y){reinterpret_cast<void (__thiscall *)(void*,int,int,void*,int)>(0xA1D260)(w,x,y,textures[i],1);}
 static void text(void* w,const char* s,int x,int y,int width,u32 color=0x797979){StorageApi.text(w,s,x,y,width,color);}
+#include "../ItemSlotQuantity.h"
 static int thumbSize(){return max(20,(rows()*32-24)*rows()/max(rows(),(StorageState.count+cols()-1)/cols()));}
 static int thumbTravel(){return rows()*32-24-thumbSize();}
 static int thumbTop(){return 69+(maxScroll()?StorageState.scroll*thumbTravel()/maxScroll():0);}
@@ -213,9 +215,8 @@ EXPORT void __fastcall StorageDraw(void* w,void*){
             slice(30,0,0,28,32,x,y);for(int edge=0;edge<4;++edge)slice(30,edge,0,1,32,x+31-edge,y);
             slice(bg,58,65,30,20,x+1,y+8);
         }
-        // Stock CItem renderer uses a 24px canvas; all grade/card/quantity layers
-        // retain their native offsets. The cell and shadow centers coincide.
-        reinterpret_cast<void (__thiscall *)(void*,int,int,void*,int,int)>(0x8711A0)(w,x+4,y+4,item,0,0);
+        // Center the native 24px icon and keep its count inside the 32px cell.
+        drawSlotItem(w,x+4,y+4,item);
         if(!StorageState.block)reinterpret_cast<void (__thiscall *)(void*,int,int,int,void*,int,int,int)>(0x897860)(w,96,y+12,191,item,0,0,12);
         StorageState.visible[n]={at<u32>(item,4),itemId(item),fingerprint(item)};StorageState.visibleCount=n+1;
     }else text(w,"Waiting for storage...",81,193,208);

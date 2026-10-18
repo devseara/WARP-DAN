@@ -338,23 +338,9 @@ EntityTextStatic.buildPacketStore = function(
 	a.jcc(0x84, "v3_mob");
 	a.emit(0x83, 0xFE, 0x00);
 	a.jcc(0x85, "v3_main");
-	// PC packets without a prebuilt extended name retain the DLL's compact
-	// title/name/party/guild/position composition.
-	a.emit(0x80, 0x7B, 0x24, 0x00);
-	a.jcc(0x85, "v3_pc_title");
-	appendField(scratchVir, 164, literals.openSquare, literals.closeSquare);
-	appendField(scratchVir, 292, literals.openBrace, literals.closeBrace);
-	appendField(scratchVir, 420, literals.openParen, literals.closeParen);
-	a.label("v3_pc_title");
-	a.emit(0x80, 0xBB); a.dword(548); a.emit(0x00);
-	a.jcc(0x84, "v3_pc_name");
-	callCopy(scratch2Vir, [0x8D, 0x83, 0x24, 0x02, 0x00, 0x00, 0x50]);
-	appendLiteral(scratch2Vir, literals.space);
-	appendPtr(scratch2Vir, [0x68, scratchVir & 0xFF, (scratchVir >>> 8) & 0xFF,
-		(scratchVir >>> 16) & 0xFF, (scratchVir >>> 24) & 0xFF]);
-	callCopy(scratchVir, [0x68, scratch2Vir & 0xFF, (scratch2Vir >>> 8) & 0xFF,
-		(scratch2Vir >>> 16) & 0xFF, (scratch2Vir >>> 24) & 0xFF]);
-	a.label("v3_pc_name");
+	// Keep player names canonical in every text surface, including NPC dialogue
+	// and character selection. Social fields below retain their own mappings;
+	// never append them to the name or strip punctuation from the real name.
 	// PC packet.name is the canonical 128-byte character name; shortName is
 	// only the stock 24-byte wire key. putMain() below maps the wire key, and
 	// this alias covers client surfaces that already contain the full name.
@@ -376,20 +362,8 @@ EntityTextStatic.buildPacketStore = function(
 	// V4 single-name layout: every name and title field is 128 bytes.
 	a.label("v4");
 	callCopy(scratchVir, [0x8D, 0x43, 0x0C, 0x50]);
-	a.emit(0x83, 0xFE, 0x00);
-	a.jcc(0x85, "v4_main");
-	appendField(scratchVir, 140, literals.openSquare, literals.closeSquare);
-	appendField(scratchVir, 268, literals.openBrace, literals.closeBrace);
-	appendField(scratchVir, 396, literals.openParen, literals.closeParen);
-	a.emit(0x80, 0xBB); a.dword(524); a.emit(0x00);
-	a.jcc(0x84, "v4_main");
-	callCopy(scratch2Vir, [0x8D, 0x83, 0x0C, 0x02, 0x00, 0x00, 0x50]);
-	appendLiteral(scratch2Vir, literals.space);
-	appendPtr(scratch2Vir, [0x68, scratchVir & 0xFF, (scratchVir >>> 8) & 0xFF,
-		(scratchVir >>> 16) & 0xFF, (scratchVir >>> 24) & 0xFF]);
-	callCopy(scratchVir, [0x68, scratch2Vir & 0xFF, (scratch2Vir >>> 8) & 0xFF,
-		(scratch2Vir >>> 16) & 0xFF, (scratch2Vir >>> 24) & 0xFF]);
-	a.label("v4_main");
+	// Cache only the real character name. The shared draw/measure bridge must
+	// not turn an ordinary name label into a title/party/guild/position string.
 	putMain();
 	put(140, 140, false, 1);
 	put(268, 268, false, 2);

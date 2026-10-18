@@ -131,7 +131,7 @@ CustomUI:
             title : RO Global Zero Basic Information HUD
             recommend : no
             author : Louis T Steinhil
-            desc : Replaces both compact Basic Information render paths with the 252x74 RO Global Zero HP/SP/AP HUD. It reads HP/SP from stock globals and AP/MAXAP from Allow AP Bar for all Jobs, preserving current AP and using the server overlay BaseAp 200 fallback only when MAXAP is absent. The 66x66 native UIJobIconButton loads uirenewal/jobicon/big2 first and maps mounted, third, fourth, baby, and costume IDs to existing original framed class-lineage art; no generated replacement icon pack is required. HP/SP/AP and Job-name tooltips use native parent/child hit handling. Classic UI restores stock HUD rendering and keeps both native minimize/close controls visible; New UI hides only those two title controls. QJS-only.
+            desc : Replaces both compact Basic Information render paths with the approved 280x70 circular-class HUD from basicinfoui artwork. Shows the real character name, base/job level badge, labeled HP/SP/AP values and percentages. HP turns red at 25 percent or below. Live stock HP/SP and native AP/MAXAP are retained, with BaseAp 200 fallback only when MAXAP is absent. Native Job/gauge tooltips, child lifecycle, Classic UI fallback and New UI Alt+V behavior remain. Copies the packaged artwork beside the output EXE under eitr_basicinfo. QJS-only; target 2025-07-16.
 
         - ROGlobalZeroStatusIcons:
             title : RO Global Zero Status Icons V2

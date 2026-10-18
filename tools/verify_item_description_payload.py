@@ -12,7 +12,7 @@ from verify_item_description_native import VM, WIN, ITEM, PIXELS, HITS, LINES, S
 
 ROOT = Path(__file__).resolve().parents[1]
 ORIGINAL = {0:0x892A50,1:0xA245C0,4:0x8A0E70,19:0x8BAEC0,20:0x8B4200,25:0x8B97B0,
-            28:0x8BA470,31:0x8B9B70,32:0x8BB4C0,35:0x5A8AF0,37:0x8C18B0}
+            27:0x880E00,28:0x8BA470,31:0x8B9B70,32:0x8BB4C0,35:0x5A8AF0,37:0x8C18B0}
 COMPARISON = {**ORIGINAL,0:0x892A80,4:0x8A0EB0,25:0x8B9820,31:0x8B9BA0,32:0x8BB6D0,37:0x8C3540}
 COMPONENT = {**ORIGINAL,0:0x892480,4:0x8A0E20,31:0x8B9AC0,37:0x8BF3B0}
 
@@ -29,9 +29,9 @@ class MemoryImage:
         original = [ORIGINAL.get(i,0) for i in range(53)]
         comparison = [COMPARISON.get(i,0) for i in range(53)]
         component = [COMPONENT.get(i,0) for i in range(53)]
-        config = [STOP+0x200,STOP+0x220,STOP+0x240,0,*original,0x94F380,0x8BB340,1,*comparison,*component]
-        assert len(config) == 166
-        struct.pack_into('<166I',payload,blob['exports']['ItemDescriptionConfig'],*config)
+        config = [STOP+0x200,STOP+0x220,STOP+0x240,0,*original,0x94F380,0x8BB340,1,*comparison,*component,0,0]
+        assert len(config) == 168
+        struct.pack_into('<168I',payload,blob['exports']['ItemDescriptionConfig'],*config)
         self.image.extend(payload)
         def relative(op, at, target): return bytes([op])+struct.pack('<i',target-at-5)
         site, resume = 0x8B438A, 0x8B4391
@@ -42,7 +42,7 @@ class MemoryImage:
         self.image.extend(code)
         self.image[site-0x400000:site-0x400000+7] = relative(0xe9,site,bridge)+b'\x90\x90'
         hooks=[]
-        names={0:'Destroy',4:'Position',19:'Process',20:'Draw',25:'Down',28:'Move',31:'Up',32:'Right',35:'Wheel',37:'Message'}
+        names={0:'Destroy',4:'Position',19:'Process',20:'Draw',25:'Down',27:'Drag',28:'Move',31:'Up',32:'Right',35:'Wheel',37:'Message'}
         if 'ItemDescriptionSize' in entries:names[1]='Size'
         for table, stock in [(0x1032AAC,original),(0x1032C5C,comparison),(0x1032B84,component)]:
             for slot,name in names.items():
@@ -56,7 +56,10 @@ class MemoryImage:
             headerHook=dict(address=site,resume=resume,bridge=dict(vir=bridge)))
         if 'ItemDescriptionNativeOpen' in entries:
             from verify_item_description_lifecycle import install
-            self.manifest['lifecycleHooks']=install(self.image,entries,node)
+            self.manifest['lifecycleHooks'],self.manifest['sourceHooks']=install(self.image,entries,node)
+            for hook in self.manifest['sourceHooks']:
+                config[hook['configWord']]=hook['trampoline']['vir']
+            struct.pack_into('<168I',self.image,entries['ItemDescriptionConfig']-0x400000,*config)
     def get_memory_mapped_image(self): return bytes(self.image)
     def get_data(self,offset,length): return bytes(self.image[offset:offset+length])
 
@@ -220,27 +223,27 @@ def motion_checks(pe, m):
         assert v.read32(surface+0x1c)&1,'partial scroll was not uploaded'
         assert bytes(v.u.mem_read(PIXELS,len(saved_header)))==saved_header,'scroll changed fixed header'
         partial=bytes(v.u.mem_read(PIXELS,v.surface_size));body_text=list(v.draws)
-        assert all(154<=y<548 for _,y,*_ in body_text),'scroll drew outside the body'
+        assert all(154<=y<542 for _,y,*_ in body_text),'scroll drew outside the body'
         cost=v.fill_calls-fills;v.draws=[];v.run('Draw')
         assert bytes(v.u.mem_read(PIXELS,v.surface_size))==partial,'partial scroll pixels differ from full draw'
-        assert [t for t in v.draws if 154<=t[1]<548]==body_text,'partial scroll text differs from full draw'
+        assert [t for t in v.draws if 154<=t[1]<542]==body_text,'partial scroll text differs from full draw'
         assert cost<v.fill_calls-fills-cost,'partial scroll did not reduce fill work'
         assert bytes(v.u.mem_read(PIXELS+v.surface_size,64))==b'\xcd'*64
         scrolls.append(v.s('scroll'))
     frame([('Wheel',[0]),('Wheel',[120])],False)
     frame([('Wheel',[-120])]);frame([('Wheel',[-120])]*4)
     frame([('Down',[sx,156]),('Up',[sx,156])])
-    frame([('Down',[sx,546]),('Up',[sx,546])])
+    frame([('Down',[sx,540]),('Up',[sx,540])])
     frame([('Message',[v.scrollbar,9,0,0,0,0])])
     frame([('Message',[v.scrollbar,10,0,0,0,0])])
     # Thumb capture and outside release, with many events coalesced per frame.
     v.s('scroll',0);v.run('Draw');v.write32(WIN+0x58,0)
     frame([('Down',[sx,170]),('Move',[sx,3000])])
-    assert v.s('scroll')==v.s('content')-394 and v.read32(0x131f4e8+0x19c)==v.scrollbar
+    assert v.s('scroll')==v.s('content')-388 and v.read32(0x131f4e8+0x19c)==v.scrollbar
     frame([('Up',[sx,3000]),('Wheel',[-120])],False)
     assert not v.read32(0x131f4e8+0x19c)
     # Re-enter the last-position thumb, drag to top, then hold stationary.
-    frame([('Down',[sx,530]),('Move',[sx,154])])
+    frame([('Down',[sx,524]),('Move',[sx,154])])
     assert v.s('scroll')==0
     frame([('Up',[sx,154])],False)
     v.run('Move',[sx,156]);v.run('Draw');v.write32(WIN+0x58,0)
@@ -336,10 +339,18 @@ def main():
         print('VERIFY lifecycle',flush=True);results['lifecycle']=lifecycle_checks(image,m)
         from verify_item_description_components import checks as component_checks
         print('VERIFY components',flush=True);results['components']=component_checks(image,m)
+        from verify_item_description_sources import checks as source_checks
+        print('VERIFY sources',flush=True);results['sources']=source_checks(image,m)
+        from verify_item_description_transfer_text import checks as transfer_text_checks
+        print('VERIFY transfer/text',flush=True);results['transfer_text']=transfer_text_checks(image,m)
+        from verify_item_description_content import checks as content_checks
+        print('VERIFY authored content/drag',flush=True);results['content']=content_checks(image,m,args.output)
+        from verify_item_description_levels import checks as level_checks
+        print('VERIFY equipment level ranges',flush=True);results['levels']=level_checks(image,m)
     assert hashlib.sha256(args.engine.read_bytes()).hexdigest()==engine_hash
     report=dict(passed=True,engine_sha256=engine_hash,source_sha256=blob['source_sha256'],groups=list(results),
                 fresh_payload=True,game_exe_created=False,engine_boundaries_mocked=True,live_accepted=False,
-                features=results['features'],motion=results['motion'],lifecycle=results['lifecycle'],components=results['components'])
+                features=results['features'],motion=results['motion'],lifecycle=results['lifecycle'],components=results['components'],sources=results['sources'],transfer_text=results['transfer_text'],content=results['content'],levels=results['levels'])
     (args.output/'payload-verification.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report,indent=2))
 if __name__=='__main__':main()

@@ -14,7 +14,7 @@ using u64 = unsigned long long;
 constexpr u32 magic = 0x49554449; // IDUI
 constexpr u16 version = 1, request_packet = 0x0bf8, response_packet = 0x0bef;
 constexpr u16 inspect = 1, snapshot = 2, compare = 3;
-constexpr u16 catalog = 0, inventory = 1;
+constexpr u16 catalog = 0, inventory = 1, cart = 2, storage = 3;
 constexpr u32 ok = 0, invalid = 1, stale = 2, unavailable = 3, throttled = 4;
 constexpr unsigned row_limit = 64, card_limit = 4, option_limit = 5;
 enum Section : u16 { core = 1, attributes, native_effects, refine, grade,
@@ -66,16 +66,19 @@ template<class T> inline void zero(T& value) {
     auto p = reinterpret_cast<u8*>(&value);
     for (unsigned i = 0; i < sizeof(T); ++i) p[i] = 0;
 }
+// Native storage packets use one-based indices; inventory/cart use index + 2.
+inline unsigned index_base(u16 scope) { return scope == storage ? 1u : 2u; }
 inline bool request_valid(const Request& r) {
     if (r.packet_type != request_packet || r.packet_length != sizeof(Request) ||
         r.magic != magic || r.version != version || !r.request_id || !r.item_id ||
-        (r.message != inspect && r.message != compare) || r.scope > inventory ||
+        (r.message != inspect && r.message != compare) || r.scope > storage ||
         r.option_count > option_limit || r.identified > 1 || r.refine > 255 ||
         r.grade > 255 || r.reserved0 || r.reserved1 ||
         r.reserved2[0] || r.reserved2[1] || r.reserved2[2]) return false;
     if (r.scope == catalog && (r.client_index || r.refine || r.grade ||
         r.option_count || r.known_fingerprint || r.message == compare)) return false;
-    if (r.scope == inventory && (r.client_index < 2 || r.client_index > 65535)) return false;
+    if (r.scope != catalog && (r.client_index < index_base(r.scope) || r.client_index > 65535)) return false;
+    if (r.message == compare && r.scope != inventory) return false;
     for (unsigned i = 0; i < card_limit; ++i) if (r.scope == catalog && r.cards[i]) return false;
     for (unsigned i = 0; i < option_limit; ++i)
         if ((r.scope == catalog || i >= r.option_count) &&
@@ -97,7 +100,7 @@ inline bool snapshot_valid(const Snapshot& s, const Request& r) {
         (s.flags & ~(truncated | has_legacy | identified | equipped)) ||
         !terminated(s.binding, sizeof(s.binding)) || !terminated(s.type_label, sizeof(s.type_label))) return false;
     if (s.result != ok) return s.row_count == 0;
-    if (s.scope == inventory && (s.refine != r.refine || s.grade != r.grade)) return false;
+    if (s.scope != catalog && (s.refine != r.refine || s.grade != r.grade)) return false;
     for (unsigned i = 0; i < s.row_count; ++i) {
         const auto& row = s.rows[i];
         if (row.section < core || row.section >= section_end || row.kind > note ||

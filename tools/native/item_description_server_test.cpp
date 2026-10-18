@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <crtdbg.h>
 #include <common/database.hpp>
 #include <common/showmsg.hpp>
 #include <common/malloc.hpp>
@@ -27,12 +28,18 @@ struct Lookup { std::set<uint32> ids; std::shared_ptr<int> find(uint32 id) { ret
 Lookup item_db{{1201,1202,4001,4140}},random_option_db{{1,2}};
 #include "item_description_under_test.inc"
 struct map_session_data {
-    struct { bool active = true; } state;
+    struct { bool active = true; int storage_flag = 0; } state;
+    struct { int guild_id = 0; } status;
     uint32 item_description_request_id[2]{}, item_description_item_id[2]{};
     int item_description_index[2]{-1,-1};
     uint64 item_description_fingerprint[2]{};
+    int64 item_description_next_request[2]{};
     struct { struct { item items_inventory[MAX_INVENTORY]{}; } u; } inventory;
+    struct { struct { item items_cart[MAX_CART]{}; } u; } cart;
+    s_storage storage{}, premiumStorage{};
 };
+s_storage test_guild_storage{};
+s_storage* guild2storage2(int guild) { return guild == 7 ? &test_guild_storage : nullptr; }
 std::vector<w::Snapshot> invalidations;
 void initialize(w::Snapshot& s,const w::Request& r) { w::zero(s);s.request_id=r.request_id;s.item_id=r.item_id;s.client_index=r.client_index;s.scope=r.scope; }
 void send(map_session_data*,const w::Snapshot& s) { invalidations.push_back(s); }
@@ -44,9 +51,22 @@ namespace item_description {
 void invalidate(map_session_data*, int, bool);
 #include "item_description_watch_under_test.inc"
 }
+int64 test_tick=1000;
+int64 gettick() { return test_tick; }
+#define DIFF_TICK(a,b) ((a)-(b))
+struct BuildCapture { item value{}; bool actual=false, comparison=false; int index=-99, calls=0; } captured;
+void build(Builder& b,map_session_data*,const int&,const item& value,bool actual,bool comparison,int index) {
+    captured.value=value;captured.actual=actual;captured.comparison=comparison;captured.index=index;++captured.calls;
+    b.s.refine=value.refine;b.s.grade=value.enchantgrade;b.s.fingerprint=fingerprint(value);
+}
+namespace item_description {
+#include "item_description_request_under_test.inc"
+}
 using item_description::invalidate;
 static void write(const std::string& text){std::ofstream("item_description_db.yml",std::ios::binary)<<text;}
 int main(int argc,char**argv){
+    _CrtSetReportMode(_CRT_ASSERT,_CRTDBG_MODE_FILE);_CrtSetReportFile(_CRT_ASSERT,_CRTDBG_FILE_STDERR);
+    _set_abort_behavior(0,_WRITE_ABORT_MSG|_CALL_REPORTFAULT);
     assert(argc==3);std::filesystem::current_path(argv[1]);do_init_database();
     static_assert(offsetof(w::Request,options)==48 && offsetof(w::Request,known_fingerprint)==76,"request offsets");
     static_assert(offsetof(w::Snapshot,rows)==128 && offsetof(w::Row,text)==64,"snapshot offsets");
@@ -55,6 +75,78 @@ int main(int argc,char**argv){
     w::Request r{};r.packet_type=w::request_packet;r.packet_length=sizeof(r);r.magic=w::magic;r.version=w::version;r.message=w::inspect;
     r.request_id=1;r.item_id=1201;r.client_index=7;r.scope=w::inventory;r.refine=7;r.grade=2;r.identified=1;r.cards[0]=4001;r.options[0]={1,7,0};r.option_count=5;
     assert(w::request_valid(r)&&matches(actual,r));
+    // Execute the production container resolver and encoded watch ownership.
+    auto owner=std::make_unique<map_session_data>();
+    owner->inventory.u.items_inventory[5]=actual;owner->cart.u.items_cart[5]=actual;
+    owner->storage.u.items_storage[5]=actual;owner->premiumStorage.u.items_storage[5]=actual;
+    test_guild_storage.u.items_guild[5]=actual;
+    assert(item_description::inspection_item(owner.get(),w::inventory,5)==&owner->inventory.u.items_inventory[5]);
+    assert(item_description::inspection_item(owner.get(),w::cart,5)==&owner->cart.u.items_cart[5]);
+    assert(!item_description::inspection_item(owner.get(),w::storage,5));
+    for(int mode : {1,3,2}) {
+        owner->state.storage_flag=mode;owner->status.guild_id=7;test_guild_storage.status=true;
+        const auto* expected=mode==1?&owner->storage.u.items_storage[5]:mode==3?&owner->premiumStorage.u.items_storage[5]:&test_guild_storage.u.items_guild[5];
+        assert(item_description::inspection_item(owner.get(),w::storage,5)==expected);
+    }
+    test_guild_storage.lock=true;assert(!item_description::inspection_item(owner.get(),w::storage,5));test_guild_storage.lock=false;
+    owner->status.guild_id=8;assert(!item_description::inspection_item(owner.get(),w::storage,5));
+    for(auto scope : {w::inventory,w::cart,w::storage}) {
+        auto request=r;request.scope=scope;assert(w::request_valid(request));
+        request.message=w::compare;assert(w::request_valid(request)==(scope==w::inventory));
+        assert(!item_description::inspection_item(owner.get(),scope,-1));
+        assert(!item_description::inspection_item(owner.get(),scope,65535));
+        assert(item_description::watch_scope(item_description::watch_index(scope,5))==scope);
+    }
+    auto unknown_scope=r;unknown_scope.scope=4;assert(!w::request_valid(unknown_scope));
+    owner->item_description_request_id[0]=21;owner->item_description_item_id[0]=actual.nameid;
+    owner->item_description_index[0]=item_description::watch_index(w::cart,5);
+    owner->item_description_fingerprint[0]=fingerprint(actual);
+    invalidate(owner.get(),5,false);assert(invalidations.empty());
+    ++owner->cart.u.items_cart[5].refine;invalidate(owner.get(),3,false);
+    assert(invalidations.size()==1&&invalidations[0].scope==w::cart&&invalidations[0].client_index==7);
+    invalidations.clear();
+    owner->cart.u.items_cart[5]=actual;
+    // Exercise the production request dispatcher with only final row building
+    // mocked. Container selection, exact matching, watch ownership and throttling
+    // are all real server code; metadata row generation is tested below.
+    auto dispatch=[&](w::Request request) {
+        test_tick+=200;invalidations.clear();captured={};
+        item_description::process_request(owner.get(),request);
+    };
+    for(auto scope : {w::inventory,w::cart,w::storage}) {
+        auto request=r;request.scope=scope;request.client_index=5+w::index_base(scope);owner->state.storage_flag=1;
+        dispatch(request);assert(captured.calls==1&&captured.actual);
+        assert(captured.index==(scope==w::inventory?5:-1));
+        assert(captured.value.unique_id==actual.unique_id&&captured.value.refine==7&&captured.value.card[0]==4001);
+        assert(invalidations.size()==1&&invalidations[0].result==w::ok);
+        assert(owner->item_description_index[0]==item_description::watch_index(scope,5));
+        request.refine=8;dispatch(request);assert(!captured.calls&&invalidations[0].result==w::stale);
+        request.refine=7;request.known_fingerprint=fingerprint(actual)+1;
+        dispatch(request);assert(!captured.calls&&invalidations[0].result==w::stale);
+    }
+    auto closed=r;closed.scope=w::storage;owner->state.storage_flag=0;
+    dispatch(closed);assert(!captured.calls&&invalidations[0].result==w::stale);
+    for(auto scope : {w::inventory,w::cart,w::storage}) {
+        const int count=scope==w::inventory?MAX_INVENTORY:scope==w::cart?MAX_CART:MAX_STORAGE;
+        owner->state.storage_flag=1;
+        for(int index : {0,count-1}) {
+            auto* value=const_cast<item*>(item_description::inspection_item(owner.get(),scope,index));*value=actual;
+            auto request=r;request.scope=scope;request.client_index=index+w::index_base(scope);
+            dispatch(request);assert(captured.calls==1&&invalidations[0].client_index==request.client_index);
+            invalidations.clear();++value->refine;invalidate(owner.get(),-1,false);
+            assert(invalidations.size()==1&&invalidations[0].client_index==request.client_index&&invalidations[0].scope==scope);
+        }
+        auto request=r;request.scope=scope;request.client_index=count+w::index_base(scope);
+        dispatch(request);assert(!captured.calls&&invalidations[0].result==w::stale);
+    }
+    auto catalog=r;catalog.scope=w::catalog;catalog.client_index=catalog.refine=catalog.grade=0;
+    catalog.option_count=0;for(auto& c:catalog.cards)c=0;for(auto& o:catalog.options)w::zero(o);
+    dispatch(catalog);assert(captured.calls==1&&!captured.actual&&captured.index==-1&&!owner->item_description_request_id[0]);
+    auto compare=r;compare.request_id|=0x80000000u;compare.message=w::compare;
+    dispatch(compare);assert(captured.calls==1&&captured.comparison&&owner->item_description_request_id[1]==compare.request_id);
+    invalidations.clear();captured={};item_description::process_request(owner.get(),compare);
+    assert(!captured.calls&&invalidations.empty());
+    std::cout<<"PASS: exact inventory/cart/personal/premium/guild storage resolution; closed/locked/foreign storage and invalid indices rejected; container watch scopes retained.\n";
     for(int field=0;field<9;++field){auto changed=actual;switch(field){
         case 0:changed.nameid=1202;break;case 1:changed.refine=8;break;case 2:changed.enchantgrade=3;break;
         case 3:changed.card[0]=4140;break;case 4:changed.option[0].value=8;break;case 5:changed.option[0].id=2;break;
@@ -65,7 +157,7 @@ int main(int argc,char**argv){
     changed=actual;changed.equip=2;assert(fingerprint(changed)!=hash);changed=actual;changed.amount=2;assert(fingerprint(changed)!=hash);
     r.known_fingerprint=0;
     for(int field=0;field<8;++field){auto invalid=r;switch(field){case 0:invalid.version=9;break;case 1:invalid.option_count=6;break;
-        case 2:invalid.scope=2;break;case 3:invalid.client_index=1;break;case 4:invalid.reserved0=1;break;case 5:invalid.message=99;break;
+        case 2:invalid.scope=4;break;case 3:invalid.client_index=1;break;case 4:invalid.reserved0=1;break;case 5:invalid.message=99;break;
         case 6:invalid.packet_length--;break;case 7:invalid.request_id=0;break;}assert(!w::request_valid(invalid));}
     Effect set;set.required_cards={4001,4001};assert(!predicate(set,actual));actual.card[1]=4001;assert(predicate(set,actual));set.min_refine=8;assert(!predicate(set,actual));
     const std::string header="Header:\n  Type: ITEM_DESCRIPTION_DB\n  Version: 1\n";
@@ -88,7 +180,7 @@ int main(int argc,char**argv){
     // Execute the production reload path: a setting change must be atomic and
     // invalidate both watched panes; malformed settings retain the active data.
     item_description::reload();assert(descriptions&&!show_grade());
-    map_session_data watcher;sessions.push_back(&watcher);
+    static map_session_data watcher;sessions.push_back(&watcher);
     watcher.item_description_request_id[0]=11;watcher.item_description_request_id[1]=0x8000000b;
     write(good+"Settings:\n  ShowGrade: true\n");item_description::reload();
     assert(show_grade()&&invalidations.size()==2);
@@ -114,6 +206,18 @@ int main(int argc,char**argv){
     const auto before_bad_import=revision;item_description::reload();assert(!show_grade()&&revision==before_bad_import);
     sessions.clear();invalidations.clear();
     std::cout<<"PASS: ShowGrade defaults off; live reload toggles and invalidates both panes; invalid scalars/containers/imports roll back; explicit import precedence.\n";
+    write(good);item_description::reload();assert(!show_item_collection());
+    write(good+"Settings:\n  ShowGrade: false\n  ShowItemCollection: true\n");item_description::reload();
+    assert(show_item_collection()&&!show_grade());
+    const auto collection_revision=revision;const auto* collection_accepted=descriptions.get();
+    for(const auto& value:std::vector<std::string>{"typo","[]","{}",""}) {
+        write(good+"Settings:\n  ShowItemCollection: "+value+"\n");item_description::reload();
+        assert(show_item_collection()&&revision==collection_revision&&descriptions.get()==collection_accepted);
+    }
+    write(good+"Settings:\n  ShowGrade: true\n  ShowItemCollection: false\n");item_description::reload();
+    assert(!show_item_collection()&&show_grade());
+    write(good);item_description::reload();
+    std::cout<<"PASS: Item Collection defaults off; independent runtime toggle; invalid settings roll back.\n";
     w::Snapshot hidden{};Builder hidden_builder{hidden};
     hidden_builder.row(w::grade,"Current grade","Epic");
     hidden_builder.long_effect(w::grade,"Epic",std::string(2048,'g'),w::active);
@@ -188,7 +292,7 @@ int main(int argc,char**argv){
     assert(generated.find(4001));
     write(header+"Body:\n  - Id: 1201\n    Effects:\n      - Section: Grade\n        MinGrade: 3\n        MaxGrade: 2\n        Text: invalid range\n");
     DescriptionDatabase invalid_range;assert(!invalid_range.load()||!invalid_range.valid);
-    map_session_data session;
+    static map_session_data session;
     for(unsigned view=0;view<2;++view) {
         session.item_description_request_id[view]=7|(view<<31);session.item_description_item_id[view]=actual.nameid;
         session.item_description_index[view]=view+5;session.inventory.u.items_inventory[view+5]=actual;

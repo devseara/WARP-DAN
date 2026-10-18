@@ -210,11 +210,11 @@ BattlepassUIStatic.sender = function(refs, action, state)
 	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 1188); a.word(2048); a.jcc(0x84,"send");
 	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(7); a.jmp("send");
 	a.label("no_visuals");
-	if (action >= 16) a.jmp("done");
+	if (action >= 16 && action !== 21) a.jmp("done");
 	// Negotiate only after the server advertises variable-length v2 requests.
 	// Old servers still receive their exact 12-byte v1 messages.
 	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 10); a.word(b.DetailsAvailable); a.jcc(0x85, "send");
-	if (action >= 12) a.jmp("done");
+	if (action >= 12 && action !== 21) a.jmp("done");
 	a.emit(0x66, 0xC7, 0x45, 0xF2); a.word(12);
 	a.emit(0x66, 0xC7, 0x45, 0xF8); a.word(1);
 	a.emit(0xBB); a.dword(12);
@@ -279,6 +279,17 @@ BattlepassUIStatic.receiver = function(state, fallback, open, notify=0)
 		const field = b.Fields[key];
 		a.emit(0xC6, 0x05); a.dword(state + b.Snapshot + field[0] + field[1] - 1); a.emit(0);
 	}
+	// A disabled control reply never creates a window or notifies the renderer.
+	a.emit(0x66, 0x83, 0x3D); a.dword(state + b.Snapshot + 8); a.emit(2); a.jcc(0x82, "available");
+	a.emit(0x66, 0xF7, 0x05); a.dword(state + b.Snapshot + 1188); a.word(8192); a.jcc(0x84, "available");
+	for (const offset of [b.Ready, b.Pending, b.RewardPending, b.Modal, b.QuoteToken]) {
+		a.emit(0xC7, 0x05); a.dword(state + offset); a.dword(0);
+	}
+	a.emit(0x8B, 0x35); a.dword(state + b.Window);
+	a.emit(0x85, 0xF6); a.jcc(0x84, "consumed");
+	a.emit(0x80, 0x7E, n.WindowVisibleOffset, 0); a.jcc(0x84, "consumed");
+	a.call(open); a.jmp("consumed");
+	a.label("available");
 	a.emit(0xC7, 0x05); a.dword(state + b.Ready); a.dword(1);
 	if(notify)a.call(notify);
 	// Keep an expired mission visible until the server clears it. Older poll
@@ -482,6 +493,19 @@ BattlepassUIStatic.toggle = function(state, vtable, refresh, start, stop)
 	a.emit(0xC7, 0x05); a.dword(state + b.Pressed); a.dword(0);
 	a.emit(0xC7, 0x05); a.dword(state + b.Dragging); a.dword(0);
 	n.emitMarkDirty(a); a.call(refresh); a.call(start);
+	a.label("done"); a.emit(0x61, 0x9D, 0xC3);
+	return a;
+};
+
+// Menu close stays immediate; opening requires the server's OpenWindow reply.
+BattlepassUIStatic.menuRequest = function(state, request, toggle)
+{
+	const n = AutoCombatUI.nativeHelpers, b = BattlepassUIStatic, a = n.asm();
+	a.emit(0x9C, 0x60, 0x8B, 0x35); a.dword(state + b.Window);
+	a.emit(0x85, 0xF6); a.jcc(0x84, "request");
+	a.emit(0x80, 0x7E, n.WindowVisibleOffset, 0); a.jcc(0x84, "request");
+	a.call(toggle); a.jmp("done");
+	a.label("request"); a.emit(0xC7, 0x05); a.dword(state + b.UserHidden); a.dword(0); a.call(request);
 	a.label("done"); a.emit(0x61, 0x9D, 0xC3);
 	return a;
 };
@@ -1708,9 +1732,9 @@ BattlepassUI = function(_)
 	const hitTest = n.allocateCode(b.hitTest());
 	Exe.SetUint32(vtable.phy + 50 * 4, hitTest.vir);
 	const toggle = n.allocateCode(b.toggle(state.vir, vtable.vir, senders[0], start.vir, stop.vir));
-	// Reuse the existing native toggle and BPUI refresh protocol. A global
-	// indirect cell keeps menu selection order and producer removal safe.
-	NewButtonVis.publishCustomButton("Battle Pass", {requestVir: toggle.vir, toggleVir: toggle.vir});
+	const openRequest = n.allocateCode(b.sender(refs, 21, state.vir));
+	const menuRequest = n.allocateCode(b.menuRequest(state.vir, openRequest.vir, toggle.vir));
+	NewButtonVis.publishCustomButton("Battle Pass", {requestVir: menuRequest.vir, toggleVir: toggle.vir});
 	const windowRecord=[];
 	for(const value of [n.allocateString("BattlepassUI.Window.v5").vir,vtable.vir,toggle.vir,draw.vir,down.vir,up.vir,right.vir,rightUp.vir,cursorPoll.vir,destroy.vir])
 		windowRecord.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
@@ -1757,6 +1781,7 @@ BattlepassUI = function(_)
 		stateVir: state.vir, vtableVir: vtable.vir, drawVir: draw.vir,
 		mouseDownVir: down.vir, mouseUpVir: up.vir, destructorVir: destroy.vir,
 		dragMoveVir: drag.vir, draggingOffset: b.Dragging, frameDragMoveVir: b.FrameDragMove,
+		menuRequestVir: menuRequest.vir, openRequestVir: openRequest.vir,
 		toggleVir: toggle.vir, timerVir: timer.vir, startTimerVir: start.vir, stopTimerVir: stop.vir,
 		senders, packetRefs: refs, receiverVir: receive.vir, stockVir: fallback, dispatchVir: entryVir,
 		packetSize: b.PacketSize, requestId: b.RequestId, snapshotId: b.SnapshotId,

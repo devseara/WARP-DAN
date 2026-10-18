@@ -14,7 +14,11 @@ def verify(directory):
     assert code[0]==0xe9 and code[5:]==b'\x90\x90' and site+5+struct.unpack_from('<i',code,1)[0]==hook['bridge']['vir']
     baseline=json.loads((ROOT/'tools/fixtures/item_description/baseline.json').read_text())
     title=bytes.fromhex(baseline['title_bytes'])
-    assert pe.get_data(baseline['title_address']-0x400000,len(title))==title,'native title producer/draw path changed'
+    actual=bytearray(pe.get_data(baseline['title_address']-0x400000,len(title)))
+    call=m['lifecycleHooks']['titleCall'];at=call['address']-baseline['title_address']
+    assert actual[at]==0xe8 and call['address']+5+struct.unpack_from('<i',actual,at+1)[0]==call['target']
+    actual[at:at+5]=bytes.fromhex(call['original'])
+    assert actual==title,'title call changed surrounding native instructions'
     def fresh():
         v=VM(pe,m);v.open();assert v.receive(v.response())==1;return v
     def pixel(v,x,y,pixels=PIXELS,w=None):return v.read32(pixels+(y*(w or v.read32(WIN+0x14))+x)*4)&0xffffff
@@ -31,7 +35,7 @@ def verify(directory):
     v.run('Draw');v.write32(WIN+0x1d4,8);v.run('Draw');assert len(passes)==2
     assert pixel(v,0,0)==0xff00ff and pixel(v,200,2) not in (0xffffff,0xff00ff),'tinted header with keyed corners'
     assert pixel(v,40,60)==0xffffff,'white backing under the native 75x100 art'
-    assert all(((pixel(v,150,20)>>s)&255)>=0xe0 for s in (0,8,16)),'frosted bar under the native title'
+    assert pixel(v,150,20)!=0xffffff and (pixel(v,150,20)&255)>((pixel(v,150,20)>>16)&255),'white title box was not removed'
     assert any(x==113 and y==98 and text=='Unbound' for x,y,text,*_ in v.draws) and any(text=='Weapon' for _,_,text,*_ in v.draws)
     assert pixel(v,100,104)==0xffffff and pixel(v,101,101)!=0xffffff,'open lock for an unbound item'
     bound=fresh();data=bound.response();data[64:96]=b'Character bound\0'.ljust(32,b'\0')
@@ -54,8 +58,9 @@ def verify(directory):
     d=DualVM(pe,m);right,left=d.open_pair();d.receive(right);d.receive(left);d.run('Draw',ecx=COMP)
     w=d.read32(COMP+0x14);assert pixel(d,200,2,COMP_PIXELS,w) not in (0xffffff,0xff00ff)
     assert d.read32(COMP+0x1f8)==0xea and any(text=='Equipped' for _,_,text,*_ in d.draws)
-    report={'passed':True,'checks':['actual pre-title detour preserves registers/stack and replays the displaced CMP',
-        'native title instructions match the accepted baseline byte-for-byte','grade-tinted header, white art backing, frosted title bar, open/closed binding lock',
+    from verify_item_description_title import checks as title_checks
+    report={'passed':True,'title':title_checks(pe,m),'checks':['actual pre-title detour preserves registers/stack and replays the displaced CMP',
+        'only the description title call changes; surrounding native instructions are preserved','grade-tinted header, white art backing, no white title box, open/closed binding lock',
         'the opening skeleton paints the header; forced-stock, unrelated and stale views keep stock backing','comparison underlay resolves its exact owner; small-window writes stay bounded'],
         'engine_boundaries_mocked':True,'live_accepted':False}
     (directory/'header-verification.json').write_text(json.dumps(report,indent=2)+'\n');return report

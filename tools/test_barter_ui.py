@@ -8,18 +8,20 @@ from pathlib import Path
 import struct
 from PIL import Image, ImageDraw, ImageFont
 from unicorn import UC_HOOK_CODE
-from unicorn.x86_const import UC_X86_REG_EAX, UC_X86_REG_ECX
+from unicorn.x86_const import (UC_X86_REG_EAX, UC_X86_REG_ECX, UC_X86_REG_EDX,
+    UC_X86_REG_EBX, UC_X86_REG_ESI, UC_X86_REG_EDI, UC_X86_REG_EBP,
+    UC_X86_REG_ESP, UC_X86_REG_EIP, UC_X86_REG_EFLAGS)
 from test_modern_chat_ui import Machine, pack, over
 from test_gacha_ui import GachaMachine
 
-FIELDS='api state receive result hit draw down up move drag cursor destroy rightdown rightup wheel owned normalroute expandedroute resultroute'.split()
+FIELDS='api state receive result hit draw down up move drag cursor destroy rightdown rightup wheel owned contact metadata normalroute expandedroute resultroute'.split()
 ROOT=Path(__file__).resolve().parents[1]
 GAME=Path(r'D:/AAARAGNAROK/Banquet of Heroes/Eitr Origin')
 TEXTURES=GAME/'data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º'
 NAMES={504:'White Potion',505:'Blue Potion',509:'White Herb',510:'Blue Herb',713:'Empty Bottle',909:'Jellopy',984:'Oridecon',985:'Elunium',756:'Rough Oridecon',757:'Rough Elunium'}
 
 def contract(m):
-    b=m.pe.get_memory_mapped_image();marker=b.find(b'BarterUI.v3\0');assert marker>=0
+    b=m.pe.get_memory_mapped_image();marker=b.find(b'BarterUI.v5\0');assert marker>=0
     record=b.find(pack(m.base+marker));assert record>=0
     return {name:m.r(m.base+record+4+i*4) for i,name in enumerate(FIELDS)}
 
@@ -63,7 +65,37 @@ class BarterMachine(Machine):
         keys=self.alloc(16);self.stub(keys,lambda:self.ret(4,0x8000 if self.args(1)[0] in self.key_codes else 0));self.w(self.r(api+36),keys)
         clock=self.alloc(16);self.stub(clock,lambda:self.ret(0,self.now));self.w(0xFC17B0,clock)
         self.inventory([(509,40,0),(509,10,0),(510,10,3),(713,90,0),(909,200,0),(756,5,0),(757,4,0)])
+        self.game=self.alloc(0x400);self.npc_names({})
         self.load_icons()
+    def npc_names(self,names):
+        head=self.alloc(0xB0);self.u.mem_write(head+0xD,b'\1');self.w(self.game+0x164,head)
+        def tree(rows):
+            if not rows:return head
+            middle=len(rows)//2;id,name=rows[middle];node=self.alloc(0xB0)
+            self.w(node,tree(rows[:middle]));self.w(node+8,tree(rows[middle+1:]));self.w(node+0x10,id)
+            data=name.encode('cp1252');ptr=node+0x18
+            if len(data)>=16:ptr=self.alloc(len(data)+1);self.w(node+0x18,ptr)
+            self.u.mem_write(ptr,data+b'\0');self.w(node+0x28,len(data));self.w(node+0x2C,max(15,len(data)))
+            self.u.mem_write(node+0xAC,b'\1');return node
+        self.w(head+4,tree(sorted(names.items())))
+    def native_context(self,address,registers,end=None):
+        # Exercise actual installed bridges with dispatcher/click registers.
+        saved={UC_X86_REG_EBX:0xBBBBBBBB,UC_X86_REG_ESI:0xEEEEEEEE,
+               UC_X86_REG_EDI:self.game,UC_X86_REG_EBP:0xABABABAB,
+               UC_X86_REG_ECX:0xCCCCCCCC,UC_X86_REG_EDX:0xDDDDDDDD}
+        saved.update(registers);sp=0x3000F000;self.u.mem_write(sp,pack(self.stop))
+        for reg,value in saved.items():self.u.reg_write(reg,value)
+        self.u.reg_write(UC_X86_REG_ESP,sp);self.u.reg_write(UC_X86_REG_EFLAGS,0x246)
+        self.u.emu_start(address,end or self.stop,count=60000000)
+        assert self.u.reg_read(UC_X86_REG_EIP)==(end or self.stop)
+        assert self.u.reg_read(UC_X86_REG_ESP)==sp+(0 if end else 4)
+        for reg,value in saved.items():assert self.u.reg_read(reg)==value,(hex(address),reg,'register changed')
+        assert self.u.reg_read(UC_X86_REG_EFLAGS)==0x246,'flags changed'
+    def contact(self,id,action=False):
+        pointer=self.alloc(12);self.w(pointer,id)
+        site,reg=(0xC8BF2E,UC_X86_REG_EDX) if action else (0xC789B2,UC_X86_REG_EBX)
+        self.native_context(site,{reg:pointer},site+5)
+        assert self.u.reg_read(UC_X86_REG_EAX)==0x90,'original packet opcode was not replayed'
     def inventory(self,items):
         head=self.alloc(12);previous=head
         for id,amount,refine in items:
@@ -110,7 +142,7 @@ class BarterMachine(Machine):
         length,ptr=self.args(2);self.sent.append(bytes(self.u.mem_read(ptr,length)));self.ret(8)
     def receive(self,p):
         self.u.mem_write(0x15E8198,bytes(p));op=struct.unpack_from('<H',p)[0]
-        self.invoke(self.r(0xCAA2E0+(op-0x73)*4),0)
+        self.native_context(self.r(0xCAA2E0+(op-0x73)*4),{})
     def click(self,x,y):
         obj=self.r(self.c['state']);self.invoke(self.c['down'],obj,(x,y));self.invoke(self.c['up'],obj,(x,y))
     def preview(self,path=None):
@@ -126,6 +158,30 @@ class BarterMachine(Machine):
 def main():
     ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('exe',type=Path);ap.add_argument('--assets',type=Path,default=TEXTURES);ap.add_argument('--output',type=Path,required=True);args=ap.parse_args();args.output.mkdir(parents=True,exist_ok=True)
     m=BarterMachine(args.exe,args.assets);c=m.c;s=c['state'];cart=s+5676
+    m.npc_names({100:'Ashra#1',200:'Another Merchant#equipment',300:'A very long NPC name '*6})
+    m.w(m.game+0x2DC,100) # Native mes / next / close2 retain this source NPC.
+    m.receive(normal());m.preview(args.output/'npc-ashra.png');assert m.texts[0][0]=='Ashra'
+    m.receive(expanded());m.preview();assert m.texts[0][0]=='Ashra'
+    m.contact(200);m.receive(normal());m.preview();assert m.texts[0][0]=='Another Merchant'
+    m.receive(expanded());m.preview();assert m.texts[0][0]=='Another Merchant','catalog refresh lost direct NPC'
+    m.contact(300,action=True);m.receive(expanded());m.preview(args.output/'npc-long-name.png')
+    assert m.texts[0][0].startswith('A very long NPC name') and len(m.texts[0][0])<120,'long name should fit before X'
+    m.contact(200);m.w(m.game+0x2DC,300);m.receive(normal());m.preview()
+    assert m.texts[0][0].startswith('A very long NPC name'),'new server dialogue must supersede contact'
+    m.contact(999);m.receive(normal());m.preview();assert m.texts[0][0]=='Barter','missing name leaked previous title'
+    m.click(530,360);m.w(m.game+0x2DC,0);m.receive(normal());m.preview();assert m.texts[0][0]=='Barter'
+    m.npc_names({100:'Ashra'});m.w(m.game+0x2DC,100);m.receive(normal())
+    m.npc_names({100:'Renamed NPC'});m.preview();assert m.texts[0][0]=='Ashra','draw should use copied title'
+    m.click(530,360);m.receive(normal());m.preview();assert m.texts[0][0]=='Renamed NPC'
+    # Distinct NPC IDs keep their identity while sharing the same visible title.
+    cases=[('Ashra#1','Ashra'),('Ashra#2','Ashra'),('Ashra#3','Ashra'),
+           ('Ashra#usables#extra','Ashra'),('Ashra#','Ashra'),('#internal','Barter'),('Ashra','Ashra')]
+    m.npc_names({400+i:name for i,(name,_) in enumerate(cases)})
+    for i,(name,expected) in enumerate(cases):
+        m.contact(400+i,action=bool(i%2));m.receive(expanded() if i%2 else normal());m.preview()
+        assert m.texts[0][0]==expected,(name,m.texts[0][0])
+    m.click(530,360);m.npc_names({});m.w(m.game+0x2DC,0);m.sent.clear();m.stock.clear()
+    print('PASS: NPC titles for both catalogs, close2 context, both native contact hooks, refresh, inline/heap names, # suffix removal, clipping, missing-name fallback and cached rendering',flush=True)
     m.w(0x15FBA90,1250000)
     def setscroll(left=0,right=0):m.w(s+16,left);m.w(s+24,right)
     def wheel(x,y,delta):m.move(x,y);m.invoke(c['wheel'],m.r(s),(delta,))

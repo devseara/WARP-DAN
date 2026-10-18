@@ -20,8 +20,8 @@ struct Api {
     u32 keysIat;
     const char* paths[17];
 };
-static_assert(sizeof(Api)==108,"BarterUI API v3");
-EXPORT Api BarterApi={3};
+static_assert(sizeof(Api)==108,"BarterUI API v5");
+EXPORT Api BarterApi={5};
 struct Choice { u32 recipe,quantity; };
 // A maximum-sized native receive buffer can hold fewer than 1400 recipes.
 // Keep every requirement in the original bounded byte buffer, never truncate it.
@@ -35,11 +35,48 @@ struct Hit { int x,y,w,h;u32 id,amount,refine;int required; };
 static Hit itemHits[160];static int itemHitCount;
 static void* textures[17];
 static bool escapeHeld;
+static char shopTitle[128];
+static void* contactGame;
+static u32 contactId,dialogAtContact;
+static u16 rates[1400];
+static u32 catalogFingerprint,outcomeSucceeded,outcomeFailed;
+static bool outcomeReady;
+static u32 fingerprint(const u8* p,u32 length){u32 hash=2166136261u;for(u32 i=0;i<length;++i)hash=(hash^p[i])*16777619u;return hash;}
 template<typename T>T& at(void* p,int o){return *reinterpret_cast<T*>(static_cast<u8*>(p)+o);}
 static void copy(void* d,const void* s,u32 n){auto* out=static_cast<volatile u8*>(d);auto* in=static_cast<const u8*>(s);for(u32 i=0;i<n;++i)out[i]=in[i];}
 static void append(char* d,const char* s){int n=0;while(d[n] && n<126)++n;for(int i=0;s && s[i] && n<126;++i)d[n++]=s[i];d[n]=0;}
 static void number(char* d,u32 n,bool comma=false){char tmp[20];int k=0;do{if(comma && k && (k+1)%4==0)tmp[k++]=',';tmp[k++]=static_cast<char>('0'+n%10);n/=10;}while(n);for(int i=0;i<k/2;++i){char c=tmp[i];tmp[i]=tmp[k-i-1];tmp[k-i-1]=c;}tmp[k]=0;append(d,tmp);}
 static void status(const char* s){BarterState.status[0]=0;append(BarterState.status,s);}
+// Observe the two native CZ_CONTACTNPC producers, without modifying their
+// packet or CGameMode. A direct barter click may leave +2DC naming an older
+// dialogue; retain its value so a subsequent server dialogue can supersede it.
+EXPORT void __stdcall BarterContact(void* game,u32 id){
+    contactGame=game;contactId=id;dialogAtContact=game?at<u32>(game,0x2DC):0;
+}
+static void title(void* game){
+    shopTitle[0]=0;append(shopTitle,"Barter");
+    u32 id=game?at<u32>(game,0x2DC):0;
+    if(game && game==contactGame && contactId && (id==dialogAtContact || !id))id=contactId;
+    if(!game || !id)return;
+    // CNameInfoCache +160, std::map head +164. Read only: the native getter
+    // allocates/queues requests on misses. Each node holds key +10, name +18,
+    // std::string length/capacity +28/+2C, and the resolved flag +AC.
+    void* head=at<void*>(game,0x164);if(!head)return;
+    void* node=at<void*>(head,4);
+    for(int depth=0;depth<64 && node && node!=head && !at<u8>(node,0xD);++depth){
+        u32 keyId=at<u32>(node,0x10);
+        if(id!=keyId){node=at<void*>(node,id<keyId?0:8);continue;}
+        u32 length=at<u32>(node,0x28),capacity=at<u32>(node,0x2C);
+        if(at<u8>(node,0xAC)!=1 || !length || length>127 || length>capacity)return;
+        const char* name=capacity<16?static_cast<const char*>(node)+0x18:at<const char*>(node,0x18);
+        if(!name)return;
+        // The # suffix distinguishes script NPCs sharing one visible name.
+        // Strip it only from this window's copy; retain the native NPC identity.
+        u32 visible=0;while(visible<length && name[visible] && name[visible]!='#')++visible;
+        if(!visible)return;
+        copy(shopTitle,name,visible);shopTitle[visible]=0;return;
+    }
+}
 static void dirty(){if(BarterState.window)at<int>(BarterState.window,0x58)=1;}
 static u32 tick(){return (*reinterpret_cast<u32 (__stdcall **)()>(0xFC17B0))();}
 static bool key(int code){return BarterApi.keysIat && ((*reinterpret_cast<short (__stdcall **)(int)>(BarterApi.keysIat))(code)&0x8000)!=0;}
@@ -100,6 +137,7 @@ static void release(){
 static void hide(bool notify){
     if(notify && BarterState.active){u16 op=BarterState.mode==0xB79?0xB58:0xB12;send(&op,2);}
     release();BarterState.active=BarterState.pending=BarterState.cartCount=0;BarterState.right=0;++BarterState.epoch;itemHitCount=0;
+    contactGame=0;contactId=dialogAtContact=0;catalogFingerprint=0;outcomeReady=false;
     if(BarterState.window)at<int>(BarterState.window,0x28)=0;
 }
 static bool assets(){
@@ -116,7 +154,7 @@ static bool assets(){
 }
 // Validate the whole packet before touching the active shop. Unknown/missing
 // artwork falls back to the complete original native barter implementation.
-EXPORT int __stdcall BarterReceive(const u8* p){
+EXPORT int __stdcall BarterReceive(const u8* p,void* game){
     if(!p)return 0;u16 op=*reinterpret_cast<const u16*>(p),len=*reinterpret_cast<const u16*>(p+2);
     if((op!=0xB78 && op!=0xB79) || len<4 || len>40960)return 0;
     u32 count=0,off=4;
@@ -142,13 +180,39 @@ EXPORT int __stdcall BarterReceive(const u8* p){
         at<int>(w,0x2C)=0x3E9;at<int>(w,0x1C)=30;at<int>(w,0x20)=40;BarterState.window=w;
         reinterpret_cast<void (__thiscall *)(void*,void*)>(0xA2D240)((void*)0x131F4E8,w);
     }
-    release();copy(BarterState.packet,p,len);BarterState.mode=op;BarterState.count=count;
+    catalogFingerprint=fingerprint(p,len);outcomeReady=false;for(u32 i=0;i<count;++i)rates[i]=100;
+    release();title(game);copy(BarterState.packet,p,len);BarterState.mode=op;BarterState.count=count;
     off=op==0xB79?8:4;
     for(u32 i=0;i<count;++i){BarterState.offsets[i]=off;off+=op==0xB79?sizeof(Expanded)+recipe(i).count*sizeof(Material):sizeof(Normal);}
     BarterState.active=1;BarterState.pending=BarterState.catalogScroll=BarterState.chosen=BarterState.cartScroll=BarterState.cartCount=0;
     BarterState.hover=BarterState.right=0;BarterState.mouseX=BarterState.mouseY=-1;++BarterState.epoch;itemHitCount=0;
     status(count?"Select an item to add it to the buying list.":"This shop has no items available.");
     escapeHeld=key(27);at<int>(w,0x28)=1;dirty();reinterpret_cast<void (__thiscall *)(void*,void*)>(0xA39130)((void*)0x131F4E8,w);return 1;
+}
+// BRTR v1: catalog metadata is accepted only for the exact native snapshot.
+// Validate all rows before committing; malformed/foreign messages change nothing.
+EXPORT void __stdcall BarterMetadata(const u8* p){
+    if(!p || !BarterState.active || *reinterpret_cast<const u16*>(p)!=0xBF6)return;
+    u16 len=*reinterpret_cast<const u16*>(p+2);
+    if(len<12 || len>40960 || *reinterpret_cast<const u32*>(p+4)!=0x52545242 || *reinterpret_cast<const u16*>(p+8)!=1)return;
+    u16 kind=*reinterpret_cast<const u16*>(p+10);
+    if(kind==1){
+        if(len<20 || *reinterpret_cast<const u32*>(p+12)!=catalogFingerprint || *reinterpret_cast<const u16*>(p+18))return;
+        u32 count=*reinterpret_cast<const u16*>(p+16);
+        if(count!=BarterState.count || count>1400 || len!=20+count*12)return;
+        for(u32 i=0;i<count;++i){auto r=recipe(i);const u8* e=p+20+i*12;
+            if(*reinterpret_cast<const u32*>(e)!=r.index || *reinterpret_cast<const u32*>(e+4)!=r.id ||
+               *reinterpret_cast<const u16*>(e+8)>100 || *reinterpret_cast<const u16*>(e+10))return;
+        }
+        for(u32 i=0;i<count;++i)rates[i]=*reinterpret_cast<const u16*>(p+28+i*12);
+    }else if(kind==2){
+        if(len!=20 || !BarterState.pending || outcomeReady)return;
+        u32 succeeded=*reinterpret_cast<const u32*>(p+12),failed=*reinterpret_cast<const u32*>(p+16),attempts=0;
+        for(u32 i=0;i<BarterState.cartCount;++i)attempts+=BarterState.cart[i].quantity;
+        if(succeeded>attempts || failed!=attempts-succeeded)return;
+        outcomeSucceeded=succeeded;outcomeFailed=failed;outcomeReady=true;
+    }else return;
+    dirty();
 }
 EXPORT void __stdcall BarterResult(const u8* p){
     if(!p || *reinterpret_cast<const u16*>(p)!=0xCA || !BarterState.active || !BarterState.pending)return;
@@ -157,9 +221,11 @@ EXPORT void __stdcall BarterResult(const u8* p){
         for(u32 i=0;i<BarterState.cartCount;++i){auto c=BarterState.cart[i];auto* r=BarterState.packet+BarterState.offsets[c.recipe];
             u32& stock=*reinterpret_cast<u32*>(r+(BarterState.mode==0xB79?6:5));if(stock!=0xFFFFFFFF)stock=stock>c.quantity?stock-c.quantity:0;
         }
-        BarterState.cartCount=BarterState.chosen=BarterState.cartScroll=0;status("Purchase complete.");
+        BarterState.cartCount=BarterState.chosen=BarterState.cartScroll=0;
+        if(outcomeReady){char line[128];line[0]=0;append(line,"Crafted: ");number(line,outcomeSucceeded,true);append(line,". Failed: ");number(line,outcomeFailed,true);append(line,".");status(line);}
+        else status("Purchase complete.");
     }else status("Purchase failed. Check the server message.");
-    dirty();
+    outcomeReady=false;dirty();
 }
 static void buy(){
     if(!canBuy())return;u8 p[1404];u16 op=BarterState.mode==0xB79?0xB57:0xB0F;*reinterpret_cast<u16*>(p)=op;u32 off=4;
@@ -167,7 +233,7 @@ static void buy(){
         if(op==0xB57){*reinterpret_cast<u32*>(p+off+4)=r.index;*reinterpret_cast<u32*>(p+off+8)=c.quantity;off+=12;}
         else {*reinterpret_cast<u32*>(p+off+4)=c.quantity;*reinterpret_cast<u16*>(p+off+8)=0;*reinterpret_cast<u32*>(p+off+10)=r.index;off+=14;}
     }
-    *reinterpret_cast<u16*>(p+2)=static_cast<u16>(off);BarterState.pending=1;BarterState.sentAt=tick();
+    *reinterpret_cast<u16*>(p+2)=static_cast<u16>(off);BarterState.pending=1;outcomeReady=false;BarterState.sentAt=tick();
     if(!send(p,off)){BarterState.pending=0;status("Unable to send purchase. Please reopen the shop.");}else status("Waiting for the server...");dirty();
 }
 static void add(u32 index){
@@ -242,6 +308,15 @@ static void primitive(int op,u32 id,const char* s,int x,int y,int w,int h,u32 co
 static void text(const char* s,int x,int y,int width,u32 color=0x915F46){primitive(0,0,s,x,y,width,16,color);}
 static int textWidth(const char* s){int n=0;while(s[n] && n<127)++n;return reinterpret_cast<int (__thiscall *)(void*,const char*,int,int,int,int,int)>(0xA21C90)(BarterState.window,s,n,0,11,0,0);}
 static void aligned(const char* s,int x,int y,int w,bool center,u32 color=0xB98361){int used=min(textWidth(s),w);text(s,x+(w-used)/(center?2:1),y,used,color);}
+static u32 rateColor(u32 rate){
+    static const int stops[][4]={{5,163,14,33},{10,184,26,38},{20,197,34,40},{25,201,42,42},{30,193,58,19},{40,189,75,5},{50,182,95,0},{60,128,118,0},{80,79,127,26},{100,22,131,59}};
+    int rgb[3];int upper=1;while(upper<9 && rate>static_cast<u32>(stops[upper][0]))++upper;
+    const int* a=stops[upper-1];const int* b=stops[upper];int value=max(5,min(100,static_cast<int>(rate)));
+    for(int i=0;i<3;++i)rgb[i]=a[i+1]+(b[i+1]-a[i+1])*(value-a[0])/(b[0]-a[0]);
+    return rgb[0]|rgb[1]<<8|rgb[2]<<16; // Native text uses COLORREF (BGR).
+}
+static void drawRate(u32 i,int x,int y,int width){char label[128];label[0]=0;append(label,"Rate: ");number(label,rates[i]);append(label,"%");aligned(label,x,y,width,false,rateColor(rates[i]));}
+
 static void image(int i,int x,int y){primitive(1,i,0,x,y,at<int>(textures[i],0x114),at<int>(textures[i],0x118));}
 // Nine-slice horizontally so the same 172px card art also fits the 182px cart.
 static void slice(int id,int x,int y,int w){
@@ -313,22 +388,22 @@ EXPORT void __fastcall BarterDraw(void* w,void*){
     if(w!=BarterState.window || !BarterState.active || at<int>(w,0x14)!=619 || at<int>(w,0x18)!=410)return;
     if(!assets())return;
     reinterpret_cast<void (__thiscall *)(void*,int)>(0xA1CB30)(w,0);itemHitCount=0;clip={0,0,619,410};image(0,0,0);clampScroll();
-    text("Barter",7,2,300,0x674623);mini(1,"x",600,0,17);
+    text(shopTitle,7,2,580,0x674623);mini(1,"x",600,0,17);
     char label[128];clip=catalogPane;int y=catalogPane.y-BarterState.catalogScroll;
     for(u32 row=0;row<BarterState.count;row+=2){int h=rowHeight(row);if(y>=clip.y+clip.h)break;
         if(y+h>clip.y)for(u32 j=0;j<2 && row+j<BarterState.count;++j){u32 i=row+j;auto r=recipe(i);int x=42+j*179;card(x,y,h);
             bool selected=false;for(u32 k=0;k<BarterState.cartCount;++k)if(BarterState.cart[k].recipe==i)selected=true;
             if(selected)border(x,y,172,h,0xFF8BAADB);
-            icon(r.id,1,r.refine,x+7,y+6,false);name(label,r.id,r.refine);text(label,x+46,y+12,118);
-            label[0]=0;if(r.stock==0xFFFFFFFF)append(label,"x1");else{append(label,"Stock: ");number(label,r.stock,true);}text(label,x+46,y+26,118,0x958A85);
+            icon(r.id,1,r.refine,x+7,y+6,false);name(label,r.id,r.refine);text(label,x+46,y+17,118);drawRate(i,x+46,y+1,118);
+            label[0]=0;if(r.stock==0xFFFFFFFF)append(label,"x1");else{append(label,"Stock: ");number(label,r.stock,true);}text(label,x+46,y+32,118,0x958A85);
             text(r.count>10?"Required items (more in list)":"Required items",x+7,y+51,158,0x9A8982);materials(i,1,x+7,y+67,10);price(r.zeny,x+7,y+h-38,156);
             if(!r.stock)text("Sold out",x+7,y+h-18,158,0x6566BA);else if(shortMaterials(i,1))text("Not enough materials",x+7,y+h-18,158,0x6566BA);
         }y+=h+7;
     }
     clip=cartPane;y=cartPane.y-BarterState.cartScroll;
     for(u32 i=0;i<BarterState.cartCount;++i){int h=cartHeight(i);if(y>=clip.y+clip.h)break;if(y+h>clip.y){auto c=BarterState.cart[i];auto r=recipe(c.recipe);int x=cartPane.x;card(x,y,h,182);
-        icon(r.id,c.quantity,r.refine,x+7,y+6,false);name(label,r.id,r.refine);text(label,x+46,y+12,129);
-        label[0]=0;append(label,"Receive x");number(label,c.quantity,true);text(label,x+46,y+26,129,0x958A85);
+        icon(r.id,c.quantity,r.refine,x+7,y+6,false);name(label,r.id,r.refine);text(label,x+46,y+17,129);drawRate(c.recipe,x+46,y+1,129);
+        label[0]=0;append(label,rates[c.recipe]<100?"Attempts x":"Receive x");number(label,c.quantity,true);text(label,x+46,y+32,129,0x958A85);
         text("Required items",x+7,y+51,160,0x9A8982);materials(c.recipe,c.quantity,x+7,y+67,r.count);
         text("Quantity",x+7,y+h-44,88,0x967E6F);mini(10000+i*2,"-",518,y+h-50,20,!BarterState.pending);
         panel(542,y+h-50,30,20,0xFFFFFFFF);label[0]=0;number(label,c.quantity);aligned(label,544,y+h-47,26,true);

@@ -59,6 +59,7 @@ def main():
     meta = {'version':1, 'client':20250716, 'size':len(code), 'api_size':48, 'exports':exports,
             'source_sha256':hashlib.sha256(source.read_bytes().replace(b'\r\n', b'\n')).hexdigest(),
             'cursor_source_sha256':hashlib.sha256((ROOT/'Scripts/Runtime/InventoryCartCursor.h').read_bytes().replace(b'\r\n', b'\n')).hexdigest(),
+            'quantity_header_sha256':hashlib.sha256((ROOT/'Scripts/Runtime/ItemSlotQuantity.h').read_bytes().replace(b'\r\n',b'\n')).hexdigest(),
             'payload_sha256':hashlib.sha256(out.read_bytes()).hexdigest(), 'runtime_imports':[]}
     out.with_suffix('.json').write_text(json.dumps(meta, indent=2)+'\n', encoding='utf8')
     print(json.dumps(meta, indent=2))

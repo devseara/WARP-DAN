@@ -261,10 +261,10 @@ BookingButtonAction:
 
     patches:
         - BookingButtonGuide:
-            title : Send custom packet from Booking button (New UI)
+            title : Open In-Game Settings from chat-bubble button (New UI)
             recommend : no
             author : Louis T Steinhil
-            desc : Reuses the Basic Info Booking button (new UI) to send a configurable custom packet, defaulting to 0x0BB2 for the in-game guide/settings flow. Mutually exclusive with the Booking URL action.
+            desc : Opens the server In-Game Settings menu from the chat-bubble/gear button using packet 0x0BB2 by default. Replaces the Settings shortcut formerly on Roulette. Select this action for the Settings menu. Mutually exclusive with the Booking URL action.
 
         - BookingButtonURL:
             title : Open URL from Booking button (New UI)

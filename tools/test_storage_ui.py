@@ -231,7 +231,7 @@ def native_events(m):
     m.w(0x121333C,m.mode);m.click(270,428);assert m.actions[-1]==('mode',(0x39,0,0,0,0)) and m.closed==[*range(0x92,0x99),0x135,0x99]
 
 def categories(m):
-    expected=[(0,1),(1,1),(2,1),(3,4),(4,2),(5,3),(6,5),(7,4),(8,3),(9,3),(10,6),(11,2),(12,2),(13,2),(14,2),(15,3),(16,6),(17,6),(18,11),(19,6)]
+    expected=[(0,1),(1,1),(2,1),(3,4),(4,3),(5,2),(6,5),(7,4),(8,3),(9,3),(10,6),(11,2),(12,2),(13,2),(14,2),(15,3),(16,6),(17,6),(18,11),(19,6)]
     m.rows([(1,1201,4,1,0)]);item=m.items[0]
     for kind,cat in expected:
         m.w(item,kind)
@@ -254,6 +254,25 @@ def pet_cache(exe):
     m.rows([(12,2225,4,1,0)]);m.draw();assert m.pet_calls==[2,2]
     m.rows([(13,1201,4,1,0)]);m.draw();assert m.pet_calls==[3,3]
     m.invoke(m.c['destroy'],m.obj,(1,));m.obj=m.alloc(0x194);m.invoke(m.c['construct'],m.obj);m.invoke(m.c['create'],m.obj,(280,458));m.u.mem_write(m.obj+0x190,b'\1');m.w(m.c['state']+8,2);m.draw();assert m.pet_calls==[4,4]
+
+def equipment_tabs(m):
+    # Real database identities and base packet kinds: Knife=Weapon(5),
+    # Poo Poo Hat/Binoculars/Cotton Shirt=Armor(4). Reproduce the screenshot
+    # through both click routes, not just the category predicate in isolation.
+    m.names.update({2289:'Poo Poo Hat',2296:'Binoculars',2301:'Cotton Shirt'})
+    m.rows([(1,1201,5,1,7),(2,2289,4,1,0),(3,2296,4,1,0),(4,2301,4,1,0)])
+    m.action_boundaries()
+    for block in [False,True]:
+        if bool(m.r(m.c['state']+12))!=block:m.click(25,405)
+        for dropdown in [False,True]:
+            for row,label,expected in [(2,'Weapon',[1201]),(3,'Armor',[2289,2296,2301])]:
+                if dropdown:m.click(247,35);m.click(100,51+row*22)
+                else:m.click(16,39+row*30)
+                m.draw()
+                assert [int(m.cstr(p+0x2c)) for _,_,p in m.native_items]==expected,(block,dropdown,label)
+                m.invoke(m.c['move'],m.obj,(16,39+row*30));assert m.control_tips[-1][0]==label
+                assert m.select(70,60)==(1 if row==2 else 2)
+    print('PASS Weapon/Armor sidebar and dropdown in list/block views with Knife, Poo Poo Hat, Binoculars and Cotton Shirt')
 
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('exe',type=Path);ap.add_argument('--output',type=Path,required=True);a=ap.parse_args();a.output.mkdir(parents=True,exist_ok=True)
@@ -282,7 +301,7 @@ def main():
     # entry from the newer artwork is removed from both drawing and hit map.
     for row,cat in enumerate([0,1,2,3,4,5,6,7,8,9,11]):m.invoke(m.c['hit'],0,(16,39+row*30));assert m.u.reg_read(UC_X86_REG_EAX)==10+cat
     m.click(270,428);assert m.closed==[m.obj]
-    categories(StorageMachine(a.exe));native_callbacks(StorageMachine(a.exe,native_create=True));control_tooltips(StorageMachine(a.exe,native_create=True));lifecycle(a.exe);native_events(factory(a.exe));pet_cache(a.exe)
+    categories(StorageMachine(a.exe));equipment_tabs(StorageMachine(a.exe));native_callbacks(StorageMachine(a.exe,native_create=True));control_tooltips(StorageMachine(a.exe,native_create=True));lifecycle(a.exe);native_events(factory(a.exe));pet_cache(a.exe)
     print('PASS StorageUI native factory/ctor/OnCreate/children/destructor/reopen/fallback, original CItem copy/cards/refine, stale-row suppression, visible-name search, empty results, stable refine sorting, list/block hits, scroll/clamp, eleven native categories, original drag/tooltip/description/withdraw callbacks, native update/count/close events, editor focus/release, original asset rendering, x86 ABI. Live game acceptance pending.')
 
 if __name__=='__main__':main()

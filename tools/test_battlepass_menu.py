@@ -1,7 +1,7 @@
 """Execute the real WARP-exported Battle Pass menu control at native boundaries.
 
 Checks both themes, compact placement, hit testing, installed texture paths,
-child lifecycle and the existing BPUI toggle/refresh protocol. Offline only.
+child lifecycle and server-approved BPUI opening/refresh. Offline only.
 """
 import argparse
 import itertools
@@ -59,7 +59,7 @@ def verify(exe, state_file):
     parent = v.alloc(0x200)
     v.write32(parent + 0x28, 1); v.u.mem_write(0x160227C, b'\1')
     callback = v.read32(button['requestCellVir'])
-    assert callback == state['battlepass']['toggleVir']
+    assert callback == state['battlepass']['menuRequestVir']
     v.write32(button['requestCellVir'], 0)
     v.run(button['ensureVir'], ecx=parent); assert not parents
     v.write32(button['requestCellVir'], callback)
@@ -113,7 +113,7 @@ def verify(exe, state_file):
     other = v.alloc(0x200); v.run(button['ensureVir'], ecx=other)
     assert len(parents) == 2 and parents[-1][0] == other
 
-    # Call the actual menu callback through to BP's unchanged native toggle.
+    # Closing stays local; opening now waits for the authoritative BPUI reply.
     m = BoardMachine(str(exe)); s = m.c['state']; timers = []
     # Real servers advertise the earlier protocol capabilities with v5.
     m.w(s + 32 + 1188, 512 | 32 | 16)
@@ -129,8 +129,10 @@ def verify(exe, state_file):
     def click(): m.invoke(button['buttonMouseUpVir'], m.obj, (0, 0))
     before = len(m.sent); click()
     assert not m.r(m.obj + 0x28) and m.r(s + 3020) == 1 and len(m.sent) == before
-    click(); assert m.r(m.obj + 0x28) and m.r(s + 3020) == 0
-    assert m.sent[before:] == [(0xBF9, 16, 0x49555042, 5, 0, 0)] and timers == ['start']
+    click(); assert not m.r(m.obj + 0x28) and m.r(s + 3020) == 0
+    assert m.sent[before:] == [(0xBF9, 16, 0x49555042, 5, 21, 0)] and not timers
+    approved=configured();struct.pack_into('<H',approved,10,struct.unpack_from('<H',approved,10)[0]|32)
+    m.receive(approved);assert m.r(m.obj + 0x28) and timers == ['start']
     click(); assert not m.r(m.obj + 0x28) and timers == ['start', 'stop']
     before = len(m.sent); m.w(button['requestCellVir'], 0); click()
     assert len(m.sent) == before and not m.r(m.obj + 0x28)
@@ -147,14 +149,15 @@ def verify(exe, state_file):
         size, ptr = m.args(2); assert size in (12, 16)
         packets.append(bytes(m.u.mem_read(ptr, size))); m.ret(8)
     m.stub(m.r(m.c['api'] + 16), send)
-    click(); m.obj = m.r(s); m.owner = m.obj
-    assert m.obj and m.r(m.obj + 0x28) and m.r(0x131F4E8 + 0x180) == 1
-    assert packets[-1] == struct.pack('<HHIHH', 0xBF9, 12, 0x49555042, 1, 0)
+    click();assert not m.r(s),'menu request must not construct a frame'
+    assert packets[-1] == struct.pack('<HHIHH', 0xBF9, 12, 0x49555042, 1, 21)
     native = next(e['value'] for e in state['events'] if e['topic'] == 'BattlepassUI.Native')
     def tick(): m.invoke(native['timerVir'], 0, (0, 0, 0, 0))
     legacy = bytearray(788)
-    struct.pack_into('<HHIHH', legacy, 0, 0xBF6, 788, 0x49555042, 1, 16 | 0x8000)
-    m.receive(legacy); tick()
+    struct.pack_into('<HHIHH', legacy, 0, 0xBF6, 788, 0x49555042, 1, 32 | 16 | 0x8000)
+    m.receive(legacy);m.obj = m.r(s);m.owner = m.obj
+    assert m.obj and m.r(m.obj + 0x28) and m.r(0x131F4E8 + 0x180) == 1
+    tick()
     assert packets[-1] == struct.pack('<HHIHHI', 0xBF9, 16, 0x49555042, 2, 0, 0)
     details = legacy + bytearray(2240 - len(legacy))
     struct.pack_into('<H', details, 2, 2240); struct.pack_into('<H', details, 8, 2)
