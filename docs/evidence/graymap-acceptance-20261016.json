@@ -1,0 +1,32 @@
+{
+  "client": 20250716,
+  "exe_sha256": "3767fff7ffec4b779a4031facb60f204961792102d2044f0f1ac2ea5feac83ba",
+  "runtime_payload_sha256": "42407250c2d1feb75b3075e1fe97b4dca9145d0644273d96fd07c9ccf2f7c3f9",
+  "riftlock_release": 1792121464,
+  "signature_verified": true,
+  "user_accepted": [
+    "reference-style floor and blocked regions",
+    "presets and cell colors",
+    "native switches and scrolling",
+    "normal and GrayMap rendering after Trilinear changes",
+    "aligned six-row layout",
+    "native hover tooltips"
+  ],
+  "automated_checks": [
+    "real WARP clean build",
+    "removal and reapply",
+    "FpsOverlay and IncrMapQuality before/after ordering",
+    "15 producer and 78 style vectors per active fixture",
+    "native UI callbacks, capture and tooltip ownership",
+    "palette generation and nine invalid preference records",
+    "header style, QJS CRLF and source/payload hash consistency",
+    "incremental output exactly matches accepted installed EXE"
+  ],
+  "remaining_live_matrix": [
+    "DX7",
+    "multi-map coverage",
+    "Alt-Tab/device reset",
+    "frame-time measurements"
+  ],
+  "source_cleanup_preserves_accepted_binary": true
+}

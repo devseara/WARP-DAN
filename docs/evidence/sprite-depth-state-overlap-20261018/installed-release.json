@@ -1,0 +1,28 @@
+{
+  "status": "installed",
+  "client": "2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "source_sha256": "5d1d4faf3065a27655e9404357af8beb697ede907959fa9c39ccc15aba3cbc36",
+  "rejected_client_sha256": "601fa320dceb31f016649d8183f8f8604668901acc5f81caf25d0a15d6fcce00",
+  "candidate_sha256": "83c027c36c7a0fef5126af25ac88747084fd6248cb72c478070bd47b8f0fd65b",
+  "backup": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\sprite-depth-crash-fix-20261018\\deployment\\before",
+  "healthy_recovery": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\sprite-depth-main-20261018\\deployment\\before",
+  "live_client_tested": false,
+  "floor_emulation": {
+    "body_cave": "0x2577010",
+    "shadow_cave": "0x257706c",
+    "body_cases": 66,
+    "shadow_cases": 3
+  },
+  "uniform_rhw": true,
+  "legacy_clan_hook_removed": true,
+  "all_grfs_dlls_and_ini_unchanged": true,
+  "independent_manifest_match": true,
+  "signature_verified": true,
+  "signing_after": {
+    "build": 1,
+    "release": 1792283364,
+    "digest": "d9450d915bccebb70a7980ba2142baa712d58ddeff94e2c7b60692e9ab326c7d",
+    "public_key": "db2e2a0990d1bab6c887cb9d38df8b29ea31026ce70b83aa10e7a451c93cc80a",
+    "signature_verified": true
+  }
+}

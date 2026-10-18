@@ -1,0 +1,118 @@
+/*
+ * Description: Adds a passive Ragnarok-themed top-center Celestial dial to
+ * 2025-07-16 Ragexe. WENV v6 adds per-map server authorization for managed weather.
+ * A private native effect instance expires through normal world processing;
+ * existing map weather is preserved. WENV v1/v2/v3/v4 remain compatible.
+ * All bridges are installed at WARP time; no DLL or recv hook is required.
+ */
+CelestialDial = function(_)
+{
+	if(!CelestialDial.validate())throw Error("CelestialDial requires 2025-07-16 Ragexe");
+	// WARP can invoke a newly selected dependency again after an adapter has
+	// installed it. CACHE is scoped to the loaded EXE; retain its one native frame.
+	if(CACHE.get("CelestialDial.Contract.v3"))return true;
+	const n=AutoCombatUI.nativeHelpers;
+	const read=path=>{const f=new BinFile(path,"r");if(!f.Valid)throw Error("CelestialDial: missing "+path);const h=f.ReadHex();f.Close();return(h.match(/[0-9a-fA-F]{2}/g)||[]).map(v=>parseInt(v,16));};
+	const u32=(b,o)=>(b[o]|b[o+1]<<8|b[o+2]<<16|b[o+3]<<24)>>>0;
+	const put=(b,o,v)=>{for(let i=0;i<4;++i)b[o+i]=v>>>(8*i)&255;};
+	const raw=read(Warp.Path+"/Inputs/CelestialDial/runtime.bin");
+	const meta=JSON.parse(String.fromCharCode(...read(Warp.Path+"/Inputs/CelestialDial/runtime.json")));
+	if(raw.length<32)throw Error("CelestialDial: truncated payload");
+	const size=u32(raw,8),count=u32(raw,12),api=u32(raw,16),start=32+count*4;
+	let crc=0xffffffff;for(let i=32;i<raw.length;++i){crc^=raw[i];for(let j=0;j<8;++j)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}
+	if(u32(raw,0)!==0x4C444543 || u32(raw,4)!==3 || meta.version!==3 || meta.client!==20250716 || size!==meta.size ||
+		start+size!==raw.length || api!==meta.exports.CelestialApi || meta.api_size!==20 || u32(raw,20)!==20 ||
+		u32(raw,24)!==80 || api+20>size || ((crc^0xffffffff)>>>0)!==u32(raw,28))throw Error("CelestialDial: invalid payload");
+	const names=["CelestialApi","CelestialState","_CelestialFrame@4","_CelestialReset@0","_CelestialReceive@4","@CelestialDraw@8","@CelestialHit@16","@CelestialDestroy@12"];
+	for(const name of names)if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("CelestialDial: missing "+name);
+	for(const [name,va,hex] of [["frame call",0xC74FB0,"E8 5B 47 E0 FF"],["window constructor",0xA1B190,"55 8B EC 6A FF"],
+		["window destructor",0xA1B750,"55 8B EC"],["canvas clear",0xA1CB30,"55 8B EC"],["native text",n.TextDraw,"55 8B EC"],
+		["weather receiver",0xC74F6C,"B9 D8 57 5C 01"],["actor effect list",0xC44420,"55 8B EC 83 B9 48 01 00 00 00"],
+		["effect identity",0xBB418A,"89 87 68 01 00 00"],["effect factory",0xC44540,"55 8B EC 6A FF"],
+		["world effect lifetime",0xA6BAE0,"8B 4F 08 8B 01 8B 40 04 FF D0 84 C0"],
+		["world effect disposal",0xA6BB4E,"8B 4F 08 85 C9 74 06 8B 01 6A 01 FF 10"],
+		["effect owner release",0xB90E39,"8B 8B 38 01 00 00 85 C9"],
+		["rain particle emitter",0xC0D5B0,"55 8B EC 83 EC 0C 53 56 8B F1 57"],
+		["particle step keepalive",0xBC2DE1,"B0 01 8B 4D F4"],
+		["rain primitive owner/type",0xB46966,"89 91 40 01 00 00 89 81 D0 01 00 00"],
+		["rain primitive update",0xB823D0,"53 56 57 8B F9"],
+		["rain white palette",0xB8C159,"68 FF 00 00 00 68 FF 00 00 00"],
+		["private ground quad",0xB7C4E0,"53 8B DC 83 EC 08 83 E4 F0"],
+		["native texture resolver",0x568760,"55 8B EC"],
+		["native effect process",0xBC4C70,"53 8B DC 83 EC 08"]])n.assertCode("CelestialDial "+name,va,hex);
+	if(Exe.GetUint32(Exe.Vir2Phy(0x1088DE8))!==0xBA2D80 || Exe.GetUint32(Exe.Vir2Phy(0x1088DE8+4))!==0xBC4C70)
+		throw Error("CelestialDial: native CEffect vtable mismatch");
+	for(const [slot,expected] of [[0,0xB46640],[1,0xB46B50],[3,0xB666D0],[14,0xB7F290]])
+		if(Exe.GetUint32(Exe.Vir2Phy(0x1088C48+slot*4))!==expected)throw Error("CelestialDial: native CPrim vtable mismatch");
+	const baseTable=0x104AC44;
+	for(const [slot,expected] of [[0,0xA1B750],[20,0x5DD270],[50,0xA23220]])
+		if(Exe.GetUint32(Exe.Vir2Phy(baseTable+slot*4))!==expected)throw Error("CelestialDial: native UIWindow vtable mismatch");
+	const code=raw.slice(start),[phy,vir]=Exe.Allocate(size,16);
+	for(let i=0;i<count;++i){const off=u32(raw,32+i*4);if(off+4>size || u32(code,off)>=size)throw Error("CelestialDial: bad relocation");put(code,off,u32(code,off)+vir);}
+	const e=name=>vir+meta.exports[name],top=n.topHudY(_);
+	const table=n.allocateBytes(new Array(4+53*4).fill(0),4);
+	Exe.SetHex(table.phy,Exe.GetHex(Exe.Vir2Phy(baseTable-4),table.size));
+	for(const [slot,name] of [[0,"@CelestialDestroy@12"],[20,"@CelestialDraw@8"],[50,"@CelestialHit@16"]])Exe.SetUint32(table.phy+4+slot*4,e(name));
+	const refs=n.resolvePacketRefs();
+	[1,table.vir+4,refs.packetCtorA,refs.packetSend,top.vir].forEach((v,i)=>put(code,api+i*4,v));
+	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
+		// The player scope runs stock exactly once; only its own fresh SPR quads cast silhouettes.
+	const playerSlot=Exe.Vir2Phy(0x1094810+3*4);
+	if(Exe.GetUint32(playerSlot)!==0xD3A220)throw Error("CelestialDial: player draw slot mismatch");
+	Exe.SetUint32(playerSlot,e("@CelestialPlayerShadowDraw@12"));
+	n.assertCode("CelestialDial sprite submit",0xC4A65E,"E8 AD 64 90 FF");
+	Exe.SetCALL(Exe.Vir2Phy(0xC4A65E,CODE),e("CelestialSpriteSubmitBridge"),0);
+	// Preserve every incoming register/flag and tail-replay the original call.
+	const frame=n.asm();frame.emit(0x9C,0x60,0x53);frame.call(e("_CelestialFrame@4"));frame.emit(0x61,0x9D);frame.jmp(0xA79710);
+	const bridge=n.allocateCode(frame);Exe.SetCALL(Exe.Vir2Phy(0xC74FB0,CODE),bridge.vir,0);
+	// Run native weather first, then cap only its scene RGB outputs.
+	n.assertCode("CelestialDial weather process call",0xC74F71,"E8 2A E7 F9 FF");
+	Exe.SetCALL(Exe.Vir2Phy(0xC74F71,CODE),e("@CelestialWeatherProcess@8"),0);
+	// Scene-model render slots and their exact projection/submission call sites.
+	for(const [table,stock] of [[0x104D420,0xA59C30],[0x104D450,0xA59D20]]){
+		const address=Exe.Vir2Phy(table+7*4);
+		if(Exe.GetUint32(address)!==stock)throw Error("CelestialDial: scenery render slot mismatch");
+		Exe.SetUint32(address,e("@CelestialShadowActor@16"));
+	}
+	for(const [name,sites,target] of [["@CelestialShadowProject@20",[0xA59EF1,0xA5A66D,0xA5AF1C],0x554380],
+		["@CelestialShadowSubmit@16",[0xA5A484,0xA5AD9D,0xA5B0C9],0x550B10]]){
+		for(const site of sites){
+			const address=Exe.Vir2Phy(site,CODE);
+			if(Exe.GetUint8(address)!==0xE8 || ((site+5+Exe.GetUint32(address+1))>>>0)!==target)
+				throw Error("CelestialDial: scenery call mismatch");
+			Exe.SetCALL(address,e(name),0);
+		}
+	}
+	// Normal map and map-server transitions invalidate the old cookie before stock processing.
+	const lifecycle=[];
+	for(const [id,expected] of [[0x91,0xC9E908],[0x92,0xC9E985]]){
+		const entry=n.packetTableEntryVir(id),address=Exe.Vir2Phy(entry,CODE),stock=Exe.GetUint32(address);
+		if(stock!==expected)throw Error("CelestialDial: map lifecycle dispatcher already changed");
+		const a=n.asm();a.emit(0x9C,0x60);a.call(e("_CelestialReset@0"));a.emit(0x61,0x9D);a.jmp(stock);
+		const stub=n.allocateCode(a);Exe.SetUint32(address,stub.vir);lifecycle.push({entry,stock,stub:stub.vir});
+	}
+	const a=n.asm();a.emit(0x9C,0x60,0xBE);a.dword(n.PacketBuffer);
+	a.emit(0x66,0x81,0x7E,2);a.word(68);a.jcc(0x84,"receive");
+	a.emit(0x66,0x81,0x7E,2);a.word(72);a.jcc(0x84,"receive");
+	a.emit(0x66,0x81,0x7E,2);a.word(80);a.jcc(0x85,"done");a.label("receive");a.emit(0x56);a.call(e("_CelestialReceive@4"));
+	a.label("done");a.emit(0x61,0x9D);a.jmp(n.PacketMainLoopReturn);
+	const receiver=n.allocateCode(a);n.registerPacket0BF6(_,"wenv",receiver.vir);
+	const record=[];for(const value of [n.allocateString("CelestialDial.v3").vir,...names.map(e),bridge.vir,receiver.vir,top.vir,table.vir+4])
+		record.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
+	n.allocateBytes(record,4);
+	CACHE.put("CelestialDial.Contract.v3",{state:e("CelestialState"),api:e("CelestialApi"),runtimeBase:vir,runtimeSize:size,playerDraw:e("@CelestialPlayerShadowDraw@12"),frame:bridge.vir,receiver:receiver.vir,top:top.vir,lifecycle,
+		hooks:[{site:0xC74FB0,size:5},...lifecycle.map(h=>({site:h.entry,size:4})),{site:n.packetTableEntryVir(0xBF6),size:4}]});
+	CelestialDial.onApplied();
+	return true;
+};
+CelestialDial.validate=()=>Exe.BuildDate===20250716;
+CelestialDial.onApplied=function() {
+	if(Warp.TestMode)return;
+	let target=System.DirPath(Warp.TgtExe);
+	for(const folder of ["data","texture","effect"]){target+="/"+folder;if(!System.MkDir(target))throw Error("CelestialDial: cannot create "+target);}
+	for(const file of ["boh_rain_prototype.bmp","boh_rain_ripple.bmp","boh_rain_wet.bmp"])
+		if(!System.Copy(Warp.Path+"/Inputs/CelestialDial/"+file,target+"/"+file,true))throw Error("CelestialDial: cannot install "+file);
+	const wav=System.DirPath(Warp.TgtExe)+"/data/wav";
+	if(!System.MkDir(wav) || !System.Copy(Warp.Path+"/Inputs/CelestialDial/boh_thunder_01.wav",wav+"/boh_thunder_01.wav",true))
+		throw Error("CelestialDial: cannot install thunder audio");
+};

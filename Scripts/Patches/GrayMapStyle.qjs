@@ -1,0 +1,230 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                   *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                      *
+*   Created Date  : 2026-10-16                                             *
+*   Last Modified : 2026-10-16                                             *
+*                                                                          *
+*   Description   : Builds the profiled 2025-07-16 terrain/scenery and     *
+*                   native Graphics bridges used by GrayMap. Reads GAT     *
+*                   cells into a procedural atlas; off tails stock code.   *
+*                   Preserves branch targets, SSE state and native UI      *
+*                   ownership. See docs/graymap.md for ABI assumptions.    *
+*                                                                          *
+\**************************************************************************/
+
+GrayMapStyle = {};
+GrayMapStyle.asm = () => ExtNameStaticAsm.asm();
+GrayMapStyle.alloc = function(a) {
+	const [phy, vir] = Exe.Allocate(a.bytes.length, 0x10);
+	Exe.SetHex(phy, a.finish(vir)); return {phy, vir, size:a.bytes.length};
+};
+GrayMapStyle.data = function(hex) {
+	const [phy, vir] = Exe.Allocate(hex.trim().split(/\s+/).length, 4);
+	Exe.SetHex(phy, hex); return {phy, vir};
+};
+GrayMapStyle.push = function(a, v) { a.emit(0x68); a.dword(v); };
+GrayMapStyle.cmpState = function(a, state, offset) {
+	a.emit(0x83, 0x3D); a.dword(state + offset); a.emit(0);
+};
+GrayMapStyle.ground = function(state, original, path, prepare) {
+	const a = this.asm(); a.emit(0x9C); this.cmpState(a,state,0); a.jcc(0x84,"stock");
+	a.emit(0x60, 0x89, 0x0D); a.dword(state + 12); // current live ground receiver
+	// The texture manager call is not allowed to leak volatile SSE state.
+	a.emit(0x81,0xEC); a.dword(128);
+	for(let i=0;i<8;i++) a.emit(0x0F,0x11,0x44 | (i<<3),0x24,i*16);
+	// CTexMgr::Get(path, colorKey=0, noScale=1, mipmaps=0, flags=0).
+	// Classification atlas variants must retain their full pixel resolution and
+	// one mip level, independently of Texture Resolution / Trilinear settings.
+	for(const v of [0,0,1,0,path]) this.push(a,v); // RET 14h
+	a.emit(0xB9); a.dword(0x0125161C); a.call(0x00568760);
+	a.emit(0xA3); a.dword(state+16);a.call(prepare);
+	for(let i=0;i<8;i++) a.emit(0x0F,0x10,0x44 | (i<<3),0x24,i*16);
+	a.emit(0x81,0xC4); a.dword(128); a.emit(0x61);
+	a.label("stock"); a.emit(0x9D); a.jmp(original); return a;
+};
+GrayMapStyle.scenery = function(state, site) {
+	const a=this.asm(); a.emit(0x9C); this.cmpState(a,state,0); a.jcc(0x84,"stock");
+	this.cmpState(a,state,8); a.jcc(0x84,"stock");
+	a.emit(0x9D);
+	// First traversal has already pushed its transparency argument. The second
+	// has pushed nothing yet. Never add a forwarding frame to the stock call.
+	if(site===0x00A7B2F4)a.emit(0x8D,0x64,0x24,4);
+	a.jmp(site+8);
+	a.label("stock");a.emit(0x9D,0x8B,0xCA);
+	if(site===0x00A7B2F4)a.emit(0xFF,0x75,0xF8);else a.emit(0x6A,0,0x57);
+	a.emit(0xFF,0x50,0x1C);a.jmp(site+8);return a;
+};
+
+// stdcall ApplyMaterial(poly, sourceQuad). EAX returns the native queue flags.
+GrayMapStyle.material = function(state, uv, epsilon) {
+	const a=this.asm(), push=v=>this.push(a,v);
+	a.emit(0x55,0x8B,0xEC,0x83,0xEC,32,0x53,0x56,0x57);
+	a.emit(0x8B,0x75,8,0x8B,0x7D,12);
+	a.emit(0xA1);a.dword(state+16);a.emit(0x85,0xC0);a.jcc(0x84,"fallback");
+	a.emit(0x89,0x46,8,0x8B,0x1D);a.dword(state+12);a.emit(0x85,0xDB);a.jcc(0x84,"unknown");
+	// Read horizontal world bounds from source geometry, never projected XY.
+	a.emit(0xF3,0x0F,0x10,0x07,0xF3,0x0F,0x10,0x4F,8,0x0F,0x28,0xD0,0x0F,0x28,0xD9);
+	for(const o of [32,64,96]) {
+		a.emit(0xF3,0x0F,0x5D,0x47,o,0xF3,0x0F,0x5D,0x4F,o+8);
+		a.emit(0xF3,0x0F,0x5F,0x57,o,0xF3,0x0F,0x5F,0x5F,o+8);
+	}
+	a.emit(0xF3,0x0F,0x11,0x45,0xFC,0xF3,0x0F,0x11,0x4D,0xF8);
+	a.emit(0xF3,0x0F,0x11,0x55,0xF4,0xF3,0x0F,0x11,0x5D,0xF0);
+	a.emit(0xF3,0x0F,0x5C,0xD0,0xF3,0x0F,0x5C,0xD9,0x0F,0x57,0xE4);
+	a.emit(0x0F,0x2F,0xD4);a.jcc(0x86,"wall");a.emit(0x0F,0x2F,0xDC);a.jcc(0x86,"wall");
+	a.emit(0xF3,0x0F,0x10,0x63,16,0x0F,0x57,0xED,0x0F,0x2F,0xE5);a.jcc(0x86,"unknown");
+	// GND tile width is scale; each GND top contains 2x2 GAT cells.
+	for(const [reg,dim,local] of [[0,8,0xEC],[1,12,0xE8]]) {
+		a.emit(0x8B,0x43,dim,0xD1,0xF8,0xF3,0x0F,0x2A,0xE8);
+		a.emit(0xF3,0x0F,0x5E,0xC4 | (reg<<3),0xF3,0x0F,0x58,0xC5 | (reg<<3));
+		a.emit(0xF3,0x0F,0x58,0xC0 | (reg<<3) | reg);
+		a.emit(0xF3,0x0F,0x58,0x05 | (reg<<3));a.dword(epsilon);
+		a.emit(0xF3,0x0F,0x2C,0xC0 | reg,0x89,0x45,local);
+	}
+	a.emit(0x8B,0x7B,4,0x33,0xDB); // resource, blocked-bit mask
+	a.emit(0x85,0xFF);a.jcc(0x84,"unknown");
+	a.emit(0x83,0xBF);a.dword(0x11C);a.emit(0);a.jcc(0x84,"unknown");
+	for(let bit=0;bit<4;bit++) {
+		a.emit(0x8B,0x45,0xEC,0x8B,0x55,0xE8);
+		if(bit&1)a.emit(0x40);if(bit&2)a.emit(0x42);
+		a.emit(0x85,0xC0);a.jcc(0x88,`blocked${bit}`);a.emit(0x85,0xD2);a.jcc(0x88,`blocked${bit}`);
+		a.emit(0x3B,0x87);a.dword(0x110);a.jcc(0x8D,`blocked${bit}`);
+		a.emit(0x3B,0x97);a.dword(0x114);a.jcc(0x8D,`blocked${bit}`);
+		a.emit(0x0F,0xAF,0x97);a.dword(0x110);a.emit(0x03,0xD0,0x6B,0xD2,20);
+		a.emit(0x03,0x97);a.dword(0x11C);a.emit(0x8B,0x42,16,0x25);a.dword(0x7FFFFFFF);
+		a.emit(0x83,0xF8,6);a.jcc(0x87,`blocked${bit}`);
+		// Local server's native GAT mapping: 0/2/3/4/6 walk; 1/5 block.
+		a.emit(0xB9);a.dword(0x5D);a.emit(0x0F,0xA3,0xC1);a.jcc(0x82,`next${bit}`);
+		a.label(`blocked${bit}`);a.emit(0x83,0xCB,1<<bit);a.label(`next${bit}`);
+	}
+	a.jmp("atlas");
+	a.label("wall");a.emit(0xBB);a.dword(15);a.jmp("atlas_wall");
+	a.label("unknown");a.emit(0xBB);a.dword(0);
+	// Unknown ground uses neutral material; native callers still supply valid quad.
+	a.label("atlas_wall");a.emit(0xC7,0x45,0xE4);a.dword(1);a.jmp("choose");
+	a.label("atlas");a.emit(0xC7,0x45,0xE4);a.dword(0);
+	a.label("choose");this.cmpState(a,state,4);a.jcc(0x84,"uv");a.emit(0x83,0xC3,16);
+	a.label("uv");a.emit(0xC1,0xE3,4,0x81,0xC3);a.dword(uv);
+	a.emit(0x8B,0x7D,12,0x8B,0x36); // source quad, temporary TL vertices
+	for(let i=0;i<4;i++) {
+		const o=i*32;
+		// Neutral vertex white allows atlas shading through; preserve alpha/fog.
+		a.emit(0x81,0x4E,o+16);a.dword(0x00FFFFFF);
+		a.emit(0x83,0x7D,0xE4,0);a.jcc(0x85,`fixed${i}`);
+		a.emit(0xF3,0x0F,0x10,0x47,o,0x0F,0x2F,0x45,0xFC);
+		a.emit(0x8B,0x03);a.jcc(0x86,`u${i}`);a.emit(0x8B,0x43,8);a.label(`u${i}`);
+		a.emit(0x89,0x46,o+24,0xF3,0x0F,0x10,0x47,o+8,0x0F,0x2F,0x45,0xF8);
+		a.emit(0x8B,0x43,4);a.jcc(0x86,`v${i}`);a.emit(0x8B,0x43,12);a.label(`v${i}`);
+		a.emit(0x89,0x46,o+28);a.jmp(`vertex${i}`);
+		a.label(`fixed${i}`);a.emit(0x8B,0x43,(i&1)?8:0,0x89,0x46,o+24);
+		a.emit(0x8B,0x43,(i&2)?12:4,0x89,0x46,o+28);a.label(`vertex${i}`);
+	}
+	a.emit(0xB8);a.dword(0x800);a.jmp("done");
+	a.label("fallback");a.emit(0xC7,0x46,8);a.dword(0);a.emit(0x8B,0x36);
+	for(const o of [16,48,80,112]) {a.emit(0x81,0x66,o);a.dword(0xFF000000);a.emit(0x81,0x4E,o);a.dword(0x00808080);}
+	a.emit(0x33,0xC0);
+	a.label("done");a.emit(0x5F,0x5E,0x5B,0x8B,0xE5,0x5D,0xC2,8,0);return a;
+};
+
+GrayMapStyle.submit = function(state, material, alternate) {
+	const a=this.asm();a.emit(0x9C);this.cmpState(a,state,0);a.jcc(0x84,"stock");
+	a.emit(0x60,0x8B,0x44,0x24,40); // original polygon arg, original EBP retained
+	if(alternate)a.emit(0x8B,0x95,0x68,0xFF,0xFF,0xFF);else a.emit(0x8B,0x55,12);
+	// The profiled producers retain SSE temporaries across the stock queue
+	// call. Restore every register our material helper uses before tail-calling it.
+	a.emit(0x83,0xEC,96);
+	for(let i=0;i<6;i++)a.emit(0x0F,0x11,0x44|(i<<3),0x24,i*16);
+	a.emit(0x52,0x50);a.call(material);
+	for(let i=0;i<6;i++)a.emit(0x0F,0x10,0x44|(i<<3),0x24,i*16);
+	a.emit(0x83,0xC4,96,0x89,0x44,0x24,44,0x61);
+	a.label("stock");a.emit(0x9D);a.jmp(0x00550B10);return a;
+};
+
+GrayMapStyle.uiCreate = function(original, attach) {
+	const a=this.asm();
+	a.emit(0x55,0x8B,0xEC,0x56,0x8B,0xF1);
+	a.emit(0xFF,0x75,12,0xFF,0x75,8,0x8B,0xCE);a.call(original);a.emit(0x50);
+	a.emit(0x8B,0x86);a.dword(0xE0);a.emit(0x50);a.call(attach);
+	a.emit(0x58,0x5E,0x8B,0xE5,0x5D,0xC2,8,0);return a;
+};
+
+GrayMapStyle.install = function(m) {
+	const state=m.state.vir;
+	const colors=GrayMapColors.install(m);
+	const text=s=>this.data(Array.from(s+"\0").map(c=>c.charCodeAt(0).toString(16).padStart(2,"0")).join(" ")).vir;
+	const path=text("graymap\\cells.tga"),[uvPhy,uvVir]=Exe.Allocate(32*16,4),[epsPhy,epsVir]=Exe.Allocate(4,4);
+	Exe.SetFloat(epsPhy,0.001);
+	for(let i=0;i<32;i++) {
+		const col=i%8,row=Math.floor(i/8);
+		// This client's native TGA upload presents atlas rows bottom-to-top.
+		// Keep logical GAT row order while addressing the actual uploaded rows.
+		for(const [j,v] of [[0,(col*64+0.5)/512],[1,1-(row*64+0.5)/256],[2,((col+1)*64-0.5)/512],[3,1-((row+1)*64-0.5)/256]])
+			Exe.SetFloat(uvPhy+i*16+j*4,v);
+	}
+	m.style={uvVir,pathVir:path,epsilonVir:epsVir};
+	m.material=this.alloc(this.material(state,uvVir,epsVir));
+	m.submit=this.alloc(this.submit(state,m.material.vir,false));
+	m.submitAlt=this.alloc(this.submit(state,m.material.vir,true));
+	for(const [site,original,name] of [[0x0104D51C,0x00A63A80,"groundAlt"],[0x0104D520,0x00A63680,"ground"]]) {
+		m[name]=this.alloc(this.ground(state,original,path,colors.exports["_GrayPrepare@0"]));
+		Exe.SetUint32(Exe.Vir2Phy(site),m[name].vir);
+		m.hooks.push({site,kind:name,size:4,encoding:"pointer",target:m[name].vir});
+	}
+	m.sceneryBridges=[];
+	// Keep 0xA7B2F2 and 0xA7B2FC intact: they are independent branch targets.
+	for(const site of [0x00A7B2F4,0x00A7B40A]) {
+		const bridge=this.alloc(this.scenery(state,site));m.sceneryBridges.push({site,phy:bridge.phy,vir:bridge.vir,size:bridge.size});
+		const phy=Exe.Vir2Phy(site,CODE);Exe.SetJMP(phy,bridge.vir,0);Exe.SetNOPs(phy+5,3);
+		m.hooks.push({site,kind:"scenery",size:8,encoding:"jump",target:bridge.vir});
+	}
+	m.scenery=m.sceneryBridges[0];
+	const e=name=>colors.exports[name],apiPhy=Exe.Vir2Phy(e("GrayUIApi"));
+	const callbacks=[[0,"@GrayDestroy@12"],[25,"@GrayDown@16"],[27,"@GrayMove@16"],[28,"@GrayMove@16"],
+		[30,"@GrayCursor@16"],[31,"@GrayUp@16"],[32,"@GrayRightDown@16"],[33,"@GrayRightUp@16"],[35,"@GrayWheel@12"]];
+	const tables=[];
+	const noopAsm=this.asm();noopAsm.emit(0xC3);const noop=this.alloc(noopAsm);
+	for(const [index,drawName] of [[0,"@GrayDraw@8"],[1,"@GrayPopupDraw@8"],[2,"@GrayScrollDraw@8"]]) {
+		const base=index===2?0x0102AEF4:0x01029820;
+		const [allocatedPhy,allocatedVir]=Exe.Allocate(4+56*4,4),phy=allocatedPhy+4,vir=allocatedVir+4;
+		Exe.SetHex(allocatedPhy,Exe.GetHex(Exe.Vir2Phy(base-4),4+54*4));
+		for(const [slot,name] of callbacks){if(slot===30 && index!==0)continue;Exe.SetUint32(phy+slot*4,e(index===2 && slot===0?"@GrayScrollDestroy@12":name));}
+		Exe.SetUint32(phy+20*4,e(drawName));for(const slot of [54,55])Exe.SetUint32(phy+slot*4,noop.vir);
+		Exe.SetUint32(apiPhy+index*4,vir);tables.push(vir);
+	}
+	const [pagePhy,pageVir]=Exe.Allocate(54*4,4);Exe.SetHex(pagePhy,Exe.GetHex(Exe.Vir2Phy(0x01047C98),54*4));
+	Exe.SetUint32(pagePhy,e("@GrayPageDestroy@12"));Exe.SetUint32(pagePhy+35*4,e("@GrayWheel@12"));
+	Exe.SetUint32(apiPhy+12,pageVir);Exe.SetUint32(apiPhy+16,Exe.GetUint32(Exe.Vir2Phy(0x01047C98)));
+	// Effects-tab CUICheckBox: retain its native renderer, skin and RTTI.
+	const [toggleAllocPhy,toggleAllocVir]=Exe.Allocate(4+54*4,4);
+	const togglePhy=toggleAllocPhy+4,toggleVir=toggleAllocVir+4;
+	Exe.SetHex(toggleAllocPhy,Exe.GetHex(Exe.Vir2Phy(0x01042C70-4),4+54*4));
+	for(const [slot,name] of callbacks)Exe.SetUint32(togglePhy+slot*4,e(slot===0?"@GrayToggleDestroy@12":name));
+	Exe.SetUint32(apiPhy+20,toggleVir);Exe.SetUint32(apiPhy+24,Exe.GetUint32(Exe.Vir2Phy(0x01042C70)));
+	const createEntry=0x01047DB8,original=Exe.GetUint32(Exe.Vir2Phy(createEntry));
+	const create=this.alloc(this.uiCreate(original,e("_GrayAttach@4")));Exe.SetUint32(Exe.Vir2Phy(createEntry),create.vir);
+	m.hooks.push({site:createEntry,kind:"ui",size:4,encoding:"pointer",target:create.vir});
+	m.ui={create,previousCreate:original,rowTable:tables[0],popupTable:tables[1],scrollTable:tables[2],pageTable:pageVir,toggleTable:toggleVir,boundedPopup:true,compactToggle:true,nativeScrollbar:true,alignedRows:true,rowCount:6,rowHeight:32,controlX:150,fieldWidth:182,scrollMax:152,contentHeight:424};
+
+	return m;
+};
+GrayMapStyle.deployAsset = function() {
+	let dir=System.DirPath(Warp.TgtExe);
+	for(const part of ["data","texture","graymap"]) {dir+="/"+part;if(!System.MkDir(dir))throw Error("GrayMap: cannot create "+dir);}
+	if(!System.Copy(Warp.Path+"/Assets/GrayMap/cells.tga",dir+"/cells.tga",true))throw Error("GrayMap: cannot deploy tile atlas");
+};

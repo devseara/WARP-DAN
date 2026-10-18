@@ -8,13 +8,25 @@ const output = fs.mkdtempSync(path.join(root, 'Outputs', 'auto-ui-options-'));
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 const copies = [];
 const languages = JSON.parse(read('Inputs/AutoUI/languages.json'));
-let choice, prompts = 0, savedReads = 0, failCopy = false, failMkdir = false;
+let choice, designChoice, supportDesignChoice, prompts = 0, savedReads = 0, failCopy = false, failMkdir = false;
 const context = vm.createContext({
 	D_Choice: 1, ASCII: 0,
 	Warp: {Path: root + '/', TgtExe: path.join(output, 'client.exe'), TestMode: false},
 	Exe: {
 		GetUserInput(key, type, title, message, defaultValue, options) {
 			prompts++;
+			if (key === '$autoSupportUIDesign') {
+				assert.equal(defaultValue, 'RO Global AutoSupport UI');
+				assert.deepEqual(Array.from(options.choices), ['RO Global AutoSupport UI', 'Custom AutoSupport UI v1']);
+				assert.equal(options.saveDefault, true);
+				return supportDesignChoice === undefined ? defaultValue : supportDesignChoice;
+			}
+			if (key === '$autoCombatUIDesign') {
+				assert.equal(defaultValue, 'RO Global AutoHunt UI');
+				assert.deepEqual(Array.from(options.choices), ['RO Global AutoHunt UI', 'Custom AutoHunt UI v1']);
+				assert.equal(options.saveDefault, true);
+				return designChoice === undefined ? defaultValue : designChoice;
+			}
 			assert.equal(defaultValue, 'English');
 			assert.deepEqual(Array.from(options.choices), Object.keys(languages));
 			return choice === undefined ? defaultValue : choice;
@@ -49,6 +61,18 @@ function load(relative) {
 }
 function run(code) { return vm.runInContext(code, context); }
 load('Scripts/Patches/AutoCombatUI.qjs');
+assert.equal(run('AutoCombatUIStatic.selectDesign()'), 'RO Global AutoHunt UI');
+designChoice = 'Custom AutoHunt UI v1';
+assert.equal(run('AutoCombatUIStatic.selectDesign()'), 'Custom AutoHunt UI v1');
+designChoice = false;
+assert.throws(() => run('AutoCombatUIStatic.selectDesign()'), /CANCEL/);
+designChoice = 'unsupported';
+assert.throws(() => run('AutoCombatUIStatic.selectDesign()'), /unsupported/);
+context.Warp.TestMode = true;
+const designPrompts = prompts;
+assert.equal(run('AutoCombatUIStatic.selectDesign()'), 'RO Global AutoHunt UI');
+assert.equal(prompts, designPrompts);
+context.Warp.TestMode = false;
 assert.equal(run('AutoUILanguage.select("$test", "Test")'), 'English');
 for (choice of Object.keys(languages))
 	assert.equal(run('AutoUILanguage.select("$test", "Test")'), choice);
@@ -82,6 +106,18 @@ for (const name of ['AutoSupportUI', 'ItemCollectionUI',
 	'RedesignedEquipmentWindow', 'RedesignedStatusWindow', 'FluentEmoji']) {
 	load(`Scripts/Patches/${name}.qjs`);
 }
+assert.equal(run('AutoSupportUIStatic.selectDesign()'), 'RO Global AutoSupport UI');
+supportDesignChoice = 'Custom AutoSupport UI v1';
+assert.equal(run('AutoSupportUIStatic.selectDesign()'), supportDesignChoice);
+supportDesignChoice = false;
+assert.throws(() => run('AutoSupportUIStatic.selectDesign()'), /CANCEL/);
+supportDesignChoice = 'unsupported';
+assert.throws(() => run('AutoSupportUIStatic.selectDesign()'), /unsupported/);
+context.Warp.TestMode = true;
+const supportPrompts = prompts;
+assert.equal(run('AutoSupportUIStatic.selectDesign()'), 'RO Global AutoSupport UI');
+assert.equal(prompts, supportPrompts);
+context.Warp.TestMode = false;
 // Raw strings and initial fallback bytes remain ASCII; native runtime selects
 // the final encoding from the separately retained UTF-8 and Big5 sources.
 for (const name of ['AutoCombatUI', 'AutoSupportUI']) {

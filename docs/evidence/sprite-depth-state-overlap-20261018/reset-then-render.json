@@ -1,0 +1,29 @@
+{
+  "reproduction": {
+    "shadow": "0x2570abc",
+    "state": "0x2570a38",
+    "offset_in_state": 132,
+    "before": "f30f5f3d500a5702f30f593d",
+    "after_reset": "000000000000000000000000",
+    "fault": {
+      "pc": "0x2570abc",
+      "address": "0x0"
+    }
+  },
+  "fixed": {
+    "client_sha256": "83c027c36c7a0fef5126af25ac88747084fd6248cb72c478070bd47b8f0fd65b",
+    "cave": [
+      "0x2577000",
+      "0x25770a0"
+    ],
+    "weather_runtime": [
+      "0x256aa00",
+      "0x2576018"
+    ],
+    "section": ".rhwfix",
+    "native_cave_executions_after_state_writes": 10,
+    "cave_bytes_unchanged": true,
+    "passed": true,
+    "live_client_observed": false
+  }
+}

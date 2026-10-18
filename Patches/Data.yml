@@ -124,6 +124,12 @@ CustomData:
             author : Neo-Mind
             desc : Enables loading of custom quest lua files specified through a YAML configuration. All listed files must be placed in the 'lua files\\quest' folder. Useful for servers with custom quests that need additional quest data files.
         
+        - GrayMap:
+            title : Runtime gray terrain (/graymap) [Experimental]
+            recommend : no
+            author : Louis T Steinhil
+            desc : Adds /graymap and aligned Gray Map, Cell Grid, Hide Scenery, preset and cell-color controls with native hover help and scrolling on Game Settings Graphics for the profiled 2025-07-16 client. Uses read-only GAT data for light floors, thin grid lines and dark blocked regions, with optional scenery hiding. Starts disabled; off restores stock rendering. QJS embeds an import-free static payload and one procedural atlas; no custom DLL or modified map GRFs. Apply after ROGlobalZeroUITheme when using its settings row. The deployed DX9 layout, tooltips and map recovery passed user acceptance; broader DX7/device-reset checks remain experimental.
+
         - IncrMapQuality:
             title : Increase map quality
             recommend : no

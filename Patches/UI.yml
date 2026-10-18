@@ -102,13 +102,13 @@ CustomUI:
             title : AutoCombat UI
             recommend : no
             author : Louis T Steinhil
-            desc : Adds a QJS-only client-native AutoCombat settings UI modeled after the supplied RO Global AutoHunt interface. Persistent draggable AutoCombat and AutoSupport controls are created by the normal in-game render pass. RO Global Zero Renewal Menu adds a native Auto Hunt child button that opens or closes the 470x346 UIFrameWnd with Basic, Monster, Skill (3 pages), Potion (2 pages), Looting (2 pages), Move, and Item tabs. Active controls play 30 baked frames reconstructed from every native blue-loop STR layer, while inactive controls use the native red composition. Skill delay boxes request the stock numeric input dialog; the map server validates and persists the entered seconds. The patch calls no DLL and keeps automation behavior server-authoritative. Choose English (default), Traditional Chinese, Thai, Brazilian Portuguese, Indonesian, Filipino, Korean, or Japanese for fixed UI text. Each UI follows the existing UTF-8 or matching legacy code page without changing Windows language settings.
+            desc : Choose the UI language, then RO Global AutoHunt UI (original 470x346 layout) or Custom AutoHunt UI v1 (760x520 command panel). The custom design uses the Item Description palette, a left sidebar, native skill and item icons, and real inventory quantities. Both designs retain Basic, Monster, all Skill/Potion/Looting pages, Move, Item, native registration and delay dialogs, and server validation/persistence. The settings window closes independently; the existing draggable floating AutoCombat and AutoPotion icons start and stop automation. Active icons retain their 30 baked native animation frames. No runtime DLL or receive hook is used. Choose English, Traditional Chinese, Thai, Brazilian Portuguese, Indonesian, Filipino, Korean, or Japanese without changing Windows language settings.
 
         - AutoSupportUI:
             title : AutoSupport UI
             recommend : no
             author : Louis T Steinhil
-            desc : Adds a QJS-only, client-native AutoSupport settings UI with dedicated autosupport assets and Global/Classic menu icon states. It reuses the proven seven-tab AutoHunt frame as Basic, Player, Skill, Potion, Looting, Move, and Item; Player is a server-authoritative single-master selector populated from the current party. ASUI requests share 0x0BF8 and snapshots share 0x0BEF through distinct magic, with Banquet owning validation, persistence, and AutoSupport execution. Choose English (default), Traditional Chinese, Thai, Brazilian Portuguese, Indonesian, Filipino, Korean, or Japanese for fixed UI text. Each UI follows the existing UTF-8 or matching legacy code page without changing Windows language settings. Required assets copy automatically beside the output EXE.
+            desc : Choose the language and RO Global AutoSupport UI (470x346) or Custom AutoSupport UI v1 (760x520 Command panel). The custom layout matches the AutoHunt Item Description palette with readable opaque text, native close button and controls, real skill/item icons, live quantities, party-master selection and all existing ASUI settings. Floating icons retain start/stop; closing settings does not stop automation. No runtime DLL or receive hook.
 
         - ItemDescriptionUI:
             title : Server-backed Item Description
@@ -644,8 +644,17 @@ TargetMonsterHUD:
         - TargetMonsterHealthBar:
             title : Tiered Monster Target Health Bar
             recommend : no
-            author : Codex
+            author : Louis T Steinhil
             desc : Choose Classic or Wings and Stars artwork for the top-center monster HP bar, with Normal, Mini Boss and MVP tiers. Shows native HP while hovering or attacking. Respects /monsterhp and optional Show Mob Info text. 2025-07-16 only.
+
+CelestialHUD:
+    title : CELESTIAL DIAL
+    patches:
+        - CelestialDial:
+            title : Celestial Dial and Server Time
+            recommend : no
+            author : Louis T Steinhil
+            desc : Ragnarok-themed top-center dial showing server time, day/night and map weather. WENV v6 adds server-owned rain/storms, lightning, thunder, darker nights and bounded directional ground shadows. Coordinates with the monster HUD and preserves native map weather. Requires the matching WENV map-server bridge. 2025-07-16 only.
 
 Bestiary:
     title : BESTIARY
@@ -653,7 +662,7 @@ Bestiary:
         - BestiaryUI:
             title : Bestiary (native journal)
             recommend : no
-            author : Codex
+            author : Louis T Steinhil
             desc : Native 760x500 Bestiary for 2025-07-16. BSUI v3 supplies resolved stats, server rates, native sprites, minimaps and Navigation. Includes account-wide research, groups, tracking, cabinet, Claim All and cosmetic/utility rewards. Requires matching map/char backends and SQL migration. Open with /bestiary or the dedicated New/Classic RO Global menu button. Hide/Show New Buttons includes Bestiary.
 
 DailyRewards:

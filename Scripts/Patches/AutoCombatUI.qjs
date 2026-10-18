@@ -17,15 +17,18 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-09-11                                             *
+*   Last Modified : 2026-10-18                                             *
 *                                                                          *
-*   Description   : Adds a QJS-only, client-native Auto Combat settings    *
-*                   preview to the 2025-07-16 Ragexe. Persistent controls  *
+*   Description   : Adds selectable native Auto Combat settings UIs to    *
+*                   the 2025-07-16 Ragexe: RO Global AutoHunt UI (470x346) *
+*                   or Custom AutoHunt UI v1 (760x520 command panel with   *
+*                   native icons, inventory counts and the Item          *
+*                   Description palette). Persistent floating controls   *
 *                   are created by the normal in-game UI render pass. The  *
 *                   renewed system menu owns the settings-window button;   *
-*                   470x346 UIFrameWnd on the game UI thread, preserving   *
+*                   both layouts use UIFrameWnd on the game UI thread,    *
 *                   native focus, hit testing, drag capture, and window    *
-*                   ownership. Its native canvas loads the supplied Global *
+*                   ownership. The original canvas loads the Global       *
 *                   AutoHunt BMPs and exposes Basic, Monster, three Skill, *
 *                   two Potion, two Looting, Move, and Item pages.         *
 *                   Grouped draggable Auto-Hunt and Auto-Potion controls   *
@@ -739,16 +742,29 @@ AutoCombatUIStatic.packetTableEntryVir = function(packetId)
 	return AutoCombatUIStatic.PacketSwitchTable + (packetId - 0x73) * 4;
 };
 
-// BPUI, GCHA and BRTR share one native receive opcode. Per-patch writes to that
+// The target monster HUD reads this cell on every frame. CelestialDial owns
+// the reservation only while its server-synchronized UIWindow is visible.
+AutoCombatUIStatic.topHudY = function(patchName)
+{
+	const key="TopHudLayout.Global.v1",owner=Exe.ActivePatch;
+	CACHE.addUser(key,patchName); Exe.ActivateGlobal(); Exe.BeginTag(CACHE.getTag(key));
+	try {
+		let cell=CACHE.get(key);
+		if(!cell) { cell=AutoCombatUIStatic.allocateBytes([24,0,0,0],4); CACHE.put(key,cell); }
+		return cell;
+	} finally { Exe.EndTag(); Exe.ActivePatch=owner; }
+};
+
+// BPUI, GCHA, BRTR and WENV share one native receive opcode. Per-patch writes to that
 // dispatch slot do not compose: WARP can serialize the independent patch
 // records in a different order, and ordinary reads see the original handler.
 // Own the slot/cells in one shared global tag, as the 0x0BEF route already does.
 AutoCombatUIStatic.registerPacket0BF6 = function(patchName, protocol, handlerVir)
 {
 	const n=AutoCombatUIStatic;
-	if(protocol!=="bpui" && protocol!=="gcha" && protocol!=="brtr") throw Error("Unknown shared 0x0BF6 protocol");
+	if(protocol!=="bpui" && protocol!=="gcha" && protocol!=="brtr" && protocol!=="wenv") throw Error("Unknown shared 0x0BF6 protocol");
 	if(!Number.isInteger(handlerVir) || handlerVir<=0) throw Error("Missing shared 0x0BF6 handler");
-	const key="SharedPacket0BF6.Router.Global.v2", cacheKey="SharedPacket0BF6.Router.v2";
+	const key="SharedPacket0BF6.Router.Global.v3", cacheKey="SharedPacket0BF6.Router.v3";
 	CACHE.addUser(key,patchName); Exe.ActivateGlobal(); Exe.BeginTag(CACHE.getTag(key));
 	try {
 		const entryVir=n.packetTableEntryVir(0x0BF6),entryPhy=Exe.Vir2Phy(entryVir,CODE);
@@ -757,20 +773,21 @@ AutoCombatUIStatic.registerPacket0BF6 = function(patchName, protocol, handlerVir
 		if(!route) {
 			const stock=Exe.GetUint32(entryPhy);
 			if(Exe.Vir2Phy(stock,CODE)<0) throw Error("Shared 0x0BF6 stock fallback is not executable");
-			const cells=n.allocateBytes(new Array(16).fill(0),4);
+			const cells=n.allocateBytes(new Array(20).fill(0),4);
 			route={entryVir,entryPhy,bpuiCellPhy:cells.phy,bpuiCellVir:cells.vir,
 				gchaCellPhy:cells.phy+4,gchaCellVir:cells.vir+4,fallbackCellVir:cells.vir+8,
 				brtrCellPhy:cells.phy+12,brtrCellVir:cells.vir+12,
+				wenvCellPhy:cells.phy+16,wenvCellVir:cells.vir+16,
 				fallbackVir:stock===n.PacketDefaultHandler?n.PacketMainLoopReturn:stock};
 			Exe.SetUint32(cells.phy+8,route.fallbackVir);
 			const a=n.asm(); a.emit(0x9C,0x60,0xBE); a.dword(n.PacketBuffer);
 			a.emit(0x66,0x81,0x3E); a.word(0x0BF6); a.jcc(0x85,"stock");
 			a.emit(0x66,0x83,0x7E,2,8); a.jcc(0x82,"stock");
-			for(const [name,magic] of [["bpui",0x49555042],["gcha",0x41484347],["brtr",0x52545242]]) {
+			for(const [name,magic] of [["bpui",0x49555042],["gcha",0x41484347],["brtr",0x52545242],["wenv",0x564E4557]]) {
 				a.emit(0x81,0x7E,4); a.dword(magic); a.jcc(0x84,name);
 			}
 			a.jmp("stock");
-			for(const name of ["bpui","gcha","brtr"]) {
+			for(const name of ["bpui","gcha","brtr","wenv"]) {
 				a.label(name); a.emit(0x83,0x3D); a.dword(route[name+"CellVir"]); a.emit(0); a.jcc(0x84,"unselected");
 				a.emit(0x61,0x9D,0xFF,0x25); a.dword(route[name+"CellVir"]);
 			}
@@ -778,11 +795,13 @@ AutoCombatUIStatic.registerPacket0BF6 = function(patchName, protocol, handlerVir
 			a.label("stock"); a.emit(0x61,0x9D,0xFF,0x25); a.dword(route.fallbackCellVir);
 			const code=n.allocateCode(a); route.routerVir=code.vir;
 			const marker=n.allocateString("SharedPacket0BF6.v1"),record=[];
-			for(const value of [marker.vir,entryVir,route.routerVir,route.bpuiCellVir,route.gchaCellVir,route.fallbackCellVir,route.brtrCellVir])
+			for(const value of [marker.vir,entryVir,route.routerVir,route.bpuiCellVir,route.gchaCellVir,route.fallbackCellVir,route.brtrCellVir,route.wenvCellVir])
 				record.push(value&255,value>>>8&255,value>>>16&255,value>>>24);
 			n.allocateBytes(record,4); CACHE.put(cacheKey,route);
 		}
 		if(route.entryVir!==entryVir) throw Error("Shared 0x0BF6 route belongs to a different dispatcher");
+		if(!Number.isInteger(route[protocol+"CellPhy"]) || route[protocol+"CellPhy"]<=0)
+			throw Error("Shared 0x0BF6 route predates this protocol; reload the source EXE after updating WARP scripts");
 		Exe.SetUint32(route[protocol+"CellPhy"],handlerVir);
 		Exe.SetUint32(entryPhy,route.routerVir);
 		return route;
@@ -6107,9 +6126,11 @@ AutoCombatUIStatic.cloneFrameVtable = function(
 };
 
 AutoCombatUIStatic.buildToggle = function(
-	stateVir, vtableVir, openSenderVir, ensureControllerVirs, suppressControllerVir
+	stateVir, vtableVir, openSenderVir, ensureControllerVirs, suppressControllerVir, dimensions = null
 )
 {
+	const width = dimensions ? dimensions[0] : AutoCombatUIStatic.WindowWidth;
+	const height = dimensions ? dimensions[1] : AutoCombatUIStatic.WindowHeight;
 	const a = AutoCombatUIStatic.asm();
 	a.emit(0x9C, 0x60);
 	if (Number.isInteger(openSenderVir) && openSenderVir > 0)
@@ -6145,8 +6166,8 @@ AutoCombatUIStatic.buildToggle = function(
 	a.emit(0x8B, 0xCE);
 	a.call(AutoCombatUIStatic.FrameConstructor);
 	a.emit(0xC7, 0x06); a.dword(vtableVir);
-	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.WindowHeight);
-	AutoCombatUIStatic.pushImm(a, AutoCombatUIStatic.WindowWidth);
+	AutoCombatUIStatic.pushImm(a, height);
+	AutoCombatUIStatic.pushImm(a, width);
 	a.emit(0x8B, 0xCE);
 	a.call(AutoCombatUIStatic.WindowSetSize);
 	a.emit(0xC7, 0x46, AutoCombatUIStatic.WindowIdOffset); a.dword(0x3F0);
@@ -6154,11 +6175,11 @@ AutoCombatUIStatic.buildToggle = function(
 	a.emit(0x85, 0xD2);
 	a.jcc(0x84, "position_ready");
 	a.emit(0x8B, 0x42, AutoCombatUIStatic.RendererWidthOffset);
-	a.emit(0x2D); a.dword(AutoCombatUIStatic.WindowWidth);
+	a.emit(0x2D); a.dword(width);
 	a.emit(0xD1, 0xF8);
 	a.emit(0x89, 0x46, AutoCombatUIStatic.WindowXOffset);
 	a.emit(0x8B, 0x42, AutoCombatUIStatic.RendererHeightOffset);
-	a.emit(0x2D); a.dword(AutoCombatUIStatic.WindowHeight);
+	a.emit(0x2D); a.dword(height);
 	a.emit(0xD1, 0xF8);
 	a.emit(0x89, 0x46, AutoCombatUIStatic.WindowYOffset);
 	a.label("position_ready");
@@ -6289,6 +6310,98 @@ AutoCombatUIStatic.verifyNativeContracts = function()
 	return {controllerBootstrapPhy, windowMainProcPhy};
 };
 
+AutoCombatUIStatic.selectDesign = function()
+{
+	const choices = ["RO Global AutoHunt UI", "Custom AutoHunt UI v1"];
+	const selected = Warp.TestMode ? choices[0] : Exe.GetUserInput(
+		"$autoCombatUIDesign", D_Choice, "AutoCombat UI Design",
+		"Choose the original RO Global AutoHunt UI or the larger Custom AutoHunt UI v1 command panel. Floating icons start and stop automation in both designs.",
+		choices[0], {choices, saveDefault: true}
+	);
+	if (selected === false)
+		Cancel("AutoCombat UI design selection cancelled");
+	if (choices.indexOf(selected) < 0)
+		throw Error("AutoCombatUI: unsupported UI design " + selected);
+	return selected;
+};
+
+AutoCombatUIStatic.installCustomV1 = function(data)
+{
+	const n = AutoCombatUIStatic;
+	const read = path => {
+		const file = new BinFile(path, "r");
+		if (!file.Valid) throw Error("AutoCombatUI: missing custom UI payload " + path);
+		try { return (file.ReadHex().match(/[0-9a-fA-F]{2}/g) || []).map(value => parseInt(value, 16)); }
+		finally { file.Close(); }
+	};
+	const bytes = read(Warp.Path + "/Inputs/AutoUI/custom-v1.bin");
+	const metadata = JSON.parse(String.fromCharCode(...read(Warp.Path + "/Inputs/AutoUI/custom-v1.json")));
+	const u32 = (values, offset) => (values[offset] | values[offset+1] << 8 | values[offset+2] << 16 | values[offset+3] << 24) >>> 0;
+	if (bytes.length < 32) throw Error("AutoCombatUI: truncated custom UI payload");
+	const size = u32(bytes, 8), count = u32(bytes, 12), imageBase = u32(bytes, 16), start = 32 + count * 4;
+	let crc = 0xFFFFFFFF;
+	for (let i = 32; i < bytes.length; ++i) {
+		crc ^= bytes[i];
+		for (let bit = 0; bit < 8; ++bit) crc = (crc >>> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+	}
+	if (u32(bytes, 0) !== 0x31564341 || u32(bytes, 4) !== 2 ||
+		u32(bytes, 20) !== 620 || u32(bytes, 24) !== n.BuildDate ||
+		start + size !== bytes.length || ((crc ^ 0xFFFFFFFF) >>> 0) !== u32(bytes, 28) ||
+		metadata.version !== 2 || metadata.client !== n.BuildDate || metadata.size !== size || metadata.config_size !== 620)
+		throw Error("AutoCombatUI: invalid custom UI payload; rebuild tools/build_autohunt_custom_v1.py");
+	const image = bytes.slice(start), [phy, vir] = Exe.Allocate(size, 16);
+	if (phy < 0 || vir <= 0 || Exe.Vir2Phy(vir) !== phy) throw Error("AutoCombatUI: invalid custom UI allocation");
+	const put = (offset, value) => {
+		if (!Number.isInteger(offset) || offset < 0 || offset + 4 > size) throw Error("AutoCombatUI: custom UI write out of bounds");
+		for (let i = 0; i < 4; ++i) image[offset+i] = (value >>> (i * 8)) & 255;
+	};
+	for (let i = 0; i < count; ++i) {
+		const offset = u32(bytes, 32 + i * 4);
+		if (offset + 4 > size) throw Error("AutoCombatUI: custom UI relocation out of bounds");
+		const old = u32(image, offset);
+		if (old < imageBase || old >= imageBase + size) throw Error("AutoCombatUI: external custom UI relocation");
+		put(offset, vir + old - imageBase);
+	}
+	const entries = {};
+	for (const name of ["AutoHuntCustomConfig", "AutoHuntCustomDraw", "AutoHuntCustomDown", "AutoHuntCustomMove", "AutoHuntCustomUp", "AutoHuntCustomWheel"]) {
+		const offset = metadata.exports[name];
+		if (!Number.isInteger(offset) || offset < 0 || offset >= size) throw Error("AutoCombatUI: invalid custom UI export " + name);
+		entries[name] = vir + offset;
+	}
+	const s = data.strings;
+	const tabs = n.Language === AutoUILanguage.English ?
+		["Overview", "Targets", "Combat", "Recovery", "Loot", "Movement", "Buff items"]
+			.map(text => n.allocateString(text)) : s.tabs;
+	const pointers = list => list.map(value => value.vir);
+	const config = [2, data.state.vir, data.fillRect.vir, data.mouseDown.vir,
+		data.sliderHover.vir, data.mouseUp.vir, n.TextInitializer ? n.TextInitializer.vir : 0,
+		n.Language === AutoUILanguage.English ? 0 : n.FontSelector, n.ColorKeyBlitVir, data.itemResolver.vir, data.paths.skillIconFormat.vir,
+		...data.rows, ...data.icons, ...pointers(tabs), ...pointers(s.headings), ...pointers(s.subtitles),
+		...pointers(s.basicOptions), ...pointers(s.basicPrefixes), ...pointers(s.basicSuffixes),
+		...pointers(s.potionPanels), ...pointers(s.lootOptions), ...pointers(s.lootOptionChoices),
+		...pointers([s.windowTitle, s.reset, s.close, s.normalAttack, s.normalAttackHint,
+			s.attackSettings, s.supportSettings, s.healSettings, s.statusSettings,
+			s.registerItem, s.registerSkill, s.secondsSuffix, s.useLabel, s.weight,
+			s.lootWeaponPrefix, s.lootArmorPrefix, s.lootOptionSuffix, s.lootFightFirst,
+			s.lootLootFirst, s.returnTown, s.lootReturnHint, s.lootContinue, s.lootContinueHint,
+			s.itemReturnHint, s.skillDelayHint, s.skillReject, s.itemReject, s.statusPotion,
+			s.monsters[0], s.teleport, s.lootPriorityHeading]),
+		...pointers([data.paths.sliderGaugeHp, data.paths.sliderGaugeSp, data.paths.sliderGaugeLoot,
+			data.paths.sliderThumbHp, data.paths.sliderThumbSp, data.paths.sliderLeft,
+			data.paths.sliderLeftOver, data.paths.sliderLeftPressed, data.paths.sliderRight,
+			data.paths.sliderRightOver, data.paths.sliderRightPressed, data.paths.scrollUp,
+			data.paths.scrollDown, data.paths.scrollTrack, data.paths.scrollThumbUp,
+			data.paths.scrollThumbMid, data.paths.scrollThumbDown, data.paths.checkboxOn,
+			data.paths.checkboxOff, data.paths.lootDropdownArrow, data.paths.skill3,
+			data.paths.potion1, data.paths.looting1]),
+		AutoUILanguage.spec(n.Language).charset, data.scalarSender.vir, data.mouseWheel.vir,
+		...pointers(s.custom)];
+	if (config.length * 4 !== 620) throw Error("AutoCombatUI: custom UI config ABI changed");
+	config.forEach((value, index) => put(metadata.exports.AutoHuntCustomConfig + index * 4, value));
+	Exe.SetHex(phy, n.bytesToHex(image));
+	return {entries, payload: {phy, vir, size}, config, source_sha256: metadata.source_sha256};
+};
+
 AutoCombatUI = function(_)
 {
 	if (Exe.BuildDate !== AutoCombatUIStatic.BuildDate)
@@ -6300,6 +6413,8 @@ AutoCombatUI = function(_)
 	AutoCombatUIStatic.Language = AutoUILanguage.select(
 		"$autoCombatUILanguage", "AutoCombat UI"
 	);
+	const design = AutoCombatUIStatic.selectDesign();
+	const customV1 = design === "Custom AutoHunt UI v1";
 
 	AutoCombatUIStatic.LocalizedStrings = [];
 	AutoCombatUIStatic.TextInitializer = null;
@@ -6703,7 +6818,14 @@ AutoCombatUI = function(_)
 
 		returnTown: AutoCombatUIStatic.allocateUiString("Return to Town Settings"),
 		reset: AutoCombatUIStatic.allocateUiString("Reset"),
-		close: AutoCombatUIStatic.allocateUiString("Close")
+		close: AutoCombatUIStatic.allocateUiString("Close"),
+		custom: customV1 ? [
+			"Hunt setup", "Monster selection", "Combat skills", "Recovery rules", "Loot rules",
+			"Movement & escape", "Buff items", "Core behavior", "Stop & return rules",
+			"Advanced settings", "General settings", "Collect selected loot", "Return at weight limit",
+			"Return when buff items run out", "Use Token of Siegfried", "Settings are saved automatically.",
+			"Collect categories", "When inventory fills", "Show empty slots", "Hide empty slots", "Equipment filters"
+		].map(text => AutoCombatUIStatic.allocateUiString(text)) : []
 	};
 	AutoCombatUIStatic.TextInitializer = AutoUILanguage.buildInitializer(AutoCombatUIStatic);
 
@@ -6845,9 +6967,21 @@ AutoCombatUI = function(_)
 	const destructor = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildDestructor(state.vir)
 	);
+	const layoutContext = {
+		state, fillRect, mouseDown, sliderHover, mouseUp, mouseWheel, scalarSender, itemResolver, paths, strings,
+		buffers: {skillIconPath, skillLevelText, sliderPercentText, hoverText, lootWeaponText, lootArmorText},
+		rows: [monsterRows.vir, attackSkillRows.vir, supportSkillRows.vir, healingSkillRow.vir,
+			recoverySkillRows.vir, itemRows.vir, potionRows.vir, moveRows.vir, moveIconKeys.vir],
+		icons: [attackSkillIconKeys.vir, supportSkillIconKeys.vir, healingSkillIconKey.vir, recoverySkillIconKeys.vir]
+	};
+	const custom = customV1 ? AutoCombatUIStatic.installCustomV1(layoutContext) : null;
+	const handlers = custom ? {
+		draw: custom.entries.AutoHuntCustomDraw, down: custom.entries.AutoHuntCustomDown,
+		up: custom.entries.AutoHuntCustomUp, move: custom.entries.AutoHuntCustomMove, wheel: custom.entries.AutoHuntCustomWheel
+	} : {draw: draw.vir, down: mouseDown.vir, up: mouseUp.vir, move: sliderHover.vir};
 	const vtable = AutoCombatUIStatic.cloneFrameVtable(
-		draw.vir, mouseDown.vir, mouseUp.vir, destructor.vir, sliderHover.vir,
-		mouseWheel.vir
+		handlers.draw, handlers.down, handlers.up, destructor.vir, handlers.move,
+		custom ? handlers.wheel : mouseWheel.vir
 	);
 	const autoBattleVisual = AutoCombatUIStatic.prepareControllerVisual(
 		"autobattle", paths.autoBattle.blueIcon
@@ -6929,7 +7063,7 @@ AutoCombatUI = function(_)
 	const toggle = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildToggle(
 			state.vir, vtable.vir, openSender.vir, [ensureController.vir],
-			controllerSuppressed.vir
+			controllerSuppressed.vir, customV1 ? [760, 520] : null
 		)
 	);
 	const menuTogglePending = AutoCombatUIStatic.allocateBytes(
@@ -6973,6 +7107,10 @@ AutoCombatUI = function(_)
 		typeof PatchDiagnostics.add === "function")
 	{
 		PatchDiagnostics.add("AutoCombatUI.QjsOnly", {
+			design,
+			customV1: custom,
+			layoutContext,
+			legacyHelpers: {draw, down: mouseDown, up: mouseUp, move: sliderHover, wheel: mouseWheel, blit: colorKeyBlit, fill: fillRect, itemResolver},
 			language: AutoCombatUIStatic.Language,
 			textCodePage: AutoCombatUIStatic.Language === AutoUILanguage.English ? "ASCII" : "native mapper (" + AutoUILanguage.spec(AutoCombatUIStatic.Language).codePage + "/65001)",
 			textInitializer: AutoCombatUIStatic.TextInitializer,
@@ -6981,7 +7119,7 @@ AutoCombatUI = function(_)
 			opener: "ROGlobalZeroMenu.AutoHuntButton",
 			fallbackCommand: "/autohunt",
 			nativeHost: "UIFrameWnd",
-			windowSize: [
+			windowSize: customV1 ? [760, 520] : [
 				AutoCombatUIStatic.WindowWidth,
 				AutoCombatUIStatic.WindowHeight
 			],
@@ -6989,9 +7127,11 @@ AutoCombatUI = function(_)
 			pages: {Basic: 1, Monster: 1, Skill: 3, Potion: 2, Looting: 2, Move: 1, Item: 1},
 			stateVir: state.vir,
 			vtableVir: vtable.vir,
-			drawVir: draw.vir,
-			mouseDownVir: mouseDown.vir,
-			mouseUpVir: mouseUp.vir,
+			drawVir: handlers.draw,
+			mouseDownVir: handlers.down,
+			mouseUpVir: handlers.up,
+			mouseMoveVir: handlers.move,
+			legacyHandlers: {draw: draw.vir, down: mouseDown.vir, up: mouseUp.vir, move: sliderHover.vir, wheel: mouseWheel.vir},
 			toggleVir: toggle.vir,
 			menuToggleRequestVir: menuToggleRequest.vir,
 			menuTogglePendingVir: menuTogglePending.vir,

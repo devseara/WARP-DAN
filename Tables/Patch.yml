@@ -258,6 +258,10 @@
 385 : NativeActJobPreviews
 386 : ClanBodySkins
 387 : ItemDescriptionUI
+388 : GrayMap
+389 : CelestialDial
+390 : UniformSpriteRHW
+391 : FloorSafeSpriteDepth
 
 # Personal UI extensions: stable IDs preserve saved profile compatibility.
 10001 : ModernChatUI

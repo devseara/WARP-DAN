@@ -1,4 +1,4 @@
-"""Routing-only checks for Barter's added BRTR envelope; no gameplay suites."""
+"""Routing-only checks for the four shared framed protocols; no gameplay suites."""
 import argparse
 from pathlib import Path
 import struct
@@ -11,9 +11,9 @@ def verify(exe, selected):
     data = m.pe.get_memory_mapped_image(); marker = data.find(b'SharedPacket0BF6.v1\0')
     assert marker >= 0
     record = data.find(pack(m.base+marker)); assert record >= 0
-    entry, router, bpui, gcha, fallback, brtr = struct.unpack_from('<6I', data, record+4)
+    entry, router, bpui, gcha, fallback, brtr, wenv = struct.unpack_from('<7I', data, record+4)
     assert entry == 0xCAD0EC and m.r(entry) == router
-    cells = {'bpui':bpui, 'gcha':gcha, 'brtr':brtr}
+    cells = {'bpui':bpui, 'gcha':gcha, 'brtr':brtr, 'wenv':wenv}
     called = []
     def boundary(name):
         def call():
@@ -28,7 +28,7 @@ def verify(exe, selected):
     def receive(magic, length=8, opcode=0xbf6):
         m.u.mem_write(0x15E8198, struct.pack('<HHI',opcode,length,magic))
         m.u.reg_write(UC_X86_REG_EAX,0x12345678); m.invoke(m.r(entry),0x23456789)
-    for name, magic in [('bpui',0x49555042),('gcha',0x41484347),('brtr',0x52545242)]:
+    for name, magic in [('bpui',0x49555042),('gcha',0x41484347),('brtr',0x52545242),('wenv',0x564E4557)]:
         receive(magic); assert called[-1] == (name if name in selected else 'ignored')
     for magic, length, op in [(0x12345678,8,0xbf6),(0x52545242,7,0xbf6),(0x49555042,8,0xbef)]:
         receive(magic,length,op); assert called[-1] == 'stock'

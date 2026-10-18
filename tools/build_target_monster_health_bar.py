@@ -162,7 +162,7 @@ def build_payload(MANIFEST):
  have_window:
  mov eax,dword ptr [0x12515f8]; test eax,eax; jz done
  mov eax,[eax+0x28]; sub eax,{W}; sar eax,1
- push 24; push eax; mov ecx,ebx; call 0xa23450
+ mov edx,dword ptr [{BASE+0xe0ec}]; push dword ptr [edx]; push eax; mov ecx,ebx; call 0xa23450
  mov eax,[ebp-4]; cmp [ebx+0xa0],eax; jne refresh
  mov eax,[ebp-8]; cmp [ebx+0xa4],eax; jne refresh
  cmp dword ptr [{STATE+12}],0; jne refresh
@@ -461,6 +461,7 @@ TargetMonsterHealthBar = function(_) {
 \tfor (const [off, sign, original] of (design.relocations || RELOCS))
 \t\tExe.SetUint32(phy + off, (original + sign * delta) >>> 0);
 \tExe.SetUint32(phy + 0xE0C0, ring.blockVir);
+\tExe.SetUint32(phy + 0xE0EC, AutoCombatUI.nativeHelpers.topHudY(_).vir);
 \tExe.SetHex(phy + 0xE0FC, Exe.GetHex(Exe.Vir2Phy(0x102BE4C), 4));
 \tExe.SetHex(phy + 0xE100, Exe.GetHex(Exe.Vir2Phy(0x102BE50), 0xD4));
 \tExe.SetUint32(phy + 0xE100, vir + 0xD000);

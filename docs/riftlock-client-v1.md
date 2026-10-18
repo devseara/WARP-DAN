@@ -12,17 +12,31 @@ Riftlock is a standalone `riftlock.dll` loaded through
 `CustomDLL.applySpec()`. It does not hook `ws2_32.recv`, rewrite executable
 code at runtime, patch an IAT or vtable at runtime, or detour Winsock.
 
-WARP installs three static surfaces:
+WARP installs five static surfaces:
 
 - `CConnection::Connect` at `0x00C13FC0` resets transport state for every
   login, character, and map TCP connection.
 - The two `CPacketQueue::InsertBackData` calls at `0x00C1495D` and
   `0x00C1496C` wrap native client packets after stock packet-key obfuscation
   and before queue insertion.
-- The shared receive-queue insertion at `0x00C145D2` strips and authenticates
-  server control packets `0x0CF0`, `0x0CF2`, and `0x0CF5` before login,
-  character, or map mode-specific packet parsing. Ordinary server bytes are
-  forwarded unchanged.
+- The shared receive-queue insertion at `0x00C145D2` forwards raw stream
+  bytes unchanged into the native queue.
+- `CConnection::ReadPacket` at `0x00C147D0` strips and authenticates server
+  controls `0x0CF0`, `0x0CF2`, and `0x0CF5` at packet boundaries. Partial
+  controls stay queued, consecutive controls are drained, and ordinary packets
+  use the original reader, including its custom/extended packet-length adapters.
+  Control-looking bytes inside native payloads are never scanned.
+
+- `CConnection::ReadData` at `0x00C14780` drains authenticated handshake
+  controls before character login's raw four-byte account-ID prelude. Once
+  READY is authenticated, it delegates opaque bytes to the original raw reader.
+  This preserves account IDs whose low word resembles a Riftlock control ID.
+
+The 2026-10-11 framing patch adds the `RiftlockReadPacketBridge` and
+`RiftlockReadRawBridge` imports (seven imports total). Rebuild
+both the EXE with `RiftlockTransport` and `riftlock.dll`, then sign the paired
+release. Updating only the DLL of an older EXE is not a supported cutover.
+The wire protocol remains v8; server keys and Build.Id do not change.
 
 The DLL sends the raw Riftlock probe before the first native packet, buffers
 native packets until the signed handshake is ready, and then flushes them as
@@ -124,12 +138,18 @@ a copy of `WinTypes.dll` in `%TEMP%` must be counted.
 ## Repeatable static verification
 
 ```text
-python tools/verify_riftlock_client.py --exe <patched-client.exe>
+powershell -ExecutionPolicy Bypass -File tools/test-riftlock-receive.ps1
+python -B -m unittest discover -s tools -p test_riftlock_verifier.py -v
+python tools/verify_riftlock_client.py --exe <patched-client.exe> --server-protocol <Banquet>/src/common/shield/riftlock_protocol.hpp
 python tools/fix_custom_bridge_iats.py --dll riftlock.dll <patched-client.exe>
 ```
 
-The second command is read-only without `--write`; it must report
-`stale bridge operands: 0`.
+The bridge-IAT command is read-only without `--write`; it must report
+`stale bridge operands: 0`. The v8 verifier checks all wire field offsets when
+`--server-protocol` is supplied and validates the reader trampoline and direct
+or WARP lazy-export import slots. The native regression tests the DLL's shared
+framing helper over every split point, bytewise delivery, mixed packets,
+payload IDs, malformed lengths, rejected controls, and reconnect.
 
 ## Live acceptance gate
 
@@ -147,3 +167,14 @@ of these pass with the real client and production public key:
 Only after this gate should the server change from `provider: none` to
 `provider: riftlock`. Keep server enforcement in monitor mode until the live
 false-positive window is complete.
+
+## GRF Editor signing action
+
+GRFEditor-main now provides Tools -> Sign Riftlock Client. It reuses these
+release tools, waits for saves, regenerates the manifest, rechecks assets and
+independently verifies the signature/digest in C#. See its
+Installer/RIFTLOCK_SIGNING.md for first-time tool setup and failure recovery.
+
+Live connection acceptance for the classic-NPC full profile was confirmed by
+the user on 2026-10-11 after fixing the raw character bootstrap and re-signing.
+This confirmation does not cover relog, repeated map changes or long heartbeats.

@@ -1,0 +1,335 @@
+{
+  "passed": true,
+  "date_local": "2026-10-17",
+  "timezone": "Asia/Manila",
+  "mode": "read-only stationary outdoor soak",
+  "client_sha256": "5d1d4faf3065a27655e9404357af8beb697ede907959fa9c39ccc15aba3cbc36",
+  "protocol": 6,
+  "map": "prt_fild08",
+  "normal_timings_ms": {
+    "day": 3600000,
+    "night": 3600000,
+    "clear": 600000,
+    "rain": 180000,
+    "storm": 180000
+  },
+  "storm_every": 3,
+  "configuration_sha256": {
+    "conf/import/battle_conf.txt": "77049bdda2dcd765ea71afdb26590769bf9d32479bbbe9ad59d6980c1616afc0",
+    "conf/world_environment.yml": "9c9eb40d32927ae351e65616eb889380bb81e250ad6641c6f636033e4346af46",
+    "conf/import/world_environment.yml": "25fa33183a0485a087f763846d59c7227c1aa87d30d4dcc16b546df786d5f6cf"
+  },
+  "server_targets": [
+    {
+      "project": "map-server",
+      "sha256": "fe17f9eb25109b1dcadde48f00b75750d8a4a597b6e7af6351d5ff41dee891d4"
+    },
+    {
+      "project": "map-server-generator",
+      "sha256": "fb487f8bc8412b503f63e371c47dc24f7633ca7ea843df11021b50260ba27028"
+    }
+  ],
+  "riftlock_release": {
+    "release": 1792192166,
+    "digest": "6687c28f52a52071a1eb04e7354d3cd835573d4f60a11292e8d55c9e415365bc",
+    "signature_verified": true,
+    "public_key_matched": true
+  },
+  "observed_day_night_phases": [
+    0,
+    1
+  ],
+  "sample_interval_ms": 250,
+  "collection_seconds": 3603.0864010000005,
+  "sampling_note": "109 bounded sampling windows, approximately 30 seconds each; process startup creates gaps between windows.",
+  "analysis": {
+    "provisional": false,
+    "elapsed_minutes": 60.05,
+    "chunks": 109,
+    "sampled_seconds": 3273.613544300031,
+    "sequence_observed": true,
+    "active_segments": [
+      "rain",
+      "rain",
+      "storm",
+      "rain",
+      "rain"
+    ],
+    "segments": [
+      {
+        "phase": "clear",
+        "start_minutes": 0.5501564233333435,
+        "end_minutes": 6.646933368333339
+      },
+      {
+        "phase": "rain",
+        "start_minutes": 7.197122010000021,
+        "end_minutes": 9.397730116666692
+      },
+      {
+        "phase": "clear",
+        "start_minutes": 9.948049596666655,
+        "end_minutes": 19.890982858333278
+      },
+      {
+        "phase": "rain",
+        "start_minutes": 20.44168190666666,
+        "end_minutes": 22.646815588333265
+      },
+      {
+        "phase": "clear",
+        "start_minutes": 23.19708909000001,
+        "end_minutes": 32.55292927333333
+      },
+      {
+        "phase": "storm",
+        "start_minutes": 33.102857071666584,
+        "end_minutes": 35.85433532833328
+      },
+      {
+        "phase": "clear",
+        "start_minutes": 36.40392191833332,
+        "end_minutes": 45.75942090333326
+      },
+      {
+        "phase": "rain",
+        "start_minutes": 46.31079274499995,
+        "end_minutes": 48.51433604499992
+      },
+      {
+        "phase": "clear",
+        "start_minutes": 49.07165155499994,
+        "end_minutes": 58.437131358333254
+      },
+      {
+        "phase": "rain",
+        "start_minutes": 58.98824679333326,
+        "end_minutes": 60.05142287666664
+      }
+    ],
+    "cleanup_transitions": [
+      {
+        "from": "rain",
+        "clear_minutes": 9.95,
+        "verified": true
+      },
+      {
+        "from": "rain",
+        "clear_minutes": 23.2,
+        "verified": true
+      },
+      {
+        "from": "storm",
+        "clear_minutes": 36.4,
+        "verified": true
+      },
+      {
+        "from": "rain",
+        "clear_minutes": 49.07,
+        "verified": true
+      }
+    ],
+    "clear_baselines_after_warmup": [
+      {
+        "start_minutes": 5.55,
+        "end_minutes": 6.65,
+        "median_private_mib": 850.688,
+        "median_handles": 681
+      },
+      {
+        "start_minutes": 10.5,
+        "end_minutes": 19.89,
+        "median_private_mib": 853.012,
+        "median_handles": 681.0
+      },
+      {
+        "start_minutes": 23.75,
+        "end_minutes": 32.55,
+        "median_private_mib": 854.836,
+        "median_handles": 681
+      },
+      {
+        "start_minutes": 36.95,
+        "end_minutes": 45.76,
+        "median_private_mib": 854.902,
+        "median_handles": 594
+      },
+      {
+        "start_minutes": 49.63,
+        "end_minutes": 58.44,
+        "median_private_mib": 854.797,
+        "median_handles": 589
+      }
+    ],
+    "last_minus_first_clear_private_mib": 4.109,
+    "private_mib_range": [
+      848.609,
+      863.902
+    ],
+    "handles_range": [
+      587,
+      682
+    ],
+    "max_owned_parents": 1,
+    "max_owned_primitives": 96,
+    "stable_census_chunks": 109,
+    "read_errors": 0,
+    "updating_chunks": 109,
+    "client_hashes": [
+      "5d1d4faf3065a27655e9404357af8beb697ede907959fa9c39ccc15aba3cbc36"
+    ],
+    "journal_sha256": "601e6d3599cb0de3174b680be9a392c0d2a3dd88fc5d00b393792efb04c3ac14",
+    "stationary_control_retained": true,
+    "not_a_gpu_or_absolute_heap_leak_proof": true,
+    "passed": true
+  },
+  "process_cpu_samples": {
+    "clear": {
+      "chunks": 81,
+      "median_percent_one_core": 55.42,
+      "range_percent_one_core": [
+        36.13,
+        103.83
+      ]
+    },
+    "rain": {
+      "chunks": 15,
+      "median_percent_one_core": 43.57,
+      "range_percent_one_core": [
+        38.37,
+        50.91
+      ]
+    },
+    "storm": {
+      "chunks": 5,
+      "median_percent_one_core": 43.36,
+      "range_percent_one_core": [
+        40.19,
+        49.24
+      ]
+    }
+  },
+  "cpu_note": "Process CPU counters; this is not a GPU frame-time benchmark.",
+  "source_verification_checks": [
+    "generated-monster-source",
+    "server-module",
+    "rain-command",
+    "rain-schedule",
+    "automatic-storm",
+    "storm-server",
+    "storm-command",
+    "source-order",
+    "pincode-packetver",
+    "weather-lifecycle",
+    "server-session-load",
+    "weather-profiles",
+    "profile-schedules",
+    "profile-client",
+    "native-client-fixtures",
+    "installed-client-candidate",
+    "storm-lighting-candidate",
+    "sun-shadow-candidate",
+    "storm-lighting-standalone",
+    "sun-shadow-standalone",
+    "storm-lighting-monster-first",
+    "sun-shadow-monster-first",
+    "storm-lighting-dial-first",
+    "sun-shadow-dial-first",
+    "storm-lighting-framed-peers",
+    "sun-shadow-framed-peers",
+    "storm-lighting-framed-reverse",
+    "sun-shadow-framed-reverse",
+    "framed-peers",
+    "framed-reverse",
+    "monster-first",
+    "dial-first"
+  ],
+  "yaml_headers": "Official rAthena GPL preamble and banner/schema comment style; YAML bodies byte-identical to the deployed defaults.",
+  "prior_runs": "Original 46-minute run ended by intentional user restart; initial v6 zero-chunk attempt stopped for header correction. Neither was accepted.",
+  "raw_evidence": "Outputs/CelestialDial/long-soak/profiles-v6-header-run-20261017",
+  "not_a_gpu_or_absolute_heap_leak_proof": true,
+  "server_sources_sha256": {
+    "src/common/world_environment_wire.hpp": "1ca3ad6a803bd45cddddf6f830894e3ee7d48d44200a9a61ddea56d40156dc6d",
+    "src/map/world_environment.cpp": "45147846949cf9cf3857dc910e0ae05de445a3d81abf1b4586f07295f7ea7c31",
+    "src/map/world_environment.hpp": "a225e385c5dd1b61e521fb52542ada2b19d8ef052258f469334c580a2f4b8835",
+    "src/map/atcommand.cpp": "22306b7a6fda983c114d8d521f766ecfc0f0d2e6a4af52845ebb5c34f5b8294a",
+    "src/map/pc.hpp": "a2227de2a5f410464d226898dba98022ca7a0c973aac0c6664e165a4a8334582",
+    "src/map/clif.cpp": "1d423252e4388ef9fe160a86eb7c91c57566d955a89ff8467c4468196f8e7dee",
+    "src/map/map-server.vcxproj": "84376b4421fdd86df2150144bf7ca5d880c0bfec6b454250a900b19b477c47e0",
+    "src/map/map-server-generator.vcxproj": "89cd7e2271c67378807902a3e313e0de427c3257bbc87d47e3478592d638167b",
+    "src/map/battle.cpp": "9280199e4e357a6d07a247539e8423fc4728e8b1ab44735c7643912731b6e4f8",
+    "src/map/battle.hpp": "3e6ecebe31cdf64a5732ef3de815cad0e81a6c6cbae9d693b5fe22e40812be5c",
+    "conf/battle/misc.conf": "2abef474843e23dee72eaf8d7f12633deecadc099b9812485de0051993655c2d",
+    "conf/import/battle_conf.txt": "77049bdda2dcd765ea71afdb26590769bf9d32479bbbe9ad59d6980c1616afc0",
+    "src/map/pincode_ui.cpp": "28cdbfec2c8714e58cfc634433c92abd6564eb31e1ee82764918c9a227fe74a3",
+    "src/map/pincode_ui.hpp": "c96cf554e8e7b383e585c88dc333408192cc4ffd09eb115c50ebcbf993bf0012",
+    "src/map/world_environment_profiles.cpp": "ce651e6e398495d8a5557097fed1977f7e71b2090f657f22dc339db9cd2fe58c",
+    "src/map/world_environment_profiles.hpp": "3e004e82b97abeae5b5c95cf5a632299666cda04ab6b53cd85e29bed919487d9",
+    "conf/world_environment.yml": "9c9eb40d32927ae351e65616eb889380bb81e250ad6641c6f636033e4346af46",
+    "conf/import/world_environment.yml": "25fa33183a0485a087f763846d59c7227c1aa87d30d4dcc16b546df786d5f6cf"
+  },
+  "server_sources_normalized_sha256": {
+    "src/common/world_environment_wire.hpp": "efb9ddfeb1180da230f374e2117c4ce424f9a944d4b18844e7b4b74ef151e55a",
+    "src/map/world_environment.cpp": "45147846949cf9cf3857dc910e0ae05de445a3d81abf1b4586f07295f7ea7c31",
+    "src/map/world_environment.hpp": "00b6976466a266355d285a4d0362478b44328d2d7f3184182c11d799e6b4abf4",
+    "src/map/atcommand.cpp": "cb178a0e68e6d284f0ef8e7f62fac9730e3e09dfd67754ae2e687ef6bf4d83c5",
+    "src/map/pc.hpp": "788193b7720a3b460d23bdc93006b603ef35153af642fcd1b142fd2585ea9e53",
+    "src/map/clif.cpp": "d3bb4e99810f7c1f6c6c8c6bef482b5d92cdbb2359d59cf4af393d664190c9a0",
+    "src/map/map-server.vcxproj": "1312c56709fd4ebbbd166eb6b4e2ef09f8f5d4db16f06ea9a54827986a2473c7",
+    "src/map/map-server-generator.vcxproj": "83b98688257d8729b932dabb73a0816d584e226aea55016a4c12fba980610d85",
+    "src/map/battle.cpp": "2e8781d6958719d2e58c622dcd175f544ab52b073ccd65fe22fb55c9582ec577",
+    "src/map/battle.hpp": "d14c687dd43f9995a8419d91ce541249261971226eb71e1e8bf07992539d9dae",
+    "conf/battle/misc.conf": "cdd8bb9d9439a754ad109b3ecc3e240d4a35f14d31e6646784a08ef20e2ca1bf",
+    "conf/import/battle_conf.txt": "da8ed20c8df7791cd3bd717d73929a392ed0e4a512be9122a52b888d177be359",
+    "src/map/pincode_ui.cpp": "f85daef6db1617e60247aa8a4c0a73e9f99a1360593173f5cda7f9bba3072b4c",
+    "src/map/pincode_ui.hpp": "46ff3ed01063c0950c85d02e1cbee8ebb444dd2da952316fbe3211fd392de408",
+    "src/map/world_environment_profiles.cpp": "ce651e6e398495d8a5557097fed1977f7e71b2090f657f22dc339db9cd2fe58c",
+    "src/map/world_environment_profiles.hpp": "3e004e82b97abeae5b5c95cf5a632299666cda04ab6b53cd85e29bed919487d9",
+    "conf/world_environment.yml": "5ecd5b8b93f8de0893e1fedfdc190fcd136ee33d51df820b5e8ec906db7ff43f",
+    "conf/import/world_environment.yml": "11c904315cced2dee1fb28c222aec7a93fe0ff54b6aaa151b40faa7486e93654"
+  },
+  "client_payload_metadata": {
+    "version": 3,
+    "client": 20250716,
+    "size": 46616,
+    "api_size": 20,
+    "snapshot_sizes": [
+      68,
+      72,
+      80
+    ],
+    "exports": {
+      "@CelestialDestroy@12": 10128,
+      "@CelestialDraw@8": 10176,
+      "@CelestialHit@16": 11152,
+      "@CelestialPlayerShadowDraw@12": 11168,
+      "@CelestialRainGroundDraw@12": 11248,
+      "@CelestialRainGroundProcess@8": 12560,
+      "@CelestialRainParticles@8": 13008,
+      "@CelestialRainProcess@8": 13920,
+      "@CelestialShadowActor@16": 14032,
+      "@CelestialShadowProject@20": 14352,
+      "@CelestialShadowSubmit@16": 14768,
+      "@CelestialSpriteShadowSubmit@28": 14896,
+      "@CelestialWeatherProcess@8": 15680,
+      "CelestialApi": 24576,
+      "CelestialRainPrimVtable": 24920,
+      "CelestialRainVtable": 24840,
+      "CelestialShadowState": 24984,
+      "CelestialSpriteShadows": 25112,
+      "CelestialSpriteSubmitBridge": 18816,
+      "CelestialState": 24632,
+      "_CelestialFrame@4": 16128,
+      "_CelestialReceive@4": 17584,
+      "_CelestialReset@0": 18496
+    },
+    "source_sha256": "cd9dd897b4a097b46a0e16abab17d9d65f2a8c4208d76c535e81208a2a1a6d78",
+    "wire_sha256": "efb9ddfeb1180da230f374e2117c4ce424f9a944d4b18844e7b4b74ef151e55a",
+    "payload_sha256": "86a72bfda84cf3034e96f14fc1bc3c7e4e0feecbdf436ab642efeb6f222507d8",
+    "runtime_imports": [],
+    "ground_sha256": "8a17b1e85c73d5d652cb0aacd09c1d6433a2cd1744478961d1a23cdf317efd91",
+    "weather_art_sha256": "0bf95b9b4343acc036b671361dc59b0019bbc9524ba20e7b9821534c73f34825",
+    "sun_shadow_sha256": "9ca19bc9bd0a7fd6d1e90075a83a8b9c769f475d9beed11269dcf9682f14fd06"
+  },
+  "offline_verification_sha256": "0dcf3d64a7188a8aa6becd1f42b39d2d31aa630ea0f01077c186f7d7b12f1254"
+}

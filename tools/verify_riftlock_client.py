@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import hmac
+import re
 import struct
 from pathlib import Path
 
@@ -24,6 +25,8 @@ EXPECTED_IMPORTS = {
 	"RiftlockQueuePacketBridge",
 	"RiftlockQueueDeferredPacketBridge",
 	"RiftlockReceiveBytesBridge",
+	"RiftlockReadPacketBridge",
+	"RiftlockReadRawBridge",
 }
 
 
@@ -40,13 +43,48 @@ def check_qjs(path: Path) -> None:
 	require(b"new Date(" not in raw, f"{path.name}: new Date() is forbidden in WARP QJS")
 
 
+def wire_layout(text: str, name: str) -> tuple[int, list[tuple[str, int, int]]]:
+	constants = {key: int(value) for key, value in re.findall(
+		r"(?:constexpr|static const)\s+(?:std::)?(?:size_t|uint16_t|uint32_t|uint16|uint32)\s+(\w+)\s*=\s*(\d+)\s*;", text)}
+	widths = {"uint8": 1, "uint16": 2, "uint32": 4, "uint64": 8, "char": 1,
+		"uint8_t": 1, "uint16_t": 2, "uint32_t": 4, "uint64_t": 8}
+	match = re.search(r"struct\s+" + re.escape(name) + r"\s*\{(.*?)\};", text, re.S)
+	require(match is not None, f"missing wire structure: {name}")
+	offset = 0
+	fields = []
+	for kind, field, array in re.findall(
+		r"(?:std::)?(uint8(?:_t)?|uint16(?:_t)?|uint32(?:_t)?|uint64(?:_t)?|char)\s+(\w+)(?:\[(\w+)\])?\s*;", match.group(1)):
+		count = (int(array) if array.isdigit() else constants[array]) if array else 1
+		size = widths[kind] * count
+		fields.append((field, offset, size))
+		offset += size
+	return offset, fields
+
+
+def check_protocol_mirror(server_protocol: Path) -> None:
+	server = server_protocol.read_text(encoding="utf-8")
+	client = PROTOCOL.read_text(encoding="utf-8")
+	require("PROTOCOL_VERSION = 8" in server, "server protocol must be v8")
+	for server_name, client_name in (
+		("cs_probe", "ClientProbe"), ("sc_hello", "ServerHello"), ("cs_hello", "ClientHello"),
+		("sc_ready", "ServerReady"), ("sc_challenge", "ServerChallenge"),
+		("cs_challenge", "ClientChallenge"), ("cs_envelope_prefix", "EnvelopePrefix"),
+	):
+		require(wire_layout(server, server_name) == wire_layout(client, client_name),
+			f"server/client field offset mismatch: {server_name}")
+
+
 def check_sources() -> None:
 	check_qjs(PATCH)
 	check_qjs(DISPATCH)
 	protocol = PROTOCOL.read_text(encoding="utf-8")
 	client = CLIENT.read_text(encoding="utf-8")
+	size, fields = wire_layout(protocol, "ClientHello")
+	require(size == 600 and ("release_number", 516, 4) in fields and
+		("release_signature", 520, 64) in fields and ("tag", 584, 16) in fields,
+		"v8 client hello release/tag layout changed")
 	for token in (
-		"kProtocolVersion = 7",
+		"kProtocolVersion = 8",
 		"kClientProbe = 0x0CEF",
 		"kServerHello = 0x0CF0",
 		"kClientHello = 0x0CF1",
@@ -55,7 +93,7 @@ def check_sources() -> None:
 		"kClientEnvelope = 0x0CF4",
 		"kServerReady = 0x0CF5",
 		"sizeof(ServerHello) == 140",
-		"sizeof(ClientHello) == 532",
+		"sizeof(ClientHello) == 600",
 		"sizeof(ServerChallenge) == 60",
 		"sizeof(ClientChallenge) == 484",
 		"asset_sample_digest",
@@ -64,6 +102,9 @@ def check_sources() -> None:
 		"suspicious_handle_count",
 		"hook_digest",
 		"hook_mismatch_count",
+		"kReleaseSigned = 0x0002",
+		"release_number",
+		"release_signature",
 	):
 		require(token in protocol, f"protocol contract token missing: {token}")
 	for token in (
@@ -149,14 +190,32 @@ def check_protocol_vectors() -> None:
 		challenge.hex() == "f20c3c000700000001000000a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf8d3319efb00ff804040a4e125c99a46e",
 		"Riftlock heartbeat challenge vector changed",
 	)
-	require(len(response) == 484, "Riftlock v7 heartbeat response size changed")
+	require(len(response) == 484, "Riftlock v8 heartbeat response size changed")
 	require(
 		hmac.compare_digest(
 			response[-16:],
 			hmac.new(client_to_server, response[:-16], hashlib.sha256).digest()[:16],
 		),
-		"Riftlock v7 heartbeat response MAC changed",
+		"Riftlock v8 heartbeat response MAC changed",
 	)
+
+	statement = b"riftlock/release/v1\x00" + struct.pack("<II", 1, 0x11223344) + bytes(range(32))
+	require(len(statement) == 60, "v8 signed release statement size changed")
+	require(statement[20:28] == bytes.fromhex("0100000044332211"), "v8 release statement field order changed")
+	hello = bytearray(600)
+	struct.pack_into("<HHHHI", hello, 0, 0x0CF1, 600, 8, 3, 1)
+	hello[12:44] = client_nonce
+	struct.pack_into("<I", hello, 516, 0x11223344)
+	hello[520:584] = bytes(range(64))
+	hello[584:] = hmac.new(client_to_server, hello[:584], hashlib.sha256).digest()[:16]
+	require(len(hello) == 600 and struct.unpack_from("<I", hello, 516)[0] == 0x11223344,
+		"v8 hello release offsets changed")
+	for offset in (516, 520, 583):
+		tampered = bytearray(hello)
+		tampered[offset] ^= 1
+		require(not hmac.compare_digest(tampered[584:],
+			hmac.new(client_to_server, tampered[:584], hashlib.sha256).digest()[:16]),
+			"v8 hello does not authenticate release fields")
 
 
 def relative_target(pe: pefile.PE, virtual_address: int, displacement_offset: int) -> int:
@@ -167,21 +226,73 @@ def relative_target(pe: pefile.PE, virtual_address: int, displacement_offset: in
 	return virtual_address + displacement_offset + 4 + displacement
 
 
+def check_export_slot(pe: pefile.PE, slot: int, export_name: str, iat: dict[str, int]) -> None:
+	"""Accept a final PE IAT slot or WARP's exact static lazy-export resolver."""
+	if slot == iat[export_name]:
+		return
+	base = pe.OPTIONAL_HEADER.ImageBase
+	section = pe.get_section_by_rva(slot - base)
+	require(section is not None and section.Characteristics & 0x80000000,
+		f"{export_name}: export slot must be writable")
+	resolver = struct.unpack("<I", pe.get_data(slot - base, 4))[0]
+	code = pe.get_data(resolver - base, 38)
+	require(len(code) == 38 and code[:3] == b"\x9c\x60\x68" and
+		code[7:9] == b"\xff\x15" and code[13:14] == b"\x68" and
+		code[18:21] == b"\x50\xff\x15" and code[25:26] == b"\xa3" and
+		code[30:34] == b"\x61\x9d\xff\x25", f"{export_name}: invalid lazy-export resolver")
+	require(struct.unpack_from("<I", code, 26)[0] == slot and
+		struct.unpack_from("<I", code, 34)[0] == slot,
+		f"{export_name}: lazy resolver does not own its slot")
+	dll_name = pe.get_string_at_rva(struct.unpack_from("<I", code, 3)[0] - base)
+	name = pe.get_string_at_rva(struct.unpack_from("<I", code, 14)[0] - base)
+	require(dll_name.lower() == b"riftlock.dll" and name == export_name.encode("ascii"),
+		f"{export_name}: bridge resolves the wrong DLL/export")
+	all_imports = {symbol.address: symbol.name for descriptor in pe.DIRECTORY_ENTRY_IMPORT
+		for symbol in descriptor.imports if symbol.name}
+	require(all_imports.get(struct.unpack_from("<I", code, 9)[0]) == b"GetModuleHandleA" and
+		all_imports.get(struct.unpack_from("<I", code, 21)[0]) == b"GetProcAddress",
+		f"{export_name}: lazy resolver API imports are stale or wrong")
+
+
 def check_pe(path: Path) -> None:
 	pe = pefile.PE(str(path), fast_load=False)
 	require(pe.FILE_HEADER.Machine == 0x014C, "Riftlock target must be 32-bit x86")
 	require(pe.OPTIONAL_HEADER.Magic == 0x010B, "Riftlock target must be PE32")
 
 	imports = set()
+	iat = {}
 	for descriptor in pe.DIRECTORY_ENTRY_IMPORT:
 		if descriptor.dll.lower() != b"riftlock.dll":
 			continue
 		for symbol in descriptor.imports:
 			if symbol.name:
-				imports.add(symbol.name.decode("ascii"))
+				name = symbol.name.decode("ascii")
+				imports.add(name)
+				iat[name] = symbol.address
 	require(imports == EXPECTED_IMPORTS, f"unexpected Riftlock imports: {sorted(imports)}")
 
 	base = pe.OPTIONAL_HEADER.ImageBase
+	reader = pe.get_data(0x00C147D0 - base, 6)
+	require(reader[:1] == b"\xE9", "native packet-reader bridge is missing")
+	reader_bridge = relative_target(pe, 0x00C147D0, 1)
+	reader_code = pe.get_data(reader_bridge - base, 17)
+	require(reader_code[:7] == b"\xFF\x34\x24\xC7\x44\x24\x04", "reader bridge stack ABI changed")
+	require(reader_code[11:13] == b"\xFF\x25", "reader bridge is not a static import jump")
+	check_export_slot(pe, struct.unpack_from("<I", reader_code, 13)[0], "RiftlockReadPacketBridge", iat)
+	trampoline = struct.unpack_from("<I", reader_code, 7)[0]
+	require(pe.get_data(trampoline - base, 6) == bytes.fromhex("55 8b ec 83 ec 10"),
+		"reader trampoline lost its profiled prologue")
+	require(pe.get_data(trampoline - base + 6, 1) == b"\xE9" and
+		relative_target(pe, trampoline + 6, 1) == 0x00C147D6, "reader trampoline return changed")
+
+	raw_bridge = relative_target(pe, 0x00C14780, 1)
+	require(pe.get_data(0x00C14780 - base, 1) == b"\xE9", "raw bootstrap bridge missing")
+	raw_code = pe.get_data(raw_bridge - base, 17)
+	require(raw_code[:7] == b"\xFF\x34\x24\xC7\x44\x24\x04" and raw_code[11:13] == b"\xFF\x25", "raw bridge stack ABI changed")
+	check_export_slot(pe, struct.unpack_from("<I", raw_code, 13)[0], "RiftlockReadRawBridge", iat)
+	raw_trampoline = struct.unpack_from("<I", raw_code, 7)[0]
+	require(pe.get_data(raw_trampoline - base, 7) == bytes.fromhex("55 8b ec 80 7d 10 00") and
+		relative_target(pe, raw_trampoline + 7, 1) == 0x00C14787, "raw trampoline or exact-read flag comparison changed")
 	connect = pe.get_data(0x00C13FC0 - base, 5)
 	receive = pe.get_data(0x00C145D2 - base, 5)
 	deferred = pe.get_data(0x00C1495D - base, 5)
@@ -191,24 +302,28 @@ def check_pe(path: Path) -> None:
 	require(deferred[:1] == b"\xE8", "deferred outgoing queue bridge is missing")
 	require(immediate[:1] == b"\xE8", "immediate outgoing queue bridge is missing")
 
-	for site, label in (
-		(0x00C145D2, "receive"),
-		(0x00C1495D, "deferred"),
-		(0x00C1496C, "immediate"),
+	for site, label, export_name in (
+		(0x00C145D2, "receive", "RiftlockReceiveBytesBridge"),
+		(0x00C1495D, "deferred", "RiftlockQueueDeferredPacketBridge"),
+		(0x00C1496C, "immediate", "RiftlockQueuePacketBridge"),
 	):
 		bridge = relative_target(pe, site, 1)
 		code = pe.get_data(bridge - base, 17)
 		require(code[:7] == b"\xFF\x34\x24\xC7\x44\x24\x04", f"{label} bridge stack ABI changed")
 		require(code[7:11] == struct.pack("<I", 0x00C16640), f"{label} bridge lost stock queue target")
 		require(code[11:13] == b"\xFF\x25", f"{label} bridge is not a static import jump")
+		check_export_slot(pe, struct.unpack_from("<I", code, 13)[0], export_name, iat)
 
 
 def main() -> int:
 	parser = argparse.ArgumentParser(description=__doc__)
 	parser.add_argument("--exe", type=Path, help="emitted client EXE to inspect")
+	parser.add_argument("--server-protocol", type=Path, help="server riftlock_protocol.hpp to compare every wire field")
 	args = parser.parse_args()
 	check_sources()
 	check_protocol_vectors()
+	if args.server_protocol:
+		check_protocol_mirror(args.server_protocol)
 	if args.exe:
 		check_pe(args.exe.resolve())
 	print("Riftlock client verification passed")

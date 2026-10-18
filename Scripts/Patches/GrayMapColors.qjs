@@ -1,0 +1,112 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                   *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                      *
+*   Created Date  : 2026-10-16                                             *
+*   Last Modified : 2026-10-16                                             *
+*                                                                          *
+*   Description   : Embeds the import-free GrayMap palette/UI payload      *
+*                   for the profiled 2025-07-16 Ragexe. Validates the      *
+*                   container, exports and relocations before allocating   *
+*                   code. QJS owns patch-time relocation; no custom DLL    *
+*                   or runtime code installation is required.              *
+*                                                                          *
+\**************************************************************************/
+
+GrayMapColors = {};
+
+// BinFile is read-only. The payload is copied into WARP-owned allocations;
+// no file or runtime image is modified by the relocation loader.
+GrayMapColors.readBytes = function(path)
+{
+	const file = new BinFile(path, "r");
+	if (!file.Valid)
+		throw Error("GrayMap: missing " + path);
+	try
+	{
+		return (file.ReadHex().match(/[0-9a-fA-F]{2}/g) || [])
+			.map(value => parseInt(value, 16));
+	}
+	finally { file.Close(); }
+};
+
+GrayMapColors.install = function(manifest)
+{
+	const bytes = this.readBytes(Warp.Path + "/Assets/GrayMap/colors.bin");
+	const meta = JSON.parse(String.fromCharCode(...this.readBytes(Warp.Path + "/Assets/GrayMap/colors.json")));
+	const u32 = (data, offset) => (data[offset] | data[offset + 1] << 8 |
+		data[offset + 2] << 16 | data[offset + 3] << 24) >>> 0;
+	const put = (data, offset, value) => {
+		for (let i = 0; i < 4; i++)
+			data[offset + i] = (value >>> (i * 8)) & 255;
+	};
+
+	if (bytes.length < 32 || !meta || !meta.exports)
+		throw Error("GrayMap: invalid palette header");
+	const size = u32(bytes, 8), count = u32(bytes, 12);
+	const start = 32 + count * 4, state = u32(bytes, 16);
+	if (u32(bytes, 0) !== 0x434D5247 || u32(bytes, 4) !== 6 || u32(bytes, 20) !== 20250716 ||
+		meta.version !== 6 || meta.client !== 20250716 || meta.size !== size ||
+		start + size !== bytes.length || state !== meta.exports.GrayMapState || state + 4 > size)
+		throw Error("GrayMap: invalid palette payload");
+
+	let crc = 0xFFFFFFFF;
+	for (let i = 32; i < bytes.length; i++)
+	{
+		crc ^= bytes[i];
+		for (let bit = 0; bit < 8; bit++)
+			crc = (crc >>> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+	}
+	if (((crc ^ 0xFFFFFFFF) >>> 0) !== u32(bytes, 28))
+		throw Error("GrayMap: palette checksum mismatch");
+
+	const required = [
+		"@GrayDraw@8", "@GrayCursor@16", "@GrayDown@16", "@GrayUp@16", "@GrayMove@16",
+		"@GrayRightDown@16", "@GrayRightUp@16", "@GrayWheel@12", "@GrayPopupDraw@8",
+		"@GrayScrollDraw@8", "@GrayDestroy@12", "@GrayPageDestroy@12",
+		"@GrayToggleDestroy@12", "@GrayScrollDestroy@12", "_GrayAttach@4",
+		"GrayMapState", "GrayUIApi", "GrayUI", "_GrayLoad@0", "_GrayPrepare@0", "_GrayGenerate@0"
+	];
+	for (const name of required)
+		if (!Number.isInteger(meta.exports[name]) || meta.exports[name] < 0 || meta.exports[name] >= size)
+			throw Error("GrayMap: invalid palette export " + name);
+	if (meta.exports.GrayUIApi + 28 > size)
+		throw Error("GrayMap: invalid UI API size");
+
+	const code = bytes.slice(start), relocs = [];
+	for (let i = 0; i < count; i++)
+	{
+		const offset = u32(bytes, 32 + i * 4);
+		if (offset + 4 > size || u32(code, offset) >= size)
+			throw Error("GrayMap: invalid palette relocation");
+		relocs.push(offset);
+	}
+
+	const [phy, vir] = Exe.Allocate(size, 16);
+	for (const offset of relocs)
+		put(code, offset, u32(code, offset) + vir);
+	put(code, state, manifest.state.vir);
+	for (let offset = 0; offset < size; offset += 4096)
+		Exe.SetHex(phy + offset, code.slice(offset, offset + 4096)
+			.map(value => value.toString(16).padStart(2, "0")).join(" "));
+
+	manifest.colors = {phy, vir, size, exports: {}};
+	for (const name of required)
+		manifest.colors.exports[name] = vir + meta.exports[name];
+	return manifest.colors;
+};

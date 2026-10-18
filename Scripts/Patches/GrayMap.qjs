@@ -1,0 +1,181 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                   *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the           *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                      *
+*   Created Date  : 2026-10-16                                             *
+*   Last Modified : 2026-10-16                                             *
+*                                                                          *
+*   Description   : Adds /graymap to the profiled 2025-07-16 Ragexe.       *
+*                   Replaces native terrain with GAT-based cell colors     *
+*                   and optional scenery hiding. Off restores stock        *
+*                   rendering. Graphics exposes aligned native controls    *
+*                   and hover help. QJS emits all static bridges; the      *
+*                   procedural atlas leaves original map GRFs intact.      *
+*                                                                          *
+\**************************************************************************/
+
+const GrayMapNative = {
+	BuildDate: 20250716,
+	GetOption: 0x0068EA70,
+	// C3dGround15 queues freshly allocated polygons. +0 is a four-vertex
+	// buffer, +8 is its texture; TL vertices are 32 bytes, diffuse at +16.
+	// Leave map-owned vertices/materials, fog/specular, geometry and UVs alone.
+	Checks: [
+		[0x00A63680, "55 8B EC 83 EC 4C A1 24 B9 22 01 33 C5 89 45 FC"],
+		[0x00A63A80, "55 8B EC 81 EC A0 00 00 00 A1 24 B9 22 01 33 C5"],
+		[0x0068EA70, "55 8B EC 8B 55 08 83 EC 08 0F B6 C2"],
+		[0x00550B10, "55 8B EC 83 EC 08 56 8B F1 57 8B 7D 08 83 BE 58"],
+		[0x00A6432F, "6A 77 E8 3A A7 C2 FF 83 C4 04 80 3D C4 CE 1D 01 00 0F 84 C0 01 00 00 84 C0 0F 84 B8 01 00 00"],
+		[0x00A64506, "6A 77 E8 63 A5 C2 FF 83 C4 04 84 C0 0F 84 A6 00 00 00 8B 0D F8 15 25 01"],
+		[0x00A645DE, "8B 8B 84 00 00 00 89 48 08 8B 0D F8 15 25 01 E8 1E C5 AE FF"],
+		[0x00A63D58, "8B 8F 84 00 00 00 89 48 08 8B 0D F8 15 25 01 E8 A4 CD AE FF"],
+		[0x00A6486F, "8B 8B 84 00 00 00 89 48 08 8B 0D F8 15 25 01 E8 8D C2 AE FF"],
+		[0x0104D51C,"80 3A A6 00 80 36 A6 00"],
+		[0x00A7B2F4,"8B CA FF 75 F8 FF 50 1C"],
+		[0x00A7B40A,"8B CA 6A 00 57 FF 50 1C"],
+		[0x0055D8DD,"6A 77 E8 8C 11 13 00 83 C4 04 84 C0"],
+		[0x005530AC,"6A 77 E8 BD B9 13 00 83 C4 04 84 C0"],
+		// Native cursor, coordinate conversion and tooltip lifetime APIs.
+		[0x00A23470,"8B 0D 3C 33 21 01 6A 00 E8 23 30 05"],
+		[0x00A1EF70,"55 8B EC 8B 55 08 8B 41 1C 56 8B 75"],
+		[0x00A753D0,"55 8B EC 6A FF 68 4A 3B EF 00 64 A1"],
+		[0x00A753A0,"56 8B F1 8B 46 1C 85 C0 74 1B 50 B9"]
+	],
+	// Producers and both renderer consumers must choose the same vertex queue.
+	// Overriding only the producers leaves the atlas queue undrawn when the
+	// saved lightmap option and combined-texture capability are enabled.
+	OptionCalls: [0x00A64331, 0x00A64508, 0x0055D8DF, 0x005530AE],
+	SubmitCalls: [0x00A645ED, 0x00A63D67, 0x00A6487E]
+};
+
+GrayMapNative.verify = function()
+{
+	if (Exe.BuildDate !== GrayMapNative.BuildDate)
+		throw Error("GrayMap: only the profiled 2025-07-16 client is supported");
+	for (const [vir, hex] of GrayMapNative.Checks)
+	{
+		const phy = Exe.Vir2Phy(vir);
+		const expected = hex.split(" ").map(value => parseInt(value, 16));
+		if (phy < 0 || expected.some((value, i) => Exe.GetUint8(phy + i) !== value))
+			throw Error(`GrayMap: original profile bytes mismatch at 0x${vir.toString(16)}`);
+	}
+	const create=Exe.GetUint32(Exe.Vir2Phy(0x01047DB8));
+	const createPhy=Exe.Vir2Phy(create);
+	if(createPhy<0 || Exe.GetHex(createPhy,3).replace(/\s+/g,"").toUpperCase()!=="558BEC")
+		throw Error("GrayMap: unsupported settings constructor");
+};
+
+// Small position-independent-branch emitter; absolute engine/state addresses
+// follow this client's existing fixed-image-base patch convention.
+GrayMapNative.code = function(kind, stateVir)
+{
+	const bytes = [], fixups = [], labels = {};
+	const emit = (...values) => bytes.push(...values);
+	const dword = value => emit(value & 255, (value >>> 8) & 255,
+		(value >>> 16) & 255, (value >>> 24) & 255);
+	const rel = (opcode, target) => {
+		emit(...opcode); fixups.push({at: bytes.length, target}); dword(0);
+	};
+	if (kind === "toggle")
+	{
+		emit(0x9C, 0x83, 0x35); dword(stateVir); emit(1, 0x9D, 0xC3);
+	}
+	else
+	{
+		emit(0x9C, 0x83, 0x3D); dword(stateVir); emit(0);
+		rel([0x0F, 0x84], "stock");
+		if (kind === "option")
+		{
+			// Only these terrain calls see lightmap option 0x77 as disabled.
+			// This also selects 32-byte single-texture vertices over the native
+			// 40-byte two-texture batch. Never change the actual saved option.
+			emit(0x9D, 0xB8); dword(0); emit(0xC3); // cdecl, caller removes arg
+		}
+		else throw Error(`GrayMap: unknown bridge ${kind}`);
+		labels.stock = bytes.length;
+		emit(0x9D);
+		rel([0xE9], GrayMapNative.GetOption);
+	}
+	return {bytes, finish: function(vir) {
+		for (const fixup of fixups)
+		{
+			const target = typeof fixup.target === "string" ? vir + labels[fixup.target] : fixup.target;
+			const value = (target - (vir + fixup.at + 4)) >>> 0;
+			for (let i = 0; i < 4; i++) bytes[fixup.at + i] = (value >>> (i * 8)) & 255;
+		}
+		return bytes.map(value => value.toString(16).padStart(2, "0")).join(" ");
+	}};
+};
+
+GrayMap = function(_)
+{
+	// Preflight every original span before allocating or installing anything.
+	GrayMapNative.verify();
+	if (typeof CustomSlashCommand === "undefined" || typeof CustomSlashCommand.register !== "function")
+		throw Error("GrayMap: shared static command dispatcher unavailable");
+	try
+	{
+		$$(_, 1, "Allocate disabled gray terrain state and static bridges");
+		const [statePhy, stateVir] = Exe.Allocate(24, 4);
+		for(let i=0;i<6;i++)Exe.SetUint32(statePhy+i*4,(i===1 || i===2)?1:0);
+		const manifest = {state: {phy: statePhy, vir: stateVir}, hooks: []};
+		for (const kind of ["toggle", "option"])
+		{
+			const code = GrayMapNative.code(kind, stateVir);
+			const [phy, vir] = Exe.Allocate(code.bytes.length, 0x10);
+			Exe.SetHex(phy, code.finish(vir));
+			manifest[kind] = {phy, vir, size: code.bytes.length};
+		}
+		GrayMapStyle.install(manifest);
+		$$(_, 2, "Install terrain-only call bridges");
+		for (const [sites, kind] of [[GrayMapNative.OptionCalls, "option"], [GrayMapNative.SubmitCalls, "submit"]])
+			for (const site of sites)
+			{
+				const phy = Exe.Vir2Phy(site, CODE);
+				// verify() above checks the complete surrounding original spans.
+				const selected=site===0x00A63D67?"submitAlt":kind;
+				Exe.SetCALL(phy, manifest[selected].vir, 0);
+				manifest.hooks.push({site, kind:selected, size:5, encoding:"call",target:manifest[selected].vir});
+			}
+		CACHE.put("GrayMap.Native.v1", manifest);
+		$$(_, 3, "Register local /graymap toggle");
+		CustomSlashCommand.register(`${_}.SlashCommand`, {
+			command: "/graymap", targetVir: manifest.toggle.vir
+		});
+		GrayMapStyle.deployAsset();
+		return true;
+	}
+	catch (error)
+	{
+		GrayMap.cleanup(Exe.ActivePatch);
+		throw error;
+	}
+};
+
+GrayMap.cleanup = function(patchName)
+{
+	// Remove shared references before WARP clears this owner's allocations.
+	CustomSlashCommand.unregister(patchName);
+	CACHE.put("GrayMap.Native.v1", null);
+};
+
+GrayMap.validate = function()
+{
+	try { GrayMapNative.verify(); return true; }
+	catch (error) { return false; }
+};

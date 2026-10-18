@@ -2,6 +2,7 @@
 
 #include "riftlock_protocol.h"
 #include "riftlock_public_key.h"
+#include "riftlock_receive.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -61,7 +62,6 @@ struct Session {
 	std::uint8_t client_to_server[riftlock::kKeySize];
 	std::uint8_t server_to_client[riftlock::kKeySize];
 	std::vector<PendingPacket> pending;
-	std::vector<std::uint8_t> inbound_control;
 	std::size_t pending_bytes;
 };
 
@@ -88,7 +88,7 @@ bool g_release_signed = false;
 std::uint32_t g_release_number = 0;
 std::uint8_t g_release_signature[riftlock::kSignatureSize] = {};
 
-void handle_server_packet(const BYTE* packet, DWORD length);
+bool handle_server_packet(const BYTE* packet, DWORD length);
 
 void secure_zero(void* data, std::size_t length) {
 	if (g_sodium.memzero != nullptr)
@@ -555,7 +555,6 @@ void reset_session_locked() {
 	g_session.server_build_id = 0;
 	g_session.server_type = 0;
 	g_session.pending.clear();
-	g_session.inbound_control.clear();
 	g_session.pending_bytes = 0;
 	g_session.state = g_initialized ? SessionState::kDisconnected : SessionState::kFailed;
 }
@@ -966,66 +965,75 @@ void queue_native(void* queue, DWORD original, DWORD length, const BYTE* packet,
 	ReleaseSRWLockExclusive(&g_session_lock);
 }
 
-bool is_server_control(std::uint16_t packet_id) {
-	return packet_id == riftlock::kServerHello || packet_id == riftlock::kServerChallenge ||
-		packet_id == riftlock::kServerReady;
-}
-
 void receive_bytes(void* queue, DWORD original, DWORD length, const BYTE* bytes) {
+	// Raw recv boundaries are arbitrary. Keep the native stream intact; the
+	// ReadPacket bridge below strips controls only at real packet boundaries.
 	QueueInsertFn insert = reinterpret_cast<QueueInsertFn>(original);
-	if (!ensure_initialized() || queue == nullptr || insert == nullptr || bytes == nullptr || length == 0)
-		return;
-
-	std::vector<std::uint8_t> control;
-	std::vector<std::uint8_t> remainder;
-	bool intercept = false;
-	AcquireSRWLockExclusive(&g_session_lock);
-	if (!g_session.inbound_control.empty()) {
-		intercept = true;
-	} else if (length >= sizeof(std::uint16_t)) {
-		std::uint16_t packet_id = 0;
-		memcpy(&packet_id, bytes, sizeof(packet_id));
-		intercept = is_server_control(packet_id);
-	} else if (g_session.state == SessionState::kWaitingHello ||
-		g_session.state == SessionState::kWaitingReady) {
-		intercept = true;
-	}
-
-	if (intercept) {
-		g_session.inbound_control.insert(g_session.inbound_control.end(), bytes, bytes + length);
-		if (g_session.inbound_control.size() >= sizeof(std::uint16_t) * 2) {
-			std::uint16_t packet_id = 0;
-			std::uint16_t packet_length = 0;
-			memcpy(&packet_id, g_session.inbound_control.data(), sizeof(packet_id));
-			memcpy(&packet_length, g_session.inbound_control.data() + sizeof(packet_id),
-				sizeof(packet_length));
-			if (!is_server_control(packet_id) || packet_length < 4 || packet_length > 4096) {
-				remainder.swap(g_session.inbound_control);
-			} else if (g_session.inbound_control.size() >= packet_length) {
-				control.assign(g_session.inbound_control.begin(),
-					g_session.inbound_control.begin() + packet_length);
-				remainder.assign(g_session.inbound_control.begin() + packet_length,
-					g_session.inbound_control.end());
-				g_session.inbound_control.clear();
-			}
-		}
-	}
-	ReleaseSRWLockExclusive(&g_session_lock);
-
-	if (!intercept) {
+	if (queue != nullptr && insert != nullptr && bytes != nullptr && length != 0)
 		insert(queue, length, bytes);
-		return;
-	}
-	if (!control.empty()) {
-		handle_server_packet(control.data(), static_cast<DWORD>(control.size()));
-	}
-	if (!remainder.empty())
-		insert(queue, static_cast<DWORD>(remainder.size()), remainder.data());
 }
 
-void handle_server_packet(const BYTE* packet, DWORD length) {
+bool read_native_packet(void* connection, DWORD original, void* packet, std::uint16_t* length) {
+	if (!ensure_initialized() || connection == nullptr || original == 0 || packet == nullptr)
+		return false;
+	AcquireSRWLockShared(&g_session_lock);
+	const bool failed = g_session.state == SessionState::kFailed;
+	ReleaseSRWLockShared(&g_session_lock);
+	if (failed) return false;
+
+	using QueueReadFn = bool (__thiscall *)(void*, DWORD, void*);
+	using NativeReadFn = bool (__thiscall *)(void*, void*, std::uint16_t*);
+	// Profiled 2025-07-16 CPacketQueue::PeekFrontData / ReadFrontData. Resolve
+	// against the loaded image so an image-base relocation remains valid.
+	const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+	const auto peek = reinterpret_cast<QueueReadFn>(base + 0x00816810u);
+	const auto read = reinterpret_cast<QueueReadFn>(base + 0x00816570u);
+	void* queue = static_cast<BYTE*>(connection) + 0x3c;
+	return riftlock_receive::read_packet(
+		[&](DWORD count, void* output) { return peek(queue, count, output); },
+		[&](DWORD count, void* output) { return read(queue, count, output); },
+		[](const BYTE* bytes, DWORD count) { return handle_server_packet(bytes, count); },
+		[&]() { return reinterpret_cast<NativeReadFn>(original)(connection, packet, length); },
+		[]() {
+			AcquireSRWLockExclusive(&g_session_lock);
+			fail_session_locked("invalid server control length");
+			ReleaseSRWLockExclusive(&g_session_lock);
+		});
+}
+
+DWORD read_raw_bootstrap(void* connection, DWORD original, void* buffer, DWORD length, bool exact) {
+	if (!ensure_initialized() || connection == nullptr || original == 0 || buffer == nullptr) return 0;
+	AcquireSRWLockShared(&g_session_lock);
+	const bool failed = g_session.state == SessionState::kFailed;
+	ReleaseSRWLockShared(&g_session_lock);
+	if (failed) return 0;
+	using QueueReadFn = bool (__thiscall *)(void*, DWORD, void*);
+	using RawReadFn = DWORD (__thiscall *)(void*, void*, DWORD, bool);
+	const std::uintptr_t base = reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr));
+	const auto peek = reinterpret_cast<QueueReadFn>(base + 0x00816810u);
+	const auto read = reinterpret_cast<QueueReadFn>(base + 0x00816570u);
+	void* queue = static_cast<BYTE*>(connection) + 0x3c;
+	const bool ready = riftlock_receive::finish_handshake(
+		[&](DWORD count, void* output) { return peek(queue, count, output); },
+		[&](DWORD count, void* output) { return read(queue, count, output); },
+		[](const BYTE* bytes, DWORD count) { return handle_server_packet(bytes, count); },
+		[]() {
+			AcquireSRWLockShared(&g_session_lock);
+			const bool active = g_session.state == SessionState::kActive;
+			ReleaseSRWLockShared(&g_session_lock);
+			return active;
+		},
+		[]() {
+			AcquireSRWLockExclusive(&g_session_lock);
+			fail_session_locked("invalid control before raw character bootstrap");
+			ReleaseSRWLockExclusive(&g_session_lock);
+		});
+	return ready ? reinterpret_cast<RawReadFn>(original)(connection, buffer, length, exact) : 0;
+}
+
+bool handle_server_packet(const BYTE* packet, DWORD length) {
 	if (!ensure_initialized() || packet == nullptr || length < sizeof(std::uint16_t))
-		return;
+		return false;
 	std::uint16_t packet_id = 0;
 	memcpy(&packet_id, packet, sizeof(packet_id));
 	AcquireSRWLockExclusive(&g_session_lock);
@@ -1039,6 +1047,7 @@ void handle_server_packet(const BYTE* packet, DWORD length) {
 	if (!ok)
 		fail_session_locked("invalid or unexpected authenticated server control packet");
 	ReleaseSRWLockExclusive(&g_session_lock);
+	return ok;
 }
 
 } // namespace
@@ -1048,6 +1057,8 @@ void handle_server_packet(const BYTE* packet, DWORD length) {
 #pragma comment(linker, "/EXPORT:RiftlockQueuePacketBridge=@RiftlockQueuePacketBridge@20")
 #pragma comment(linker, "/EXPORT:RiftlockQueueDeferredPacketBridge=@RiftlockQueueDeferredPacketBridge@20")
 #pragma comment(linker, "/EXPORT:RiftlockReceiveBytesBridge=@RiftlockReceiveBytesBridge@20")
+#pragma comment(linker, "/EXPORT:RiftlockReadPacketBridge=@RiftlockReadPacketBridge@20")
+#pragma comment(linker, "/EXPORT:RiftlockReadRawBridge=@RiftlockReadRawBridge@24")
 #endif
 
 extern "C" __declspec(dllexport) DWORD __cdecl RiftlockInit(void) {
@@ -1090,6 +1101,22 @@ extern "C" __declspec(dllexport) void __fastcall RiftlockReceiveBytesBridge(
 	} __except (EXCEPTION_EXECUTE_HANDLER) {
 		write_log("exception while routing native receive bytes");
 	}
+}
+
+extern "C" __declspec(dllexport) BOOL __fastcall RiftlockReadPacketBridge(
+	void* connection, void*, DWORD original, void* packet, std::uint16_t* length) {
+	__try {
+		return read_native_packet(connection, original, packet, length) ? TRUE : FALSE;
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		write_log("exception while reading framed server packets");
+		return FALSE;
+	}
+}
+
+extern "C" __declspec(dllexport) DWORD __fastcall RiftlockReadRawBridge(
+	void* connection, void*, DWORD original, void* buffer, DWORD length, bool exact) {
+	__try { return read_raw_bootstrap(connection, original, buffer, length, exact); }
+	__except (EXCEPTION_EXECUTE_HANDLER) { write_log("exception while reading raw character bootstrap"); return 0; }
 }
 
 DWORD WINAPI RiftlockInitializeWorker(LPVOID) {

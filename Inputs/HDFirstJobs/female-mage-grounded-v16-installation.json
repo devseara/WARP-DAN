@@ -1,0 +1,82 @@
+{
+  "status": "installed",
+  "game": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes",
+  "archive": "maindata.grf",
+  "before_archive_sha256": "e412bec73fb4e1bffbb773cea909256108d9a54db68d58bf5d2795cde23c3b2e",
+  "before_resources": {
+    "data/sprite/인간족/몸통/여/마법사_여.spr": "bcf631fdee2f2db9ff31b7e5346a2fb0ba5882cae59a746e19c7f9e0a5233e59",
+    "data/sprite/인간족/몸통/여/마법사_여.act": "2414c49695651fd44bf6099c9ab5038384c17aba27f037a8bf644fe6c3e372ec"
+  },
+  "loader_mode": "embedded",
+  "archive_order": [
+    "dual_weapon_male_assets.grf",
+    "update.grf",
+    "maindata.grf",
+    "mapdata.grf",
+    "palettedata.grf",
+    "spritedata.grf",
+    "data.grf",
+    "greyworld.grf"
+  ],
+  "signing_before": {
+    "build": 1,
+    "release": 1791764006,
+    "digest": "d76aea9146e18be49e7f60a4f970ffe990dd8e6f1dbd732990a55b8612d6b3e5",
+    "public_key": "db2e2a0990d1bab6c887cb9d38df8b29ea31026ce70b83aa10e7a451c93cc80a",
+    "signature_verified": true
+  },
+  "resources": [
+    {
+      "entry": "data/sprite/인간족/몸통/여/마법사_여.spr",
+      "sha256": "b964720835013284d491acb796dd39e1ffdc26d5b7f623919a2f1622fb3072f1"
+    },
+    {
+      "entry": "data/sprite/인간족/몸통/여/마법사_여.act",
+      "sha256": "841bf4ad96a9b0c69451a9848bbbf1948115e327ec91e402268f5ca5c22e9ff8"
+    }
+  ],
+  "user_acceptance": true,
+  "acceptance_date": "2026-10-12",
+  "acceptance_basis": "User: install on grf for live testing. V14 design/preparation accepted, V16 boot correction authorized for live test.",
+  "installed": true,
+  "deployment_authorized": true,
+  "live_acceptance_pending": true,
+  "known_issue": "Melee3 first-frame detached residue in four frames",
+  "after_archive_sha256": "a8c8b2c924f1df7cebbb07f36497edff5a1c75b9d4d5e374383e60813e226ac8",
+  "transaction": {
+    "status": "installed",
+    "target": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf",
+    "pending": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\maindata.grf.clan-release.pending",
+    "before_sha256": "e412bec73fb4e1bffbb773cea909256108d9a54db68d58bf5d2795cde23c3b2e",
+    "after_sha256": "a8c8b2c924f1df7cebbb07f36497edff5a1c75b9d4d5e374383e60813e226ac8",
+    "original_length": 1175449176,
+    "original_header_hex": "4d6173746572206f66204d61676963000102030405060708090a0b0c0d0e7a050c46000000009a47000000020000",
+    "added": [],
+    "replaced": [
+      "data/sprite/인간족/몸통/여/마법사_여.act",
+      "data/sprite/인간족/몸통/여/마법사_여.spr"
+    ],
+    "removed": [],
+    "entries": 18323,
+    "unrelated_records_preserved": 18321,
+    "original_compressed_bytes_preserved": true,
+    "rollback_reconstruction_sha256": "e412bec73fb4e1bffbb773cea909256108d9a54db68d58bf5d2795cde23c3b2e"
+  },
+  "signing_after": {
+    "build": 1,
+    "release": 1791782204,
+    "digest": "60079e17c370355d4e56d8be1f0cb66b64155ea0bee8d9fd95b4aae6b267d87f",
+    "public_key": "db2e2a0990d1bab6c887cb9d38df8b29ea31026ce70b83aa10e7a451c93cc80a",
+    "signature_verified": true
+  },
+  "unchanged_game_files": {
+    "2025-07-16_Ragexe_riftlock_classic_npc.exe": "ed353154937d936f6a980900cfa164270a1491fa304d9275a83df16082bca858",
+    "riftlock.dll": "bf53927cf3ea8f4d2610e397b4f1d4f39d47f926a73c367b7852497f4a923f23",
+    "libsodium.dll": "027cdd4e7e845a64b2c6b2969b7366e6439844a0e1def35bf5f5c8ad1fb4517d",
+    "DATA.INI": "ca646bcd4973832cc272100895787fb06e0eedc3801c6a1bace79ebdc97d374e",
+    "update.grf": "d695bf11d1cbcc7f1ad1a1e982f471eca3839c7432bd21949993c71a17bf9f28",
+    "spritedata.grf": "ea2cc6a0d45d6265331dc3901606c536c6a8ec68aa5be492d348271df9c85bc3",
+    "palettedata.grf": "a2291ca7feb5b3e5583be9d02e3198fcf5be805c234542727ca11ee405459638"
+  },
+  "post_install_live_client_observed": false
+}

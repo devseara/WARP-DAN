@@ -1,0 +1,70 @@
+{
+  "static": {
+    "tail": "0xc4a57e",
+    "tail_bytes": 167,
+    "sort_key_sites": 6,
+    "emitter_calls": 34,
+    "shadow_wrapper_calls": 5,
+    "integration": {
+      "patch_ids": {
+        "GrayMap": 388,
+        "CelestialDial": 389,
+        "UniformSpriteRHW": 390,
+        "FloorSafeSpriteDepth": 391
+      },
+      "main_selects_both": true,
+      "legacy_clan_owner_removed": true
+    }
+  },
+  "cases": [
+    {
+      "case": "rhw-only",
+      "patches": [
+        "UniformSpriteRHW"
+      ],
+      "sha256": "9166df4b6bf403770c86e894592badb753f72701274a842ccfd4675875312c43",
+      "native_changed": [
+        "0xc4a5b1",
+        "0xc4a5b2",
+        "0xc4a5b3",
+        "0xc4a5b4",
+        "0xc4a5b5"
+      ]
+    },
+    {
+      "case": "clan-only",
+      "patches": [
+        "ClanBodySkins"
+      ],
+      "sha256": "d3aa4cb1ce5beee9f39c897467513b736b7cd20739f160d596c81fb065101935",
+      "unrelated_native_code_unchanged": true
+    },
+    {
+      "case": "clan-first",
+      "patches": [
+        "ClanBodySkins",
+        "UniformSpriteRHW"
+      ],
+      "sha256": "c6d3a0bf658213c91060cdfdcc83af53353e56942a429a47ad765c8e3fc5c6bd"
+    },
+    {
+      "case": "rhw-first",
+      "patches": [
+        "UniformSpriteRHW",
+        "ClanBodySkins"
+      ],
+      "sha256": "c6d3a0bf658213c91060cdfdcc83af53353e56942a429a47ad765c8e3fc5c6bd"
+    },
+    {
+      "case": "dual-weapon",
+      "patches": [
+        "AllowDualCustomWeaponSprites",
+        "UniformSpriteRHW"
+      ],
+      "sha256": "6c7fa3190005d9c90f69543d6a0b15beafd30027a13ed6c10bc946b3916e747c",
+      "dual_weapon_depth_hook": "0xc4a647"
+    }
+  ],
+  "live_tested": false,
+  "status": "source_and_export_verified"
+}

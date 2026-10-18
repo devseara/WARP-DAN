@@ -1,0 +1,451 @@
+{
+  "date": "2026-10-18",
+  "design": "Custom AutoHunt UI v1",
+  "layout": "Command panel",
+  "target_client": 20250716,
+  "native_payload": {
+    "client": 20250716,
+    "config_size": 432,
+    "exports": {
+      "AutoHuntCustomConfig": 20488,
+      "AutoHuntCustomDown": 10480,
+      "AutoHuntCustomDraw": 10960,
+      "AutoHuntCustomMove": 12288,
+      "AutoHuntCustomUp": 12752
+    },
+    "imports": 0,
+    "payload_sha256": "d8dde1ca94d0e514ca61379fa07f96f3ceb54a09f4b0e749025f49b6a8823b0f",
+    "size": 24436,
+    "source_sha256": "8ad81bb772a6eabf7819fce188ba0a0586499284809dc31f635071dfca635121",
+    "version": 1
+  },
+  "cases": [
+    {
+      "design": "RO Global AutoHunt UI",
+      "language": "English",
+      "support": false,
+      "source_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+      "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoHuntCustomV1\\original-en\\autohunt.exe",
+      "target_sha256": "5d687d896798589c1a25029c010d04a459ceb9b21538a828baea2359a66cc078",
+      "live_accepted": false,
+      "build_passed": true,
+      "manifest": "Outputs/AutoHuntCustomV1/original-en/manifest.json"
+    },
+    {
+      "design": "Custom AutoHunt UI v1",
+      "language": "English",
+      "support": false,
+      "source_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+      "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoHuntCustomV1\\custom-final\\autohunt.exe",
+      "target_sha256": "9b859c4a65a4178b9de957dca7493a91b8026b04aed8f1a850f8cb008d6243a0",
+      "live_accepted": false,
+      "build_passed": true,
+      "manifest": "Outputs/AutoHuntCustomV1/custom-final/manifest.json",
+      "native_verification": {
+        "passed": true,
+        "checks": [
+          "seven tabs",
+          "real icon resolver and native skill paths",
+          "server inventory quantities",
+          "attack/support delays and native drag payloads",
+          "buff and potion registration",
+          "potion thresholds",
+          "loot categories/weight/dropdown",
+          "basic toggles/input/scroll",
+          "monster selection",
+          "movement registration",
+          "reset",
+          "close preserves running state",
+          "x86 stack and callee-saved registers"
+        ]
+      }
+    },
+    {
+      "design": "Custom AutoHunt UI v1",
+      "language": "Traditional Chinese",
+      "support": true,
+      "source_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+      "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoHuntCustomV1\\custom-zh-support\\autohunt.exe",
+      "target_sha256": "a44fc582bb65e45cf2438473fd092d239fcc5ee96af4b2b7cd5e8ce89a41f5c3",
+      "live_accepted": false,
+      "build_passed": true,
+      "manifest": "Outputs/AutoHuntCustomV1/custom-zh-support/manifest.json",
+      "native_verification": {
+        "passed": true,
+        "checks": [
+          "seven tabs",
+          "real icon resolver and native skill paths",
+          "server inventory quantities, refresh, and 65535 cap",
+          "attack/support delays and native drag payloads",
+          "buff and potion registration",
+          "healing/potion/loot slider endpoints and capture",
+          "physical tooltip anchors and persistent text storage",
+          "potion thresholds",
+          "loot categories/weight/dropdown",
+          "basic toggles/input/scroll",
+          "monster selection",
+          "movement registration",
+          "reset",
+          "close preserves running state",
+          "owned surface alpha",
+          "x86 stack and callee-saved registers"
+        ]
+      }
+    },
+    {
+      "design": "Custom AutoHunt UI v1",
+      "language": "English",
+      "support": true,
+      "source_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+      "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoHuntCustomV1\\main-profile-final\\autohunt.exe",
+      "target_sha256": "e9ee69ad95f28d29b738e81de9ec9d3ca226fc95e8dedf86c6593c3bbed670fd",
+      "live_accepted": false,
+      "build_passed": true,
+      "manifest": "Outputs/AutoHuntCustomV1/main-profile-final/manifest.json",
+      "native_verification": {
+        "passed": true,
+        "checks": [
+          "seven tabs",
+          "real icon resolver and native skill paths",
+          "server inventory quantities, refresh, and 65535 cap",
+          "attack/support delays and native drag payloads",
+          "buff and potion registration",
+          "healing/potion/loot slider endpoints and capture",
+          "physical tooltip anchors and persistent text storage",
+          "potion thresholds",
+          "loot categories/weight/dropdown",
+          "basic toggles/input/scroll",
+          "monster selection",
+          "movement registration",
+          "reset",
+          "close preserves running state",
+          "owned surface alpha",
+          "x86 stack and callee-saved registers"
+        ]
+      }
+    }
+  ],
+  "original_design_parity": {
+    "passed": true,
+    "comparison": "RO Global design versus unchanged HEAD AutoCombatUI source",
+    "sha256": "5d687d896798589c1a25029c010d04a459ceb9b21538a828baea2359a66cc078"
+  },
+  "additional_checks": {
+    "language_selection_and_assets": "PASS; 980 translated strings, 8 languages",
+    "native_font_bounds": "PASS; all 8 languages",
+    "item_grade_source_contract": "PASS; 100 checks",
+    "qjs_crlf_no_bom": "PASS",
+    "main_profile_cps_stale_bridge_operands": 0,
+    "code_only_graph_refresh": "completed"
+  },
+  "known_baseline_gate": {
+    "tool": "tools/verify_autosupport_ui_contract.py",
+    "result": "fails existing main-profile-order assertion",
+    "unchanged_HEAD_order": [
+      "ROGlobalZeroUITheme",
+      "AutoCombatUI",
+      "AutoSupportUI"
+    ],
+    "main_profile_modified_by_this_task": false
+  },
+  "server_changes": false,
+  "deployed_to_live_game": true,
+  "live_accepted": true,
+  "riftlock_connection_fix": {
+    "cause": "Deployed AutoHunt EXE had a stale release signature, confirmed by DLL log and recomputed integrity digest",
+    "deployed_client": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\autohunt.exe",
+    "status": "installed_and_verified",
+    "verification": {
+      "release": 1792289320,
+      "integrity_digest": "ab9db86eb0ce6c27d54298a96e6bab2c163f06e0a790bd0375b46d2c60655b2b",
+      "signature_verified": true,
+      "embedded_public_key_matches": true,
+      "client_sha256": "e9ee69ad95f28d29b738e81de9ec9d3ca226fc95e8dedf86c6593c3bbed670fd"
+    },
+    "asset_scans_match": true,
+    "backup": "Outputs/AutoHuntCustomV1/riftlock-signing-20261018/before",
+    "changed_live_files": [
+      "riftlock-assets-v1.txt",
+      "riftlock-release.sig"
+    ],
+    "client_exe_changed": false,
+    "live_connection_accepted": true,
+    "live_connection_evidence": "User confirmed connection succeeds before reporting UI defects."
+  },
+  "revision2": {
+    "reason": "User live screenshots rejected fading/tiny text, synthetic controls, and the layout on every tab.",
+    "scope_confirmed_by_user": "Match the approved Command layout using existing server settings.",
+    "previous_visual_acceptance": "rejected; previous RGB-only emulation missed native font and GDI alpha behavior",
+    "layout": [
+      "Overview core/return groups with complete Advanced list",
+      "Combat configured skill rows and optional all eight slots",
+      "Targets native scrollable selection",
+      "Recovery native HP/SP controls and item quantity rows",
+      "Loot collection/inventory columns plus complete equipment/priority page",
+      "Movement native item/skill rows",
+      "Buff item rows, quantities, delays, optional all eight slots"
+    ],
+    "text_fix": {
+      "surface_alpha": 0,
+      "background": "opaque white",
+      "english_font_selector": 0,
+      "proof": "Stock SetFont 0x546F60 executed: automatic Latin face adds 3 pixels; Windows GDI offscreen DIB produced 733 foreground pixels with zero alpha."
+    },
+    "widget_resources": "Original RO Global bitmap paths, dimensions, native rail crops, normal/hover/pressed arrows and scrollbar caps",
+    "server_changes": false,
+    "shared_item_renderer_changes": false,
+    "saved_main_profile_modified": false,
+    "payload": {
+      "client": 20250716,
+      "config_size": 620,
+      "exports": {
+        "AutoHuntCustomConfig": 24592,
+        "AutoHuntCustomDown": 15632,
+        "AutoHuntCustomDraw": 16608,
+        "AutoHuntCustomMove": 17936,
+        "AutoHuntCustomUp": 18544,
+        "AutoHuntCustomWheel": 18912
+      },
+      "imports": 0,
+      "payload_sha256": "c3494785380f6fdf309938eef0cf65365b841a503ae712c6f0a154895624cd64",
+      "size": 29932,
+      "source_sha256": "0a932905087894835928b0f8b0406ee6a9df01fe47818214723eb90e0f935182",
+      "version": 2
+    },
+    "builds": [
+      {
+        "design": "Custom AutoHunt UI v1",
+        "language": "English",
+        "support": false,
+        "source_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+        "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoHuntCustomV1\\live-fix-r2\\autohunt.exe",
+        "target_sha256": "5ce707cff23364b9b2fa02c8190d8f01567a133035196116e788822112c69801",
+        "live_accepted": false,
+        "build_passed": true,
+        "manifest": "Outputs\\AutoHuntCustomV1\\live-fix-r2\\manifest.json",
+        "verification": {
+          "passed": true,
+          "live_accepted": false,
+          "checks": [
+            "seven redesigned tabs",
+            "real icon resolver and native skill paths",
+            "server inventory quantities, refresh, and 65535 cap",
+            "attack/support delays, sparse slot identities, and native drag payloads",
+            "buff and potion registration",
+            "native RO Global gauges/arrows/scrollbars",
+            "healing/potion/loot slider endpoints and capture",
+            "physical tooltip anchors and persistent text storage",
+            "potion thresholds",
+            "loot categories/weight/dropdown/context restoration",
+            "Overview core/return controls and pickup modes",
+            "advanced toggles/input/wheel and scrollbar capture",
+            "monster selection",
+            "movement registration",
+            "reset",
+            "close preserves running state",
+            "opaque GDI text surface and stock automatic font selector execution",
+            "x86 stack and callee-saved registers"
+          ],
+          "windows_gdi_alpha": {
+            "passed": true,
+            "native_gdi_pixels": 733,
+            "zero_alpha_foreground_pixels": 733,
+            "required_composition": "opaque",
+            "live_accepted": false
+          }
+        }
+      },
+      {
+        "design": "Custom AutoHunt UI v1",
+        "language": "Traditional Chinese",
+        "support": true,
+        "source_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+        "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoHuntCustomV1\\live-fix-zh-r2\\autohunt.exe",
+        "target_sha256": "cf9769e44cc4ffd6c45e569204fe8d0c29172b3186131f607969085a02c632e5",
+        "live_accepted": false,
+        "build_passed": true,
+        "manifest": "Outputs\\AutoHuntCustomV1\\live-fix-zh-r2\\manifest.json",
+        "verification": {
+          "passed": true,
+          "live_accepted": false,
+          "checks": [
+            "seven redesigned tabs",
+            "real icon resolver and native skill paths",
+            "server inventory quantities, refresh, and 65535 cap",
+            "attack/support delays, sparse slot identities, and native drag payloads",
+            "buff and potion registration",
+            "native RO Global gauges/arrows/scrollbars",
+            "healing/potion/loot slider endpoints and capture",
+            "physical tooltip anchors and persistent text storage",
+            "potion thresholds",
+            "loot categories/weight/dropdown/context restoration",
+            "Overview core/return controls and pickup modes",
+            "advanced toggles/input/wheel and scrollbar capture",
+            "monster selection",
+            "movement registration",
+            "reset",
+            "close preserves running state",
+            "opaque GDI text surface and stock automatic font selector execution",
+            "x86 stack and callee-saved registers"
+          ],
+          "windows_gdi_alpha": {
+            "passed": true,
+            "native_gdi_pixels": 733,
+            "zero_alpha_foreground_pixels": 733,
+            "required_composition": "opaque",
+            "live_accepted": false
+          }
+        }
+      },
+      {
+        "design": "Custom AutoHunt UI v1",
+        "language": "English",
+        "support": true,
+        "source_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+        "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoHuntCustomV1\\live-fix-main-r2\\autohunt.exe",
+        "target_sha256": "14a83697748eb70d9fb3ef16bbdc4be278438b536ec70272c4bf6b6a1e1bbcea",
+        "live_accepted": true,
+        "build_passed": true,
+        "manifest": "Outputs\\AutoHuntCustomV1\\live-fix-main-r2\\manifest.json",
+        "verification": {
+          "passed": true,
+          "live_accepted": false,
+          "checks": [
+            "seven redesigned tabs",
+            "real icon resolver and native skill paths",
+            "server inventory quantities, refresh, and 65535 cap",
+            "attack/support delays, sparse slot identities, and native drag payloads",
+            "buff and potion registration",
+            "native RO Global gauges/arrows/scrollbars",
+            "healing/potion/loot slider endpoints and capture",
+            "physical tooltip anchors and persistent text storage",
+            "potion thresholds",
+            "loot categories/weight/dropdown/context restoration",
+            "Overview core/return controls and pickup modes",
+            "advanced toggles/input/wheel and scrollbar capture",
+            "monster selection",
+            "movement registration",
+            "reset",
+            "close preserves running state",
+            "opaque GDI text surface and stock automatic font selector execution",
+            "x86 stack and callee-saved registers"
+          ],
+          "windows_gdi_alpha": {
+            "passed": true,
+            "native_gdi_pixels": 733,
+            "zero_alpha_foreground_pixels": 733,
+            "required_composition": "opaque",
+            "live_accepted": false
+          }
+        },
+        "live_acceptance": {
+          "date": "2026-10-18",
+          "timezone": "Asia/Manila",
+          "source": "user-reported in-game testing",
+          "client_sha256": "14a83697748eb70d9fb3ef16bbdc4be278438b536ec70272c4bf6b6a1e1bbcea",
+          "language": "English",
+          "design": "Custom AutoHunt UI v1",
+          "scope": [
+            "all tabs",
+            "font readability",
+            "native RO Global controls",
+            "item quantities"
+          ],
+          "user_confirmation": "tested and working",
+          "automated_evidence": "Retained separately; emulated checks do not establish live acceptance for other builds or languages."
+        }
+      }
+    ],
+    "original_design_sha256": "5d687d896798589c1a25029c010d04a459ceb9b21538a828baea2359a66cc078",
+    "bridge_checks": {
+      "cps_stale_operands": 0,
+      "riftlock_stale_operands": 0
+    },
+    "language_catalogs": "161 labels in all 8 languages; 1127 translated records across seven non-English catalogs",
+    "live_accepted": true,
+    "release": {
+      "release": 1792291200,
+      "integrity_digest": "c0d322ccc3a7b27ab96cd09d7148d86f650f0974657b6c2f0f5007344eab6ac8",
+      "signature_verified": true,
+      "embedded_public_key_matches": true,
+      "client_sha256": "14a83697748eb70d9fb3ef16bbdc4be278438b536ec70272c4bf6b6a1e1bbcea"
+    },
+    "deployment": {
+      "status": "installed_and_verified",
+      "client": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\autohunt.exe",
+      "backup": "Outputs/AutoHuntCustomV1/live-fix-main-r2/release/before",
+      "changed_files": [
+        "autohunt.exe",
+        "riftlock-assets-v1.txt",
+        "riftlock-release.sig"
+      ],
+      "signature_verified": true,
+      "asset_scans_match": true,
+      "live_accepted": true
+    },
+    "live_acceptance": {
+      "date": "2026-10-18",
+      "timezone": "Asia/Manila",
+      "source": "user-reported in-game testing",
+      "client_sha256": "14a83697748eb70d9fb3ef16bbdc4be278438b536ec70272c4bf6b6a1e1bbcea",
+      "language": "English",
+      "design": "Custom AutoHunt UI v1",
+      "scope": [
+        "all tabs",
+        "font readability",
+        "native RO Global controls",
+        "item quantities"
+      ],
+      "user_confirmation": "tested and working",
+      "automated_evidence": "Retained separately; emulated checks do not establish live acceptance for other builds or languages."
+    },
+    "commit_verification": {
+      "date": "2026-10-18",
+      "feature_files": 26,
+      "unrelated_files_hash_verified": 37,
+      "checkout_rules": "QJS CRLF; native source and payload metadata LF; payload binary",
+      "dependency_check": "Fresh WARP build from staged feature files and clean HEAD dependencies; unrelated riding/Mage scripts and registrations omitted.",
+      "build_sha256": "04dd2eaf32374c10de8ed071bdd4700cf4dc720ba10ef354ad22ed6b756e59d8",
+      "build_profile": "Custom AutoHunt English with AutoSupport",
+      "native_verification": {
+        "passed": true,
+        "live_accepted": false,
+        "checks": [
+          "seven redesigned tabs",
+          "real icon resolver and native skill paths",
+          "server inventory quantities, refresh, and 65535 cap",
+          "attack/support delays, sparse slot identities, and native drag payloads",
+          "buff and potion registration",
+          "native RO Global gauges/arrows/scrollbars",
+          "healing/potion/loot slider endpoints and capture",
+          "physical tooltip anchors and persistent text storage",
+          "potion thresholds",
+          "loot categories/weight/dropdown/context restoration",
+          "Overview core/return controls and pickup modes",
+          "advanced toggles/input/wheel and scrollbar capture",
+          "monster selection",
+          "movement registration",
+          "reset",
+          "close preserves running state",
+          "opaque GDI text surface and stock automatic font selector execution",
+          "x86 stack and callee-saved registers"
+        ],
+        "windows_gdi_alpha": {
+          "passed": true,
+          "native_gdi_pixels": 733,
+          "zero_alpha_foreground_pixels": 733,
+          "required_composition": "opaque",
+          "live_accepted": false
+        }
+      },
+      "additional_checks": [
+        "Exact native payload rebuild",
+        "All eight language catalogs",
+        "1127 translated strings and design chooser",
+        "100 item/grade source contract checks",
+        "Filtered Git checkout preserves required hashes",
+        "Accepted deployed EXE hash unchanged"
+      ]
+    }
+  }
+}

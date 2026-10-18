@@ -68,11 +68,23 @@ CustomSpecials:
             author : Louis T Steinhil
             desc : "2025-07-16 build-specific global HatEffect depth patch, live validated on 2026-07-14. It preserves every original HatEffect STR resource, animation, actor attachment, metadata, teardown, screen-space position, apparent scale, and RHW. During only the two generic HatEffect render methods, vertices at/below actor-anchor Y retain a floor-safe four-quantum contact-biased depth; upper vertices reconstruct Y-up reciprocal depth using projection-matrix +0x10/+0x14 and convert it through 0x00554040. Native world STR NPCs remain unchanged."
         
+        - UniformSpriteRHW:
+            title : Anti-Warp Sprite Quads (2025-07-16)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "2025-07-16 build-specific. Every screen-space sprite rectangle (PC/NPC/monster bodies, heads, headgear, weapons, garments, ground items, icons, shadows, afterimages and sprite effect primitives) leaves the shared emitter 0x00C4A0D0 with a synthetic depth tilt, so its bottom vertices get a different RHW and perspective-correct sampling slides the artwork inside the quad as the camera zooms. Padded HD bodies drift against native heads. This 5-byte NOP at 0x00C4A5B1 keeps the native top-edge RHW on all four vertices. Screen position, UV, color, per-vertex Z occlusion and the alpha sort key stay stock. Ground, RSM models, water, STR effects and UI use other builders and are not touched. Replaces the former ClanBodySkins-only RHW bridge."
+
+        - FloorSafeSpriteDepth:
+            title : Floor-Safe Character Sprite Depth (2025-07-16)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "2025-07-16 build-specific. Stock actor sprites lean their depth by +0.16 per screen pixel, so any row drawn below the feet (boots, robes, sitting poses, the lower half of the shadow) falls behind the floor in front and is sliced by a hard line, worst at close zoom and low camera pitch. For players, NPCs/monsters, hallucinations and afterimages, rows below the anchor keep the anchor's depth plane; the shadow gets the same treatment. Rows above the feet, screen position, UV, color and the stock contact bias are unchanged; effects, items and the reversed-depth path stay stock. Reduces, not eliminates, clipping on steep slopes."
+
         - ClanBodySkins:
             title : Clan Body Skins (2025-07-16)
             recommend : no
             author : Louis T Steinhil
-            desc : "Routes server-selected clan body skins through native job, sex and resource paths. Preserves real jobs and body-only perspective correction. Select NativeActJobPreviews for Alt+Q/Alt+S rendering from the same world SPR/ACT pairs. Requires matching server integration and complete skin assets; no new job Lua declarations."
+            desc : "Routes server-selected clan body skins through native job, sex and resource paths. Preserves real jobs. Keeps the existing clan-only perspective fix unless UniformSpriteRHW is selected for all world quads. Select NativeActJobPreviews for Alt+Q/Alt+S rendering from the same world SPR/ACT pairs. Requires matching server integration and complete skin assets; no new job Lua declarations."
 
         - CustomJobs:
             title : Enable Custom Jobs (Reforged)

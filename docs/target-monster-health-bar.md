@@ -46,6 +46,10 @@ HP quantities use commas through billions, including `3,000,000,000/4,000,000,00
 
 Names use the native 14px font; other text uses the native 12px font. Classic artwork stays at its accepted 50% source scale; Wings and Stars uses the supplied 768x232 canvases without resizing. The 768x232 transparent window is top-centered at Y=24; extra height provides 24px detail-row spacing beneath the MVP crest. The native group icon retains its own dimensions. Divider ends use true alpha fading.
 
+Every HUD text row has a one-pixel black outline: monster names, Normal/Mini Boss/MVP labels, HP/percentage, and level/ID/element/race details, including the element row beside its group icon. Both designs retain their existing foreground colors, font sizes and positions. Repatch the client to apply this change; the BMP assets are unchanged.
+
+The HUD-local text helper draws eight neighbouring passes in `#010101` before the original foreground pass. This near-black RGB value survives GDI's zero-alpha writes; pure `#000000` would be indistinguishable from untouched transparent pixels. Alpha repair includes the extra outline rows, clips to the surface height and preserves existing nonzero artwork alpha. No shared text renderer is modified.
+
 ## Assets and resource loading
 
 Classic uses these six assets:
@@ -129,7 +133,7 @@ The selectable QJS is self-contained at patch time. Python is needed only for ge
 | `tools/target_monster_hud_native_hp.py` | Native 0x0977 HP mirror and independent cache |
 | `tools/target_monster_hud_metadata.py` | Typed fields, names and row formatting |
 | `tools/target_monster_hud_presentation.py` | Commas, group icons and option refresh |
-| `tools/target_monster_hud_text.py` | Native font calls and bounded alpha repair |
+| `tools/target_monster_hud_text.py` | Native font calls, one-pixel outlines and bounded alpha repair |
 | `tools/build_target_monster_hud_assets.py` | Reproducible artwork extraction |
 | `tools/verify_target_monster_health_bar.py` | Emitted-code regression checks |
 | `tools/package_target_monster_hud.py` | Verified package and resource-key checks |
@@ -158,9 +162,9 @@ Global name records and packets are never edited. Native string assignment opera
 
 Regression checks execute emitted x86 with native-call fixtures, actual HUD BMPs and packet inputs. They cover target selection, stale attack rejection after death, hover while dead, both `/monsterhp` states, private-string ownership, group/badge restoration, optional fields, large HP, ungrouped IDs, missing resources, alpha preservation and calling conventions.
 
-Classic's accepted interactive baseline is v12. The design chooser preserves Classic's emitted code/data payload and relocation positions exactly. Both selectable designs pass isolated WARP builds and emitted-x86 checks, including empty/partial/full/clamped fill bounds and exact asset copying. Wings and Stars still requires live in-game visual acceptance; emulated rendering is not that acceptance.
+Classic's accepted interactive baseline is v12. The original design chooser preserved Classic's emitted code/data payload and relocation positions exactly. The subsequent outline revision changes only the HUD text helper and its generated relocations. Both selectable designs pass isolated WARP builds and emitted-x86 checks, including empty/partial/full/clamped fill bounds and exact asset copying. Outline checks use RGB-only glyph writes and compare the resulting pixels with a one-pixel contour for every text style, clipped labels and translucent backgrounds. The outline revision requires live in-game visual acceptance for both designs; emulated rendering is not that acceptance.
 
-For Classic, earlier live captures confirmed all tiers, original icons, changing HP, divider alpha and both presentation modes. The dead-player failure was isolated with a valid native monster hit while player state was 3, then corrected and covered by emitted-code tests. Cleanup removes the diagnostic preview, file logger and frame snapshots; the three rendered verification surfaces and all six BMPs match the accepted baseline exactly.
+For Classic, earlier live captures confirmed all tiers, original icons, changing HP, divider alpha and both presentation modes. The dead-player failure was isolated with a valid native monster hit while player state was 3, then corrected and covered by emitted-code tests. Before the outline revision, cleanup removed the diagnostic preview, file logger and frame snapshots while preserving the three rendered verification surfaces and all six BMPs exactly. The outline revision preserves those BMPs but changes the text pixels.
 
 This feature has no runtime trace file or diagnostic slash command. When changing rendering or native hooks later, repeat the emitted-code checks and live acceptance for Normal, Mini Boss and MVP, both toggle states, target switching, player death/revival, map change and clean exit.
 

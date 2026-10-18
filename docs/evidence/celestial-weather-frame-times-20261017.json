@@ -1,0 +1,530 @@
+{
+  "scope": "Stationary daytime prt_fild08, windowed D3D9, 1920x1093 viewport, 144 Hz desktop",
+  "method": "PID-filtered PresentMon 2.3.1 ETW plus read-only QPC-aligned WENV guards; no intervals across capture gaps; no stall trimming",
+  "hardware": {
+    "cpu": {
+      "Name": "Intel(R) Core(TM) 5 210H",
+      "NumberOfCores": 8,
+      "NumberOfLogicalProcessors": 12,
+      "MaxClockSpeed": 2200
+    },
+    "graphics_inventory": [
+      {
+        "Name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+        "DriverVersion": "32.0.16.1742",
+        "CurrentHorizontalResolution": null,
+        "CurrentVerticalResolution": null,
+        "CurrentRefreshRate": null
+      },
+      {
+        "Name": "Intel(R) Graphics",
+        "DriverVersion": "32.0.101.7076",
+        "CurrentHorizontalResolution": 1920,
+        "CurrentVerticalResolution": 1200,
+        "CurrentRefreshRate": 144
+      }
+    ],
+    "os": {
+      "Caption": "Microsoft Windows 11 Home Single Language",
+      "Version": "10.0.26300",
+      "BuildNumber": "26300"
+    },
+    "rendering_adapter": "Not inferred from display ownership on this hybrid graphics system"
+  },
+  "groups": {
+    "clear_before": {
+      "trials": [
+        "clear-1",
+        "clear-2"
+      ],
+      "intervals": 17044,
+      "seconds": 119.9419063,
+      "application_fps": 142.1021269861208,
+      "one_percent_low_fps": 69.89480668097889,
+      "frame_ms": {
+        "mean": 7.037192343346632,
+        "median": 6.98435,
+        "p95": 7.891585,
+        "p99": 12.414474999999992,
+        "maximum": 47.3939
+      },
+      "frames_over_ms": {
+        "16.667": 9,
+        "33.333": 2,
+        "50": 0,
+        "100": 0
+      },
+      "dropped_present_percent": 0.04693183151472486,
+      "display_fps": 142.04228204693436,
+      "median_gpu_active_ms": 2.3377
+    },
+    "rain": {
+      "trials": [
+        "rain-1",
+        "rain-2-repeat"
+      ],
+      "intervals": 16755,
+      "seconds": 119.9770294,
+      "application_fps": 139.65173236736265,
+      "one_percent_low_fps": 62.39716770341913,
+      "frame_ms": {
+        "mean": 7.1606702118770515,
+        "median": 6.9892,
+        "p95": 8.07324,
+        "p99": 13.634907999999992,
+        "maximum": 136.9302
+      },
+      "frames_over_ms": {
+        "16.667": 13,
+        "33.333": 4,
+        "50": 3,
+        "100": 1
+      },
+      "dropped_present_percent": 0.10145014023989975,
+      "display_fps": 139.50918519915433,
+      "median_gpu_active_ms": 2.4521
+    },
+    "storm": {
+      "trials": [
+        "storm-1",
+        "storm-2"
+      ],
+      "intervals": 17154,
+      "seconds": 119.9364956,
+      "application_fps": 143.02568967172658,
+      "one_percent_low_fps": 84.95288769682647,
+      "frame_ms": {
+        "mean": 6.991750938556605,
+        "median": 6.9654,
+        "p95": 7.757974999999999,
+        "p99": 8.423811,
+        "maximum": 18.5691
+      },
+      "frames_over_ms": {
+        "16.667": 2,
+        "33.333": 0,
+        "50": 0,
+        "100": 0
+      },
+      "dropped_present_percent": 0.0,
+      "display_fps": 143.02611730774686,
+      "median_gpu_active_ms": 2.4640500000000003
+    },
+    "clear_after": {
+      "trials": [
+        "clear-after"
+      ],
+      "intervals": 8545,
+      "seconds": 59.9789217,
+      "application_fps": 142.46671593630867,
+      "one_percent_low_fps": 75.66538689515971,
+      "frame_ms": {
+        "mean": 7.019183346986542,
+        "median": 6.9672,
+        "p95": 7.93528,
+        "p99": 11.282523999999977,
+        "maximum": 19.7278
+      },
+      "frames_over_ms": {
+        "16.667": 1,
+        "33.333": 0,
+        "50": 0,
+        "100": 0
+      },
+      "dropped_present_percent": 0.0,
+      "display_fps": 142.46767983133773,
+      "median_gpu_active_ms": 2.5152
+    }
+  },
+  "trials": {
+    "clear-1": {
+      "report": "clear-1\\report.json",
+      "report_sha256": "2ff1f56d4ec1d0809b71a9bb7f4e60f8a4a19c213419e8a75cc79ed479679590",
+      "metrics": {
+        "frames": 8472,
+        "duration_seconds": 59.9705222,
+        "swap_chain": "0x000000004E5E4F00",
+        "swap_chain_counts": {
+          "0x000000004E5E4F00": 8472
+        },
+        "application_fps": 141.2527303289015,
+        "one_percent_low_fps": 66.17304172560608,
+        "present_interval_ms": {
+          "mean": 7.079509172470782,
+          "median": 6.9903,
+          "p95": 7.9387,
+          "p99": 13.181649999999994,
+          "maximum": 47.3939
+        },
+        "frames_over_ms": {
+          "16.667": 8,
+          "33.333": 1,
+          "50": 0,
+          "100": 0
+        },
+        "dropped_present_percent": 0.09442870632672333,
+        "display_fps_from_positive_intervals": 141.1332799258186,
+        "gpu_active_ms_median": 2.3676500000000003,
+        "present_modes": [
+          "Composed: Copy with GPU GDI"
+        ],
+        "qpc_range": [
+          536649550155,
+          537249255377
+        ]
+      },
+      "flash_active_samples": 0
+    },
+    "clear-2": {
+      "report": "clear-2\\report.json",
+      "report_sha256": "ccf0443567e57f743bf9be22d4c7fbd4c9a92880538f1dfe3fce79884906ac8f",
+      "metrics": {
+        "frames": 8574,
+        "duration_seconds": 59.971384099999995,
+        "swap_chain": "0x000000004E5E4F00",
+        "swap_chain_counts": {
+          "0x000000004E5E4F00": 8574
+        },
+        "application_fps": 142.951511435935,
+        "one_percent_low_fps": 81.9378101548577,
+        "present_interval_ms": {
+          "mean": 6.995378992184766,
+          "median": 6.9785,
+          "p95": 7.8635,
+          "p99": 8.434012000000022,
+          "maximum": 37.4575
+        },
+        "frames_over_ms": {
+          "16.667": 1,
+          "33.333": 1,
+          "50": 0,
+          "100": 0
+        },
+        "dropped_present_percent": 0.0,
+        "display_fps_from_positive_intervals": 142.95117915421974,
+        "gpu_active_ms_median": 2.3207,
+        "present_modes": [
+          "Composed: Copy with GPU GDI"
+        ],
+        "qpc_range": [
+          537469117284,
+          538068831125
+        ]
+      },
+      "flash_active_samples": 0
+    },
+    "rain-1": {
+      "report": "rain-1\\report.json",
+      "report_sha256": "4c301022e176e336f68a1a1f18f41108d280d6c9433ebcc5bc93f3cc95b752c6",
+      "metrics": {
+        "frames": 8418,
+        "duration_seconds": 59.991389399999996,
+        "swap_chain": "0x000000004E5E4F00",
+        "swap_chain_counts": {
+          "0x000000004E5E4F00": 8418
+        },
+        "application_fps": 140.30346828406678,
+        "one_percent_low_fps": 67.26913963324391,
+        "present_interval_ms": {
+          "mean": 7.127407556136391,
+          "median": 6.9892,
+          "p95": 7.94792,
+          "p99": 13.504464,
+          "maximum": 54.7866
+        },
+        "frames_over_ms": {
+          "16.667": 4,
+          "33.333": 1,
+          "50": 1,
+          "100": 0
+        },
+        "dropped_present_percent": 0.03563791874554526,
+        "display_fps_from_positive_intervals": 140.25124996301193,
+        "gpu_active_ms_median": 2.45535,
+        "present_modes": [
+          "Composed: Copy with GPU GDI"
+        ],
+        "qpc_range": [
+          538706409203,
+          539306323097
+        ]
+      },
+      "flash_active_samples": 0
+    },
+    "rain-2-repeat": {
+      "report": "rain-2-repeat\\report.json",
+      "report_sha256": "dee6fc2f0028f2dacc2ef0543ae236380fd4e7adee701d197785339d3d8fc6a9",
+      "metrics": {
+        "frames": 8339,
+        "duration_seconds": 59.98564,
+        "swap_chain": "0x000000004E5E4F00",
+        "swap_chain_counts": {
+          "0x000000004E5E4F00": 8339
+        },
+        "application_fps": 138.99993398420023,
+        "one_percent_low_fps": 58.30450499475259,
+        "present_interval_ms": {
+          "mean": 7.194248021108179,
+          "median": 6.9893,
+          "p95": 8.232205,
+          "p99": 13.730996999999999,
+          "maximum": 136.9302
+        },
+        "frames_over_ms": {
+          "16.667": 9,
+          "33.333": 3,
+          "50": 2,
+          "100": 1
+        },
+        "dropped_present_percent": 0.16788583763041132,
+        "display_fps_from_positive_intervals": 138.767034989286,
+        "gpu_active_ms_median": 2.4485,
+        "present_modes": [
+          "Composed: Copy with GPU GDI"
+        ],
+        "qpc_range": [
+          540946239974,
+          541546096374
+        ]
+      },
+      "flash_active_samples": 0
+    },
+    "storm-1": {
+      "report": "storm-1\\report.json",
+      "report_sha256": "c8f16a0603afeda7f6251d77b9f746889cfdda907bdcfc2c422c56af9d2d8c22",
+      "metrics": {
+        "frames": 8577,
+        "duration_seconds": 59.96406250000001,
+        "swap_chain": "0x000000004E5E4F00",
+        "swap_chain_counts": {
+          "0x000000004E5E4F00": 8577
+        },
+        "application_fps": 143.01899575266435,
+        "one_percent_low_fps": 84.83684444424716,
+        "present_interval_ms": {
+          "mean": 6.9920781833022385,
+          "median": 6.9632,
+          "p95": 7.758375,
+          "p99": 8.407775,
+          "maximum": 18.5691
+        },
+        "frames_over_ms": {
+          "16.667": 1,
+          "33.333": 0,
+          "50": 0,
+          "100": 0
+        },
+        "dropped_present_percent": 0.0,
+        "display_fps_from_positive_intervals": 143.0177183160342,
+        "gpu_active_ms_median": 2.466,
+        "present_modes": [
+          "Composed: Copy with GPU GDI"
+        ],
+        "qpc_range": [
+          542466292647,
+          543065933272
+        ]
+      },
+      "flash_active_samples": 18
+    },
+    "storm-2": {
+      "report": "storm-2\\report.json",
+      "report_sha256": "2f85818756fa0fecd9d03db03420c6f02883c96899219ee39e14afee456624dd",
+      "metrics": {
+        "frames": 8579,
+        "duration_seconds": 59.9724331,
+        "swap_chain": "0x000000004E5E4F00",
+        "swap_chain_counts": {
+          "0x000000004E5E4F00": 8579
+        },
+        "application_fps": 143.03238265649088,
+        "one_percent_low_fps": 85.06924884150027,
+        "present_interval_ms": {
+          "mean": 6.9914237701095825,
+          "median": 6.9679,
+          "p95": 7.756779999999999,
+          "p99": 8.424441999999997,
+          "maximum": 17.442
+        },
+        "frames_over_ms": {
+          "16.667": 1,
+          "33.333": 0,
+          "50": 0,
+          "100": 0
+        },
+        "dropped_present_percent": 0.0,
+        "display_fps_from_positive_intervals": 143.03451532740308,
+        "gpu_active_ms_median": 2.4624,
+        "present_modes": [
+          "Composed: Copy with GPU GDI"
+        ],
+        "qpc_range": [
+          543555859262,
+          544155583593
+        ]
+      },
+      "flash_active_samples": 17
+    },
+    "clear-after": {
+      "report": "clear-after\\report.json",
+      "report_sha256": "14afd6a9c3adb45de7a5fca1aa2a050fd41c140e97a94d8db9b9aa0ce79ebf61",
+      "metrics": {
+        "frames": 8546,
+        "duration_seconds": 59.9789217,
+        "swap_chain": "0x000000004E5E4F00",
+        "swap_chain_counts": {
+          "0x000000004E5E4F00": 8546
+        },
+        "application_fps": 142.46671593630867,
+        "one_percent_low_fps": 75.66538689515971,
+        "present_interval_ms": {
+          "mean": 7.019183346986542,
+          "median": 6.9672,
+          "p95": 7.93528,
+          "p99": 11.282523999999977,
+          "maximum": 19.7278
+        },
+        "frames_over_ms": {
+          "16.667": 1,
+          "33.333": 0,
+          "50": 0,
+          "100": 0
+        },
+        "dropped_present_percent": 0.0,
+        "display_fps_from_positive_intervals": 142.46767983133773,
+        "gpu_active_ms_median": 2.5152,
+        "present_modes": [
+          "Composed: Copy with GPU GDI"
+        ],
+        "qpc_range": [
+          545739039149,
+          546338828366
+        ]
+      },
+      "flash_active_samples": 0
+    }
+  },
+  "rejected": {
+    "rain-2": "Server rain lease expired near the end; mixed rain/clear capture excluded"
+  },
+  "limits": [
+    "Single stationary daytime scene and one session; camera/focus operator-controlled",
+    "World actors and sun shadows evolve with time; this is not an isolated renderer-cost measurement",
+    "Near the 144 Hz refresh ceiling; no uncapped maximum-throughput claim",
+    "Rendering adapter not identified on the hybrid graphics system",
+    "Read-only sampling and ETW overhead shared by every trial"
+  ],
+  "context": {
+    "client_sha256": "5d1d4faf3065a27655e9404357af8beb697ede907959fa9c39ccc15aba3cbc36",
+    "pid": 19188,
+    "phase": 0,
+    "world": 1310754880,
+    "viewport": [
+      1920,
+      1093
+    ],
+    "position": [
+      127.5,
+      -97.0,
+      327.5
+    ],
+    "native_weather_mask": 0,
+    "configuration_sha256": {
+      "db\\import\\world_environment.yml": "f1991eda80cc50c6c9d73f7c3acb4a2780ba32f9d1bf3a16d56dcb584a2d91ea",
+      "db\\world_environment.yml": "1559f19565853100a3b4428b22533ee010bad7d313ef68b53d62ebad11c20ffd"
+    }
+  },
+  "fps_percent_vs_clear_before": {
+    "clear_before": 0.0,
+    "rain": -1.7243898249302614,
+    "storm": 0.6499288259745661,
+    "clear_after": 0.25656825687310203
+  },
+  "post_storm_cleanup": {
+    "pid": 19188,
+    "client_sha256": "5d1d4faf3065a27655e9404357af8beb697ede907959fa9c39ccc15aba3cbc36",
+    "read_only": true,
+    "seconds": 3.0165266999974847,
+    "cpu_percent_one_core": 69.92727762037573,
+    "weather_payload_matches_disk": true,
+    "qpc_frequency": 10000000,
+    "private_bytes": 882577408,
+    "working_set_bytes": 712208384,
+    "handles": 727,
+    "world_effects_range": [
+      57,
+      57
+    ],
+    "world_primitives_range": [
+      0,
+      0
+    ],
+    "actor_effects_range": [
+      1,
+      1
+    ],
+    "observed_frame_tick_changes": 29,
+    "not_a_gpu_fps_measurement": true,
+    "maps": [
+      "prt_fild08"
+    ],
+    "position_bounds": [
+      [
+        127.5,
+        127.5
+      ],
+      [
+        -97.0,
+        -97.0
+      ],
+      [
+        327.5,
+        327.5
+      ]
+    ],
+    "weather_masks": [
+      0
+    ],
+    "rain_instances_observed": 0,
+    "read_errors": [],
+    "last": {
+      "elapsed": 2.9163810000027297,
+      "frame_tick": 54557984,
+      "ready": 1,
+      "weather": 0,
+      "protocol": 6,
+      "snapshot_flags": 7,
+      "rain_effect": 0,
+      "lease_ms": 0,
+      "snapshot_age_ms": 36353,
+      "qpc_before": 545633849175,
+      "qpc_after": 545633849812,
+      "viewport": [
+        1920,
+        1093
+      ],
+      "flash_active": false,
+      "world": 1310754880,
+      "world_effects": 57,
+      "world_primitives": 0,
+      "player_effects": 1,
+      "position": [
+        127.5,
+        -97.0,
+        327.5
+      ],
+      "map": "prt_fild08",
+      "phase": 0,
+      "local_night": 0,
+      "phase_duration_ms": 3600000,
+      "phase_remaining_ms": 2566500
+    },
+    "owned_census": {
+      "stable": true,
+      "parents": 0,
+      "primitives": 0,
+      "world": 1310754880
+    }
+  },
+  "passed": true
+}

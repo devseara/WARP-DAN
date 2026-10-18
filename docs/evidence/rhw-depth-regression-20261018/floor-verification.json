@@ -1,0 +1,70 @@
+{
+  "static": {
+    "body_signature_bytes": 254,
+    "shadow_signature_bytes": 172,
+    "actors": [
+      "CPlayer",
+      "CPc",
+      "CNpc",
+      "CCharacterNpc",
+      "CHalluPC",
+      "CHalluPC2",
+      "CHalluNPC",
+      "CBlurPC"
+    ]
+  },
+  "cases": [
+    {
+      "case": "depth-only",
+      "patches": [
+        "FloorSafeSpriteDepth"
+      ],
+      "sha256": "4ff96a3757c1ea9ee797cf571e8e6c46defc45fce50e3e5e2efb604f441e98ea",
+      "body_cave": "0x171d360",
+      "shadow_cave": "0x171d3bc",
+      "body_cases": 66,
+      "shadow_cases": 3
+    },
+    {
+      "case": "with-rhw",
+      "patches": [
+        "UniformSpriteRHW",
+        "FloorSafeSpriteDepth"
+      ],
+      "sha256": "fa07e8b0641d628afb877cba7ebb5290be44af05cc5a4c035ff535a1b5dfd1e6",
+      "body_cave": "0x171d360",
+      "shadow_cave": "0x171d3bc",
+      "body_cases": 66,
+      "shadow_cases": 3
+    },
+    {
+      "case": "rhw-after",
+      "patches": [
+        "FloorSafeSpriteDepth",
+        "UniformSpriteRHW"
+      ],
+      "sha256": "fa07e8b0641d628afb877cba7ebb5290be44af05cc5a4c035ff535a1b5dfd1e6",
+      "body_cave": "0x171d360",
+      "shadow_cave": "0x171d3bc",
+      "body_cases": 66,
+      "shadow_cases": 3
+    },
+    {
+      "case": "full-stack",
+      "patches": [
+        "ClanBodySkins",
+        "AllowDualCustomWeaponSprites",
+        "AllHatEffectsWorldDepthOracle",
+        "UniformSpriteRHW",
+        "FloorSafeSpriteDepth"
+      ],
+      "sha256": "ab6cc9feaef658532eb53b12a28bd961ff840cb551f88daa279b23ad1a5e43e5",
+      "body_cave": "0x1865240",
+      "shadow_cave": "0x186529c",
+      "body_cases": 66,
+      "shadow_cases": 3
+    }
+  ],
+  "live_tested": false,
+  "status": "source_emulation_and_export_verified"
+}

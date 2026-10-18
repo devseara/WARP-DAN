@@ -46,3 +46,6 @@ __pycache__/
 
 # First-job HD artwork, accepted binaries, authoring history and recovery bundles.
 /Assets/HDFirstJobs/
+
+# Rebuildable local Graphify index and query artifacts.
+/graphify-out/

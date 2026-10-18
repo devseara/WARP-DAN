@@ -121,7 +121,8 @@ ClanBodySkins = function(_)
 		meta.api_version !== 2 || meta.api_size !== 40 ||
 		ClanSkinStatic.crc32(bytes, 32) !== u32(bytes, 28))
 		throw Error("ClanBodySkins: runtime metadata/CRC mismatch");
-	const perspective = ClanSkinStatic.preparePerspective();
+	// Keep existing profiles unchanged; the universal patch owns RHW when enabled.
+	const perspective = CACHE.get("UniformSpriteRHW.Installed") ? null : ClanSkinStatic.preparePerspective();
 	const hooks = [
 		{va: 0x00B43AF0, signature: "55 8B EC 6A FF 68 8B 4B F1 00", stolen: 5, entry: "@ClanBodyHook@32"},
 		{va: 0x00B42910, signature: "55 8B EC 6A FF 68 6B 48 F1 00", stolen: 5, entry: "@ClanAlternateBodyHook@32"},
@@ -169,7 +170,7 @@ ClanBodySkins = function(_)
 		while (patch.length < hook.stolen) patch.push(0x90);
 		ClanSkinStatic.write(hook.phy, patch);
 	}
-	ClanSkinStatic.installPerspective(perspective);
+	if (perspective) ClanSkinStatic.installPerspective(perspective);
 	return true;
 };
 ClanBodySkins.validate = function()

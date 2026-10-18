@@ -210,3 +210,23 @@ Document: target client version, original bytes/functionality, replacement, why 
 - **Import table**: Use `CustomDLL.applySpec()` — never manually manipulate import directory entries
 - **Code injection**: Use `AutoHook()` with `SwapFillers`/`SetFillTargets` for address resolution
 - **CACHE-based sharing**: Use `CACHE.get`/`CACHE.put` + `CACHE.hasUsers` for shared code injected by multiple patches (see CaseInsensitiveSearch.qjs for reference-counted example)
+
+## Graphify source navigation
+
+Graphify is available as a local navigation aid. For architecture, callers, or
+cross-file discovery, use `graphify query "<specific symbol or question>" --budget 1200`
+when `graphify-out/graph.json` exists, then read only the relevant source spans.
+For a known file or literal, use targeted `rg` directly. Do not load the full
+graph/report into context or treat missing graph edges as proof of no dependency.
+Prefer exact `--seed` symbols and `--context call` for caller questions. The
+budget is approximate; also cap tool output. Graphify 0.9.91 misses many WARP
+assignment-style QJS functions (including the item-color helpers), so use `rg`
+for those surfaces even when their file nodes appear in the graph.
+
+Build or refresh with `graphify extract . --code-only --no-cluster --max-workers 2`.
+The index covers the source roots in `.graphifyignore`; `.graphifyrc` maps `.qjs`
+to JavaScript and `.inl` to C++. Refresh after relevant source changes. Use source
+and binary verification for dynamic QJS registration, emitted x86, packet flow,
+and renderer contracts. Graph results do not replace the acceptance gates above.
+Keep this workflow code-only; semantic model calls, cloud upload, background
+watchers, and automatic Git hooks are outside this installation's scope.

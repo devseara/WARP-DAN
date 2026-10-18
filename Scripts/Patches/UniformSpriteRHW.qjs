@@ -1,0 +1,80 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Last Modified : 2026-10-12                                             *
+*                                                                          *
+*   Description   : Removes zoom-dependent texture warp from every screen- *
+*                   space sprite quad on 2025-07-16 Ragexe. Rect builders  *
+*                   such as 0x00C40C20 tilt each billboard by depth        *
+*                   z+0.16*(y-anchorY), so emitter 0x00C4A0D0 gives its    *
+*                   bottom vertices a different RHW and D3D perspective-   *
+*                   correct sampling slides artwork inside the rectangle.  *
+*                   The offset grows roughly with zoom squared and with    *
+*                   canvas padding; padded HD bodies drift against heads.  *
+*                   Original 0x00C4A5B1 F3 0F 10 55 E0 reloads the bottom  *
+*                   RHW; a 5-byte NOP keeps the native top-edge RHW for    *
+*                   all four vertices. XY, UV, color, per-vertex Z and the *
+*                   v0/v1 alpha sort key at 0x00550B10 stay stock. Covers  *
+*                   PC, NPC, monster, item, icon, shadow, afterimage and   *
+*                   sprite effect primitives. GND, RSM, water, STR and UI  *
+*                   use other builders and remain perspective-correct.     *
+*                                                                          *
+*   Evidence      : docs/sprite-quad-depth.md                              *
+*   Verifier      : tools/verify_uniform_sprite_rhw.py                     *
+*                                                                          *
+\**************************************************************************/
+
+UniformSpriteRHW = function(_)
+{
+	const self = UniformSpriteRHW;
+	if (!self.validate())
+		throw Error('UniformSpriteRHW: only profiled for 2025-07-16');
+	const read = (va, count) =>
+	{
+		const phy = Exe.Vir2Phy(va);
+		if (phy < 0) throw Error('UniformSpriteRHW: unmapped native address ' + va.toString(16));
+		return Exe.GetHex(phy, count).replace(/\s+/g, '').toLowerCase();
+	};
+	$$(_, 1, 'Verify the shared sprite quad vertex tail');
+	// One signature covers the top-RHW load, the bottom-RHW reload and all
+	// four RHW stores. XMM2 is dead after 0x00C4A601, before the submit.
+	if (read(self.tail, self.tailHex.length / 2) !== self.tailHex)
+		throw Error('UniformSpriteRHW: sprite quad emitter differs from the 2025-07-16 profile');
+	$$(_, 2, 'Keep the top-edge RHW for the bottom vertices');
+	Exe.SetHex(Exe.Vir2Phy(self.site), '0F 1F 44 00 00');
+	// Rebuild an already selected Clan patch without its legacy RHW bridge.
+	// Cache ownership also handles the reverse selection order.
+	CACHE.put('UniformSpriteRHW.Installed', true);
+	ReloadPatch('ClanBodySkins');
+	Exe.SetActivePatch('UniformSpriteRHW');
+	return true;
+};
+UniformSpriteRHW.cleanup = function()
+{
+	CACHE.del('UniformSpriteRHW.Installed');
+	ReloadPatch('ClanBodySkins');
+	Exe.SetActivePatch('UniformSpriteRHW');
+};
+UniformSpriteRHW.validate = () => Exe.BuildDate === 20250716;
+
+// 0x00C4A57E..0x00C4A624 inside the emitter 0x00C4A0D0 (ESI = 4 x 0x20
+// pretransformed vertices). 0x00C4A5B1 is movss xmm2, [ebp-0x20].
+UniformSpriteRHW.tail = 0x00C4A57E;
+UniformSpriteRHW.site = 0x00C4A5B1;
+UniformSpriteRHW.tailHex = 'f30f1055ecf30f104de8f30f11560cf30f114e08f30f1045bcf30f114618f30f1045c0f30f11461c8b4718894610f30f11562cf30f1055e0f30f114e28f30f1045c4f30f104ddcf30f114638f30f1045c0f30f11463c8b47188946308b4d10f30f11564cf30f114e48f30f1045bcf30f114658f30f1045c8f30f11465c8b4718894650f30f11566cf30f114e68f30f1045c4f30f114678f30f1045c8f30f11467c8b4718894670';

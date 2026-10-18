@@ -61,6 +61,14 @@ tools/fixtures/item_description/assets/** binary
 
 # Personal UI patches: preserve WARP CRLF and hashed runtime source bytes.
 Scripts/Patches/AutoCombatUI.qjs text eol=crlf
+# Custom AutoHunt: keep the verified native source hash and payload bytes stable.
+tools/native/autohunt_custom_v1.cpp text eol=lf
+Inputs/AutoUI/custom-v1.json text eol=lf
+Inputs/AutoUI/custom-v1.bin binary
+Scripts/Patches/AutoSupportUI.qjs text eol=crlf
+tools/native/autosupport_custom_v1.cpp text eol=lf
+Inputs/AutoUI/support-custom-v1.json text eol=lf
+Inputs/AutoUI/support-custom-v1.bin binary
 Scripts/Patches/BattlepassUI.qjs text eol=crlf
 Scripts/Patches/ChatItemIcons.qjs text eol=crlf
 Scripts/Patches/GachaUI.qjs text eol=crlf
@@ -94,3 +102,22 @@ Assets/StorageInventoryUI/**/*.bmp binary
 
 # Preserve the portable server patch checksum across Windows checkouts.
 server/Extended-Vending-VendingUI.diff -text
+
+# GrayMap: WARP requires CRLF; generated payload/atlas are binary.
+Scripts/Patches/GrayMap*.qjs text eol=crlf
+Scripts/Runtime/GrayMap/*.cpp text eol=crlf
+Assets/GrayMap/*.bin binary
+Assets/GrayMap/*.tga binary
+Assets/GrayMap/*.json text eol=lf
+
+# Celestial dial: preserve WARP syntax and native weather assets.
+Scripts/Patches/CelestialDial.qjs text eol=crlf
+Inputs/CelestialDial/*.json text eol=lf
+Inputs/CelestialDial/*.bin binary
+Inputs/CelestialDial/*.bmp binary
+Inputs/CelestialDial/*.wav binary
+Inputs/CelestialDial/audio-source/*.mp3 binary
+
+# Sprite renderer patch source must load in WARP after every checkout.
+Scripts/Patches/UniformSpriteRHW.qjs text eol=crlf
+Scripts/Patches/FloorSafeSpriteDepth.qjs text eol=crlf
