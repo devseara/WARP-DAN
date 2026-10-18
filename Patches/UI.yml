@@ -108,7 +108,7 @@ CustomUI:
             title : AutoSupport UI
             recommend : no
             author : Louis T Steinhil
-            desc : Adds a QJS-only, client-native AutoSupport settings UI with dedicated autosupport assets and Global/Classic menu icon states. It reuses the proven seven-tab AutoHunt frame as Basic, Player, Skill, Potion, Looting, Move, and Item; Player is a server-authoritative single-master selector populated from the current party. ASUI requests share 0x0BF8 and snapshots share 0x0BEF through distinct magic, with Banquet owning validation, persistence, and AutoSupport execution. Choose English (default), Traditional Chinese, Thai, Brazilian Portuguese, Indonesian, Filipino, Korean, or Japanese for fixed UI text. Each UI follows the existing UTF-8 or matching legacy code page without changing Windows language settings. Required assets copy automatically beside the output EXE.
+            desc : Choose the language and RO Global AutoSupport UI (470x346) or Custom AutoSupport UI v1 (760x520 Command panel). The custom layout matches the AutoHunt Item Description palette with readable opaque text, native close button and controls, real skill/item icons, live quantities, party-master selection and all existing ASUI settings. Floating icons retain start/stop; closing settings does not stop automation. No runtime DLL or receive hook.
 
         - ItemDescriptionUI:
             title : Server-backed Item Description

@@ -17,13 +17,15 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-09-11                                             *
+*   Last Modified : 2026-10-18                                             *
 *                                                                          *
-*   Description   : Adds a QJS-only, client-native Auto Support settings    *
-*                   preview to the 2025-07-16 Ragexe. Persistent controls  *
+*   Description   : Adds selectable native AutoSupport settings for the      *
+*                   2025-07-16 Ragexe: original RO Global UI or Custom     *
+*                   AutoSupport UI v1, a 760x520 Command panel with native *
+*                   close/controls, icons and quantities. Persistent icons *
 *                   are created by the normal in-game UI render pass. The  *
 *                   renewed system menu owns the settings-window button;   *
-*                   470x346 UIFrameWnd on the game UI thread, preserving   *
+*                   each layout uses UIFrameWnd on the game UI thread,     *
 *                   native focus, hit testing, drag capture, and window    *
 *                   ownership. Its native canvas loads the supplied Global *
 *                   AutoSupport BMPs and exposes Basic, Player, three Skill, *
@@ -6007,9 +6009,11 @@ AutoSupportUIStatic.cloneFrameVtable = function(
 };
 
 AutoSupportUIStatic.buildToggle = function(
-	stateVir, vtableVir, openSenderVir, ensureControllerVirs
+	stateVir, vtableVir, openSenderVir, ensureControllerVirs, dimensions = null
 )
 {
+	const width = dimensions ? dimensions[0] : AutoSupportUIStatic.WindowWidth;
+	const height = dimensions ? dimensions[1] : AutoSupportUIStatic.WindowHeight;
 	const a = AutoSupportUIStatic.asm();
 	a.emit(0x9C, 0x60);
 	if (Number.isInteger(openSenderVir) && openSenderVir > 0)
@@ -6039,8 +6043,8 @@ AutoSupportUIStatic.buildToggle = function(
 	a.emit(0x8B, 0xCE);
 	a.call(AutoSupportUIStatic.FrameConstructor);
 	a.emit(0xC7, 0x06); a.dword(vtableVir);
-	AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.WindowHeight);
-	AutoSupportUIStatic.pushImm(a, AutoSupportUIStatic.WindowWidth);
+	AutoSupportUIStatic.pushImm(a, height);
+	AutoSupportUIStatic.pushImm(a, width);
 	a.emit(0x8B, 0xCE);
 	a.call(AutoSupportUIStatic.WindowSetSize);
 	a.emit(0xC7, 0x46, AutoSupportUIStatic.WindowIdOffset); a.dword(0x3F6);
@@ -6048,11 +6052,11 @@ AutoSupportUIStatic.buildToggle = function(
 	a.emit(0x85, 0xD2);
 	a.jcc(0x84, "position_ready");
 	a.emit(0x8B, 0x42, AutoSupportUIStatic.RendererWidthOffset);
-	a.emit(0x2D); a.dword(AutoSupportUIStatic.WindowWidth);
+	a.emit(0x2D); a.dword(width);
 	a.emit(0xD1, 0xF8);
 	a.emit(0x89, 0x46, AutoSupportUIStatic.WindowXOffset);
 	a.emit(0x8B, 0x42, AutoSupportUIStatic.RendererHeightOffset);
-	a.emit(0x2D); a.dword(AutoSupportUIStatic.WindowHeight);
+	a.emit(0x2D); a.dword(height);
 	a.emit(0xD1, 0xF8);
 	a.emit(0x89, 0x46, AutoSupportUIStatic.WindowYOffset);
 	a.label("position_ready");
@@ -6395,6 +6399,99 @@ AutoSupportUIStatic.onApplied = function()
 	}
 };
 
+AutoSupportUIStatic.selectDesign = function()
+{
+	const choices = ["RO Global AutoSupport UI", "Custom AutoSupport UI v1"];
+	const selected = Warp.TestMode ? choices[0] : Exe.GetUserInput(
+		"$autoSupportUIDesign", D_Choice, "AutoSupport UI Design",
+		"Choose the original RO Global AutoSupport UI or the larger Custom AutoSupport UI v1 command panel. Floating icons start and stop automation in both designs.",
+		choices[0], {choices, saveDefault: true}
+	);
+	if (selected === false)
+		Cancel("AutoSupport UI design selection cancelled");
+	if (choices.indexOf(selected) < 0)
+		throw Error("AutoSupportUI: unsupported UI design " + selected);
+	return selected;
+};
+
+AutoSupportUIStatic.installCustomV1 = function(data)
+{
+	const n = AutoSupportUIStatic;
+	const read = path => {
+		const file = new BinFile(path, "r");
+		if (!file.Valid) throw Error("AutoSupportUI: missing custom UI payload " + path);
+		try { return (file.ReadHex().match(/[0-9a-fA-F]{2}/g) || []).map(value => parseInt(value, 16)); }
+		finally { file.Close(); }
+	};
+	const bytes = read(Warp.Path + "/Inputs/AutoUI/support-custom-v1.bin");
+	const metadata = JSON.parse(String.fromCharCode(...read(Warp.Path + "/Inputs/AutoUI/support-custom-v1.json")));
+	const u32 = (values, offset) => (values[offset] | values[offset+1] << 8 | values[offset+2] << 16 | values[offset+3] << 24) >>> 0;
+	if (bytes.length < 32) throw Error("AutoSupportUI: truncated custom UI payload");
+	const size = u32(bytes, 8), count = u32(bytes, 12), imageBase = u32(bytes, 16), start = 32 + count * 4;
+	let crc = 0xFFFFFFFF;
+	for (let i = 32; i < bytes.length; ++i) {
+		crc ^= bytes[i];
+		for (let bit = 0; bit < 8; ++bit) crc = (crc >>> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+	}
+	if (u32(bytes, 0) !== 0x31565341 || u32(bytes, 4) !== 1 ||
+		u32(bytes, 20) !== 648 || u32(bytes, 24) !== n.BuildDate ||
+		start + size !== bytes.length || ((crc ^ 0xFFFFFFFF) >>> 0) !== u32(bytes, 28) ||
+		metadata.version !== 1 || metadata.client !== n.BuildDate || metadata.size !== size || metadata.config_size !== 648)
+		throw Error("AutoSupportUI: invalid custom UI payload; rebuild tools/build_autosupport_custom_v1.py");
+	const image = bytes.slice(start), [phy, vir] = Exe.Allocate(size, 16);
+	if (phy < 0 || vir <= 0 || Exe.Vir2Phy(vir) !== phy) throw Error("AutoSupportUI: invalid custom UI allocation");
+	const put = (offset, value) => {
+		if (!Number.isInteger(offset) || offset < 0 || offset + 4 > size) throw Error("AutoSupportUI: custom UI write out of bounds");
+		for (let i = 0; i < 4; ++i) image[offset+i] = (value >>> (i * 8)) & 255;
+	};
+	for (let i = 0; i < count; ++i) {
+		const offset = u32(bytes, 32 + i * 4);
+		if (offset + 4 > size) throw Error("AutoSupportUI: custom UI relocation out of bounds");
+		const old = u32(image, offset);
+		if (old < imageBase || old >= imageBase + size) throw Error("AutoSupportUI: external custom UI relocation");
+		put(offset, vir + old - imageBase);
+	}
+	const entries = {};
+	for (const name of ["AutoSupportCustomConfig", "AutoSupportCustomDraw", "AutoSupportCustomDown", "AutoSupportCustomMove", "AutoSupportCustomUp", "AutoSupportCustomWheel"]) {
+		const offset = metadata.exports[name];
+		if (!Number.isInteger(offset) || offset < 0 || offset >= size) throw Error("AutoSupportUI: invalid custom UI export " + name);
+		entries[name] = vir + offset;
+	}
+	const s = data.strings;
+	const tabs = n.Language === AutoUILanguage.English ?
+		["Overview", "Party", "Combat", "Recovery", "Loot", "Movement", "Buff items"]
+			.map(text => n.allocateString(text)) : s.tabs;
+	const pointers = list => list.map(value => value.vir);
+	const config = [1, data.state.vir, data.fillRect.vir, data.mouseDown.vir,
+		data.sliderHover.vir, data.mouseUp.vir, n.TextInitializer ? n.TextInitializer.vir : 0,
+		n.Language === AutoUILanguage.English ? 0 : n.FontSelector, n.ColorKeyBlitVir, data.itemResolver.vir, data.paths.skillIconFormat.vir,
+		...data.rows, ...data.icons, ...pointers(tabs), ...pointers(s.headings), ...pointers(s.subtitles),
+		...pointers(s.basicOptions.concat([s.basicOptions[8]])), ...pointers(s.basicPrefixes), ...pointers(s.basicSuffixes),
+		...pointers(s.potionPanels), ...pointers(s.lootOptions), ...pointers(s.lootOptionChoices),
+		...pointers([s.windowTitle, s.reset, s.close, s.normalAttack, s.normalAttackHint,
+			s.attackSettings, s.supportSettings, s.healSettings, s.statusSettings,
+			s.registerItem, s.registerSkill, s.secondsSuffix, s.useLabel, s.weight,
+			s.lootWeaponPrefix, s.lootArmorPrefix, s.lootOptionSuffix, s.lootSupportFirst,
+			s.lootLootFirst, s.lootReturn, s.lootReturnHint, s.lootContinue, s.lootContinueHint,
+			s.lootReturnHint, s.skillDelayHint, s.skillReject, s.itemReject, s.statusPotion,
+			s.headings[1], s.teleport, s.lootPriorityHeading]),
+		...pointers([data.paths.sliderGaugeHp, data.paths.sliderGaugeSp, data.paths.sliderGaugeLoot,
+			data.paths.sliderThumbHp, data.paths.sliderThumbSp, data.paths.sliderLeft,
+			data.paths.sliderLeftOver, data.paths.sliderLeftPressed, data.paths.sliderRight,
+			data.paths.sliderRightOver, data.paths.sliderRightPressed, data.paths.scrollUp,
+			data.paths.scrollDown, data.paths.scrollTrack, data.paths.scrollThumbUp,
+			data.paths.scrollThumbMid, data.paths.scrollThumbDown, data.paths.checkboxOn,
+			data.paths.checkboxOff, data.paths.lootDropdownArrow, data.paths.skill3,
+			data.paths.potion1, data.paths.looting1]),
+		AutoUILanguage.spec(n.Language).charset, data.scalarSender.vir, data.mouseWheel.vir,
+		...pointers(s.custom), data.paths.sysCloseOff.vir, data.paths.sysCloseOn.vir, data.statusItemRow.vir,
+		...pointers([s.noMasterReject, s.masterOfflineReject, s.startPolicyReject, s.statusItemReject])];
+	if (config.length * 4 !== 648) throw Error("AutoSupportUI: custom UI config ABI changed");
+	config.forEach((value, index) => put(metadata.exports.AutoSupportCustomConfig + index * 4, value));
+	Exe.SetHex(phy, n.bytesToHex(image));
+	return {entries, payload: {phy, vir, size}, config, source_sha256: metadata.source_sha256};
+};
+
 AutoSupportUI = function(_)
 {
 	if (Exe.BuildDate !== AutoSupportUIStatic.BuildDate)
@@ -6406,6 +6503,8 @@ AutoSupportUI = function(_)
 	AutoSupportUIStatic.Language = AutoUILanguage.select(
 		"$autoSupportUILanguage", "AutoSupport UI"
 	);
+	const design = AutoSupportUIStatic.selectDesign();
+	const customV1 = design === "Custom AutoSupport UI v1";
 
 	AutoSupportUIStatic.LocalizedStrings = [];
 	AutoSupportUIStatic.TextInitializer = null;
@@ -6833,7 +6932,14 @@ AutoSupportUI = function(_)
 		].map(text => AutoSupportUIStatic.allocateUiString(text)),
 
 		reset: AutoSupportUIStatic.allocateUiString("Reset"),
-		close: AutoSupportUIStatic.allocateUiString("Close")
+		close: AutoSupportUIStatic.allocateUiString("Close"),
+		custom: customV1 ? [
+			"Support setup", "Party master", "Combat skills", "Recovery rules", "Loot rules",
+			"Movement & escape", "Buff items", "Core behavior", "Stop & return rules",
+			"Advanced settings", "General settings", "Select party master", "Return at weight limit",
+			"Enable Return", "Use Token of Siegfried", "Settings are saved automatically.",
+			"Collect categories", "When inventory fills", "Show empty slots", "Hide empty slots", "Equipment filters"
+		].map(text => AutoSupportUIStatic.allocateUiString(text)) : []
 	};
 	AutoSupportUIStatic.TextInitializer = AutoUILanguage.buildInitializer(AutoSupportUIStatic);
 
@@ -6980,9 +7086,19 @@ AutoSupportUI = function(_)
 	const destructor = AutoSupportUIStatic.allocateCode(
 		AutoSupportUIStatic.buildDestructor(state.vir)
 	);
+	const layoutContext = {
+		state, fillRect, mouseDown, sliderHover, mouseUp, mouseWheel, scalarSender, itemResolver, paths, strings, statusItemRow,
+		rows: [monsterRows.vir, attackSkillRows.vir, supportSkillRows.vir, healingSkillRow.vir,
+			recoverySkillRows.vir, itemRows.vir, potionRows.vir, moveRows.vir, moveIconKeys.vir],
+		icons: [attackSkillIconKeys.vir, supportSkillIconKeys.vir, healingSkillIconKey.vir, recoverySkillIconKeys.vir]
+	};
+	const custom = customV1 ? AutoSupportUIStatic.installCustomV1(layoutContext) : null;
+	const handlers = custom ? {
+		draw: custom.entries.AutoSupportCustomDraw, down: custom.entries.AutoSupportCustomDown,
+		up: custom.entries.AutoSupportCustomUp, move: custom.entries.AutoSupportCustomMove, wheel: custom.entries.AutoSupportCustomWheel
+	} : {draw: draw.vir, down: mouseDown.vir, up: mouseUp.vir, move: sliderHover.vir, wheel: mouseWheel.vir};
 	const vtable = AutoSupportUIStatic.cloneFrameVtable(
-		draw.vir, mouseDown.vir, mouseUp.vir, destructor.vir, sliderHover.vir,
-		mouseWheel.vir
+		handlers.draw, handlers.down, handlers.up, destructor.vir, handlers.move, handlers.wheel
 	);
 	const autoBattleVisual = AutoSupportUIStatic.prepareControllerVisual(
 		"autobattle", paths.autoBattle.blueIcon
@@ -7062,7 +7178,7 @@ AutoSupportUI = function(_)
 	);
 	const toggle = AutoSupportUIStatic.allocateCode(
 		AutoSupportUIStatic.buildToggle(
-			state.vir, vtable.vir, openSender.vir, [ensureController.vir]
+			state.vir, vtable.vir, openSender.vir, [ensureController.vir], customV1 ? [760, 520] : null
 		)
 	);
 	const menuTogglePending = AutoSupportUIStatic.allocateBytes(
@@ -7102,6 +7218,8 @@ AutoSupportUI = function(_)
 		typeof PatchDiagnostics.add === "function")
 	{
 		PatchDiagnostics.add("AutoSupportUI.QjsOnly", {
+			design, customV1: custom, layoutContext,
+			legacyHandlers: {draw, down: mouseDown, up: mouseUp, move: sliderHover, wheel: mouseWheel, blit: colorKeyBlit, fill: fillRect, itemResolver},
 			language: AutoSupportUIStatic.Language,
 			textCodePage: AutoSupportUIStatic.Language === AutoUILanguage.English ? "ASCII" : "native mapper (" + AutoUILanguage.spec(AutoSupportUIStatic.Language).codePage + "/65001)",
 			textInitializer: AutoSupportUIStatic.TextInitializer,
@@ -7110,7 +7228,7 @@ AutoSupportUI = function(_)
 			opener: "ROGlobalZeroMenu.AutoSupportButton",
 			fallbackCommand: "/autosupport",
 			nativeHost: "UIFrameWnd",
-			windowSize: [
+			windowSize: customV1 ? [760, 520] : [
 				AutoSupportUIStatic.WindowWidth,
 				AutoSupportUIStatic.WindowHeight
 			],
@@ -7118,9 +7236,9 @@ AutoSupportUI = function(_)
 			pages: {Basic: 1, Player: 1, Skill: 3, Potion: 2, Looting: 2, Move: 1, Item: 1},
 			stateVir: state.vir,
 			vtableVir: vtable.vir,
-			drawVir: draw.vir,
-			mouseDownVir: mouseDown.vir,
-			mouseUpVir: mouseUp.vir,
+			drawVir: handlers.draw,
+			mouseDownVir: handlers.down,
+			mouseUpVir: handlers.up,
 			toggleVir: toggle.vir,
 			menuToggleRequestVir: menuToggleRequest.vir,
 			menuTogglePendingVir: menuTogglePending.vir,

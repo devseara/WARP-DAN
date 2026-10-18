@@ -1,0 +1,528 @@
+{
+  "date": "2026-10-18",
+  "design": "Custom AutoSupport UI v1",
+  "layout": "Command panel",
+  "target_client": 20250716,
+  "upgrade": {
+    "source": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+    "source_sha256": "c37834047287a8257cf7bb9481ac700923a273871087ffa19912dc8128eb3958",
+    "candidate": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoSupportCustomV1\\upgrade-r3\\client.exe",
+    "candidate_sha256": "5c1c8075c7cddea2dc7f2672f1387a03c54ee4418e890d96df33e25d127cafec",
+    "preserved_existing_sections": true,
+    "legacy_helpers_compared": [
+      "draw",
+      "down",
+      "up",
+      "move",
+      "wheel",
+      "blit",
+      "fill",
+      "itemResolver"
+    ],
+    "section": ".asv1",
+    "writes": [
+      {
+        "offset": 23477000,
+        "before": 31524320,
+        "after": 39309424
+      },
+      {
+        "offset": 23477020,
+        "before": 31599104,
+        "after": 39308496
+      },
+      {
+        "offset": 23477032,
+        "before": 31621424,
+        "after": 39310896
+      },
+      {
+        "offset": 23477044,
+        "before": 31628192,
+        "after": 39311504
+      },
+      {
+        "offset": 23477060,
+        "before": 31635360,
+        "after": 39311872
+      },
+      {
+        "offset": 25441389,
+        "before": 346,
+        "after": 520
+      },
+      {
+        "offset": 25441394,
+        "before": 470,
+        "after": 760
+      },
+      {
+        "offset": 25441430,
+        "before": 470,
+        "after": 760
+      },
+      {
+        "offset": 25441443,
+        "before": 346,
+        "after": 520
+      }
+    ],
+    "live_accepted": false
+  },
+  "payload": {
+    "client": 20250716,
+    "config_size": 648,
+    "exports": {
+      "AutoSupportCustomConfig": 24592,
+      "AutoSupportCustomDown": 15568,
+      "AutoSupportCustomDraw": 16496,
+      "AutoSupportCustomMove": 17968,
+      "AutoSupportCustomUp": 18576,
+      "AutoSupportCustomWheel": 18944
+    },
+    "imports": 0,
+    "payload_sha256": "8e06907ab9de539b88c19933fe713fceb3d9d1d2525798ef36c78cdca0b8625d",
+    "size": 29956,
+    "source_sha256": "435332ed6fe6750d81d1f21f6009df7d8f678f205268de4df5d54e5d1d73129c",
+    "version": 1
+  },
+  "native_verification": {
+    "passed": true,
+    "live_accepted": false,
+    "checks": [
+      "seven tabs and native close bitmap",
+      "party master selection and scroll capture",
+      "attack/support/recovery skill registration and delay dialogs",
+      "HP/SP potion thresholds and quantities",
+      "status recovery item registration and quantities",
+      "loot categories/weight/actions/dropdown context",
+      "movement methods",
+      "buff delays and quantity refresh to 65535",
+      "Overview master/return controls",
+      "all nine Advanced settings and native scrollbar",
+      "master/session rejection messages",
+      "close preserves automation flags",
+      "x86 ABI and opaque text surface"
+    ],
+    "windows_gdi_alpha": {
+      "passed": true,
+      "native_gdi_pixels": 733,
+      "zero_alpha_foreground_pixels": 733,
+      "required_composition": "opaque",
+      "live_accepted": false
+    }
+  },
+  "fresh_builds": {
+    "custom-en": {
+      "build": {
+        "design": "Custom AutoHunt UI v1",
+        "language": "English",
+        "support": true,
+        "source_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+        "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoSupportCustomV1\\custom-en\\autohunt.exe",
+        "target_sha256": "afab325991262035a09693f1c83541b1c072bbc58a1e648cc7571f77d33c8582",
+        "live_accepted": false,
+        "build_passed": true
+      },
+      "native_verification": {
+        "passed": true,
+        "live_accepted": false,
+        "checks": [
+          "seven tabs and native close bitmap",
+          "party master selection and scroll capture",
+          "attack/support/recovery skill registration and delay dialogs",
+          "HP/SP potion thresholds and quantities",
+          "status recovery item registration and quantities",
+          "loot categories/weight/actions/dropdown context",
+          "movement methods",
+          "buff delays and quantity refresh to 65535",
+          "Overview master/return controls",
+          "all nine Advanced settings and native scrollbar",
+          "master/session rejection messages",
+          "close preserves automation flags",
+          "x86 ABI and opaque text surface"
+        ],
+        "windows_gdi_alpha": {
+          "passed": true,
+          "native_gdi_pixels": 733,
+          "zero_alpha_foreground_pixels": 733,
+          "required_composition": "opaque",
+          "live_accepted": false
+        }
+      }
+    },
+    "custom-zh": {
+      "build": {
+        "design": "Custom AutoHunt UI v1",
+        "language": "Traditional Chinese",
+        "support": true,
+        "support_design": "Custom AutoSupport UI v1",
+        "source_sha256": "ead7c0a316bc6c27705a5a6876daf5093abec31677f3c1af7525c1709b201bff",
+        "target": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoSupportCustomV1\\custom-zh\\autohunt.exe",
+        "target_sha256": "dc8d374ae2d6a390d47c8403440fe0cfd85e43a797a757ed54e9d04bb46d6633",
+        "live_accepted": false,
+        "build_passed": true
+      },
+      "native_verification": {
+        "passed": true,
+        "live_accepted": false,
+        "checks": [
+          "seven tabs and native close bitmap",
+          "party master selection and scroll capture",
+          "attack/support/recovery skill registration and delay dialogs",
+          "HP/SP potion thresholds and quantities",
+          "status recovery item registration and quantities",
+          "loot categories/weight/actions/dropdown context",
+          "movement methods",
+          "buff delays and quantity refresh to 65535",
+          "Overview master/return controls",
+          "all nine Advanced settings and native scrollbar",
+          "master/session rejection messages",
+          "close preserves automation flags",
+          "x86 ABI and opaque text surface"
+        ],
+        "windows_gdi_alpha": {
+          "passed": true,
+          "native_gdi_pixels": 733,
+          "zero_alpha_foreground_pixels": 733,
+          "required_composition": "opaque",
+          "live_accepted": false
+        }
+      }
+    }
+  },
+  "close_button": "Stock basic_interface/sys_close_off.bmp and sys_close_on.bmp",
+  "source_gates": {
+    "languages": "164 labels, 8 languages; 1148 translated records",
+    "native_payload_rebuild": "exact match",
+    "item_grade_contract": "100 source checks passed",
+    "qjs_bytes": "CRLF, UTF-8 without BOM",
+    "cps_stale_bridge_operands": 0,
+    "riftlock_stale_bridge_operands": 0
+  },
+  "known_baseline_gate": {
+    "tool": "tools/verify_autosupport_ui_contract.py",
+    "result": "Existing saved main-profile patch-order assertion still fails; patch order unchanged, isolated and full-profile builds pass."
+  },
+  "server_changes": false,
+  "deployed_to_live_game": true,
+  "deployment": {
+    "status": "installed_and_verified",
+    "client": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+    "backup": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoSupportCustomV1\\upgrade-r3\\release\\before",
+    "verification": {
+      "release": 1792299667,
+      "integrity_digest": "55f741435c134de06f93a64d53a6fbf6c041f64724db9d9660d9538c56671e6b",
+      "signature_verified": true,
+      "embedded_public_key_matches": true,
+      "client_sha256": "5c1c8075c7cddea2dc7f2672f1387a03c54ee4418e890d96df33e25d127cafec"
+    },
+    "asset_scans_match": true,
+    "changed_files": [
+      "2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+      "riftlock-assets-v1.txt",
+      "riftlock-release.sig"
+    ],
+    "live_accepted": true
+  },
+  "live_accepted": true,
+  "live_acceptance": {
+    "date": "2026-10-18",
+    "timezone": "Asia/Manila",
+    "source": "User reported in-game testing",
+    "user_confirmation": "tested and working chat",
+    "client_sha256": "5c1c8075c7cddea2dc7f2672f1387a03c54ee4418e890d96df33e25d127cafec",
+    "design": "Custom AutoSupport UI v1"
+  },
+  "combined_v1": {
+    "date": "2026-10-18",
+    "upgrade": {
+      "source": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+      "source_sha256": "5c1c8075c7cddea2dc7f2672f1387a03c54ee4418e890d96df33e25d127cafec",
+      "candidate": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoSupportCustomV1\\both-upgrade\\client.exe",
+      "candidate_sha256": "deabe5fce9ca8cbb702fc06102f703a8e86e0ca3433b8ac479049c7788eb765f",
+      "preserved_existing_sections": true,
+      "legacy_helpers_compared": [
+        "draw",
+        "down",
+        "up",
+        "move",
+        "wheel",
+        "blit",
+        "fill",
+        "itemResolver"
+      ],
+      "section": ".ahv1",
+      "writes": [
+        {
+          "offset": 22036904,
+          "before": 30052096,
+          "after": 39342304
+        },
+        {
+          "offset": 22036924,
+          "before": 30149328,
+          "after": 39341328
+        },
+        {
+          "offset": 22036936,
+          "before": 30181632,
+          "after": 39343632
+        },
+        {
+          "offset": 22036948,
+          "before": 30188256,
+          "after": 39344240
+        },
+        {
+          "offset": 22036964,
+          "before": 30195264,
+          "after": 39344608
+        },
+        {
+          "offset": 23347178,
+          "before": 346,
+          "after": 520
+        },
+        {
+          "offset": 23347183,
+          "before": 470,
+          "after": 760
+        },
+        {
+          "offset": 23347219,
+          "before": 470,
+          "after": 760
+        },
+        {
+          "offset": 23347232,
+          "before": 346,
+          "after": 520
+        }
+      ],
+      "live_accepted": false
+    },
+    "autohunt_verification": {
+      "passed": true,
+      "live_accepted": false,
+      "checks": [
+        "seven redesigned tabs",
+        "real icon resolver and native skill paths",
+        "server inventory quantities, refresh, and 65535 cap",
+        "attack/support delays, sparse slot identities, and native drag payloads",
+        "buff and potion registration",
+        "native RO Global gauges/arrows/scrollbars",
+        "healing/potion/loot slider endpoints and capture",
+        "physical tooltip anchors and persistent text storage",
+        "potion thresholds",
+        "loot categories/weight/dropdown/context restoration",
+        "Overview core/return controls and pickup modes",
+        "advanced toggles/input/wheel and scrollbar capture",
+        "monster selection",
+        "movement registration",
+        "reset",
+        "close preserves running state",
+        "opaque GDI text surface and stock automatic font selector execution",
+        "x86 stack and callee-saved registers"
+      ],
+      "windows_gdi_alpha": {
+        "passed": true,
+        "native_gdi_pixels": 733,
+        "zero_alpha_foreground_pixels": 733,
+        "required_composition": "opaque",
+        "live_accepted": false
+      }
+    },
+    "autosupport_verification": {
+      "passed": true,
+      "live_accepted": false,
+      "checks": [
+        "seven tabs and native close bitmap",
+        "party master selection and scroll capture",
+        "attack/support/recovery skill registration and delay dialogs",
+        "HP/SP potion thresholds and quantities",
+        "status recovery item registration and quantities",
+        "loot categories/weight/actions/dropdown context",
+        "movement methods",
+        "buff delays and quantity refresh to 65535",
+        "Overview master/return controls",
+        "all nine Advanced settings and native scrollbar",
+        "master/session rejection messages",
+        "close preserves automation flags",
+        "x86 ABI and opaque text surface"
+      ],
+      "windows_gdi_alpha": {
+        "passed": true,
+        "native_gdi_pixels": 733,
+        "zero_alpha_foreground_pixels": 733,
+        "required_composition": "opaque",
+        "live_accepted": false
+      }
+    },
+    "previous_autosupport_section_unchanged": true,
+    "mounted_mage_and_sprite_sections_unchanged": true,
+    "saved_profile": {
+      "path": "profiles/2025-07-16 PROFILE MAIN.yml",
+      "autocombat": "Custom AutoHunt UI v1",
+      "autosupport": "Custom AutoSupport UI v1",
+      "actual_inputs_verified": {
+        "passed": true,
+        "actual_saved_profile_inputs": true,
+        "designs": [
+          "Custom AutoHunt UI v1",
+          "Custom AutoSupport UI v1"
+        ],
+        "sha256": "56de62f8ab8300382a2b21804c9a4954bb09c31b40f740248e6e474db3160c67"
+      }
+    },
+    "full_profile_native_checks": {
+      "autohunt": {
+        "passed": true,
+        "live_accepted": false,
+        "checks": [
+          "seven redesigned tabs",
+          "real icon resolver and native skill paths",
+          "server inventory quantities, refresh, and 65535 cap",
+          "attack/support delays, sparse slot identities, and native drag payloads",
+          "buff and potion registration",
+          "native RO Global gauges/arrows/scrollbars",
+          "healing/potion/loot slider endpoints and capture",
+          "physical tooltip anchors and persistent text storage",
+          "potion thresholds",
+          "loot categories/weight/dropdown/context restoration",
+          "Overview core/return controls and pickup modes",
+          "advanced toggles/input/wheel and scrollbar capture",
+          "monster selection",
+          "movement registration",
+          "reset",
+          "close preserves running state",
+          "opaque GDI text surface and stock automatic font selector execution",
+          "x86 stack and callee-saved registers"
+        ],
+        "windows_gdi_alpha": {
+          "passed": true,
+          "native_gdi_pixels": 733,
+          "zero_alpha_foreground_pixels": 733,
+          "required_composition": "opaque",
+          "live_accepted": false
+        }
+      },
+      "autosupport": {
+        "passed": true,
+        "live_accepted": false,
+        "checks": [
+          "seven tabs and native close bitmap",
+          "party master selection and scroll capture",
+          "attack/support/recovery skill registration and delay dialogs",
+          "HP/SP potion thresholds and quantities",
+          "status recovery item registration and quantities",
+          "loot categories/weight/actions/dropdown context",
+          "movement methods",
+          "buff delays and quantity refresh to 65535",
+          "Overview master/return controls",
+          "all nine Advanced settings and native scrollbar",
+          "master/session rejection messages",
+          "close preserves automation flags",
+          "x86 ABI and opaque text surface"
+        ],
+        "windows_gdi_alpha": {
+          "passed": true,
+          "native_gdi_pixels": 733,
+          "zero_alpha_foreground_pixels": 733,
+          "required_composition": "opaque",
+          "live_accepted": false
+        }
+      }
+    },
+    "autosupport_reproduction_sha256": "5c1c8075c7cddea2dc7f2672f1387a03c54ee4418e890d96df33e25d127cafec",
+    "deployment": {
+      "status": "installed_and_verified",
+      "client": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+      "backup": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\AutoSupportCustomV1\\both-upgrade\\release\\before",
+      "verification": {
+        "release": 1792302116,
+        "integrity_digest": "f8d00ec560e4a055a03568302faa5d4aca9e7305054d22572b5279bb32b3ff22",
+        "signature_verified": true,
+        "embedded_public_key_matches": true,
+        "client_sha256": "deabe5fce9ca8cbb702fc06102f703a8e86e0ca3433b8ac479049c7788eb765f"
+      },
+      "asset_scans_match": true
+    },
+    "cps_stale_bridge_operands": 0,
+    "riftlock_stale_bridge_operands": 0,
+    "live_accepted": false
+  },
+  "source_normalization": {
+    "old_source_sha256": "92b017b01148334fd68d99005d2c91ffd21ce6709cb172fdc5784c50459ad6ad",
+    "canonical_source_sha256": "435332ed6fe6750d81d1f21f6009df7d8f678f205268de4df5d54e5d1d73129c",
+    "runtime_payload_unchanged": true,
+    "payload_sha256": "8e06907ab9de539b88c19933fe713fceb3d9d1d2525798ef36c78cdca0b8625d"
+  },
+  "commit_verification": {
+    "feature_files": 30,
+    "unrelated_files_hash_verified": 36,
+    "profile_staged_scope": "Only the two Custom v1 UI choices; unrelated patch-list change excluded",
+    "source_checkout_hashes": "Both native payload/source pairs verified through Git filters",
+    "clean_staged_build": {
+      "sha256": "afab325991262035a09693f1c83541b1c072bbc58a1e648cc7571f77d33c8582",
+      "without_unrelated_riding_mage_changes": true,
+      "autohunt": {
+        "passed": true,
+        "live_accepted": false,
+        "checks": [
+          "seven redesigned tabs",
+          "real icon resolver and native skill paths",
+          "server inventory quantities, refresh, and 65535 cap",
+          "attack/support delays, sparse slot identities, and native drag payloads",
+          "buff and potion registration",
+          "native RO Global gauges/arrows/scrollbars",
+          "healing/potion/loot slider endpoints and capture",
+          "physical tooltip anchors and persistent text storage",
+          "potion thresholds",
+          "loot categories/weight/dropdown/context restoration",
+          "Overview core/return controls and pickup modes",
+          "advanced toggles/input/wheel and scrollbar capture",
+          "monster selection",
+          "movement registration",
+          "reset",
+          "close preserves running state",
+          "opaque GDI text surface and stock automatic font selector execution",
+          "x86 stack and callee-saved registers"
+        ],
+        "windows_gdi_alpha": {
+          "passed": true,
+          "native_gdi_pixels": 733,
+          "zero_alpha_foreground_pixels": 733,
+          "required_composition": "opaque",
+          "live_accepted": false
+        }
+      },
+      "autosupport": {
+        "passed": true,
+        "live_accepted": false,
+        "checks": [
+          "seven tabs and native close bitmap",
+          "party master selection and scroll capture",
+          "attack/support/recovery skill registration and delay dialogs",
+          "HP/SP potion thresholds and quantities",
+          "status recovery item registration and quantities",
+          "loot categories/weight/actions/dropdown context",
+          "movement methods",
+          "buff delays and quantity refresh to 65535",
+          "Overview master/return controls",
+          "all nine Advanced settings and native scrollbar",
+          "master/session rejection messages",
+          "close preserves automation flags",
+          "x86 ABI and opaque text surface"
+        ],
+        "windows_gdi_alpha": {
+          "passed": true,
+          "native_gdi_pixels": 733,
+          "zero_alpha_foreground_pixels": 733,
+          "required_composition": "opaque",
+          "live_accepted": false
+        }
+      }
+    }
+  }
+}

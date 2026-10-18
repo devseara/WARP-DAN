@@ -16,13 +16,14 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--design', choices=['RO Global AutoHunt UI', 'Custom AutoHunt UI v1'], default='Custom AutoHunt UI v1')
     parser.add_argument('--language', default='English')
+    parser.add_argument('--support-design', choices=['RO Global AutoSupport UI','Custom AutoSupport UI v1'], default='RO Global AutoSupport UI')
     parser.add_argument('--support', action='store_true')
     parser.add_argument('--profile', type=Path)
     parser.add_argument('--reuse-fixture', action='store_true', help='Refresh this task-owned fixture after a UI/payload change')
     args = parser.parse_args()
     out = args.output.resolve()
     if args.reuse_fixture:
-        assert out.is_relative_to((ROOT / 'Outputs/AutoHuntCustomV1').resolve()), 'Reuse is limited to AutoHunt task outputs'
+        assert any(out.is_relative_to((ROOT / 'Outputs' / name).resolve()) for name in ['AutoHuntCustomV1','AutoSupportCustomV1']), 'Reuse is limited to AutoHunt task outputs'
         assert (out / 'warp-fixture/Patches.yml').is_file(), 'No isolated fixture to reuse'
     out.mkdir(parents=True, exist_ok=args.reuse_fixture)
     fixture = out / 'warp-fixture'
@@ -36,7 +37,7 @@ def main():
             shutil.copytree(ROOT / 'Assets' / name, fixture / 'Assets' / name)
     shutil.copy2(ROOT / 'Patches.yml', fixture / 'Patches.yml')
     if args.reuse_fixture:
-        for relative in ['Scripts/Patches/AutoCombatUI.qjs', 'Patches/UI.yml', 'Inputs/AutoUI/custom-v1.bin', 'Inputs/AutoUI/custom-v1.json']:
+        for relative in ['Scripts/Patches/AutoCombatUI.qjs', 'Scripts/Patches/AutoSupportUI.qjs', 'Patches/UI.yml', 'Inputs/AutoUI/custom-v1.bin', 'Inputs/AutoUI/custom-v1.json', 'Inputs/AutoUI/support-custom-v1.bin']:
             shutil.copy2(ROOT / relative, fixture / relative)
     if args.reuse_fixture:
         for path in (ROOT / 'Inputs/AutoUI').glob('*.json'):
@@ -49,7 +50,7 @@ AutoHuntUIBuildProbe=function(_){
  const rows=events.filter(row=>row.topic==="AutoCombatUI.QjsOnly");
  if(!rows.length)throw Error("Missing AutoCombat UI diagnostics");
  const f=new TextFile(MARKER,"w");if(!f.Valid)throw Error("Manifest unavailable");
- f.WriteLine(JSON.stringify({token:TOKEN,autohunt:rows[rows.length-1].value,events}));f.Close();return true;
+ f.WriteLine(JSON.stringify({token:TOKEN,autohunt:rows[rows.length-1].value,autosupport:(events.filter(row=>row.topic==="AutoSupportUI.QjsOnly").pop() || {}).value,events}));f.Close();return true;
 };
 AutoHuntUIBuildProbe.validate=()=>true;
 '''.replace('MARKER', json.dumps(marker.as_posix())).replace('TOKEN', json.dumps(token))
@@ -66,7 +67,7 @@ AutoHuntUIBuildProbe.validate=()=>true;
     else:
         profile = {'inputs': {}, 'patches': ['AutoCombatUI']}
     profile['from'], profile['to'] = args.source.resolve().as_posix(), target.as_posix()
-    for key, value in [('$autoCombatUILanguage', args.language), ('$autoCombatUIDesign', args.design)]:
+    for key, value in [('$autoCombatUILanguage', args.language), ('$autoCombatUIDesign', args.design), ('$autoSupportUIDesign', args.support_design)]:
         profile.setdefault('inputs', {})[key] = {'data': '', 'display': value, 'type': 10}
     if 'AutoCombatUI' not in profile['patches']:
         profile['patches'].append('AutoCombatUI')
@@ -89,7 +90,12 @@ AutoHuntUIBuildProbe.validate=()=>true;
     manifest = exported['autohunt']
     assert manifest['design'] == args.design
     assert manifest['windowSize'] == ([760, 520] if args.design == 'Custom AutoHunt UI v1' else [470, 346])
+    if 'AutoSupportUI' in profile['patches']:
+        support = exported['autosupport']
+        assert support['design'] == args.support_design
+        assert support['windowSize'] == ([760, 520] if args.support_design == 'Custom AutoSupport UI v1' else [470, 346])
     report = {'design': args.design, 'language': args.language, 'support': 'AutoSupportUI' in profile['patches'],
+              'support_design': args.support_design if 'AutoSupportUI' in profile['patches'] else None,
               'source_sha256': hashlib.sha256(args.source.read_bytes()).hexdigest(),
               'target': str(target), 'target_sha256': hashlib.sha256(target.read_bytes()).hexdigest(),
               'live_accepted': False, 'build_passed': True}

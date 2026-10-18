@@ -6966,12 +6966,14 @@ AutoCombatUI = function(_)
 	const destructor = AutoCombatUIStatic.allocateCode(
 		AutoCombatUIStatic.buildDestructor(state.vir)
 	);
-	const custom = customV1 ? AutoCombatUIStatic.installCustomV1({
+	const layoutContext = {
 		state, fillRect, mouseDown, sliderHover, mouseUp, mouseWheel, scalarSender, itemResolver, paths, strings,
+		buffers: {skillIconPath, skillLevelText, sliderPercentText, hoverText, lootWeaponText, lootArmorText},
 		rows: [monsterRows.vir, attackSkillRows.vir, supportSkillRows.vir, healingSkillRow.vir,
 			recoverySkillRows.vir, itemRows.vir, potionRows.vir, moveRows.vir, moveIconKeys.vir],
 		icons: [attackSkillIconKeys.vir, supportSkillIconKeys.vir, healingSkillIconKey.vir, recoverySkillIconKeys.vir]
-	}) : null;
+	};
+	const custom = customV1 ? AutoCombatUIStatic.installCustomV1(layoutContext) : null;
 	const handlers = custom ? {
 		draw: custom.entries.AutoHuntCustomDraw, down: custom.entries.AutoHuntCustomDown,
 		up: custom.entries.AutoHuntCustomUp, move: custom.entries.AutoHuntCustomMove, wheel: custom.entries.AutoHuntCustomWheel
@@ -7106,6 +7108,8 @@ AutoCombatUI = function(_)
 		PatchDiagnostics.add("AutoCombatUI.QjsOnly", {
 			design,
 			customV1: custom,
+			layoutContext,
+			legacyHelpers: {draw, down: mouseDown, up: mouseUp, move: sliderHover, wheel: mouseWheel, blit: colorKeyBlit, fill: fillRect, itemResolver},
 			language: AutoCombatUIStatic.Language,
 			textCodePage: AutoCombatUIStatic.Language === AutoUILanguage.English ? "ASCII" : "native mapper (" + AutoUILanguage.spec(AutoCombatUIStatic.Language).codePage + "/65001)",
 			textInitializer: AutoCombatUIStatic.TextInitializer,

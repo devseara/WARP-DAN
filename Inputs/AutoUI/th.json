@@ -159,5 +159,8 @@
   "When inventory fills": "เมื่อช่องเก็บของเต็ม",
   "Show empty slots": "แสดงช่องว่าง",
   "Hide empty slots": "ซ่อนช่องว่าง",
-  "Equipment filters": "ตัวกรองอุปกรณ์"
+  "Equipment filters": "ตัวกรองอุปกรณ์",
+  "Support setup": "ตั้งค่าสนับสนุน",
+  "Party master": "หัวหน้าที่ติดตาม",
+  "Select party master": "เลือกผู้เล่นที่จะติดตาม"
 }

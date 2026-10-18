@@ -1,0 +1,17 @@
+{
+  "client": 20250716,
+  "config_size": 648,
+  "exports": {
+    "AutoSupportCustomConfig": 24592,
+    "AutoSupportCustomDown": 15568,
+    "AutoSupportCustomDraw": 16496,
+    "AutoSupportCustomMove": 17968,
+    "AutoSupportCustomUp": 18576,
+    "AutoSupportCustomWheel": 18944
+  },
+  "imports": 0,
+  "payload_sha256": "8e06907ab9de539b88c19933fe713fceb3d9d1d2525798ef36c78cdca0b8625d",
+  "size": 29956,
+  "source_sha256": "435332ed6fe6750d81d1f21f6009df7d8f678f205268de4df5d54e5d1d73129c",
+  "version": 1
+}

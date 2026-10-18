@@ -159,5 +159,8 @@
   "When inventory fills": "소지품이 가득 찼을 때",
   "Show empty slots": "빈 슬롯 표시",
   "Hide empty slots": "빈 슬롯 숨기기",
-  "Equipment filters": "장비 필터"
+  "Equipment filters": "장비 필터",
+  "Support setup": "지원 설정",
+  "Party master": "파티 마스터",
+  "Select party master": "파티 마스터 선택"
 }

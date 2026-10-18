@@ -26,6 +26,11 @@ inputs:
         display: "Inputs/Sample_DATA.INI"
         type: 10
     
+    $autoCombatUIDesign:
+        data: '437573746f6d204175746f48756e7420554920763100'
+        display: "Custom AutoHunt UI v1"
+        type: 10
+
     $autoCombatUILanguage:
         data: '456e676c69736800'
         display: "English"
@@ -68,6 +73,11 @@ inputs:
         display: "true"
         type: 10
     
+    $autoSupportUIDesign:
+        data: '437573746f6d204175746f537570706f727420554920763100'
+        display: "Custom AutoSupport UI v1"
+        type: 10
+
     $autoSupportUILanguage:
         data: '456e676c69736800'
         display: "English"

@@ -43,9 +43,10 @@ def verify_gdi_alpha():
         g.SelectObject(dc,old_font);g.SelectObject(dc,old_bitmap);g.DeleteObject(font);g.DeleteObject(bitmap);g.DeleteDC(dc)
 
 class Machine:
-    def __init__(self, directory, game=None):
+    def __init__(self, directory, game=None, feature='autohunt'):
         self.directory, self.game = directory, game
-        self.manifest = json.loads((directory / 'manifest.json').read_text())['autohunt']
+        self.manifest = json.loads((directory / 'manifest.json').read_text())[feature]
+        self.entry_prefix = 'AutoSupportCustom' if feature=='autosupport' else 'AutoHuntCustom'
         self.custom = self.manifest['customV1']
         assert self.custom
         self.pe = pefile.PE(str(directory / 'autohunt.exe'))
@@ -119,11 +120,11 @@ class Machine:
         assert self.u.reg_read(x.UC_X86_REG_EIP) == STOP, 'instruction bound reached'
         assert self.u.reg_read(x.UC_X86_REG_ESP) == sp + 4 + 4 * len(args), 'stack cleanup changed'
         assert all(self.u.reg_read(register) == value for register, value in saved.items()), 'callee-saved register changed'
-    def event(self, name, a, b): self.invoke(self.custom['entries']['AutoHuntCustom' + name], (a, b))
+    def event(self, name, a, b): self.invoke(self.custom['entries'][self.entry_prefix + name], (a, b))
     def click(self, a, b): self.event('Down', a, b); self.event('Up', a, b)
     def draw(self):
         self.texts.clear(); self.icon_paths.clear(); self.image = Image.new('RGB', (760, 520), 'white')
-        self.invoke(self.custom['entries']['AutoHuntCustomDraw'])
+        self.invoke(self.custom['entries'][self.entry_prefix+'Draw'])
         assert self.u.mem_read(HEAP + 0x7028, 1) == b'\x00', 'GDI text must use an opaque surface like Item Description'
     def set_capture(self): self.capture=self.args(1)[0];self.ret(4)
     def release_capture(self): self.capture=0;self.ret(0)
@@ -175,8 +176,24 @@ class Machine:
     def resource(self):
         if not self.game: return None
         path=self.game / 'data/texture' / self.last_surface.replace(b'\\',b'/').decode('cp1252')
-        assert path.is_file(), path
-        image=Image.open(path).convert('RGBA')
+        if path.is_file(): image=Image.open(path).convert('RGBA')
+        else:
+            import io
+            from dual_weapon_formats.grf_reader import GrfFile
+            if not hasattr(self,'grf_cache'):self.grf_cache={}
+            key='data/texture/'+self.last_surface.replace(b'\\',b'/').decode('cp949').lower()
+            if key not in self.grf_cache:
+                data=None
+                import configparser
+                ini=configparser.ConfigParser();ini.read(self.game/'DATA.INI');names=[name for _,name in sorted(ini['Data'].items(),key=lambda row:int(row[0]))]
+                for name in names:
+                    grf=GrfFile(self.game/name)
+                    try:data=grf.read(key)
+                    finally:grf.close()
+                    if data:break
+                assert data, path
+                self.grf_cache[key]=data
+            image=Image.open(io.BytesIO(self.grf_cache[key])).convert('RGBA')
         pixels=image.load()
         for py in range(image.height):
             for px in range(image.width):

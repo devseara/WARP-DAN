@@ -159,5 +159,8 @@
   "When inventory fills": "Quando o inventário encher",
   "Show empty slots": "Mostrar espaços vazios",
   "Hide empty slots": "Ocultar espaços vazios",
-  "Equipment filters": "Filtros de equipamento"
+  "Equipment filters": "Filtros de equipamento",
+  "Support setup": "Configurar suporte",
+  "Party master": "Mestre do grupo",
+  "Select party master": "Selecionar mestre do grupo"
 }

@@ -159,5 +159,8 @@
   "When inventory fills": "所持品が満杯のとき",
   "Show empty slots": "空きスロットを表示",
   "Hide empty slots": "空きスロットを非表示",
-  "Equipment filters": "装備フィルター"
+  "Equipment filters": "装備フィルター",
+  "Support setup": "支援設定",
+  "Party master": "パーティーマスター",
+  "Select party master": "パーティーマスターを選択"
 }
