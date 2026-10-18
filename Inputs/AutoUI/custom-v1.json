@@ -1,0 +1,17 @@
+{
+  "client": 20250716,
+  "config_size": 620,
+  "exports": {
+    "AutoHuntCustomConfig": 24592,
+    "AutoHuntCustomDown": 15632,
+    "AutoHuntCustomDraw": 16608,
+    "AutoHuntCustomMove": 17936,
+    "AutoHuntCustomUp": 18544,
+    "AutoHuntCustomWheel": 18912
+  },
+  "imports": 0,
+  "payload_sha256": "c3494785380f6fdf309938eef0cf65365b841a503ae712c6f0a154895624cd64",
+  "size": 29932,
+  "source_sha256": "0a932905087894835928b0f8b0406ee6a9df01fe47818214723eb90e0f935182",
+  "version": 2
+}

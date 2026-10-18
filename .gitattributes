@@ -61,6 +61,10 @@ tools/fixtures/item_description/assets/** binary
 
 # Personal UI patches: preserve WARP CRLF and hashed runtime source bytes.
 Scripts/Patches/AutoCombatUI.qjs text eol=crlf
+# Custom AutoHunt: keep the verified native source hash and payload bytes stable.
+tools/native/autohunt_custom_v1.cpp text eol=lf
+Inputs/AutoUI/custom-v1.json text eol=lf
+Inputs/AutoUI/custom-v1.bin binary
 Scripts/Patches/BattlepassUI.qjs text eol=crlf
 Scripts/Patches/ChatItemIcons.qjs text eol=crlf
 Scripts/Patches/GachaUI.qjs text eol=crlf
