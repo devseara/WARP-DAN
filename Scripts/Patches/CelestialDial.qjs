@@ -1,5 +1,5 @@
 /*
- * Description: Adds a passive Ragnarok-themed top-center Celestial dial to
+ * Description: Adds an interactive Ragnarok-themed top-center Celestial dial to
  * 2025-07-16 Ragexe. WENV v6 adds per-map server authorization for managed weather.
  * A private native effect instance expires through normal world processing;
  * existing map weather is preserved. WENV v1/v2/v3/v4 remain compatible.
@@ -24,9 +24,11 @@ CelestialDial = function(_)
 		start+size!==raw.length || api!==meta.exports.CelestialApi || meta.api_size!==20 || u32(raw,20)!==20 ||
 		u32(raw,24)!==80 || api+20>size || ((crc^0xffffffff)>>>0)!==u32(raw,28))throw Error("CelestialDial: invalid payload");
 	const names=["CelestialApi","CelestialState","_CelestialFrame@4","_CelestialReset@0","_CelestialReceive@4","@CelestialDraw@8","@CelestialHit@16","@CelestialDestroy@12"];
-	for(const name of names)if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("CelestialDial: missing "+name);
+	const hudNames=["CelestialHudApi","CelestialHudState","@CelestialDown@16","@CelestialUp@16","@CelestialMove@16","@CelestialCursorDraw@8"];
+	for(const name of [...names,...hudNames])if(!Number.isInteger(meta.exports[name]) || meta.exports[name]<0 || meta.exports[name]>=size)throw Error("CelestialDial: missing "+name);
 	for(const [name,va,hex] of [["frame call",0xC74FB0,"E8 5B 47 E0 FF"],["window constructor",0xA1B190,"55 8B EC 6A FF"],
 		["window destructor",0xA1B750,"55 8B EC"],["canvas clear",0xA1CB30,"55 8B EC"],["native text",n.TextDraw,"55 8B EC"],
+		["top announcement owner/position",0xC856C4,"8B 8E 1C 06 00 00 6A 33 6A 00 8B 01 FF 50 10"],
 		["weather receiver",0xC74F6C,"B9 D8 57 5C 01"],["actor effect list",0xC44420,"55 8B EC 83 B9 48 01 00 00 00"],
 		["effect identity",0xBB418A,"89 87 68 01 00 00"],["effect factory",0xC44540,"55 8B EC 6A FF"],
 		["world effect lifetime",0xA6BAE0,"8B 4F 08 8B 01 8B 40 04 FF D0 84 C0"],
@@ -52,9 +54,11 @@ CelestialDial = function(_)
 	const e=name=>vir+meta.exports[name],top=n.topHudY(_);
 	const table=n.allocateBytes(new Array(4+53*4).fill(0),4);
 	Exe.SetHex(table.phy,Exe.GetHex(Exe.Vir2Phy(baseTable-4),table.size));
-	for(const [slot,name] of [[0,"@CelestialDestroy@12"],[20,"@CelestialDraw@8"],[50,"@CelestialHit@16"]])Exe.SetUint32(table.phy+4+slot*4,e(name));
+	for(const [slot,name] of [[0,"@CelestialDestroy@12"],[20,"@CelestialDraw@8"],[25,"@CelestialDown@16"],[27,"@CelestialMove@16"],[28,"@CelestialMove@16"],[31,"@CelestialUp@16"],[50,"@CelestialHit@16"]])Exe.SetUint32(table.phy+4+slot*4,e(name));
 	const refs=n.resolvePacketRefs();
 	[1,table.vir+4,refs.packetCtorA,refs.packetSend,top.vir].forEach((v,i)=>put(code,api+i*4,v));
+	const cursorRoute=CelestialDial.cursorRoute(),hudApi=meta.exports.CelestialHudApi;
+	[cursorRoute.routerVir,...["Cursor_Hover.bmp","Cursor_Mouse_Press.bmp"].map(file=>n.buildResourcePath("battlepassui\\"+file).vir)].forEach((v,i)=>put(code,hudApi+i*4,v));
 	for(let i=0;i<code.length;i+=4096)Exe.SetHex(phy+i,n.bytesToHex(code.slice(i,i+4096)));
 		// The player scope runs stock exactly once; only its own fresh SPR quads cast silhouettes.
 	const playerSlot=Exe.Vir2Phy(0x1094810+3*4);
@@ -62,8 +66,7 @@ CelestialDial = function(_)
 	Exe.SetUint32(playerSlot,e("@CelestialPlayerShadowDraw@12"));
 	n.assertCode("CelestialDial sprite submit",0xC4A65E,"E8 AD 64 90 FF");
 	Exe.SetCALL(Exe.Vir2Phy(0xC4A65E,CODE),e("CelestialSpriteSubmitBridge"),0);
-	// Preserve every incoming register/flag and tail-replay the original call.
-	const frame=n.asm();frame.emit(0x9C,0x60,0x53);frame.call(e("_CelestialFrame@4"));frame.emit(0x61,0x9D);frame.jmp(0xA79710);
+	const frame=CelestialDial.frameBridge(e("_CelestialFrame@4"),top.vir);
 	const bridge=n.allocateCode(frame);Exe.SetCALL(Exe.Vir2Phy(0xC74FB0,CODE),bridge.vir,0);
 	// Run native weather first, then cap only its scene RGB outputs.
 	n.assertCode("CelestialDial weather process call",0xC74F71,"E8 2A E7 F9 FF");
@@ -102,8 +105,24 @@ CelestialDial = function(_)
 	n.allocateBytes(record,4);
 	CACHE.put("CelestialDial.Contract.v3",{state:e("CelestialState"),api:e("CelestialApi"),runtimeBase:vir,runtimeSize:size,playerDraw:e("@CelestialPlayerShadowDraw@12"),frame:bridge.vir,receiver:receiver.vir,top:top.vir,lifecycle,
 		hooks:[{site:0xC74FB0,size:5},...lifecycle.map(h=>({site:h.entry,size:4})),{site:n.packetTableEntryVir(0xBF6),size:4}]});
+	CelestialDial.installCursor(e("@CelestialCursorDraw@8"));
 	CelestialDial.onApplied();
 	return true;
+};
+// CModeGame+61C owns the top announcement balloon; +620 is the separate
+// middle-screen balloon. Move the whole top window, including cached text,
+// item icons and its native background. The dial publishes 114 only while
+// visible (8 + 98 + 8px gap); otherwise retain the profiled stock Y of 51.
+CelestialDial.frameBridge=function(frameVir,topVir) {
+	const a=AutoCombatUI.nativeHelpers.asm();
+	a.emit(0x9C,0x60,0x53);a.call(frameVir);
+	a.emit(0x85,0xDB);a.jcc(0x84,"done");
+	a.emit(0x8B,0x8B);a.dword(0x61C);a.emit(0x85,0xC9);a.jcc(0x84,"done");
+	a.emit(0xA1);a.dword(topVir);a.emit(0x83,0xF8,24);a.jcc(0x87,"reserved");
+	a.emit(0xB8);a.dword(51);
+	a.label("reserved");a.emit(0x89,0x41,0x20);
+	a.label("done");a.emit(0x61,0x9D);a.jmp(0xA79710);
+	return a;
 };
 CelestialDial.validate=()=>Exe.BuildDate===20250716;
 CelestialDial.onApplied=function() {
@@ -115,4 +134,73 @@ CelestialDial.onApplied=function() {
 	const wav=System.DirPath(Warp.TgtExe)+"/data/wav";
 	if(!System.MkDir(wav) || !System.Copy(Warp.Path+"/Inputs/CelestialDial/boh_thunder_01.wav",wav+"/boh_thunder_01.wav",true))
 		throw Error("CelestialDial: cannot install thunder audio");
+	let cursorDir=System.DirPath(Warp.TgtExe);
+	const prefix=String.fromCharCode(0xC0,0xAF,0xC0,0xFA,0xC0,0xCE,0xC5,0xCD,0xC6,0xE4,0xC0,0xCC,0xBD,0xBA);
+	for(const folder of ["data","texture",prefix,"battlepassui"]){cursorDir+="/"+folder;if(!System.MkDir(cursorDir))throw Error("CelestialDial: cannot create "+cursorDir);}
+	for(const file of ["Cursor_Hover.bmp","Cursor_Mouse_Press.bmp"]){
+		const existing=new BinFile(cursorDir+"/"+file,"r"),present=existing.Valid;existing.Close();
+		if(!present && !System.Copy(Warp.Path+"/Assets/BattlepassUI/client/"+file,cursorDir+"/"+file,false))throw Error("CelestialDial: cannot install "+file);
+	}
+};
+
+CelestialDial.cursorRoute=function()
+{
+	const n=AutoCombatUI.nativeHelpers,key="StorageInventoryCart.Cursor.Global.v3",cacheKey="StorageInventoryCart.Cursor.v3";
+	for(const address of [0xC75165,0xD26DA0,0xD27471]){
+		const rel=(0xA74410-address-5)>>>0;
+		n.assertCode("Inventory/Cart/Storage original cursor call",address,n.bytesToHex([0xE8,rel&255,rel>>>8&255,rel>>>16&255,rel>>>24]));
+	}
+	let route=CACHE.get(cacheKey);
+	if(!route)CACHE.setup(key,"StorageInventoryCartCursorV3",{cleanTag_after_userDel:false,dealloc_after_zeroUsers:false});
+	const previous=Exe.ActivePatch;
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag(key));
+	try {
+		if(!route){
+			const cells=n.allocateBytes(new Array(12).fill(0),4);
+			route={inventoryCellPhy:cells.phy,inventoryCellVir:cells.vir,cartCellPhy:cells.phy+4,cartCellVir:cells.vir+4,storageCellPhy:cells.phy+8,storageCellVir:cells.vir+8,inventoryVir:0,cartVir:0,storageVir:0,code:[]};
+			const dispatch=(cell,fallback)=>{
+				const a=n.asm();a.emit(0x9C,0x83,0x3D);a.dword(cell);a.emit(0);a.jcc(0x85,"selected");
+				a.emit(0x9D);a.jmp(fallback);a.label("selected");a.emit(0x9D,0xFF,0x25);a.dword(cell);
+				const stub=n.allocateCode(a);route.code.push({phy:stub.phy,hex:a.finish(stub.vir)});return stub.vir;
+			};
+			route.storageDispatchVir=dispatch(route.storageCellVir,0xA74410);
+			route.cartDispatchVir=dispatch(route.cartCellVir,route.storageDispatchVir);
+			route.routerVir=dispatch(route.inventoryCellVir,route.cartDispatchVir);
+			CACHE.put(cacheKey,route);
+		}
+		CelestialDial.writeCursorRoute(route);
+	} finally {Exe.EndTag();Exe.ActivePatch=previous;}
+	CACHE.addUser(key,"CelestialDial");return route;
+};
+// Emit every byte owned by the open global tag, including all three registrations.
+CelestialDial.writeCursorRoute=function(route)
+{
+	for(const stub of route.code)Exe.SetHex(stub.phy,stub.hex);
+	Exe.SetUint32(route.inventoryCellPhy,route.inventoryVir);
+	Exe.SetUint32(route.cartCellPhy,route.cartVir);
+	Exe.SetUint32(route.storageCellPhy,route.storageVir);
+	for(const address of [0xC75165,0xD26DA0,0xD27471])Exe.SetCALL(Exe.Vir2Phy(address),route.celestialVir || route.routerVir);
+};
+CelestialDial.cursorTarget=function()
+{
+	const route=CelestialDial.cursorRoute();return route.routerVir;
+};
+CelestialDial.installCursor=function(entry)
+{
+	const route=CACHE.get("StorageInventoryCart.Cursor.v3"),previous=Exe.ActivePatch;
+	if(!route || !Number.isInteger(entry) || entry<=0)throw Error("CelestialDial: invalid cursor registration");
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag("StorageInventoryCart.Cursor.Global.v3"));
+	try {route.celestialVir=entry;CelestialDial.writeCursorRoute(route);}
+	finally {Exe.EndTag();Exe.ActivePatch=previous;}
+};
+CelestialDial.cleanup=function()
+{
+	const key="StorageInventoryCart.Cursor.Global.v3",cacheKey="StorageInventoryCart.Cursor.v3",route=CACHE.get(cacheKey);
+	if(!route)return;
+	const previous=Exe.ActivePatch;
+	Exe.ActivateGlobal();Exe.BeginTag(CACHE.getTag(key));
+	try {route.celestialVir=0;CelestialDial.writeCursorRoute(route);}
+	finally {Exe.EndTag();Exe.ActivePatch=previous;}
+	CACHE.delUser(key,"CelestialDial");
+	if(!CACHE.hasUsers(key))CACHE.del(cacheKey);
 };

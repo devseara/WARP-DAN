@@ -94,7 +94,7 @@ CartUI.writeCursorRoute=function(route)
 	Exe.SetUint32(route.inventoryCellPhy,route.inventoryVir);
 	Exe.SetUint32(route.cartCellPhy,route.cartVir);
 	Exe.SetUint32(route.storageCellPhy,route.storageVir);
-	for(const address of [0xC75165,0xD26DA0,0xD27471])Exe.SetCALL(Exe.Vir2Phy(address),route.routerVir);
+	for(const address of [0xC75165,0xD26DA0,0xD27471])Exe.SetCALL(Exe.Vir2Phy(address),route.celestialVir || route.routerVir);
 };
 CartUI.cursorTarget=function()
 {

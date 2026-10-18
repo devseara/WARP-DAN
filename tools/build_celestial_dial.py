@@ -64,6 +64,7 @@ def main():
     meta['ground_sha256']=hashlib.sha256(source.with_name('rain_ground.inl').read_bytes().replace(b'\r\n',b'\n')).hexdigest()
     meta['weather_art_sha256']=hashlib.sha256(source.with_name('weather_art.inl').read_bytes().replace(b'\r\n',b'\n')).hexdigest()
     meta['sun_shadow_sha256']=hashlib.sha256(source.with_name('sun_shadow.inl').read_bytes().replace(b'\r\n',b'\n')).hexdigest()
+    meta['hud_interaction_sha256']=hashlib.sha256(source.with_name('hud_interaction.inl').read_bytes().replace(b'\r\n',b'\n')).hexdigest()
     out.with_suffix('.json').write_text(json.dumps(meta, indent=2)+'\n', encoding='utf8')
     print(json.dumps(meta, indent=2))
 

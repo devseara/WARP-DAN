@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "client": 20250716,
+  "size": 663668,
+  "api_size": 16,
+  "relocation_count": 75,
+  "exports": {
+    "@LootDestroy@12": 1232,
+    "@LootDraw@8": 1296,
+    "@LootMessage@32": 1824,
+    "@LootPosition@16": 2064,
+    "@LootTick@8": 2080,
+    "LootApi": 8192,
+    "LootRows": 8248,
+    "LootState": 8208
+  },
+  "source_sha256": "448b48ab3093dfd312d6884b85a21581413d6ee1bc668cb5e75d820f05753bec",
+  "payload_sha256": "135dc159abcf0c580b0ee502f72f1ba722bc689dde0ddf1e8d9ec93842de21d4",
+  "runtime_imports": []
+}

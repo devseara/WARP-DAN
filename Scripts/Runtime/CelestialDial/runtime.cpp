@@ -29,7 +29,9 @@ constexpr u32 stale_ms = 90000, resync_ms = 60000, retry_ms = 10000;
 template<typename T> static T& at(void* p, int offset) { return *reinterpret_cast<T*>(static_cast<u8*>(p) + offset); }
 static u32 tick() { return (*reinterpret_cast<u32 (__stdcall **)()>(0xFC17B0))(); }
 static void copy(void* d, const void* s, u32 size) { auto* a=static_cast<volatile u8*>(d);auto* b=static_cast<const u8*>(s);for(u32 i=0;i<size;++i)a[i]=b[i]; }
+#include "hud_interaction.inl"
 static void hide() {
+    releaseHudInput();
     if(CelestialState.window)at<int>(CelestialState.window,0x28)=0;
     if(CelestialApi.monster_top)*CelestialApi.monster_top=24;
 }
@@ -43,6 +45,7 @@ static void restoreLighting() {
     }
 }
 EXPORT void __stdcall CelestialReset() {
+    resetHud();
     restoreLighting();
     hide();
     CelestialState.mode=CelestialState.world=0;
@@ -151,13 +154,16 @@ EXPORT void __fastcall CelestialWeatherProcess(void* weather,void*) {
     const u32 age=now-s.flash_tick;
     const float flash=storm && (s.server_weather&LightningFlash) && age<350?
         (age<45?static_cast<float>(age)/45.0f:static_cast<float>(350-age)/305.0f):0.0f;
+    // Keep the native address separate from payload-relative addresses so MSVC
+    // cannot encode a negative external-address addend in a payload relocation.
+    void* volatile channels=weather;
     for(int i=0;i<3;++i){
-        float& value=at<float>(weather,0x38+i*4);
-        s.lighting_original[i]=at<u32>(weather,0x38+i*4);
+        float& value=at<float>(channels,0x38+i*4);
+        s.lighting_original[i]=at<u32>(channels,0x38+i*4);
         const float cap=night?nightCaps[i]:stormCaps[i];
         if(value>=0.0f && value<=1.0f && value>cap)value=cap;
         if(value>=0.0f && value<=1.0f && flash>0)value+=(flashCaps[i]-value)*flash;
-        s.lighting_applied[i]=at<u32>(weather,0x38+i*4);
+        s.lighting_applied[i]=at<u32>(channels,0x38+i*4);
     }
     s.lighting_owned=1;
 }
@@ -296,7 +302,9 @@ EXPORT void __stdcall CelestialFrame(void* mode) {
     const u32 second=currentSeconds(now);
     if(second!=s.last_second){s.last_second=second;dirty();}
     at<int>(s.window,0x28)=1;
-    if(CelestialApi.monster_top)*CelestialApi.monster_top=monster_top;
+    if(CelestialHudState.pressed && at<void*>((void*)0x131F4E8,0x19C)!=s.window)CelestialHudState.pressed=0;
+    if(animateHud(now))dirty();
+    if(CelestialApi.monster_top)*CelestialApi.monster_top=86+28*CelestialHudState.progress/1000;
 }
 static void pixel(int x,int y,u32 color) {
     void* w=CelestialState.window;if(!w)return;void* surface=at<void*>(w,0x24);
@@ -311,6 +319,13 @@ static void text(const char* value,int x,int y,int size,u32 rgb) {
     // Native TextDraw uses COLORREF; alpha is repaired only on this private canvas.
     const u32 color=((rgb&255)<<16)|(rgb&0xff00)|((rgb>>16)&255);
     reinterpret_cast<void (__thiscall *)(void*,int,int,const char*,int,int,int,u32,int,int)>(0xA25A70)(CelestialState.window,x,y,value,n,0,size,color,0,0);
+}
+static int textWidth(const char* value,int size) {
+    int n=0;while(value[n] && n<95)++n;
+    return reinterpret_cast<int (__thiscall *)(void*,const char*,int,int,int,int,int)>(0xA21C90)(CelestialState.window,value,n,0,size,0,0);
+}
+static void centered(const char* value,int x,int y,int span,int size,u32 rgb) {
+    const int used=textWidth(value,size);text(value,x+(span-used)/2,y,size,rgb);
 }
 static void panel(int x,int y,int w,int h) {
     rect(x+2,y,w-4,h,0xFF91A3BC);rect(x,y+2,w,h-4,0xFF91A3BC);
@@ -338,8 +353,29 @@ static bool moonShape(int x,int y) {
 static void medallion(bool night,u32 filled) {
     // Native-size artwork: a silver bezel and sky inset surround a much larger,
     // faceted sun or shaded crescent. No fonts, assets or weather APIs are involved.
-    for(int y=-34;y<=34;++y)for(int x=-34;x<=34;++x){
-        const int d=x*x+y*y;if(d>34*34)continue;
+    for(int y=-35;y<=35;++y)for(int x=-35;x<=35;++x){
+        const int d=x*x+y*y;if(d>36*36)continue;
+        // 4x4 coverage for both circular bezel edges. Interior artwork is exact.
+        if(d>=29*29){
+            u32 red=0,green=0,blue=0,covered=0;
+            for(int sy=-3;sy<=3;sy+=2)for(int sx=-3;sx<=3;sx+=2){
+                const int xx=x*8+sx,yy=y*8+sy,dd=xx*xx+yy*yy;if(dd>34*34*64)continue;
+                u32 c=0xFF53677F;
+                if(dd<33*33*64)c=shade(0xFFF5FAFF,0xFF91ABC5,(y+34)*255/68);
+                if(dd<31*31*64)c=night?0xFF718CAC:0xFFBDA16C;
+                if(dd<30*30*64)c=shade(night?0xFF233752:0xFFF0F7FD,night?0xFF596E8D:0xFFBDD8E5,(y+30)*255/60);
+                ++covered;red+=(c>>16)&255;green+=(c>>8)&255;blue+=c&255;
+            }
+            if(covered){
+                const u32 a=covered*255/16;void* surface=at<void*>(CelestialState.window,0x24);
+                const u32 below=at<u32*>(surface,0x18)[(35+y)*width+140+x],ba=below>>24;
+                const u32 outA=a+ba*(255-a)/255;
+                u32 c=outA<<24;const u32 rgb=(red/covered<<16)|(green/covered<<8)|(blue/covered);
+                for(int shift=0;shift<24;shift+=8)c|=(((((rgb>>shift)&255)*a+((below>>shift)&255)*ba*(255-a)/255)/outA)<<shift);
+                pixel(140+x,35+y,c);
+            }
+            continue;
+        }
         u32 color=0xFF53677F;
         if(d<33*33)color=shade(0xFFF5FAFF,0xFF91ABC5,(y+34)*255/68);
         if(d<31*31)color=night?0xFF718CAC:0xFFBDA16C;
@@ -412,29 +448,29 @@ static void weatherText(char* out,u32 mask) {
     }
     out[n]=0;
 }
-static void weatherIcon(u32 mask,bool night) {
+static void weatherIcon(u32 mask,bool night,int center) {
     const u32 blue=0xFF6888AD;
     if(!mask){
         for(int y=-4;y<=4;++y)for(int x=-4;x<=4;++x)
-            if(x*x+y*y<=16 && (!night || (x-2)*(x-2)+(y+2)*(y+2)>12))pixel(16+x,84+y,night?blue:0xFFC9993D);
+            if(x*x+y*y<=16 && (!night || (x-2)*(x-2)+(y+2)*(y+2)>12))pixel(center+x,84+y,night?blue:0xFFC9993D);
     }else if(mask&Thunderstorm){
-        rect(10,79,12,3,blue);
-        for(int y=82;y<=89;++y)rect(16-(y-82)/2,y,3,1,0xFFC69A42);
+        rect(center-6,79,12,3,blue);
+        for(int y=82;y<=89;++y)rect(center-(y-82)/2,y,3,1,0xFFC69A42);
     }else if(mask&Rain){
-        rect(10,79,12,3,blue);
-        for(int i=0;i<3;++i){pixel(12+i*4,85,blue);pixel(11+i*4,86,blue);pixel(11+i*4,87,blue);}
+        rect(center-6,79,12,3,blue);
+        for(int i=0;i<3;++i){pixel(center-4+i*4,85,blue);pixel(center-5+i*4,86,blue);pixel(center-5+i*4,87,blue);}
     }else if(mask&Snow){
-        for(int i=-5;i<=5;++i){pixel(16+i,84,blue);pixel(16,84+i,blue);}
-        for(int i=-3;i<=3;++i){pixel(16+i,84+i,blue);pixel(16-i,84+i,blue);}
+        for(int i=-5;i<=5;++i){pixel(center+i,84,blue);pixel(center,84+i,blue);}
+        for(int i=-3;i<=3;++i){pixel(center+i,84+i,blue);pixel(center-i,84+i,blue);}
     }else if(mask&Fog){
-        rect(10,80,12,1,blue);rect(12,84,11,1,blue);rect(9,88,12,1,blue);
+        rect(center-6,80,12,1,blue);rect(center-4,84,11,1,blue);rect(center-7,88,12,1,blue);
     }else if(mask&(Petals|Leaves)){
-        for(int y=-5;y<=5;++y)for(int x=-4;x<=4;++x)if(x*x+y*y<24)pixel(16+x,84+y,mask&Petals?0xFFC18BA8:0xFFB59153);
-        for(int i=-4;i<=4;++i)pixel(16,84+i,0xFF80674C);
+        for(int y=-5;y<=5;++y)for(int x=-4;x<=4;++x)if(x*x+y*y<24)pixel(center+x,84+y,mask&Petals?0xFFC18BA8:0xFFB59153);
+        for(int i=-4;i<=4;++i)pixel(center,84+i,0xFF80674C);
     }else{
         for(int y=-4;y<=4;++y)for(int x=-7;x<=7;++x)
-            if((x+3)*(x+3)+y*y<10 || (x-1)*(x-1)+(y+2)*(y+2)<15 || (x-5)*(x-5)+y*y<8)pixel(16+x,84+y,blue);
-        rect(10,84,12,3,blue);
+            if((x+3)*(x+3)+y*y<10 || (x-1)*(x-1)+(y+2)*(y+2)<15 || (x-5)*(x-5)+y*y<8)pixel(center+x,84+y,blue);
+        rect(center-6,84,12,3,blue);
     }
 }
 EXPORT void __fastcall CelestialDraw(void* w,void*) {
@@ -443,12 +479,12 @@ EXPORT void __fastcall CelestialDraw(void* w,void*) {
     if(at<int>(w,0x14)!=width || at<int>(w,0x18)!=height)return;
     reinterpret_cast<void (__thiscall *)(void*,int)>(0xA1CB30)(w,0);
     panel(2,16,276,47);
-    text("WORLD",17,21,10,0x66758B);text(s.p.phase?"Night":"Day",17,37,13,0x35435A);
-    text("SERVER TIME",183,21,10,0x66758B);
-    char clock[9];clockText(clock,currentSeconds(now));text(clock,183,35,13,0x35435A);
+    centered("WORLD",2,21,103,10,0x66758B);centered(s.p.phase?"Night":"Day",2,35,103,13,0x35435A);
+    centered("SERVER TIME",175,21,103,10,0x66758B);
+    char clock[9];clockText(clock,currentSeconds(now));centered(clock,175,35,103,13,0x35435A);
     char zone[10]="UTC+00:00";int offset=s.p.utc_offset_minutes;
     if(offset<0){zone[3]='-';offset=-offset;}
-    digits(zone+4,static_cast<u32>(offset)/60,2);digits(zone+7,static_cast<u32>(offset)%60,2);text(zone,186,50,10,0x66758B);
+    digits(zone+4,static_cast<u32>(offset)/60,2);digits(zone+7,static_cast<u32>(offset)%60,2);centered(zone,175,50,103,10,0x66758B);
     u32 filled=0;char next[96];copy(next,"No scheduled change",20);
     if(s.p.flags&Scheduled){
         const u32 elapsed=now-s.received;
@@ -464,22 +500,23 @@ EXPORT void __fastcall CelestialDraw(void* w,void*) {
             else{digits(next+n,seconds/60,2);next[n+2]=':';digits(next+n+3,seconds%60,2);next[n+5]=0;}
         }
     }
-    medallion(s.p.phase!=0,filled);
-    medallionWeather(s.weather_mask,s.p.phase!=0);
     panel(2,74,276,21);
-    char condition[32];weatherText(condition,s.weather_mask);weatherIcon(s.weather_mask,s.p.phase!=0);
-    text(condition,29,78,11,0x5B6B80);rect(129,78,1,13,0xFFD0DBE8);text(next,140,78,11,0x5B6B80);
+    char condition[32];weatherText(condition,s.weather_mask);
+    const int conditionX=2+(138-textWidth(condition,11)-20)/2;
+    weatherIcon(s.weather_mask,s.p.phase!=0,conditionX+6);
+    text(condition,conditionX+20,78,11,0x5B6B80);rect(140,78,1,13,0xFFD0DBE8);centered(next,141,78,137,11,0x5B6B80);
     void* surface=at<void*>(w,0x24);
     if(surface && at<void*>(surface,0x18)){
         u32* pixels=at<u32*>(surface,0x18);
         for(int i=0;i<width*height;++i)if(!(pixels[i]&0xff000000) && (pixels[i]&0xffffff))pixels[i]|=0xff000000;
+        animatePanels(surface);
+        medallion(s.p.phase!=0,filled);
+        medallionWeather(s.weather_mask,s.p.phase!=0);
         at<u8>(surface,0x1C)=1;
         at<u8>(surface,0x28)=1; // Native surface must composite its untouched alpha-zero pixels.
     }
 }
-// The complete HUD is passive, including transparent pixels and the medallion.
-EXPORT void* __fastcall CelestialHit(void*,void*,int,int) { return 0; }
 EXPORT void* __fastcall CelestialDestroy(void* w,void*,int flags) {
-    if(w==CelestialState.window){CelestialReset();CelestialState.window=0;}
+    if(w==CelestialState.window){releaseHudCursors();CelestialReset();CelestialState.window=0;}
     return reinterpret_cast<void* (__thiscall *)(void*,int)>(0xA1B750)(w,flags);
 }

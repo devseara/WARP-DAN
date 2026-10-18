@@ -53,7 +53,7 @@ class HudMachine(Machine):
     def texture(self):
         # Prefix is the client's legacy texture directory; filenames are ASCII.
         raw = bytes(self.u.mem_read(self.args(1)[0], 256)).split(b'\0')[0]
-        name = raw.split(b'eitr_basicinfo\\')[-1].decode('ascii').replace('\\', '/')
+        name = raw.split(b'basicinfoui\\')[-1].decode('ascii').replace('\\', '/')
         if not (self.assets / name).is_file():
             self.ret(4, 0)
         else:

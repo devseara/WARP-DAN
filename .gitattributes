@@ -118,6 +118,11 @@ Inputs/CelestialDial/*.bmp binary
 Inputs/CelestialDial/*.wav binary
 Inputs/CelestialDial/audio-source/*.mp3 binary
 
+# Left loot notices: preserve WARP syntax and native payload bytes.
+Scripts/Patches/LeftLootNotices.qjs text eol=crlf
+Inputs/LeftLootNotices/*.bin binary
+Inputs/LeftLootNotices/*.json text eol=lf
+
 # Sprite renderer patch source must load in WARP after every checkout.
 Scripts/Patches/UniformSpriteRHW.qjs text eol=crlf
 Scripts/Patches/FloorSafeSpriteDepth.qjs text eol=crlf

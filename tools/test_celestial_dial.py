@@ -39,6 +39,9 @@ class Machine:
         self.stub(0xA245C0,self.resize);self.stub(0xA23450,self.position)
         self.stub(0xA2D240,lambda:self.ret(4));self.stub(0xA1CB30,self.clear)
         self.stub(0xA25A70,self.text);self.stub(0xC9E1DD,lambda:self.ret(0))
+        self.stub(0xA21C90,self.measure)
+        self.stub(0xA4B750,lambda:(self.w(0x131F4E8+0x19C,self.args(1)[0]),self.ret(4)))
+        self.stub(0xA482E0,lambda:(self.w(0x131F4E8+0x19C,0),self.ret(0)))
         self.stub(0xA79710,lambda:(self.original.append(self.ecx()),self.ret(0)))
         for pc in [0xC9E908,0xC9E985,0xCA0AAD]:self.stub(pc,lambda pc=pc:(self.stock.append(pc),self.ret(0)))
         self.weather_hook=self.stub(0xC136A0,lambda:(_ for _ in ()).throw(AssertionError('Dial called native weather')))
@@ -86,6 +89,11 @@ class Machine:
         font=ImageFont.truetype('C:/Windows/Fonts/tahoma.ttf',height)
         ImageDraw.Draw(im).text((x,y),value,font=font,fill=(color&255,color>>8&255,color>>16&255,0))
         self.u.mem_write(pixels,im.tobytes('raw','BGRA'));self.ret(36)
+    def measure(self):
+        ptr,n,font_id,height,bold,italic=self.args(6)
+        assert font_id==bold==italic==0
+        value=bytes(self.u.mem_read(ptr,n)).decode('ascii')
+        self.ret(24,round(ImageFont.truetype('C:/Windows/Fonts/tahoma.ttf',height).getlength(value)))
     def frame(self):self.invoke(self.c['frame'],(self.mode,))
     def snapshot(self,phase=0,flags=2,offset=480,remaining=0,duration=0,epoch=EPOCH,push=False,sequence=None,weather=0,protocol=5,rain_remaining=0,generation=1,map_name=b'prontera\0'):
         r=struct.unpack('<HHIHH3I',self.sent[-1]);cookie,request,client_tick=r[5:]

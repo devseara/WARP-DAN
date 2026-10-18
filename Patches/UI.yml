@@ -131,7 +131,7 @@ CustomUI:
             title : RO Global Zero Basic Information HUD
             recommend : no
             author : Louis T Steinhil
-            desc : Replaces both compact Basic Information render paths with the approved 280x70 circular-class HUD from basicinfoui artwork. Shows the real character name, base/job level badge, labeled HP/SP/AP values and percentages. HP turns red at 25 percent or below. Live stock HP/SP and native AP/MAXAP are retained, with BaseAp 200 fallback only when MAXAP is absent. Native Job/gauge tooltips, child lifecycle, Classic UI fallback and New UI Alt+V behavior remain. Copies the packaged artwork beside the output EXE under eitr_basicinfo. QJS-only; target 2025-07-16.
+            desc : Replaces both compact Basic Information render paths with the approved 280x70 circular-class HUD from basicinfoui artwork. Shows the real character name, base/job level badge, labeled HP/SP/AP values and percentages. HP turns red at 25 percent or below. Live stock HP/SP and native AP/MAXAP are retained, with BaseAp 200 fallback only when MAXAP is absent. Native Job/gauge tooltips, child lifecycle, Classic UI fallback and New UI Alt+V behavior remain. Copies the packaged artwork beside the output EXE under basicinfoui. QJS-only; target 2025-07-16.
 
         - ROGlobalZeroStatusIcons:
             title : RO Global Zero Status Icons V2
@@ -713,3 +713,12 @@ StorageInventory:
             recommend : no
             author : DevSeara
             desc : Uses the original cartui artwork for a native six-column cart grid with search, category filtering, item count and weight on 2025-07-16. Keeps native item instances, cart transfers and descriptions. Installs missing bundled assets beside the patched EXE; no server change.
+
+LootNotifications:
+    title : LOOT NOTIFICATIONS
+    patches:
+        - LeftLootNotices:
+            title : Left-side Loot Notices (five-item stack)
+            recommend : no
+            author : DevSeara
+            desc : Shows up to five native item-obtained notices on the left, newest first. Each lasts seven seconds and slowly fades during the final three. Preserves native icons, names, quantities and pickup behavior. 2025-07-16 only; no server change.

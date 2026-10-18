@@ -29,9 +29,9 @@ existing **RO Global Zero UI Theme** / **Allow AP Bar for all Jobs** selections.
 No server compilation or database changes are needed.
 
 The patch copies `Inputs/BasicInfoUI/assets` beside the output EXE into
-`data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/eitr_basicinfo`. Keep that folder with the client
-and retain the existing data-folder-first patch. The source `basicinfoui`
-folder is not overwritten. Forty-nine supplied PNGs are packaged byte-for-byte;
+`data/texture/À¯ÀúÀÎÅÍÆäÀÌ½º/basicinfoui`. Keep that folder with the client
+and retain the existing data-folder-first patch. Matching packaged filenames
+are refreshed on each build. Forty-nine supplied PNGs are packaged byte-for-byte;
 four additional strips repeat the original one-pixel gradients to 213 pixels
 for one cropped draw per bar. To regenerate the package:
 

@@ -28,6 +28,29 @@ def main():
     old_meta=json.loads((old_path/'runtime.json').read_text());codebase=contract['api']-old_meta['exports']['CelestialApi']
     oldbase=codebase
     old,old_meta=payload(old_path,codebase);new,new_meta=payload(args.new_payload,codebase)
+    interactive='CelestialHudApi' in new_meta['exports'] and 'CelestialHudApi' not in old_meta['exports']
+    if 'CelestialHudApi' in old_meta['exports']:
+        raise RuntimeError('Use a separately audited upgrade for an already interactive dial')
+    cursor_sites=[0xC75165,0xD26DA0,0xD27471]
+    cursor_fallback=None
+    def configure_hud(body, runtime):
+        nonlocal cursor_fallback
+        if not interactive:return body
+        targets=[]
+        for site in cursor_sites:
+            op=pe.get_data(site-base,5);assert op[0]==0xe8
+            targets.append(site+5+struct.unpack_from('<i',op,1)[0])
+        assert len(set(targets))==1,'Cursor routes must share one profiled fallback'
+        cursor_fallback=targets[0]
+        # Derive the exact client resource prefix, as buildResourcePath does.
+        text=pe.get_data(0x102AC48-base,192).split(b'\0')[0]
+        prefix=text[:text.index(b'basic_interface\\')]
+        paths=[]
+        for name in [b'Cursor_Hover.bmp',b'Cursor_Mouse_Press.bmp']:
+            paths.append(runtime+len(body));body.extend(prefix+b'battlepassui\\'+name+b'\0')
+        struct.pack_into('<3I',body,new_meta['exports']['CelestialHudApi'],cursor_fallback,*paths)
+        return body
+    new=configure_hud(new,codebase)
     off=pe.get_offset_from_rva(codebase-base);current=original[off:off+len(old)]
     api=old_meta['exports']['CelestialApi']
     old[api:api+20]=current[api:api+20]
@@ -44,7 +67,7 @@ def main():
         assert tail.Name.rstrip(b'\0') in (b'.xdiff',b'.celdial')
         assert tail.PointerToRawData+tail.SizeOfRawData==overlay_start
         rva=tail.VirtualAddress+align(max(tail.Misc_VirtualSize,tail.SizeOfRawData),16)
-        codebase=base+rva;new,new_meta=payload(args.new_payload,codebase)
+        codebase=base+rva;new,new_meta=payload(args.new_payload,codebase);new=configure_hud(new,codebase)
         off=tail.PointerToRawData+rva-tail.VirtualAddress
         raw_size=align(off-tail.PointerToRawData+len(new),fa)
         new_overlay=tail.PointerToRawData+raw_size
@@ -121,15 +144,27 @@ def main():
         pos=pe.get_offset_from_rva(contract['vtable']-base+slot*4)
         assert struct.unpack_from('<I',data,pos)[0]==oldbase+old_meta['exports'][name]
         struct.pack_into('<I',data,pos,codebase+new_meta['exports'][name]);allowed.append((pos,4,'owned dial vtable'))
+    if interactive:
+        for slot,name,stock in [(25,'@CelestialDown@16',0x5da600),(27,'@CelestialMove@16',0x5a89d0),(28,'@CelestialMove@16',0x5a89b0),(31,'@CelestialUp@16',0x5a8990)]:
+            pos=pe.get_offset_from_rva(contract['vtable']-base+slot*4)
+            assert struct.unpack_from('<I',data,pos)[0]==stock
+            struct.pack_into('<I',data,pos,codebase+new_meta['exports'][name]);allowed.append((pos,4,'owned dial input slot'))
+        for site in cursor_sites:
+            pos=pe.get_offset_from_rva(site-base)
+            data[pos:pos+5]=b'\xe8'+struct.pack('<i',codebase+new_meta['exports']['@CelestialCursorDraw@8']-site-5)
+            allowed.append((pos,5,'circle cursor wrapper; existing chain retained as fallback'))
     restored=bytearray(data[:overlay_start] if migrated else data)
     for pos,size,_ in allowed:restored[pos:pos+size]=original[pos:pos+size]
     assert bytes(restored)==(original[:overlay_start] if migrated else original),'Unrelated client bytes changed'
     final=pefile.PE(data=bytes(data));assert (final.get_overlay() or b'')==overlay
+    imports=lambda p:[(d.dll,[(i.name,i.ordinal,i.address) for i in d.imports]) for d in getattr(p,'DIRECTORY_ENTRY_IMPORT',[])]
+    assert imports(final)==imports(pe)
     if not migrated:assert len(data)==len(original)
     args.output.parent.mkdir(parents=True,exist_ok=False);args.output.write_bytes(data)
     report={'source':str(args.source.resolve()),'source_sha256':sha(original),'target':str(args.output.resolve()),'sha256':sha(data),
         'runtime_base':hex(codebase),'unrelated_bytes_preserved':True,'size_preserved':not migrated,
-        'owned_section_migration':migrated,'overlay_preserved':True,
+        'owned_section_migration':migrated,'overlay_preserved':True,'imports_preserved':True,
+        'circle_cursor_fallback':hex(cursor_fallback) if cursor_fallback else None,
         'allowed_ranges':[{'offset':hex(pos),'size':size,'purpose':purpose} for pos,size,purpose in allowed]}
     args.output.with_suffix('.upgrade.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps({k:v for k,v in report.items() if k!='allowed_ranges'},indent=2))

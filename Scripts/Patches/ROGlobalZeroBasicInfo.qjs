@@ -1438,7 +1438,7 @@ ROGlobalZeroBasicInfo = function(_)
 	BasicInfoZeroStatic.ImageDrawPart = n.allocateCode(BasicInfoZeroStatic.buildGaugeDraw(blend.vir)).vir;
 	BasicInfoZeroStatic.FinalizePixels = n.allocateCode(png.buildFinalizePixels()).vir;
 	$$(_, 2, "Build RO Global Zero Basic Info resource paths");
-	const resource = file => BasicInfoZeroStatic.buildResourcePath("eitr_basicinfo\\" + file);
+	const resource = file => BasicInfoZeroStatic.buildResourcePath("basicinfoui\\" + file);
 	const paths = {
 		background: resource("bg.png"), gauge: resource("bg_barover.png"),
 		hp: resource("bar_hp_g_wide.png"), hpRed: resource("bar_hp_r_wide.png"),
@@ -1769,14 +1769,14 @@ ROGlobalZeroBasicInfo.validate = function()
 	}
 };
 
-// Package the supplied artwork beside each newly patched client. A private
-// asset folder preserves the user's original basicinfoui files byte-for-byte.
+// Package the supplied artwork in the requested basicinfoui resource folder
+// beside each newly patched client.
 ROGlobalZeroBasicInfo.onApplied = function()
 {
 	if (Warp.TestMode) return;
 	const prefix = String.fromCharCode(0xC0, 0xAF, 0xC0, 0xFA, 0xC0, 0xCE,
 		0xC5, 0xCD, 0xC6, 0xE4, 0xC0, 0xCC, 0xBD, 0xBA);
-	const target = System.DirPath(Warp.TgtExe) + '/data/texture/' + prefix + '/eitr_basicinfo';
+	const target = System.DirPath(Warp.TgtExe) + '/data/texture/' + prefix + '/basicinfoui';
 	if (!System.MkDir(target + '/class'))
 		throw Error('ROGlobalZeroBasicInfo: unable to create HUD asset directory');
 	const source = Warp.Path + 'Inputs/BasicInfoUI/assets/';

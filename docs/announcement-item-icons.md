@@ -3,9 +3,17 @@
 Author: DevSeara. Target: 2025-07-16 Ragexe.
 
 Keeps the original stationary top-screen announcement balloon, background,
-position, colors, border, lifetime and message limit. Only an 18px item image is
+colors, border, lifetime and message limit. Only an 18px item image is
 added immediately before its name, with a 20px text advance. There is no Notice
 label, scrolling marquee, custom window or replacement queue.
+
+When CelestialDial is selected, its frame bridge now places the complete top
+announcement window at Y=114 below the expanded panel and Y=86 below the collapsed
+circle, following the animation with an eight-pixel gap. This includes the existing
+background and item icons. When the HUD is hidden, the native Y=51 is restored.
+Horizontal centering, message stacking and
+the separate middle-screen balloon remain native. The icon patch itself is
+unchanged and still keeps stock positioning when used without CelestialDial.
 
 WARP title: **Original Announcements with Item Icons**. The internal name
 `NoticeMarquee` and ID 10007 are retained for compatibility with local saved
