@@ -1,0 +1,10 @@
+{
+  "cases": [
+    {
+      "case": "owned-runtime-overlap",
+      "rejected": true,
+      "renderer_hook_writes": 0
+    }
+  ],
+  "status": "pass"
+}

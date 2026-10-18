@@ -49,6 +49,18 @@ does not modify GRFs or sprite artwork.
 
 ### Installed current-client upgrade
 
+**Crash correction,2026-10-18:** the `601fa320...` upgrade below is rejected.
+Its caves were placed inside CelestialState's zero-filled globals and a native
+reset overwrote the shadow entry. The exact user null-read crash is reproduced.
+The corrected installed client is
+`83c027c36c7a0fef5126af25ac88747084fd6248cb72c478070bd47b8f0fd65b`.
+Its caves are in a separate `.rhwfix` section outside all original mapped
+sections. Native reset/map-update-then-render checks now pass. Details and
+release verification are in
+`docs/evidence/sprite-depth-state-overlap-20261018/`. The previous483-case
+static/order tests did not cover mutable runtime ownership and did not clear
+that crash. Retest the corrected release in game before live acceptance.
+
 Source integration is on main through merge `8a624947` and compatibility/
 regression commit `a98bbbfb`. On2026-10-18 the current signed
 `2025-07-16_Ragexe_175220998_clientinfo_patched.exe` was upgraded in place

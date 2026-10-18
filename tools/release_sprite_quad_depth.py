@@ -4,9 +4,11 @@ import json, os, shutil, subprocess, sys
 import hd_sprite_release as r
 from verify_floor_safe_sprite_depth import Image, emulate
 
-WORK=r.ROOT/'Outputs/sprite-depth-main-20261018'
+WORK=r.ROOT/'Outputs/sprite-depth-crash-fix-20261018'
 RELEASE=WORK/'deployment'
-UPGRADE=WORK/'current-client-upgrade-r3/upgrade.json'
+UPGRADE=WORK/'isolated-upgrade-r5/upgrade.json'
+PREVIOUS=r.ROOT/'Outputs/sprite-depth-main-20261018/deployment'
+REJECTED='601fa320dceb31f016649d8183f8f8604668901acc5f81caf25d0a15d6fcce00'
 
 def closed():
     p=subprocess.run(['powershell','-NoProfile','-Command',"@(Get-Process -Name '*Ragexe*','*roid*' -ErrorAction SilentlyContinue).Count"],capture_output=True,text=True,creationflags=0x08000000)
@@ -14,10 +16,13 @@ def closed():
 
 def install():
     closed();u=r.hd.base.load(UPGRADE)
-    source=Path(u['source']);candidate=Path(u['candidate'])
-    assert source.parent.resolve()==r.GAME.resolve()
+    baseline=Path(u['source']);candidate=Path(u['candidate']);source=r.GAME/baseline.name
     assert u['status']=='candidate_verified' and u['all_other_existing_section_bytes_preserved'] and u['weather_player_draw_preserved']
-    assert r.sha(source.read_bytes())==u['source_sha256'] and r.sha(candidate.read_bytes())==u['candidate_sha256']
+    assert u['caves_outside_original_image'] and u['isolated_cave_section']=='.rhwfix'
+    assert r.sha(baseline.read_bytes())==u['source_sha256'] and r.sha(candidate.read_bytes())==u['candidate_sha256']
+    assert r.sha(source.read_bytes())==REJECTED,'Inspect changes since the rejected release before replacing it.'
+    regression=r.hd.base.load(r.ROOT/'docs/evidence/sprite-depth-state-overlap-20261018/reset-then-render.json')
+    assert regression['fixed']['passed'] and regression['fixed']['client_sha256']==u['candidate_sha256']
     r.CLIENT=source.name;before_signature=r.verify_signature()
     key=r.SERVER/'conf/riftlock-server.key'
     secret=bytes.fromhex(key.read_text(encoding='ascii').strip())
@@ -28,7 +33,14 @@ def install():
     before=RELEASE/'before';before.mkdir()
     for name in names:shutil.copyfile(r.GAME/name,before/name)
     immutable={p.name:r.transaction.digest(p) for p in list(r.GAME.glob('*.grf'))+[r.GAME/'riftlock.dll',r.GAME/'libsodium.dll',r.GAME/'DATA.INI']}
-    result=dict(status='prepared',client=r.CLIENT,source_sha256=u['source_sha256'],candidate_sha256=u['candidate_sha256'],signing_before=before_signature,backup=str(before),immutable_files=immutable,live_client_tested=False)
+    previous=r.hd.base.load(PREVIOUS/'release.json')
+    assert immutable==previous['immutable_files'],'Revalidate recovery files after unrelated asset changes.'
+    recovery=PREVIOUS/'before'
+    assert r.sha((recovery/r.CLIENT).read_bytes())==u['source_sha256']
+    fields=dict(line.split('=',1) for line in (recovery/'riftlock-release.sig').read_text(encoding='ascii').splitlines())
+    _,manifest=r.signing_modules()
+    assert manifest.release_digest(recovery/r.CLIENT,r.GAME/'riftlock.dll',r.GAME/'libsodium.dll',recovery/'riftlock-assets-v1.txt').hex()==fields['digest']
+    result=dict(status='prepared',client=r.CLIENT,source_sha256=u['source_sha256'],rejected_client_sha256=REJECTED,candidate_sha256=u['candidate_sha256'],signing_before=before_signature,backup=str(before),healthy_recovery=str(recovery),immutable_files=immutable,live_client_tested=False)
     r.save(RELEASE/'release.json',result)
     closed()
     try:
@@ -48,8 +60,9 @@ def install():
     except Exception:
         for name in names:
             pending=r.GAME/(name+'.sprite-depth-restore.pending')
-            shutil.copyfile(before/name,pending);os.replace(pending,r.GAME/name)
-        result.update(status='rolled_back',installed=False)
+            shutil.copyfile(recovery/name,pending);os.replace(pending,r.GAME/name)
+        r.verify_signature()
+        result.update(status='restored_healthy_pre_upgrade_release',installed=False)
         r.save(RELEASE/'release.json',result)
         raise
     print(json.dumps(dict(status='installed',client=r.CLIENT,sha256=u['candidate_sha256'],signature_verified=True,all_grfs_unchanged=True)),flush=True)

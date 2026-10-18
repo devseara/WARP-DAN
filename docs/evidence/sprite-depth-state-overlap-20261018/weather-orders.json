@@ -1,0 +1,26 @@
+[
+  {
+    "case": "weather-first",
+    "path": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\sprite-depth-crash-fix-20261018\\weather-orders\\weather-first\\client.exe",
+    "floor": {
+      "body_cave": "0x171d360",
+      "shadow_cave": "0x171d3bc",
+      "body_cases": 66,
+      "shadow_cases": 3
+    },
+    "weather_player_draw": "0x1887300",
+    "uniform_rhw": true
+  },
+  {
+    "case": "depth-first",
+    "path": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\sprite-depth-crash-fix-20261018\\weather-orders\\depth-first\\client.exe",
+    "floor": {
+      "body_cave": "0x171d360",
+      "shadow_cave": "0x171d3bc",
+      "body_cases": 66,
+      "shadow_cases": 3
+    },
+    "weather_player_draw": "0x1887300",
+    "uniform_rhw": true
+  }
+]

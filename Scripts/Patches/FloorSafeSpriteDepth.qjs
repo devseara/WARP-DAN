@@ -17,7 +17,7 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-10-12                                             *
+*   Last Modified : 2026-10-18                                             *
 *                                                                          *
 *   Description   : Stops character sprites and shadows sinking into the   *
 *                   floor below their feet on 2025-07-16 Ragexe. Rect      *
@@ -101,6 +101,10 @@ FloorSafeSpriteDepth = function(_)
 		return out.join(' ');
 	};
 	const [phy, vir] = Exe.Allocate(self.caveSize, 0x10);
+	const owner = CACHE.get("CelestialDial.Contract.v3");
+	if (owner && Number.isInteger(owner.runtimeBase) && Number.isInteger(owner.runtimeSize) &&
+		vir < owner.runtimeBase + owner.runtimeSize && vir + self.caveSize > owner.runtimeBase)
+		throw Error('FloorSafeSpriteDepth: allocation overlaps existing weather runtime');
 	const zero = le32(vir);
 	const bodyVir = vir + 0x10;
 	// Entered from 0x00C40F9F after cmp byte [edi+0x9C],0. SSE ops keep EFLAGS,
