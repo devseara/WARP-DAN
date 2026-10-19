@@ -30,6 +30,7 @@ def main():
         'verify_extname_cache_pe.py', 'verify_extname_party_pe.py',
         'verify_character_create_actions_pe.py', 'verify_character_create_callback_pe.py',
         'verify_character_select_footer_pe.py', 'verify_extname_character_rename_pe.py',
+        'verify_character_delete_ui_pe.py',
         'verify_extname_companion_pe.py', 'verify_extname_companion_rename_pe.py',
         'verify_extname_social_reuse_pe.py', 'verify_extname_mail_pe.py',
         'verify_extname_quest_pe.py', 'verify_extname_star_pe.py',
@@ -56,6 +57,8 @@ def main():
         if suite == 'verify_character_select_footer_pe.py':
             command += ['--before', str(args.before), '--report',
                         str(args.output / 'character-footer.json')]
+        if suite == 'verify_character_delete_ui_pe.py':
+            command += ['--report', str(args.output / 'character-delete-ui.json')]
         try:
             process = subprocess.run(command, capture_output=True, text=True,
                                      encoding='utf-8', errors='replace', timeout=600)

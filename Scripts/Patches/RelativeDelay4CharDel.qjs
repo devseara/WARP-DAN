@@ -23,7 +23,11 @@
 *                                                                          *
 *   Author(s)     : Functor, Neo-Mind                                      *
 *   Created Date  : 2020-11-21                                             *
-*   Last Modified : 2024-08-08                                             *
+*   Last Modified : 2026-10-18                                             *
+*   Description   : Main 2025-07-16 draws a per-card HH:MM:SS deletion   *
+*                   countdown from the native reservation date. Older    *
+*                   supported clients keep their original relative-time  *
+*                   formatter path.                                      *
 *                                                                          *
 \**************************************************************************/
 
@@ -35,6 +39,7 @@
 ///
 RelativeDelay4CharDel = function(_)
 {
+	if (Exe.BuildDate === 20250716) return RelativeDelay4CharDel.apply2025(_);
 	$$(_, 1.1, `Find the code which prepare character deletion time data`)
 	let code;
 	if (Exe.Version <= 11)
@@ -126,6 +131,11 @@ RelativeDelay4CharDel = function(_)
 ///
 RelativeDelay4CharDel.validate = function()
 {
+	if (Exe.BuildDate === 20250716)
+	{
+		const call = Exe.Vir2Phy(0x0085720A);
+		return call >= 0 && Exe.GetUint8(call) === 0xE8 && Exe.GetUint32(call+1) === 0x0022FE61;
+	}
 	let parts = [
 		PUSH_R      //push regA
 	+	PUSH(0x28)  //push 28h
@@ -155,4 +165,43 @@ RelativeDelay4CharDel.validate = function()
 	}
 
 	return (this.PushAddr > 0);
+};
+
+// Main 2025 renders deletion dates in UISelectCharSlotWnd, after the parent
+// UINewSelectCharWnd has drawn. Scope the relative conversion to this callsite:
+// the shared calendar formatter and card Draw/clear/composition remain stock.
+RelativeDelay4CharDel.build2025 = function()
+{
+	const a = ExtNameStaticAsm.asm();
+	// thiscall _CTime::GetSystemTime(out): preserve the native 16-byte layout,
+	// return out in EAX, and leave the absolute reservation date unchanged.
+	a.emit(0x55,0x8B,0xEC,0x53,0x56,0x57,0x8B,0xF9,0x8B,0x75,8);
+	a.emit(0x33,0xC0,0x89,0x06,0x89,0x46,4,0x89,0x46,8,0x89,0x46,12);
+	a.emit(0x6A,0,0xFF,0x15); a.dword(0x00FC1B68); a.emit(0x83,0xC4,4);
+	a.emit(0x8B,0x0F,0x3B,0xC1); a.jcc(0x83,"done");
+	a.emit(0x2B,0xC8,0x8B,0xC1,0x33,0xD2,0xBB); a.dword(3600); a.emit(0xF7,0xF3);
+	a.emit(0x66,0x89,0x46,6,0x8B,0xC2,0x33,0xD2,0xBB); a.dword(60); a.emit(0xF7,0xF3);
+	a.emit(0x66,0x89,0x46,8,0x66,0x89,0x56,10);
+	a.label("done"); a.emit(0x8B,0xC6,0x5F,0x5E,0x5B,0x5D,0xC2,4,0);
+	return a;
+};
+
+RelativeDelay4CharDel.apply2025 = function(_)
+{
+	ExtNameStaticAsm.assertCode("Main 2025 card date formatter",0x0085720A,"E8 61 FE 22 00");
+	ExtNameStaticAsm.assertCode("Main 2025 card date draw",0x008572B0,"E8 BB E7 1C 00");
+	ExtNameStaticAsm.assertCode("Main 2025 card time position",0x008572F7,"6A 34 56");
+	const [dataPhy,dataVir] = RagexeAllocationStatic.allocate(16,16);
+	Exe.SetHex(dataPhy,"52 45 4C 44 45 4C 32 35 2E 76 32 00 00 00 00 00");
+	const asm = RelativeDelay4CharDel.build2025();
+	const [codePhy,codeVir] = RagexeAllocationStatic.allocate(asm.bytes.length,16);
+	Exe.SetHex(codePhy,asm.finish(codeVir));
+	Exe.SetCALL(Exe.Vir2Phy(0x0085720A),codeVir);
+	// Keep both native string constructors, destructors and SEH states intact.
+	// Omit only the calendar-label draw, consuming its nine thiscall arguments.
+	Exe.SetHex(Exe.Vir2Phy(0x008572B0),"83 C4 24 90 90");
+	Exe.SetUint8(Exe.Vir2Phy(0x008572F8),0x28);
+	CACHE.put("RelativeDelay4CharDel.Main2025",{dataVir,codeVir,codeSize:asm.bytes.length,
+		call:0x0085720A,stock:0x00A87070,version:2});
+	return true;
 };

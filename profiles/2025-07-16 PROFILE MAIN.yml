@@ -411,6 +411,7 @@ patches:
     - CustomInventoryLimit
     - CustomInventoryExpandingLimit
     - DeleteCharWithEmail
+    - RelativeDelay4CharDel
     - NoHelpMsg
     - EnableNpcDialogueScrolling
     - MoveUpItemCount
