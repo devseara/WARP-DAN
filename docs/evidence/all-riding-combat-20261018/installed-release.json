@@ -1,0 +1,42 @@
+{
+  "status": "installed_for_live_testing",
+  "client": "2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+  "client_before": "83c027c36c7a0fef5126af25ac88747084fd6248cb72c478070bd47b8f0fd65b",
+  "client_after": "0c6eb8b5d94dc894a452c5e85240a844b716416cf132647b0cdfd79a1a194114",
+  "server_before": "2731bcfd1e1ed67f1945aa8026a5054696bbdf8defc5889e5cf32a08ce829dcd",
+  "server_after": "9930249af410f7fff056d32d46ba3ea41de0c7ba3d46bd3f2b9b56a840b874bb",
+  "immutable_files": {
+    "data.grf": "536c63b5b13bca40914f4144b67e2ba3ccf520812581c0b0c3952d80969ac7b0",
+    "dual_weapon_male_assets.grf": "37a7e2aa876ab9b4383f86e00c0015a65555cebf919612ec2a4b57409c8930cc",
+    "greyworld.grf": "a7b7367c99d56a6fbbc3d61453a011096e5bb2dcde22eba03808ff91f6b43766",
+    "jobs00.grf": "836edc5c1ffc6c47d8ab7f336394da2dee47dd928130a948bf20a6c0420f2445",
+    "maindata.grf": "c5099c1cac96e8d9ea4ea2c37e7942c8113fa3296fe7c02cc0a5bb6448658ab3",
+    "mapdata.grf": "85b0a7d78cc2c58d68afa61333a0af446cf71bb00bea001d1deb5c426797072a",
+    "palettedata.grf": "a2291ca7feb5b3e5583be9d02e3198fcf5be805c234542727ca11ee405459638",
+    "spritedata.grf": "ea2cc6a0d45d6265331dc3901606c536c6a8ec68aa5be492d348271df9c85bc3",
+    "update.grf": "d695bf11d1cbcc7f1ad1a1e982f471eca3839c7432bd21949993c71a17bf9f28",
+    "riftlock.dll": "bf53927cf3ea8f4d2610e397b4f1d4f39d47f926a73c367b7852497f4a923f23",
+    "libsodium.dll": "027cdd4e7e845a64b2c6b2969b7366e6439844a0e1def35bf5f5c8ad1fb4517d",
+    "DATA.INI": "ca646bcd4973832cc272100895787fb06e0eedc3801c6a1bace79ebdc97d374e"
+  },
+  "signing_before": {
+    "build": 1,
+    "release": 1792283364,
+    "digest": "d9450d915bccebb70a7980ba2142baa712d58ddeff94e2c7b60692e9ab326c7d",
+    "public_key": "db2e2a0990d1bab6c887cb9d38df8b29ea31026ce70b83aa10e7a451c93cc80a",
+    "signature_verified": true
+  },
+  "backup": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\all-riding-combat-20261018\\deployment\\before",
+  "setting": "all_riding_combat: 1",
+  "live_gameplay_accepted": false,
+  "signing_after": {
+    "build": 1,
+    "release": 1792284972,
+    "digest": "c0eec1a471440608b6539da8e968e897a62dce977cf66943b5bcc293a83dcb18",
+    "public_key": "db2e2a0990d1bab6c887cb9d38df8b29ea31026ce70b83aa10e7a451c93cc80a",
+    "signature_verified": true
+  },
+  "all_grfs_unchanged": true,
+  "independent_manifest_match": true,
+  "signature_verified": true
+}

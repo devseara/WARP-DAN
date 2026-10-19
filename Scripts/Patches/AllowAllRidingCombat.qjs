@@ -1,0 +1,56 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-10-18                                             *
+*   Last Modified : 2026-10-19                                             *
+*   Description   : Enables attack and skill input on default all-job      *
+*                   mounts for 2025-07-16 Ragexe. Four stock mount         *
+*                   rejection branches take their ordinary continuation.   *
+*                   Mount identity and other checks stay native; matching  *
+*                   server policy is required.                             *
+*   Evidence      : docs/hd-sprites.md                                     *
+*   Verifier      : tools/verify_all_riding_combat.py                      *
+*                                                                          *
+\**************************************************************************/
+
+AllowAllRidingCombat = function(_)
+{
+	const self = AllowAllRidingCombat;
+	if (!self.validate())
+		throw Error('AllowAllRidingCombat: only profiled for 2025-07-16');
+	// Validate every gate before writing any of them. Do not clear +0x2CC:
+	// that byte also selects the correct Fox/Poring/etc body resource.
+	for (const gate of self.gates)
+	{
+		const phy = Exe.Vir2Phy(gate.va);
+		if (phy < 0 || Exe.GetHex(phy, gate.stock.length / 2).replace(/\s+/g, '').toLowerCase() !== gate.stock)
+			throw Error('AllowAllRidingCombat: native mount gate differs: ' + gate.name);
+	}
+	$$(_, 1, 'Allow all-job mounted attack and skill requests');
+	for (const gate of self.gates)
+		Exe.SetHex(Exe.Vir2Phy(gate.va + 7), 'EB');
+	return true;
+};
+AllowAllRidingCombat.validate = () => Exe.BuildDate === 20250716;
+AllowAllRidingCombat.gates = [
+	{ name: 'skill selection', va: 0x00C8D6DC, stock: '80b8cc020000007460ff7208b9c0a35f01e82e12100085c075' },
+	{ name: 'target skill', va: 0x00C8D9CE, stock: '80b8cc02000000745fffb58cfcfeffb9c0a35f01e8390f1000' },
+	{ name: 'ground skill', va: 0x00C8DF76, stock: '80b8cc02000000743452b9c0a35f01e89609100085c07525ff' },
+	{ name: 'normal attack', va: 0x00C8F7E2, stock: '80b8cc02000000741c83fa07740485d275136a006a0068ff000000685d070000e97999ffffb837040000' }
+];

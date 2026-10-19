@@ -126,3 +126,6 @@ Inputs/LeftLootNotices/*.json text eol=lf
 # Sprite renderer patch source must load in WARP after every checkout.
 Scripts/Patches/UniformSpriteRHW.qjs text eol=crlf
 Scripts/Patches/FloorSafeSpriteDepth.qjs text eol=crlf
+Scripts/Patches/AllowAllRidingCombat.qjs text eol=crlf
+Scripts/Patches/MountedMageAttachments.qjs text eol=crlf
+Scripts/Runtime/MountedMageAttachments/*.qjs.in text eol=crlf

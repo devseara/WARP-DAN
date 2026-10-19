@@ -1,145 +1,227 @@
-# HD sprites: installed state, workflow and roadmap
+# HD sprites: current release, workflow and roadmap
 
-Updated 2026-10-12. This is the one maintained HD Sprite document. Previous
-revision narratives and retired scripts/inputs are in the verified
-[cleanup archive](../Assets/HDFirstJobs/cleanup-history/20261012/retired-hd-sprite-work.zip).
-Artwork, editable projects, review pages and release backups remain intact.
+Updated 2026-10-19. This is the single maintained guide for standard HD jobs,
+Novice and their mounted artwork/combat integration. Historical release receipts
+and machine evidence are records, not competing instructions. Clan runtime and
+GrayMap retain their separate feature specifications linked below.
 
-## Current installed state
+## Current release and acceptance
 
-Target: `C:/Users/Administrator/Documents/Ragnarok/Banquet of Heroes/maindata.grf`.
-The refreshed [installed inventory](../Inputs/HDFirstJobs/installed-hd-bodies-20261012.json)
-reads back 14 pairs / 28 resources: Novice and the six first jobs, both sexes,
-with 1, 456 actions and 6,384 frame uses. Coverage is not live visual acceptance.
+Target game directory: `C:/Users/Administrator/Documents/Ragnarok/Banquet of Heroes`.
+Actual client: `2025-07-16_Ragexe_175220998_clientinfo_patched.exe`.
+Local server source/runtime: `C:/Users/Administrator/Documents/GitHub/BanquetOfHeroes`.
 
-**Female Mage V16 is installed for live testing.** The selected design is gallery
-#6 (`female-mage-complete-fit-v2`), including its proportions, chest panels and
-textured shading. Subsequent silver-armor redesign experiments are superseded.
-The complete pair has 104 actions, 456 frame uses and204 stored body sprites.
-Gameplay output is one body layer per frame in ACT 2.4 / SPR 2.0, at scale 0.5;
-native head assets remain separate. V14 preparation was accepted, then rear
-boot contact was reopened and corrected in V16. V16 deployment was explicitly
-authorized for live testing; full live acceptance remains open.
-
-| Installed item | SHA-256 |
+| Surface | Current state |
 | --- | --- |
-| `maindata.grf` | `a8c8b2c924f1df7cebbb07f36497edff5a1c75b9d4d5e374383e60813e226ac8` |
-| `data/sprite/인간족/몸통/여/마법사_여.spr` | `b964720835013284d491acb796dd39e1ffdc26d5b7f623919a2f1622fb3072f1` |
-| `data/sprite/인간족/몸통/여/마법사_여.act` | `841bf4ad96a9b0c69451a9848bbbf1948115e327ec91e402268f5ca5c22e9ff8` |
+| Novice + six first jobs, both sexes | 14 installed HD body pairs; October 12 inventory records 1,456 actions and 6,384 uses. Inventory is format coverage, not visual acceptance. |
+| Unmounted female Mage | Installed V16, 104 actions / 456 uses / 204 body images, ACT2.4 / SPR2.0, native head separate. Retain its final project and pixel recipe. |
+| Mounted female Mage/Fox body | V45 final, based on V44 R3; 104 actions / 448 uses. Preparation has48 phases with fixed Fox paw-contact regions, moving joints and no global scale animation. Installation authorized for testing; complete live acceptance remains open. |
+| Mounted Knife1201 | Existing dedicated pair installed. User reports it appears at the hand but the grip still needs improvement. |
+| Client death + GrayMap correction | V49 installed for live testing from the exact V47 executable; mounted corpse/GrayMap live acceptance is pending. No body, Knife or server change. |
+| New Knife and standard Rod/Staff grips | V50 is the current review candidate; Candidate=true in Act workspace. V48 is superseded. Neither is accepted, exported or installed. |
+| Corpse terrain cutoff | V49 loads the correct Fox corpse, but its native reversed-depth rows still sink behind terrain. V50 contains a scoped client correction, offline verified and not installed. |
 
-[Pair record](../Inputs/HDFirstJobs/female-mage-grounded-v16.json),
-[installation receipt](../Inputs/HDFirstJobs/female-mage-grounded-v16-installation.json),
-and [release verification](../Assets/HDFirstJobs/releases/female-mage-grounded-v16-20261012/installed-verification.json)
-pin the bytes. The release preserved 18,321 unrelated GRF records and 26 other HD
-resources. Riftlock signing and independent manifest rescan passed. The sprite
-installation did not modify the client EXE, DATA.INI, other GRFs or server policy.
-
-## Open defects and next work
-
-1. **Live zoom head/body drift:** normal/close screenshots show approximately
-   10-12 close-capture pixels of upward head displacement relative to the torso
-   after torso alignment. This is a photographic estimate, not an engine trace.
-   All 24 idle anchors match native and body origins are integral, but static
-   validity does not establish runtime correctness. A deeper collar alone does
-   not explain the two captures. Isolate runtime scaling/attachment handling
-   before changing art. [Zoom evidence](http://127.0.0.1:8771/animation-audit-v1/female-mage-zoom-registration-audit/review.html).
-2. **Melee3 residue:** A88/A89/A94/A95 F0 have a detached line above the head
-   (15-16 pixels at alpha>=16, maximum alpha184-187). This source defect survived
-   the lossless export. [Audit proof](http://127.0.0.1:8771/animation-audit-v1/female-mage-v14-compatibility-audit/review.html).
-3. **Remaining acceptance:** live zoom, anatomy and equipped weapon/shield
-   behavior are not signed off. All 456 body rasters round-trip exactly, are
-   nonempty, and preserve metadata; these format checks do not prove pose quality.
-
-Resolve zoom registration before expanding mounts. Keep design #6; do not apply
-a blind global head shift or substitute another design. Existing runtime patch
-work, including `UniformSpriteRHW.qjs`, is outside this cleanup. Its presence is
-not recorded here as a validated fix. Client root cause and the live-accepted
-`UniformSpriteRHW`/`FloorSafeSpriteDepth` fixes: [sprite-quad-depth.md](sprite-quad-depth.md).
-
-## Editable source and proof
-
-Paths below are under `Assets/HDFirstJobs/animation-audit-v1/`.
-
-| Purpose | Location |
+| Pinned runtime / resource | SHA-256 |
 | --- | --- |
-| Installed V16 editable source | `female-mage-grounded-preparation-v16/mage-grounded-final.actproj` |
-| Final workspace renders | `female-mage-grounded-preparation-v16/rendered-final/` |
-| Installed gameplay pair | `female-mage-grounded-preparation-v16/candidate/mage-female.{spr,act}` |
-| Final pixel recipe | `female-mage-grounded-preparation-v16/pixel-recipe-final.json` |
-| Correction audit and sole measurements | `female-mage-grounded-preparation-v16/correction-audit-final.json`, `sole-verification.json` |
-| Native reference | `female-mage-complete-style-v1/native-reference.actproj` |
-| Selected design #6 | `female-mage-complete-fit-v2/` |
-| Previous V14 editable source | `female-mage-design6-workspace-v14/` |
-| Installed idle audit | `female-mage-live-idle-head-audit/` |
-| Zoom captures and measurements | `female-mage-zoom-registration-audit/` |
+| Previous live V47 client | `17f8e579cd0a54f1d043e43a216041ade391088d00223d864cc8e15f8c09f891` |
+| V49 death + GrayMap client | `a01c93ff5e2ef491fadb29a7bf4e0bae05eae4c6130301c643f8c34eb9b9d9e5` |
+| Installed map-server (V47 lifecycle) | `fde5da407fabc63552bb85fb0cb29b1bc5ad3a9c72b39a5fd23c4ce6a4f87054` |
+| Mounted body ACT | `9169e79984c933896843fbb717a5720a0730cb53890dc8e6cd8a2231c77161f7` |
+| Mounted body SPR | `c4a813042471194e04f6cd6e8739351b0ae74a40613827d686739f80eefbf4ce` |
+| Installed Knife ACT | `491d4c64e592b6955edac41d7e21d98e1ca736b36d1fe0edff1f831727edf953` |
+| Installed Knife SPR | `8438b23046c583642c6f764c78b5dd4ed506bbd0d5b7318e113732619dab8482` |
 
-V16 changes 20 rear preparation frames; 436 remain identical to V14. Both sole
-rows match native in all 24 A34-A37 frames. Boots move without resampling; short
-plain-shaft joins were rebuilt with workspace pixels. The central tabard and
-all pixels above canvas y340 are preserved. `rendered-all/` is an intermediate
-V16 attempt; use `rendered-final/` and `mage-grounded-final.actproj`.
-[Installed V16 review](http://127.0.0.1:8771/animation-audit-v1/female-mage-grounded-preparation-v16/review.html).
+Current transaction/checkpoint: `Outputs/mage-death-graymap-v49-r2/installation/`.
+`release.json` is authoritative for installation status; `installed-verification.json`
+records readback, GrayMap atlas, unchanged GRFs/DLLs and independent release signing.
+Never infer live appearance from these offline results. The previous V47 paired
+client/signing rollback remains in `Outputs/mage-mounted-death-v47/release/`.
 
-## Release and rollback
+The October19 read-only capture again found A65F0, All_Riding=1 and the **unmounted**
+body pair in slot0 while the client hash was17f8. This reproduces the reported
+corpse defect and establishes that the server persistence worked; the missing
+client death-resource correction caused the unchanged corpse.
+Evidence: `Outputs/cleanup-20261019/live-death.json` and
+`docs/evidence/mage-death-graymap-v49-20261019/`.
 
-Release: `Assets/HDFirstJobs/releases/female-mage-grounded-v16-20261012/`.
-Keep `accepted/`, `before/`, `maindata.grf.before`, `maindata-transaction.json`,
-`release.json`, `installed-verification.json` and signature/manifest logs together.
-The prior pair, full archive and matching Riftlock manifest/signature are backed
-up. Never overwrite subsequent unrelated changes with an old whole-file backup.
-A scoped rollback requires the current archive to match its receipt's after hash.
+### Design authority and editable sources
 
-Maintained entrypoint: `tools/release_mage_grounded_v16.py`; shared release
-service: `tools/hd_sprite_release.py`. Verify without regenerating artwork:
+User-pinned costume reference:
+`Assets/HDFirstJobs/animation-audit-v1/female-mage-armor-contract-v42/references/accepted-design-user.png`,
+SHA-256 `28434f8d3f60caddb170985e092b9beb6c677190bd5bbb855192d272aa8239c6`.
+Preserve its silver chest armor, exact central emblem, collar/cape, skin-colored
+midriff, gloves, boots and textured shading. Pose approval never authorizes a
+costume redesign. Older pink/silver experiments and revision labels do not
+supersede this image. Do not substitute a generic clasp for the emblem.
 
-```powershell
-python -B tools/release_mage_grounded_v16.py verify
-```
+Paths below are relative to `Assets/HDFirstJobs/animation-audit-v1/`:
 
-This checks installed payloads, other HD resources, signature and independent
-manifest. Do not rerun prepare/install for an already installed release. Future
-revisions need a new release directory and receipt. Close client/editor before
-external saves; preserve unrelated records, regenerate/sign Riftlock, read back
-and test live. Signing keys stay outside packages. Installation failure restores
-the coherent archive plus matching manifest/signature checkpoint.
+| Purpose | Retained source |
+| --- | --- |
+| Installed unmounted body | `female-mage-grounded-preparation-v16/mage-grounded-final.actproj` + `pixel-recipe-final.json` |
+| Unmounted design study | `female-mage-complete-fit-v2/` |
+| Original native body reference | `female-mage-complete-style-v1/native-reference.actproj` |
+| Approved mounted source | `female-mage-proportion-redraw-v44/mage-fox-proportion-v44-r3.actproj` (SHA `18d2374b98a8bcbb0ef9dfff75368575feb0e04643fd3a2cc241b2a57738254a`) |
+| Installed mounted editable pair source | `female-mage-mounted-attachments-v45/mage-fox-equipped-v45-final.actproj`, recipes, masks and `candidate-manifest.json` |
+| Unaccepted grip authoring | `female-mage-grip-death-v50/knife-gripping.actproj`, `rod-gripping.actproj`, masks, recipes, palm landmarks and all-action renders; prior V48 retained as comparison |
+| Native rendering helper | `female-mage-fox-complete-v15/workspace-render.exe` (active dependency; retain despite obsolete surrounding experiments) |
 
-Historical layered ACT 2.5/SPR 2.1 output had disappearing-frame reports. The
-adopted single-layer ACT 2.4/SPR 2.0 format matches the prior working contract;
-the exact engine failure mechanism or a sprite-index limit was not proved.
+A GRF stores runtime SPR/ACT files. It cannot recover editable masks, named
+layers, source ownership, recipes or the original generation references. Keep
+these authoritative sources outside the game archive.
 
+### Current remaining review
 
-### Which GRF wins
+- After approval and installation of V50, verify mounted death/revive and map/relog transitions
+  in the real client. Confirm the Fox corpse resource, head registration and
+  unchanged unmounted/male deaths. New native execution tests cover24 cases;
+  filename/file-loading boundaries are explicit doubles, not GPU acceptance.
+- Review the V50 Knife/Rod grips against the accepted body. The old224-point
+  opaque-body check falsely accepted a rear boot and fist edges as palms. Use
+  the inspected anatomical landmarks and composed fingers instead.
+- V50 has218 visible grip uses plus6 naturally occluded direct-rear preparation
+  slots. Rod/Wand/Staff1601–1609 share native `롯드` artwork; item-specific staff
+  skins retain fallback and are not claimed supported. Casting keeps native
+  weapon hiding. Export only after user acceptance through Act workspace.
+- Unmounted V16's historical Melee3 line residue in A88/A89/A94/A95 F0 remains
+  an open source-art issue; avoid presenting format roundtrips as its correction.
 
-The active classic-NPC client embeds this archive order:
+[Current grip/corpse candidate](http://127.0.0.1:8771/animation-audit-v1/female-mage-grip-death-v50/review.html).
 
-1. `dual_weapon_male_assets.grf`
-2. `update.grf`
-3. `maindata.grf`
-4. `mapdata.grf`
-5. `palettedata.grf`
-6. `spritedata.grf`
-7. `data.grf`
-8. `greyworld.grf`
+### V50 review: complete weapon coverage and corpse clipping
 
-Neither higher-priority archive nor loose `data/` files overrides the 28 standard
-HD resources. `spritedata.grf` and `palettedata.grf` contain native lower-priority
-copies. `jobs00.grf` contains separate clan assets but is absent from this active
-embedded list. DATA.INI lists update/main/sprite/data, but the embedded loader
-is the active authority for this EXE. [Archive discovery](../Assets/HDFirstJobs/releases/female-mage-grounded-v16-20261012/archive-discovery.json)
-records the checked archives and resource hashes.
+The October19 live read of V49 confirmed A64F0, All_Riding=1, body slot0 using
+`여우마법사_여`, and CPlayer+0x9C=1. The source corpse raster is intact. Native
+reversed depth computes `z-0.16*(row-anchorY)`; above-anchor rows go behind
+terrain. FloorSafeSpriteDepth's earlier reversed-path exclusion left this
+unhandled. Do not redraw or vertically shift the corpse to hide this error.
 
-### Standard HD and Angel clan sprites are separate
+V50's review client adds a bridge at0xC40FA6 that clamps both row offsets to
+at least zero only for mounted female Mage, visible/body job2 and actions64–71.
+Other reversed actors, living actions and the existing shadow hooks stay native.
+24 actual native RHW-production cases and17 fallback/path controls pass; fresh
+WARP exports match the bridge, and both weather patch orders pass existing depth
+regression. `build_mage_corpse_depth.py` and `verify_mage_corpse_depth.py` reproduce
+the correction. The matching FloorSafeSpriteDepth source includes this scope.
+**Live terrain acceptance remains pending; V49 is still installed.**
 
-| Stream | Paths and scale | Current evidence |
-| --- | --- | --- |
-| Standard HD jobs + Novice | Normal Korean body stems; 2x RGBA art / ACT scale 0.5 | Installed inventory above; female Mage V16 update |
-| Angel clan outfits | `data/sprite/clan_skins/1/`; established 4x art / ACT scale 0.25 | `first-jobs-archer-walk-v12` manifest, 24 tracked resources, independently still matching maindata |
-| Native previews | NativeActJobPreviews draws the same world resources in Alt+Q/Alt+S | Renderer source and tests below |
+V50 grip masks cover the actual front-finger volume instead of a4x4 texture
+notch. The ready Rod is upright; attacks retain the established near-side wrist
+arc. Act workspace renders104 actions /448 uses per weapon, across all8 views,
+plus448 installed-baseline comparisons. Each candidate has218 visible uses and
+230 hidden uses, including6 naturally occluded rear-ready phases. All224 native
+noncombat/hidden frames are pixel-identical. Across all896 candidate renders,
+body/head pixels outside the weapon regions remain exact, no body scale changes
+occur, and hilt registration remains within one output pixel. Enlarged per-phase
+glove boards cover preparation and all three melee groups. Casting keeps native
+weapon hiding; standard Rod/Staff1601–1609 only, not every item-specific skin.
 
-[Clan source manifest](../Inputs/ClanBodySkins/records/clan-sprites-current.json)
-and [V12 installation receipt](../Inputs/ClanBodySkins/records/clan-sprites-v12-installation.json)
-remain valid for that separate namespace. V16 did not update clan Mage artwork.
-The clan release name never identifies the standard-HD release.
+The separate combined review EXE is
+`Outputs/mage-grip-death-v50/client/client.exe` (SHA-256
+`450a77797d53038298dcf9d145405542d6dcdda11b88f9ffd3276dc21db2ff28`).
+It preserves GrayMap and all unrelated mapped bytes, with the corpse-depth and
+standard Rod routing changes. Its game weapon pairs are deliberately unexported.
+The active MountedMageAttachments QJS remains on the installed Knife-only
+feature; the Rod expansion is frozen beside the candidate. No live EXE, GRF or
+server file was replaced during V50. Current reports are in
+`Outputs/mage-grip-death-v50/` and the compact source-controlled evidence packet.
+Long per-frame traces are summarized in Git with counts/examples and SHA-256 pins;
+the complete captured packets remain under `Outputs/mage-style-commit/full-evidence/`.
+
+## Runtime contract and diagnosis
+
+`AllowAllRidingCombat` (WARP ID392) changes only the four profiled mount input
+branches at C8D6E3, C8D9D5, C8DF7D and C8F7E9. Existing packet, cooldown, target,
+movement and busy-state processing stays native. `SC_ALL_RIDING` / EFST613 is
+not a Dragon option bit. Default jobs retain their own mounts.
+
+Banquet's `all_riding_combat` defaults0. The local test override is1 in
+`conf/import/battle_conf.txt`. The shared PC policy controls conditional NoAttack,
+all three skill restrictions and death persistence. Preserve native Peco/Dragon
+behavior. The base server feature is committed as e7347b5; mounted-death persistence is
+committed as 38d01de and passes32 isolated production-loop cases. Do not mix binary/config states
+or restart login/char-server for a client-resource correction.
+
+`MountedMageAttachments` (ID393) is scoped to mounted female Mage using live
+visible class+0x25C=2, body job+0x4C8=2, sex+0x260=0 and mount byte+0x2CC=1.
+The getter field+0x2C0 is0 in the captured actor and cannot identify this job.
+
+| Actual native path | Required behavior |
+| --- | --- |
+| 6043E8 -> D36ED0 head selection | Neutral directional head for combat groups4/5/9/10/11/12; body keeps native action/frame. |
+| 6043B7 and6044D9 headgear guards | Same neutral head selection/phase basis. |
+| 605170 attachment | Preserve moving body anchor minus selected head anchor. |
+| D3EA1B appearance load | Use incoming weapon parameters; cached+440 can still be0 on spawn. |
+| D40465 equipment /604328 draw | Load dedicated Knife; allow main-weapon slot5. Slot6 is slash effect, slot7 shield. |
+| D3E340 mount setter | Native flag/shield refresh, plus scoped weapon reload on actual mount/dismount change. |
+| D41DF0 death handler -> calls D41E90 and D41EE2 | Native action3 normalizes the job to unmounted Mage; scoped wrappers pass Fox-Mage4130 to both native ACT/SPR producers. |
+
+The old D36676 hook modified robe/accessory drawing, not main head selection.
+V46 restored it and targeted the actual compositor. V47 fixed server persistence
+and mount-transition reload but missed the separate death-resource handler.
+V49 includes that handler correction without promoting unaccepted grip artwork.
+Do not redraw the corpse or change head anchors to compensate for wrong resource
+selection. Keep these prior failures as diagnostic evidence.
+
+Resource roots in `maindata.grf`:
+- Body: `data/sprite/인간족/몸통/여/여우마법사_여.{act,spr}`.
+- Knife: `data/sprite/인간족/여우마법사/여우마법사_여_단검.{act,spr}`.
+- Native head9 is in `palettedata.grf`; native Mage weapon/`롯드` references are
+  in `spritedata.grf`. V48's proposed `여우마법사_여_롯드` files are not installed.
+
+The active embedded order is dual_weapon_male_assets, update, maindata, mapdata,
+palettedata, spritedata, data, greyworld (all `.grf`). DATA.INI alone does not
+establish the actual loader order. Standard HD uses normal Korean body stems
+at2x/.5; Angel uses `data/sprite/clan_skins/1/` at4x/.25. Separate inventories
+and sources; neither namespace proves the other complete.
+
+### GrayMap and zoom compatibility
+
+On October19 the profile selected GrayMap, but the installed V47 EXE had no
+`/graymap` string and all four terrain-option calls were stock. V49 adds the
+existing import-free GrayMap payload, chains the original slash dispatcher,
+and deploys only `data/texture/graymap/cells.tga`. Master starts disabled;
+`/graymap` toggles it. See [GrayMap feature specification](graymap.md).
+The incremental builder normalizes an absent PE overlay to empty bytes when
+checking preservation; no overlay is added or removed.
+
+Retain the accepted `UniformSpriteRHW` / `FloorSafeSpriteDepth` runtime
+([contract](sprite-quad-depth.md)). Weather state at02570A38 owns0256AA00–02576018;
+no reopened allocation may place instructions in it. The depth fix lives in
+`.rhwfix` at02577000. Incremental updates append separate owned sections and
+verify all unrelated mapped bytes/imports. No new receive hook is involved.
+
+### Maintained tooling and verification
+
+- Client source: `Scripts/Patches/AllowAllRidingCombat.qjs`,
+  `MountedMageAttachments.qjs`; native input/profile and patch tables.
+- Existing-client builders: `build_mounted_mage_attachments.py` (Knife + death),
+  `build_existing_graymap_client.py` (chained GrayMap),
+  `build_mage_mount_grip_client_v48.py` (unaccepted Rod expansion only).
+- Act authoring: `build_mage_gripping_weapons_v48.py`, `review_mage_grips_v48.py`.
+- Generated Mage QJS template:
+  `Scripts/Runtime/MountedMageAttachments/patch.qjs.in`. Regenerate through the
+  builder; preserve tabs, CRLF and UTF-8 without BOM. Banners are76 columns with
+  closing asterisks aligned in column76. `verify_qjs_patch_style.py` checks all
+  three affected patches and the template. These rules also live in `AGENTS.md`.
+- Current installer: `tools/release_mage_mount_client.py prepare|install|verify`.
+  It hashes the actual target, guards closure, backs up EXE/atlas/signing,
+  verifies all GRFs unchanged, signs and independently scans the paired release.
+- Tests: `verify_mage_death_dispatch.py`, `verify_mage_mount_compositor.py`,
+  `verify_mage_mount_lifecycle.py`, `verify_mage_grip_client_v48.py`,
+  `verify_graymap.py`, `verify_graymap_colors.py`, `verify_sprite_depth_live_state.py`.
+  Use candidate parameters; preserve historical reports when a verifier has an
+  older default output directory. Live readback: `inspect_mage_mounted_live.py`.
+- Keep shared codecs, transaction/signing services, first-job/Novice baselines,
+  native preview/clan renderer tools and their requirements. Superseded version
+  installers are archived reproduction material, not maintained entrypoints.
+
+The V49 combined candidate passes24 actual death-dispatch cases,448 composed
+head/anchor cases,448 unchanged body/weapon cases,224 native weapon attachments,
+816 synthetic short-headgear guard/phase cases, full native single-weapon mount
+transitions, GrayMap producer/style/UI execution and depth/weather regression.
+GPU/file/item boundaries are documented in the reports; these do not accept
+costume, grip anatomy or live death rendering.
 
 ## Artwork and Act workspace contract
 
@@ -256,20 +338,12 @@ and female Rogue have 448 frame uses. Preserve these counts rather than forcing
 456. Standard second jobs total **2,780 referenced poses / 10,928 uses**.
 Transcendent, baby, costume/alternate and third/fourth jobs are separate scope.
 
-## Mount status and roadmap
+## Mount production roadmap
 
 Use each job's default mount: Novice/Poring, Swordman/Peco, Mage/Fox,
-Archer/Ostrich, Acolyte/Alpaca, Merchant/Boar, Thief/Cerberus. Verify the actual
-resource path on the target client; do not replace every job with Peco artwork.
-
-Retained prototype folders: `first-job-mount-hd-v1`, `female-mage-fox-mount-v3`,
-`female-mage-fox-workspace-v4`, `female-mage-fox-native-combat-v5`, all under
-`animation-audit-v1/`. No complete mounted set or cosmetic-combat feature is
-installed. Fox tongue removal was requested; head/collar and tail ownership
-need validation. Generated attack/cast gestures were rejected. Reuse original
-Mage melee/casting poses, include preparation/recovery, and compare native
-Knight/Paladin Peco melee. After the zoom fix, show first-job/Novice examples
-before expanding all jobs.
+Archer/Ostrich, Acolyte/Alpaca, Merchant/Boar and Thief/Cerberus.
+The female Mage/Fox pilot is installed for testing, with the open gates above.
+Other mounted jobs have not passed this pilot's artwork/combat acceptance.
 
 ### Track A: native combat Peco bodies
 
@@ -314,43 +388,13 @@ Implementation sequence:
    relog/map change and signed-GRF release gate. Never call an idle/walk mount
    pilot complete when its combat/casting coverage is missing.
 
-### Track B: cosmetic/all-job mounts with combat
+### Track B: cosmetic mounts
 
-This is a separate client/server feature as well as artwork. The actual Banquet
-source currently rejects skills under `SC_ALL_RIDING` in `src/map/skill.cpp:889`
-and `status.cpp:2294`; `db/re/status.yml` sets All_Riding `NoAttack: true`.
-The same restriction is visible in upstream [skill.cpp](https://github.com/rathena/rathena/blob/master/src/map/skill.cpp)
-and [status.yml](https://github.com/rathena/rathena/blob/master/db/re/status.yml).
-Native Peco skill state uses `OPTION_RIDING`, which differs from this cosmetic
-status; [skill-db state documentation](https://github.com/rathena/rathena/blob/master/doc/skill_db.txt)
-documents the distinction.
-
-Plan this branch explicitly:
-
-1. Choose the first cosmetic mount/class combination and exact mounted resource
-   path by live file/action tracing; a useful casting pilot is the accepted
-   female Mage outfit. Inventory all affected class/sex variants. The existence
-   of 104 ACT slots does not prove real mounted attack/cast art exists in them.
-2. Profile the 2025-07-16 client's attack/skill input gates and mounted action
-   selection. Prove packet creation, cast start/cancel/end and return-to-mounted-
-   idle under a disabled-by-default feature flag. Use static profiled bridges,
-   original-byte checks and the existing QJS safety/rebuild process.
-3. Add an explicit server policy/allowlist for permitted combat mount modes.
-   Review NoAttack and every cast check together; retain normal resource, target,
-   range, cooldown, status and movement checks. Do not globally weaken unrelated
-   riding, map or skill restrictions. This request plans that work; it does not
-   enable it or alter server balance.
-4. Author genuine rider attack and cast-start/hold/release/cancel poses on the
-   selected mount references, with complete limb and cloth ownership. Preserve
-   supported native action contracts or document the exact dispatcher/resource
-   changes; do not fill missing sequences with a frozen idle frame.
-5. Verify unmounted combat remains unchanged, mounted normal/skill damage occurs
-   once, cast cancellation works, attack/cast recovery returns correctly, and
-   unsupported mounts stay blocked. Test both sexes, eight views, equipment,
-   mount/dismount, relog, map change, UI and Riftlock signing/connection.
-
-Track A and cosmetic prototypes have distinct gates. Track B proceeds only after its client,
-server-policy and complete-action prototype gate is satisfied.
+Complete and live-accept the current female Mage/Fox death, grip, all actions,
+head/gear, mount/dismount and map/relog behavior before expanding other jobs.
+Reuse each accepted unmounted outfit; draw missing seated anatomy against its
+own native mount and use Knight/Crusader only as motion references. Keep all
+new jobs review-only until their complete eight-view/action/equipment gates pass.
 
 ## Second-job production order and acceptance gates
 
@@ -380,7 +424,7 @@ server-policy and complete-action prototype gate is satisfied.
 
 These are work stages, not a delivery-date promise. The next artwork deliverable
 is the 12 2-1 design previews plus the Knight motion pilot, followed by native
-Peco combat/casting. No future sprite or feature is included in the installed V16 pair.
+Peco combat/casting. The 2-1/2-2 roadmap remains future work; the current mounted pilot is female Mage/Fox.
 
 ## Angel clan runtime contract (separate resource stream)
 
@@ -429,25 +473,41 @@ python tools/verify_clan_release_warp.py
 The historical clan V11/V12 changes are sprite-resource corrections; they do not modify these
 runtime hooks. Runtime or shared-renderer changes require fresh live validation.
 
-## Active tooling and recovery
+## Storage and cleanup policy
 
-Retain `first_job_hd_sprites.py` (frozen baseline), `audit_hd_next_jobs.py`
-(native inventory), `release_mage_grounded_v16.py`, `hd_sprite_release.py`, and
-shared codecs, GRF transaction, runtime and renderer dependencies. The immutable
-`accepted-v1.json`, current inventory/pair/installation records, second-job plan
-and documentation manifest remain active. Novice sources and receipts remain
-in `Inputs/HDNovice/records/`. Historical acceptance is not latest deployment.
+The October19 cleanup reclaimed **16.06 GiB**. It removed superseded female-Mage editable experiments and
+old candidate exports after pinning the five authoritative installed/current
+projects. All current source directories, accepted outfit references, native
+reference projects, recipes, source images and rendered review evidence remain.
+No deployed game asset is removed. Unrelated UI/Clan/Novice source trees remain.
 
-48 one-off authoring, rejected-rig, proof and superseded release scripts,
-14 superseded Mage inputs and one obsolete build log were removed from active
-folders after byte-for-byte ZIP verification. Some scripts worked for their
-revision but hardcode old paths or rewrite accepted outputs/docs; they are
-historical reproduction material rather than maintained entrypoints.
+Six historical whole-GRF backups are replaced with verified `scoped-rollback.zip`
+files containing the exact replaced/removed resources and a list of additions
+to remove on rollback. The newest full GRF backup remains. Historical manifests
+and signatures are evidence, not files to restore over a newer release. Restore
+only scoped resources through a fresh guarded transaction and re-sign.
 
-[Recovery ZIP](../Assets/HDFirstJobs/cleanup-history/20261012/retired-hd-sprite-work.zip)
-retains original relative paths, plus the previous guide/inventory and edited
-entrypoint. [Manifest](../Assets/HDFirstJobs/cleanup-history/20261012/manifest.json)
-records hashes and removed paths. Restore selected historical files at their
-recorded paths if needed; do not blindly rerun old installers. Prior documentation
-recovery archives remain. Art, projects, recipes, reviews and all GRF/signing
-backups were retained. Runtime patches/profiles and unrelated work were untouched.
+Cleanup manifest: `Assets/HDFirstJobs/cleanup-history/20261019/manifest.json`.
+It records deleted paths, sizes, hashes, protected source pins and reclaimed bytes.
+`retired-tools-and-doc.zip` contains nine obsolete pending tools, both prior
+HD/mounted guides and35 superseded evidence files with original paths, verified
+byte-for-byte before deletion. Current runtime evidence is consolidated into
+`docs/evidence/mage-death-graymap-v49-20261019/validation.json`.
+The October12 recovery ZIP remains for earlier retired tools/inputs.
+
+Git's index was empty at the start of this cleanup. Pending source fixes and
+unrelated Settings/UI/profile changes are not disposable assets. Do not reset
+or stage the repository wholesale. Use `tools/cleanup_hd_work.py plan` for a
+new inspected plan; its historical apply transaction is intentionally not reusable
+without a fresh checkpoint. Do not delete source projects merely because SPR/ACT
+exports are in a GRF. Preserve current authoring and release rollback first.
+
+### Pending-change cleanup boundary
+
+Retain active QJS patches, patch IDs/catalog/profile registrations, shared builders,
+installers and regression tests. These are required source for the installed fixes
+and current review candidate; being uncommitted does not make them disposable.
+Only obsolete evidence/intermediate outputs may be retired after checking active
+dependencies and preserving a verified recovery copy. Recovery ZIPs do not
+replace the maintained patch/tool sources. Superseded V48 evidence is archived;
+current combat/V49/V50 evidence remains active.

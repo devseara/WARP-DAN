@@ -80,6 +80,18 @@ CustomSpecials:
             author : Louis T Steinhil
             desc : "2025-07-16 build-specific. Stock actor sprites lean their depth by +0.16 per screen pixel, so any row drawn below the feet (boots, robes, sitting poses, the lower half of the shadow) falls behind the floor in front and is sliced by a hard line, worst at close zoom and low camera pitch. For players, NPCs/monsters, hallucinations and afterimages, rows below the anchor keep the anchor's depth plane; the shadow gets the same treatment. Rows above the feet, screen position, UV, color and the stock contact bias are unchanged; effects, items and the reversed-depth path stay stock. Reduces, not eliminates, clipping on steep slopes."
 
+        - AllowAllRidingCombat:
+            title : Combat on Default All-Job Mounts (2025-07-16)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Enables attack and target/ground skill input on each job's native all-job mount. Requires server all_riding_combat: 1 and mounted combat artwork. Preserves real jobs, mount resources, native Peco/Dragon behavior and other input checks. Only four branch bytes change; no injected code or mutable state."
+
+        - MountedMageAttachments:
+            title : Mounted Female Mage Head and Weapon Candidate (2025-07-16)
+            recommend : no
+            author : Louis T Steinhil
+            desc : "Review candidate. Routes female Mage/Fox combat heads to the neutral directional poses used by the accepted outfit and enables her native mounted weapon loading. Requires the matching planted body and dedicated mounted Knife resources. Other jobs and male/unmounted Mage paths remain stock. Existing patched clients require the isolated-section upgrade builder."
+
         - ClanBodySkins:
             title : Clan Body Skins (2025-07-16)
             recommend : no

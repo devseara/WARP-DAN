@@ -1,0 +1,87 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-10-18                                             *
+*   Last Modified : 2026-10-19                                             *
+*   Description   : Registers female Mage/Fox combat heads, dedicated      *
+*                   Knife1201 loading and mount-transition reloads on      *
+*                   2025-07-16 Ragexe. Routes mounted death resources      *
+*                   through Fox-Mage4130. Other actor paths remain native. *
+*                   Existing patched clients require an isolated-section   *
+*                   upgrade.                                               *
+*   Evidence      : docs/hd-sprites.md                                     *
+*   Verifier      : tools/verify_mage_mount_compositor.py                  *
+*   Generator     : tools/build_mounted_mage_attachments.py                *
+*                                                                          *
+\**************************************************************************/
+
+MountedMageAttachments = function(_)
+{
+	const self = MountedMageAttachments;
+	if (!self.validate())
+		throw Error('MountedMageAttachments: unsupported client');
+
+	// Only this exact native clientinfo input is a trusted allocation base.
+	// Existing patched images use the isolated-section upgrade builder.
+	const nt = Exe.GetUint32(0x3C);
+	const last = nt + 24 + Exe.GetUint16(nt + 20) + 8 * 40;
+	if (Exe.GetUint16(nt + 6) !== 9 || Exe.GetUint32(nt + 24 + 56) !== 0x131E000 ||
+		Exe.GetUint32(last + 16) !== 0x400 || Exe.GetUint32(last + 20) !== 0xF55000 ||
+		Exe.GetHex(0xF55000, 0x400).replace(/\s+/g, '').toLowerCase() !== self.nativeDiffHex)
+		throw Error('MountedMageAttachments: use isolated-section upgrade for a patched client');
+
+	const raw = Exe.Vir2Phy(0xC4A5B1);
+	if (Exe.GetHex(raw, 5).replace(/\s+/g, '').toLowerCase() !== 'f30f1055e0')
+		throw Error('MountedMageAttachments: use isolated-section upgrade for a patched client');
+	for (const spec of self.specs)
+	{
+		const original = Exe.GetHex(Exe.Vir2Phy(spec.site), spec.stock.length / 2);
+		if (original.replace(/\s+/g, '').toLowerCase() !== spec.stock)
+			throw Error('MountedMageAttachments: native bytes differ: ' + spec.name);
+	}
+
+	const [phy, vir] = Exe.Allocate(4096, 16);
+	const owner = CACHE.get('CelestialDial.Contract.v3');
+	if (owner && vir < owner.runtimeBase + owner.runtimeSize && vir + 4096 > owner.runtimeBase)
+		throw Error('MountedMageAttachments: allocation overlaps weather runtime');
+	const u32 = value => [0, 8, 16, 24].map(shift =>
+		((value >>> shift) & 255).toString(16).padStart(2, '0')).join('');
+
+	let cursor = 0;
+	for (const spec of self.specs)
+	{
+		cursor = (cursor + 15) & ~15;
+		let code = spec.hex;
+		for (const link of spec.links)
+		{
+			const value = link.kind === 'local' ? vir + cursor + link.target :
+				link.target - vir - cursor - link.offset - 4;
+			code = code.slice(0, link.offset * 2) + u32(value >>> 0) + code.slice((link.offset + 4) * 2);
+		}
+		Exe.SetHex(phy + cursor, code);
+		const hook = (spec.kind === 'call' ? 'e8' : 'e9') +
+			u32((vir + cursor - spec.site - 5) >>> 0) + '90'.repeat(spec.stock.length / 2 - 5);
+		Exe.SetHex(Exe.Vir2Phy(spec.site), hook);
+		cursor += code.length / 2;
+	}
+	return true;
+};
+MountedMageAttachments.validate = () => Exe.BuildDate === 20250716;
+MountedMageAttachments.specs = __SPECS__;
+MountedMageAttachments.nativeDiffHex = '__NATIVE_DIFF__';

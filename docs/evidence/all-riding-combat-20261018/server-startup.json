@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "exit_code": 0,
+  "error_lines": [],
+  "loaded_status_database": "db/pre-re/status.yml",
+  "status_entries": 699,
+  "finished": true
+}

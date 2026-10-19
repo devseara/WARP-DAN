@@ -17,7 +17,7 @@
 |**************************************************************************|
 *                                                                          *
 *   Author(s)     : Louis T Steinhil                                       *
-*   Last Modified : 2026-10-18                                             *
+*   Last Modified : 2026-10-19                                             *
 *                                                                          *
 *   Description   : Stops character sprites and shadows sinking into the   *
 *                   floor below their feet on 2025-07-16 Ragexe. Rect      *
@@ -28,11 +28,12 @@
 *                   shrinks with zoom and low camera pitch. For CPlayer,   *
 *                   CPc, CNpc, CCharacterNpc, CHallu* and CBlurPC this     *
 *                   clamps (y-anchorY) to <= 0 so such rows keep the       *
-*                   anchor plane; the reversed 0x9C path and effects stay  *
-*                   stock. The shadow 0x00C49D20 is drawn 180 degrees      *
-*                   through the anchor, so its pre-rotation offset is      *
-*                   clamped to >= 0. Rows above the anchor, XY, UV,        *
-*                   color and the stock contact bias are unchanged.        *
+*                   anchor plane. Mounted female Mage A64-A71 also clamps  *
+*                   reversed upper rows that otherwise sink into terrain.  *
+*                   Other reversed actors and effects retain stock depth.  *
+*                   The shadow 0x00C49D20 is drawn 180 degrees through the *
+*                   anchor, so its offsets are clamped to >= 0. XY, UV,    *
+*                   color and the stock contact bias remain unchanged.     *
 *                                                                          *
 *   Evidence      : docs/sprite-quad-depth.md                              *
 *   Verifier      : tools/verify_floor_safe_sprite_depth.py                *
@@ -138,15 +139,29 @@ FloorSafeSpriteDepth = function(_)
 	if (caveBytes > self.caveSize)
 		throw Error('FloorSafeSpriteDepth: cave overflow ' + caveBytes);
 	Exe.SetHex(phy, '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ' + bodyCode + ' ' + shadowCode);
+	// Mounted Mage corpses use the native reversed-depth path. Its upper
+	// rows otherwise sink behind terrain. Keep every other reversed actor stock.
+	const death = self.deathSpec, deathVir = vir + 0xA0;
+	if (caveBytes > 0xA0 || 0xA0 + death.hex.length / 2 > self.caveSize)
+		throw Error('FloorSafeSpriteDepth: mounted corpse cave overflow');
+	let deathCode = death.hex;
+	for (const link of death.links)
+	{
+		const value = link.kind === 'local' ? deathVir + link.target : link.target - deathVir - link.offset - 4;
+		const word = le32(value >>> 0).replace(/ /g, '');
+		deathCode = deathCode.slice(0, link.offset * 2) + word + deathCode.slice(link.offset * 2 + 8);
+	}
+	Exe.SetHex(phy + 0xA0, deathCode.match(/../g).join(' '));
 
 	$$(_, 3, 'Route the below-anchor depth rows through the caves');
 	Exe.SetHex(Exe.Vir2Phy(0x00C40F9F), 'E9 ' + le32((bodyVir - 0x00C40FA4) >>> 0));
 	Exe.SetHex(Exe.Vir2Phy(0x00C49FEE), 'E9 ' + le32((shadowVir - 0x00C49FF3) >>> 0) + ' 90'.repeat(17));
+	Exe.SetHex(Exe.Vir2Phy(death.site), 'E9 ' + le32((deathVir - death.site - 5) >>> 0) + ' 90 90 90');
 	return true;
 };
 FloorSafeSpriteDepth.validate = () => Exe.BuildDate === 20250716;
 
-FloorSafeSpriteDepth.caveSize = 0xA0;
+FloorSafeSpriteDepth.caveSize = 0x140;
 FloorSafeSpriteDepth.actors = [
 	{name: "CPlayer", vtable: 0x01094810, render: 0x00D3A220},
 	{name: "CPc", vtable: 0x010943A8, render: 0x00D3A220},
@@ -164,3 +179,26 @@ FloorSafeSpriteDepth.bodyHex = '8b87800000000f28e7f30f5c651c8b752083c00303450c0f
 // 0x00C49FB3..0x00C4A05E: shadow rows, z-0.16*(y-anchorY) and RHW stores.
 FloorSafeSpriteDepth.shadowSig = 0x00C49FB3;
 FloorSafeSpriteDepth.shadowHex = '0fb64f130fb64710c1e10803c80fb64711f30f117dacf30f5c7dfc0f28c1f30f1175b4f30f5c75fcf30f58c3c1e108f30f101d085bfd00f30f58caf30f593d7cd41d0103c80fb64712f30f59357cd41d01c1e108f30f1145b00f28c4f30f114db803c8f30f5cc6894dc4f30f5ce7895dd80f28cbb9c0a35f01f30f5ec8660f6e471cf30f5edc8b7de881c710010000f30f580de46afd00f30f581de46afd000f5bc0f30f114dbcf30f115dc0';
+
+// Native reversed-depth replay; scoped only to mounted female Mage A64..71.
+FloorSafeSpriteDepth.deathSpec = {
+	"site": 12849062,
+	"stock": "f30f59257cd41d01",
+	"hex": "9c508b073d10480901754083bf5c02000002753783bfc804000002752e83bf6002000000752580bfcc02000000741c837f38407216837f38477710f30f5f2500000000f30f5f2d00000000589df30f59257cd41d01e90000000000000000",
+	"links": [
+		{
+			"offset": 63,
+			"kind": "local",
+			"target": 90
+		},
+		{
+			"offset": 71,
+			"kind": "local",
+			"target": 90
+		},
+		{
+			"offset": 86,
+			"target": 12849070
+		}
+	]
+};

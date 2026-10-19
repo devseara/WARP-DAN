@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "cases": 32,
+  "stdout": "PASS 32 production state cases: off/on, PC/non-PC, stun, dancing, Longing, remount",
+  "sources": {
+    "src/map/status.cpp": "cfe128ac70606bc54b63db3ab5e63c8ce5b7d78ba6a70666f69178b88b0759df",
+    "src/map/status.hpp": "92eab16514c17f0e7639a7c89c6b1d1cd647f3a04e69aa9519b0b41429a45ebf",
+    "src/map/skill.cpp": "7bc9a3eae92c88afd47a4a94ec33967dd161cf02d49f2eb60d8a8790949c31e3",
+    "src/map/battle.cpp": "880f57fbee85c563f6d33c16db8abaa8c9c31f3f55fc2d1b74e227c61b9ee202",
+    "src/map/battle.hpp": "b21afe2084ff97e193b24b7528d57dc7a079369a7f8d71cb2734e2bd838e1d61",
+    "db/re/status.yml": "a93804afc00741a32023df4959baa2ba3c7638dd40e3a4cc26415e0b72f1368c",
+    "db/pre-re/status.yml": "13230d74f56ca2d4db2a40977b11835d62c7691d758c1b8f5ffc08d9f5e9997c",
+    "conf/battle/player.conf": "49086ff988a237c994f1778b0307eccb66be2581908111eb188ab2cfdd5dfc20",
+    "conf/import/battle_conf.txt": "9ce0a5fedd3e4f7a691b9a17db98efe7f4de4890868218b78b2fc1ffaeab4e03"
+  },
+  "native_server_runtime_accepted": false
+}

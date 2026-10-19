@@ -1,0 +1,399 @@
+{
+  "schema": "verification-summary/v1",
+  "full_trace_path": "Outputs\\mage-style-commit\\full-evidence\\mage-death-graymap-v49-20261019\\validation.json",
+  "full_trace_sha256": "a283cd547b0af5671cc7020c6cf39fb21824e8d6cc7e3c7ca9b00666662f1b65",
+  "summary": {
+    "compositor-verification": {
+      "passed": true,
+      "client_sha256": "a01c93ff5e2ef491fadb29a7bf4e0bae05eae4c6130301c643f8c34eb9b9d9e5",
+      "full_native_caller_head_cases": 448,
+      "native_anchor_cases": 448,
+      "body_and_weapon_frames_preserved": 448,
+      "scope_cases": 25,
+      "native_weapon_attachment_cases": 224,
+      "native_headgear_guard_and_phase_cases": 816,
+      "cold_appearance_routes_incoming_knife": true,
+      "draw_gate_cases": {
+        "count": 14,
+        "examples": [
+          {
+            "state": {},
+            "part": 5,
+            "drawn": true
+          },
+          {
+            "state": {},
+            "part": 6,
+            "drawn": false
+          }
+        ],
+        "remaining_cases_in_full_trace": true
+      },
+      "native_weapon_setter_loads": [
+        [
+          "act",
+          "sprite\\\uc778\uac04\uc871\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.act"
+        ],
+        [
+          "spr",
+          "sprite\\\uc778\uac04\uc871\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.spr"
+        ]
+      ],
+      "original_class_zero_matches_live": true,
+      "resource_record": {
+        "client_sha256": "7ee195538e41bf8b19bd3cdfb21829b498afd1ad23d988e2f5e8c7a89b2de9f4",
+        "loader_order": [
+          "dual_weapon_male_assets.grf",
+          "update.grf",
+          "maindata.grf",
+          "mapdata.grf",
+          "palettedata.grf",
+          "spritedata.grf",
+          "data.grf",
+          "greyworld.grf"
+        ],
+        "resources": [
+          {
+            "entry": "data/sprite/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec.act",
+            "archive": "maindata.grf",
+            "fixture": "body.act",
+            "sha256": "9169e79984c933896843fbb717a5720a0730cb53890dc8e6cd8a2231c77161f7",
+            "bytes": 43940
+          },
+          {
+            "entry": "data/sprite/\uc778\uac04\uc871/\ubab8\ud1b5/\uc5ec/\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec.spr",
+            "archive": "maindata.grf",
+            "fixture": "body.spr",
+            "sha256": "c4a813042471194e04f6cd6e8739351b0ae74a40613827d686739f80eefbf4ce",
+            "bytes": 42321176
+          },
+          {
+            "entry": "data/sprite/\uc778\uac04\uc871/\uc5ec\uc6b0\ub9c8\ubc95\uc0ac/\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.act",
+            "archive": "maindata.grf",
+            "fixture": "weapon.act",
+            "sha256": "491d4c64e592b6955edac41d7e21d98e1ca736b36d1fe0edff1f831727edf953",
+            "bytes": 36692
+          },
+          {
+            "entry": "data/sprite/\uc778\uac04\uc871/\uc5ec\uc6b0\ub9c8\ubc95\uc0ac/\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.spr",
+            "archive": "maindata.grf",
+            "fixture": "weapon.spr",
+            "sha256": "8438b23046c583642c6f764c78b5dd4ed506bbd0d5b7318e113732619dab8482",
+            "bytes": 36896
+          },
+          {
+            "entry": "data/sprite/\uc778\uac04\uc871/\uba38\ub9ac\ud1b5/\uc5ec/9_\uc5ec.act",
+            "archive": "palettedata.grf",
+            "fixture": "head.act",
+            "sha256": "174a16266b023687287841f6cc8440cb9b1aa0323766c7d9a96c8268768cd5bb",
+            "bytes": 61044
+          },
+          {
+            "entry": "data/sprite/\uc778\uac04\uc871/\uba38\ub9ac\ud1b5/\uc5ec/9_\uc5ec.spr",
+            "archive": "palettedata.grf",
+            "fixture": "head.spr",
+            "sha256": "b43cf7114b98a8c9f815d7aa8184ceff6336b29ae9be307b9d167623ec4c4be3",
+            "bytes": 9696
+          }
+        ]
+      },
+      "head_selections": {
+        "count": 448,
+        "examples": [
+          {
+            "action": 0,
+            "frame": 0,
+            "head_action": 0,
+            "head_frame": 0,
+            "anchor_delta": [
+              0,
+              -34
+            ]
+          },
+          {
+            "action": 0,
+            "frame": 1,
+            "head_action": 0,
+            "head_frame": 1,
+            "anchor_delta": [
+              -1,
+              -34
+            ]
+          }
+        ],
+        "remaining_cases_in_full_trace": true
+      },
+      "live_visual_acceptance": false,
+      "boundaries": "Native ACT getters, selection caller, head anchors and std::string assignment execute; allocator, item DB, file loading and special-account checks are doubles."
+    },
+    "death-dispatch": {
+      "passed": true,
+      "client_sha256": "a01c93ff5e2ef491fadb29a7bf4e0bae05eae4c6130301c643f8c34eb9b9d9e5",
+      "native_death_dispatch_cases": 24,
+      "mount_flag_unchanged": true,
+      "both_body_resources_selected": true,
+      "file_producer_and_load_boundaries_doubled": true,
+      "live_visual_acceptance": false,
+      "cases": {
+        "count": 24,
+        "examples": [
+          {
+            "mounted": 1,
+            "sex": 0,
+            "direction": 0,
+            "resources": [
+              {
+                "extension": "act",
+                "job": 4130,
+                "sex": 0,
+                "body": 2,
+                "variant": 0
+              },
+              {
+                "extension": "spr",
+                "job": 4130,
+                "sex": 0,
+                "body": 2,
+                "variant": 0
+              }
+            ]
+          },
+          {
+            "mounted": 1,
+            "sex": 0,
+            "direction": 1,
+            "resources": [
+              {
+                "extension": "act",
+                "job": 4130,
+                "sex": 0,
+                "body": 2,
+                "variant": 0
+              },
+              {
+                "extension": "spr",
+                "job": 4130,
+                "sex": 0,
+                "body": 2,
+                "variant": 0
+              }
+            ]
+          }
+        ],
+        "remaining_cases_in_full_trace": true
+      }
+    },
+    "depth-verification": {
+      "client_sha256": "a01c93ff5e2ef491fadb29a7bf4e0bae05eae4c6130301c643f8c34eb9b9d9e5",
+      "cave": [
+        "0x2577000",
+        "0x25770a0"
+      ],
+      "weather_runtime": [
+        "0x256aa00",
+        "0x2576018"
+      ],
+      "section": ".rhwfix",
+      "native_cave_executions_after_state_writes": 10,
+      "cave_bytes_unchanged": true,
+      "passed": true,
+      "live_client_observed": false
+    },
+    "graymap-ui-verification": {
+      "passed": true,
+      "default_atlas_exact": true,
+      "presets": 4,
+      "malformed_records": 9,
+      "aligned_rows": 6,
+      "native_tooltips": true,
+      "native_tooltip_coordinates": true,
+      "tooltip_ownership": true,
+      "nonblocking_callbacks": true,
+      "native_arrow": true,
+      "native_effects_switches": true,
+      "native_scrollbar": true,
+      "bold_labels": true,
+      "bounded_popup_surfaces": true,
+      "scroll_footer_bounds": true,
+      "mouse_release": true,
+      "persistence": true,
+      "live_accepted": false
+    },
+    "graymap-verification": {
+      "build": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\mage-death-graymap-v49-r2",
+      "passed": true,
+      "producer_vectors": 15,
+      "style_vectors": 78,
+      "live_accepted": false
+    },
+    "installed-verification": {
+      "passed": true,
+      "client_sha256": "a01c93ff5e2ef491fadb29a7bf4e0bae05eae4c6130301c643f8c34eb9b9d9e5",
+      "signature_verified": true,
+      "independent_manifest_match": true,
+      "all_grfs_and_dlls_unchanged": true,
+      "graymap_atlas_verified": true,
+      "live_accepted": false
+    },
+    "live-death-before": {
+      "schema": "mounted_mage_read_only/v1",
+      "pid": 28860,
+      "atomic_snapshot": false,
+      "game_files_changed": false,
+      "process_writes": false,
+      "exe": "C:\\Users\\Administrator\\Documents\\Ragnarok\\Banquet of Heroes\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+      "sha256": "17f8e579cd0a54f1d043e43a216041ade391088d00223d864cc8e15f8c09f891",
+      "loaded_code_matches_disk": true,
+      "state": "0x2570a38",
+      "world": "0x1eef9a08",
+      "actor": "0x6428c3a0",
+      "fields": {
+        "action": 65,
+        "frame": 0,
+        "appearance_job": 2,
+        "sex": 0,
+        "actual_job": 0,
+        "hair": 10,
+        "weapon_right": 1201,
+        "weapon_left": 0,
+        "body_job": 2,
+        "body_view": 2
+      },
+      "all_riding": 1,
+      "resources": {
+        "count": 18,
+        "examples": [
+          {
+            "kind": "spr",
+            "slot": 0,
+            "pointer": "0x6428a7f0",
+            "name": "sprite\\\uc778\uac04\uc871\\\ubab8\ud1b5\\\uc5ec\\\ub9c8\ubc95\uc0ac_\uc5ec.spr"
+          },
+          {
+            "kind": "spr",
+            "slot": 1,
+            "pointer": "0x64234420",
+            "name": "sprite\\\uc778\uac04\uc871\\\uba38\ub9ac\ud1b5\\\uc5ec\\9_\uc5ec.spr"
+          }
+        ],
+        "remaining_cases_in_full_trace": true
+      },
+      "actor_still_current": true
+    },
+    "mount-lifecycle-verification": {
+      "passed": true,
+      "transitions": [
+        {
+          "before": 0,
+          "after": 1,
+          "loads": [
+            [
+              "act",
+              "sprite\\\uc778\uac04\uc871\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.act"
+            ],
+            [
+              "spr",
+              "sprite\\\uc778\uac04\uc871\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.spr"
+            ]
+          ]
+        },
+        {
+          "before": 1,
+          "after": 1,
+          "loads": []
+        },
+        {
+          "before": 1,
+          "after": 0,
+          "loads": [
+            [
+              "act",
+              "sprite\\\uc778\uac04\uc871\\\ub9c8\ubc95\uc0ac\\\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.act"
+            ],
+            [
+              "spr",
+              "sprite\\\uc778\uac04\uc871\\\ub9c8\ubc95\uc0ac\\\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.spr"
+            ]
+          ]
+        },
+        {
+          "before": 0,
+          "after": 0,
+          "loads": []
+        },
+        {
+          "before": 0,
+          "after": 1,
+          "loads": [
+            [
+              "act",
+              "sprite\\\uc778\uac04\uc871\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.act"
+            ],
+            [
+              "spr",
+              "sprite\\\uc778\uac04\uc871\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac\\\uc5ec\uc6b0\ub9c8\ubc95\uc0ac_\uc5ec_\ub2e8\uac80.spr"
+            ]
+          ]
+        }
+      ],
+      "unsupported_actor_controls": 5,
+      "native_shield_refresh_preserved": 10,
+      "complete_native_equipment_setter_executed": true,
+      "scoped_owner_and_file_boundaries_documented": true,
+      "live_acceptance": false
+    },
+    "preservation": {
+      "source": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\mage-mounted-grip-v48\\death-client\\client.exe",
+      "candidate": "C:\\Users\\Administrator\\Documents\\GitHub\\WARP20250716-main\\Outputs\\mage-death-graymap-v49-r2\\release\\client.exe",
+      "source_sha256": "8850c786612443c243b3175c49a9966842da41cf086b9f7be186bb4d23b948c4",
+      "candidate_sha256": "a01c93ff5e2ef491fadb29a7bf4e0bae05eae4c6130301c643f8c34eb9b9d9e5",
+      "sections": {
+        "count": 19,
+        "examples": [
+          {
+            "name": ".text",
+            "changed_bytes": 46
+          },
+          {
+            "name": ".rdata",
+            "changed_bytes": 11
+          }
+        ],
+        "remaining_cases_in_full_trace": true
+      },
+      "permitted_hooks": {
+        "count": 13,
+        "examples": [
+          "0x104d51c",
+          "0x104d520"
+        ],
+        "remaining_cases_in_full_trace": true
+      },
+      "previous_dispatch": "0x2525220",
+      "overlay_preserved": true,
+      "imports_preserved": true,
+      "header_growth_repaired": true,
+      "live_accepted": false
+    },
+    "warp-source": {
+      "passed": true,
+      "bridges": 15,
+      "native_bytes_match": true,
+      "qjs_sha256": "5b06b4094034c446042bccbc1c2b73b797d5ba815513b5372c0cf0fbebdee968"
+    },
+    "cleanup": {
+      "status": "complete",
+      "bytes_reclaimed": 17249066233,
+      "source_pins": {
+        "Assets/HDFirstJobs/animation-audit-v1/female-mage-proportion-redraw-v44/mage-fox-proportion-v44-r3.actproj": "18d2374b98a8bcbb0ef9dfff75368575feb0e04643fd3a2cc241b2a57738254a",
+        "Assets/HDFirstJobs/animation-audit-v1/female-mage-mounted-attachments-v45/mage-fox-equipped-v45-final.actproj": "77429c144e86131435324c5dee8c87b157ae5bdb4c8d77544cf7c63ddab2bebd",
+        "Assets/HDFirstJobs/animation-audit-v1/female-mage-grounded-preparation-v16/mage-grounded-final.actproj": "2c47e80365b64d5f0c40fc9a7c5cfa47922daea6bc3b0e25e6ea35efd07929c9",
+        "Assets/HDFirstJobs/animation-audit-v1/female-mage-gripping-v48/knife-gripping.actproj": "f2bc2954b48d7c9c9f4093c9106493b12ea8a1ca49ce0f3ba2f60f5e45061614",
+        "Assets/HDFirstJobs/animation-audit-v1/female-mage-gripping-v48/rod-gripping.actproj": "448f89d13e54acd05b76c138b1f9c8392f617676f391f0ab79485954751276e1"
+      },
+      "removed_asset_files": 503,
+      "retired_tools": 9,
+      "archived_evidence_files": 35
+    }
+  }
+}

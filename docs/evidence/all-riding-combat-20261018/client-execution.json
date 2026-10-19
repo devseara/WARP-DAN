@@ -1,0 +1,135 @@
+{
+  "schema": "verification-summary/v1",
+  "full_trace_path": "Outputs\\mage-style-commit\\full-evidence\\all-riding-combat-20261018\\client-execution.json",
+  "full_trace_sha256": "cd91e6f085af3270c1458a1542b6d53213f356292f78b411b1278ee3d9426c8b",
+  "summary": {
+    "passed": true,
+    "source": "Outputs\\all-riding-combat-20261018\\deployment\\before\\2025-07-16_Ragexe_175220998_clientinfo_patched.exe",
+    "candidate": "Outputs\\all-riding-combat-20261018\\client-build\\live\\client.exe",
+    "sha256": "0c6eb8b5d94dc894a452c5e85240a844b716416cf132647b0cdfd79a1a194114",
+    "changed_virtual_bytes": [
+      "0xc8d6e3",
+      "0xc8d9d5",
+      "0xc8df7d",
+      "0xc8f7e9"
+    ],
+    "allocations": 0,
+    "gate_cases": {
+      "count": 16,
+      "examples": [
+        {
+          "gate": "skill selection",
+          "patched": false,
+          "mounted": false,
+          "next": "0xc8d745"
+        },
+        {
+          "gate": "skill selection",
+          "patched": false,
+          "mounted": true,
+          "next": "0xc8d6e5"
+        }
+      ],
+      "remaining_cases_in_full_trace": true
+    },
+    "native_attack_packets": {
+      "count": 14,
+      "examples": [
+        {
+          "patched": false,
+          "mounted": false,
+          "action": 0,
+          "packet": "37047856341200",
+          "sends": 1
+        },
+        {
+          "patched": false,
+          "mounted": false,
+          "action": 2,
+          "packet": "37047856341202",
+          "sends": 1
+        }
+      ],
+      "remaining_cases_in_full_trace": true
+    },
+    "native_skill_packets": [
+      {
+        "mounted": false,
+        "ground": false,
+        "busy": false,
+        "packets": [
+          "38040300130078563412"
+        ]
+      },
+      {
+        "mounted": false,
+        "ground": false,
+        "busy": true,
+        "packets": []
+      },
+      {
+        "mounted": false,
+        "ground": true,
+        "busy": false,
+        "packets": [
+          "f40a030013003000520000"
+        ]
+      },
+      {
+        "mounted": false,
+        "ground": true,
+        "busy": true,
+        "packets": []
+      },
+      {
+        "mounted": true,
+        "ground": false,
+        "busy": false,
+        "packets": [
+          "38040300130078563412"
+        ]
+      },
+      {
+        "mounted": true,
+        "ground": false,
+        "busy": true,
+        "packets": []
+      },
+      {
+        "mounted": true,
+        "ground": true,
+        "busy": false,
+        "packets": [
+          "f40a030013003000520000"
+        ]
+      },
+      {
+        "mounted": true,
+        "ground": true,
+        "busy": true,
+        "packets": []
+      }
+    ],
+    "native_action_mapping": {
+      "count": 126,
+      "examples": [
+        {
+          "job": 0,
+          "view_job": 0,
+          "mounted": false,
+          "action": 0,
+          "first_act": 32
+        },
+        {
+          "job": 0,
+          "view_job": 0,
+          "mounted": false,
+          "action": 1,
+          "first_act": 0
+        }
+      ],
+      "remaining_cases_in_full_trace": true
+    },
+    "live_visuals_and_damage_accepted": false
+  }
+}

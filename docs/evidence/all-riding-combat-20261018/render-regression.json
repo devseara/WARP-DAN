@@ -1,0 +1,16 @@
+{
+  "client_sha256": "0c6eb8b5d94dc894a452c5e85240a844b716416cf132647b0cdfd79a1a194114",
+  "cave": [
+    "0x2577000",
+    "0x25770a0"
+  ],
+  "weather_runtime": [
+    "0x256aa00",
+    "0x2576018"
+  ],
+  "section": ".rhwfix",
+  "native_cave_executions_after_state_writes": 10,
+  "cave_bytes_unchanged": true,
+  "passed": true,
+  "live_client_observed": false
+}

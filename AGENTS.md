@@ -81,6 +81,15 @@ When analyzing binaries:
 - **CRLF line endings** — all `.qjs` files MUST use `\r\n`; LF-only causes load errors
 - **UTF-8 without BOM** — first bytes must be `/*`, not `EF BB BF`
 - **Tabs for indentation** — match existing codebase
+- **Aligned WARP headers** — copy the full neighboring WARP banner, keep its
+  76-column width, and align every closing `*` in column 76 (one-based). Keep
+  metadata labels and continuation text aligned; wrap prose before the border.
+  Include the target build, original versus patched behavior, author/date,
+  evidence and verifier. Fix generated templates as well as their output.
+- **Readable QJS style** — use tabs, spaces around operators and after commas,
+  and the neighboring WARP brace style. Keep generated data readable. Run
+  `python tools/verify_qjs_patch_style.py` and the relevant real WARP/native
+  execution checks before committing a new or modified patch.
 - **`BinFile` is read-only** — for binary file copy/delete, use `System.Copy()` / `System.Delete()`
 - **`console.error` is unconfirmed** — use `console.warn` or `console.info`
 - **Never pass `undefined` to `Exe.FindHexN`** — normalize with `from ?? 0`, `to ?? Exe.FileSize`

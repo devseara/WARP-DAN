@@ -262,6 +262,8 @@
 389 : CelestialDial
 390 : UniformSpriteRHW
 391 : FloorSafeSpriteDepth
+392 : AllowAllRidingCombat
+393 : MountedMageAttachments
 
 # Personal UI extensions: stable IDs preserve saved profile compatibility.
 10001 : ModernChatUI

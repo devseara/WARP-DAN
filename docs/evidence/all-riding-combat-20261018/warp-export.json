@@ -1,0 +1,5 @@
+{
+  "passed": true,
+  "last_gate_mismatch_rejected_before_any_write": true,
+  "warp_reopened_export_idempotent": true
+}

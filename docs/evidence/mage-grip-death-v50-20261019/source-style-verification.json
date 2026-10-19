@@ -1,0 +1,55 @@
+{
+  "passed": true,
+  "patches": [
+    "MountedMageAttachments",
+    "AllowAllRidingCombat",
+    "UniformSpriteRHW",
+    "FloorSafeSpriteDepth"
+  ],
+  "source_qjs": {
+    "AllowAllRidingCombat": "c6e6c507cd6f1769e73cffd7e80d396192e4836c216857e3d8f21018090eaec9",
+    "MountedMageAttachments": "5638b79f5a9adac9070b8bc65cc394c32d9efb2a8acf7fda74564ba46a085736",
+    "FloorSafeSpriteDepth": "b1af4b82ad42426cadea2129620225576a3f26f185379f2f6bc61f3469cd8be7"
+  },
+  "mage_bridges": 15,
+  "corpse_native_cases": 24,
+  "corpse_controls": 17,
+  "gates": 4,
+  "live_visual_acceptance": false,
+  "header_style": {
+    "passed": true,
+    "width": 76,
+    "checked_files": 4,
+    "crlf": true,
+    "utf8_no_bom": true,
+    "tabs": true
+  },
+  "python_style": {
+    "formatted_files": 21,
+    "syntax_trees_preserved": true
+  },
+  "server_state": {
+    "passed": true,
+    "cases": 32,
+    "stdout": "PASS 32 production state cases: off/on, PC/non-PC, stun, dancing, Longing, remount",
+    "sources": {
+      "src/map/status.cpp": "b56dbe7535944148f1ddd947f68f6ce66665e820376c9a6e4e560fed617de178",
+      "src/map/status.hpp": "92eab16514c17f0e7639a7c89c6b1d1cd647f3a04e69aa9519b0b41429a45ebf",
+      "src/map/skill.cpp": "c7dd04e0299da7c9aa00bce6a0139a26d89cd872e2ff23e99a0ac6c761edca38",
+      "src/map/battle.cpp": "880f57fbee85c563f6d33c16db8abaa8c9c31f3f55fc2d1b74e227c61b9ee202",
+      "src/map/battle.hpp": "b21afe2084ff97e193b24b7528d57dc7a079369a7f8d71cb2734e2bd838e1d61",
+      "db/re/status.yml": "a93804afc00741a32023df4959baa2ba3c7638dd40e3a4cc26415e0b72f1368c",
+      "db/pre-re/status.yml": "13230d74f56ca2d4db2a40977b11835d62c7691d758c1b8f5ffc08d9f5e9997c",
+      "conf/battle/player.conf": "49086ff988a237c994f1778b0307eccb66be2581908111eb188ab2cfdd5dfc20",
+      "conf/import/battle_conf.txt": "77049bdda2dcd765ea71afdb26590769bf9d32479bbbe9ad59d6980c1616afc0"
+    },
+    "native_server_runtime_accepted": false
+  },
+  "server_death": {
+    "passed": true,
+    "cases": 32,
+    "stdout": "PASS 32 death-clear cases: opt-in PC mount persistence; stock cleanup, logout and expiry retained",
+    "native_status_clear_loop_extracted_verbatim": true,
+    "live_death_visual_accepted": false
+  }
+}

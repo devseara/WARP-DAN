@@ -1,0 +1,376 @@
+/**************************************************************************\
+*                                                                          *
+*   Copyright (C) 2026 Louis T Steinhil                                    *
+*                                                                          *
+*   This file is a part of WARP project (specific to RO clients)           *
+*                                                                          *
+*   WARP is free software: you can redistribute it and/or modify           *
+*   it under the terms of the GNU General Public License as published by   *
+*   the Free Software Foundation, either version 3 of the License, or      *
+*   (at your option) any later version.                                    *
+*                                                                          *
+*   WARP is distributed in the hope that it will be useful,                *
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
+*   GNU General Public License for more details.                           *
+*                                                                          *
+|**************************************************************************|
+*                                                                          *
+*   Author(s)     : Louis T Steinhil                                       *
+*   Created Date  : 2026-10-18                                             *
+*   Last Modified : 2026-10-19                                             *
+*   Description   : Registers female Mage/Fox combat heads, dedicated      *
+*                   Knife1201 loading and mount-transition reloads on      *
+*                   2025-07-16 Ragexe. Routes mounted death resources      *
+*                   through Fox-Mage4130. Other actor paths remain native. *
+*                   Existing patched clients require an isolated-section   *
+*                   upgrade.                                               *
+*   Evidence      : docs/hd-sprites.md                                     *
+*   Verifier      : tools/verify_mage_mount_compositor.py                  *
+*   Generator     : tools/build_mounted_mage_attachments.py                *
+*                                                                          *
+\**************************************************************************/
+
+MountedMageAttachments = function(_)
+{
+	const self = MountedMageAttachments;
+	if (!self.validate())
+		throw Error('MountedMageAttachments: unsupported client');
+
+	// Only this exact native clientinfo input is a trusted allocation base.
+	// Existing patched images use the isolated-section upgrade builder.
+	const nt = Exe.GetUint32(0x3C);
+	const last = nt + 24 + Exe.GetUint16(nt + 20) + 8 * 40;
+	if (Exe.GetUint16(nt + 6) !== 9 || Exe.GetUint32(nt + 24 + 56) !== 0x131E000 ||
+		Exe.GetUint32(last + 16) !== 0x400 || Exe.GetUint32(last + 20) !== 0xF55000 ||
+		Exe.GetHex(0xF55000, 0x400).replace(/\s+/g, '').toLowerCase() !== self.nativeDiffHex)
+		throw Error('MountedMageAttachments: use isolated-section upgrade for a patched client');
+
+	const raw = Exe.Vir2Phy(0xC4A5B1);
+	if (Exe.GetHex(raw, 5).replace(/\s+/g, '').toLowerCase() !== 'f30f1055e0')
+		throw Error('MountedMageAttachments: use isolated-section upgrade for a patched client');
+	for (const spec of self.specs)
+	{
+		const original = Exe.GetHex(Exe.Vir2Phy(spec.site), spec.stock.length / 2);
+		if (original.replace(/\s+/g, '').toLowerCase() !== spec.stock)
+			throw Error('MountedMageAttachments: native bytes differ: ' + spec.name);
+	}
+
+	const [phy, vir] = Exe.Allocate(4096, 16);
+	const owner = CACHE.get('CelestialDial.Contract.v3');
+	if (owner && vir < owner.runtimeBase + owner.runtimeSize && vir + 4096 > owner.runtimeBase)
+		throw Error('MountedMageAttachments: allocation overlaps weather runtime');
+	const u32 = value => [0, 8, 16, 24].map(shift =>
+		((value >>> shift) & 255).toString(16).padStart(2, '0')).join('');
+
+	let cursor = 0;
+	for (const spec of self.specs)
+	{
+		cursor = (cursor + 15) & ~15;
+		let code = spec.hex;
+		for (const link of spec.links)
+		{
+			const value = link.kind === 'local' ? vir + cursor + link.target :
+				link.target - vir - cursor - link.offset - 4;
+			code = code.slice(0, link.offset * 2) + u32(value >>> 0) + code.slice((link.offset + 4) * 2);
+		}
+		Exe.SetHex(phy + cursor, code);
+		const hook = (spec.kind === 'call' ? 'e8' : 'e9') +
+			u32((vir + cursor - spec.site - 5) >>> 0) + '90'.repeat(spec.stock.length / 2 - 5);
+		Exe.SetHex(Exe.Vir2Phy(spec.site), hook);
+		cursor += code.length / 2;
+	}
+	return true;
+};
+MountedMageAttachments.validate = () => Exe.BuildDate === 20250716;
+MountedMageAttachments.specs = [
+	{
+		"name": "head availability",
+		"site": 6308791,
+		"kind": "jump",
+		"stock": "518b4db4e8f0b210008b4f3c39413c7c05e965010000",
+		"hex": "518b473c80b8cc02000000745083b85c02000002754783b8c804000002753e83b8600200000075358d56ff83fa03772d8b04248d50e083fa0f76088d50b883fa1f771a83e0078904248b4db4e8000000008b4f3c85c07e1ae9000000008b4db4e8000000008b4f3c39413c7d05e900000000e900000000",
+		"links": [
+			{
+				"offset": 77,
+				"target": 7403184
+			},
+			{
+				"offset": 89,
+				"target": 6308813
+			},
+			{
+				"offset": 97,
+				"target": 7403184
+			},
+			{
+				"offset": 110,
+				"target": 6308813
+			},
+			{
+				"offset": 115,
+				"target": 6309170
+			}
+		]
+	},
+	{
+		"name": "main head selection",
+		"site": 6308840,
+		"kind": "call",
+		"stock": "e8e32a7300",
+		"hex": "558bec538bd980bbcc02000000746083bb5c02000002755783bbc804000002754e83bb600200000075458b45084883f803773c8b43388d50e083fa0f76088d50b883fa1f772983e0078b551089028b5514c702000000008b5518c602018b4d0c6a0050e8000000005b8be55dc214008bcb5b8be55de900000000",
+		"links": [
+			{
+				"offset": 100,
+				"target": 7402672
+			},
+			{
+				"offset": 118,
+				"target": 13856464
+			}
+		]
+	},
+	{
+		"name": "headgear phase selection",
+		"site": 6309081,
+		"kind": "call",
+		"stock": "e8d2af1000",
+		"hex": "8b473c80b8cc02000000744683b85c02000002753d83b8c804000002753483b86002000000752b8d56ff83fa0377238b4424048d50e083fa0f76088d50b883fa1f770f83e00789442404c744240800000000e900000000",
+		"links": [
+			{
+				"offset": 83,
+				"target": 7402672
+			}
+		]
+	},
+	{
+		"name": "main mounted weapon drawing",
+		"site": 6308648,
+		"kind": "jump",
+		"stock": "8b473c80b8cc020000010f8408020000",
+		"hex": "8b473c80b8cc02000000743a83b85c02000002753183b8c804000002752883b86002000000751f81b840040000b1040000751383b84404000000750a83fe057505e9000000008b473c80b8cc020000017505e900000000e900000000",
+		"links": [
+			{
+				"offset": 66,
+				"target": 6308664
+			},
+			{
+				"offset": 83,
+				"target": 6309184
+			},
+			{
+				"offset": 88,
+				"target": 6308664
+			}
+		]
+	},
+	{
+		"name": "appearance weapon loading",
+		"site": 13888027,
+		"kind": "jump",
+		"stock": "3887cc0200007552",
+		"hex": "80bfcc02000000742f83bf5c02000002752683bfc804000002751d83bf60020000007514817d14b1040000750b837d18007505e9000000003887cc0200007505e900000000e900000000",
+		"links": [
+			{
+				"offset": 52,
+				"target": 13888035
+			},
+			{
+				"offset": 65,
+				"target": 13888035
+			},
+			{
+				"offset": 70,
+				"target": 13888117
+			}
+		]
+	},
+	{
+		"name": "equipment weapon loading",
+		"site": 13894757,
+		"kind": "jump",
+		"stock": "80becc020000000f85bc0c0000",
+		"hex": "80becc02000000743583be5c02000002752c83bec804000002752383be6002000000751a81be40040000b1040000750e83be44040000007505e90000000080becc020000007505e900000000e900000000",
+		"links": [
+			{
+				"offset": 58,
+				"target": 13894770
+			},
+			{
+				"offset": 72,
+				"target": 13894770
+			},
+			{
+				"offset": 77,
+				"target": 13898030
+			}
+		]
+	},
+	{
+		"name": "mounted dagger act filename D40A6A",
+		"site": 13896298,
+		"kind": "call",
+		"stock": "e8a1950400",
+		"hex": "80becc02000000746383be5c02000002755a83bec804000002755183be6002000000754881be40040000b1040000753c83be44040000007533837c241001752c8b4c240451c70100000000c7411000000000c741140f000000682f0000006800000000e80000000058c21800e9000000007370726974655cc0ceb0a3c1b75cbfa9bfecb8b6b9fdbbe75cbfa9bfecb8b6b9fdbbe75fbfa95fb4dcb0cb2e61637400",
+		"links": [
+			{
+				"offset": 95,
+				"kind": "local",
+				"target": 113
+			},
+			{
+				"offset": 100,
+				"target": 5183808
+			},
+			{
+				"offset": 109,
+				"target": 14196752
+			}
+		]
+	},
+	{
+		"name": "mounted dagger spr filename D40A92",
+		"site": 13896338,
+		"kind": "call",
+		"stock": "e8c9960400",
+		"hex": "80becc02000000746383be5c02000002755a83bec804000002755183be6002000000754881be40040000b1040000753c83be44040000007533837c241001752c8b4c240451c70100000000c7411000000000c741140f000000682f0000006800000000e80000000058c21800e9000000007370726974655cc0ceb0a3c1b75cbfa9bfecb8b6b9fdbbe75cbfa9bfecb8b6b9fdbbe75fbfa95fb4dcb0cb2e73707200",
+		"links": [
+			{
+				"offset": 95,
+				"kind": "local",
+				"target": 113
+			},
+			{
+				"offset": 100,
+				"target": 5183808
+			},
+			{
+				"offset": 109,
+				"target": 14197088
+			}
+		]
+	},
+	{
+		"name": "mounted dagger act filename D40C3B",
+		"site": 13896763,
+		"kind": "call",
+		"stock": "e8d0930400",
+		"hex": "80becc02000000746383be5c02000002755a83bec804000002755183be6002000000754881be40040000b1040000753c83be44040000007533837c241001752c8b4c240451c70100000000c7411000000000c741140f000000682f0000006800000000e80000000058c21800e9000000007370726974655cc0ceb0a3c1b75cbfa9bfecb8b6b9fdbbe75cbfa9bfecb8b6b9fdbbe75fbfa95fb4dcb0cb2e61637400",
+		"links": [
+			{
+				"offset": 95,
+				"kind": "local",
+				"target": 113
+			},
+			{
+				"offset": 100,
+				"target": 5183808
+			},
+			{
+				"offset": 109,
+				"target": 14196752
+			}
+		]
+	},
+	{
+		"name": "mounted dagger spr filename D40C95",
+		"site": 13896853,
+		"kind": "call",
+		"stock": "e8c6940400",
+		"hex": "80becc02000000746383be5c02000002755a83bec804000002755183be6002000000754881be40040000b1040000753c83be44040000007533837c241001752c8b4c240451c70100000000c7411000000000c741140f000000682f0000006800000000e80000000058c21800e9000000007370726974655cc0ceb0a3c1b75cbfa9bfecb8b6b9fdbbe75cbfa9bfecb8b6b9fdbbe75fbfa95fb4dcb0cb2e73707200",
+		"links": [
+			{
+				"offset": 95,
+				"kind": "local",
+				"target": 113
+			},
+			{
+				"offset": 100,
+				"target": 5183808
+			},
+			{
+				"offset": 109,
+				"target": 14197088
+			}
+		]
+	},
+	{
+		"name": "mounted dagger act filename D40D8E",
+		"site": 13897102,
+		"kind": "call",
+		"stock": "e87d920400",
+		"hex": "80becc02000000746383be5c02000002755a83bec804000002755183be6002000000754881be40040000b1040000753c83be44040000007533837c241001752c8b4c240451c70100000000c7411000000000c741140f000000682f0000006800000000e80000000058c21800e9000000007370726974655cc0ceb0a3c1b75cbfa9bfecb8b6b9fdbbe75cbfa9bfecb8b6b9fdbbe75fbfa95fb4dcb0cb2e61637400",
+		"links": [
+			{
+				"offset": 95,
+				"kind": "local",
+				"target": 113
+			},
+			{
+				"offset": 100,
+				"target": 5183808
+			},
+			{
+				"offset": 109,
+				"target": 14196752
+			}
+		]
+	},
+	{
+		"name": "mounted dagger spr filename D40DE6",
+		"site": 13897190,
+		"kind": "call",
+		"stock": "e875930400",
+		"hex": "80becc02000000746383be5c02000002755a83bec804000002755183be6002000000754881be40040000b1040000753c83be44040000007533837c241001752c8b4c240451c70100000000c7411000000000c741140f000000682f0000006800000000e80000000058c21800e9000000007370726974655cc0ceb0a3c1b75cbfa9bfecb8b6b9fdbbe75cbfa9bfecb8b6b9fdbbe75fbfa95fb4dcb0cb2e73707200",
+		"links": [
+			{
+				"offset": 95,
+				"kind": "local",
+				"target": 113
+			},
+			{
+				"offset": 100,
+				"target": 5183808
+			},
+			{
+				"offset": 109,
+				"target": 14197088
+			}
+		]
+	},
+	{
+		"name": "mount transition weapon refresh",
+		"site": 13886272,
+		"kind": "jump",
+		"stock": "558bec8a4508",
+		"hex": "558bec53568bd90fb6b1cc0200008a4508ffb1540400008881cc0200008b01ff50708bc63a4508744383bb5c02000002753a83bbc804000002753183bb6002000000752881bb40040000b1040000751c83bb44040000007513ffb344040000ffb3400400008bcb8b03ff50605e5b8be55dc20400",
+		"links": []
+	},
+	{
+		"name": "mounted death body act",
+		"site": 13901456,
+		"kind": "call",
+		"stock": "e84b9a0100",
+		"hex": "80bfcc02000000742983bf5c02000002752083bfc804000002751783bf6002000000750e837d08037508c744240822100000e900000000",
+		"links": [
+			{
+				"offset": 51,
+				"target": 14006496
+			}
+		]
+	},
+	{
+		"name": "mounted death body spr",
+		"site": 13901538,
+		"kind": "call",
+		"stock": "e8499d0100",
+		"hex": "80bfcc02000000742983bf5c02000002752083bfc804000002751783bf6002000000750e837d08037508c744240822100000e900000000",
+		"links": [
+			{
+				"offset": 51,
+				"target": 14007344
+			}
+		]
+	}
+];
+MountedMageAttachments.nativeDiffHex = '706f72740000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000565783ec3cc705e42c210150dc0401c70424636c6965c74424046e74696ec7442408666f2e78c744240c6d6c00008d4c2410c7017430fd00c74104ffffffffc7410800000000c7410c00000000c7411000000000c7411400000000c7412400000000c741280f0000006a006a016a008d44240c508d4c2420e8b365e5fe84c0741f8b4c24188b44242001c85051b9a8b85901e899b837ff8d4c2410e8a05ee5fe68a0dd0401b9a8b85901e831b237ff85c00f84ae00000089c6a308d1710168a4db040189f1e816b237ff85c00f849300000089c76a00e8a55b35ff83c4046800d0710189f9e8f6b137ff85c0742089c1e8abb237ff8378141072028b00b90cd171018a10881184d274044041ebf48b35e42c210185f60f8449000000bf08d071018a06880784c074044647ebf4be08d071018a0684c0740b3c3a0f842500000046ebef803d0cd17101000f8415000000c6063a46bf0cd171018a07880684c074044746ebf483c43c5f5ec3ff3508d17101e81a6035ff83c404c34c474e57980000004c656761637947616d657273204e6574776f726b00417574686f723a204372617a794265626f70006c656761637967616d6572732e6e6574006769746875622e636f6d2f4372617a794265626f702f574152503037313600546869732062696e617279207761732070726f647563656420627920746865204c656761637947616d657273204e6574776f726b20746f6f6c636861696e2e004c474e570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000';

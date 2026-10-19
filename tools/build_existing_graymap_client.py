@@ -4,6 +4,7 @@ Uses an isolated real WARP fixture, chains the existing static slash dispatcher,
 repairs WARP's section-header growth bug, then verifies all old mapped bytes.
 This tool builds a candidate only; it never changes the game installation.
 """
+
 from __future__ import annotations
 import argparse
 import hashlib
@@ -87,7 +88,7 @@ def build(source, out):
     prior_diff = [s for s in old.sections if s.Name.rstrip(b'\0') == b'.xdiff']
     assert len(prior_diff) == 1
     assert not any(s.Name.rstrip(b'\0') in (b'.gmprev', b'.graymap') for s in old.sections)
-    data[prior_diff[0].get_file_offset():prior_diff[0].get_file_offset() + 8] = b'.gmprev\0'
+    data[prior_diff[0].get_file_offset() : prior_diff[0].get_file_offset() + 8] = b'.gmprev\0'
     inp = out / 'incremental-input.exe'
     inp.write_bytes(data)
     fixture = out / 'warp-fixture'
@@ -98,7 +99,8 @@ def build(source, out):
     shutil.copytree(ROOT / 'Assets/GrayMap', fixture / 'Assets/GrayMap')
     shutil.copy2(ROOT / 'Patches.yml', fixture / 'Patches.yml')
     (fixture / 'Scripts/Patches/GrayMapChainPrepare.qjs').write_bytes(
-        PREPARE.replace('PREVIOUS_TARGET', str(previous)).replace('\n', '\r\n').encode())
+        PREPARE.replace('PREVIOUS_TARGET', str(previous)).replace('\n', '\r\n').encode()
+    )
     marker = out / 'manifest.json'
     probe = '''/* Incremental GrayMap manifest. */
 GrayMapChainProbe = function(_) {
@@ -107,28 +109,49 @@ GrayMapChainProbe = function(_) {
     f.WriteLine(JSON.stringify({graymap:CACHE.get("GrayMap.Native.v1")}));
     f.Close(); return true;
 };
-'''.replace('MARKER', json.dumps(marker.as_posix()))
-    (fixture / 'Scripts/Patches/GrayMapChainProbe.qjs').write_bytes(probe.replace('\n', '\r\n').encode())
+'''.replace(
+        'MARKER', json.dumps(marker.as_posix())
+    )
+    (fixture / 'Scripts/Patches/GrayMapChainProbe.qjs').write_bytes(
+        probe.replace('\n', '\r\n').encode()
+    )
     with (fixture / 'Tables/Patch.yml').open('a') as f:
         f.write('\n65004 : GrayMapChainPrepare\n65005 : GrayMapChainProbe\n')
     with (fixture / 'Patches/Data.yml').open('a') as f:
         f.write('\nGrayMapIncremental:\n    title: Incremental GrayMap\n    patches:\n')
         for patch in ('GrayMapChainPrepare', 'GrayMapChainProbe'):
-            f.write(f'        - {patch}:\n            title: {patch}\n            recommend: no\n'
-                    '            author: WARP diagnostics\n            desc: Isolated incremental adapter.\n')
+            f.write(
+                f'        - {patch}:\n            title: {patch}\n            recommend: no\n'
+                '            author: WARP diagnostics\n            desc: Isolated incremental adapter.\n'
+            )
     raw_path = out / 'warp-raw.exe'
     profile = out / 'incremental.yml'
-    profile.write_text('from: ' + json.dumps(inp.as_posix()) + '\nto: ' + json.dumps(raw_path.as_posix()) +
-        '\ninputs: {}\npatches:\n    - GrayMapChainPrepare\n    - GrayMapChainProbe\n')
-    run = subprocess.run([str(fixture / 'win32/WARP_console.exe'), '-using', str(profile)],
-                         cwd=fixture, capture_output=True, timeout=180)
+    profile.write_text(
+        'from: '
+        + json.dumps(inp.as_posix())
+        + '\nto: '
+        + json.dumps(raw_path.as_posix())
+        + '\ninputs: {}\npatches:\n    - GrayMapChainPrepare\n    - GrayMapChainProbe\n'
+    )
+    run = subprocess.run(
+        [str(fixture / 'win32/WARP_console.exe'), '-using', str(profile)],
+        cwd=fixture,
+        capture_output=True,
+        timeout=180,
+    )
     (out / 'build.log').write_bytes(run.stdout + run.stderr)
-    assert run.returncode == 0 and b'-E-' not in run.stdout + run.stderr and marker.is_file(), 'WARP failed; see build.log'
+    assert (
+        run.returncode == 0 and b'-E-' not in run.stdout + run.stderr and marker.is_file()
+    ), 'WARP failed; see build.log'
     manifest = json.loads(marker.read_text())
-    assert manifest.get('graymap') and manifest['graymap'].get('dispatch'), 'GrayMap or chained dispatcher was not installed'
+    assert manifest.get('graymap') and manifest['graymap'].get(
+        'dispatch'
+    ), 'GrayMap or chained dispatcher was not installed'
     data = bytearray(raw_path.read_bytes())
     new = pefile.PE(data=bytes(data))
-    extra = [s for s in new.sections if s.VirtualAddress not in {p.VirtualAddress for p in old.sections}]
+    extra = [
+        s for s in new.sections if s.VirtualAddress not in {p.VirtualAddress for p in old.sections}
+    ]
     assert len(extra) == 1 and extra[0].Name.startswith(b'.xdiff')
     extra = extra[0]
     # WARP places new allocation bytes at EOF but can report the wrong raw
@@ -136,37 +159,50 @@ GrayMapChainProbe = function(_) {
     actual = len(data) - extra.SizeOfRawData
     first_code = manifest['graymap']['toggle']
     toggle_offset = actual + first_code['vir'] - 0x400000 - extra.VirtualAddress
-    assert data[toggle_offset:toggle_offset + 3] == b'\x9c\x83\x35', 'new section location is not proven'
+    assert (
+        data[toggle_offset : toggle_offset + 3] == b'\x9c\x83\x35'
+    ), 'new section location is not proven'
     struct.pack_into('<I', data, extra.get_file_offset() + 20, actual)
-    data[extra.get_file_offset():extra.get_file_offset() + 8] = b'.graymap'
+    data[extra.get_file_offset() : extra.get_file_offset() + 8] = b'.graymap'
     table_end = max(s.get_file_offset() + 40 for s in new.sections)
     align = new.OPTIONAL_HEADER.FileAlignment
     headers = (max(table_end, new.OPTIONAL_HEADER.SizeOfHeaders) + align - 1) // align * align
     first_raw = min(s.PointerToRawData for s in new.sections if s.SizeOfRawData and s != extra)
     assert headers <= first_raw
-    struct.pack_into('<I', data, new.OPTIONAL_HEADER.get_field_absolute_offset('SizeOfHeaders'), headers)
+    struct.pack_into(
+        '<I', data, new.OPTIONAL_HEADER.get_field_absolute_offset('SizeOfHeaders'), headers
+    )
     new = pefile.PE(data=bytes(data))
-    allowed = {h['site']: h.get('size',5) for h in manifest['graymap']['hooks']}
+    allowed = {h['site']: h.get('size', 5) for h in manifest['graymap']['hooks']}
     allowed[site] = 5
-    replacements = {va: bytes(new.get_data(va - 0x400000, size)) for va,size in allowed.items()}
+    replacements = {va: bytes(new.get_data(va - 0x400000, size)) for va, size in allowed.items()}
     # Restore all pre-existing mapped bytes, retaining only the six new hooks.
     for prior in old.sections:
         current = next(s for s in new.sections if s.VirtualAddress == prior.VirtualAddress)
         assert (current.Misc_VirtualSize, current.SizeOfRawData, current.Characteristics) == (
-            prior.Misc_VirtualSize, prior.SizeOfRawData, prior.Characteristics)
-        data[current.get_file_offset():current.get_file_offset() + 8] = prior.Name
-        data[current.PointerToRawData:current.PointerToRawData + prior.SizeOfRawData] = prior.get_data()
+            prior.Misc_VirtualSize,
+            prior.SizeOfRawData,
+            prior.Characteristics,
+        )
+        data[current.get_file_offset() : current.get_file_offset() + 8] = prior.Name
+        data[current.PointerToRawData : current.PointerToRawData + prior.SizeOfRawData] = (
+            prior.get_data()
+        )
     for va, code in replacements.items():
         offset = new.get_offset_from_rva(va - 0x400000)
-        data[offset:offset + len(code)] = code
+        data[offset : offset + len(code)] = code
     overlay = old.get_overlay() or b''
     overlay_start = len(data)
     data.extend(overlay)
     cert = old.OPTIONAL_HEADER.DATA_DIRECTORY[4]
     if cert.Size:
         assert cert.VirtualAddress >= old.get_overlay_data_start_offset()
-        struct.pack_into('<I', data, new.OPTIONAL_HEADER.DATA_DIRECTORY[4].get_file_offset(),
-                         overlay_start + cert.VirtualAddress - old.get_overlay_data_start_offset())
+        struct.pack_into(
+            '<I',
+            data,
+            new.OPTIONAL_HEADER.DATA_DIRECTORY[4].get_file_offset(),
+            overlay_start + cert.VirtualAddress - old.get_overlay_data_start_offset(),
+        )
     final = pefile.PE(data=bytes(data))
     sections = []
     for prior in old.sections:
@@ -174,16 +210,21 @@ GrayMapChainProbe = function(_) {
         before, after = prior.get_data(), bytearray(current.get_data())
         assert current.Name == prior.Name
         changes = sum(a != b for a, b in zip(before, after))
-        for va,size in allowed.items():
+        for va, size in allowed.items():
             rel = va - 0x400000 - prior.VirtualAddress
             if 0 <= rel <= len(after) - size:
-                after[rel:rel + size] = before[rel:rel + size]
+                after[rel : rel + size] = before[rel : rel + size]
         assert bytes(after) == before, f'unrelated mapped bytes changed: {prior.Name}'
         sections.append(dict(name=prior.Name.decode().rstrip('\0'), changed_bytes=changes))
+
     def imports(pe):
-        return [(d.dll, [(i.name, i.ordinal, i.address) for i in d.imports]) for d in pe.DIRECTORY_ENTRY_IMPORT]
+        return [
+            (d.dll, [(i.name, i.ordinal, i.address) for i in d.imports])
+            for d in pe.DIRECTORY_ENTRY_IMPORT
+        ]
+
     assert imports(old) == imports(final), 'imports changed'
-    assert final.get_overlay() == overlay, 'overlay changed'
+    assert (final.get_overlay() or b'') == overlay, 'overlay changed'
     manifest['commands'] = {'GrayMap': [{'command': '/graymap'}]}
     manifest['source'] = str(out / 'before' / source.name)
     (out / 'manifest.json').write_text(json.dumps(manifest, indent=2))
@@ -191,13 +232,23 @@ GrayMapChainProbe = function(_) {
     release.mkdir()
     candidate = release / source.name
     candidate.write_bytes(data)
-    if (out/'data').is_dir():shutil.copytree(out/'data',release/'data')
+    if (out / 'data').is_dir():
+        shutil.copytree(out / 'data', release / 'data')
     # Existing verifier accepts a conventional graymap.exe in the build dir.
     shutil.copy2(candidate, out / 'graymap.exe')
-    report = dict(source=str(source), candidate=str(candidate), source_sha256=digest(original),
-        candidate_sha256=digest(data), sections=sections, permitted_hooks=[hex(v) for v in allowed],
-        previous_dispatch=hex(previous), overlay_preserved=True, imports_preserved=True,
-        header_growth_repaired=True, live_accepted=False)
+    report = dict(
+        source=str(source),
+        candidate=str(candidate),
+        source_sha256=digest(original),
+        candidate_sha256=digest(data),
+        sections=sections,
+        permitted_hooks=[hex(v) for v in allowed],
+        previous_dispatch=hex(previous),
+        overlay_preserved=True,
+        imports_preserved=True,
+        header_growth_repaired=True,
+        live_accepted=False,
+    )
     (out / 'preservation.json').write_text(json.dumps(report, indent=2))
     print(json.dumps(report, indent=2))
 

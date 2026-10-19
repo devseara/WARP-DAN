@@ -160,9 +160,19 @@ Rows below the anchor keep the anchor plane, so only the floor slope remains
 against the stock bias. That is roughly 2â€“4x more clearance; exact ground-plane
 contact would need the view matrix. Rows above the anchor are unchanged, and
 the stock bias is kept. The anchor-line depth of affected quads moves forward
-by roughly 0.16Â·h_upÂ·h_dn/(h_up+h_dn) world units, which is below the stock
-bias. Effects (`CGndRiser`, `CMandraAttackEffect` and others), items, corpses
-and the reversed 0x9C path stay stock. Shadow sort keys move to the anchor
+by roughly 0.16·h_up·h_dn/(h_up+h_dn) world units, which is below the stock
+bias. Effects (`CGndRiser`, `CMandraAttackEffect` and others), items and other
+reversed actors stay stock. The2026-10-19 mounted female Mage corpse candidate
+is a narrowly scoped exception: a third hook at `0xC40FA6` clamps reversed
+row offsets to >=0 for mounted visible/body Mage2, sex0, A64-A71. It replays
+the original eight-byte `mulss xmm4,[0x11DD47C]` and resumes at `0xC40FAE`.
+Its source cave budget is0x140, with the additional bridge at offset0xA0;
+the installed-client candidate uses a separate `.mgdead` section. This corrects
+upper rows sinking behind terrain while preserving all other reversed paths.
+Native RHW checks cover24 corpse cases and17 fallback/path controls; fresh WARP
+exports and both weather orders pass. It remains **not installed / live review
+pending**; see [the current HD review state](hd-sprites.md#v50-review-complete-weapon-coverage-and-corpse-clipping).
+Shadow sort keys move to the anchor
 plane, which is still behind the actor's own layers.
 
 Verify: `python tools/verify_floor_safe_sprite_depth.py`. It covers static
